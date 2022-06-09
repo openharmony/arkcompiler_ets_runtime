@@ -276,6 +276,8 @@ public:
 
     std::string GetTypeStr() const;
 
+    std::string GetPrimitiveStr(const GlobalTSTypeRef gt) const;
+
 private:
     uint32_t type_ {0};
 };
