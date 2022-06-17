@@ -228,5 +228,19 @@ void Bar2AOTStub::GenerateCircuit(const CompilationConfig *cfg)
     CallRuntime(glue, RTSTUB_ID(DumpTaggedType), {thisObj});
     Return(thisObj);
 }
+
+void TestAbsoluteAddressRelocationStub::GenerateCircuit(const CompilationConfig *cfg)
+{
+    Stub::GenerateCircuit(cfg);
+    auto env = GetEnvironment();
+    GateRef a = Int64Argument(0);
+    Label start(env);
+    Jump(&start);
+    Bind(&start);
+    GateRef globalValueC = RelocatableData(0xabc);
+    GateRef dummyValueC = Load(VariableType::INT64(), globalValueC);
+    GateRef result = ZExtInt1ToInt64(Int64Equal(a, dummyValueC));
+    Return(result);
+}
 #endif
 }   // namespace panda::ecmascript::kungfu

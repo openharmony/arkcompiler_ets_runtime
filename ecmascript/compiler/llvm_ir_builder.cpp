@@ -508,7 +508,8 @@ void LLVMIRBuilder::HandleRuntimeCall(GateRef gate)
     VisitRuntimeCall(gate, ins);
 }
 
-LLVMValueRef LLVMIRBuilder::GetFunction(LLVMValueRef glue, const CallSignature *signature, LLVMValueRef rtbaseoffset)
+LLVMValueRef LLVMIRBuilder::GetFunction(LLVMValueRef glue, const CallSignature *signature,
+    LLVMValueRef rtbaseoffset) const
 {
     LLVMTypeRef rtfuncType = llvmModule_->GetFuncType(signature);
     LLVMTypeRef rtfuncTypePtr = LLVMPointerType(rtfuncType, 0);
@@ -516,6 +517,16 @@ LLVMValueRef LLVMIRBuilder::GetFunction(LLVMValueRef glue, const CallSignature *
     LLVMValueRef rtbaseAddr = LLVMBuildIntToPtr(builder_, rtbaseoffset, LLVMPointerType(glueType, 0), "");
     LLVMValueRef llvmAddr = LLVMBuildLoad(builder_, rtbaseAddr, "");
     LLVMValueRef callee = LLVMBuildIntToPtr(builder_, llvmAddr, rtfuncTypePtr, "cast");
+    assert(callee != nullptr);
+    return callee;
+}
+
+LLVMValueRef LLVMIRBuilder::GetFunctionFromGlobalValue([[maybe_unused]]LLVMValueRef glue,
+    const CallSignature *signature, LLVMValueRef reloc) const
+{
+    LLVMTypeRef rtfuncType = llvmModule_->GetFuncType(signature);
+    LLVMTypeRef rtfuncTypePtr = LLVMPointerType(rtfuncType, 0);
+    LLVMValueRef callee = LLVMBuildIntToPtr(builder_, reloc, rtfuncTypePtr, "cast");
     assert(callee != nullptr);
     return callee;
 }
@@ -698,16 +709,18 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMValueRef glue = GetGlue(inList);
     LLVMValueRef rtoffset;
     LLVMValueRef rtbaseoffset;
+    LLVMValueRef callee;
     if (op == OpCode::CALL) {
         calleeDescriptor = CommonStubCSigns::Get(index);
         rtoffset = GetCoStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
+        callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
     } else {
         calleeDescriptor = RuntimeStubCSigns::Get(index);
         rtoffset = GetRTStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
+        callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
     }
-    LLVMValueRef callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
 
     std::vector<LLVMValueRef> params;
     const size_t firstArg = static_cast<size_t>(CallInputs::FIRST_PARAMETER);

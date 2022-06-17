@@ -424,25 +424,6 @@ void SetValueWithBarrierStub::GenerateCircuit(const CompilationConfig *cfg)
     Return();
 }
 
-void TestAbsoluteAddressRelocationStub::GenerateCircuit(const CompilationConfig *cfg)
-{
-    Stub::GenerateCircuit(cfg);
-    auto env = GetEnvironment();
-    GateRef a = Int64Argument(0);
-    GateRef b = Int64Argument(1);
-    Label start(env);
-    Jump(&start);
-    Bind(&start);
-    GateRef globalValueC = RelocatableData(0xabc);
-    GateRef globalValueD = RelocatableData(0xbcd);
-    GateRef dummyValueC = Load(VariableType::INT64(), globalValueC);
-    GateRef dummyValueD = Load(VariableType::INT64(), globalValueD);
-    // Load from same relocatable data twice to see if it breaks constant fold opt. Result shows it doesn't.
-    GateRef dummyValueC1 = Load(VariableType::INT64(), globalValueC);
-    GateRef result = Int64Add(a, Int64Add(b, Int64Add(dummyValueC, Int64Add(dummyValueD, dummyValueC1))));
-    Return(result);
-}
-
 void JsProxyCallInternalStub::GenerateCircuit(const CompilationConfig *cfg)
 {
     Stub::GenerateCircuit(cfg);

@@ -22,11 +22,12 @@
 #include <sys/mman.h>
 #include <vector>
 
-#include "code_generator.h"
-#include "compiler_log.h"
+#include "ecmascript/compiler/binary_section.h"
+#include "ecmascript/compiler/code_generator.h"
+#include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_thread.h"
-#include "llvm_ir_builder.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -62,90 +63,95 @@
 
 namespace panda::ecmascript::kungfu {
 struct CodeInfo {
-    using ByteBuffer = std::vector<uint8_t>;
-    using BufferList = std::list<ByteBuffer>;
-    using StringList = std::list<std::string>;
+    using sectionInfo = std::pair<uint8_t *, size_t>;
     CodeInfo()
     {
-        machineCode_ = static_cast<uint8_t *>(mmap(nullptr, MAX_MACHINE_CODE_SIZE, protRWX, flags, -1, 0));
-        if (machineCode_ == reinterpret_cast<uint8_t *>(-1)) {
-            machineCode_ = nullptr;
+        continuousSectionsMem_ = static_cast<uint8_t *>(mmap(nullptr, MAX_MACHINE_CODE_SIZE, protRWX, flags, -1, 0));
+        if (continuousSectionsMem_ == reinterpret_cast<uint8_t *>(-1)) {
+            continuousSectionsMem_ = nullptr;
         }
-        if (machineCode_ != nullptr) {
-            ASAN_UNPOISON_MEMORY_REGION(machineCode_, MAX_MACHINE_CODE_SIZE);
+        if (continuousSectionsMem_ != nullptr) {
+            ASAN_UNPOISON_MEMORY_REGION(continuousSectionsMem_, MAX_MACHINE_CODE_SIZE);
         }
         // align machineCode for aarch64
-        machineCode_ += MachineCode::DATA_OFFSET +
+        continuousSectionsMem_ += MachineCode::DATA_OFFSET +
             AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        secInfos_.fill(std::make_pair(nullptr, 0));
     }
     ~CodeInfo()
     {
         Reset();
-        if (machineCode_ != nullptr) {
-            ASAN_POISON_MEMORY_REGION(machineCode_, MAX_MACHINE_CODE_SIZE);
-            munmap(machineCode_, MAX_MACHINE_CODE_SIZE);
+        if (continuousSectionsMem_ != nullptr) {
+            ASAN_POISON_MEMORY_REGION(continuousSectionsMem_, MAX_MACHINE_CODE_SIZE);
+            munmap(continuousSectionsMem_, MAX_MACHINE_CODE_SIZE);
         }
-        machineCode_ = nullptr;
+        continuousSectionsMem_ = nullptr;
     }
 
-    uint8_t *Alloca(uintptr_t size, const char *sectionName)
+    uint8_t *Alloca(uintptr_t size)
     {
         // align up for rodata section
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
         uint8_t *addr = nullptr;
-        if (codeBufferPos_ + size > MAX_MACHINE_CODE_SIZE) {
-            LOG_COMPILER(ERROR) << std::hex << "AllocaCodeSection failed alloc codeBufferPos_:" << codeBufferPos_
-                      << " size:" << size << "  larger MAX_MACHINE_CODE_SIZE:" << MAX_MACHINE_CODE_SIZE;
+        if (bufferPos_ + size > MAX_MACHINE_CODE_SIZE) {
+            LOG_COMPILER(ERROR) << std::hex << "Alloca Section failed. Current bufferPos_:" << bufferPos_
+                      << " plus size:" << size << "exceed MAX_MACHINE_CODE_SIZE:" << MAX_MACHINE_CODE_SIZE;
             return nullptr;
         }
-        codeSectionNames_.push_back(sectionName);
-        addr = machineCode_ + codeBufferPos_;
-        codeBufferPos_ += size;
+        addr = continuousSectionsMem_ + bufferPos_;
+        bufferPos_ += size;
         return addr;
     }
 
     uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName)
     {
-        uint8_t *addr = Alloca(size, sectionName);
+        uint8_t *addr = Alloca(size);
+        auto curSec = ElfSection(sectionName);
         codeInfo_.push_back({addr, size});
+        if (curSec.isValidAOTSec()) {
+            secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);
+        }
         return addr;
     }
 
     uint8_t *AllocaDataSection(uintptr_t size, const char *sectionName)
     {
-        if (strncmp(sectionName, ".rodata", strlen(".rodata")) == 0) {
-            return Alloca(size, sectionName);
-        }
         uint8_t *addr = nullptr;
-        dataSectionList_.push_back(std::vector<uint8_t>());
-        dataSectionList_.back().resize(size);
-        dataSectionNames_.push_back(sectionName);
-        addr = static_cast<uint8_t *>(dataSectionList_.back().data());
-        if (!strcmp(sectionName, ".llvm_stackmaps")) {
-            stackMapsSection_ = addr;
-            stackMapsSize_ = size;
+        auto curSec = ElfSection(sectionName);
+        if (curSec.isSequentialAOTSec()) {
+            addr = Alloca(size);
+        } else { // the assumption here is llvm backend wouldn't emit a section with duplicated name
+            discreteSectionsAllocator_.insert(make_pair(sectionName, std::vector<uint8_t>()));
+            ASSERT(discreteSectionsAllocator_.find(sectionName) != discreteSectionsAllocator_.end());
+            discreteSectionsAllocator_[sectionName].resize(size);
+            addr = static_cast<uint8_t *>(discreteSectionsAllocator_[sectionName].data());
+        }
+        if (curSec.isValidAOTSec()) {
+            secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);
         }
         return addr;
     }
 
     void Reset()
     {
-        stackMapsSection_ = nullptr;
         codeInfo_.clear();
-        dataSectionList_.clear();
-        dataSectionNames_.clear();
-        codeSectionNames_.clear();
-        codeBufferPos_ = 0;
+        discreteSectionsAllocator_.clear();
+        continuousSectionsMem_ = nullptr;
+        bufferPos_ = 0;
     }
 
-    uint8_t *GetStackMapsSection() const
+    uint8_t *GetSectionAddr(ElfSecName sec) const
     {
-        return stackMapsSection_;
+        auto curSection = ElfSection(sec);
+        auto idx = curSection.GetIntIndex();
+        return const_cast<uint8_t *>(secInfos_[idx].first);
     }
 
-    size_t GetStackMapsSize() const
+    size_t GetSectionSize(ElfSecName sec) const
     {
-        return stackMapsSize_;
+        auto curSection = ElfSection(sec);
+        auto idx = curSection.GetIntIndex();
+        return secInfos_[idx].second;
     }
 
     std::vector<std::pair<uint8_t *, uintptr_t>> GetCodeInfo() const
@@ -153,37 +159,35 @@ struct CodeInfo {
         return codeInfo_;
     }
 
-    uint8_t *GetCodeBuff() const
+    template <class Callback>
+    void IterateSecInfos(const Callback &cb) const
     {
-        return machineCode_;
-    }
-
-    size_t GetCodeSize() const
-    {
-        return codeBufferPos_;
+        for (size_t i = 0; i < secInfos_.size(); i++) {
+            if (secInfos_[i].second == 0) {
+                continue;
+            }
+            cb(i, secInfos_[i]);
+        }
     }
 
 private:
-    BufferList dataSectionList_ {};
-    StringList dataSectionNames_ {};
-    StringList codeSectionNames_ {};
-    uint8_t *machineCode_ {nullptr};
-    const size_t MAX_MACHINE_CODE_SIZE = (1 << 20);  // 1M
+    static constexpr size_t MAX_MACHINE_CODE_SIZE = (1 << 20);  // 1M
     static constexpr int protRWX = PROT_READ | PROT_WRITE | PROT_EXEC;  // NOLINT(hicpp-signed-bitwise)
     static constexpr int flags = MAP_ANONYMOUS | MAP_SHARED;            // NOLINT(hicpp-signed-bitwise)
-    size_t codeBufferPos_ {0};
-    /* <addr, size > for disasssembler */
-    std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {};
-    /* stack map */
-    uint8_t *stackMapsSection_ {nullptr};
-    size_t stackMapsSize_ {0};
+    uint8_t *continuousSectionsMem_ {nullptr};
+    size_t bufferPos_ {0};
+    std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
+    std::map<std::string, std::vector<uint8_t>> discreteSectionsAllocator_;
+    std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
 };
 
 struct LOptions {
-    uint32_t optLevel : 2; // 2 bit for optimized level 0-4
+    uint32_t optLevel : 2; // 2 bits for optimized level 0-4
     uint32_t genFp : 1; // 1 bit for whether to generated frame pointer or not
-    LOptions() : optLevel(3), genFp(1) {}; // 3: default optLevel, 1: generating fp
-    LOptions(size_t level, bool genFp) : optLevel(level), genFp(genFp) {};
+    uint32_t relocMode : 3; // 3 bits for relocation mode
+    // 3: default optLevel, 1: generating fp, 2: PIC mode
+    LOptions() : optLevel(3), genFp(1), relocMode(2) {};
+    LOptions(size_t level, bool genFp, size_t relocMode) : optLevel(level), genFp(genFp), relocMode(relocMode) {};
 };
 
 class LLVMAssembler {
@@ -198,24 +202,15 @@ public:
     void Disassemble(const std::map<uintptr_t, std::string> &addr2name, const CompilerLog &log) const;
     static int GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log);
     static void Disassemble(uint8_t *buf, size_t size);
-    uintptr_t GetStackMapsSection() const
+
+    uintptr_t GetSectionAddr(ElfSecName sec) const
     {
-        return reinterpret_cast<uintptr_t>(codeInfo_.GetStackMapsSection());
+        return reinterpret_cast<uintptr_t>(codeInfo_.GetSectionAddr(sec));
     }
 
-    uint32_t GetStackMapsSize() const
+    uint32_t GetSectionSize(ElfSecName sec) const
     {
-        return static_cast<uint32_t>(codeInfo_.GetStackMapsSize());
-    }
-
-    uintptr_t GetCodeBuffer() const
-    {
-        return reinterpret_cast<uintptr_t>(codeInfo_.GetCodeBuff());
-    }
-
-    uint32_t GetCodeSize() const
-    {
-        return static_cast<uint32_t>(codeInfo_.GetCodeSize());
+        return static_cast<uint32_t>(codeInfo_.GetSectionSize(sec));
     }
 
     void *GetFuncPtrFromCompiledModule(LLVMValueRef function)
@@ -223,9 +218,10 @@ public:
         return LLVMGetPointerToGlobal(engine_, function);
     }
 
-    uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName)
+    template <class Callback>
+    void IterateSecInfos(const Callback &cb) const
     {
-        return codeInfo_.AllocaCodeSection(size, sectionName);
+        codeInfo_.IterateSecInfos(cb);
     }
 
 private:

@@ -95,7 +95,7 @@ private:
     std::unique_ptr<CodeGeneratorImpl> llvmImpl_ {nullptr};
 };
 
-void StubCompiler::RunPipeline(LLVMModule *module)
+void StubCompiler::RunPipeline(LLVMModule *module) const
 {
     auto callSigns = module->GetCSigns();
     const CompilerLog *log = GetLog();
@@ -120,30 +120,30 @@ void StubCompiler::RunPipeline(LLVMModule *module)
     }
 }
 
-bool StubCompiler::BuildStubModuleAndSave(const std::string &triple, const std::string &stubFile, size_t optLevel)
+bool StubCompiler::BuildStubModuleAndSave() const
 {
     BytecodeStubCSigns::Initialize();
     CommonStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
     size_t res = 0;
     const CompilerLog *log = GetLog();
-    StubFileGenerator generator(log);
-    if (!stubFile.empty()) {
+    StubFileGenerator generator(log, triple_);
+    if (!filePath_.empty()) {
         LOG_COMPILER(INFO) << "compiling bytecode handler stubs";
-        LLVMModule bcStubModule("bc_stub", triple);
-        LLVMAssembler bcStubAssembler(bcStubModule.GetModule(), LOptions(optLevel, false));
+        LLVMModule bcStubModule("bc_stub", triple_);
+        LLVMAssembler bcStubAssembler(bcStubModule.GetModule(), LOptions(optLevel_, false, relocMode_));
         bcStubModule.SetUpForBytecodeHandlerStubs();
         RunPipeline(&bcStubModule);
         generator.AddModule(&bcStubModule, &bcStubAssembler);
         res++;
         LOG_COMPILER(INFO) << "compiling common stubs";
-        LLVMModule comStubModule("com_stub", triple);
-        LLVMAssembler comStubAssembler(comStubModule.GetModule(), LOptions(optLevel, true));
+        LLVMModule comStubModule("com_stub", triple_);
+        LLVMAssembler comStubAssembler(comStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
         comStubModule.SetUpForCommonStubs();
         RunPipeline(&comStubModule);
         generator.AddModule(&comStubModule, &comStubAssembler);
         res++;
-        generator.SaveStubFile(stubFile);
+        generator.SaveStubFile(filePath_);
     }
     return (res > 0);
 }
@@ -184,14 +184,15 @@ int main(const int argc, const char **argv)
         LOG_COMPILER(INFO) << "Can't Create EcmaVM";
         return -1;
     }
-    std::string tripleString = runtimeOptions.GetTargetTriple();
+    std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();
-    std::string logMethods = vm->GetJSOptions().GetlogCompiledMethods();
     size_t optLevel = runtimeOptions.GetOptLevel();
+    size_t relocMode = runtimeOptions.GetRelocMode();
+    std::string logMethods = vm->GetJSOptions().GetlogCompiledMethods();
     panda::ecmascript::kungfu::CompilerLog log(logMethods);
-    panda::ecmascript::kungfu::StubCompiler compiler(&log);
+    panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, optLevel, relocMode, &log);
 
-    bool res = compiler.BuildStubModuleAndSave(tripleString, stubFile, optLevel);
+    bool res = compiler.BuildStubModuleAndSave();
     LOG_COMPILER(INFO) << "stub compiler run finish, result condition(T/F):" << std::boolalpha << res;
     panda::JSNApi::DestroyJSVM(vm);
     return res ? 0 : -1;

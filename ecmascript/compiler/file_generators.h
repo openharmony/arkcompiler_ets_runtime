@@ -35,7 +35,6 @@ public:
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubModulePackInfo &stubInfo,
         uint32_t moduleIndex, const CompilerLog &log)
     {
-        auto codeBuff = assembler_->GetCodeBuffer();
         auto engine = assembler_->GetEngine();
         auto callSigns = llvmModule_->GetCSigns();
         std::map<uintptr_t, int> addr2FpToPrevFrameSpDelta;
@@ -47,6 +46,7 @@ public:
             uintptr_t entry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
             entrys.push_back(entry);
         }
+        auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
         const size_t funcCount = llvmModule_->GetFuncCount();
         for (size_t j = 0; j < funcCount; j++) {
             auto cs = callSigns[j];
@@ -58,18 +58,17 @@ public:
             if (j < funcCount - 1) {
                 funcSize = entrys[j + 1] - entrys[j];
             } else {
-                funcSize = codeBuff + assembler_->GetCodeSize() - entrys[j];
+                funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - entrys[j];
             }
             stubInfo.AddStubEntry(cs->GetTargetKind(), cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta, funcSize);
             ASSERT(!cs->GetName().empty());
             addr2name[entrys[j]] = cs->GetName();
         }
-        // GetCodeSize
     }
+
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AOTModulePackInfo &aotInfo,
         uint32_t moduleIndex, const CompilerLog &log)
     {
-        auto codeBuff = assembler_->GetCodeBuffer();
         auto engine = assembler_->GetEngine();
         std::vector<std::tuple<uint64_t, size_t, int>> funcInfo; // entry、idx、delta
         llvmModule_->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func) {
@@ -83,6 +82,7 @@ public:
             ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
             funcInfo.emplace_back(std::tuple(funcEntry, idx, delta));
         });
+        auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
         const size_t funcCount = funcInfo.size();
         for (size_t i = 0; i < funcInfo.size(); i++) {
             uint64_t funcEntry;
@@ -93,23 +93,21 @@ public:
             if (i < funcCount - 1) {
                 funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
             } else {
-                funcSize = codeBuff + assembler_->GetCodeSize() - funcEntry;
+                funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - funcEntry;
             }
             aotInfo.AddStubEntry(CallSignature::TargetKind::JSFUNCTION, idx,
                 funcEntry - codeBuff, moduleIndex, delta, funcSize);
         }
     }
 
-    ModuleSectionDes GetModuleSectionDes()
+    void CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
     {
         ASSERT(assembler_ != nullptr);
-        ModuleSectionDes moduleDes(
-            assembler_->GetCodeBuffer(),
-            assembler_->GetStackMapsSection(),
-            assembler_->GetCodeSize(),
-            assembler_->GetStackMapsSize()
-        );
-        return moduleDes;
+        assembler_->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
+            auto curSec = ElfSection(i);
+            moduleDes.SetSecAddr(reinterpret_cast<uint64_t>(secInfo.first), curSec.GetElfEnumValue());
+            moduleDes.SetSecSize(secInfo.second, curSec.GetElfEnumValue());
+        });
     }
 
     const CompilationConfig *GetCompilationConfig()
@@ -117,19 +115,14 @@ public:
         return llvmModule_->GetCompilationConfig();
     }
 
-    uint32_t GetCodeSize()
+    uint32_t GetSectionSize(ElfSecName sec) const
     {
-        return assembler_->GetCodeSize();
+        return assembler_->GetSectionSize(sec);
     }
 
-    uintptr_t GetCodeBuffer()
+    uintptr_t GetSectionAddr(ElfSecName sec) const
     {
-        return assembler_->GetCodeBuffer();
-    }
-
-    uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName)
-    {
-        return assembler_->AllocaCodeSection(size, sectionName);
+        return assembler_->GetSectionAddr(sec);
     }
 
     void RunAssembler()
@@ -219,7 +212,7 @@ private:
 
 class StubFileGenerator : public FileGenerator {
 public:
-    explicit StubFileGenerator(const CompilerLog *log) : FileGenerator(log) {};
+    StubFileGenerator(const CompilerLog *log, const std::string &triple) : FileGenerator(log), cfg_(triple) {};
     ~StubFileGenerator() override = default;
     void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler)
     {
@@ -230,9 +223,10 @@ public:
 private:
     StubModulePackInfo stubInfo_;
     AssemblerModule asmModule_;
+    CompilationConfig cfg_;
 
     void RunAsmAssembler();
-    void CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name);
+    void CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name, uint32_t bridgeModuleIdx);
     void CollectCodeInfo();
 };
 }  // namespace panda::ecmascript::kungfu

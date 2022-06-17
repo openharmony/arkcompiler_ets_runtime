@@ -59,6 +59,7 @@ public:
         parser->Add(&aotOutputFile_);
         parser->Add(&targetTriple_);
         parser->Add(&asmOptLevel_);
+        parser->Add(&relocationMode_);
         parser->Add(&logCompiledMethods);
         parser->Add(&internal_memory_size_limit_);
         parser->Add(&heap_size_limit_);
@@ -151,6 +152,16 @@ public:
     void SetOptLevel(size_t value)
     {
         asmOptLevel_.SetValue(value);
+    }
+
+    size_t GetRelocMode() const
+    {
+        return relocationMode_.GetValue();
+    }
+
+    void SetRelocMode(size_t value)
+    {
+        relocationMode_.SetValue(value);
     }
 
     bool EnableForceGC() const
@@ -485,6 +496,8 @@ private:
         Default: "x86_64-unknown-linux-gnu")"};
     PandArg<uint32_t> asmOptLevel_ {"opt-level", 3,
         R"(Optimization level configuration on llvm back end. Default: "3")"};
+    PandArg<uint32_t> relocationMode_ {"reloc-mode", 2,
+        R"(Relocation configuration on llvm back end. Default: "2")"};
     PandArg<uint32_t> maxNonmovableSpaceCapacity_ {"maxNonmovableSpaceCapacity",
         4 * 1024 * 1024,
         R"(set max nonmovable space capacity)"};

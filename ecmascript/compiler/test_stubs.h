@@ -32,7 +32,8 @@ namespace panda::ecmascript::kungfu {
     V(Bar1AOT, 8)                       \
     V(FooProxyAOT, 7)                   \
     V(FooProxy2AOT, 7)                  \
-    V(Bar2AOT, 7)
+    V(Bar2AOT, 7)                       \
+    V(TestAbsoluteAddressRelocation, 1)
 #else
     #define TEST_STUB_LIST(V)
 #endif
@@ -154,6 +155,18 @@ public:
     ~Bar2AOTStub() = default;
     NO_MOVE_SEMANTIC(Bar2AOTStub);
     NO_COPY_SEMANTIC(Bar2AOTStub);
+    void GenerateCircuit(const CompilationConfig *cfg) override;
+};
+
+class TestAbsoluteAddressRelocationStub : public Stub {
+public:
+    // 2 : 2 means argument counts
+    explicit TestAbsoluteAddressRelocationStub(Circuit *circuit) : Stub("TestAbsoluteAddressRelocation", 1, circuit)
+    {
+    }
+    ~TestAbsoluteAddressRelocationStub() = default;
+    NO_MOVE_SEMANTIC(TestAbsoluteAddressRelocationStub);
+    NO_COPY_SEMANTIC(TestAbsoluteAddressRelocationStub);
     void GenerateCircuit(const CompilationConfig *cfg) override;
 };
 }

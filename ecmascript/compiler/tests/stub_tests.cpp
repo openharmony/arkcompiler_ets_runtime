@@ -18,16 +18,18 @@
 
 #include "gtest/gtest.h"
 #include "ecmascript/builtins/builtins_promise_handler.h"
+#include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
-#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/file_loader.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/stubs/runtime_stubs.h"
@@ -1374,6 +1376,40 @@ HWTEST_F_L0(StubTest, JSCallTest4)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     [[maybe_unused]] auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooProxyEntry);
+}
+
+HWTEST_F_L0(StubTest, RelocateTest)
+{
+    auto module = stubModule.GetModule();
+    auto function = stubModule.GetFunction(CommonStubCSigns::TestAbsoluteAddressRelocation);
+    Circuit netOfGates;
+    TestAbsoluteAddressRelocationStub optimizer(&netOfGates);
+    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    netOfGates.PrintAllGates();
+    bool verRes = Verifier::Run(&netOfGates);
+    ASSERT_TRUE(verRes);
+    auto cfg = Scheduler::Run(&netOfGates);
+    PrintCircuitByBasicBlock(cfg, netOfGates);
+    LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
+        CallSignature::CallConv::CCallConv);
+    llvmBuilder.Build();
+    char *error = nullptr;
+    LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
+    LLVMAssembler assembler(module);
+    assembler.Run();
+    uint64_t input = 0x111;
+    auto *ptr =
+        reinterpret_cast<JSTaggedValue (*)(uint64_t)>(assembler.GetFuncPtrFromCompiledModule(function));
+    auto loader = thread->GetEcmaVM()->GetFileLoader();
+    auto dataSecAddr = assembler.GetSectionAddr(ElfSecName::DATA);
+    auto dataSecSize = assembler.GetSectionSize(ElfSecName::DATA);
+    std::vector<uint64_t> newData;
+    newData.push_back(input);
+    loader->RewriteDataSection(dataSecAddr, dataSecSize,
+        reinterpret_cast<uintptr_t>(newData.data()), newData.size() * sizeof(uint64_t));
+    auto res = ptr(input);
+    uint64_t expect = 1;
+    EXPECT_EQ(res.GetRawData(), expect);
 }
 #endif
 }  // namespace panda::test

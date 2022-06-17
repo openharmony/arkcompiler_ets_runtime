@@ -34,7 +34,8 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         return false;
     }
     auto aotModule = new LLVMModule("aot_" + fileName, triple_);
-    auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(), LOptions(optLevel_, true));
+    auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
+        LOptions(optLevel_, true, relocMode_));
     CompilationConfig cmpCfg(triple_);
     TSLoader *tsLoader = vm_->GetTSLoader();
 

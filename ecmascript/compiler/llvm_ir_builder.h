@@ -290,7 +290,9 @@ private:
     {
         return enableLog_;
     }
-    LLVMValueRef GetFunction(LLVMValueRef glue, const CallSignature *signature, LLVMValueRef rtbaseoffset);
+    LLVMValueRef GetFunction(LLVMValueRef glue, const CallSignature *signature, LLVMValueRef rtbaseoffset) const;
+    LLVMValueRef GetFunctionFromGlobalValue(LLVMValueRef glue, const CallSignature *signature,
+        LLVMValueRef reloc) const;
     bool IsInterpreted();
     bool IsOptimized();
     void SetGCLeafFunction(LLVMValueRef call);

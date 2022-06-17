@@ -17,6 +17,7 @@
 
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/compiler/binary_section.h"
 
 namespace panda::ecmascript {
 class JSpandafile;
@@ -25,65 +26,53 @@ namespace kungfu {
     class LLVMStackMapParser;
 };
 
+class BinaryBufferParser {
+public:
+    BinaryBufferParser(uint8_t *buffer, uint32_t length) : buffer_(buffer), length_(length) {}
+    ~BinaryBufferParser() = default;
+    void ParseBuffer(void *dst, uint32_t count);
+
+private:
+    uint8_t *buffer_ {nullptr};
+    uint32_t length_ {0};
+    uint32_t offset_ {0};
+};
+
 struct ModuleSectionDes {
-    uint64_t hostCodeSectionAddr_ {0};
-    uint64_t stackMapSectionAddr_ {0};
-    uint32_t codeSize_ {0};
-    uint32_t stackMapSize_ {0};
-    uintptr_t deviceCodeSectionAddr_ {0};
+    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
+
     ModuleSectionDes() = default;
-    ModuleSectionDes(uint64_t codeSecBegin, uint64_t stackmapSecBegin, uint32_t codeSize,
-        uint32_t stackMapSize) : hostCodeSectionAddr_(codeSecBegin), stackMapSectionAddr_(stackmapSecBegin),
-                                 codeSize_(codeSize), stackMapSize_(stackMapSize) {}
-    void SetHostCodeSecAddr(uint64_t addr)
+
+    void SetSecAddr(uint64_t addr, ElfSecName idx)
     {
-        hostCodeSectionAddr_ = addr;
+        sectionsInfo_[idx].first = addr;
     }
 
-    uint64_t GetHostCodeSecAddr() const
+    uint64_t GetSecAddr(const ElfSecName idx) const
     {
-        return hostCodeSectionAddr_;
+        return sectionsInfo_.at(idx).first;
     }
 
-    void SetStackMapSecAddr(uint64_t addr)
+    void SetSecSize(uint32_t size, ElfSecName idx)
     {
-        stackMapSectionAddr_ = addr;
+        sectionsInfo_[idx].second = size;
     }
 
-    uint64_t GetStackMapSecAddr() const
+    uint32_t GetSecSize(const ElfSecName idx) const
     {
-        return stackMapSectionAddr_;
+        return sectionsInfo_.at(idx).second;
     }
 
-    void SetStackMapSize(uint32_t len)
+    uint32_t GetSecInfosSize()
     {
-        stackMapSize_ = len;
+        return sectionsInfo_.size();
     }
 
-    uint32_t GetStackMapSize() const
-    {
-        return stackMapSize_;
-    }
-
-    void SetCodeSize(uint32_t len)
-    {
-        codeSize_ = len;
-    }
-
-    uint32_t GetCodeSize() const
-    {
-        return codeSize_;
-    }
-
-    void SetDeviceCodeSecAddr(uintptr_t addr)
-    {
-        deviceCodeSectionAddr_ = addr;
-    }
-
-    uintptr_t GetDeviceCodeSecAddr() const
-    {
-        return deviceCodeSectionAddr_;
-    }
+    void SaveSectionsInfo(std::ofstream &file);
+    void LoadSectionsInfo(BinaryBufferParser &parser, uint32_t &curUnitOffset,
+        JSHandle<MachineCode> &code, EcmaVM *vm);
+    void LoadSectionsInfo(std::ifstream &file, uint32_t &curUnitOffset,
+        JSHandle<MachineCode> &code, EcmaVM *vm);
 };
 
 class PUBLIC_API ModulePackInfo {
@@ -119,6 +108,12 @@ public:
         bool IsCommonStub() const
         {
             return (kind_ == CallSignature::TargetKind::COMMON_STUB);
+        }
+
+        bool IsGeneralRTStub() const
+        {
+            return (kind_ >= CallSignature::TargetKind::RUNTIME_STUB &&
+                kind_ <= CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
         }
     };
 
@@ -172,9 +167,19 @@ public:
         entries_.emplace_back(des);
     }
 
+    const std::vector<ModuleSectionDes> &GetModuleSectionDes() const
+    {
+        return des_;
+    }
+
     size_t GetCodeUnitsNum()
     {
         return des_.size();
+    }
+
+    void accumulateTotalSize(uint32_t size)
+    {
+        totalCodeSize_ += size;
     }
 protected:
     uint32_t entryNum_ {0};
@@ -194,13 +199,17 @@ public:
     ~AOTModulePackInfo() override = default;
     void Save(const std::string &filename);
     bool Load(EcmaVM *vm, const std::string &filename);
-    void AddModuleDes(ModuleSectionDes moduleDes, uint32_t hash)
+    void AddModuleDes(ModuleSectionDes &moduleDes, uint32_t hash)
     {
         des_.emplace_back(moduleDes);
-        totalCodeSize_ += moduleDes.codeSize_;
+        for (auto &s : moduleDes.sectionsInfo_) {
+            auto sec = ElfSection(s.first);
+            if (sec.isSequentialAOTSec()) {
+                accumulateTotalSize(s.second.second);
+            }
+        }
         aotFileHashs_.emplace_back(hash);
     }
-
 private:
     std::vector<uint32_t> aotFileHashs_ {};
 };
@@ -212,11 +221,57 @@ public:
     void Save(const std::string &filename);
     bool Load(EcmaVM *vm);
 
-    void AddModuleDes(ModuleSectionDes moduleDes)
+    void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
-        totalCodeSize_ += moduleDes.codeSize_;
+        for (auto &s : moduleDes.sectionsInfo_) {
+            auto sec = ElfSection(s.first);
+            if (sec.isSequentialAOTSec()) {
+                accumulateTotalSize(s.second.second);
+            }
+        }
     }
+
+    uint64_t GetAsmStubAddr() const
+    {
+        return reinterpret_cast<uint64_t>(asmStubAddr_);
+    }
+
+    uint32_t GetAsmStubSize() const
+    {
+        return static_cast<uint32_t>(asmStubSize_);
+    }
+
+    void SetAsmStubAddr(void *addr)
+    {
+        asmStubAddr_ = addr;
+    }
+
+    void SetAsmStubAddr(uintptr_t addr)
+    {
+        asmStubAddr_ = reinterpret_cast<void *>(addr);
+    }
+
+    void SetAsmStubSize(size_t size)
+    {
+        asmStubSize_ = size;
+    }
+
+    void FillAsmStubTempHolder(uint8_t *buffer, size_t bufferSize)
+    {
+        asmStubTempHolder_.resize(bufferSize);
+        if (memcpy_s(asmStubTempHolder_.data(), bufferSize, buffer, bufferSize) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            return;
+        }
+        SetAsmStubAddr(asmStubTempHolder_.data());
+        SetAsmStubSize(bufferSize);
+    }
+
+private:
+    void *asmStubAddr_ {nullptr};
+    size_t asmStubSize_ {0};
+    std::vector<int> asmStubTempHolder_ {};
 };
 
 class FileLoader {
@@ -250,11 +305,6 @@ public:
 
     uintptr_t GetAOTFuncEntry(uint32_t hash, uint32_t methodId)
     {
-        if (hashToEntryMap_.find(hash) == hashToEntryMap_.end()) {
-            return reinterpret_cast<uint64_t>(nullptr);
-        } else if (hashToEntryMap_[hash].find(methodId) == hashToEntryMap_[hash].end()) {
-            return reinterpret_cast<uint64_t>(nullptr);
-        }
         return static_cast<uintptr_t>(hashToEntryMap_[hash][methodId]);
     }
 
@@ -263,8 +313,10 @@ public:
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);
     void TryLoadSnapshotFile();
-    kungfu::LLVMStackMapParser* GetStackMapParser();
+    kungfu::LLVMStackMapParser* GetStackMapParser() const;
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
+    bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
+    void RuntimeRelocate();
 private:
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
@@ -276,18 +328,6 @@ private:
     void InitializeStubEntries(const std::vector<AOTModulePackInfo::FuncEntryDes>& stubs);
     void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<ModulePackInfo::FuncEntryDes> &stubs,
         const AsmInterParsedOption &asmInterOpt);
-};
-
-class BinaryBufferParser {
-public:
-    BinaryBufferParser(uint8_t *buffer, uint32_t length) : buffer_(buffer), length_(length) {}
-    ~BinaryBufferParser() = default;
-    void ParseBuffer(void *dst, uint32_t count);
-
-private:
-    uint8_t *buffer_ {nullptr};
-    uint32_t length_ {0};
-    uint32_t offset_ {0};
 };
 }
 #endif // ECMASCRIPT_COMPILER_FILE_LOADER_H
