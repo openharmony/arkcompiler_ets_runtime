@@ -91,8 +91,8 @@ using panda::ecmascript::kungfu::CommonStubCSigns;
 #define INTERPRETER_GOTO_EXCEPTION_HANDLER()                                                                        \
     do {                                                                                                            \
         SAVE_PC();                                                                                                  \
-        return asmDispatchTable[EcmaOpcode::LAST_OPCODE](                                                           \
-            thread, pc, sp, constpool, profileTypeInfo, acc, hotnessCounter);                                       \
+        GET_ASM_FRAME(sp)->acc = JSTaggedValue::Exception();                                                        \
+        return;                                                                                                     \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -115,13 +115,13 @@ using panda::ecmascript::kungfu::CommonStubCSigns;
 
 #if ECMASCRIPT_ENABLE_IC
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define UPDATE_HOTNESS_COUNTER(offset)                            \
-    do {                                                          \
-        hotnessCounter += offset;                                 \
-        if (UNLIKELY(hotnessCounter <= 0)) {                      \
-            profileTypeInfo = UpdateHotnessCounter(thread, sp);   \
-            hotnessCounter = std::numeric_limits<int32_t>::max(); \
-        }                                                         \
+#define UPDATE_HOTNESS_COUNTER(offset)                                      \
+    do {                                                                    \
+        hotnessCounter += offset;                                           \
+        if (UNLIKELY(hotnessCounter <= 0)) {                                \
+            profileTypeInfo = UpdateHotnessCounter(thread, sp);             \
+            hotnessCounter = InterpreterAssembly::METHOD_HOTNESS_THRESHOLD; \
+        }                                                                   \
     } while (false)
 #else
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -3634,7 +3634,6 @@ inline JSTaggedValue InterpreterAssembly::UpdateHotnessCounter(JSThread* thread,
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
         auto method = function->GetMethod();
         auto res = SlowRuntimeStub::NotifyInlineCache(thread, function, method);
-        function->SetProfileTypeInfo(res);
         return res;
     }
     return profileTypeInfo;

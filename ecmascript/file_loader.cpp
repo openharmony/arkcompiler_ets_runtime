@@ -323,12 +323,14 @@ void FileLoader::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
     ASSERT(defaultBCStubDes.kind_ == CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);
     thread->SetUnrealizedBCStubEntry(defaultBCStubDes.codeAddr_);
     thread->SetNonExistedBCStubEntry(defaultNonexistentBCStubDes.codeAddr_);
-#define UNDEF_STUB(name)    \
-    thread->SetBCStubEntry(BytecodeStubCSigns::ID_##name, defaultBCStubDes.codeAddr_);
-    INTERPRETER_IGNORED_BC_STUB_LIST(UNDEF_STUB)
-#undef UNDEF_STUB
-    for (int i = asmInterOpt.handleStart; i <= asmInterOpt.handleEnd && i >= 0; i++) {
-        thread->SetBCStubEntry(static_cast<size_t>(i), defaultBCStubDes.codeAddr_);
+    if (asmInterOpt.handleStart >= 0 && asmInterOpt.handleStart <= asmInterOpt.handleEnd) {
+        for (int i = asmInterOpt.handleStart; i <= asmInterOpt.handleEnd; i++) {
+            thread->SetBCStubEntry(static_cast<size_t>(i), defaultBCStubDes.codeAddr_);
+        }
+#define DISABLE_SINGLE_STEP_DEBUGGING(name) \
+        thread->SetBCStubEntry(BytecodeStubCSigns::ID_##name, stubs[BytecodeStubCSigns::ID_##name].codeAddr_);
+        INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(DISABLE_SINGLE_STEP_DEBUGGING)
+#undef DISABLE_SINGLE_STEP_DEBUGGING
     }
     // bc debugger stub entries
     thread->SetNonExistedBCDebugStubEntry(defaultNonexistentBCStubDes.codeAddr_);
