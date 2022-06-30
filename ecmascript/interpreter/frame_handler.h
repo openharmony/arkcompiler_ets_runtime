@@ -195,8 +195,10 @@ public:
 
     ~StackAssertScope()
     {
-        DASSERT_PRINT(oldSp_ == thread_->GetCurrentSPFrame(),
-                      "StackAssertScope assert failed, sp did not restore as expeted");
+        if (!thread_->HasPendingException()) {
+            DASSERT_PRINT(oldSp_ == thread_->GetCurrentSPFrame(),
+                          "StackAssertScope assert failed, sp did not restore as expeted");
+        }
     }
 
 private:

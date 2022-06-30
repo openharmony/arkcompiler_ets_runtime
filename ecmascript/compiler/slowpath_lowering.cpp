@@ -486,7 +486,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerCreateArrayWithBuffer(gate, glue, jsFunc);
             break;
         case STMODULEVAR_PREF_ID32:
-            LowerStModuleVar(gate, glue);
+            LowerStModuleVar(gate, glue, jsFunc);
             break;
         case GETTEMPLATEOBJECT_PREF_V8:
             LowerGetTemplateObject(gate, glue);
@@ -501,10 +501,10 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerToNumeric(gate, glue);
             break;
         case LDMODULEVAR_PREF_ID32_IMM8:
-            LowerLdModuleVar(gate, glue);
+            LowerLdModuleVar(gate, glue, jsFunc);
             break;
         case GETMODULENAMESPACE_PREF_ID32:
-            LowerGetModuleNamespace(gate, glue);
+            LowerGetModuleNamespace(gate, glue, jsFunc);
             break;
         case NEWOBJDYNRANGE_PREF_IMM16_V8:
             LowerNewObjDynRange(gate, glue);
@@ -1493,15 +1493,16 @@ void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, G
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
-void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef prop = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable),
-        { builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0))) }, true);
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(StModuleVar), { prop, acc_.GetValueIn(gate, 1) }, true);
+    GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
+    GateRef prop = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), { stringId }, true);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(StModuleVarOnJSFunc),
+        { prop, acc_.GetValueIn(gate, 1), jsFunc }, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
@@ -1533,19 +1534,17 @@ void SlowPathLowering::LowerSetObjectWithProto(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdBigInt(GateRef gate, GateRef glue)
 {
-    std::vector<GateRef> successControl;
-    std::vector<GateRef> failControl;
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
     GateRef numberBigInt = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), { stringId }, true);
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdBigInt), {numberBigInt}, true);
-    successControl.emplace_back(builder_.GetState());
-    successControl.emplace_back(builder_.GetDepend());
-    failControl.emplace_back(Circuit::NullGate());
-    failControl.emplace_back(Circuit::NullGate());
-    // StModuleVar will not be inValue to other hir gates, result will not be used to replace hirgate
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
@@ -1557,38 +1556,36 @@ void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
     ReplaceHirToCall(gate, newGate);
 }
 
-void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef key = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable),
-        { builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0))) }, true);
+    GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
+    GateRef key = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), { stringId }, true);
     GateRef inner = builder_.TaggedTypeNGC(acc_.GetValueIn(gate, 1));
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdModuleVar), {key, inner}, true);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdModuleVarOnJSFunc), {key, inner, jsFunc}, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
     failControl.emplace_back(Circuit::NullGate());
-    // StModuleVar will not be inValue to other hir gates, result will not be used to replace hirgate
     ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
 }
 
-void SlowPathLowering::LowerGetModuleNamespace(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    auto args = { builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0))) };
-    GateRef localName = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), args, true);
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespace), {localName}, true);
+    GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
+    GateRef localName = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), { stringId }, true);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespaceOnJSFunc), { localName, jsFunc }, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
     failControl.emplace_back(Circuit::NullGate());
-    // StModuleVar will not be inValue to other hir gates, result will not be used to replace hirgate
     ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
 }
 

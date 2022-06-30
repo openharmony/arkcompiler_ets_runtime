@@ -913,12 +913,30 @@ DEF_RUNTIME_STUBS(GetModuleNamespace)
     return RuntimeGetModuleNamespace(thread, localName).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetModuleNamespaceOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(GetModuleNamespaceOnJSFunc);
+    JSTaggedValue localName = GetArg(argv, argc, 0);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1);
+    return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(StModuleVar)
 {
     RUNTIME_STUBS_HEADER(StModuleVar);
     JSTaggedValue key = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue value = GetArg(argv, argc, 1);  // 1: means the first parameter
     RuntimeStModuleVar(thread, key, value);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(StModuleVarOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(StModuleVarOnJSFunc);
+    JSTaggedValue key = GetArg(argv, argc, 0);
+    JSTaggedValue value = GetArg(argv, argc, 1);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 2);
+    RuntimeStModuleVar(thread, key, value, jsFunc);
     return JSTaggedValue::Hole().GetRawData();
 }
 
@@ -929,6 +947,16 @@ DEF_RUNTIME_STUBS(LdModuleVar)
     JSTaggedValue taggedFlag = GetArg(argv, argc, 1);  // 1: means the first parameter
     bool innerFlag = taggedFlag.GetInt() != 0;
     return RuntimeLdModuleVar(thread, key, innerFlag).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdModuleVarOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(LdModuleVarOnJSFunc);
+    JSTaggedValue key = GetArg(argv, argc, 0);
+    JSTaggedValue taggedFlag = GetArg(argv, argc, 1);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 2);
+    bool innerFlag = taggedFlag.GetInt() != 0;
+    return RuntimeLdModuleVar(thread, key, innerFlag, jsFunc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetPropIterator)
@@ -1474,6 +1502,17 @@ DEF_RUNTIME_STUBS(ThrowCallConstructorException)
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
                                                    "class constructor cannot called without 'new'");
+    thread->SetException(error.GetTaggedValue());
+    return JSTaggedValue::Exception().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ThrowNonConstructorException)
+{
+    RUNTIME_STUBS_HEADER(ThrowNonConstructorException);
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
+                                                   "function is non-constructor");
     thread->SetException(error.GetTaggedValue());
     return JSTaggedValue::Exception().GetRawData();
 }

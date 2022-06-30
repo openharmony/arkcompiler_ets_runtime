@@ -3927,8 +3927,57 @@ GateRef StubBuilder::NewJSObject(GateRef glue, GateRef hclass)
     return object;
 }
 
+GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    Label exit(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
+    Label isHeapObject(env);
+    Label isEcmaObj(env);
+    Label notEcmaObj(env);
+    Branch(TaggedIsHeapObject(outPut), &isHeapObject, &notEcmaObj);
+    Bind(&isHeapObject);
+    Branch(TaggedObjectIsEcmaObject(outPut), &isEcmaObj, &notEcmaObj);
+    Bind(&isEcmaObj);
+    {
+        result = outPut;
+        Jump(&exit);
+    }
+    Bind(&notEcmaObj);
+    {
+        Label ctorIsBase(env);
+        Label ctorNotBase(env);
+        Branch(IsBase(ctor), &ctorIsBase, &ctorNotBase);
+        Bind(&ctorIsBase);
+        {
+            result = thisObj;
+            Jump(&exit);
+        }
+        Bind(&ctorNotBase);
+        {
+            Label throwExeption(env);
+            Label returnObj(env);
+            Branch(TaggedIsUndefined(outPut), &returnObj, &throwExeption);
+            Bind(&returnObj);
+            result = thisObj;
+            Jump(&exit);
+            Bind(&throwExeption);
+            {
+                CallRuntime(glue, RTSTUB_ID(ThrowNonConstructorException), {});
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
-                             JSCallMode mode, std::initializer_list<GateRef> args)
+                                    JSCallMode mode, std::initializer_list<GateRef> args)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -4076,6 +4125,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
                         { glue, ZExtInt32ToInt64(actualNumArgs), func, func, data[2], data[1]});
+                    result = ConstructorCheck(glue, func, *result, data[2]);
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_GETTER:

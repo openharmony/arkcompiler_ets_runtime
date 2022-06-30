@@ -48,10 +48,30 @@ JSTaggedValue ModuleManager::GetModuleValueInner(JSTaggedValue key)
     return SourceTextModule::Cast(currentModule.GetTaggedObject())->GetModuleValue(vm_->GetJSThread(), key, false);
 }
 
+JSTaggedValue ModuleManager::GetModuleValueInner(JSTaggedValue key, JSTaggedValue jsFunc)
+{
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    if (currentModule.IsUndefined()) {
+        LOG_FULL(FATAL) << "GetModuleValueInner currentModule failed";
+    }
+    return SourceTextModule::Cast(currentModule.GetTaggedObject())->GetModuleValue(vm_->GetJSThread(), key, false);
+}
+
 JSTaggedValue ModuleManager::GetModuleValueOutter(JSTaggedValue key)
 {
-    JSThread *thread = vm_->GetJSThread();
     JSTaggedValue currentModule = GetCurrentModule();
+    return GetModuleValueOutterInternal(key, currentModule);
+}
+
+JSTaggedValue ModuleManager::GetModuleValueOutter(JSTaggedValue key, JSTaggedValue jsFunc)
+{
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    return GetModuleValueOutterInternal(key, currentModule);
+}
+
+JSTaggedValue ModuleManager::GetModuleValueOutterInternal(JSTaggedValue key, JSTaggedValue currentModule)
+{
+    JSThread *thread = vm_->GetJSThread();
     if (currentModule.IsUndefined()) {
         LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
     }
@@ -78,9 +98,23 @@ void ModuleManager::StoreModuleValue(JSTaggedValue key, JSTaggedValue value)
 {
     JSThread *thread = vm_->GetJSThread();
     JSHandle<SourceTextModule> currentModule(thread, GetCurrentModule());
+    StoreModuleValueInternal(currentModule, key, value);
+}
+
+void ModuleManager::StoreModuleValue(JSTaggedValue key, JSTaggedValue value, JSTaggedValue jsFunc)
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<SourceTextModule> currentModule(thread, JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule());
+    StoreModuleValueInternal(currentModule, key, value);
+}
+
+void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
+                                             JSTaggedValue key, JSTaggedValue value)
+{
     if (currentModule.GetTaggedValue().IsUndefined()) {
         LOG_FULL(FATAL) << "StoreModuleValue currentModule failed";
     }
+    JSThread *thread = vm_->GetJSThread();
     JSHandle<JSTaggedValue> keyHandle(thread, key);
     JSHandle<JSTaggedValue> valueHandle(thread, value);
     currentModule->StoreModuleValue(thread, keyHandle, valueHandle);
@@ -163,6 +197,17 @@ void ModuleManager::AddResolveImportedModule(const JSPandaFile *jsPandaFile, con
 JSTaggedValue ModuleManager::GetModuleNamespace(JSTaggedValue localName)
 {
     JSTaggedValue currentModule = GetCurrentModule();
+    return GetModuleNamespaceInternal(localName, currentModule);
+}
+
+JSTaggedValue ModuleManager::GetModuleNamespace(JSTaggedValue localName, JSTaggedValue currentFunc)
+{
+    JSTaggedValue currentModule = JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule();
+    return GetModuleNamespaceInternal(localName, currentModule);
+}
+
+JSTaggedValue ModuleManager::GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule)
+{
     if (currentModule.IsUndefined()) {
         LOG_FULL(FATAL) << "GetModuleNamespace currentModule failed";
     }
