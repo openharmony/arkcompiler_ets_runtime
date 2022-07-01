@@ -352,6 +352,7 @@ public:
             case JSType::TAGGED_ARRAY:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:
+            case JSType::LEXICAL_ENV:
                 TaggedArray::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::GLOBAL_ENV:

@@ -26,7 +26,7 @@
 
 void *mmap(size_t size, int fd, off_t offset)
 {
-    HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+    HANDLE handle = ((fd == -1) ? INVALID_HANDLE_VALUE : reinterpret_cast<HANDLE>(_get_osfhandle(fd)));
     HANDLE extra = CreateFileMapping(handle, nullptr, PAGE_READWRITE,
                                      (DWORD) ((uint64_t) size >> 32),
                                      (DWORD) (size & 0xffffffff),
@@ -61,7 +61,7 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool isRegular)
         }
         mem = PageMap(REGULAR_REGION_MMAP_SIZE, alignment);
         memMapPool_.InsertMemMap(mem);
-        mem = memMapPool_.SplitMemToCache(mem);
+        mem = memMapPool_.SplitMemFromCache(mem);
     } else {
         mem = memMapFreeList_.GetMemFromList(size);
     }

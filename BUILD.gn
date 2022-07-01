@@ -251,17 +251,27 @@ config("ark_jsruntime_common_config") {
       "-O0",
       "-ggdb3",
     ]
-    if (is_linux && (current_cpu == "x86" || current_cpu == "x64") &&
-        run_with_asan) {
-      cflags_cc += [
-        "-fsanitize=address",
-        "-fno-omit-frame-pointer",
-      ]
-      ldflags += [ "-L" + rebase_path("${root_out_dir}/ark/ark_js_runtime") ]
-      libs = [ "clang_rt.asan-x86_64" ]
-    }
   } else {
     defines += [ "NDEBUG" ]
+  }
+
+  if (run_with_asan && is_linux &&
+      (current_cpu == "x86" || current_cpu == "x64")) {
+    cflags_cc += [
+      "-fno-inline-functions",
+      "-fno-inline",
+      "-O1",
+      "-fsanitize=address",
+      "-fsanitize-address-use-after-scope",
+      "-fno-omit-frame-pointer",
+      "-fsanitize=leak",
+    ]
+
+    if (!use_musl) {
+      libs = [ "$clang_base_path/lib64/clang/$clang_version/lib/linux/libclang_rt.asan-x86_64.a" ]
+    } else {
+      libs = [ "$clang_base_path/lib/clang/$clang_version/lib/x86_64-linux-ohos/libclang_rt.asan.a" ]
+    }
   }
 
   if (current_cpu == "arm") {
@@ -583,11 +593,6 @@ source_set("libark_jsruntime_set") {
     sdk_libc_secshared_dep,
   ]
 
-  if (is_debug && is_linux && (current_cpu == "x86" || current_cpu == "x64") &&
-      run_with_asan) {
-    deps += [ ":copy_asan_runtime" ]
-  }
-
   if (is_ohos && is_standard_system) {
     defines = []
     include_dirs = []
@@ -651,11 +656,6 @@ source_set("libark_jsruntime_test_set") {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
   }
 
-  if (is_debug && is_linux && (current_cpu == "x86" || current_cpu == "x64") &&
-      run_with_asan) {
-    deps += [ ":copy_asan_runtime" ]
-  }
-
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
@@ -715,13 +715,5 @@ if (!defined(ark_standalone_build)) {
       output_extension = "so"
     }
     subsystem_name = "test"
-  }
-
-  if (is_debug && is_linux && (current_cpu == "x86" || current_cpu == "x64") &&
-      run_with_asan) {
-    ohos_copy("copy_asan_runtime") {
-      sources = [ "${asan_lib_path}/libclang_rt.asan-x86_64.a" ]
-      outputs = [ "${root_out_dir}/ark/ark_js_runtime/{{source_file_part}}" ]
-    }
   }
 }

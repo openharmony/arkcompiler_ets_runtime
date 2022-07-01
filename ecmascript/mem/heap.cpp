@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecmascript/free_object.h"
 #include "ecmascript/mem/heap-inl.h"
 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
@@ -24,6 +23,7 @@
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/free_object.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -329,9 +329,8 @@ void Heap::CollectGarbage(TriggerGCType gcType)
     }
     size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
     memController_->StartCalculationBeforeGC();
-    LOG_GC(INFO) << "Heap::CollectGarbage, gcType = " << gcType;
-    OPTIONAL_LOG(ecmaVm_, ERROR) << " global CommittedSize " << GetCommittedSize()
-                                             << " global limit " << globalSpaceAllocLimit_;
+    StatisticHeapObject(gcType);
+
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:
             // Use partial GC for young generation.
@@ -379,8 +378,9 @@ void Heap::CollectGarbage(TriggerGCType gcType)
         // the limits of old space and global space can be recomputed.
         RecomputeLimits();
         OPTIONAL_LOG(ecmaVm_, ERROR) << " GC after: is full mark" << IsFullMark()
-                                                 << " global CommittedSize " << GetCommittedSize()
-                                                 << " global limit " << globalSpaceAllocLimit_;
+                                     << " global object size " << GetHeapObjectSize()
+                                     << " global committed size " << GetCommittedSize()
+                                     << " global limit " << globalSpaceAllocLimit_;
         markType_ = MarkType::MARK_YOUNG;
     }
     if (concurrentMarker_->IsRequestDisabled()) {
@@ -808,5 +808,59 @@ bool Heap::ContainObject(TaggedObject *object) const
      */
     Region *region = Region::ObjectAddressToRange(object);
     return region->InHeapSpace();
+}
+
+void Heap::StatisticHeapObject(TriggerGCType gcType) const
+{
+    OPTIONAL_LOG(ecmaVm_, INFO) << "-----------------------Statistic Heap Object------------------------";
+    OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
+                                << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsFullMark() << ")";
+#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+    LOG_ECMA(INFO) << "ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize()
+                   << "/" << activeSemiSpace_->GetInitialCapacity() << "), NonMovable("
+                   << nonMovableSpace_->GetHeapObjectSize() << "/" << nonMovableSpace_->GetCommittedSize()
+                   << "/" << nonMovableSpace_->GetInitialCapacity() << "), Old("
+                   << oldSpace_->GetHeapObjectSize() << "/" << oldSpace_->GetCommittedSize()
+                   << "/" << oldSpace_->GetInitialCapacity() << "), HugeObject("
+                   << hugeObjectSpace_->GetHeapObjectSize() << "/" << hugeObjectSpace_->GetCommittedSize()
+                   << "/" << hugeObjectSpace_->GetInitialCapacity() << "), GlobalLimitSize("
+                   << globalSpaceAllocLimit_ << ").";
+    static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
+    int typeCount[JS_TYPE_LAST] = { 0 };
+    static const int MIN_COUNT_THRESHOLD = 1000;
+
+    nonMovableSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
+        typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
+    });
+    for (int i = 0; i < JS_TYPE_LAST; i++) {
+        if (typeCount[i] > MIN_COUNT_THRESHOLD) {
+            LOG_ECMA(INFO) << "NonMovable space type " << JSHClass::DumpJSType(JSType(i))
+                           << " count:" << typeCount[i];
+        }
+        typeCount[i] = 0;
+    }
+
+    oldSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
+        typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
+    });
+    for (int i = 0; i < JS_TYPE_LAST; i++) {
+        if (typeCount[i] > MIN_COUNT_THRESHOLD) {
+            LOG_ECMA(INFO) << "Old space type " << JSHClass::DumpJSType(JSType(i))
+                           << " count:" << typeCount[i];
+        }
+        typeCount[i] = 0;
+    }
+
+    activeSemiSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
+        typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
+    });
+    for (int i = 0; i < JS_TYPE_LAST; i++) {
+        if (typeCount[i] > MIN_COUNT_THRESHOLD) {
+            LOG_ECMA(INFO) << "Active semi space type " << JSHClass::DumpJSType(JSType(i))
+                           << " count:" << typeCount[i];
+        }
+        typeCount[i] = 0;
+    }
+#endif
 }
 }  // namespace panda::ecmascript

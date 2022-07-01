@@ -97,7 +97,7 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
     SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
     SetConstant(ConstantIndex::ENV_CLASS_INDEX,
-                factory->NewEcmaReadOnlyDynClass(dynClassClass, 0, JSType::TAGGED_ARRAY));
+                factory->NewEcmaReadOnlyDynClass(dynClassClass, 0, JSType::LEXICAL_ENV));
     SetConstant(ConstantIndex::SYMBOL_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, JSSymbol::SIZE, JSType::SYMBOL));
     SetConstant(ConstantIndex::ACCESSOR_DATA_CLASS_INDEX,
