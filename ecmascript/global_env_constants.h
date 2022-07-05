@@ -96,16 +96,18 @@ class JSThread;
     V(JSTaggedValue, JSAPITreeSetIteratorClass, JS_API_TREE_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, JSAPIIteratorFuncDynClass, JS_API_ITERATOR_FUNC_DYN_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
-    V(JSTaggedValue, ObjectDynClass, OBJECT_DYN_CLASS_INDEX, initial_object_dynclass)
+    V(JSTaggedValue, ObjectDynClass, OBJECT_DYN_CLASS_INDEX, initial_object_dynclass)                                 \
+    V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                      \
-    V(JSTaggedValue, Undefined, UNDEFINED_INDEX, ecma_roots_special)                        \
-    V(JSTaggedValue, Null, NULL_INDEX, ecma_roots_special)                                  \
-    V(JSTaggedValue, EmptyString, EMPTY_STRING_OBJECT_INDEX, ecma_roots_special)            \
-    V(JSTaggedValue, EmptyLayoutInfo, EMPTY_LAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)   \
-    V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)              \
-    V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special) \
+#define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \
+    V(JSTaggedValue, Undefined, UNDEFINED_INDEX, ecma_roots_special)                                   \
+    V(JSTaggedValue, Null, NULL_INDEX, ecma_roots_special)                                             \
+    V(JSTaggedValue, EmptyString, EMPTY_STRING_OBJECT_INDEX, ecma_roots_special)                       \
+    V(JSTaggedValue, EmptyLayoutInfo, EMPTY_LAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)              \
+    V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)                         \
+    V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
+    V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special)
 /* GlobalConstant */
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_CONSTANT(V)                                                                               \

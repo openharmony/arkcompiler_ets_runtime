@@ -525,6 +525,8 @@ public:
     JSHandle<JSCjsExports> NewCjsExports();
     JSHandle<JSCjsRequire> NewCjsRequire();
 
+    JSHandle<JSHClass> CreateIteratorResultInstanceClass();
+
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
