@@ -50,7 +50,13 @@ public:
         // It doesn't include new.target argument
         int32_t numActualArgs = argvLength / testDecodedSize + 1;
         JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
-        size_t frameSize = InterpretedFrame::NumOfMembers() + numActualArgs;
+        
+        size_t frameSize = 0;
+        if (thread->IsAsmInterpreter()) {
+            frameSize = InterpretedEntryFrame::NumOfMembers() + numActualArgs;
+        } else {
+            frameSize = InterpretedFrame::NumOfMembers() + numActualArgs;
+        }
         JSTaggedType *newSp = sp - frameSize;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         for (int i = numActualArgs; i > 0; i--) {
             newSp[i - 1] = JSTaggedValue::Undefined().GetRawData();
@@ -65,15 +71,20 @@ public:
     static JSTaggedType *SetupFrame(JSThread *thread, EcmaRuntimeCallInfo *info)
     {
         JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
-        size_t frameSize =
-            InterpretedFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2;
+        size_t frameSize = 0;
+        if (thread->IsAsmInterpreter()) {
+            // 2 means thread and numArgs
+            frameSize = InterpretedEntryFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2;
+        } else {
+            // 2 means thread and numArgs
+            frameSize = InterpretedFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2;
+        }
         JSTaggedType *newSp = sp - frameSize;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
-        InterpretedBuiltinFrame *state = reinterpret_cast<InterpretedBuiltinFrame *>(newSp) - 1;
-        state->base.type = ecmascript::FrameType::INTERPRETER_BUILTIN_FRAME;
+        InterpretedEntryFrame *state = reinterpret_cast<InterpretedEntryFrame *>(newSp) - 1;
+        state->base.type = ecmascript::FrameType::INTERPRETER_ENTRY_FRAME;
         state->base.prev = sp;
         state->pc = nullptr;
-        state->function = methodFunction_.GetTaggedValue();
         thread->SetCurrentSPFrame(newSp);
         return sp;
     }

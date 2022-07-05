@@ -211,6 +211,8 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     ASSERT(info);
     JSThread *thread = info->GetThread();
     INTERPRETER_TRACE(thread, Execute);
+    // check is or not debugger
+    thread->CheckSwitchDebuggerBCStub();
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
     CpuProfiler *profiler = CpuProfiler::GetInstance();
     if (profiler != nullptr) {
@@ -241,6 +243,8 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context)
 {
+    // check is or not debugger
+    thread->CheckSwitchDebuggerBCStub();
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_GeneratorReEnterAsmInterp);
     auto acc = reinterpret_cast<GeneratorReEnterInterpEntry>(entry)(thread->GetGlueAddr(), context.GetTaggedType());
     return JSTaggedValue(acc);

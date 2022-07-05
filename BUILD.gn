@@ -307,6 +307,15 @@ config("icu_path_test_config") {
   defines = [ "ICU_PATH=\"${icu_data_path}\"" ]
 }
 
+# asm interpreter enable config
+config("asm_interp_enable_config") {
+  if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
+                    current_cpu == "x86_64")) ||
+      (is_ohos && current_cpu == "arm64")) {
+    defines = [ "SUPPORT_ENABLE_ASM_INTERP" ]
+  }
+}
+
 ecma_source = [
   "ecmascript/base/array_helper.cpp",
   "ecmascript/base/atomic_helper.cpp",
@@ -566,6 +575,7 @@ source_set("libark_jsruntime_set") {
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
+    "$js_root:asm_interp_enable_config",
   ]
 
   if (is_mingw) {
@@ -644,7 +654,8 @@ source_set("libark_jsruntime_test_set") {
     sdk_libc_secshared_dep,
   ]
 
-  if ((is_linux && current_cpu == "x64") ||
+  if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
+                    current_cpu == "x86_64")) ||
       (is_ohos && current_cpu == "arm64")) {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
@@ -659,6 +670,7 @@ source_set("libark_jsruntime_test_set") {
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
+    "$js_root:asm_interp_enable_config",
   ]
 }
 
@@ -668,7 +680,8 @@ ohos_shared_library("libark_jsruntime") {
     ":libark_jsruntime_set",
   ]
 
-  if ((is_linux && current_cpu == "x64") ||
+  if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
+                    current_cpu == "x86_64")) ||
       (is_ohos && current_cpu == "arm64")) {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {

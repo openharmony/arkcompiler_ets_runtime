@@ -103,6 +103,8 @@ int Main(const int argc, const char **argv)
     }
 
     bool ret = true;
+    // ark_aot_compiler running need disable asm interpreter
+    runtimeOptions.SetEnableAsmInterpreter(false);
     EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot Create vm";
