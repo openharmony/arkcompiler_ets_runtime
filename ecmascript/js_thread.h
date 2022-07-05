@@ -393,6 +393,11 @@ public:
         return id_.load(std::memory_order_relaxed);
     }
 
+    void SetThreadId()
+    {
+        id_.store(JSThread::GetCurrentThreadId(), std::memory_order_relaxed);
+    }
+
     static ThreadId GetCurrentThreadId()
     {
         return os::thread::GetCurrentThreadId();

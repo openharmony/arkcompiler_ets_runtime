@@ -40,6 +40,10 @@ public:
     NO_COPY_SEMANTIC(STWYoungGC);
     NO_MOVE_SEMANTIC(STWYoungGC);
 
+    void DisableParallelGC()
+    {
+        parallelGC_ = false;
+    }
     virtual void RunPhases() override;
 
 protected:

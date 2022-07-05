@@ -106,6 +106,19 @@ bool EcmaVM::Destroy(EcmaVM *vm)
     return false;
 }
 
+void EcmaVM::preFork()
+{
+    heap_->CompactHeapBeforeFork();
+    heap_->GetReadOnlySpace()->SetReadOnly();
+    heap_->DisableParallelGC();
+}
+
+void EcmaVM::postFork()
+{
+    GetAssociatedJSThread()->SetThreadId();
+    Taskpool::GetCurrentTaskpool()->Initialize();
+}
+
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     : stringTable_(new EcmaStringTable(this)),
       nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
@@ -192,7 +205,6 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
         LoadAOTFiles();
     }
-    heap_->GetReadOnlySpace()->SetReadOnly();
     InitializeFinish();
     return true;
 }
@@ -624,7 +636,7 @@ void EcmaVM::ClearBufferData()
 bool EcmaVM::ExecutePromisePendingJob()
 {
     if (isProcessingPendingJob_) {
-        LOG_ECMA(ERROR) << "EcmaVM::ExecutePromisePendingJob can not reentrant";
+        LOG_ECMA(DEBUG) << "EcmaVM::ExecutePromisePendingJob can not reentrant";
         return false;
     }
     if (!thread_->HasPendingException()) {

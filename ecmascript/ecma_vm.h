@@ -113,7 +113,6 @@ public:
     }
 
     bool Initialize();
-
     bool InitializeFinish();
 
     GCStats *GetEcmaGCStats() const
@@ -348,6 +347,8 @@ public:
         exceptionBCList_.clear();
     }
 
+    void preFork();
+    void postFork();
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
