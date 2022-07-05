@@ -381,12 +381,14 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
-    // If this object has no gt type, we cannot get its internal property type
-    if (objType.IsClassTypeKind() || objType.IsClassInstanceTypeKind() || objType.IsObjectTypeKind()) {
-        auto index = circuit_->GetBitField(gateAccessor_.GetValueIn(gate, 0));
-        auto name = tsLoader_->GetStringById(index);
-        auto type = tsLoader_->GetPropType(objType, name);
-        return UpdateType(gate, type);
+    if (objType.IsTSType()) {
+        // If this object has no gt type, we cannot get its internal property type
+        if (objType.IsClassTypeKind() || objType.IsClassInstanceTypeKind() || objType.IsObjectTypeKind()) {
+            auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+            auto name = tsLoader_->GetStringById(index);
+            auto type = tsLoader_->GetPropType(objType, name);
+            return UpdateType(gate, type);
+        }
     }
     return false;
 }
@@ -432,7 +434,7 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
     if (objType.IsClassTypeKind() || objType.IsClassInstanceTypeKind() || objType.IsObjectTypeKind()) {
         auto valueGate = gateAccessor_.GetValueIn(gate, 1);
         if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
-            auto value = circuit_->GetBitField(valueGate);
+            auto value = gateAccessor_.GetBitField(valueGate);
             auto type = tsLoader_->GetPropType(objType, value);
             return UpdateType(gate, type);
         }

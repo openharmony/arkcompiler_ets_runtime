@@ -24,6 +24,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -400,7 +401,8 @@ public:
           method_(translationInfo.methodPcInfos[index].method),
           pcArray_(translationInfo.methodPcInfos[index].pcArray),
           constantPool_(translationInfo.constantPool),
-          argAcc_(&circuit_, method_),
+          gateAcc_(&circuit_), argAcc_(&circuit_, method_),
+          typeRecorder_(method_, tsLoader), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog)
     {
     }
@@ -493,14 +495,12 @@ private:
     void AddBytecodeOffsetInfo(GateRef &gate, const BytecodeInfo &info, size_t bcOffsetIndex, uint8_t *pc);
     void BuildSubCircuit();
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
-    GateRef RenameVariable(const size_t bbId, const uint8_t *end,
-        const uint16_t reg, const bool acc, GateType gateType = GateType::AnyType());
+    GateRef RenameVariable(const size_t bbId, const uint8_t *end, const uint16_t reg, const bool acc);
     void BuildCircuit();
     void PrintCollectBlockInfo(std::vector<CfgInfo> &bytecodeBlockInfos);
     void PrintGraph();
     void PrintBytecodeInfo();
     void PrintBBInfo();
-    GateType GetRealGateType(const uint16_t reg, const GateType gateType);
 
     inline bool IsEntryBlock(const size_t bbId) const
     {
@@ -517,9 +517,12 @@ private:
     const JSMethod *method_ {nullptr};
     const std::vector<uint8_t *> pcArray_;
     JSHandle<JSTaggedValue> constantPool_;
+    GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;
+    TypeRecorder typeRecorder_;
+    bool hasTypes_ {false};
     bool enableLog_ {false};
-    std::map<uint8_t *, int32_t> pcToBCOffset_;
+    std::map<const uint8_t *, int32_t> pcToBCOffset_;
     std::vector<kungfu::GateRef> suspendAndResumeGates_ {};
 };
 }  // namespace panda::ecmascript::kungfu

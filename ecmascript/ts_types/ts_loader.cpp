@@ -191,51 +191,16 @@ GlobalTSTypeRef TSLoader::GetUnionTypeByIndex(GlobalTSTypeRef gt, int index) con
     return resultType->GetGTRef();
 }
 
-GlobalTSTypeRef TSLoader::GetGTFromPandaFile(const panda_file::File &pf, uint32_t vregId, const JSMethod* method) const
+GlobalTSTypeRef TSLoader::GetGTByLocalID(const panda_file::File &pf, const uint32_t localId) const
 {
     JSThread *thread = vm_->GetJSThread();
     ObjectFactory *factory = vm_->GetFactory();
-
-    panda_file::File::EntityId fieldId = method->GetMethodId();
-    panda_file::MethodDataAccessor mda(pf, fieldId);
-
-    uint32_t localId = 0;
-    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {
-        panda_file::AnnotationDataAccessor ada(pf, annotation_id);
-        auto *annotationName = reinterpret_cast<const char *>(pf.GetStringData(ada.GetClassId()).data);
-        ASSERT(annotationName != nullptr);
-        if (::strcmp("L_ESTypeAnnotation;", annotationName) == 0) {
-            uint32_t length = ada.GetCount();
-            for (uint32_t i = 0; i < length; i++) {
-                panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-                auto *elemName = reinterpret_cast<const char *>(pf.GetStringData(adae.GetNameId()).data);
-                ASSERT(elemName != nullptr);
-                uint32_t elemCount = adae.GetArrayValue().GetCount();
-                if (::strcmp("_TypeOfInstruction", elemName) == 0) {
-                    for (uint32_t j = 0; j < elemCount; j = j + 2) { // + 2 means localId index
-                        auto value = adae.GetArrayValue().Get<panda_file::File::EntityId>(j).GetOffset();
-                        if (value == vregId) {
-                            localId = adae.GetArrayValue().Get<panda_file::File::EntityId>(j + 1).GetOffset();
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    if (GlobalTSTypeRef(localId).IsBuiltinType()) {
-        return GlobalTSTypeRef(localId);
-    }
-
     JSHandle<TSModuleTable> table = GetTSModuleTable();
     JSHandle<EcmaString> moduleName = factory->NewFromStdString(pf.GetFilename());
     int moduleId = table->GetGlobalModuleID(thread, moduleName);
     int userDefId = TSTypeTable::GetUserdefinedTypeId(localId);
-
     JSHandle<TSTypeTable> typeTable = table->GetTSTypeTable(thread, moduleId);
     JSHandle<TSType> bindType(thread, typeTable->Get(userDefId));
-
     return bindType->GetGTRef();
 }
 

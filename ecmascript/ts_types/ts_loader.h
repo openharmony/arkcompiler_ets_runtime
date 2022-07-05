@@ -141,8 +141,7 @@ public:
 
     JSHandle<EcmaString> GenerateImportRelativePath(JSHandle<EcmaString> importRel) const;
 
-    GlobalTSTypeRef PUBLIC_API GetGTFromPandaFile(const panda_file::File &pf, uint32_t vregId,
-                                                 const JSMethod* method) const;
+    GlobalTSTypeRef PUBLIC_API GetGTByLocalID(const panda_file::File &pf, const uint32_t localId) const;
 
     static GlobalTSTypeRef PUBLIC_API GetPrimitiveGT(TSPrimitiveType type)
     {
