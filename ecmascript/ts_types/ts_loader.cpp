@@ -15,6 +15,7 @@
 
 #include "ecmascript/ts_types/ts_loader.h"
 
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ts_types/ts_type_table.h"
@@ -41,6 +42,12 @@ void TSLoader::DecodeTSTypes(const JSPandaFile *jsPandaFile)
 TSLoader::TSLoader(EcmaVM *vm) : vm_(vm)
 {
     JSHandle<TSModuleTable> mTable = vm_->GetFactory()->NewTSModuleTable(TSModuleTable::DEFAULT_TABLE_CAPACITY);
+    SetTSModuleTable(mTable);
+}
+
+void TSLoader::Initialize()
+{
+    JSHandle<TSModuleTable> mTable = GetTSModuleTable();
     TSModuleTable::Initialize(vm_->GetJSThread(), mTable);
     SetTSModuleTable(mTable);
 }
@@ -526,13 +533,19 @@ JSHandle<JSTaggedValue> TSLoader::GetType(const GlobalTSTypeRef &gt) const
 void TSModuleTable::Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    TSLoader *tsLoader = thread->GetEcmaVM()->GetTSLoader();
     mTable->SetNumberOfTSTypeTables(thread, DEFAULT_NUMBER_OF_TABLES);
 
     // set builtins type table
     JSHandle<EcmaString> builtinsTableName = factory->NewFromASCII(TSTypeTable::BUILTINS_TABLE_NAME);
     mTable->Set(thread, GetAmiPathOffset(BUILTINS_TABLE_ID), builtinsTableName);
     mTable->Set(thread, GetSortIdOffset(BUILTINS_TABLE_ID), JSTaggedValue(BUILTINS_TABLE_ID));
-    JSHandle<TSTypeTable> builtinsTable = factory->NewTSTypeTable(0);
+    JSHandle<TSTypeTable> builtinsTable;
+    if (tsLoader->IsBuiltinsDTSEnabled()) {
+        builtinsTable = GenerateBuiltinsTypeTable(thread);
+    } else {
+        builtinsTable = factory->NewTSTypeTable(0);
+    }
     mTable->Set(thread, GetTSTypeTableOffset(BUILTINS_TABLE_ID), builtinsTable);
 
     // set infer type table
@@ -584,5 +597,18 @@ JSHandle<TSModuleTable> TSModuleTable::AddTypeTable(JSThread *thread, JSHandle<T
     table->Set(thread, GetSortIdOffset(numberOfTSTypeTable), JSTaggedValue(numberOfTSTypeTable));
     table->Set(thread, GetTSTypeTableOffset(numberOfTSTypeTable), typeTable);
     return table;
+}
+
+JSHandle<TSTypeTable> TSModuleTable::GenerateBuiltinsTypeTable(JSThread *thread)
+{
+    CString builtinsDTSFileName = thread->GetEcmaVM()->GetTSLoader()->GetBuiltinsDTS();
+    JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(builtinsDTSFileName);
+    if (jsPandaFile == nullptr) {
+        LOG_COMPILER(ERROR) << "load builtins.d.ts failed";
+    }
+
+    CVector<JSHandle<EcmaString>> vec;
+    JSHandle<TSTypeTable> builtinsTypeTable = TSTypeTable::GenerateTypeTable(thread, jsPandaFile, vec);
+    return builtinsTypeTable;
 }
 } // namespace panda::ecmascript

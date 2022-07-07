@@ -71,6 +71,7 @@ public:
         parser->Add(&snapshotOutputFile_);
         parser->Add(&enableRuntimeStat_);
         parser->Add(&logTypeInfer_);
+        parser->Add(&builtinsDTS_);
     }
 
     bool EnableArkTools() const
@@ -469,6 +470,16 @@ public:
         logTypeInfer_.SetValue(value);
     }
 
+    bool WasSetBuiltinsDTS() const
+    {
+        return builtinsDTS_.WasSet();
+    }
+
+    std::string GetBuiltinsDTS() const
+    {
+        return builtinsDTS_.GetValue();
+    }
+
 private:
     static constexpr uint64_t INTERNAL_MEMORY_SIZE_LIMIT_DEFAULT = 2147483648;
     static constexpr uint64_t COMPILER_MEMORY_SIZE_LIMIT_DEFAULT = 268435456;
@@ -532,6 +543,9 @@ private:
         R"(print aot type infer log. Default: false)"};
     PandArg<bool> isWorker_ {"IsWorker", false,
         R"(whether is worker vm)"};
+    PandArg<std::string> builtinsDTS_ {"builtins-dts",
+        "",
+        R"(builtins.d.abc file path for AOT.)"};
 };
 }  // namespace panda::ecmascript
 
