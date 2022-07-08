@@ -21,8 +21,9 @@
 #include <fstream>
 #include <string>
 #include <unistd.h>
+#include <semaphore.h>
 #include <sys/syscall.h>
-#include "ecmascript/js_method.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 namespace panda::ecmascript {
 const long long TIME_CHANGE = 10000000000000; // 10000000000000:Discard the first 3 bits of the current nanosecond time
@@ -67,8 +68,7 @@ public:
     explicit SamplesRecord();
     virtual ~SamplesRecord();
 
-    void SetLastSampleFlag();
-    void AddSample(CVector<JSMethod *> sample, uint64_t sampleTimeStamp, bool outToFile);
+    void AddSample(uint64_t sampleTimeStamp, bool outToFile);
     void WriteMethodsAndSampleInfo(bool timeEnd);
     CVector<struct CpuProfileNode> GetMethodNodes() const;
     CDeque<struct SampleInfo> GetSamples() const;
@@ -80,8 +80,23 @@ public:
     const std::string GetFileName() const;
     void ClearSampleData();
     std::unique_ptr<struct ProfileInfo> GetProfileInfo();
+    bool GetIsStart() const;
+    void SetIsStart(bool isStart);
+    bool GetGcState() const;
+    void SetGcState(bool gcState);
+    void SetLastSampleFlag(bool lastSampleFlag);
+    int SemInit(int index, int pshared, int value);
+    int SemPost(int index);
+    int SemWait(int index);
+    int SemDestroy(int index);
+    const CMap<JSMethod *, struct FrameInfo> &GetStackInfo() const;
+    void InsertStackInfo(JSMethod *method, struct FrameInfo &codeEntry);
+    const CVector<JSMethod *> &GetFrameStack() const;
+    void ClearFrameStack();
+    void PushFrameStack(JSMethod *method);
+    const CMap<std::string, int> &GetScriptIdMap() const;
+    void InsertScriptId(std::string &url, int size);
 
-    static bool staticGcState_;
     std::ofstream fileHandle_;
 private:
     void WriteAddNodes();
@@ -89,13 +104,21 @@ private:
     struct FrameInfo GetMethodInfo(JSMethod *method);
     struct FrameInfo GetGcInfo();
 
+    int previousId_ = 0;
+    uint64_t threadStartTime_ = 0;
     std::atomic_bool isLastSample_ = false;
+    std::atomic_bool gcState_ = false;
+    std::atomic_bool isStart_ = false;
     std::unique_ptr<struct ProfileInfo> profileInfo_;
     CVector<int> stackTopLines_;
     CMap<struct MethodKey, int> methodMap_;
     CDeque<struct SampleInfo> samples_;
     std::string sampleData_ = "";
     std::string fileName_ = "";
+    sem_t sem_[2]; // 2 : sem_ size is two.
+    CMap<JSMethod *, struct FrameInfo> stackInfoMap_;
+    CVector<JSMethod *> frameStack_;
+    CMap<std::string, int> scriptIdMap_;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_SAMPLES_RECORD_H

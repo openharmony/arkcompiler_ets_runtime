@@ -16,20 +16,15 @@
 #ifndef ECMASCRIPT_SAMPLING_PROCESSOR_H
 #define ECMASCRIPT_SAMPLING_PROCESSOR_H
 #include <pthread.h>
-
-#include "ecmascript/dfx/cpu_profiler/samples_record.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/taskpool/task.h"
 
 namespace panda::ecmascript {
+class SamplesRecord;
 class SamplingProcessor : public Task {
 public:
     static uint64_t GetMicrosecondsTimeStamp();
-    static JSThread *GetJSThread();
-    static void SetIsStart(bool isStart);
 
-    explicit SamplingProcessor(SamplesRecord *generator, const EcmaVM *vm, int interval, bool outToFile);
+    explicit SamplingProcessor(SamplesRecord *generator, int interval, bool outToFile);
     virtual ~SamplingProcessor();
 
     bool Run(uint32_t threadIndex) override;
@@ -38,12 +33,12 @@ public:
     NO_COPY_SEMANTIC(SamplingProcessor);
     NO_MOVE_SEMANTIC(SamplingProcessor);
 private:
-    static JSThread *thread_;
-    static bool isStart_;
     SamplesRecord *generator_ = nullptr;
     int interval_ = 0;
+    int collectCount_ = 1;
     pthread_t pid_ = 0;
     bool outToFile_ = false;
+    bool firstWrite_ = true;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_SAMPLING_PROCESSOR_H

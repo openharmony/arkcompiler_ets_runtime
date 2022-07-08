@@ -16,13 +16,14 @@
 #ifndef ECMASCRIPT_CPU_PROFILER_H
 #define ECMASCRIPT_CPU_PROFILER_H
 
-#include <semaphore.h>
-
-#include "ecmascript/dfx/cpu_profiler/samples_record.h"
-#include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
+#include <csignal>
+#include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/js_thread.h"
 #include "os/mutex.h"
 
 namespace panda::ecmascript {
+using JSTaggedType = uint64_t;
+class SamplesRecord;
 struct CurrentProcessInfo {
     uint64_t nowTimeStamp = 0;
     uint64_t tts = 0;
@@ -49,14 +50,10 @@ private:
 class CpuProfiler {
 public:
     static CpuProfiler *GetInstance();
-    static void ParseMethodInfo(JSMethod *method, FrameHandler frameHandler);
-    static void GetFrameStack(JSThread *thread);
-    static void IsNeedAndGetStack(JSThread *thread);
-    static void GetStackSignalHandler(int signal);
-
-    static CMap<JSMethod *, struct FrameInfo> staticStackInfo_;
-    static CVector<JSMethod *> staticFrameStack_;
-    static sem_t sem_[2]; // 2 : sem_ size is two.
+    void ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler);
+    void GetFrameStack(FrameHandler &frameHandler);
+    void IsNeedAndGetStack(JSThread *thread);
+    static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
 
     void StartCpuProfilerForInfo(const EcmaVM *vm);
     std::unique_ptr<struct ProfileInfo> StopCpuProfilerForInfo();
@@ -67,11 +64,13 @@ public:
     virtual ~CpuProfiler();
 
 private:
-    static CMap<std::string, int> scriptIdMap_;
     static std::atomic<CpuProfiler*> singleton_;
     static os::memory::Mutex synchronizationMutex_;
+    static CpuProfiler *pThis_;
 
     explicit CpuProfiler();
+    bool IsAddrAtStub(void *context);
+    bool CheckFrameType(JSThread *thread, JSTaggedType *sp);
     void SetProfileStart(uint64_t nowTimeStamp);
     void GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo);
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
@@ -82,6 +81,7 @@ private:
     std::string fileName_ = "";
     SamplesRecord *generator_ = nullptr;
     pthread_t tid_ = 0;
+    EcmaVM *vm_;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_CPU_PROFILE_H
