@@ -231,7 +231,7 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  if (!defined(ark_standalone_build)) {
+  if (!defined(ark_standalone_build) && !is_mac) {
     if (!use_libfuzzer) {
       cflags_cc += [ "-flto" ]
       ldflags = [ "-flto" ]
