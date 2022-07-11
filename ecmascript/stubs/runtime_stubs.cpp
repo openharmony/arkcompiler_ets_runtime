@@ -1482,7 +1482,7 @@ DEF_RUNTIME_STUBS(ThrowStackOverflowException)
     RUNTIME_STUBS_HEADER(ThrowStackOverflowException);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!");
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", false);
     if (LIKELY(!thread->HasPendingException())) {
         thread->SetException(error.GetTaggedValue());
     }

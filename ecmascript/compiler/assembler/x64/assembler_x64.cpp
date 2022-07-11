@@ -1305,6 +1305,16 @@ void AssemblerX64::Shll(Immediate src, Register dst)
     EmitI8(static_cast<int8_t>(src.Value()));
 }
 
+void AssemblerX64::Shlq(Immediate src, Register dst)
+{
+    EmitRexPrefixW(dst);
+    // C1 : shl r/m64, imm8
+    EmitU8(0xC1);
+    // C1 /4
+    EmitModrm(4, dst);
+    EmitI8(static_cast<int8_t>(src.Value()));
+}
+
 void AssemblerX64::Int3()
 {
     // CC :: INT3

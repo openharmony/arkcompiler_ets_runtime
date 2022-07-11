@@ -39,6 +39,15 @@ JSThread *JSThread::Create(EcmaVM *vm)
         vm->GetNativeAreaAllocator()->Allocate(sizeof(JSTaggedType) * maxStackSize));
     jsThread->glueData_.currentFrame_ = jsThread->glueData_.frameBase_ + maxStackSize;
     EcmaInterpreter::InitStackFrame(jsThread);
+
+    // init stack limit of asm interpreter
+    ASSERT(GetCurrentStackPosition() >
+        (EcmaParamConfiguration::GetDefalutStackSize() - EcmaParamConfiguration::GetDefalutReservedStackSize()));
+    // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
+    // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
+    // when push other data.
+    jsThread->glueData_.stackLimit_ = GetCurrentStackPosition() -
+        (EcmaParamConfiguration::GetDefalutStackSize() - EcmaParamConfiguration::GetDefalutReservedStackSize());
     return jsThread;
 }
 
@@ -193,7 +202,7 @@ bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
         LOG_ECMA(ERROR) << "Stack overflow! Remaining stack size is: " << (sp - glueData_.frameBase_);
         if (LIKELY(!HasPendingException())) {
             ObjectFactory *factory = GetEcmaVM()->GetFactory();
-            JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!");
+            JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
             SetException(error.GetTaggedValue());
         }
         return true;

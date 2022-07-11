@@ -148,6 +148,7 @@ public:
     void Shrq(Immediate src, Register dst);
     void Shr(Immediate src, Register dst);
     void Shll(Immediate src, Register dst);
+    void Shlq(Immediate src, Register dst);
     void Testq(Immediate src, Register dst);
     void Testb(Immediate src, Register dst);
     void Int3();

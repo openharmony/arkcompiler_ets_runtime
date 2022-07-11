@@ -101,21 +101,28 @@ private:
     static void GetNumVregsFromCallField(ExtendedAssembler *assembler, Register callFieldRegister,
         Register numVregsRegister);
     static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register argc);
+    static void PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc,
+        Register op1, Register op2, Label *stackOverflow);
+    static void PushArgsWithArgvAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc, Register argv,
+        Register op1, Register op2, Label *stackOverflow);
+    static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register numArgs,
+        Register op1, Register op2, Label *stackOverflow);
+    static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
+        Register op);
     static void HasPendingException(ExtendedAssembler *assembler, Register threadRegister);
-    static void StackOverflowCheck(ExtendedAssembler *assembler);
-    static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode);
+    static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
     static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode);
     static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode);
-    static void PushVregs(ExtendedAssembler *assembler);
+    static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister);
     static void CallNativeEntry(ExtendedAssembler *assemblSer);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
     static void PushBuiltinFrame(ExtendedAssembler *assembler, Register glue, FrameType type);
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode);
-    static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode);
+    static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
     static void JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
-        Label *fastPathEntry, Label *pushCallThis);
+        Label *fastPathEntry, Label *pushCallThis, Label *stackOverflow);
     static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);
     static void PushArgsWithArgV(ExtendedAssembler *assembler, Register jsfunc,
                                  Register actualNumArgs, Register argV, Label *pushCallThis);

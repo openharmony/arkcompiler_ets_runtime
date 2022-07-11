@@ -176,6 +176,29 @@ bool AssemblerModule::JSModeHaveNewTargetArg(JSCallMode mode)
     }
 }
 
+bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
+{
+    switch (mode) {
+        case JSCallMode::CALL_ARG0:
+        case JSCallMode::CALL_ARG1:
+        case JSCallMode::CALL_ARG2:
+        case JSCallMode::CALL_ARG3:
+        case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+            return true;
+        case JSCallMode::CALL_GETTER:
+        case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_ENTRY:
+        case JSCallMode::CALL_GENERATOR:
+        case JSCallMode::CALL_FROM_AOT:
+            return false;
+        default:
+            UNREACHABLE();
+    }
+    return false;
+}
+
 #define DECLARE_ASM_STUB_X64_GENERATE(name)                                                       \
 void name##Stub::GenerateX64(Assembler *assembler)                                                \
 {                                                                                                 \

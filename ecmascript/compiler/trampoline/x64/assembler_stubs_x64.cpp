@@ -951,8 +951,11 @@ void AssemblerStubsX64::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *ass
     Register callTargetRegister = r9;
     Register methodRegister = rcx;
     Register tempRegister = r11;  // can not be used to store any variable
+    Register opRegister = r8;  // can not be used to store any variable
     __ Movq(Operand(rsi, GeneratorContext::GENERATOR_METHOD_OFFSET), callTargetRegister);
     __ Movq(Operand(callTargetRegister, JSFunctionBase::METHOD_OFFSET), methodRegister);
+
+    Label stackOverflow;
 
     Register fpRegister = r10;
     __ Movq(rsp, fpRegister);
@@ -962,7 +965,8 @@ void AssemblerStubsX64::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *ass
     __ Movl(Operand(rsi, GeneratorContext::GENERATOR_NREGS_OFFSET), nRegsRegister);
     __ Movq(Operand(rsi, GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET), regsArrayRegister);
     __ Addq(TaggedArray::DATA_OFFSET, regsArrayRegister);
-    __ PushArgsWithArgv(nRegsRegister, regsArrayRegister, tempRegister);
+    PushArgsWithArgvAndCheckStack(assembler, glueRegister, nRegsRegister, regsArrayRegister, tempRegister, opRegister,
+        &stackOverflow);
 
     // newSp
     Register newSpRegister = r8;
@@ -975,6 +979,11 @@ void AssemblerStubsX64::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *ass
 
     // call bc stub
     CallBCStub(assembler, newSpRegister, glueRegister, callTargetRegister, methodRegister, pcRegister);
+
+    __ Bind(&stackOverflow);
+    {
+        ThrowStackOverflowExceptionAndReturn(assembler, glueRegister, fpRegister, tempRegister);
+    }
 }
 
 // Input: glue           - %rdi
@@ -1173,6 +1182,8 @@ void AssemblerStubsX64::GetNumVregsFromCallField(ExtendedAssembler *assembler, R
 
 void AssemblerStubsX64::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode)
 {
+    Label stackOverflow;
+    Register glueRegister = __ GlueRegister();
     Register fpRegister = __ AvailableRegister1();
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register argcRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
@@ -1207,11 +1218,40 @@ void AssemblerStubsX64::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMo
     }
     __ Jne(&slowPathEntry);
     __ Bind(&fastPathEntry);
-    JSCallCommonFastPath(assembler, mode);
+    JSCallCommonFastPath(assembler, mode, &stackOverflow);
     __ Bind(&pushCallThis);
-    PushCallThis(assembler, mode);
+    PushCallThis(assembler, mode, &stackOverflow);
     __ Bind(&slowPathEntry);
-    JSCallCommonSlowPath(assembler, mode, &fastPathEntry, &pushCallThis);
+    JSCallCommonSlowPath(assembler, mode, &fastPathEntry, &pushCallThis, &stackOverflow);
+
+    __ Bind(&stackOverflow);
+    if (kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
+        __ Movq(fpRegister, rsp);
+        Register tempRegister = __ AvailableRegister1();
+        // only glue and acc are useful in exception handler
+        if (glueRegister != r13) {
+            __ Movq(glueRegister, r13);
+        }
+        Register acc = rsi;
+        __ Movq(JSTaggedValue::VALUE_EXCEPTION, acc);
+        Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
+        Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
+        // Reload pc to make sure stack trace is right
+        __ Movq(callTargetRegister, tempRegister);
+        __ Movq(Operand(methodRegister, JSMethod::GetBytecodeArrayOffset(false)), r12);  // pc: r12
+        // Reload constpool and profileInfo to make sure gc map work normally
+        __ Movq(Operand(tempRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);       // profileTypeInfo: r14
+        __ Movq(Operand(tempRegister, JSFunction::CONSTANT_POOL_OFFSET), rbx);           // constantPool: rbx
+        
+        __ Movq(kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException, tempRegister);
+        __ Movq(Operand(glueRegister, tempRegister, Times8, JSThread::GlueData::GetBCStubEntriesOffset(false)),
+            tempRegister);
+        __ Jmp(tempRegister);
+    } else {
+        [[maybe_unused]] TempRegisterScope scope(assembler);
+        Register temp = __ TempRegister();
+        ThrowStackOverflowExceptionAndReturn(assembler, glueRegister, fpRegister, temp);
+    }
 }
 
 // void PushCallArgsxAndDispatch(uintptr_t glue, uintptr_t sp, uint64_t callTarget, uintptr_t method,
@@ -1268,8 +1308,9 @@ void AssemblerStubsX64::PushCallArgs0AndDispatch(ExtendedAssembler *assembler)
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0);
 }
 
-void AssemblerStubsX64::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode)
+void AssemblerStubsX64::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow)
 {
+    Register glueRegister = __ GlueRegister();
     Register arg0 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
     Register arg1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
 
@@ -1277,17 +1318,17 @@ void AssemblerStubsX64::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCal
     auto argc = kungfu::AssemblerModule::GetArgcFromJSCallMode(mode);
     // call range
     if (argc < 0) {
-        Register numRegister = __ AvailableRegister2();
         Register argcRegister = arg0;
         Register argvRegister = arg1;
-        __ Movq(argcRegister, numRegister);
-        __ Cmpq(0, numRegister);
+        __ Cmpq(0, argcRegister);
         __ Jbe(&pushCallThis);
         // fall through
         {
             [[maybe_unused]] TempRegisterScope scope(assembler);
             Register opRegister = __ TempRegister();
-            __ PushArgsWithArgv(numRegister, argvRegister, opRegister);
+            Register op2Register = __ AvailableRegister2();
+            PushArgsWithArgvAndCheckStack(assembler, glueRegister, argcRegister, argvRegister, opRegister, op2Register,
+                stackOverflow);
         }
         __ Bind(&pushCallThis);
     } else if (argc > 0) {
@@ -1305,8 +1346,9 @@ void AssemblerStubsX64::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCal
 }
 
 void AssemblerStubsX64::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
-                                             Label *fastPathEntry, Label *pushCallThis)
+                                             Label *fastPathEntry, Label *pushCallThis, Label *stackOverflow)
 {
+    Register glueRegister = __ GlueRegister();
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register argcRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
     Register arg0 = argcRegister;
@@ -1331,7 +1373,10 @@ void AssemblerStubsX64::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCal
     __ Bind(&noExtraEntry);
     {
         if (argc == 0) {
-            PushUndefinedWithArgc(assembler, declaredNumArgsRegister);
+            Register op1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
+            Register op2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
+            PushUndefinedWithArgcAndCheckStack(assembler, glueRegister, declaredNumArgsRegister, op1, op2,
+                stackOverflow);
             __ Jmp(fastPathEntry);
             return;
         }
@@ -1363,7 +1408,8 @@ void AssemblerStubsX64::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCal
         Register argvRegister = arg1;
         [[maybe_unused]] TempRegisterScope scope(assembler);
         Register opRegister = __ TempRegister();
-        __ PushArgsWithArgv(declaredNumArgsRegister, argvRegister, opRegister);
+        PushArgsWithArgvAndCheckStack(assembler, glueRegister, declaredNumArgsRegister, argvRegister, opRegister,
+            opRegister, stackOverflow);
     } else if (argc > 0) {
         Label pushArgs0;
         if (argc > 2) { // 2: call arg2
@@ -1426,8 +1472,7 @@ Register AssemblerStubsX64::GetNewTargetRegsiter(ExtendedAssembler *assembler, J
 
 // Input: %r14 - callField
 //        %rdi - argv
-void AssemblerStubsX64::PushCallThis(ExtendedAssembler *assembler,
-                                     JSCallMode mode)
+void AssemblerStubsX64::PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow)
 {
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
@@ -1473,7 +1518,7 @@ void AssemblerStubsX64::PushCallThis(ExtendedAssembler *assembler,
     // fall through
     __ Bind(&pushVregs);
     {
-        PushVregs(assembler);
+        PushVregs(assembler, stackOverflow);
     }
 }
 
@@ -1483,8 +1528,9 @@ void AssemblerStubsX64::PushCallThis(ExtendedAssembler *assembler,
 //        %r14 - callField
 //        %rdx - jumpSizeAfterCall
 //        %r10 - fp
-void AssemblerStubsX64::PushVregs(ExtendedAssembler *assembler)
+void AssemblerStubsX64::PushVregs(ExtendedAssembler *assembler, Label *stackOverflow)
 {
+    Register glueRegister = __ GlueRegister();
     Register prevSpRegister = rbp;
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
@@ -1502,13 +1548,13 @@ void AssemblerStubsX64::PushVregs(ExtendedAssembler *assembler)
     GetNumVregsFromCallField(assembler, callFieldRegister, numVregsRegister);
     __ Cmpq(0, numVregsRegister);
     __ Jz(&pushFrameState);
-    PushUndefinedWithArgc(assembler, numVregsRegister);
+    Register temp2Register = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);  // reuse
+    PushUndefinedWithArgcAndCheckStack(assembler, glueRegister, numVregsRegister, tempRegister, temp2Register,
+        stackOverflow);
     // fall through
     __ Bind(&pushFrameState);
     {
         __ Movq(rsp, newSpRegister);
-
-        StackOverflowCheck(assembler);
 
         PushFrameState(assembler, prevSpRegister, fpRegister,
             callTargetRegister, methodRegister, pcRegister, tempRegister);
@@ -1584,18 +1630,19 @@ void AssemblerStubsX64::CallNativeWithArgv(ExtendedAssembler *assembler, bool ca
     Register numArgs = r8;
     Register stackArgs = r9;
     Register temporary = rax;
+    Register temporary2 = r11;
     Register opNumArgs = r10;
     Label aligned;
     Label pushThis;
+    Label stackOverflow;
 
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV);
 
-    StackOverflowCheck(assembler);
     __ Push(numArgs);
     __ Cmpq(0, numArgs);
     __ Jz(&pushThis);
     __ Movq(numArgs, opNumArgs);
-    __ PushArgsWithArgv(opNumArgs, stackArgs, temporary);
+    PushArgsWithArgvAndCheckStack(assembler, glue, opNumArgs, stackArgs, temporary, temporary2, &stackOverflow);
 
     __ Bind(&pushThis);
     __ Push(thisValue);
@@ -1625,6 +1672,35 @@ void AssemblerStubsX64::CallNativeWithArgv(ExtendedAssembler *assembler, bool ca
     __ Bind(&aligned);
     CallNativeInternal(assembler, nativeCode);
     __ Ret();
+
+    __ Bind(&stackOverflow);
+    {
+        Label aligneThrow;
+        __ Movq(rsp, Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
+        __ Pushq(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV));  // frame type
+        __ Pushq(0);  // argc
+        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // this
+        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // newTarget
+        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // callTarget
+        __ Leaq(Operand(rsp, 40), rbp);  // 40: skip frame type, numArgs, func, newTarget and this
+
+        __ Testq(0xf, rsp);  // 0xf: 0x1111
+        __ Jz(&aligneThrow, Distance::Near);
+        __ PushAlignBytes();
+
+        __ Bind(&aligneThrow);
+        Register trampolineIdRegister = r9;
+        Register trampolineRegister = r10;
+        __ Movq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException, trampolineIdRegister);
+        __ Movq(Operand(glue, trampolineIdRegister, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)),
+            trampolineRegister);
+        __ Callq(trampolineRegister);
+
+        // resume rsp
+        __ Movq(rbp, rsp);
+        __ Pop(rbp);
+        __ Ret();
+    }
 }
 
 void AssemblerStubsX64::CallNativeEntry(ExtendedAssembler *assembler)
@@ -1925,6 +2001,34 @@ void AssemblerStubsX64::ResumeUncaughtFrameAndReturn(ExtendedAssembler *assemble
     __ Ret();
 }
 
+void AssemblerStubsX64::PushArgsWithArgvAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc,
+    Register argv, Register op1, Register op2, Label *stackOverflow)
+{
+    ASSERT(stackOverflow != nullptr);
+    StackOverflowCheck(assembler, glue, argc, op1, op2, stackOverflow);
+    Register opArgc = argc;
+    Register op = op1;
+    if (op1 != op2) {
+        // use op2 as opArgc and will not change argc register
+        opArgc = op2;
+        __ Movq(argc, opArgc);
+    }
+    Label loopBeginning;
+    __ Bind(&loopBeginning);
+    __ Movq(Operand(argv, opArgc, Times8, -8), op);  // 8: 8 bytes
+    __ Pushq(op);
+    __ Subq(1, opArgc);
+    __ Ja(&loopBeginning);
+}
+
+void AssemblerStubsX64::PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc,
+    Register op1, Register op2, Label *stackOverflow)
+{
+    ASSERT(stackOverflow != nullptr);
+    StackOverflowCheck(assembler, glue, argc, op1, op2, stackOverflow);
+    PushUndefinedWithArgc(assembler, argc);
+}
+
 void AssemblerStubsX64::PushUndefinedWithArgc(ExtendedAssembler *assembler, Register argc)
 {
     Label loopBeginning;
@@ -1932,6 +2036,41 @@ void AssemblerStubsX64::PushUndefinedWithArgc(ExtendedAssembler *assembler, Regi
     __ Pushq(JSTaggedValue::Undefined().GetRawData());
     __ Subq(1, argc);
     __ Ja(&loopBeginning);
+}
+
+void AssemblerStubsX64::StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register numArgs, Register op1,
+    Register op2, Label *stackOverflow)
+{
+    Register temp1 = op1;
+    Register temp2 = op2;
+    if (op1 == op2) {
+        // reuse glue as an op register for temporary
+        __ Pushq(glue);
+        temp2 = glue;
+    }
+    __ Movq(Operand(glue, JSThread::GlueData::GetStackLimitOffset(false)), temp1);
+    __ Movq(rsp, temp2);
+    __ Subq(temp1, temp2);
+    __ Movl(numArgs, temp1);
+    __ Shlq(3, temp1);  // 3: each arg occupies 8 bytes
+    __ Cmpq(temp1, temp2);
+    if (op1 == op2) {
+        __ Popq(glue);
+    }
+    __ Jle(stackOverflow);
+}
+
+void AssemblerStubsX64::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
+    Register op)
+{
+    __ Movq(fp, rsp);
+    __ Movq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException, op);
+    __ Movq(Operand(glue, op, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), op);
+    if (glue != r13) {
+        __ Movq(glue, r13);
+    }
+    __ Callq(op);
+    __ Ret();
 }
 
 void AssemblerStubsX64::CopyArgumentWithArgV(ExtendedAssembler *assembler, Register argc, Register argV)
@@ -1947,10 +2086,6 @@ void AssemblerStubsX64::CopyArgumentWithArgV(ExtendedAssembler *assembler, Regis
 
 void AssemblerStubsX64::HasPendingException([[maybe_unused]] ExtendedAssembler *assembler,
     [[maybe_unused]] Register threadRegister)
-{
-}
-
-void AssemblerStubsX64::StackOverflowCheck([[maybe_unused]] ExtendedAssembler *assembler)
 {
 }
 

@@ -195,9 +195,10 @@ public:
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
     JSHandle<Program> NewProgram();
 
-    JSHandle<JSObject> GetJSError(const ErrorType &errorType, const char *data = nullptr);
+    JSHandle<JSObject> GetJSError(const ErrorType &errorType, const char *data = nullptr, bool needCheckStack = true);
 
-    JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message);
+    JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
+        bool needCheckStack = true);
 
     JSHandle<JSObject> NewJSAggregateError();
 

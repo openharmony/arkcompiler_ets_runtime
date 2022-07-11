@@ -38,7 +38,7 @@ namespace panda::ecmascript {
 //   +--------------------------+
 EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
     JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj, JSHandle<JSTaggedValue> newTarget,
-    int32_t numArgs)
+    int32_t numArgs, bool needCheckStack)
 {
     JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
     JSTaggedType *newSp = nullptr;
@@ -54,7 +54,7 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
                 sp - InterpretedEntryFrame::NumOfMembers();  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         }
     }
-    if (UNLIKELY(thread->DoStackOverflowCheck(newSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
+    if (needCheckStack && UNLIKELY(thread->DoStackOverflowCheck(newSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
         return nullptr;
     }
 
