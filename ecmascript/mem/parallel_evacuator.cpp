@@ -290,16 +290,30 @@ void ParallelEvacuator::UpdateRSet(Region *region)
 {
     auto cb = [this](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
+
         if (UpdateObjectSlot(slot)) {
-            Region *valueRegion = Region::ObjectAddressToRange(slot.GetTaggedObject());
+            TaggedObject *object = slot.GetTaggedObject();
+            Region *valueRegion = Region::ObjectAddressToRange(object);
+
             if (!valueRegion->InYoungSpace()) {
                 return false;
             }
+            if (valueRegion->InNewToNewSet()) {
+                if (!valueRegion->Test(object)) {
+                    return false;
+                }
+            }
+            return true;
         }
-        return true;
+        return false;
     };
     if (heap_->GetSweeper()->isSweeping()) {
-        region->AtomicIterateAllSweepingRSetBits(cb);
+        if (region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
+            // Region is safe while update remember set
+            region->MergeRSetForConcurrentSweeping();
+        } else {
+            region->AtomicIterateAllSweepingRSetBits(cb);
+        }
     }
     region->IterateAllOldToNewBits(cb);
     region->IterateAllCrossRegionBits([this](void *mem) {

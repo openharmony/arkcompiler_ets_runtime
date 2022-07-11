@@ -52,6 +52,11 @@ public:
         return GCBitsetData()->SetBit<AccessType::ATOMIC>((addr - begin) >> TAGGED_TYPE_SIZE_LOG);
     }
 
+    void ClearBit(uintptr_t begin, uintptr_t addr)
+    {
+        GCBitsetData()->ClearBit((addr - begin) >> TAGGED_TYPE_SIZE_LOG);
+    }
+
     void ClearRange(uintptr_t begin, uintptr_t start, uintptr_t end)
     {
         GCBitsetData()->ClearBitRange<AccessType::NON_ATOMIC>(

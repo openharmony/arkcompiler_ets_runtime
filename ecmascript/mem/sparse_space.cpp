@@ -103,14 +103,14 @@ uintptr_t SparseSpace::AllocateAfterSweepingCompleted(size_t size)
 {
     ASSERT(sweepState_ == SweepState::SWEEPING);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ConcurrentSweepingWait);
-    if (FillSweptRegion()) {
+    if (TryFillSweptRegion()) {
         auto object = allocator_->Allocate(size);
         if (object != 0) {
             liveObjectSize_ += size;
             return object;
         }
     }
-    // Parallel
+    // Parallel sweep and fill
     heap_->GetSweeper()->EnsureTaskFinished(spaceType_);
     return allocator_->Allocate(size);
 }
@@ -161,7 +161,7 @@ void SparseSpace::Sweep()
     });
 }
 
-bool SparseSpace::FillSweptRegion()
+bool SparseSpace::TryFillSweptRegion()
 {
     if (sweptList_.empty()) {
         return false;
@@ -172,8 +172,14 @@ bool SparseSpace::FillSweptRegion()
         region->ResetSwept();
         region->MergeRSetForConcurrentSweeping();
     }
-    sweepState_ = SweepState::SWEPT;
     return true;
+}
+
+bool SparseSpace::FinishFillSweptRegion()
+{
+    bool ret = TryFillSweptRegion();
+    sweepState_ = SweepState::SWEPT;
+    return ret;
 }
 
 void SparseSpace::AddSweepingRegion(Region *region)
@@ -215,6 +221,29 @@ Region *SparseSpace::GetSweptRegionSafe()
         sweptList_.pop_back();
     }
     return region;
+}
+
+Region *SparseSpace::TryToGetSuitableSweptRegion(size_t size)
+{
+    if (sweepState_ != SweepState::SWEEPING) {
+        return nullptr;
+    }
+    if (sweptList_.empty()) {
+        return nullptr;
+    }
+    os::memory::LockHolder holder(lock_);
+    for (auto iter = sweptList_.begin(); iter != sweptList_.end(); iter++) {
+        if (allocator_->MatchFreeObjectSet(*iter, size)) {
+            Region *region = *iter;
+            region->ResetSwept();
+            region->MergeRSetForConcurrentSweeping();
+            RemoveRegion(region);
+            DecreaseLiveObjectSize(region->AliveObject());
+            sweptList_.erase(iter);
+            return region;
+        }
+    }
+    return nullptr;
 }
 
 void SparseSpace::FreeRegion(Region *current, bool isMain)
@@ -274,6 +303,20 @@ void SparseSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
     });
 }
 
+void SparseSpace::IterateOldToNewOverObjects(
+    const std::function<void(TaggedObject *object, JSTaggedValue value)> &visitor) const
+{
+    auto cb = [visitor](void *mem) -> bool {
+        ObjectSlot slot(ToUintPtr(mem));
+        visitor(reinterpret_cast<TaggedObject *>(mem), JSTaggedValue(slot.GetTaggedType()));
+        return true;
+    };
+    EnumerateRegions([cb] (Region *region) {
+        region->IterateAllSweepingRSetBits(cb);
+        region->IterateAllOldToNewBits(cb);
+    });
+}
+
 size_t SparseSpace::GetHeapObjectSize() const
 {
     return liveObjectSize_;
@@ -308,6 +351,9 @@ Region *OldSpace::TryToGetExclusiveRegion(size_t size)
         allocator_->DetachFreeObjectSet(region);
         DecreaseLiveObjectSize(region->AliveObject());
         return region;
+    }
+    if (sweepState_ == SweepState::SWEEPING) {
+        return TryToGetSuitableSweptRegion(size);
     }
     return nullptr;
 }

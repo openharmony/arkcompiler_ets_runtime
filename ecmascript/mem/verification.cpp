@@ -46,6 +46,25 @@ void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
         });
 }
 
+void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
+{
+    ObjectSlot slot(reinterpret_cast<uintptr_t>(obj));
+    if (!value.IsHeapObject()) {
+        LOG_GC(DEBUG) << "Heap object(" << slot.SlotAddress() << ") old to new rset fail: value is "
+                      << slot.GetTaggedType();
+        return;
+    }
+    TaggedObject *object = value.GetTaggedObject();
+    auto region = Region::ObjectAddressToRange(object);
+    if (!region->InYoungSpace()) {
+        LOG_GC(ERROR) << "Heap object(" << slot.GetTaggedType() << ") old to new rset fail: value("
+                      << slot.GetTaggedObject() << "/"
+                      << JSHClass::DumpJSType(slot.GetTaggedObject()->GetClass()->GetObjectType())
+                      << ")" << " in " << region->GetSpaceTypeName();
+        ++(*failCount_);
+    }
+}
+
 size_t Verification::VerifyRoot() const
 {
     size_t failCount = 0;
@@ -80,6 +99,15 @@ size_t Verification::VerifyHeap() const
     size_t failCount = heap_->VerifyHeapObjects();
     if (failCount > 0) {
         LOG_GC(ERROR) << "VerifyHeap detects deadObject count is " << failCount;
+    }
+    return failCount;
+}
+
+size_t Verification::VerifyOldToNewRSet() const
+{
+    size_t failCount = heap_->VerifyOldToNewRSet();
+    if (failCount > 0) {
+        LOG_GC(ERROR) << "VerifyOldToNewRSet detects non new space count is " << failCount;
     }
     return failCount;
 }

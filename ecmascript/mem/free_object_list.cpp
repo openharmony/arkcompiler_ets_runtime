@@ -162,6 +162,26 @@ void FreeObjectList::Rebuild()
     noneEmptySetBitMap_ = 0;
 }
 
+bool FreeObjectList::MatchFreeObjectInSet(FreeObjectSet *set, size_t size)
+{
+    if (set == nullptr || set->Empty()) {
+        return false;
+    }
+    // find a suitable type
+    SetType type = SelectSetType(size);
+    if (type == FreeObjectSet::INVALID_SET_TYPE) {
+        return false;
+    }
+
+    FreeObject *object = nullptr;
+    if (type <= SMALL_SET_MAX_INDEX) {
+        object = set->LookupSmallFreeObject(size);
+    } else {
+        object = set->LookupLargeFreeObject(size);
+    }
+    return object != nullptr;
+}
+
 bool FreeObjectList::AddSet(FreeObjectSet *set)
 {
     if (set == nullptr || set->Empty() || set->isAdded_) {

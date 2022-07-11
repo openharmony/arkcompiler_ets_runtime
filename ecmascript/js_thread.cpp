@@ -360,8 +360,10 @@ bool JSThread::CheckSafepoint() const
         vmThreadControl_->SuspendVM();
     }
 #ifndef NDEBUG
-    GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
-    return true;
+    if (vm_->GetJSOptions().EnableForceGC()) {
+        GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+        return true;
+    }
 #endif
     if (IsMarkFinished()) {
         auto heap = GetEcmaVM()->GetHeap();

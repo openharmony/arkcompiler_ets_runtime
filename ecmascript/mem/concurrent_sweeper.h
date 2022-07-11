@@ -47,7 +47,7 @@ public:
     void WaitAllTaskFinished();
     // Help to finish sweeping task. It can be called through js thread
     void EnsureAllTaskFinished();
-    // Ensure task finish
+    // Ensure task finish. It can be called through js thread
     void EnsureTaskFinished(MemSpaceType type);
 
     void TryFillSweptRegion();
@@ -100,7 +100,6 @@ private:
     };
 
     void AsyncSweepSpace(MemSpaceType type, bool isMain);
-    void FinishSweeping(MemSpaceType type);
 
     void WaitingTaskFinish(MemSpaceType type);
 

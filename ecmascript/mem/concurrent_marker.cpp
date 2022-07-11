@@ -92,7 +92,7 @@ void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep
 {
     os::memory::LockHolder lock(waitMarkingFinishedMutex_);
     if (notifyMarkingFinished_) {
-        heap_->CollectGarbage(TriggerGCType::YOUNG_GC);
+        heap_->CollectGarbage(heap_->IsFullMark() ? TriggerGCType::OLD_GC : TriggerGCType::YOUNG_GC);
     }
 }
 
