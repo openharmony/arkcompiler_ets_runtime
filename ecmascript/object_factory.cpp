@@ -996,7 +996,6 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_PLURAL_RULES: {
             JSPluralRules::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
-            JSPluralRules::Cast(*obj)->SetInitializedPluralRules(thread_, JSTaggedValue::Undefined());
             JSPluralRules::Cast(*obj)->SetMinimumIntegerDigits(thread_, JSTaggedValue::Undefined());
             JSPluralRules::Cast(*obj)->SetMinimumFractionDigits(thread_, JSTaggedValue::Undefined());
             JSPluralRules::Cast(*obj)->SetMaximumFractionDigits(thread_, JSTaggedValue::Undefined());

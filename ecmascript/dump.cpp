@@ -2604,9 +2604,6 @@ void JSPluralRules::Dump(std::ostream &os) const
     os << " - Locale: ";
     GetLocale().Dump(os);
     os << "\n";
-    os << " - InitializedPluralRules: ";
-    GetInitializedPluralRules().Dump(os);
-    os << "\n";
     os << " - Type: " << static_cast<int>(GetType());
     os << "\n";
     os << " - MinimumIntegerDigits: ";
@@ -4557,7 +4554,6 @@ void JSCollator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> 
 void JSPluralRules::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("Locale"), GetLocale()));
-    vec.push_back(std::make_pair(CString("InitializedPluralRules"), GetInitializedPluralRules()));
     vec.push_back(std::make_pair(CString("MinimumIntegerDigits"), GetMinimumIntegerDigits()));
     vec.push_back(std::make_pair(CString("MinimumFractionDigits"), GetMinimumFractionDigits()));
     vec.push_back(std::make_pair(CString("MaximumFractionDigits"), GetMaximumFractionDigits()));

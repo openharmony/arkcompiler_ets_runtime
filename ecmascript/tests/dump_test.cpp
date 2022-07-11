@@ -648,7 +648,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_PLURAL_RULES: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSPluralRules::SIZE, 10U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSPluralRules::SIZE, 9U);
                 NEW_OBJECT_AND_DUMP(JSPluralRules, JS_PLURAL_RULES)
                 break;
             }
