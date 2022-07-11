@@ -1047,17 +1047,17 @@ void Gate::SetBitField(BitField bitfield)
 std::string Gate::MachineTypeStr(MachineType machineType) const
 {
     const std::map<MachineType, const char *> strMap = {
-            {NOVALUE, "NOVALUE"},
-            {ANYVALUE, "ANYVALUE"},
-            {ARCH, "ARCH"},
-            {FLEX, "FLEX"},
-            {I1, "I1"},
-            {I8, "I8"},
-            {I16, "I16"},
-            {I32, "I32"},
-            {I64, "I64"},
-            {F32, "F32"},
-            {F64, "F64"},
+        {NOVALUE, "NOVALUE"},
+        {ANYVALUE, "ANYVALUE"},
+        {ARCH, "ARCH"},
+        {FLEX, "FLEX"},
+        {I1, "I1"},
+        {I8, "I8"},
+        {I16, "I16"},
+        {I32, "I32"},
+        {I64, "I64"},
+        {F32, "F32"},
+        {F64, "F64"},
     };
     if (strMap.count(machineType) > 0) {
         return strMap.at(machineType);

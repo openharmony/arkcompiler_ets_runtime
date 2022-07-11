@@ -47,9 +47,8 @@ enum Scale : uint8_t {
 
 class Immediate {
 public:
-    Immediate(int32_t value) : value_(value)
-    {
-    }
+    Immediate(int32_t value) : value_(value) {}
+    ~Immediate() = default;
 
     int32_t Value() const
     {
@@ -64,6 +63,7 @@ public:
     Operand(Register base, int32_t disp);
     Operand(Register base, Register index, Scale scale, int32_t disp);
     Operand(Register index, Scale scale, int32_t disp);
+    ~Operand() = default;
 
     void BuildSIB(Scale scale, Register index, Register base);
     void BuildModerm(int32_t mode, Register rm);
@@ -83,9 +83,9 @@ public:
 class AssemblerX64 : public Assembler {
 public:
     explicit AssemblerX64(Chunk *chunk)
-        : Assembler(chunk)
-    {
-    }
+        : Assembler(chunk) {}
+    ~AssemblerX64() = default;
+
     void Pushq(Register x);
     void Pushq(Immediate x);
     void Push(Register x);

@@ -3101,9 +3101,8 @@ JSHandle<JSAPIArrayListIterator> ObjectFactory::NewJSAPIArrayListIterator(const 
     return iter;
 }
 
-JSHandle<JSAPILightWeightMapIterator> ObjectFactory::NewJSAPILightWeightMapIterator(const
-                                                                                    JSHandle<JSAPILightWeightMap> &obj,
-                                                                                    IterationKind kind)
+JSHandle<JSAPILightWeightMapIterator> ObjectFactory::NewJSAPILightWeightMapIterator(
+    const JSHandle<JSAPILightWeightMap> &obj, IterationKind kind)
 {
     NewObjectHook();
     JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetLightWeightMapIteratorPrototype());
@@ -3118,9 +3117,8 @@ JSHandle<JSAPILightWeightMapIterator> ObjectFactory::NewJSAPILightWeightMapItera
     return iter;
 }
 
-JSHandle<JSAPILightWeightSetIterator> ObjectFactory::NewJSAPILightWeightSetIterator(const
-                                                                                    JSHandle<JSAPILightWeightSet> &obj,
-                                                                                    IterationKind kind)
+JSHandle<JSAPILightWeightSetIterator> ObjectFactory::NewJSAPILightWeightSetIterator(
+    const JSHandle<JSAPILightWeightSet> &obj, IterationKind kind)
 {
     NewObjectHook();
     JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetLightWeightSetIteratorPrototype());

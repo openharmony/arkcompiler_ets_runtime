@@ -21,6 +21,7 @@ class HeapStat {
 public:
     HeapStat(int32_t index, int32_t count, int32_t size)
         : index_(index), count_(count), size_(size) {}
+    ~HeapStat() = default;
 
     int32_t index_;
     int32_t count_;

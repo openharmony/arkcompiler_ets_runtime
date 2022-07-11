@@ -58,6 +58,7 @@ public:
     class Frontend {
     public:
         explicit Frontend(ProtocolChannel *channel) : channel_(channel) {}
+        ~Frontend() = default;
 
         void BufferUsage();
         void DataCollected();

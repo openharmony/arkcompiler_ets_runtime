@@ -150,6 +150,7 @@ private:
     class Frontend {
     public:
         explicit Frontend(ProtocolChannel *channel) : channel_(channel) {}
+        ~Frontend() = default;
 
         void BreakpointResolved(const EcmaVM *vm);
         void Paused(const EcmaVM *vm, const tooling::Paused &paused);

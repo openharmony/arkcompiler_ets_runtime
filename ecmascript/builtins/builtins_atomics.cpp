@@ -137,7 +137,7 @@ JSTaggedValue BuiltinsAtomics::IsLockFree(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> sizeTag = GetCallArg(argv, 0);
     BytesSize size = BytesSize(JSTaggedValue::ToInt32(thread, sizeTag));
-    bool result;
+    bool result = false;
     switch (size) {
         case BytesSize::ONEBYTES:
         case BytesSize::TWOBYTES:

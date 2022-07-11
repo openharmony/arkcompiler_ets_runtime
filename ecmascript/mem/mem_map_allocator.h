@@ -60,13 +60,14 @@ class MemMap {
 public:
     MemMap() : mem_(nullptr), size_(0) {}
     MemMap(void *mem, size_t size) : mem_(mem), size_(size) {};
+    ~MemMap() = default;
 
-    inline void *GetMem()
+    inline void *GetMem() const
     {
         return mem_;
     }
 
-    inline size_t GetSize()
+    inline size_t GetSize() const
     {
         return size_;
     }

@@ -39,7 +39,7 @@ JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsent(const JSThread *thread,
     newDictionary->SetEntry(thread, entry, key, value);
     newDictionary->IncreaseEntries(thread);
 
-    return newDictionary;    
+    return newDictionary;
 }
 JSHandle<CjsModuleCache> CjsModuleCache::ResetModule(const JSThread *thread,
                                                      const JSHandle<CjsModuleCache> &dictionary,

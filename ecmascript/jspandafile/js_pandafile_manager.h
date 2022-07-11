@@ -23,11 +23,6 @@
 #include "libpandafile/file.h"
 
 namespace panda {
-namespace panda_file {
-class File;
-class EcmaVm;
-}  // namespace panda_file
-
 namespace ecmascript {
 class Program;
 

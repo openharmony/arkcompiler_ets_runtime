@@ -1105,7 +1105,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArray()
 JSHandle<JSTaggedValue> JSDeserializer::ReadEcmaString()
 {
     int32_t stringLength;
-    bool isUtf8;
+    bool isUtf8 = false;
     if (!ReadBoolean(&isUtf8)) {
         return JSHandle<JSTaggedValue>();
     }

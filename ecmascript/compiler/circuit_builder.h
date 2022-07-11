@@ -372,7 +372,7 @@ public:
     {
         cmpCfg_ = cmpCfg;
     }
-    CompilationConfig *GetCompilationConfig()
+    CompilationConfig *GetCompilationConfig() const
     {
         return cmpCfg_;
     }
@@ -531,11 +531,11 @@ public:
     {
         currentLabel_ = label;
     }
-    CircuitBuilder *GetBulder()
+    CircuitBuilder *GetBulder() const
     {
         return circuitBuilder_;
     }
-    Circuit *GetCircuit()
+    Circuit *GetCircuit() const
     {
         return circuit_;
     }

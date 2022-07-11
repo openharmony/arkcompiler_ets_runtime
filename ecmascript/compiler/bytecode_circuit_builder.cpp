@@ -310,7 +310,7 @@ void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo(std::map<uint8_t *, uint8
 }
 
 void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>,
-                                                       std::vector<uint8_t *>> &exception,
+                                              std::vector<uint8_t *>> &exception,
                                               std::vector<CfgInfo> &bytecodeBlockInfo,
                                               [[maybe_unused]] std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc)
 {

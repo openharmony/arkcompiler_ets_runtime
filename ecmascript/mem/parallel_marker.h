@@ -80,6 +80,7 @@ protected:
 class NonMovableMarker : public Marker {
 public:
     explicit NonMovableMarker(Heap *heap) : Marker(heap) {}
+    ~NonMovableMarker() = default;
 
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
@@ -95,6 +96,7 @@ protected:
 class MovableMarker : public Marker {
 public:
     explicit MovableMarker(Heap *heap) : Marker(heap) {}
+    ~MovableMarker() = default;
 
 protected:
     inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) override;
@@ -115,6 +117,7 @@ protected:
 class SemiGCMarker : public MovableMarker {
 public:
     explicit SemiGCMarker(Heap *heap) : MovableMarker(heap) {}
+    ~SemiGCMarker() = default;
 
     void Initialize() override;
 
@@ -134,6 +137,7 @@ private:
 class CompressGCMarker : public MovableMarker {
 public:
     explicit CompressGCMarker(Heap *heap) : MovableMarker(heap) {}
+    ~CompressGCMarker() = default;
     void SetAppSpawn(bool flag)
     {
         isAppSpawn_ = flag;

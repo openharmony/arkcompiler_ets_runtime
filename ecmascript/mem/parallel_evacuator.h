@@ -77,12 +77,12 @@ private:
         Workload(ParallelEvacuator *evacuator, Region *region) : evacuator_(evacuator), region_(region) {};
         virtual ~Workload() = default;
         virtual bool Process(bool isMain) = 0;
-        inline Region *GetRegion()
+        inline Region *GetRegion() const
         {
             return region_;
         }
 
-        inline ParallelEvacuator *GetEvacuator()
+        inline ParallelEvacuator *GetEvacuator() const
         {
             return evacuator_;
         }

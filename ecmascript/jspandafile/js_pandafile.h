@@ -24,10 +24,6 @@
 #include "libpandafile/file.h"
 
 namespace panda {
-namespace panda_file {
-class File;
-}  // namespace panda_file
-
 namespace ecmascript {
 class JSPandaFile {
 public:

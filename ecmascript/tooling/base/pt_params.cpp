@@ -65,35 +65,35 @@ std::unique_ptr<EvaluateOnCallFrameParams> EvaluateOnCallFrameParams::Create(con
     } else if (ret == Result::TYPE_ERROR) {  // optional value
         error += "Unknown 'objectGroup';";
     }
-    bool includeCommandLineAPI;
+    bool includeCommandLineAPI = false;
     ret = params.GetBool("includeCommandLineAPI", &includeCommandLineAPI);
     if (ret == Result::SUCCESS) {
         paramsObject->includeCommandLineAPI_ = includeCommandLineAPI;
     } else if (ret == Result::TYPE_ERROR) {  // optional value
         error += "Unknown 'includeCommandLineAPI';";
     }
-    bool silent;
+    bool silent = false;
     ret = params.GetBool("silent", &silent);
     if (ret == Result::SUCCESS) {
         paramsObject->silent_ = silent;
     } else if (ret == Result::TYPE_ERROR) {  // optional value
         error += "Unknown 'silent';";
     }
-    bool returnByValue;
+    bool returnByValue = false;
     ret = params.GetBool("returnByValue", &returnByValue);
     if (ret == Result::SUCCESS) {
         paramsObject->returnByValue_ = returnByValue;
     } else if (ret == Result::TYPE_ERROR) {  // optional value
         error += "Unknown 'returnByValue';";
     }
-    bool generatePreview;
+    bool generatePreview = false;
     ret = params.GetBool("generatePreview", &generatePreview);
     if (ret == Result::SUCCESS) {
         paramsObject->generatePreview_ = generatePreview;
     } else if (ret == Result::TYPE_ERROR) {  // optional value
         error += "Unknown 'generatePreview';";
     }
-    bool throwOnSideEffect;
+    bool throwOnSideEffect = false;
     ret = params.GetBool("throwOnSideEffect", &throwOnSideEffect);
     if (ret == Result::SUCCESS) {
         paramsObject->throwOnSideEffect_ = throwOnSideEffect;
@@ -138,7 +138,7 @@ std::unique_ptr<GetPossibleBreakpointsParams> GetPossibleBreakpointsParams::Crea
     } else if (ret == Result::TYPE_ERROR) {  // optional value
         error += "Unknown 'end';";
     }
-    bool restrictToFunction;
+    bool restrictToFunction = false;
     ret = params.GetBool("restrictToFunction", &restrictToFunction);
     if (ret == Result::SUCCESS) {
         paramsObject->restrictToFunction_ = restrictToFunction;
@@ -204,7 +204,7 @@ std::unique_ptr<ResumeParams> ResumeParams::Create(const PtJson &params)
     std::string error;
     Result ret;
 
-    bool terminateOnResume;
+    bool terminateOnResume = false;
     ret = params.GetBool("terminateOnResume", &terminateOnResume);
     if (ret == Result::SUCCESS) {
         paramsObject->terminateOnResume_ = terminateOnResume;
@@ -356,7 +356,7 @@ std::unique_ptr<StepIntoParams> StepIntoParams::Create(const PtJson &params)
     std::string error;
     Result ret;
 
-    bool breakOnAsyncCall;
+    bool breakOnAsyncCall = false;
     ret = params.GetBool("breakOnAsyncCall", &breakOnAsyncCall);
     if (ret == Result::SUCCESS) {
         paramsObject->breakOnAsyncCall_ = breakOnAsyncCall;
@@ -430,21 +430,21 @@ std::unique_ptr<GetPropertiesParams> GetPropertiesParams::Create(const PtJson &p
     } else {
         error += "Unknown 'objectId';";
     }
-    bool ownProperties;
+    bool ownProperties = false;
     ret = params.GetBool("ownProperties", &ownProperties);
     if (ret == Result::SUCCESS) {
         paramsObject->ownProperties_ = ownProperties;
     } else if (ret == Result::TYPE_ERROR) {  // optional value
         error += "Unknown 'ownProperties';";
     }
-    bool accessorPropertiesOnly;
+    bool accessorPropertiesOnly = false;
     ret = params.GetBool("accessorPropertiesOnly", &accessorPropertiesOnly);
     if (ret == Result::SUCCESS) {
         paramsObject->accessorPropertiesOnly_ = accessorPropertiesOnly;
     } else if (ret == Result::TYPE_ERROR) {  // optional value
         error += "Unknown 'accessorPropertiesOnly';";
     }
-    bool generatePreview;
+    bool generatePreview = false;
     ret = params.GetBool("generatePreview", &generatePreview);
     if (ret == Result::SUCCESS) {
         paramsObject->generatePreview_ = generatePreview;
@@ -498,7 +498,7 @@ std::unique_ptr<CallFunctionOnParams> CallFunctionOnParams::Create(const PtJson 
         error += "Unknown 'arguments';";
     }
     // paramsObject->silent_
-    bool silent;
+    bool silent = false;
     ret = params.GetBool("silent", &silent);
     if (ret == Result::SUCCESS) {
         paramsObject->silent_ = silent;
@@ -506,7 +506,7 @@ std::unique_ptr<CallFunctionOnParams> CallFunctionOnParams::Create(const PtJson 
         error += "Unknown 'silent';";
     }
     // paramsObject->returnByValue_
-    bool returnByValue;
+    bool returnByValue = false;
     ret = params.GetBool("returnByValue", &returnByValue);
     if (ret == Result::SUCCESS) {
         paramsObject->returnByValue_ = returnByValue;
@@ -514,7 +514,7 @@ std::unique_ptr<CallFunctionOnParams> CallFunctionOnParams::Create(const PtJson 
         error += "Unknown 'returnByValue';";
     }
     // paramsObject->generatePreview_
-    bool generatePreview;
+    bool generatePreview = false;
     ret = params.GetBool("generatePreview", &generatePreview);
     if (ret == Result::SUCCESS) {
         paramsObject->generatePreview_ = generatePreview;
@@ -522,7 +522,7 @@ std::unique_ptr<CallFunctionOnParams> CallFunctionOnParams::Create(const PtJson 
         error += "Unknown 'generatePreview';";
     }
     // paramsObject->userGesture_
-    bool userGesture;
+    bool userGesture = false;
     ret = params.GetBool("userGesture", &userGesture);
     if (ret == Result::SUCCESS) {
         paramsObject->userGesture_ = userGesture;
@@ -530,7 +530,7 @@ std::unique_ptr<CallFunctionOnParams> CallFunctionOnParams::Create(const PtJson 
         error += "Unknown 'userGesture';";
     }
     // paramsObject->awaitPromise_
-    bool awaitPromise;
+    bool awaitPromise = false;
     ret = params.GetBool("awaitPromise", &awaitPromise);
     if (ret == Result::SUCCESS) {
         paramsObject->awaitPromise_ = awaitPromise;
@@ -554,7 +554,7 @@ std::unique_ptr<CallFunctionOnParams> CallFunctionOnParams::Create(const PtJson 
         error += "Unknown 'objectGroup';";
     }
     // paramsObject->throwOnSideEffect_
-    bool throwOnSideEffect;
+    bool throwOnSideEffect = false;
     ret = params.GetBool("throwOnSideEffect", &throwOnSideEffect);
     if (ret == Result::SUCCESS) {
         paramsObject->throwOnSideEffect_ = throwOnSideEffect;
@@ -598,7 +598,7 @@ std::unique_ptr<StartTrackingHeapObjectsParams> StartTrackingHeapObjectsParams::
     std::string error;
     Result ret;
 
-    bool trackAllocations;
+    bool trackAllocations = false;
     ret = params.GetBool("trackAllocations", &trackAllocations);
     if (ret == Result::SUCCESS) {
         paramsObject->trackAllocations_ = trackAllocations;
@@ -619,7 +619,7 @@ std::unique_ptr<StopTrackingHeapObjectsParams> StopTrackingHeapObjectsParams::Cr
     std::string error;
     Result ret;
 
-    bool reportProgress;
+    bool reportProgress = false;
     ret = params.GetBool("reportProgress", &reportProgress);
     if (ret == Result::SUCCESS) {
         paramsObject->reportProgress_ = reportProgress;
@@ -627,7 +627,7 @@ std::unique_ptr<StopTrackingHeapObjectsParams> StopTrackingHeapObjectsParams::Cr
         error += "Unknown 'reportProgress';";
     }
 
-    bool treatGlobalObjectsAsRoots;
+    bool treatGlobalObjectsAsRoots = false;
     ret = params.GetBool("treatGlobalObjectsAsRoots", &treatGlobalObjectsAsRoots);
     if (ret == Result::SUCCESS) {
         paramsObject->treatGlobalObjectsAsRoots_ = treatGlobalObjectsAsRoots;
@@ -635,7 +635,7 @@ std::unique_ptr<StopTrackingHeapObjectsParams> StopTrackingHeapObjectsParams::Cr
         error += "Unknown 'treatGlobalObjectsAsRoots';";
     }
 
-    bool captureNumericValue;
+    bool captureNumericValue = false;
     ret = params.GetBool("captureNumericValue", &captureNumericValue);
     if (ret == Result::SUCCESS) {
         paramsObject->captureNumericValue_ = captureNumericValue;
@@ -727,7 +727,7 @@ std::unique_ptr<StartPreciseCoverageParams> StartPreciseCoverageParams::Create(c
     std::string error;
     Result ret;
 
-    bool callCount;
+    bool callCount = false;
     ret = params.GetBool("callCount", &callCount);
     if (ret == Result::SUCCESS) {
         paramsObject->callCount_ = callCount;
@@ -735,7 +735,7 @@ std::unique_ptr<StartPreciseCoverageParams> StartPreciseCoverageParams::Create(c
         error += "Unknown 'callCount';";
     }
 
-    bool detailed;
+    bool detailed = false;
     ret = params.GetBool("detailed", &detailed);
     if (ret == Result::SUCCESS) {
         paramsObject->detailed_ = detailed;
@@ -743,7 +743,7 @@ std::unique_ptr<StartPreciseCoverageParams> StartPreciseCoverageParams::Create(c
         error += "Unknown 'detailed';";
     }
 
-    bool allowTriggeredUpdates;
+    bool allowTriggeredUpdates = false;
     ret = params.GetBool("allowTriggeredUpdates", &allowTriggeredUpdates);
     if (ret == Result::SUCCESS) {
         paramsObject->allowTriggeredUpdates_ = allowTriggeredUpdates;
@@ -764,7 +764,7 @@ std::unique_ptr<SetSamplingIntervalParams> SetSamplingIntervalParams::Create(con
     std::string error;
     Result ret;
 
-    int32_t interval;
+    int32_t interval = 0;
     ret = params.GetInt("interval", &interval);
     if (ret == Result::SUCCESS) {
         paramsObject->interval_ = interval;
@@ -807,7 +807,7 @@ std::unique_ptr<RequestMemoryDumpParams> RequestMemoryDumpParams::Create(const P
     auto requestMemoryDumpParams = std::make_unique<RequestMemoryDumpParams>();
     Result ret;
     
-    bool deterministic;
+    bool deterministic = false;
     ret = params.GetBool("deterministic", &deterministic);
     if (ret == Result::SUCCESS) {
         requestMemoryDumpParams->deterministic_ = deterministic;
@@ -857,7 +857,7 @@ std::unique_ptr<StartParams> StartParams::Create(const PtJson &params)
         error += "Unknown 'options';";
     }
 
-    int32_t bufferUsageReportingInterval;
+    int32_t bufferUsageReportingInterval = 0;
     ret = params.GetInt("bufferUsageReportingInterval", &bufferUsageReportingInterval);
     if (ret == Result::SUCCESS) {
         startParams->bufferUsageReportingInterval_ = bufferUsageReportingInterval;
