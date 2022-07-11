@@ -38,6 +38,7 @@ public:
     explicit ValueLattice();
     explicit ValueLattice(LatticeStatus status);
     explicit ValueLattice(uint64_t value);
+    ~ValueLattice() = default;
     [[nodiscard]] bool IsTop() const;
     [[nodiscard]] bool IsMid() const;
     [[nodiscard]] bool IsBot() const;
@@ -62,6 +63,7 @@ class ReachabilityLattice {
 public:
     explicit ReachabilityLattice();
     explicit ReachabilityLattice(bool reachable);
+    ~ReachabilityLattice() = default;
     [[nodiscard]] bool IsReachable() const;
     [[nodiscard]] bool IsUnreachable() const;
     bool operator==(const ReachabilityLattice &other) const;
@@ -206,6 +208,7 @@ public:
 class LatticeEquationsSystemSolverFramework {
 public:
     explicit LatticeEquationsSystemSolverFramework(LatticeUpdateRule *latticeUpdateRule);
+    ~LatticeEquationsSystemSolverFramework() = default;
     bool Run(Circuit *circuit, bool enableLogging = false);
     [[nodiscard]] const ValueLattice &GetValueLattice(GateRef gate) const;
     [[nodiscard]] const ReachabilityLattice &GetReachabilityLattice(GateRef gate) const;
@@ -220,6 +223,7 @@ private:
 class SubGraphRewriteFramework {
 public:
     explicit SubGraphRewriteFramework(SubgraphRewriteRule *subgraphRewriteRule);
+    ~SubGraphRewriteFramework() = default;
     bool Run(Circuit *circuit, bool enableLogging = false);
 
 private:

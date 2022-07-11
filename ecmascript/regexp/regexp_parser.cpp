@@ -805,7 +805,7 @@ bool RegExpParser::ParseGroupSpecifier(const uint8_t **pp, CString &name)
 
 int RegExpParser::ParseCaptureCount(const char *groupName)
 {
-    const uint8_t *p;
+    const uint8_t *p = nullptr;
     int captureIndex = 1;
     CString name;
     hasNamedCaptures_ = 0;

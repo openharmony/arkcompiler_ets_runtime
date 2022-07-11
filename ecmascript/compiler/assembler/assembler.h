@@ -105,9 +105,8 @@ private:
 class Assembler {
 public:
     explicit Assembler(Chunk *chunk)
-        : buffer_(chunk)
-    {
-    }
+        : buffer_(chunk) {}
+    ~Assembler() = default;
 
     void EmitU8(uint8_t v)
     {

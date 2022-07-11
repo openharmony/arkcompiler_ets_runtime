@@ -236,7 +236,7 @@ GateRef CircuitBuilder::BinaryLogic(OpCode opcode, GateRef left, GateRef right)
 GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args)
 {
     const CallSignature *cs = BytecodeStubCSigns::BCHandler();
-    assert(cs->IsBCStub());
+    ASSERT(cs->IsBCStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef result = Call(cs, glue, target, depend, args);
@@ -247,7 +247,7 @@ GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::v
 GateRef CircuitBuilder::CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args)
 {
     const CallSignature *cs = BytecodeStubCSigns::BCDebuggerHandler();
-    assert(cs->IsBCDebuggerStub());
+    ASSERT(cs->IsBCDebuggerStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef result = Call(cs, glue, target, depend, args);
@@ -259,7 +259,7 @@ GateRef CircuitBuilder::CallRuntime(GateRef glue, int index, GateRef depend, con
 {
     GateRef target = IntPtr(index);
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
-    assert(cs->IsRuntimeStub());
+    ASSERT(cs->IsRuntimeStub());
     auto label = GetCurrentLabel();
     if (depend == Gate::InvalidGateRef) {
         depend = label->GetDepend();
@@ -275,7 +275,7 @@ GateRef CircuitBuilder::CallRuntimeVarargs(GateRef glue, int index, GateRef argc
     GateRef target = IntPtr(index);
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    assert(cs->IsRuntimeVAStub());
+    ASSERT(cs->IsRuntimeVAStub());
     GateRef result = Call(cs, glue, target, depend, {argc, argv});
     label->SetDepend(result);
     return result;
@@ -285,7 +285,7 @@ GateRef CircuitBuilder::CallRuntimeVarargs(GateRef glue, int index, GateRef argc
 GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args)
 {
     const CallSignature *cs = RuntimeStubCSigns::Get(index);
-    assert(cs->IsRuntimeNGCStub());
+    ASSERT(cs->IsRuntimeNGCStub());
     GateRef target = IntPtr(index);
     auto label = GetCurrentLabel();
     if (depend == Gate::InvalidGateRef) {
@@ -299,7 +299,7 @@ GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, 
 GateRef CircuitBuilder::CallStub(GateRef glue, int index, const std::vector<GateRef> &args)
 {
     const CallSignature *cs = CommonStubCSigns::Get(index);
-    assert(cs->IsCommonStub());
+    ASSERT(cs->IsCommonStub());
     GateRef target = IntPtr(index);
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();

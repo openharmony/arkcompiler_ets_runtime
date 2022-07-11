@@ -28,6 +28,7 @@ public:
         size_t optLevel, AotLog *log) : vm_(vm), entry_(entry),
                                         triple_(triple), optLevel_(optLevel), log_(log) {};
     PassManager() = default;
+    ~PassManager() = default;
     bool CollectInfoOfPandaFile(const std::string &filename, std::string_view entryPoint,
                                 BytecodeTranslationInfo *translateInfo);
     bool Compile(const std::string &fileName, AOTFileGenerator &generator);

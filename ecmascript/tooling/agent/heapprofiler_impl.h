@@ -87,6 +87,7 @@ private:
     class Frontend {
     public:
         explicit Frontend(ProtocolChannel *channel) : channel_(channel) {}
+        ~Frontend() = default;
 
         void AddHeapSnapshotChunk(char *data, int32_t size);
         void ReportHeapSnapshotProgress(int32_t done, int32_t total);

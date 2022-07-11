@@ -58,6 +58,7 @@ private:
 class WaiterList {
 public:
     WaiterList() = default;
+    ~WaiterList() = default;
     void AddNode(WaiterListNode *node);
     void DeleteNode(WaiterListNode *node);
     struct HeadAndTail {
@@ -105,4 +106,4 @@ public:
     LockHolder lockHolder_;
 };
 }  // namespace
-#endif  // ECMASCRIPT_WAITER_LIST_H
+#endif  // ECMASCRIPT_WAITER_LIST_H

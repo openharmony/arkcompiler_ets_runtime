@@ -516,7 +516,7 @@ LLVMValueRef LLVMIRBuilder::GetFunction(LLVMValueRef glue, const CallSignature *
     LLVMValueRef rtbaseAddr = LLVMBuildIntToPtr(builder_, rtbaseoffset, LLVMPointerType(glueType, 0), "");
     LLVMValueRef llvmAddr = LLVMBuildLoad(builder_, rtbaseAddr, "");
     LLVMValueRef callee = LLVMBuildIntToPtr(builder_, llvmAddr, rtfuncTypePtr, "cast");
-    assert(callee != nullptr);
+    ASSERT(callee != nullptr);
     return callee;
 }
 
@@ -566,7 +566,7 @@ void LLVMIRBuilder::HandleRuntimeCallWithArgv(GateRef gate)
 
 void LLVMIRBuilder::VisitRuntimeCallWithArgv(GateRef gate, const std::vector<GateRef> &inList)
 {
-    assert(IsOptimized() == true);
+    ASSERT(IsOptimized() == true);
     StubIdType stubId = RTSTUB_ID(CallRuntimeWithArgv);
     LLVMValueRef glue = GetGlue(inList);
     int stubIndex = static_cast<int>(std::get<RuntimeStubCSigns::ID>(stubId));
@@ -621,7 +621,7 @@ void LLVMIRBuilder::SetGCLeafFunction(LLVMValueRef call)
 
 void LLVMIRBuilder::SetCallConvAttr(const CallSignature *calleeDescriptor, LLVMValueRef call)
 {
-    assert(calleeDescriptor != nullptr);
+    ASSERT(calleeDescriptor != nullptr);
     if (calleeDescriptor->GetCallConv() == CallSignature::CallConv::GHCCallConv) {
         LLVMSetTailCall(call, true);
         SetGCLeafFunction(call);

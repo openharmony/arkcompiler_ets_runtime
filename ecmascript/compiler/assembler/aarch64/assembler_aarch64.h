@@ -114,9 +114,8 @@ private:
 
 class Immediate {
 public:
-    Immediate(int64_t value) : value_(value)
-    {
-    }
+    Immediate(int64_t value) : value_(value) {}
+    ~Immediate() = default;
 
     int64_t Value() const
     {
@@ -168,6 +167,7 @@ public:
         : reg_(reg), extend_(extend), shift_(Shift::NO_SHIFT), shiftAmount_(shiftAmount), immediate_(0)
     {
     }
+    ~Operand() = default;
 
     inline bool IsImmediate() const
     {
@@ -238,6 +238,7 @@ public:
           extend_(Extend::NO_EXTEND), shift_(Shift::NO_SHIFT), shiftAmount_(0)
     {
     }
+    ~MemoryOperand() = default;
 
     Register GetRegBase() const
     {

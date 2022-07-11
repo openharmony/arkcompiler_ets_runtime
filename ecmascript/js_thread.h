@@ -55,7 +55,7 @@ struct BCStubEntries {
 
     void Set(size_t index, Address addr)
     {
-        assert(index < COUNT);
+        ASSERT(index < COUNT);
         stubEntries_[index] = addr;
     }
 
@@ -92,7 +92,7 @@ struct BCStubEntries {
 
     Address Get(size_t index)
     {
-        assert(index < COUNT);
+        ASSERT(index < COUNT);
         return stubEntries_[index];
     }
 };
@@ -107,13 +107,13 @@ struct RTStubEntries {
 
     void Set(size_t index, Address addr)
     {
-        assert(index < COUNT);
+        ASSERT(index < COUNT);
         stubEntries_[index] = addr;
     }
 
     Address Get(size_t index)
     {
-        assert(index < COUNT);
+        ASSERT(index < COUNT);
         return stubEntries_[index];
     }
 };
@@ -128,13 +128,13 @@ struct COStubEntries {
 
     void Set(size_t index, Address addr)
     {
-        assert(index < COUNT);
+        ASSERT(index < COUNT);
         stubEntries_[index] = addr;
     }
 
     Address Get(size_t index)
     {
-        assert(index < COUNT);
+        ASSERT(index < COUNT);
         return stubEntries_[index];
     }
 };
@@ -150,13 +150,13 @@ struct BCDebuggerStubEntries {
 
     void Set(size_t index, Address addr)
     {
-        assert(index < COUNT);
+        ASSERT(index < COUNT);
         stubEntries_[index] = addr;
     }
 
     Address Get(size_t index)
     {
-        assert(index < COUNT);
+        ASSERT(index < COUNT);
         return stubEntries_[index];
     }
 

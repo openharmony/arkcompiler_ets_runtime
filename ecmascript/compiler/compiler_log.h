@@ -82,7 +82,7 @@ private:
         std::vector<std::string> vec{};
         std::istringstream sstr(str.c_str());
         std::string spilt;
-        while(getline(sstr, spilt, ch)) {
+        while (getline(sstr, spilt, ch)) {
             vec.emplace_back(spilt);
         }
         return vec;

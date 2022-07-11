@@ -76,7 +76,7 @@ public:
             uint64_t funcEntry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
             uint64_t length = 0;
             std::string funcName(LLVMGetValueName2(func, &length));
-            assert(length != 0);
+            ASSERT(length != 0);
             LOG_COMPILER(INFO) << "CollectCodeInfo for AOT func: " << funcName.c_str();
             addr2name[funcEntry] = funcName;
             int delta = assembler_->GetFpDeltaPrevFramSp(func, log);

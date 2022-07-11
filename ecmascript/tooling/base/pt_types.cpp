@@ -814,7 +814,7 @@ std::unique_ptr<PropertyDescriptor> PropertyDescriptor::Create(const PtJson &par
         error += "Unknown 'value';";
     }
 
-    bool writable;
+    bool writable = false;
     ret = params.GetBool("writable", &writable);
     if (ret == Result::SUCCESS) {
         propertyDescriptor->writable_ = writable;
@@ -848,7 +848,7 @@ std::unique_ptr<PropertyDescriptor> PropertyDescriptor::Create(const PtJson &par
         error += "Unknown 'set';";
     }
 
-    bool configurable;
+    bool configurable = false;
     ret = params.GetBool("configurable", &configurable);
     if (ret == Result::SUCCESS) {
         propertyDescriptor->configurable_ = configurable;
@@ -856,7 +856,7 @@ std::unique_ptr<PropertyDescriptor> PropertyDescriptor::Create(const PtJson &par
         error += "Unknown 'configurable';";
     }
 
-    bool enumerable;
+    bool enumerable = false;
     ret = params.GetBool("enumerable", &enumerable);
     if (ret == Result::SUCCESS) {
         propertyDescriptor->enumerable_ = enumerable;
@@ -864,7 +864,7 @@ std::unique_ptr<PropertyDescriptor> PropertyDescriptor::Create(const PtJson &par
         error += "Unknown 'enumerable';";
     }
 
-    bool wasThrown;
+    bool wasThrown = false;
     ret = params.GetBool("wasThrown", &wasThrown);
     if (ret == Result::SUCCESS) {
         propertyDescriptor->wasThrown_ = wasThrown;
@@ -872,7 +872,7 @@ std::unique_ptr<PropertyDescriptor> PropertyDescriptor::Create(const PtJson &par
         error += "Unknown 'wasThrown';";
     }
 
-    bool isOwn;
+    bool isOwn = false;
     ret = params.GetBool("isOwn", &isOwn);
     if (ret == Result::SUCCESS) {
         propertyDescriptor->isOwn_ = isOwn;
@@ -2135,7 +2135,7 @@ std::unique_ptr<FunctionCoverage> FunctionCoverage::Create(const PtJson &params)
         error += "Unknown 'ranges';";
     }
 
-    bool isBlockCoverage;
+    bool isBlockCoverage = false;
     ret = params.GetBool("isBlockCoverage", &isBlockCoverage);
     if (ret == Result::SUCCESS) {
         functionCoverage->isBlockCoverage_ = isBlockCoverage;
@@ -2408,7 +2408,7 @@ std::unique_ptr<TraceConfig> TraceConfig::Create(const PtJson &params)
         error += "Unknown 'recordMode';";
     }
 
-    bool enableSampling;
+    bool enableSampling = false;
     ret = params.GetBool("enableSampling", &enableSampling);
     if (ret == Result::SUCCESS) {
         traceConfig->enableSampling_ = enableSampling;
@@ -2416,7 +2416,7 @@ std::unique_ptr<TraceConfig> TraceConfig::Create(const PtJson &params)
         error += "Unknown 'enableSampling';";
     }
 
-    bool enableSystrace;
+    bool enableSystrace = false;
     ret = params.GetBool("enableSystrace", &enableSystrace);
     if (ret == Result::SUCCESS) {
         traceConfig->enableSystrace_ = enableSystrace;
@@ -2424,7 +2424,7 @@ std::unique_ptr<TraceConfig> TraceConfig::Create(const PtJson &params)
         error += "Unknown 'enableSystrace';";
     }
 
-    bool enableArgumentFilter;
+    bool enableArgumentFilter = false;
     ret = params.GetBool("enableArgumentFilter", &enableArgumentFilter);
     if (ret == Result::SUCCESS) {
         traceConfig->enableArgumentFilter_ = enableArgumentFilter;

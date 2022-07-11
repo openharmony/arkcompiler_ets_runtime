@@ -563,7 +563,7 @@ bool AssemblerAarch64::TryReplicateHWords(const Register &rd, uint64_t imm)
     for (auto iter : repeatMaps) {
         const uint64_t hImm = iter.first;
         const int count = iter.second;
-        uint64_t repeatImm = hImm | (hImm << 16) | (hImm << 32) | (hImm << 48); 
+        uint64_t repeatImm = hImm | (hImm << 16) | (hImm << 32) | (hImm << 48);
         LogicalImmediate orrImm = LogicalImmediate::Create(repeatImm, 64);
         // if orrImm not valid, repeat count can't be 2 or 3, it can't be simplified with orr.
         if ((count != 2 && count != 3) || orrImm.IsValid()) {

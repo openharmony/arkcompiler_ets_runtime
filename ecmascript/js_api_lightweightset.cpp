@@ -302,8 +302,8 @@ void JSAPILightWeightSet::IncreaseCapacityTo(JSThread *thread, const JSHandle<JS
     obj->SizeCopy(thread, obj, intCapacity, minCapacity);
 }
 
-JSHandle<JSTaggedValue> JSAPILightWeightSet::GetIteratorObj(JSThread *thread, const
-                                                            JSHandle<JSAPILightWeightSet> &obj, IterationKind kind)
+JSHandle<JSTaggedValue> JSAPILightWeightSet::GetIteratorObj(JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,
+                                                            IterationKind kind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> iter =
