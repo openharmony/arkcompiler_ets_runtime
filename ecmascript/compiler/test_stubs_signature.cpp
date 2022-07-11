@@ -215,5 +215,19 @@ DEF_CALL_SIGNATURE(Bar2AOT)
     callSign->SetVariadicArgs(true);
     callSign->SetCallConv(CallSignature::CallConv::WebKitJSCallConv);
 }
+
+DEF_CALL_SIGNATURE(TestAbsoluteAddressRelocation)
+{
+    // 1 : 1 input parameters
+    CallSignature TestAbsoluteAddressRelocation("TestAbsoluteAddressRelocation", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::INT64()); // undefined or hole
+    *callSign = TestAbsoluteAddressRelocation;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::INT64(),
+    };
+    callSign->SetParameters(params.data());
+}
+
 #endif
 }  // namespace panda::ecmascript::kungfu

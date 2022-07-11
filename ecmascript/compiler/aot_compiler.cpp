@@ -116,6 +116,7 @@ int Main(const int argc, const char **argv)
         std::string triple = runtimeOptions.GetTargetTriple();
         std::string outputFileName = runtimeOptions.GetAOTOutputFile();
         size_t optLevel = runtimeOptions.GetOptLevel();
+        size_t relocMode = runtimeOptions.GetRelocMode();
         BytecodeStubCSigns::Initialize();
         CommonStubCSigns::Initialize();
         RuntimeStubCSigns::Initialize();
@@ -123,7 +124,7 @@ int Main(const int argc, const char **argv)
         std::string logMethods = vm->GetJSOptions().GetlogCompiledMethods();
         AotLog log(logMethods);
         AOTFileGenerator generator(&log, vm);
-        PassManager passManager(vm, entry, triple, optLevel, &log);
+        PassManager passManager(vm, entry, triple, optLevel, relocMode, &log);
         for (const auto &fileName : pandaFileNames) {
             LOG_COMPILER(INFO) << "AOT start to execute ark file: " << fileName;
             if (passManager.Compile(fileName, generator) == false) {

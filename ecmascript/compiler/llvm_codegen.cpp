@@ -97,8 +97,7 @@ static uint8_t *RoundTripAllocateCodeSection(void *object, uintptr_t size, [[may
                                              [[maybe_unused]] unsigned sectionID, const char *sectionName)
 {
     struct CodeInfo& state = *static_cast<struct CodeInfo*>(object);
-    uint8_t *addr = state.AllocaCodeSection(size, sectionName);
-    return addr;
+    return state.AllocaCodeSection(size, sectionName);
 }
 
 static uint8_t *RoundTripAllocateDataSection(void *object, uintptr_t size, [[maybe_unused]] unsigned alignment,
@@ -201,6 +200,7 @@ void LLVMAssembler::Run()
     if (!BuildMCJITEngine()) {
         return;
     }
+    llvm::unwrap(engine_)-> setProcessAllSections(true);
     BuildAndRunPasses();
     LLVMPrintModuleToFile(module_, optName.c_str(), &error);
 }
@@ -237,6 +237,7 @@ void LLVMAssembler::Initialize(LOptions option)
     LLVMInitializeMCJITCompilerOptions(&options_, sizeof(options_));
     options_.OptLevel = option.optLevel;
     // NOTE: Just ensure that this field still exists for PIC option
+    options_.RelMode = static_cast<LLVMRelocMode>(option.relocMode);
     options_.NoFramePointerElim = static_cast<int32_t>(option.genFp);
     options_.CodeModel = LLVMCodeModelSmall;
 }

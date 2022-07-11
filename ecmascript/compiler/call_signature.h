@@ -307,7 +307,6 @@ private:
     V(TryStoreICByName)                     \
     V(TryStoreICByValue)                    \
     V(SetValueWithBarrier)                  \
-    V(TestAbsoluteAddressRelocation)        \
     V(GetTaggedArrayPtrTest)                \
     V(BytecodeHandler)                      \
     V(BytecodeDebuggerHandler)              \

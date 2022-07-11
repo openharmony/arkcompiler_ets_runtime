@@ -397,20 +397,6 @@ DEF_CALL_SIGNATURE(SetValueWithBarrier)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
-DEF_CALL_SIGNATURE(TestAbsoluteAddressRelocation)
-{
-    // 2 : 2 input parameters
-    CallSignature TestAbsoluteAddressRelocation("TestAbsoluteAddressRelocation", 0, 2,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::INT64()); // undefined or hole
-    *callSign = TestAbsoluteAddressRelocation;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::INT64(),
-        VariableType::INT64(),
-    };
-    callSign->SetParameters(params.data());
-}
-
 DEF_CALL_SIGNATURE(GetTaggedArrayPtrTest)
 {
     // 2 : 2 input parameters

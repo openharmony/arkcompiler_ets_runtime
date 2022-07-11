@@ -76,15 +76,11 @@ public:
         return asmCallSigns_;
     }
 
-    size_t GetCodeBufferOffset() const
+    const CallSignature *GetCSign(size_t i) const
     {
-        return codeBufferOffset_;
+        return asmCallSigns_[i];
     }
 
-    void SetCodeBufferOffset(size_t offset)
-    {
-        codeBufferOffset_ = offset;
-    }
     void GenerateStubsX64(Chunk* chunk);
     void GenerateStubsAarch64(Chunk* chunk);
 
@@ -95,7 +91,6 @@ public:
 private:
     std::vector<const CallSignature *> asmCallSigns_;
     std::map<int, panda::ecmascript::Label *> symbolTable_;
-    size_t codeBufferOffset_ {0};
     uint8_t* buffer_ {nullptr};
     size_t bufferSize_ {0};
 };

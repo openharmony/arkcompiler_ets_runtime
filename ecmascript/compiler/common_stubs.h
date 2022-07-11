@@ -320,19 +320,6 @@ public:
     void GenerateCircuit(const CompilationConfig *cfg) override;
 };
 
-class TestAbsoluteAddressRelocationStub : public Stub {
-public:
-    // 2 : 2 means argument counts
-    explicit TestAbsoluteAddressRelocationStub(Circuit *circuit) : Stub("TestAbsoluteAddressRelocation", 2, circuit)
-    {
-        circuit->SetFrameType(panda::ecmascript::FrameType::OPTIMIZED_FRAME);
-    }
-    ~TestAbsoluteAddressRelocationStub() = default;
-    NO_MOVE_SEMANTIC(TestAbsoluteAddressRelocationStub);
-    NO_COPY_SEMANTIC(TestAbsoluteAddressRelocationStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
 class JsProxyCallInternalStub : public Stub {
 public:
     // 4 : 4 means argument counts

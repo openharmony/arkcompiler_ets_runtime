@@ -25,18 +25,24 @@ namespace panda::ecmascript::kungfu {
 class Stub;
 class StubCompiler {
 public:
-    explicit StubCompiler(const CompilerLog *log) : log_(log) {}
+    StubCompiler(std::string &triple, std::string &filePath, size_t optLevel, size_t relocMode,
+        const CompilerLog *log) : triple_(triple), filePath_(filePath), optLevel_(optLevel),
+        relocMode_(relocMode), log_(log) {}
 
     ~StubCompiler() = default;
 
-    bool BuildStubModuleAndSave(const std::string &triple, const std::string &stubFile, size_t optLevel);
+    bool BuildStubModuleAndSave() const;
 
     const CompilerLog *GetLog() const
     {
         return log_;
     }
 private:
-    void RunPipeline(LLVMModule *module);
+    void RunPipeline(LLVMModule *module) const;
+    std::string triple_ {};
+    std::string filePath_ {};
+    size_t optLevel_ {3}; // 3 : default backend optimization level
+    size_t relocMode_ {2}; // 2 : default relocation mode-- PIC
     const CompilerLog *log_ {nullptr};
 };
 }  // namespace panda::ecmascript::kungfu

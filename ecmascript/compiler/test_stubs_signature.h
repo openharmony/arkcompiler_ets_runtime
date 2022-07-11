@@ -27,7 +27,8 @@ namespace panda::ecmascript::kungfu {
     V(Bar1AOT)                              \
     V(FooProxyAOT)                          \
     V(FooProxy2AOT)                         \
-    V(Bar2AOT)
+    V(Bar2AOT)                              \
+    V(TestAbsoluteAddressRelocation)
 #else
     #define TEST_STUB_SIGNATRUE_LIST(V)
 #endif
