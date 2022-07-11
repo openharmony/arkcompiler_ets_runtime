@@ -306,6 +306,12 @@ public:
         }
         return end;
     }
+
+    static bool Utf8CharInRange(uint8_t value, char start, char end)
+    {
+        ASSERT(start <= end);
+        return (value >= static_cast<uint8_t>(start)) && (value <= static_cast<uint8_t>(end));
+    }
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_STRING_HELP_H
