@@ -3018,6 +3018,8 @@ void SlowPathLowering::LowerDefineNCFuncDyn(GateRef gate, GateRef glue, GateRef 
     GateRef result;
     DEFVAlUE(method, (&builder_), VariableType::JS_POINTER(),
              GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(methodId)));
+    GateRef codeEntry =
+        builder_.Load(VariableType::NATIVE_POINTER(), *method, builder_.IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET));
     Label isResolved(&builder_);
     Label notResolved(&builder_);
     Label defaultLabel(&builder_);
@@ -3032,6 +3034,7 @@ void SlowPathLowering::LowerDefineNCFuncDyn(GateRef gate, GateRef glue, GateRef 
             &exceptionExit, &notException);
         builder_.Bind(&notException);
         {
+            builder_.SetCodeEntryToFunction(glue, *method, codeEntry);
             builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
             builder_.Jump(&defaultLabel);
         }
@@ -3064,6 +3067,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef length = acc_.GetValueIn(gate, 1);
     GateRef env = acc_.GetValueIn(gate, 2);
+    GateRef homeObject = acc_.GetValueIn(gate, 3);
     GateRef result;
     DEFVAlUE(method, (&builder_), VariableType::JS_POINTER(),
              GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(methodId)));
@@ -3075,7 +3079,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
     builder_.Branch(builder_.FunctionIsResolved(*method), &isResolved, &notResolved);
     builder_.Bind(&isResolved);
     {
-        method = LowerCallRuntime(glue, RTSTUB_ID(DefineMethod), {*method});
+        method = LowerCallRuntime(glue, RTSTUB_ID(DefineMethod), {*method, homeObject});
         Label notException(&builder_);
         builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
             &exceptionExit, &notException);
@@ -3088,7 +3092,6 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
     builder_.Bind(&notResolved);
     {
         builder_.SetResolvedToFunction(glue, *method, builder_.Boolean(true));
-        GateRef homeObject = acc_.GetValueIn(gate, 3);
         builder_.SetHomeObjectToFunction(glue, *method, homeObject);
         builder_.Jump(&defaultLabel);
     }

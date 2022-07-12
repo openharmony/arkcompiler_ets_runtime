@@ -717,7 +717,7 @@ void AssemblerStubsX64::JSCall(ExtendedAssembler *assembler)
         __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
         __ Movq(rsp, r8);
         Register envReg = r9;
-        __ Movq(Operand(r8, 16), envReg); // 16: get env
+        __ Movq(Operand(r8, FRAME_SLOT_SIZE), envReg); // get env
         Register argvReg = r8;
         __ Addq(24, argvReg); // 24: sp + 24 argv
         __ Cmpl(expectedNumArgsReg, rdx); // expectedNumArgs <= actualNumArgs
