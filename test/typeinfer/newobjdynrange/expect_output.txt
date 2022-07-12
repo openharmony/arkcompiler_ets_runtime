@@ -11,5 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-LDA_STR:string,DEFINECLASSWITHBUFFER:class,LDA_STR:string,NEWOBJDYNRANGE:class_instance,LDOBJBYNAME:string,TYPEOFDYN:string
 ----
+LDA_STR:string,DEFINECLASSWITHBUFFER:class,LDA_STR:string,NEWOBJDYNRANGE:class_instance,LDOBJBYNAME:string,TYPEOFDYN:string
