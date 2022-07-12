@@ -179,7 +179,7 @@ Node *HeapSnapshot::AddNode(TaggedObject* address)
 void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject* forward_address)
 {
     int sequenceId = -1;
-    int traceNodeId = 0;
+    uint64_t traceNodeId = 0;
     Node *node = entryMap_.FindAndEraseNode(address);
     if (node != nullptr) {
         sequenceId = static_cast<int>(node->GetId());
@@ -636,7 +636,7 @@ TraceNode* TraceTree::AddNodeToTree(CVector<uint32_t> traceNodeIndex)
     }
 
     TraceNode* node = GetRoot();
-    for (int i = len - 1; i >= 0; i--) {
+    for (int i = static_cast<int>(len) - 1; i >= 0; i--) {
         node = node->FindOrAddChild(traceNodeIndex[i]);
     }
     return node;
@@ -697,10 +697,10 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
     if (topNode == nullptr) {
         return -1;
     }
-    int totalSize = topNode->GetTotalSize();
+    int totalSize = static_cast<int>(topNode->GetTotalSize());
     totalSize += size;
     topNode->SetTotalSize(totalSize);
-    int totalCount = topNode->GetTotalCount();
+    uint32_t totalCount = topNode->GetTotalCount();
     topNode->SetTotalCount(++totalCount);
     return topNode->GetId();
 }
