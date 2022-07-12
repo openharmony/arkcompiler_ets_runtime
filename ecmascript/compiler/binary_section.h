@@ -35,7 +35,7 @@ enum class ElfSecName : uint8_t {
     SIZE
 };
 
-enum class ElfSecFeature : uint8_t {
+enum ElfSecFeature {
     NOT_VALID,
     VALID_NOT_SEQUENTIAL = 1,
     VALID_AND_SEQUENTIAL = 1 << 1 | 1,
@@ -99,7 +99,7 @@ public:
     }
 private:
     ElfSecName value_ {ElfSecName::NONE};
-    static constexpr std::array<ElfSecFeature, static_cast<size_t>(ElfSecName::SIZE)> AOTSecFeatureTable_ = {
+    static constexpr size_t AOTSecFeatureTable_[static_cast<size_t>(ElfSecName::SIZE)] = {
         ElfSecFeature::NOT_VALID,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
