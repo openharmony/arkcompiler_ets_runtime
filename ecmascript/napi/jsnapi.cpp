@@ -292,6 +292,16 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size,
     return true;
 }
 
+void JSNApi::preFork(EcmaVM *vm)
+{
+    vm->preFork();
+}
+
+void JSNApi::postFork(EcmaVM *vm)
+{
+    vm->postFork();
+}
+
 Local<ObjectRef> JSNApi::GetUncaughtException(const EcmaVM *vm)
 {
     return JSNApiHelper::ToLocal<ObjectRef>(vm->GetEcmaUncaughtException());

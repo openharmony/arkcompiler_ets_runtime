@@ -280,6 +280,18 @@ void Heap::CompactHeapBeforeFork()
     fullGC_->RunPhasesForAppSpawn();
 }
 
+void Heap::DisableParallelGC()
+{
+    Prepare();
+    parallelGC_ = false;
+    maxEvacuateTaskCount_ = 0;
+    maxMarkTaskCount_ = 0;
+    stwYoungGC_->DisableParallelGC();
+    sweeper_->DisableConcurrentSweep();
+    concurrentMarker_ ->DisableConcurrentMark();
+    Taskpool::GetCurrentTaskpool()->Destroy();
+}
+
 TriggerGCType Heap::SelectGCType() const
 {
     // If concurrent mark is enabled, the TryTriggerConcurrentMarking decide which GC to choose.

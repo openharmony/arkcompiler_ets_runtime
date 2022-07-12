@@ -65,6 +65,11 @@ public:
         return !IsDisabled();
     }
 
+    void DisableConcurrentSweep()
+    {
+        enableType_ = EnableConcurrentSweepType::CONFIG_DISABLE;
+    }
+
     bool IsDisabled() const
     {
         return enableType_ == EnableConcurrentSweepType::DISABLE ||

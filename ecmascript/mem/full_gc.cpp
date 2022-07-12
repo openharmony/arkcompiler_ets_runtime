@@ -90,7 +90,10 @@ void FullGC::Sweep()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Sweep");
     // process weak reference
-    auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1; // gc thread and main thread
+    uint32_t totalThreadCount = 1; // 1 : mainthread
+    if (heap_->IsParallelGCEnabled()) {
+        totalThreadCount += Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    }
     for (uint32_t i = 0; i < totalThreadCount; i++) {
         ProcessQueue *queue = workManager_->GetWeakReferenceQueue(i);
 

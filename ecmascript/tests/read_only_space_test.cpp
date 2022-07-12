@@ -95,6 +95,7 @@ public:
 HWTEST_F_L0(ReadOnlySpaceTest, ReadOnlyTest)
 {
     auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetReadOnlySpace()->SetReadOnly();
     if (ReadOnlyTestManager::RegisterSignal() == -1) {
         perror("sigaction error");
         exit(1);
@@ -112,7 +113,6 @@ HWTEST_F_L0(ReadOnlySpaceTest, ReadOnlyTest)
 HWTEST_F_L0(ReadOnlySpaceTest, AllocateTest)
 {
     auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetReadOnlySpace()->ClearReadOnly();
     auto *object = heap->AllocateReadOnlyOrHugeObject(
         JSHClass::Cast(thread->GlobalConstants()->GetBigIntClass().GetTaggedObject()));
     auto *region = Region::ObjectAddressToRange(object);
@@ -122,7 +122,6 @@ HWTEST_F_L0(ReadOnlySpaceTest, AllocateTest)
 HWTEST_F_L0(ReadOnlySpaceTest, CompactHeapBeforeForkTest)
 {
     auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetReadOnlySpace()->ClearReadOnly();
     std::string rawStr = "test string";
     JSHandle<EcmaString> string = factory->NewFromStdString(rawStr);
     JSHandle<JSObject> obj = factory->NewEmptyJSObject();
@@ -140,7 +139,6 @@ HWTEST_F_L0(ReadOnlySpaceTest, CompactHeapBeforeForkTest)
 HWTEST_F_L0(ReadOnlySpaceTest, GCTest)
 {
     auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetReadOnlySpace()->ClearReadOnly();
     auto *object = heap->AllocateReadOnlyOrHugeObject(
         JSHClass::Cast(thread->GlobalConstants()->GetBigIntClass().GetTaggedObject()));
     heap->CollectGarbage(TriggerGCType::YOUNG_GC);
@@ -148,5 +146,24 @@ HWTEST_F_L0(ReadOnlySpaceTest, GCTest)
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     auto *region = Region::ObjectAddressToRange(object);
     EXPECT_TRUE(region->InReadOnlySpace());
+}
+
+HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
+{
+    auto vm = thread->GetEcmaVM();
+    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    std::string rawStr = "fork string";
+    JSHandle<EcmaString> string = factory->NewFromStdString(rawStr);
+    JSNApi::preFork(vm);
+    if (fork() != 0) {
+        // test gc in parent process
+        heap->CollectGarbage(TriggerGCType::OLD_GC);
+    } else {
+        JSNApi::postFork(vm);
+        // test gc in child process
+        heap->CollectGarbage(TriggerGCType::OLD_GC);
+        auto *region = Region::ObjectAddressToRange(string.GetObject<TaggedObject>());
+        EXPECT_TRUE(region->InReadOnlySpace());
+    }
 }
 }  // namespace panda::test

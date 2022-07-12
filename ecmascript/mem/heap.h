@@ -61,6 +61,7 @@ public:
     void Prepare();
     void Resume(TriggerGCType gcType);
     void CompactHeapBeforeFork();
+    void DisableParallelGC();
     // fixme: Rename NewSpace to YoungSpace.
     // This is the active young generation space that the new objects are allocated in
     // or copied into (from the other semi space) during semi space GC.

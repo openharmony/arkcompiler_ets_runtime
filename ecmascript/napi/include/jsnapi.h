@@ -1146,6 +1146,8 @@ public:
     static void InitializeMemMapAllocator();
     static void DestroyMemMapAllocator();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
+    static void preFork(EcmaVM *vm);
+    static void postFork(EcmaVM *vm);
 private:
     static int vmCount_;
     static bool initialize_;
