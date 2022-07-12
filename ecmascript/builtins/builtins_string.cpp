@@ -1840,14 +1840,21 @@ JSTaggedValue BuiltinsString::ToLowerCase(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t thisLen = thisHandle->GetLength();
-    std::u16string u16strThis;
     if (thisHandle->IsUtf16()) {
-        u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
-    } else {
-        const uint8_t *uint8This = thisHandle->GetDataUtf8();
-        u16strThis = base::StringHelper::Utf8ToU16String(uint8This, thisLen);
+        std::u16string u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
+        return JSTaggedValue(base::StringHelper::ToLower(thread, u16strThis));
     }
-    return JSTaggedValue(base::StringHelper::ToLower(thread, u16strThis));
+    auto newString = EcmaString::AllocStringObject(thisLen, true, thread->GetEcmaVM());
+    Span<uint8_t> data(reinterpret_cast<uint8_t *>(thisHandle->GetData()), thisLen);
+    auto newStringPtr = reinterpret_cast<uint8_t *>(newString->GetData());
+    for (uint32_t index = 0; index < thisLen; ++index) {
+        if (base::StringHelper::Utf8CharInRange(data[index], 'A', 'Z')) {
+            *(newStringPtr + index) = data[index] -'A' + 'a';
+        } else {
+            *(newStringPtr + index) = data[index];
+        }
+    }
+    return JSTaggedValue(newString);
 }
 
 // 21.1.3.23
@@ -1869,14 +1876,21 @@ JSTaggedValue BuiltinsString::ToUpperCase(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t thisLen = thisHandle->GetLength();
-    std::u16string u16strThis;
     if (thisHandle->IsUtf16()) {
-        u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
-    } else {
-        const uint8_t *uint8This = thisHandle->GetDataUtf8();
-        u16strThis = base::StringHelper::Utf8ToU16String(uint8This, thisLen);
+        std::u16string u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
+        return JSTaggedValue(base::StringHelper::ToUpper(thread, u16strThis));
     }
-    return JSTaggedValue(base::StringHelper::ToUpper(thread, u16strThis));
+    auto newString = EcmaString::AllocStringObject(thisLen, true, thread->GetEcmaVM());
+    Span<uint8_t> data(reinterpret_cast<uint8_t *>(thisHandle->GetData()), thisLen);
+    auto newStringPtr = reinterpret_cast<uint8_t *>(newString->GetData());
+    for (uint32_t index = 0; index < thisLen; ++index) {
+        if (base::StringHelper::Utf8CharInRange(data[index], 'a', 'z')) {
+            *(newStringPtr + index) = data[index] -'a' + 'A';
+        } else {
+            *(newStringPtr + index) = data[index];
+        }
+    }
+    return JSTaggedValue(newString);
 }
 
 // 21.1.3.25
