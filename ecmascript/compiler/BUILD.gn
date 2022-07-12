@@ -12,10 +12,10 @@
 # limitations under the License.
 
 if (defined(ark_standalone_build)) {
-  import("//js_runtime/js_runtime_config.gni")
+  import("//ets_runtime/js_runtime_config.gni")
   import("$build_root/ark.gni")
 } else {
-  import("//ark/js_runtime/js_runtime_config.gni")
+  import("//arkcompiler/ets_runtime/js_runtime_config.gni")
   import("//build/ohos.gni")
 
   action("build_llvm_libs") {
@@ -201,7 +201,7 @@ source_set("ark_aot_compiler_set") {
 source_set("libark_stub_set") {
   deps = [ ":build_stub_to_cpp" ]
 
-  sources = [ "$root_gen_dir/ark/js_runtime/stub_m.cpp" ]
+  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp" ]
 
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
@@ -268,7 +268,7 @@ if (!defined(ark_standalone_build)) {
     deps =
         [ "$js_root/ecmascript/compiler:ark_stub_compiler(${host_toolchain})" ]
 
-    stub_file_gen_dir = "$root_gen_dir/ark/js_runtime"
+    stub_file_gen_dir = "$root_gen_dir/arkcompiler/ets_runtime"
     root_out_dir_with_host_toolchain =
         get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
 
@@ -301,7 +301,7 @@ if (!defined(ark_standalone_build)) {
   }
 
   action("build_stub_to_cpp") {
-    sources = [ "$root_gen_dir/ark/js_runtime/stub.m" ]
+    sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub.m" ]
 
     script = "$js_root/script/build_resource_to_cpp.py"
 
@@ -309,11 +309,11 @@ if (!defined(ark_standalone_build)) {
 
     args = [
       "--input",
-      rebase_path("$root_gen_dir/ark/js_runtime/stub.m"),
+      rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.m"),
       "--output",
-      rebase_path("$root_gen_dir/ark/js_runtime/stub_m.cpp"),
+      rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp"),
     ]
 
-    outputs = [ "$root_gen_dir/ark/js_runtime/stub_m.cpp" ]
+    outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp" ]
   }
 }

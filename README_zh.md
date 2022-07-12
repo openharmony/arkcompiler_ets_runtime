@@ -22,7 +22,7 @@
 ## 目录<a name="section161941989596"></a>
 
 ```
-/ark/js_runtime
+/arkcompiler/ets_runtime
 ├─ ecmascript             # 方舟JS运行时实现，包括ECMAScript标准库、解释器、内存管理等
 │   ├─ base               # 基础帮助类
 │   ├─ builtins           # ECMAScript标准库
@@ -74,12 +74,12 @@ LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/ark/ark:out/hispark_taurus/clang_x6
 
 ```
 
-更多使用说明请参考：[方舟运行时使用指南](https://gitee.com/openharmony/ark_js_runtime/blob/master/docs/ARK-Runtime-Usage-Guide-zh.md)
+更多使用说明请参考：[方舟运行时使用指南](https://gitee.com/openharmony/arkcompiler_ets_runtime/blob/master/docs/ARK-Runtime-Usage-Guide-zh.md)
 
 ## 相关仓<a name="section1371113476307"></a>
 
-[ark\_runtime\_core](https://gitee.com/openharmony/ark_runtime_core)
+[arkcompiler\_runtime\_core](https://gitee.com/openharmony/arkcompiler_runtime_core)
 
-**[ark\_js\_runtime](https://gitee.com/openharmony/ark_js_runtime)**
+**[arkcompiler\_ets\_runtime](https://gitee.com/openharmony/arkcompiler_ets_runtime)**
 
-[ark\_ts2abc](https://gitee.com/openharmony/ark_ts2abc)
+[arkcompiler\_ets\_frontend_](https://gitee.com/openharmony/arkcompiler_ets_frontend)

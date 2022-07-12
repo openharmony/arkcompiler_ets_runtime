@@ -806,7 +806,7 @@ HWTEST_F_L0(StubTest, LoadGCIRTest)
 {
     LOG_COMPILER(INFO) << "--------------LoadGCIRTest--------------------";
     char *path = get_current_dir_name();
-    std::string filePath = std::string(path) + "/ark/js_runtime/ecmascript/compiler/tests/satepoint_GC_0.ll";
+    std::string filePath = std::string(path) + "/arkcompiler/ets_runtime/ecmascript/compiler/tests/satepoint_GC_0.ll";
 
     char resolvedPath[PATH_MAX];
     char *res = realpath(filePath.c_str(), resolvedPath);

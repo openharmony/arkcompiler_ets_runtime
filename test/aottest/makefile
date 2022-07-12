@@ -72,8 +72,8 @@ else
 	endif
 endif
 
-test_dir=$(root_dir)/ark/js_runtime/test/aottest
-ts2abc=$(product_dir)/clang_x64/obj/ark/ts2abc/ts2panda/build/src/index.js
+test_dir=$(root_dir)/arkcompiler/ets_runtime/test/aottest
+ts2abc=$(product_dir)/clang_x64/obj/arkcompiler/ets_runtime/ts2panda/build/src/index.js
 out_dir=$(product_dir)/clang_x64/aottest
 case_dir=$(out_dir)/$(test_name)
 com_stub_args=--asm-interpreter=true --stub-file=$(out_dir)/stub.m

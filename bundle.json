@@ -1,5 +1,5 @@
 {
-    "name": "@ohos/ark_js_runtime",
+    "name": "@ohos/arkcompiler_ets_runtime",
     "version": "",
     "description": "支持应用TS/JS语言代码的运行，行为符合ArkUI框架需要的Strict模式的ES2015标准",
     "homePage": "https://gitee.com/openharmony",
@@ -8,7 +8,7 @@
     "scripts": {},
     "dirs": [],
     "segment": {
-        "destPath": "ark/js_runtime"
+        "destPath": "arkcompiler/ets_runtime"
     },
     "component": {
         "name": "ark_js_runtime",
@@ -26,12 +26,12 @@
         },
         "build": {
             "sub_component": [
-                "//ark/js_runtime:ark_js_packages",
-                "//ark/js_runtime:ark_js_host_linux_tools_packages"
+                "//arkcompiler/ets_runtime:ark_js_packages",
+                "//arkcompiler/ets_runtime:ark_js_host_linux_tools_packages"
             ],
             "inner_kits": [],
             "test": [
-                "//ark/js_runtime:ark_js_unittest"
+                "//arkcompiler/ets_runtime:ark_js_unittest"
             ]
         }
     }

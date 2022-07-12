@@ -160,7 +160,7 @@ hello-world.abc反汇编结果如下：
 python3 test262/run_test262.py [options]
 ```
 
-执行路径为：项目根目录/ark/ts2abc。
+执行路径为：项目根目录/arkcompiler/ets_frontend。
 
 <a name="table11141827153017"></a>
 <table><thead align="left"><tr id="row101462717303"><th class="cellrowborder" valign="top" width="50%" id="mcps1.1.3.1.1"><p id="p51552743010"><a name="p51552743010"></a><a name="p51552743010"></a>选项</p>
@@ -298,7 +298,7 @@ python3 test262/run_test262.py [options]
 
 ### 测试输出
 
-Test262所有用例的测试结果位于项目根目录/ark/ts2abc/out下。shell中测试输出结果如下：
+Test262所有用例的测试结果位于项目根目录/arkcompiler/ets_frontend/out下。shell中测试输出结果如下：
 
 ```
 $python3 test262/run_test262.py --file test262/data/test_es2015/built-ins/Array/15.4.5.1-5-1.js
