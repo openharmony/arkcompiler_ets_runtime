@@ -21,7 +21,8 @@
 
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
-#define ASM_INTERPRETER_BC_STUB_LIST(V, T, I)            \
+// V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
+#define ASM_INTERPRETER_BC_STUB_LIST(V, T, D)            \
     T(HandleLdNanPref)                                   \
     T(HandleLdInfinityPref)                              \
     T(HandleLdGlobalThisPref)                            \
@@ -31,7 +32,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleLdGlobalPref)                                \
     T(HandleLdTruePref)                                  \
     T(HandleLdFalsePref)                                 \
-    T(HandleThrowDynPref)                                \
+    D(HandleThrowDynPref)                                \
     T(HandleTypeOfDynPref)                               \
     T(HandleLdLexEnvDynPref)                             \
     T(HandlePopLexEnvDynPref)                            \
@@ -39,14 +40,14 @@ namespace panda::ecmascript::kungfu {
     T(HandleGetPropIteratorPref)                         \
     T(HandleAsyncFunctionEnterPref)                      \
     T(HandleLdHolePref)                                  \
-    T(HandleReturnUndefinedPref)                         \
+    D(HandleReturnUndefinedPref)                         \
     T(HandleCreateEmptyObjectPref)                       \
     T(HandleCreateEmptyArrayPref)                        \
     T(HandleGetIteratorPref)                             \
-    T(HandleThrowThrowNotExistsPref)                     \
-    T(HandleThrowPatternNonCoerciblePref)                \
+    D(HandleThrowThrowNotExistsPref)                     \
+    D(HandleThrowPatternNonCoerciblePref)                \
     T(HandleLdHomeObjectPref)                            \
-    T(HandleThrowDeleteSuperPropertyPref)                \
+    D(HandleThrowDeleteSuperPropertyPref)                \
     T(HandleDebuggerPref)                                \
     T(HandleAdd2DynPrefV8)                               \
     T(HandleSub2DynPrefV8)                               \
@@ -75,25 +76,25 @@ namespace panda::ecmascript::kungfu {
     T(HandleInstanceOfDynPrefV8)                         \
     T(HandleStrictNotEqDynPrefV8)                        \
     T(HandleStrictEqDynPrefV8)                           \
-    T(HandleResumeGeneratorPrefV8)                       \
+    D(HandleResumeGeneratorPrefV8)                       \
     T(HandleGetResumeModePrefV8)                         \
-    T(HandleCreateGeneratorObjPrefV8)                    \
-    T(HandleThrowConstAssignmentPrefV8)                  \
+    D(HandleCreateGeneratorObjPrefV8)                    \
+    D(HandleThrowConstAssignmentPrefV8)                  \
     T(HandleGetTemplateObjectPrefV8)                     \
     T(HandleGetNextPropNamePrefV8)                       \
-    T(HandleCallArg0DynPrefV8)                           \
-    T(HandleThrowIfNotObjectPrefV8)                      \
+    D(HandleCallArg0DynPrefV8)                           \
+    D(HandleThrowIfNotObjectPrefV8)                      \
     T(HandleIterNextPrefV8)                              \
     T(HandleCloseIteratorPrefV8)                         \
     T(HandleCopyModulePrefV8)                            \
-    T(HandleSuperCallSpreadPrefV8)                       \
+    D(HandleSuperCallSpreadPrefV8)                       \
     T(HandleDelObjPropPrefV8V8)                          \
-    T(HandleNewObjSpreadDynPrefV8V8)                     \
+    D(HandleNewObjSpreadDynPrefV8V8)                     \
     T(HandleCreateIterResultObjPrefV8V8)                 \
-    T(HandleSuspendGeneratorPrefV8V8)                    \
+    D(HandleSuspendGeneratorPrefV8V8)                    \
     T(HandleAsyncFunctionAwaitUncaughtPrefV8V8)          \
-    T(HandleThrowUndefinedIfHolePrefV8V8)                \
-    T(HandleCallArg1DynPrefV8V8)                         \
+    D(HandleThrowUndefinedIfHolePrefV8V8)                \
+    D(HandleCallArg1DynPrefV8V8)                         \
     T(HandleCopyDataPropertiesPrefV8V8)                  \
     T(HandleStArraySpreadPrefV8V8)                       \
     T(HandleGetIteratorNextPrefV8V8)                     \
@@ -106,16 +107,16 @@ namespace panda::ecmascript::kungfu {
     T(HandleLdObjByIndexPrefV8Imm32)                     \
     T(HandleStObjByIndexPrefV8Imm32)                     \
     T(HandleStOwnByIndexPrefV8Imm32)                     \
-    T(HandleCallSpreadDynPrefV8V8V8)                     \
+    D(HandleCallSpreadDynPrefV8V8V8)                     \
     T(HandleAsyncFunctionResolvePrefV8V8V8)              \
     T(HandleAsyncFunctionRejectPrefV8V8V8)               \
-    T(HandleCallArgs2DynPrefV8V8V8)                      \
-    T(HandleCallArgs3DynPrefV8V8V8V8)                    \
+    D(HandleCallArgs2DynPrefV8V8V8)                      \
+    D(HandleCallArgs3DynPrefV8V8V8V8)                    \
     T(HandleDefineGetterSetterByValuePrefV8V8V8V8)       \
-    T(HandleNewObjDynRangePrefImm16V8)                   \
-    T(HandleCallIRangeDynPrefImm16V8)                    \
-    T(HandleCallIThisRangeDynPrefImm16V8)                \
-    T(HandleSuperCallPrefImm16V8)                        \
+    D(HandleNewObjDynRangePrefImm16V8)                   \
+    D(HandleCallIRangeDynPrefImm16V8)                    \
+    D(HandleCallIThisRangeDynPrefImm16V8)                \
+    D(HandleSuperCallPrefImm16V8)                        \
     T(HandleCreateObjectWithExcludedKeysPrefImm16V8V8)   \
     T(HandleDefineFuncDynPrefId16Imm16V8)                \
     T(HandleDefineNCFuncDynPrefId16Imm16V8)              \
@@ -126,7 +127,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleCopyRestArgsPrefImm16)                       \
     T(HandleCreateArrayWithBufferPrefImm16)              \
     T(HandleCreateObjectHavingMethodPrefImm16)           \
-    T(HandleThrowIfSuperNotCorrectCallPrefImm16)         \
+    D(HandleThrowIfSuperNotCorrectCallPrefImm16)         \
     T(HandleCreateObjectWithBufferPrefImm16)             \
     T(HandleLdLexVarDynPrefImm4Imm4)                     \
     T(HandleLdLexVarDynPrefImm8Imm8)                     \
@@ -170,11 +171,11 @@ namespace panda::ecmascript::kungfu {
     T(HandleJeqzImm16)                                   \
     T(HandleLdaDynV8)                                    \
     T(HandleStaDynV8)                                    \
-    T(HandleReturnDyn)                                   \
+    D(HandleReturnDyn)                                   \
     T(HandleMovV4V4)                                     \
     T(HandleJnezImm8)                                    \
     T(HandleJnezImm16)                                   \
-    T(ExceptionHandler)
+    D(ExceptionHandler)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)           \
     V(SingleStepDebugging)                               \
@@ -184,7 +185,7 @@ namespace panda::ecmascript::kungfu {
     V(NewObjectDynRangeThrowException)                   \
     V(InterpreterGetPropertyByName)                      \
 
-#define INTERPRETER_IGNORED_BC_STUB_LIST(V) \
+#define INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(V) \
     ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)
 
 #define INTERPRETER_BC_STUB_LIST(V) \

@@ -105,7 +105,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
     uint32_t arrayLength = 2U; // 2 means ProfileTypeInfo length
     JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
     handleTaggedArray->Set(thread, 0, handleBoxValue.GetTaggedValue());
-    handleTaggedArray->Set(thread, 1, handleValue);
+    handleTaggedArray->Set(thread, 1, JSTaggedValue::Undefined());
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
     // ProfileTypeInfo get value is HeapObject and then call LoadGlobal function to load
     JSTaggedValue resultValue1 =
@@ -113,7 +113,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
                                            JSTaggedValue::Undefined(), JSTaggedValue::Undefined(), handleValue, 0);
     EXPECT_TRUE(resultValue1.IsUndefined());
     EXPECT_EQ(handleBoxValue->GetValue().GetInt(), 2);
-    // the globalValue is jsobject then call loadMiss function can find global variable from global record firstly
+    // the globalValue is jsobject then call storeMiss function can find global variable from global record firstly
     // so need store global record.
     SlowRuntimeStub::StGlobalRecord(thread, propKey.GetTaggedValue(), handleBoxValue.GetTaggedValue(), false);
     JSTaggedValue resultValue2 =

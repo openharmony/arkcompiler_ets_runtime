@@ -145,7 +145,9 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         JSTaggedValue box = SlowRuntimeStub::LdGlobalRecord(thread_, key.GetTaggedValue());
         if (!box.IsUndefined()) {
             ASSERT(box.IsPropertyBox());
-            icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
+            if (icAccessor_.GetICState() != ProfileTypeAccessor::ICState::MEGA) {
+                icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
+            }
             return PropertyBox::Cast(box.GetTaggedObject())->GetValue();
         }
     }
@@ -188,7 +190,9 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             ASSERT(box.IsPropertyBox());
             SlowRuntimeStub::TryUpdateGlobalRecord(thread_, key.GetTaggedValue(), value.GetTaggedValue());
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-            icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
+            if (icAccessor_.GetICState() != ProfileTypeAccessor::ICState::MEGA) {
+                icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
+            }
             return JSTaggedValue::Undefined();
         }
     }
