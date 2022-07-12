@@ -107,13 +107,6 @@ public:
     NO_COPY_SEMANTIC(OldSpace);
     NO_MOVE_SEMANTIC(OldSpace);
 
-    /* The most extreme situation:
-     * All the younger generation were promoted, and there was no free space in the old space.
-     */
-    bool CanExpand(size_t promotedSize)
-    {
-        return initialCapacity_ > committedSize_ + promotedSize;
-    }
     Region *TryToGetExclusiveRegion(size_t size);
 
     // CSet

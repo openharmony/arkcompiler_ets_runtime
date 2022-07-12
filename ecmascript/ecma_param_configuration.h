@@ -80,8 +80,6 @@ public:
             minGrowingStep_ = 16_MB;
             maxStackSize_ = 512_KB;
         }
-        size_t half = 2;
-        defaultHugeObjectSpaceSize_ = maxHeapSize_ / half;
     }
 
     size_t GetMaxHeapSize() const
@@ -129,11 +127,6 @@ public:
         return semiSpaceOvershootSize_;
     }
 
-    size_t GetDefaultHugeObjectSpaceSize() const
-    {
-        return defaultHugeObjectSpaceSize_;
-    }
-
     size_t GetMinAllocLimitGrowingStep() const
     {
         return minAllocLimitGrowingStep_;
@@ -161,7 +154,6 @@ private:
     size_t defaultNonMovableSpaceSize_ {0};
     size_t defaultSnapshotSpaceSize_ {0};
     size_t defaultMachineCodeSpaceSize_ {0};
-    size_t defaultHugeObjectSpaceSize_ {0};
     size_t semiSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceOvershootSize_ {0};
     size_t minAllocLimitGrowingStep_ {0};

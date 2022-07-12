@@ -624,7 +624,7 @@ void EcmaVM::ClearBufferData()
 bool EcmaVM::ExecutePromisePendingJob()
 {
     if (isProcessingPendingJob_) {
-        LOG_ECMA(ERROR) << "EcmaVM::ExecutePromisePendingJob can not reentrant";
+        LOG_ECMA(DEBUG) << "EcmaVM::ExecutePromisePendingJob can not reentrant";
         return false;
     }
     if (!thread_->HasPendingException()) {
