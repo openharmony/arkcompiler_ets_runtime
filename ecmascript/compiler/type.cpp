@@ -29,35 +29,10 @@ std::string GateType::GetTypeStr() const
 {
     GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
     ASSERT(gt.GetFlag() == 0);
-    if (IsPrimitiveTypeKind()) {
-        auto primitive = static_cast<TSPrimitiveType>(gt.GetLocalId());
-        switch (primitive) {
-            case TSPrimitiveType::ANY:
-                return "any";
-            case TSPrimitiveType::NUMBER:
-                return "number";
-            case TSPrimitiveType::BOOLEAN:
-                return "boolean";
-            case TSPrimitiveType::VOID_TYPE:
-                return "void";
-            case TSPrimitiveType::STRING:
-                return "string";
-            case TSPrimitiveType::SYMBOL:
-                return "symbol";
-            case TSPrimitiveType::NULL_TYPE:
-                return "null";
-            case TSPrimitiveType::UNDEFINED:
-                return "undefined";
-            case TSPrimitiveType::INT:
-                return "int";
-            case TSPrimitiveType::BIG_INT:
-                return "big_int";
-            default:
-                break;
-        }
-    }
     auto typeKind = static_cast<TSTypeKind>(gt.GetKind());
     switch (typeKind) {
+        case TSTypeKind::PRIMITIVE:
+            return GetPrimitiveStr(gt);
         case TSTypeKind::CLASS:
             return "class";
         case TSTypeKind::CLASS_INSTANCE:
@@ -75,8 +50,37 @@ std::string GateType::GetTypeStr() const
         case TSTypeKind::INTERFACE_KIND:
             return "interface";
         default:
-            break;
+            UNREACHABLE();
     }
-    return "gatetype:" + std::to_string(gt.GetType());
+}
+
+std::string GateType::GetPrimitiveStr(const GlobalTSTypeRef gt) const
+{
+    ASSERT(IsPrimitiveTypeKind());
+    auto primitive = static_cast<TSPrimitiveType>(gt.GetLocalId());
+    switch (primitive) {
+        case TSPrimitiveType::ANY:
+            return "any";
+        case TSPrimitiveType::NUMBER:
+            return "number";
+        case TSPrimitiveType::BOOLEAN:
+            return "boolean";
+        case TSPrimitiveType::VOID_TYPE:
+            return "void";
+        case TSPrimitiveType::STRING:
+            return "string";
+        case TSPrimitiveType::SYMBOL:
+            return "symbol";
+        case TSPrimitiveType::NULL_TYPE:
+            return "null";
+        case TSPrimitiveType::UNDEFINED:
+            return "undefined";
+        case TSPrimitiveType::INT:
+            return "int";
+        case TSPrimitiveType::BIG_INT:
+            return "bigint";
+        default:
+            UNREACHABLE();
+    }
 }
 };  // namespace panda::ecmascript::kungfu

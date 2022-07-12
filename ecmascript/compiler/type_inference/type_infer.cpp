@@ -145,7 +145,6 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::EXPDYN_PREF_V8:
         case EcmaOpcode::STARRAYSPREAD_PREF_V8_V8:
             return SetNumberType(gate);
-            break;
         case EcmaOpcode::LDTRUE_PREF:
         case EcmaOpcode::LDFALSE_PREF:
         case EcmaOpcode::EQDYN_PREF_V8:
@@ -163,56 +162,40 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::SETOBJECTWITHPROTO_PREF_V8_V8:
         case EcmaOpcode::DELOBJPROP_PREF_V8_V8:
             return SetBooleanType(gate);
-            break;
         case EcmaOpcode::LDUNDEFINED_PREF:
             return InferLdUndefined(gate);
-            break;
         case EcmaOpcode::LDNULL_PREF:
             return InferLdNull(gate);
-            break;
         case EcmaOpcode::LDAI_DYN_IMM32:
             return InferLdaiDyn(gate);
-            break;
         case EcmaOpcode::FLDAI_DYN_IMM64:
             return InferFLdaiDyn(gate);
-            break;
         case EcmaOpcode::LDSYMBOL_PREF:
             return InferLdSymbol(gate);
-            break;
         case EcmaOpcode::THROWDYN_PREF:
             return InferThrowDyn(gate);
-            break;
         case EcmaOpcode::TYPEOFDYN_PREF:
             return InferTypeOfDyn(gate);
-            break;
         case EcmaOpcode::ADD2DYN_PREF_V8:
             return InferAdd2Dyn(gate);
-            break;
         case EcmaOpcode::LDOBJBYINDEX_PREF_V8_IMM32:
             return InferLdObjByIndex(gate);
-            break;
         case EcmaOpcode::STGLOBALVAR_PREF_ID32:
         case EcmaOpcode::STCONSTTOGLOBALRECORD_PREF_ID32:
         case EcmaOpcode::TRYSTGLOBALBYNAME_PREF_ID32:
         case EcmaOpcode::STLETTOGLOBALRECORD_PREF_ID32:
         case EcmaOpcode::STCLASSTOGLOBALRECORD_PREF_ID32:
             return SetStGlobalBcType(gate);
-            break;
         case EcmaOpcode::LDGLOBALVAR_PREF_ID32:
             return InferLdGlobalVar(gate);
-            break;
         case EcmaOpcode::RETURNUNDEFINED_PREF:
             return InferReturnUndefined(gate);
-            break;
         case EcmaOpcode::RETURN_DYN:
             return InferReturnDyn(gate);
-            break;
         case EcmaOpcode::LDOBJBYNAME_PREF_ID32_V8:
             return InferLdObjByName(gate);
-            break;
         case EcmaOpcode::LDA_STR_ID32:
             return InferLdStr(gate);
-            break;
         case EcmaOpcode::CALLARG0DYN_PREF_V8:
         case EcmaOpcode::CALLARG1DYN_PREF_V8_V8:
         case EcmaOpcode::CALLARGS2DYN_PREF_V8_V8_V8:
@@ -221,23 +204,19 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::CALLIRANGEDYN_PREF_IMM16_V8:
         case EcmaOpcode::CALLITHISRANGEDYN_PREF_IMM16_V8:
             return InferCallFunction(gate);
-            break;
         case EcmaOpcode::LDOBJBYVALUE_PREF_V8_V8:
             return InferLdObjByValue(gate);
-            break;
         case EcmaOpcode::GETNEXTPROPNAME_PREF_V8:
             return InferGetNextPropName(gate);
-            break;
         case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_PREF_V8_V8_V8_V8:
             return InferDefineGetterSetterByValue(gate);
-            break;
         case EcmaOpcode::NEWOBJSPREADDYN_PREF_V8_V8:
             return InferNewObjSpread(gate);
-            break;
         case EcmaOpcode::SUPERCALL_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLSPREAD_PREF_V8:
             return InferSuperCall(gate);
-            break;
+        case EcmaOpcode::TRYLDGLOBALBYNAME_PREF_ID32:
+            return InferTryLdGlobalByName(gate);
         default:
             break;
     }
@@ -491,6 +470,19 @@ bool TypeInfer::InferSuperCall(GateRef gate)
     auto funcType = gateAccessor_.GetGateType(newTarget);
     if (!funcType.IsUndefinedType()) {
         return UpdateType(gate, funcType);
+    }
+    return false;
+}
+
+bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
+{
+    // todo by hongtao, should consider function of .d.ts
+    auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
+    ASSERT(byteCodeInfo.inputs.size() == 1);
+    auto stringId = std::get<StringId>(byteCodeInfo.inputs[0]).GetId();
+    auto iter = stringIdToGateType_.find(stringId);
+    if (iter != stringIdToGateType_.end()) {
+        return UpdateType(gate, iter->second);
     }
     return false;
 }

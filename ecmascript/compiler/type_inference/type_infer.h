@@ -68,6 +68,7 @@ private:
     bool InferDefineGetterSetterByValue(GateRef gate);
     bool InferNewObjSpread(GateRef gate);
     bool InferSuperCall(GateRef gate);
+    bool InferTryLdGlobalByName(GateRef gate);
     void TypeInferPrint() const;
 
     BytecodeCircuitBuilder *builder_ {nullptr};
