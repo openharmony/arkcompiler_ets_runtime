@@ -975,7 +975,7 @@ void Stub::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRe
         Branch(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);
         Bind(&isVailedIndex);
         {
-            GateRef loadOffset = IntPtr(Region::GetOldToNewSetOffset(env_.Is32Bit()));
+            GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_.Is32Bit()));
             auto oldToNewSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
             Label isNullPtr(env);
             Label notNullPtr(env);

@@ -45,18 +45,18 @@ inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
 
 inline RememberedSet *Region::GetOrCreateOldToNewRememberedSet()
 {
-    if (UNLIKELY(oldToNewSet_ == nullptr)) {
+    if (UNLIKELY(packedData_.oldToNewSet_ == nullptr)) {
         os::memory::LockHolder lock(lock_);
-        if (oldToNewSet_ == nullptr) {
+        if (packedData_.oldToNewSet_ == nullptr) {
             if (sweepingRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
-                oldToNewSet_ = sweepingRSet_;
+                packedData_.oldToNewSet_ = sweepingRSet_;
                 sweepingRSet_ = nullptr;
             } else {
-                oldToNewSet_ = CreateRememberedSet();
+                packedData_.oldToNewSet_ = CreateRememberedSet();
             }
         }
     }
-    return oldToNewSet_;
+    return packedData_.oldToNewSet_;
 }
 
 inline void Region::MergeRSetForConcurrentSweeping()
@@ -64,11 +64,11 @@ inline void Region::MergeRSetForConcurrentSweeping()
     if (sweepingRSet_ == nullptr) {
         return;
     }
-    if (oldToNewSet_ == nullptr) {
-        oldToNewSet_ = sweepingRSet_;
+    if (packedData_.oldToNewSet_ == nullptr) {
+        packedData_.oldToNewSet_ = sweepingRSet_;
         sweepingRSet_ = nullptr;
     } else {
-        oldToNewSet_->Merge(sweepingRSet_);
+        packedData_.oldToNewSet_->Merge(sweepingRSet_);
         DeleteSweepingRSet();
         sweepingRSet_ = nullptr;
     }
@@ -76,40 +76,42 @@ inline void Region::MergeRSetForConcurrentSweeping()
 
 inline GCBitset *Region::GetMarkGCBitset() const
 {
-    return markGCBitset_;
+    return packedData_.markGCBitset_;
 }
 
 inline bool Region::AtomicMark(void *address)
 {
     auto addrPtr = reinterpret_cast<uintptr_t>(address);
     ASSERT(InRange(addrPtr));
-    return markGCBitset_->SetBit<AccessType::ATOMIC>((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+    return packedData_.markGCBitset_->SetBit<AccessType::ATOMIC>(
+        (addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
 }
 
 inline void Region::ClearMark(void *address)
 {
     auto addrPtr = reinterpret_cast<uintptr_t>(address);
     ASSERT(InRange(addrPtr));
-    markGCBitset_->ClearBit((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+    packedData_.markGCBitset_->ClearBit((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
 }
 
 inline bool Region::Test(void *addr) const
 {
     auto addrPtr = reinterpret_cast<uintptr_t>(addr);
     ASSERT(InRange(addrPtr));
-    return markGCBitset_->TestBit((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+    return packedData_.markGCBitset_->TestBit((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
 }
 
 template <typename Visitor>
 inline void Region::IterateAllMarkedBits(Visitor visitor) const
 {
-    markGCBitset_->IterateMarkedBitsConst(reinterpret_cast<uintptr_t>(this), bitsetSize_, visitor);
+    packedData_.markGCBitset_->IterateMarkedBitsConst(
+        reinterpret_cast<uintptr_t>(this), packedData_.bitsetSize_, visitor);
 }
 
 inline void Region::ClearMarkGCBitset()
 {
-    if (markGCBitset_ != nullptr) {
-        markGCBitset_->Clear(bitsetSize_);
+    if (packedData_.markGCBitset_ != nullptr) {
+        packedData_.markGCBitset_->Clear(packedData_.bitsetSize_);
     }
 }
 
@@ -171,8 +173,8 @@ inline void Region::InsertOldToNewRSet(uintptr_t addr)
 template <typename Visitor>
 inline void Region::IterateAllOldToNewBits(Visitor visitor)
 {
-    if (oldToNewSet_ != nullptr) {
-        oldToNewSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
+    if (packedData_.oldToNewSet_ != nullptr) {
+        packedData_.oldToNewSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
     }
 }
 
@@ -186,23 +188,23 @@ inline void Region::AtomicIterateAllSweepingRSetBits(Visitor visitor)
 
 inline void Region::ClearOldToNewRSet()
 {
-    if (oldToNewSet_ != nullptr) {
-        oldToNewSet_->ClearAll();
+    if (packedData_.oldToNewSet_ != nullptr) {
+        packedData_.oldToNewSet_->ClearAll();
     }
 }
 
 inline void Region::ClearOldToNewRSetInRange(uintptr_t start, uintptr_t end)
 {
-    if (oldToNewSet_ != nullptr) {
-        oldToNewSet_->ClearRange(ToUintPtr(this), start, end);
+    if (packedData_.oldToNewSet_ != nullptr) {
+        packedData_.oldToNewSet_->ClearRange(ToUintPtr(this), start, end);
     }
 }
 
 inline void Region::DeleteOldToNewRSet()
 {
-    if (oldToNewSet_ != nullptr) {
-        thread_->GetNativeAreaAllocator()->Free(oldToNewSet_, oldToNewSet_->Size());
-        oldToNewSet_ = nullptr;
+    if (packedData_.oldToNewSet_ != nullptr) {
+        thread_->GetNativeAreaAllocator()->Free(packedData_.oldToNewSet_, packedData_.oldToNewSet_->Size());
+        packedData_.oldToNewSet_ = nullptr;
     }
 }
 

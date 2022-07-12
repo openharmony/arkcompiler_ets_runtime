@@ -1764,7 +1764,7 @@ inline GateRef Stub::ObjectAddressToRange(GateRef x)
 
 inline GateRef Stub::InYoungGeneration(GateRef region)
 {
-    auto offset = env_.Is32Bit() ? Region::REGION_FLAG_OFFSET_32 : Region::REGION_FLAG_OFFSET_64;
+    auto offset = Region::PackedData::GetFlagOffset(env_.Is32Bit());
     GateRef x = Load(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
         IntPtr(0));
     if (env_.Is32Bit()) {

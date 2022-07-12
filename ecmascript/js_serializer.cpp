@@ -144,7 +144,7 @@ bool JSSerializer::AllocateBuffer(size_t bytes)
 {
     // Get internal heap size
     if (sizeLimit_ == 0) {
-        uint64_t heapSize = thread_->GetEcmaVM()->GetJSOptions().GetInternalMemorySizeLimit();
+        uint64_t heapSize = thread_->GetEcmaVM()->GetJSOptions().GetSerializerBufferSizeLimit();
         sizeLimit_ = heapSize;
     }
     size_t oldSize = bufferSize_;
