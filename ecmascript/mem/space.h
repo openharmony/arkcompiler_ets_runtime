@@ -193,7 +193,8 @@ protected:
 
 class HugeObjectSpace : public Space {
 public:
-    explicit HugeObjectSpace(HeapRegionAllocator *regionAllocator, size_t initialCapacity, size_t maximumCapacity);
+    explicit HugeObjectSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+                             size_t maximumCapacity);
     ~HugeObjectSpace() override = default;
     NO_COPY_SEMANTIC(HugeObjectSpace);
     NO_MOVE_SEMANTIC(HugeObjectSpace);
@@ -207,6 +208,7 @@ public:
 
 private:
     EcmaList<Region> hugeNeedFreeList_ {};
+    Heap* heap_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SPACE_H

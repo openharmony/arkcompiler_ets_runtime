@@ -83,8 +83,8 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 
 bool SparseSpace::Expand()
 {
-    if (committedSize_ >= initialCapacity_) {
-        LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of old space is too big. ";
+    if (committedSize_ >= maximumCapacity_) {
+        LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;
     }
 

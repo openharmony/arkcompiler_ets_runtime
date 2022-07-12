@@ -79,7 +79,7 @@ void Heap::Initialize()
     machineCodeSpace_->Initialize();
 
     size_t capacities = minSemiSpaceCapacity * 2 + nonmovableSpaceCapacity + snapshotSpaceCapacity +
-        machineCodeSpaceCapacity;
+        machineCodeSpaceCapacity + readOnlySpaceCpacity;
     if (maxHeapSize < capacities || maxHeapSize - capacities < MIN_OLD_SPACE_LIMIT) {
         LOG_ECMA_MEM(FATAL) << "HeapSize is too small to initialize oldspace, heapSize = " << maxHeapSize;
     }
@@ -90,8 +90,7 @@ void Heap::Initialize()
     compressSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     oldSpace_->Initialize();
 
-    size_t hugeObjectSpaceCapacity = config.GetDefaultHugeObjectSpaceSize();
-    hugeObjectSpace_ = new HugeObjectSpace(heapRegionAllocator_, hugeObjectSpaceCapacity, hugeObjectSpaceCapacity);
+    hugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
         maxEvacuateTaskCount_ - 1);
@@ -294,10 +293,10 @@ void Heap::DisableParallelGC()
 TriggerGCType Heap::SelectGCType() const
 {
     // If concurrent mark is enabled, the TryTriggerConcurrentMarking decide which GC to choose.
-    if (concurrentMarker_->IsEnabled()) {
+    if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToMark()) {
         return YOUNG_GC;
     }
-    if (oldSpace_->CanExpand(activeSemiSpace_->GetSurvivalObjectSize()) &&
+    if (!OldSpaceExceedLimit() && !OldSpaceExceedCapacity(activeSemiSpace_->GetCommittedSize()) &&
         GetHeapObjectSize() <= globalSpaceAllocLimit_) {
         return YOUNG_GC;
     }
@@ -495,8 +494,7 @@ void Heap::RecomputeLimits()
     size_t newSpaceCapacity = activeSemiSpace_->GetInitialCapacity();
 
     double growingFactor = memController_->CalculateGrowingFactor(gcSpeed, mutatorSpeed);
-    // newOldSpaceLimit should consider committedSize of hugeObjectSpace
-    size_t maxOldSpaceCapacity = oldSpace_->GetMaximumCapacity() - hugeObjectSpace_->GetCommittedSize();
+    size_t maxOldSpaceCapacity = oldSpace_->GetMaximumCapacity() - newSpaceCapacity;
     auto newOldSpaceLimit = memController_->CalculateAllocLimit(oldSpaceSize, MIN_OLD_SPACE_LIMIT, maxOldSpaceCapacity,
                                                                 newSpaceCapacity, growingFactor);
     size_t maxGlobalSize = ecmaVm_->GetEcmaParamConfiguration().GetMaxHeapSize() - newSpaceCapacity;
@@ -508,9 +506,9 @@ void Heap::RecomputeLimits()
         << " globalSpaceAllocLimit_" << globalSpaceAllocLimit_;
 }
 
-void Heap::CheckAndTriggerOldGC()
+void Heap::CheckAndTriggerOldGC(size_t size)
 {
-    if (GetHeapObjectSize() > globalSpaceAllocLimit_) {
+    if (OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) || GetHeapObjectSize() > globalSpaceAllocLimit_) {
         CollectGarbage(TriggerGCType::OLD_GC);
     }
 }
