@@ -37,8 +37,8 @@ void HeapTracker::AllocationEvent(TaggedObject* address)
     if (snapshot_ != nullptr) {
         node = snapshot_->AddNode(address);
         if (node != nullptr && snapshot_->trackAllocations()) {
-            int size = node->GetSelfSize();
-            int sequenceId = node->GetId();
+            int size = static_cast<int>(node->GetSelfSize());
+            int sequenceId = static_cast<int>(node->GetId());
             int traceId = snapshot_->AddTraceNode(sequenceId, size);
             if (traceId != -1) {
                 node->SetTraceId(static_cast<uint64_t>(traceId));
