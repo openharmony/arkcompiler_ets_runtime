@@ -66,13 +66,6 @@ bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &file
         return false;
     }
 
-    auto scriptFunc = []([[maybe_unused]] PtScript *script) -> bool {
-        return true;
-    };
-    if (MatchScripts(scriptFunc, fileName, ScriptMatchType::FILE_NAME)) {
-        LOG_DEBUGGER(WARN) << "NotifyScriptParsed: already loaded: " << fileName;
-        return false;
-    }
     const JSPandaFile *jsPandaFile = nullptr;
     JSPandaFileManager::GetInstance()->EnumerateJSPandaFiles([&jsPandaFile, &fileName](
         const panda::ecmascript::JSPandaFile *pf) {
@@ -103,6 +96,15 @@ bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &file
     }
     // store here for performance of get extractor from url
     extractors_[url] = extractor;
+
+    auto scriptFunc = [this](PtScript *script) -> bool {
+        frontend_.ScriptParsed(vm_, *script);
+        return true;
+    };
+    if (MatchScripts(scriptFunc, fileName, ScriptMatchType::FILE_NAME)) {
+        LOG_DEBUGGER(WARN) << "NotifyScriptParsed: already loaded: " << fileName;
+        return false;
+    }
 
     // Notify script parsed event
     std::unique_ptr<PtScript> script = std::make_unique<PtScript>(scriptId, fileName, url, source);

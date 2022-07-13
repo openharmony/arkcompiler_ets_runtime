@@ -121,7 +121,7 @@ int Main(const int argc, const char **argv)
         CommonStubCSigns::Initialize();
         RuntimeStubCSigns::Initialize();
 
-        std::string logMethods = vm->GetJSOptions().GetlogCompiledMethods();
+        std::string logMethods = runtimeOptions.GetlogCompiledMethods();
         AotLog log(logMethods);
         AOTFileGenerator generator(&log, vm);
         PassManager passManager(vm, entry, triple, optLevel, relocMode, &log);
