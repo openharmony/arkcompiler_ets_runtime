@@ -3468,4 +3468,36 @@ JSHandle<CellRecord> ObjectFactory::NewCellRecord()
     obj->SetHeldValue(thread_, JSTaggedValue::Undefined());
     return obj;
 }
+
+JSHandle<JSHClass> ObjectFactory::CreateIteratorResultInstanceClass()
+{
+    auto globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto = vm_->GetGlobalEnv()->GetObjectFunctionPrototype();
+    JSHandle<JSHClass> iterResultClass = NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
+
+    uint32_t fieldOrder = 0;
+    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(2); // 2 means two field
+    {
+        ASSERT(JSIterator::VALUE_INLINE_PROPERTY_INDEX == fieldOrder);
+        PropertyAttributes attributes = PropertyAttributes::Default();
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder++, globalConst->GetValueString(), attributes);
+    }
+    {
+        ASSERT(JSIterator::DONE_INLINE_PROPERTY_INDEX == fieldOrder);
+        PropertyAttributes attributes = PropertyAttributes::Default();
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder++, globalConst->GetDoneString(), attributes);
+    }
+
+    {
+        iterResultClass->SetLayout(thread_, layoutInfoHandle);
+        iterResultClass->SetNumberOfProps(fieldOrder);
+    }
+    return iterResultClass;
+}
 }  // namespace panda::ecmascript

@@ -16,8 +16,10 @@
 #ifndef ECMASCRIPT_JSOBJECT_INL_H
 #define ECMASCRIPT_JSOBJECT_INL_H
 
-#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_object.h"
+
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -343,6 +345,27 @@ inline JSTaggedValue JSObject::ShouldGetValueFromBox(ObjectOperator *op)
         result = PropertyBox::Cast(result.GetTaggedObject())->GetValue();
     }
     return result;
+}
+
+inline bool JSObject::CheckHClassHit(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &cls)
+{
+    return obj->GetJSHClass() == *cls;
+}
+
+inline uint32_t JSObject::SetValuesOrEntries(JSThread *thread, const JSHandle<TaggedArray> &prop, uint32_t index,
+                                             const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+                                             PropertyKind kind)
+{
+    if (kind == PropertyKind::VALUE) {
+        prop->Set(thread, index++, value);
+        return index;
+    }
+    JSHandle<TaggedArray> keyValue = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(2);  // 2: key-value pair
+    keyValue->Set(thread, 0, key);
+    keyValue->Set(thread, 1, value);
+    JSHandle<JSArray> entry = JSArray::CreateArrayFromList(thread, keyValue);
+    prop->Set(thread, index++, entry.GetTaggedValue());
+    return index;
 }
 }  //  namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSOBJECT_INL_H
