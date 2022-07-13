@@ -28,7 +28,6 @@
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/stub-inl.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "generated/base_options.h"
 #include "interpreter_stub-inl.h"
@@ -179,21 +178,15 @@ int main(const int argc, const char **argv)
     panda::Logger::ResetComponentMask();  // disable all Component
     panda::Logger::EnableComponent(panda::Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
 
-    panda::ecmascript::EcmaVM *vm = panda::JSNApi::CreateEcmaVM(runtimeOptions);
-    if (vm == nullptr) {
-        LOG_COMPILER(INFO) << "Can't Create EcmaVM";
-        return -1;
-    }
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();
     size_t optLevel = runtimeOptions.GetOptLevel();
     size_t relocMode = runtimeOptions.GetRelocMode();
-    std::string logMethods = vm->GetJSOptions().GetlogCompiledMethods();
+    std::string logMethods = runtimeOptions.GetlogCompiledMethods();
     panda::ecmascript::kungfu::CompilerLog log(logMethods);
     panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, optLevel, relocMode, &log);
 
     bool res = compiler.BuildStubModuleAndSave();
     LOG_COMPILER(INFO) << "stub compiler run finish, result condition(T/F):" << std::boolalpha << res;
-    panda::JSNApi::DestroyJSVM(vm);
     return res ? 0 : -1;
 }
