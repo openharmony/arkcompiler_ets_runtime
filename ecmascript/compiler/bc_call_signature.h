@@ -183,6 +183,7 @@ namespace panda::ecmascript::kungfu {
     V(BCDebuggerEntry)                                   \
     V(BCDebuggerExceptionEntry)                          \
     V(NewObjectDynRangeThrowException)                   \
+    V(ThrowStackOverflowException)                       \
     V(InterpreterGetPropertyByName)                      \
 
 #define INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(V) \

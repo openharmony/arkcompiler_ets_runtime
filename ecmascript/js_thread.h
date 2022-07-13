@@ -486,6 +486,11 @@ public:
         return reinterpret_cast<JSThread *>(glue - GetGlueDataOffset());
     }
 
+    static uintptr_t GetCurrentStackPosition()
+    {
+        return reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
+    }
+
     bool IsPrintBCOffset() const
     {
         return enablePrintBCOffset_;
@@ -522,6 +527,7 @@ public:
                                                  BCDebuggerStubEntries,
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
+                                                 base::AlignedUint64,
                                                  GlobalEnvConstants> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -537,6 +543,7 @@ public:
             BCDebuggerStubEntriesIndex,
             StateBitFieldIndex,
             FrameBaseIndex,
+            StackLimitIndex,
             GlobalConstIndex,
             NumOfMembers
         };
@@ -612,6 +619,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::FrameBaseIndex)>(isArch32);
         }
 
+        static size_t GetStackLimitOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::StackLimitIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -625,6 +637,7 @@ public:
         alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
         alignas(EAS) volatile uint64_t threadStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
+        alignas(EAS) uint64_t stackLimit_ {0};
         alignas(EAS) GlobalEnvConstants globalConst_;
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);

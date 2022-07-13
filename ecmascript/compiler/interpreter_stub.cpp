@@ -5157,6 +5157,12 @@ DECLARE_ASM_HANDLER(NewObjectDynRangeThrowException)
     CallRuntime(glue, RTSTUB_ID(ThrowDerivedMustReturnException), {});
     DISPATCH_LAST();
 }
+
+DECLARE_ASM_HANDLER(ThrowStackOverflowException)
+{
+    CallRuntime(glue, RTSTUB_ID(ThrowStackOverflowException), {});
+    DISPATCH_LAST();
+}
 #undef DECLARE_ASM_HANDLER
 #undef DISPATCH
 #undef DISPATCH_WITH_ACC

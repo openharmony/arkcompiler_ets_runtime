@@ -110,12 +110,12 @@ public:
 private:
     static void JSCallBody(ExtendedAssembler *assembler, Register jsfunc);
 
-    static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode);
+    static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
 
     static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode);
     static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode);
 
-    static void PushVregs(ExtendedAssembler *assembler);
+    static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
 
     static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp);
 
@@ -124,25 +124,29 @@ private:
     static void PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
         FrameType type, Register op, Register next);
 
+    static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
+        Register op);
+
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register callTarget,
         Register method, Register pc, Register op);
 
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode);
-    static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *pushCallThis);
+    static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *pushCallThis,
+        Label *stackOverflow);
     static void JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
-                                     Label *fastPathEntry, Label *pushCallThis);
+                                     Label *fastPathEntry, Label *pushCallThis, Label *stackOverflow);
 
     static void GetNumVregsFromCallField(ExtendedAssembler *assembler, Register callField, Register numVregs);
 
     static void GetDeclaredNumArgsFromCallField(ExtendedAssembler *assembler, Register callField,
         Register declaredNumArgs);
-
-    static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register argc, Register temp,
-        Register fp, panda::ecmascript::Label *next);
-
+    static void PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, Register argc, Register argv,
+        Register op, Register fp, Label *next, Label *stackOverflow);
+    static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register glue, Register argc, Register temp,
+        Register fp, Label *next, Label *stackOverflow);
+    static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register numArgs, Register op,
+        Label *stackOverflow);
     static void SaveFpAndJumpSize(ExtendedAssembler *assembler, Immediate jumpSize);
-
-    static void StackOverflowCheck([[maybe_unused]] ExtendedAssembler *assembler);
 
     static void PushAsmInterpEntryFrame(ExtendedAssembler *assembler);
 
@@ -163,7 +167,7 @@ private:
 
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew);
     static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);
-    static void PushArgsWithArgV(ExtendedAssembler *assembler, Register jsfunc,
+    static void PushArgsWithArgV(ExtendedAssembler *assembler, Register glue, Register jsfunc,
                                  Register actualNumArgs, Register argV, Label *pushCallThis);
     static void CopyArgumentWithArgV(ExtendedAssembler *assembler, Register argc, Register argV);
     static void PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,

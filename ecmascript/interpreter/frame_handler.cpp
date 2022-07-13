@@ -294,17 +294,20 @@ ARK_INLINE uintptr_t FrameHandler::GetInterpretedFrameEnd(JSTaggedType *prevSp) 
     return end;
 }
 
-void FrameHandler::IterateRsp(const RootVisitor &v0, const RootRangeVisitor &v1)
+void FrameHandler::IterateAssembleStack(const RootVisitor &v0, const RootRangeVisitor &v1)
 {
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
     IterateFrameChain(current, v0, v1);
 }
 
-void FrameHandler::IterateSp(const RootVisitor &v0, const RootRangeVisitor &v1)
+// We seperate InterpretedEntryFrame from assemble stack when asm interpreter is enable.
+// To protect EcmaRuntimeCallInfo on InterpretedEntryFrame, we iterate InterpretedEntryFrame on thread sp individually.
+// And only InterpretedEntryFrame is on thread sp when asm interpreter is enable.
+void FrameHandler::IterateEcmaRuntimeCallInfo(const RootVisitor &v0, const RootRangeVisitor &v1)
 {
+    ASSERT(thread_->IsAsmInterpreter());
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
     for (FrameIterator it(current, thread_); !it.Done(); it.Advance()) {
-        // only interpreter entry frame is on thread sp when rsp is enable
         ASSERT(it.GetFrameType() == FrameType::INTERPRETER_ENTRY_FRAME);
         auto frame = it.GetFrame<InterpretedEntryFrame>();
         frame->GCIterate(it, v0, v1);
@@ -314,8 +317,8 @@ void FrameHandler::IterateSp(const RootVisitor &v0, const RootRangeVisitor &v1)
 void FrameHandler::Iterate(const RootVisitor &v0, const RootRangeVisitor &v1)
 {
     if (thread_->IsAsmInterpreter()) {
-        IterateSp(v0, v1);
-        IterateRsp(v0, v1);
+        IterateEcmaRuntimeCallInfo(v0, v1);
+        IterateAssembleStack(v0, v1);
         return;
     }
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());

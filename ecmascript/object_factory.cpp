@@ -808,7 +808,7 @@ JSHandle<JSArguments> ObjectFactory::NewJSArguments()
     return obj;
 }
 
-JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const char *data)
+JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const char *data, bool needCheckStack)
 {
     ASSERT_PRINT(errorType == ErrorType::ERROR || errorType == ErrorType::EVAL_ERROR ||
                      errorType == ErrorType::RANGE_ERROR || errorType == ErrorType::REFERENCE_ERROR ||
@@ -817,13 +817,14 @@ JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const c
                  "The error type is not in the valid range.");
     if (data != nullptr) {
         JSHandle<EcmaString> handleMsg = NewFromUtf8(data);
-        return NewJSError(errorType, handleMsg);
+        return NewJSError(errorType, handleMsg, needCheckStack);
     }
     JSHandle<EcmaString> emptyString(thread_->GlobalConstants()->GetHandledEmptyString());
-    return NewJSError(errorType, emptyString);
+    return NewJSError(errorType, emptyString, needCheckStack);
 }
 
-JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message)
+JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
+    bool needCheckStack)
 {
     // if there have exception in thread, then return current exception, no need to new js error.
     if (thread_->HasPendingException()) {
@@ -869,12 +870,18 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     JSHandle<JSFunction> nativeFunc = JSHandle<JSFunction>::Cast(nativeConstructor);
     JSHandle<JSTaggedValue> nativePrototype(thread_, nativeFunc->GetFunctionPrototype());
     JSHandle<JSTaggedValue> ctorKey = globalConst->GetHandledConstructorString();
+    JSHandle<JSTaggedValue> ctor(JSTaggedValue::GetProperty(thread_, nativePrototype, ctorKey).GetValue());
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread_, undefined, nativePrototype, undefined, 1);
+        EcmaInterpreter::NewRuntimeCallInfo(thread_, ctor, nativePrototype, undefined, 1, needCheckStack);
     info->SetCallArg(message.GetTaggedValue());
-    JSTaggedValue obj = JSFunction::Invoke(info, ctorKey);
+    JSMethod *method = JSHandle<ECMAObject>::Cast(ctor)->GetCallTarget();
+    JSTaggedValue obj = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
     JSHandle<JSObject> handleNativeInstanceObj(thread_, obj);
+    auto sp = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
+    ASSERT(FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_ENTRY_FRAME);
+    auto prevEntry = InterpretedEntryFrame::GetFrameFromSp(sp)->GetPrevFrameFp();
+    thread_->SetCurrentSPFrame(prevEntry);
     return handleNativeInstanceObj;
 }
 

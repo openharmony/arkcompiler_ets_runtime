@@ -69,16 +69,6 @@ void ExtendedAssembler::PopGhcCalleeSaveRegisters()
     Popq(r10);
 }
 
-void ExtendedAssembler::PushArgsWithArgv(Register argc, Register argv, Register operatorRegister)
-{
-    Label loopBeginning;
-    Bind(&loopBeginning);
-    Movq(Operand(argv, argc, Times8, -8), operatorRegister);  // 8: 8 bytes
-    Pushq(operatorRegister);
-    Subq(1, argc);
-    Ja(&loopBeginning);
-}
-
 void ExtendedAssembler::CallAssemblerStub(int id, bool isTail)
 {
     Label *target = module_->GetFunctionLabel(id);

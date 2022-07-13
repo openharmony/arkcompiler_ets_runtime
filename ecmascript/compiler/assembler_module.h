@@ -88,6 +88,7 @@ public:
     static int GetArgcFromJSCallMode(JSCallMode mode);
     static bool JSModeHaveThisArg(JSCallMode mode);
     static bool JSModeHaveNewTargetArg(JSCallMode mode);
+    static bool IsJumpToCallCommonEntry(JSCallMode mode);
 private:
     std::vector<const CallSignature *> asmCallSigns_;
     std::map<int, panda::ecmascript::Label *> symbolTable_;

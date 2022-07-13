@@ -164,8 +164,8 @@ public:
     // for Frame GC.
     void Iterate(const RootVisitor &v0, const RootRangeVisitor &v1);
     void IterateFrameChain(JSTaggedType *start, const RootVisitor &v0, const RootRangeVisitor &v1) const;
-    void IterateRsp(const RootVisitor &v0, const RootRangeVisitor &v1);
-    void IterateSp(const RootVisitor &v0, const RootRangeVisitor &v1);
+    void IterateAssembleStack(const RootVisitor &v0, const RootRangeVisitor &v1);
+    void IterateEcmaRuntimeCallInfo(const RootVisitor &v0, const RootRangeVisitor &v1);
 
     // for collecting bc offset in aot
     void CollectBCOffsetInfo();

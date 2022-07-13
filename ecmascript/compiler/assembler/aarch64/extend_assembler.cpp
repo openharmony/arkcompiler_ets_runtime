@@ -103,22 +103,6 @@ void ExtendedAssembler::RestoreLrAndFp()
     Ldp(Register(X30), Register(X29), MemoryOperand(sp, 16, POSTINDEX));  // 16: 2 registers
 }
 
-void ExtendedAssembler::PushArgsWithArgv(Register argc, Register argv, Register op,
-    Register fp, panda::ecmascript::Label *next)
-{
-    Label loopBeginning;
-    if (next != nullptr) {
-        Cmp(argc.W(), Immediate(0));
-        B(Condition::LS, next);
-    }
-    Add(argv, argv, Operand(argc.W(), UXTW, 3));  // 3: argc * 8
-    Bind(&loopBeginning);
-    Ldr(op, MemoryOperand(argv, -8, PREINDEX));  // -8: 8 bytes
-    Str(op, MemoryOperand(fp, -8, PREINDEX));  // -8: 8 bytes
-    Sub(argc.W(), argc.W(), Immediate(1));
-    Cbnz(argc.W(), &loopBeginning);
-}
-
 void ExtendedAssembler::PushArgc(int32_t argc, Register op, Register fp)
 {
     Mov(op, Immediate(JSTaggedValue(argc).GetRawData()));

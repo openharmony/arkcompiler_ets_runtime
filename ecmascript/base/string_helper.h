@@ -255,7 +255,9 @@ public:
 
     static inline std::string GetSpecifiedLine(const std::string &srcStr, int lineNumber)
     {
-        ASSERT(lineNumber >= 1);
+        if (lineNumber < 1) {
+            return "";
+        }
         int prePos = 0;
         int findPrePos = lineNumber - 1;
         for (int i = 0; i < findPrePos; i++) {
