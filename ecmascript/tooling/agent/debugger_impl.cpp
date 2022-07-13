@@ -14,11 +14,9 @@
  */
 
 #include "ecmascript/tooling/agent/debugger_impl.h"
-
-#include <boost/beast/core/detail/base64.hpp>
-
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/napi/jsnapi_helper.h"
+#include "ecmascript/tooling/base/pt_base64.h"
 #include "ecmascript/tooling/base/pt_events.h"
 #include "ecmascript/tooling/base/pt_params.h"
 #include "ecmascript/tooling/base/pt_returns.h"
@@ -28,7 +26,6 @@
 #include "ecmascript/tooling/protocol_handler.h"
 
 namespace panda::ecmascript::tooling {
-using namespace boost::beast::detail;
 using namespace std::placeholders;
 
 using ObjectType = RemoteObject::TypeName;
@@ -1115,9 +1112,7 @@ Local<JSValueRef> DebuggerImpl::ConvertToLocal(const std::string &varValue)
 
 bool DebuggerImpl::DecodeAndCheckBase64(const std::string &src, std::string &dest)
 {
-    dest.resize(base64::decoded_size(src.size()));
-    auto [numOctets, _] = base64::decode(dest.data(), src.data(), src.size());
-    dest.resize(numOctets);
+    uint32_t numOctets = PtBase64::Decode(src, dest);
     if (numOctets > File::MAGIC_SIZE &&
         memcmp(dest.data(), File::MAGIC.data(), File::MAGIC_SIZE) == 0) {
         return true;
