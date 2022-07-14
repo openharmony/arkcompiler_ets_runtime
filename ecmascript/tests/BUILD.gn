@@ -97,6 +97,7 @@ host_unittest_action("EcmaVm_002_Test") {
     "js_primitive_ref_test.cpp",
     "js_promise_test.cpp",
     "js_proxy_test.cpp",
+    "js_regexp_iterator_test.cpp",
     "js_serializer_test.cpp",
     "js_set_iterator_test.cpp",
     "js_set_test.cpp",
