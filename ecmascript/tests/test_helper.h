@@ -56,8 +56,8 @@ public:
             newSp[i - 1] = JSTaggedValue::Undefined().GetRawData();
         }
         EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
-        *(--newSp) = numActualArgs;
-        *(--newSp) = ToUintPtr(thread);
+        *(--newSp) = static_cast<uint64_t>(numActualArgs);
+        *(--newSp) = static_cast<uint64_t>(ToUintPtr(thread));
         ecmaRuntimeCallInfo->SetNewTarget(newTgt);
         return ecmaRuntimeCallInfo;
     }

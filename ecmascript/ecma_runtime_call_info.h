@@ -38,11 +38,12 @@ struct EcmaRuntimeCallInfo : public base::AlignedStruct<base::AlignedPointer::Si
         StackArgsIndex,
         NumOfMembers
     };
+    static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
 
 public:
     inline JSThread *GetThread() const
     {
-        return thread_;
+        return *(reinterpret_cast<JSThread **>(ToUintPtr(this)));
     }
 
     inline void SetNewTarget(const JSTaggedValue tagged)
@@ -118,14 +119,14 @@ public:
     inline void SetCallArg(int32_t argsLength, const JSHandle<TaggedArray> args)
     {
         for (int32_t i = 0; i < argsLength; i++) {
-            SetCallArg(i, args->Get(thread_, i));
+            SetCallArg(i, args->Get(GetThread(), i));
         }
     }
 
     inline void SetCallArg(int32_t argsLength, const TaggedArray* args)
     {
         for (int32_t i = 0; i < argsLength; i++) {
-            SetCallArg(i, args->Get(thread_, i));
+            SetCallArg(i, args->Get(GetThread(), i));
         }
     }
 
@@ -186,7 +187,9 @@ public:
      */
     inline int32_t GetArgsNumber() const
     {
-        return numArgs_ - NUM_MANDATORY_JSFUNC_ARGS;
+        auto argcAddress = reinterpret_cast<int32_t *>(
+            ToUintPtr(this) + (static_cast<int>(Index::NumArgsIndex) * sizeof(JSTaggedType)));
+        return *argcAddress - NUM_MANDATORY_JSFUNC_ARGS;
     }
 
     inline JSTaggedType *GetArgs()
@@ -199,7 +202,7 @@ private:
 
     inline uintptr_t GetArgAddress(int32_t idx) const
     {
-        if (idx < numArgs_) {
+        if (idx < GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS) {
             return reinterpret_cast<uintptr_t>(&stackArgs_[idx]);
         }
         return 0U;
@@ -219,8 +222,8 @@ private:
     }
 
 private:
-    alignas(EAS) JSThread *thread_ {nullptr};
-    alignas(EAS) int32_t numArgs_ {0};  // include func, newTarget, this, equal to stackArgs size.
+    [[maybe_unused]] uint64_t thread_ {0};
+    [[maybe_unused]] uint64_t numArgs_ {0};  // include func, newTarget, this, equal to stackArgs size.
     __extension__ JSTaggedType stackArgs_[0];  // NOLINT(modernize-avoid-c-arrays)
 };
 }  // namespace panda::ecmascript

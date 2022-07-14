@@ -62,8 +62,8 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
     *(--newSp) = thisObj.GetTaggedType();
     *(--newSp) = newTarget.GetTaggedType();
     *(--newSp) = func.GetTaggedType();
-    *(--newSp) = numArgs + NUM_MANDATORY_JSFUNC_ARGS;
-    *(--newSp) = ToUintPtr(thread);
+    *(--newSp) = static_cast<uint64_t>(numArgs + NUM_MANDATORY_JSFUNC_ARGS);
+    *(--newSp) = static_cast<uint64_t>(ToUintPtr(thread));
     EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp);
 
     // create entry frame.
