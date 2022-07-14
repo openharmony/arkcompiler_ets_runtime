@@ -41,8 +41,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
     panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
 
     uint32_t num = lda.GetLiteralValsNum(index) / 2;  // 2: half
-    elements.Update(factory->NewTaggedArray(num).GetTaggedValue());
-    properties.Update(factory->NewTaggedArray(num).GetTaggedValue());
+    elements.Update(factory->NewOldSpaceTaggedArray(num).GetTaggedValue());
+    properties.Update(factory->NewOldSpaceTaggedArray(num).GetTaggedValue());
     uint32_t epos = 0;
     uint32_t ppos = 0;
     const uint8_t pairSize = 2;
@@ -68,7 +68,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
             case LiteralTag::STRING: {
                 StringData sd = pf->GetStringData(panda_file::File::EntityId(std::get<uint32_t>(value)));
-                EcmaString *str = factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii);
+                EcmaString *str = factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii,
+                                                                       MemSpaceType::OLD_SPACE);
                 jt = JSTaggedValue(str);
                 uint32_t index = 0;
                 if (JSTaggedValue::ToElementIndex(jt, &index) && ppos % pairSize == 0) {
@@ -127,7 +128,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
 
     uint32_t num = lda.GetLiteralValsNum(index) / 2;  // 2: half
-    JSHandle<TaggedArray> literals = factory->NewTaggedArray(num);
+    JSHandle<TaggedArray> literals = factory->NewOldSpaceTaggedArray(num);
     uint32_t pos = 0;
     uint32_t methodId;
     FunctionKind kind;
@@ -151,7 +152,8 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 case LiteralTag::STRING: {
                     const panda_file::File *pf = jsPandaFile->GetPandaFile();
                     StringData sd = pf->GetStringData(panda_file::File::EntityId(std::get<uint32_t>(value)));
-                    EcmaString *str = factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii);
+                    EcmaString *str = factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii,
+                                                                           MemSpaceType::OLD_SPACE);
                     jt = JSTaggedValue(str);
                     break;
                 }
@@ -208,7 +210,8 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     } else {
         functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
     }
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, functionClass, kind);
+    JSHandle<JSFunction> jsFunc =
+        factory->NewJSFunctionByDynClass(method, functionClass, kind, MemSpaceType::OLD_SPACE);
 
     if (kind == FunctionKind::GENERATOR_FUNCTION) {
         JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
