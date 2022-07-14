@@ -247,7 +247,9 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
     int32_t thisLen = static_cast<int32_t>(thisHandle->GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
     int32_t pos;
-    if (posTag->IsUndefined()) {
+    if (posTag->IsInt()) {
+        pos = posTag->GetInt();
+    } else if (posTag->IsUndefined()) {
         pos = 0;
     } else {
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
@@ -274,7 +276,9 @@ JSTaggedValue BuiltinsString::CharCodeAt(EcmaRuntimeCallInfo *argv)
     int32_t thisLen = static_cast<int32_t>(thisHandle->GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
     int32_t pos;
-    if (posTag->IsUndefined()) {
+    if (posTag->IsInt()) {
+        pos = posTag->GetInt();
+    } else if (posTag->IsUndefined()) {
         pos = 0;
     } else {
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
