@@ -418,9 +418,11 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     state->function = info->GetFunctionValue();
     thread->SetCurrentSPFrame(newSp);
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler::IsNeedAndGetStack(thread);
+    CpuProfiler *profiler = CpuProfiler::GetInstance();
+    if (profiler != nullptr) {
+        profiler->IsNeedAndGetStack(thread);
+    }
 #endif
-
     thread->CheckSafepoint();
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     JSMethod *method = callTarget->GetCallTarget();
@@ -433,7 +435,9 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     JSTaggedType *prevSp = entryState->base.prev;
     thread->SetCurrentSPFrame(prevSp);
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler::IsNeedAndGetStack(thread);
+    if (profiler != nullptr) {
+        profiler->IsNeedAndGetStack(thread);
+    }
 #endif
     return tagged;
 }
@@ -534,9 +538,11 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     state->base.type = FrameType::INTERPRETER_FRAME;
     state->env = thisFunc->GetLexicalEnv();
     thread->SetCurrentSPFrame(newSp);
-
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler::IsNeedAndGetStack(thread);
+    CpuProfiler *profiler = CpuProfiler::GetInstance();
+    if (profiler != nullptr) {
+        profiler->IsNeedAndGetStack(thread);
+    }
 #endif
     thread->CheckSafepoint();
     LOG_INST() << "Entry: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(newSp) << " "
@@ -551,7 +557,9 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     JSTaggedType *prevSp = entryState->base.prev;
     thread->SetCurrentSPFrame(prevSp);
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler::IsNeedAndGetStack(thread);
+    if (profiler != nullptr) {
+        profiler->IsNeedAndGetStack(thread);
+    }
 #endif
     return resAcc;
 }

@@ -14,7 +14,10 @@
  */
 
 #include "ecmascript/napi/include/dfx_jsnapi.h"
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#include "ecmascript/dfx/cpu_profiler/samples_record.h"
+#endif
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/ecma_vm.h"
@@ -163,6 +166,10 @@ void DFXJSNApi::StopCpuProfilerForFile()
 {
     panda::ecmascript::CpuProfiler* singleton = panda::ecmascript::CpuProfiler::GetInstance();
     singleton->StopCpuProfilerForFile();
+    if (singleton != nullptr) {
+        delete singleton;
+        singleton = nullptr;
+    }
 }
 
 void DFXJSNApi::StartCpuProfilerForInfo(const EcmaVM *vm)
@@ -177,6 +184,10 @@ std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo()
     auto profile = singleton->StopCpuProfilerForInfo();
     if (profile == nullptr) {
         LOG_DEBUGGER(ERROR) << "Transfer CpuProfiler::StopCpuProfilerImpl is failure";
+    }
+    if (singleton != nullptr) {
+        delete singleton;
+        singleton = nullptr;
     }
     return profile;
 }

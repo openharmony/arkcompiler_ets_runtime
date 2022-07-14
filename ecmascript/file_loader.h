@@ -127,6 +127,11 @@ public:
         return entries_;
     }
 
+    const std::vector<ModuleSectionDes>& GetCodeUnits() const
+    {
+        return des_;
+    }
+
     void Iterate(const RootVisitor &v);
 
     void SetCode(JSHandle<MachineCode> code)
@@ -306,6 +311,11 @@ public:
     uintptr_t GetAOTFuncEntry(uint32_t hash, uint32_t methodId)
     {
         return static_cast<uintptr_t>(hashToEntryMap_[hash][methodId]);
+    }
+
+    const StubModulePackInfo& GetStubPackInfo() const
+    {
+        return stubPackInfo_;
     }
 
     void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile);

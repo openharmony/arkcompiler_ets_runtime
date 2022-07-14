@@ -17,9 +17,11 @@
 
 #include <climits>
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/js_method.h"
 namespace panda::ecmascript {
-bool SamplesRecord::staticGcState_ = false;
 SamplesRecord::SamplesRecord()
 {
     stackTopLines_.push_back(0);
@@ -42,17 +44,17 @@ SamplesRecord::~SamplesRecord()
     }
 }
 
-void SamplesRecord::AddSample(CVector<JSMethod *> sample, uint64_t sampleTimeStamp, bool outToFile)
+void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
 {
     if (isLastSample_.load()) {
         return;
     }
-    static int PreviousId = 0;
+    const CVector<JSMethod *> &sample = GetFrameStack();
     struct MethodKey methodkey;
     struct CpuProfileNode methodNode;
-    if (staticGcState_) {
+    if (gcState_.load()) {
         methodkey.method = reinterpret_cast<JSMethod*>(INT_MAX);
-        methodNode.parentId = methodkey.parentId = PreviousId;
+        methodNode.parentId = methodkey.parentId = previousId_;
         auto result = methodMap_.find(methodkey);
         if (result == methodMap_.end()) {
             methodNode.id = static_cast<int>(methodMap_.size() + 1);
@@ -68,9 +70,9 @@ void SamplesRecord::AddSample(CVector<JSMethod *> sample, uint64_t sampleTimeSta
                 }
             }
         } else {
-            methodNode.id = result->second;
+            previousId_ = methodNode.id = result->second;
         }
-        staticGcState_ = false;
+        gcState_.store(false);
     } else {
         for (auto method = sample.rbegin(); method != sample.rend(); method++) {
             methodkey.method = *method;
@@ -84,7 +86,7 @@ void SamplesRecord::AddSample(CVector<JSMethod *> sample, uint64_t sampleTimeSta
             if (result == methodMap_.end()) {
                 int id = static_cast<int>(methodMap_.size() + 1);
                 methodMap_.insert(std::make_pair(methodkey, id));
-                PreviousId = methodNode.id = id;
+                previousId_ = methodNode.id = id;
                 methodNode.codeEntry = GetMethodInfo(methodkey.method);
                 stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
                 profileInfo_->nodes.push_back(methodNode);
@@ -92,15 +94,14 @@ void SamplesRecord::AddSample(CVector<JSMethod *> sample, uint64_t sampleTimeSta
                     profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
                 }
             } else {
-                PreviousId = methodNode.id = result->second;
+                previousId_ = methodNode.id = result->second;
             }
         }
     }
-    static uint64_t threadStartTime = 0;
     struct SampleInfo sampleInfo;
-    int sampleNodeId = methodNode.id == 0 ? PreviousId = 1, 1 : methodNode.id;
+    int sampleNodeId = previousId_ == 0 ? 1 : previousId_;
     int timeDelta = static_cast<int>(sampleTimeStamp -
-        (threadStartTime == 0 ? profileInfo_->startTime : threadStartTime));
+        (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
     if (outToFile) {
         sampleInfo.id = sampleNodeId;
         sampleInfo.line = stackTopLines_[methodNode.id];
@@ -111,7 +112,7 @@ void SamplesRecord::AddSample(CVector<JSMethod *> sample, uint64_t sampleTimeSta
         profileInfo_->samples.push_back(sampleNodeId);
         profileInfo_->timeDeltas.push_back(timeDelta);
     }
-    threadStartTime = sampleTimeStamp;
+    threadStartTime_ = sampleTimeStamp;
 }
 
 void SamplesRecord::WriteAddNodes()
@@ -212,8 +213,9 @@ std::string SamplesRecord::GetSampleData() const
 struct FrameInfo SamplesRecord::GetMethodInfo(JSMethod *method)
 {
     struct FrameInfo entry;
-    auto iter = CpuProfiler::staticStackInfo_.find(method);
-    if (iter != CpuProfiler::staticStackInfo_.end()) {
+    const CMap<JSMethod *, struct FrameInfo> stackInfo = GetStackInfo();
+    auto iter = stackInfo.find(method);
+    if (iter != stackInfo.end()) {
         entry = iter->second;
     }
     return entry;
@@ -262,8 +264,83 @@ std::unique_ptr<struct ProfileInfo> SamplesRecord::GetProfileInfo()
     return std::move(profileInfo_);
 }
 
-void SamplesRecord::SetLastSampleFlag()
+void SamplesRecord::SetLastSampleFlag(bool lastSampleFlag)
 {
-    isLastSample_.store(true);
+    isLastSample_.store(lastSampleFlag);
+}
+
+int SamplesRecord::SemInit(int index, int pshared, int value)
+{
+    return sem_init(&sem_[index], pshared, value);
+}
+
+int SamplesRecord::SemPost(int index)
+{
+    return sem_post(&sem_[index]);
+}
+
+int SamplesRecord::SemWait(int index)
+{
+    return sem_wait(&sem_[index]);
+}
+
+int SamplesRecord::SemDestroy(int index)
+{
+    return sem_destroy(&sem_[index]);
+}
+
+const CMap<JSMethod *, struct FrameInfo> &SamplesRecord::GetStackInfo() const
+{
+    return stackInfoMap_;
+}
+
+void SamplesRecord::InsertStackInfo(JSMethod *method, struct FrameInfo &codeEntry)
+{
+    stackInfoMap_.insert(std::make_pair(method, codeEntry));
+}
+
+const CVector<JSMethod *> &SamplesRecord::GetFrameStack() const
+{
+    return frameStack_;
+}
+
+void SamplesRecord::PushFrameStack(JSMethod *method)
+{
+    frameStack_.push_back(method);
+}
+
+void SamplesRecord::ClearFrameStack()
+{
+    frameStack_.clear();
+}
+
+const CMap<std::string, int> &SamplesRecord::GetScriptIdMap() const
+{
+    return scriptIdMap_;
+}
+
+void SamplesRecord::InsertScriptId(std::string &url, int size)
+{
+    scriptIdMap_.insert(std::make_pair(url, size));
+}
+
+bool SamplesRecord::GetGcState() const
+{
+    return gcState_.load();
+}
+
+void SamplesRecord::SetGcState(bool gcState)
+{
+    gcState_.store(gcState);
+}
+
+bool SamplesRecord::GetIsStart() const
+{
+    return isStart_.load();
+}
+
+void SamplesRecord::SetIsStart(bool isStart)
+{
+    isStart_.store(isStart);
 }
 } // namespace panda::ecmascript

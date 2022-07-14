@@ -31,6 +31,14 @@ FrameHandler::FrameHandler(const JSThread *thread)
     stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     AdvanceToInterpretedFrame();
 }
+
+FrameHandler::FrameHandler(const JSThread *thread, void *fp)
+    : sp_(reinterpret_cast<JSTaggedType *>(fp)), thread_(thread)
+{
+    stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+    AdvanceToInterpretedFrame();
+}
+
 ARK_INLINE void FrameHandler::AdvanceToInterpretedFrame()
 {
     if (!thread_->IsAsmInterpreter()) {

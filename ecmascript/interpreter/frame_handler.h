@@ -34,6 +34,7 @@ namespace kungfu {
 class FrameHandler {
 public:
     explicit FrameHandler(const JSThread *thread);
+    explicit FrameHandler(const JSThread *thread, void *fp);
     ~FrameHandler() = default;
 
     DEFAULT_COPY_SEMANTIC(FrameHandler);

@@ -15,6 +15,9 @@
 
 #include "ecmascript/interpreter/interpreter_assembly.h"
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#endif
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
@@ -209,7 +212,10 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     INTERPRETER_TRACE(thread, Execute);
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler::IsNeedAndGetStack(thread);
+    CpuProfiler *profiler = CpuProfiler::GetInstance();
+    if (profiler != nullptr) {
+        profiler->IsNeedAndGetStack(thread);
+    }
 #endif
     thread->CheckSafepoint();
     int32_t argc = info->GetArgsNumber();
@@ -226,7 +232,9 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     thread->SetCurrentSPFrame(prevEntry);
 
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler::IsNeedAndGetStack(thread);
+    if (profiler != nullptr) {
+        profiler->IsNeedAndGetStack(thread);
+    }
 #endif
     return JSTaggedValue(acc);
 }
