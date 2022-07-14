@@ -11,29 +11,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//ark/js_runtime/js_runtime_config.gni")
-import("//ark/js_runtime/test/test_helper.gni")
-import("//ark/ts2abc/ts2panda/ts2abc_config.gni")
+import("//arkcompiler/ets_frontend/ts2panda/ts2abc_config.gni")
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 import("//build/ohos.gni")
 import("//build/test.gni")
 
-module_output_path = "ark/js_runtime"
+module_output_path = "arkcompiler/ets_runtime"
 
 config("debug_api_test") {
   visibility = [ ":*" ]
 
   ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
 
-  configs = [ "//ark/js_runtime:ecma_test_config" ]
+  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   include_dirs = [
-    "//ark/js_runtime",
-    "//ark/js_runtime/ecmascript/tooling/test",
+    "//arkcompiler/ets_runtime",
+    "//arkcompiler/ets_runtime/ecmascript/tooling/test",
   ]
 }
 
 ts2abc_gen_abc("ark_sample_abc") {
-  test_js_path = "//ark/js_runtime/ecmascript/tooling/test/js/Sample.js"
+  test_js_path =
+      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/Sample.js"
   test_abc_path = "$target_out_dir/Sample.abc"
   extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
   src_js = rebase_path(test_js_path)
@@ -45,7 +46,8 @@ ts2abc_gen_abc("ark_sample_abc") {
 }
 
 ts2abc_gen_abc("ark_asyncfunc_abc") {
-  test_js_path = "//ark/js_runtime/ecmascript/tooling/test/js/AsyncFunc.js"
+  test_js_path =
+      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/AsyncFunc.js"
   test_abc_path = "$target_out_dir/AsyncFunc.abc"
   extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
   src_js = rebase_path(test_js_path)
@@ -57,7 +59,8 @@ ts2abc_gen_abc("ark_asyncfunc_abc") {
 }
 
 ts2abc_gen_abc("ark_arrowfunc_abc") {
-  test_js_path = "//ark/js_runtime/ecmascript/tooling/test/js/ArrowFunc.js"
+  test_js_path =
+      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/ArrowFunc.js"
   test_abc_path = "$target_out_dir/ArrowFunc.abc"
   extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
   src_js = rebase_path(test_js_path)
@@ -69,7 +72,8 @@ ts2abc_gen_abc("ark_arrowfunc_abc") {
 }
 
 ts2abc_gen_abc("ark_exception_abc") {
-  test_js_path = "//ark/js_runtime/ecmascript/tooling/test/js/exception.js"
+  test_js_path =
+      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/exception.js"
   test_abc_path = "$target_out_dir/exception.abc"
   extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
   src_js = rebase_path(test_js_path)
@@ -81,7 +85,8 @@ ts2abc_gen_abc("ark_exception_abc") {
 }
 
 ts2abc_gen_abc("ark_range_error_abc") {
-  test_js_path = "//ark/js_runtime/ecmascript/tooling/test/js/RangeError.js"
+  test_js_path =
+      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/RangeError.js"
   test_abc_path = "$target_out_dir/RangeError.abc"
   extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
   src_js = rebase_path(test_js_path)
@@ -94,7 +99,7 @@ ts2abc_gen_abc("ark_range_error_abc") {
 
 ts2abc_gen_abc("ark_syntaxException_abc") {
   test_js_path =
-      "//ark/js_runtime/ecmascript/tooling/test/js/syntaxException.js"
+      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/syntaxException.js"
   test_abc_path = "$target_out_dir/syntaxException.abc"
   extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
   src_js = rebase_path(test_js_path)
@@ -106,7 +111,8 @@ ts2abc_gen_abc("ark_syntaxException_abc") {
 }
 
 ts2abc_gen_abc("ark_throwException_abc") {
-  test_js_path = "//ark/js_runtime/ecmascript/tooling/test/js/throwException.js"
+  test_js_path =
+      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/throwException.js"
   test_abc_path = "$target_out_dir/throwException.abc"
   extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
   src_js = rebase_path(test_js_path)
@@ -118,7 +124,8 @@ ts2abc_gen_abc("ark_throwException_abc") {
 }
 
 ts2abc_gen_abc("ark_stepInto_abc") {
-  test_js_path = "//ark/js_runtime/ecmascript/tooling/test/js/StepInto.js"
+  test_js_path =
+      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/StepInto.js"
   test_abc_path = "$target_out_dir/StepInto.abc"
   extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
   src_js = rebase_path(test_js_path)
@@ -168,7 +175,7 @@ source_set("jsdebugtest_set") {
 
   public_configs = [
     ":debug_api_test",
-    "//ark/js_runtime/ecmascript/tooling:ark_ecma_debugger_config",
+    "//arkcompiler/ets_runtime/ecmascript/tooling:ark_ecma_debugger_config",
   ]
 
   test_abc_dir = "/data/test/"
@@ -191,8 +198,8 @@ source_set("jsdebugtest_set") {
   deps = [
     "$ark_root/libpandabase:libarkbase",
     "$ark_root/libpandafile:libarkfile",
-    "//ark/js_runtime:libark_jsruntime_test",
-    "//ark/js_runtime/ecmascript/tooling:libark_ecma_debugger_test",
+    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger_test",
   ]
 }
 
@@ -230,8 +237,8 @@ host_unittest_action("DebuggerEntryTest") {
     ":jsdebugtest",
     "$ark_root/libpandabase:libarkbase",
     "$ark_root/libpandafile:libarkfile",
-    "//ark/js_runtime:libark_jsruntime_test",
-    "//ark/js_runtime/ecmascript/tooling:libark_ecma_debugger_test",
+    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger_test",
   ]
 }
 
@@ -250,12 +257,12 @@ host_unittest_action("DebuggerTest") {
     "pt_json_test.cpp",
   ]
 
-  configs = [ "//ark/js_runtime:ecma_test_config" ]
+  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
     "$ark_root/libpandabase:libarkbase",
-    "//ark/js_runtime:libark_jsruntime_test",
-    "//ark/js_runtime/ecmascript/tooling:libark_ecma_debugger_test",
+    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger_test",
     sdk_libc_secshared_dep,
   ]
 }

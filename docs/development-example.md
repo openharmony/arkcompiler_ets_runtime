@@ -145,7 +145,7 @@ Command:
 python3 test262/run_test262.py [options]
 ```
 
-Run the script in  _Project root directory_**/ark/ts2abc**.
+Run the script in  _Project root directory_**/arkcompiler/ets_frontend**.
 
 <a name="table11141827153017"></a>
 <table><thead align="left"><tr id="row101462717303"><th class="cellrowborder" valign="top" width="50%" id="mcps1.1.3.1.1"><p id="p51552743010"><a name="p51552743010"></a><a name="p51552743010"></a>Option</p>
@@ -287,7 +287,7 @@ Run the script in  _Project root directory_**/ark/ts2abc**.
 
 ### Test Output
 
-The results of all Test262 test cases are available in the  **_Project root directory_/ark/ts2abc/out**. The test result in the shell is as follows:
+The results of all Test262 test cases are available in the  **_Project root directory_/arkcompiler/ets_frontend/out**. The test result in the shell is as follows:
 
 ```
 $python3 test262/run_test262.py --file test262/data/test_es2015/built-ins/Array/15.4.5.1-5-1.js

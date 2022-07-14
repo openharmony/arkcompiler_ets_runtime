@@ -11,13 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//ark/js_runtime/js_runtime_config.gni")
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//build/ohos.gni")
 
 config("ark_ecma_debugger_config") {
   configs = [
-    "//ark/js_runtime:ark_jsruntime_common_config",
-    "//ark/js_runtime:ark_jsruntime_public_config",
+    "//arkcompiler/ets_runtime:ark_jsruntime_common_config",
+    "//arkcompiler/ets_runtime:ark_jsruntime_public_config",
   ]
 
   include_dirs = [
@@ -72,7 +72,7 @@ source_set("libark_ecma_debugger_set") {
 ohos_shared_library("libark_ecma_debugger") {
   deps = [
     ":libark_ecma_debugger_set",
-    "//ark/js_runtime:libark_jsruntime",
+    "//arkcompiler/ets_runtime:libark_jsruntime",
   ]
 
   install_enable = true
@@ -116,7 +116,7 @@ source_set("libark_ecma_debugger_test_set") {
 ohos_shared_library("libark_ecma_debugger_test") {
   deps = [
     ":libark_ecma_debugger_test_set",
-    "//ark/js_runtime:libark_jsruntime_test",
+    "//arkcompiler/ets_runtime:libark_jsruntime_test",
   ]
 
   if (is_ohos && is_standard_system) {

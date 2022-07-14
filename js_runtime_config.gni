@@ -12,11 +12,11 @@
 # limitations under the License.
 
 if (!defined(ark_standalone_build)) {
-  ark_root = "//ark/runtime_core"
-  js_root = "//ark/js_runtime"
+  ark_root = "//arkcompiler/runtime_core"
+  js_root = "//arkcompiler/ets_runtime"
 } else {
   ark_root = "//runtime_core"
-  js_root = "//js_runtime"
+  js_root = "//ets_runtime"
 }
 third_party_gn_path = "//third_party"
 compile_llvm_online = false

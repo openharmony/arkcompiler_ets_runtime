@@ -11,11 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//ark/js_runtime/js_runtime_config.gni")
-import("//ark/js_runtime/test/test_helper.gni")
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 import("//build/test.gni")
 
-module_output_path = "ark/js_runtime"
+module_output_path = "arkcompiler/ets_runtime"
 
 host_unittest_action("EcmaVm_001_Test") {
   module_out_path = module_output_path
@@ -62,11 +62,11 @@ host_unittest_action("EcmaVm_001_Test") {
     "js_bigint_test.cpp",
   ]
 
-  configs = [ "//ark/js_runtime:ecma_test_config" ]
+  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
     "$ark_root/libpandabase:libarkbase",
-    "//ark/js_runtime:libark_jsruntime_test",
+    "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
 }
@@ -120,15 +120,15 @@ host_unittest_action("EcmaVm_002_Test") {
   ]
 
   configs = [
-    "//ark/js_runtime:ecma_test_config",
-    "//ark/js_runtime:icu_path_test_config",
+    "//arkcompiler/ets_runtime:ecma_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
   ]
 
   deps = [
     "$ark_root/libpandabase:libarkbase",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
-    "//ark/js_runtime:libark_jsruntime_test",
+    "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
 }

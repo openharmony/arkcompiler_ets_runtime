@@ -13,7 +13,7 @@ For more information, see [ArkCompiler JS Runtime](https://gitee.com/openharmony
 ## Directory Structure
 
 ```
-/ark/js_runtime
+/arkcompiler/ets_runtime
 ├─ ecmascript             # Implementation of ArkCompiler JS Runtime, including the ECMAScript library, interpreter, and memory management
 │   ├─ base               # Base helper class
 │   ├─ builtins           # ECMAScript libraries
@@ -65,12 +65,13 @@ LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/ark/ark:out/hispark_taurus/clang_x6
 
 ```
 
-For more information, see [ARK Runtime Usage Guide](https://gitee.com/openharmony/ark_js_runtime/blob/master/docs/ARK-Runtime-Usage-Guide.md).
+For more information, see [ARK Runtime Usage Guide](https://gitee.com/openharmony/arkcompiler_ets_runtime/blob/master/
+docs/ARK-Runtime-Usage-Guide.md).
 
 ## Repositories Involved
 
-[ark\_runtime\_core](https://gitee.com/openharmony/ark_runtime_core)
+[arkcompiler\_runtime\_core](https://gitee.com/openharmony/arkcompiler_runtime_core)
 
-**[ark\_js\_runtime](https://gitee.com/openharmony/ark_js_runtime)**
+**[arkcompiler\_ets\_runtime](https://gitee.com/openharmony/arkcompiler_ets_runtime)**
 
-[ark\_ts2abc](https://gitee.com/openharmony/ark_ts2abc)
+[arkcompiler\_ets\_frontend](https://gitee.com/openharmony/arkcompiler_ets_frontend)
