@@ -57,7 +57,7 @@ public:
         // since there is a lock, so cannot mark function const
         os::memory::LockHolder lock(jsPandaFileLock_);
         for (const auto &iter : loadedJSPandaFiles_) {
-            if (!cb(iter.first)) {
+            if (!cb(iter.second.first)) {
                 return;
             }
         }
@@ -85,7 +85,7 @@ private:
     static void FreeBuffer(void *mem);
 
     os::memory::RecursiveMutex jsPandaFileLock_;
-    std::unordered_map<const JSPandaFile *, uint32_t> loadedJSPandaFiles_;
+    std::unordered_map<const CString, std::pair<const JSPandaFile *, uint32_t>, CStringHash> loadedJSPandaFiles_;
     std::unordered_map<const JSPandaFile *, std::unique_ptr<tooling::JSPtExtractor>> extractors_;
 
     friend class JSPandaFile;
