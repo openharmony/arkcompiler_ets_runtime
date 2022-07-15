@@ -67,7 +67,8 @@ protected:
     virtual inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) = 0;
     virtual inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
                                          ObjectSlot end) = 0;
-    virtual inline void RecordWeakReference([[maybe_unused]] uint32_t threadId, [[maybe_unused]] JSTaggedType *ref)
+    virtual inline void RecordWeakReference([[maybe_unused]] uint32_t threadId, [[maybe_unused]] JSTaggedType *ref,
+                                            [[maybe_unused]] Region *objectRegion)
     {
         LOG_GC(FATAL) << "can not call this method";
     }
@@ -90,7 +91,7 @@ protected:
                                  ObjectSlot end) override;
 
     inline void HandleOldToNewRSet(uint32_t threadId, Region *region) override;
-    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref) override;
+    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion) override;
 };
 
 class MovableMarker : public Marker {
@@ -126,7 +127,7 @@ protected:
     inline SlotStatus MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot slot) override;
     inline SlotStatus EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,
                                      ObjectSlot slot) override;
-    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref) override;
+    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion = nullptr) override;
 
 private:
     inline bool ShouldBePromoted(TaggedObject *object);
@@ -150,7 +151,7 @@ protected:
     inline SlotStatus EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,
                                      ObjectSlot slot) override;
     inline uintptr_t AllocateReadOnlySpace(size_t size);
-    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref) override;
+    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion = nullptr) override;
 
 private:
     bool isAppSpawn_ {false};
