@@ -24,6 +24,7 @@ using namespace panda::ecmascript::kungfu;
 // ExtendAssembler implements frequently-used assembler macros.
 class ExtendedAssembler : public AssemblerAarch64 {
 public:
+    static const int PAIR_SLOT_SIZE = 16;
     explicit ExtendedAssembler(Chunk *chunk, AssemblerModule *module)
         : AssemblerAarch64(chunk), module_(module)
     {

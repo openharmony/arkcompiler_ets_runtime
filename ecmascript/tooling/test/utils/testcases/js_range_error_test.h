@@ -38,24 +38,24 @@ public:
             ASSERT_TRUE(callFrames.size() > 0);
             auto jsLocation = callFrames[0]->GetLocation();
             ASSERT_TRUE(jsLocation != nullptr);
-            ASSERT_EQ(jsLocation->GetLine(), 20);
-            ASSERT_EQ(jsLocation->GetColumn(), 0);
+            ASSERT_EQ(jsLocation->GetLine(), 20); // 22: breakpoint line
+            ASSERT_EQ(jsLocation->GetColumn(), 0); // 0: breakpoint column
             TestUtil::SuspendUntilContinue(DebugEvent::BREAKPOINT, location);
             return true;
         };
 
         exception = [this](const JSPtLocation &location) {
             auto sourceLocation = TestUtil::GetSourceLocation(location, pandaFile_.c_str());
-            ASSERT_EQ(sourceLocation.line, 16);
-            ASSERT_EQ(sourceLocation.column, 12);
+            ASSERT_EQ(sourceLocation.line, 16); // 16: exception line
+            ASSERT_EQ(sourceLocation.column, 12); // 12: exception column
             ++exceptionCounter_;
             std::vector<std::unique_ptr<CallFrame>> callFrames;
             ASSERT_TRUE(debugger_->GenerateCallFrames(&callFrames));
             ASSERT_TRUE(callFrames.size() > 0);
             auto jsLocation = callFrames[0]->GetLocation();
             ASSERT_TRUE(jsLocation != nullptr);
-            ASSERT_EQ(jsLocation->GetLine(), 16);
-            ASSERT_EQ(jsLocation->GetColumn(), 12);
+            ASSERT_EQ(jsLocation->GetLine(), 16); // 16: exception line
+            ASSERT_EQ(jsLocation->GetColumn(), 12); // 12: exception column
             TestUtil::SuspendUntilContinue(DebugEvent::EXCEPTION, location);
             return true;
         };
