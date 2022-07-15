@@ -368,6 +368,8 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
                 }
             }
         }
+        BytecodeRegion bb = graph_[i];
+        bb.SortCatches();
     }
 
     if (IsLogEnabled()) {
@@ -1789,14 +1791,11 @@ void BytecodeCircuitBuilder::InsertPhi()
         }
     }
 
+    // handle phi generated from multiple control flow in the same source block
+    InsertExceptionPhi(defsitesInfo);
+
     if (IsLogEnabled()) {
-        for (const auto&[variable, defsites] : defsitesInfo) {
-            std::string log("variable: " + std::to_string(variable) + " locate block have: ");
-            for (auto id : defsites) {
-                log += std::to_string(id) + " , ";
-            }
-            LOG_COMPILER(INFO) << log;
-        }
+        PrintDefsitesInfo(defsitesInfo);
     }
 
     for (const auto&[variable, defsites] : defsitesInfo) {
@@ -1820,6 +1819,33 @@ void BytecodeCircuitBuilder::InsertPhi()
 
     if (IsLogEnabled()) {
         PrintGraph();
+    }
+}
+
+void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo)
+{
+    // handle try catch defsite
+    for (auto &bb : graph_) {
+        if (bb.isDead) {
+            continue;
+        }
+        if (bb.catchs.size() == 0) {
+            continue;
+        }
+        std::set<size_t> vregs;
+        auto pc = bb.start;
+        while (pc <= bb.end) {
+            auto bytecodeInfo = GetBytecodeInfo(pc);
+            pc = pc + bytecodeInfo.offset; // next inst start pc
+            for (const auto &vreg: bytecodeInfo.vregOut) {
+                vregs.insert(vreg);
+            }
+        }
+
+        for (auto &vreg : vregs) {
+            defsitesInfo[vreg].insert(bb.catchs.at(0)->id);
+            bb.catchs.at(0)->phi.insert(vreg);
+        }
     }
 }
 
@@ -1961,11 +1987,6 @@ void BytecodeCircuitBuilder::BuildBlockCircuitHead()
         if (bb.numOfStatePreds == 0) {
             bb.stateStart = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
             bb.dependStart = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
-        } else if (bb.numOfStatePreds == 1) {
-            bb.stateStart = circuit_.NewGate(OpCode(OpCode::ORDINARY_BLOCK), 0,
-                                             {Circuit::NullGate()}, GateType::Empty());
-            bb.dependStart = circuit_.NewGate(OpCode(OpCode::DEPEND_RELAY), 0,
-                                              {bb.stateStart, Circuit::NullGate()}, GateType::Empty());
         } else if (bb.numOfLoopBacks > 0) {
             NewLoopBegin(bb);
         } else {
@@ -2664,6 +2685,17 @@ void BytecodeCircuitBuilder::PrintBBInfo()
             log3 += std::to_string(tryBlock->id) + " , ";
         }
         LOG_COMPILER(INFO) << log3;
+    }
+}
+
+void BytecodeCircuitBuilder::PrintDefsitesInfo(const std::map<uint16_t, std::set<size_t>> &defsitesInfo)
+{
+    for (const auto&[variable, defsites] : defsitesInfo) {
+        std::string log("variable: " + std::to_string(variable) + " locate block have: ");
+        for (auto id : defsites) {
+            log += std::to_string(id) + " , ";
+        }
+        LOG_COMPILER(INFO) << log;
     }
 }
 }  // namespace panda::ecmascript::kungfu
