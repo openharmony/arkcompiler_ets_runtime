@@ -16,10 +16,20 @@
 #ifndef ECMASCRIPT_JS_API_DEQUE_H
 #define ECMASCRIPT_JS_API_DEQUE_H
 
+#include <cstddef>
+#include <cstdint>
+
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value.h"
+
+#include "macros.h"
 #include "js_object.h"
-#include "js_tagged_value-inl.h"
 
 namespace panda::ecmascript {
+class JSThread;
+class TaggedArray;
+class TaggedObject;
 class JSAPIDeque : public JSObject {
 public:
     static constexpr int DEFAULT_CAPACITY_LENGTH = 8;

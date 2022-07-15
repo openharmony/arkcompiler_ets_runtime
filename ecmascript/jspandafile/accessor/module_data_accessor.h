@@ -16,8 +16,15 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_ACCESSOR_MODULE_DATA_ACCESSOR_H
 #define ECMASCRIPT_JSPANDAFILE_ACCESSOR_MODULE_DATA_ACCESSOR_H
 
-#include "libpandafile/field_data_accessor.h"
+#include <cstddef>
+#include <cstdint>
+#include <variant>
+#include <vector>
+
+#include "macros.h"
+
 #include "libpandafile/file.h"
+#include "libpandafile/file_items.h"
 #include "libpandafile/helpers.h"
 #include "libpandabase/utils/span.h"
 

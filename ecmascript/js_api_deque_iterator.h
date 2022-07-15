@@ -16,10 +16,18 @@
 #ifndef ECMASCRIPT_JS_API_DEQUE_ITERATOR_H
 #define ECMASCRIPT_JS_API_DEQUE_ITERATOR_H
 
-#include "js_iterator.h"
-#include "js_object.h"
+#include <cstddef>
+#include <cstdint>
+
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value.h"
+
+#include "macros.h"
 
 namespace panda::ecmascript {
+class TaggedObject;
+struct EcmaRuntimeCallInfo;
 class JSAPIDequeIterator : public JSObject {
 public:
     static JSAPIDequeIterator *Cast(TaggedObject *obj)

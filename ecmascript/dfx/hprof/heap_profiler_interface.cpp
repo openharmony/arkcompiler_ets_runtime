@@ -13,8 +13,11 @@
  * limitations under the License.
  */
 
+#include "ecmascript/dfx/hprof/heap_profiler_interface.h"
+
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/mem/native_area_allocator.h"
 
 namespace panda::ecmascript {
 HeapProfilerInterface *HeapProfilerInterface::heapProfile_ = nullptr;

@@ -15,11 +15,16 @@
 
 #include "ecmascript/tooling/interface/file_stream.h"
 
+#include <cerrno>
 #include <climits>
-#include <string>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ios>
+#include <ostream>
 #include <unistd.h>
 
-#include "ecmascript/ecma_macros.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
 FileStream::FileStream(const std::string &fileName)

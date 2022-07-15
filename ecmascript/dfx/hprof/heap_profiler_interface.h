@@ -16,12 +16,13 @@
 #ifndef ECMASCRIPT_HPROF_HEAP_PROFILER_INTERFACE_H
 #define ECMASCRIPT_HPROF_HEAP_PROFILER_INTERFACE_H
 
-#include "ecmascript/mem/c_string.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/tooling/interface/stream.h"
-#include "ecmascript/tooling/interface/progress.h"
+#include "macros.h"
 
 namespace panda::ecmascript {
+class EcmaVM;
+class Progress;
+class Stream;
+
 enum class DumpFormat { JSON, BINARY, OTHER };
 
 class HeapProfilerInterface {

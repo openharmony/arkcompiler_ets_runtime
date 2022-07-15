@@ -16,7 +16,10 @@
 #ifndef ECMASCRIPT_TOOLING_INTERFACE_FILE_STREAM_H
 #define ECMASCRIPT_TOOLING_INTERFACE_FILE_STREAM_H
 
+#include <cstdint>
 #include <fstream>
+#include <iosfwd>
+#include <utility>
 
 #include "ecmascript/tooling/interface/stream.h"
 
