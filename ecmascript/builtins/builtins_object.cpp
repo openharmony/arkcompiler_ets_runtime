@@ -109,8 +109,11 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
                 if (success && desc.IsEnumerable()) {
-                    JSTaggedValue value =
-                        FastRuntimeStub::FastGetPropertyByValue(thread, from.GetTaggedValue(), key.GetTaggedValue());
+                    JSTaggedValue value = desc.GetValue().GetTaggedValue();
+                    if (value.IsUndefined()) {
+                        value = FastRuntimeStub::FastGetPropertyByValue(thread, from.GetTaggedValue(),
+                                                                        key.GetTaggedValue());
+                    }
                     // ReturnIfAbrupt(prop_value)
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
