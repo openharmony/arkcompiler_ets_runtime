@@ -69,6 +69,8 @@ host_unittest_action("EcmaVm_001_Test") {
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
+
+  ldflags = [ "-Wl,--lto-O0" ]
 }
 
 host_unittest_action("EcmaVm_002_Test") {
