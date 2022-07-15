@@ -2970,6 +2970,7 @@ JSHandle<TSModuleTable> ObjectFactory::NewTSModuleTable(uint32_t length)
     auto header = heap_->AllocateYoungOrHugeObject(arrayClass, size);
     JSHandle<TSModuleTable> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
+    array->SetNumberOfTSTypeTables(thread_, 0);
 
     return array;
 }

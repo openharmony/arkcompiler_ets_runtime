@@ -70,6 +70,8 @@ public:
         return entry * ELEMENTS_LENGTH + TYPE_TABLE_OFFSET;
     }
 
+    static JSHandle<TSTypeTable> GenerateBuiltinsTypeTable(JSThread *thread);
+
 private:
 
     static int GetAmiPathOffset(int entry)
@@ -87,6 +89,8 @@ class TSLoader {
 public:
     explicit TSLoader(EcmaVM *vm);
     ~TSLoader() = default;
+
+    void Initialize();
 
     void PUBLIC_API DecodeTSTypes(const JSPandaFile *jsPandaFile);
 
@@ -202,6 +206,17 @@ public:
     size_t PUBLIC_API AddConstString(JSTaggedValue string);
 
     bool PUBLIC_API GetTypeInferenceLog() const;
+
+    bool IsBuiltinsDTSEnabled() const
+    {
+        return vm_->GetJSOptions().WasSetBuiltinsDTS();
+    }
+
+    CString GetBuiltinsDTS() const
+    {
+        std::string fileName = vm_->GetJSOptions().GetBuiltinsDTS();
+        return CString(fileName);
+    }
 
     // add string to constantstringtable and get its index
     size_t PUBLIC_API GetStringIdx(JSHandle<JSTaggedValue> constPool, const uint16_t id);
