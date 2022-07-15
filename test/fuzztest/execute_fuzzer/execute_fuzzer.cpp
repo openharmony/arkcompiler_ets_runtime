@@ -24,7 +24,7 @@ namespace OHOS {
     // staic constexpr auto PANDA_MAIN_PATH = "pandastdlib/pandastdlib.bin";
     static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 
-    bool doSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
+    bool ExecuteFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         if (createstatus) {
@@ -47,6 +47,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::doSomethingInterestingWithMyAPI(data, size);
+    OHOS::ExecuteFuzzTest(data, size);
     return 0;
 }

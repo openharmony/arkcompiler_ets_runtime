@@ -116,6 +116,11 @@ if (defined(ark_standalone_build)) {
         deps +=
             [ "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test" ]
       }
+
+      # fuzz test
+      if (is_standard_system) {
+        deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
+      }
     }
   }
 }

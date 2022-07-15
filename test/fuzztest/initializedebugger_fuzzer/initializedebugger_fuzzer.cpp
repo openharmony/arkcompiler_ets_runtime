@@ -27,7 +27,7 @@ using namespace panda::ecmascript::tooling;
 
 bool createstatus = true;
 namespace OHOS {
-    bool doSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
+    bool InitializeDebuggerFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         if (createstatus) {
@@ -36,10 +36,11 @@ namespace OHOS {
         }
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         auto jsvm = JSNApi::CreateJSVM(option);
-        auto onResponse = [data, size](std::string) {
-            return data + size;
+        using OnResponseType = const std::function<void(const void *, const std::string &)>;
+        OnResponseType onResponse = [data, size](const void *d, [[maybe_unused]] const std::string &s) -> void {
+            d = data + size;
         };
-        panda::ecmascript::tooling::InitializeDebugger(onResponse, jsvm);
+        panda::ecmascript::tooling::InitializeDebugger(jsvm, onResponse);
         panda::ecmascript::tooling::UninitializeDebugger(jsvm);
         JSNApi::DestroyJSVM(jsvm);
         return true;
@@ -50,6 +51,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::doSomethingInterestingWithMyAPI(data, size);
+    OHOS::InitializeDebuggerFuzzTest(data, size);
     return 0;
 }
