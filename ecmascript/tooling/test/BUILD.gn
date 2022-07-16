@@ -254,6 +254,7 @@ host_unittest_action("DebuggerTest") {
     "debugger_script_test.cpp",
     "debugger_types_test.cpp",
     "js_pt_hooks_test.cpp",
+    "pt_base64_test.cpp",
     "pt_json_test.cpp",
   ]
 

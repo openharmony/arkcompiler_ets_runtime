@@ -36,6 +36,7 @@ debugger_sources = [
   "backend/debugger_executor.cpp",
   "backend/js_pt_extractor.cpp",
   "backend/js_pt_hooks.cpp",
+  "base/pt_base64.cpp",
   "base/pt_events.cpp",
   "base/pt_json.cpp",
   "base/pt_params.cpp",
