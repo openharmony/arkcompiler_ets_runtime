@@ -927,8 +927,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, ConstantPool 
             *(--newSp) = JSTaggedValue::VALUE_UNDEFINED;  // push new target
             *(--newSp) = static_cast<JSTaggedType>(ToUintPtr(funcObject));  // push func
             ASSERT(method->GetNumVregsWithCallField() == 0);  // no need to push vregs
-            *(--newSp) = static_cast<uint64_t>(actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS);
-            *(--newSp) = static_cast<uint64_t>(ToUintPtr(thread));
+            *(--newSp) = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS;
+            *(--newSp) = ToUintPtr(thread);
             EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp);
 
             InterpretedBuiltinFrame *state = GET_BUILTIN_FRAME(newSp);
@@ -1983,8 +1983,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, ConstantPool 
                 // numArgs
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
-                newSp[index++] = static_cast<uint64_t>(ToUintPtr(thread));
-                newSp[index++] = static_cast<uint64_t>(numArgs + 1); // +1 for this
+                newSp[index++] = ToUintPtr(thread);
+                newSp[index++] = numArgs + 1; // +1 for this
                 // func
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = GET_VREG(firstArgRegIdx);
@@ -3540,8 +3540,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, ConstantPool 
                 uint32_t index = 0;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp);
-                newSp[index++] = static_cast<uint64_t>(ToUintPtr(thread));
-                newSp[index++] = static_cast<uint64_t>(range + NUM_MANDATORY_JSFUNC_ARGS);
+                newSp[index++] = ToUintPtr(thread);
+                newSp[index++] = range + NUM_MANDATORY_JSFUNC_ARGS;
                 // func
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = superCtor.GetRawData();

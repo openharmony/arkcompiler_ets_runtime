@@ -43,7 +43,7 @@ struct EcmaRuntimeCallInfo : public base::AlignedStruct<base::AlignedPointer::Si
 public:
     inline JSThread *GetThread() const
     {
-        return *(reinterpret_cast<JSThread **>(ToUintPtr(this)));
+        return thread_;
     }
 
     inline void SetNewTarget(const JSTaggedValue tagged)
@@ -187,9 +187,7 @@ public:
      */
     inline int32_t GetArgsNumber() const
     {
-        auto argcAddress = reinterpret_cast<int32_t *>(
-            ToUintPtr(this) + (static_cast<int>(Index::NumArgsIndex) * sizeof(JSTaggedType)));
-        return *argcAddress - NUM_MANDATORY_JSFUNC_ARGS;
+        return numArgs_ - NUM_MANDATORY_JSFUNC_ARGS;
     }
 
     inline JSTaggedType *GetArgs()
@@ -222,8 +220,8 @@ private:
     }
 
 private:
-    [[maybe_unused]] uint64_t thread_ {0};
-    [[maybe_unused]] uint64_t numArgs_ {0};  // include func, newTarget, this, equal to stackArgs size.
+    alignas(sizeof(JSTaggedType)) JSThread *thread_ {nullptr};
+    alignas(sizeof(JSTaggedType)) uint32_t numArgs_ {0};  // include func, newTarget, this, equal to stackArgs size.
     __extension__ JSTaggedType stackArgs_[0];  // NOLINT(modernize-avoid-c-arrays)
 };
 }  // namespace panda::ecmascript
