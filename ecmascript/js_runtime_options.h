@@ -60,14 +60,14 @@ public:
         parser->Add(&targetTriple_);
         parser->Add(&asmOptLevel_);
         parser->Add(&relocationMode_);
-        parser->Add(&logCompiledMethods);
-        parser->Add(&internal_memory_size_limit_);
-        parser->Add(&heap_size_limit_);
+        parser->Add(&logCompiledMethods_);
+        parser->Add(&internalMemorySizeLimit_);
+        parser->Add(&heapSizeLimit_);
         parser->Add(&enableIC_);
-        parser->Add(&snapshot_file_);
-        parser->Add(&framework_abc_file_);
-        parser->Add(&icu_data_path_);
-        parser->Add(&startup_time_);
+        parser->Add(&snapshotFile_);
+        parser->Add(&frameworkAbcFile_);
+        parser->Add(&icuDataPath_);
+        parser->Add(&startupTime_);
         parser->Add(&snapshotOutputFile_);
         parser->Add(&enableRuntimeStat_);
         parser->Add(&logTypeInfer_);
@@ -332,37 +332,37 @@ public:
 
     std::string GetlogCompiledMethods() const
     {
-        return logCompiledMethods.GetValue();
+        return logCompiledMethods_.GetValue();
     }
 
-    void SetlogCompiledMethods(std::string value)
+    void SetlogCompiledMethods_(std::string value)
     {
-        logCompiledMethods.SetValue(std::move(value));
+        logCompiledMethods_.SetValue(std::move(value));
     }
 
     bool WasSetlogCompiledMethods() const
     {
-        return logCompiledMethods.WasSet() && GetlogCompiledMethods().compare("none") != 0;
+        return logCompiledMethods_.WasSet() && GetlogCompiledMethods().compare("none") != 0;
     }
 
     uint64_t GetInternalMemorySizeLimit() const
     {
-        return internal_memory_size_limit_.GetValue();
+        return internalMemorySizeLimit_.GetValue();
     }
 
     uint32_t GetHeapSizeLimit() const
     {
-        return heap_size_limit_.GetValue();
+        return heapSizeLimit_.GetValue();
     }
 
     void SetHeapSizeLimit(uint32_t value)
     {
-        heap_size_limit_.SetValue(value);
+        heapSizeLimit_.SetValue(value);
     }
 
     bool WasSetHeapSizeLimit() const
     {
-        return heap_size_limit_.WasSet();
+        return heapSizeLimit_.WasSet();
     }
 
     void SetIsWorker(bool isWorker)
@@ -392,62 +392,62 @@ public:
 
     std::string GetSnapshotFile() const
     {
-        return snapshot_file_.GetValue();
+        return snapshotFile_.GetValue();
     }
 
     void SetSnapshotFile(std::string value)
     {
-        snapshot_file_.SetValue(std::move(value));
+        snapshotFile_.SetValue(std::move(value));
     }
 
     bool WasSetSnapshotFile() const
     {
-        return snapshot_file_.WasSet();
+        return snapshotFile_.WasSet();
     }
 
     std::string GetFrameworkAbcFile() const
     {
-        return framework_abc_file_.GetValue();
+        return frameworkAbcFile_.GetValue();
     }
 
     void SetFrameworkAbcFile(std::string value)
     {
-        framework_abc_file_.SetValue(std::move(value));
+        frameworkAbcFile_.SetValue(std::move(value));
     }
 
     bool WasSetFrameworkAbcFile() const
     {
-        return framework_abc_file_.WasSet();
+        return frameworkAbcFile_.WasSet();
     }
 
     std::string GetIcuDataPath() const
     {
-        return icu_data_path_.GetValue();
+        return icuDataPath_.GetValue();
     }
 
     void SetIcuDataPath(std::string value)
     {
-        icu_data_path_.SetValue(std::move(value));
+        icuDataPath_.SetValue(std::move(value));
     }
 
     bool WasSetIcuDataPath() const
     {
-        return icu_data_path_.WasSet();
+        return icuDataPath_.WasSet();
     }
 
     bool IsStartupTime() const
     {
-        return startup_time_.GetValue();
+        return startupTime_.GetValue();
     }
 
     void SetStartupTime(bool value)
     {
-        startup_time_.SetValue(value);
+        startupTime_.SetValue(value);
     }
 
     bool WasSetStartupTime() const
     {
-        return startup_time_.WasSet();
+        return startupTime_.WasSet();
     }
 
     std::string GetSnapshotOutputFile() const
@@ -518,19 +518,19 @@ private:
         "",
         R"(Opcode range when asm interpreter is enabled.)"};
     AsmInterParsedOption asmInterParsedOption_;
-    PandArg<uint64_t> internal_memory_size_limit_ {"internal-memory-size-limit", INTERNAL_MEMORY_SIZE_LIMIT_DEFAULT,
+    PandArg<uint64_t> internalMemorySizeLimit_ {"internal-memory-size-limit", INTERNAL_MEMORY_SIZE_LIMIT_DEFAULT,
         R"(Max internal memory used by the VM. Default: 2147483648)"};
-    PandArg<uint32_t> heap_size_limit_ {"heap-size-limit", 512 * 1024 * 1024,
+    PandArg<uint32_t> heapSizeLimit_ {"heap-size-limit", 512 * 1024 * 1024,
         R"(Max heap size. Default: 512M)"};
     PandArg<bool> enableIC_ {"enable-ic", true, R"(switch of inline cache. Default: true)"};
-    PandArg<std::string> snapshot_file_ {"snapshot-file", R"(/system/etc/snapshot)",
+    PandArg<std::string> snapshotFile_ {"snapshot-file", R"(/system/etc/snapshot)",
         R"(snapshot file. Default: "/system/etc/snapshot")"};
-    PandArg<std::string> framework_abc_file_ {"framework-abc-file", R"(strip.native.min.abc)",
+    PandArg<std::string> frameworkAbcFile_ {"framework-abc-file", R"(strip.native.min.abc)",
         R"(snapshot file. Default: "strip.native.min.abc")"};
-    PandArg<std::string> icu_data_path_ {"icu-data-path", R"(default)",
+    PandArg<std::string> icuDataPath_ {"icu-data-path", R"(default)",
         R"(Path to generated icu data file. Default: "default")"};
-    PandArg<bool> startup_time_ {"startup-time", false, R"(Print the start time of command execution. Default: false)"};
-    PandArg<std::string> logCompiledMethods {"log-compiled-methods",
+    PandArg<bool> startupTime_ {"startup-time", false, R"(Print the start time of command execution. Default: false)"};
+    PandArg<std::string> logCompiledMethods_ {"log-compiled-methods",
         R"(none)",
         R"(print stub or aot logs in units of method, "none": no log, "all": every method,"
         "asm": log all disassemble code)"};
