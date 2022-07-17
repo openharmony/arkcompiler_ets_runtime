@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-LDA_STR:string,DEFINEGENERATORFUNC:function,RETURNUNDEFINED:undefined
-----
 LDFALSE:boolean,LDUNDEFINED:undefined,LDAI_DYN:number,LDAI_DYN:number,LDA_STR:string,LDAI_DYN:number,
 LDAI_DYN:number,LDA_STR:string,LDAI_DYN:number,LDAI_DYN:number,EQDYN:boolean,RETURNUNDEFINED:undefined
+----
+LDA_STR:string,DEFINEGENERATORFUNC:function,RETURNUNDEFINED:undefined
