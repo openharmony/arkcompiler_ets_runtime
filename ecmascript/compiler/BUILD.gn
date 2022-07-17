@@ -237,7 +237,7 @@ if (!defined(ark_standalone_build)) {
       ":libark_jsoptimizer_set",
       "$js_root:libark_jsruntime_test_set",
     ]
-
+    ldflags = [ "-Wl,--lto-O0" ]
     install_enable = false
 
     output_extension = "so"
