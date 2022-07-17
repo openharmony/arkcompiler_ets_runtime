@@ -11,4 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-LDA_STR:string,DIV2DYN:number,TYPEOFDYN:number
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_typeinfer_test_action("add2dyn") {
+  deps = []
+}

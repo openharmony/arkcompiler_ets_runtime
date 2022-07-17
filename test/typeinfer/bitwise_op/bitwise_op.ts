@@ -13,27 +13,28 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     let x:number = 123;
     let y:number = 2;
     let andRes = x & y;
-    typeof(andRes);
+    AssertType(andRes, "number");
 
     let orRes = x | y;
-    typeof(orRes);
+    AssertType(orRes, "number");
 
     let xorRes = x ^ y;
-    typeof(xorRes);
+    AssertType(xorRes, "number");
 
     let shlRes = x << y;
-    typeof(shlRes);
+    AssertType(shlRes, "number");
 
     let ashrRes = x >> y;
-    typeof(ashrRes);
+    AssertType(ashrRes, "number");
 
     let shrRes = x >>> y;
-    typeof(shrRes);
+    AssertType(shrRes, "number");
 
     let notRes = ~x;
-    typeof(notRes);
+    AssertType(notRes, "number");
 }

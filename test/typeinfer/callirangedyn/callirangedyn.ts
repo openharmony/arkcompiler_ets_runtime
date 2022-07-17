@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     class A {
         v1:number;
@@ -31,5 +32,6 @@
         let a = new A(v1, v2, v3, v4);
         return a;
     }
-    typeof(foo(0, "1", true, 3));
+    let value = foo(0, "1", true, 3);
+    AssertType(value, "class_instance");
 }

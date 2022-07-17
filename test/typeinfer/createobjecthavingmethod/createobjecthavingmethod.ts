@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     let xiaoming : {
         age : number,
@@ -23,5 +24,6 @@
             return 1;
         },
     }
-    typeof(xiaoming.age);
+    AssertType(xiaoming, "object");
+    AssertType(xiaoming.age, "number");
 }

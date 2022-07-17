@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     function* genfunc() {
         yield "1";
         yield "2";
     }
-    let gen = genfunc();
-    gen.next()
+    AssertType(genfunc, "function");
 }

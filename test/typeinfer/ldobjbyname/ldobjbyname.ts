@@ -13,10 +13,21 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     class Student {
         static age : string = "18";
     }
     let stu = new Student()
-    typeof(Student.age);    
+    AssertType(Student.age, "string");
+
+    let obj : {
+        num : number,
+        str : string,
+    } = {
+        num : 1,
+        str : "hello",
+    }
+    AssertType(obj.num, "number");
+    AssertType(obj.str, "string");
 }

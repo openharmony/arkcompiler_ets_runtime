@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     function foo():string
     {
         return "pass";
     }
-    typeof(foo());
+    let value = foo();
+    AssertType(value, "string");
 }

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     let arr:boolean[]= [];
-    typeof(arr);
+    AssertType(arr, "array");
 }

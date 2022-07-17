@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     function add():string {
         return 1 + '2';
@@ -21,6 +22,6 @@
     function sub(a:number, b:number):number {
         return a + b;
     }
-    add();
-    sub(1,2);
+    AssertType(add, "function");
+    AssertType(sub, "function");
 }

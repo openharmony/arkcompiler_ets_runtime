@@ -470,6 +470,11 @@ public:
         return suspendAndResumeGates_;
     }
 
+    inline bool HasTypes() const
+    {
+        return hasTypes_;
+    }
+
 private:
     void PUBLIC_API CollectBytecodeBlockInfo(uint8_t* pc, std::vector<CfgInfo> &bytecodeBlockInfos);
 

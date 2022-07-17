@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     class A {
         v:number;
@@ -31,10 +32,27 @@
         fun3():boolean { 
             return true;
         }
+        fun4():B { 
+            let b = new B(this.v);
+            return b;
+        }
+        fun5():number[] { 
+            return [this.v, this.v];
+        }
     }
+
+    class B {
+        v:number;
+        constructor(v:number) {
+            this.v = v + 1;
+        }
+    }
+
     let a = new A(1);
-    typeof(a.fun(2));
-    typeof(a.fun1());
-    typeof(a.fun2());
-    typeof(a.fun3());
+    AssertType(a.fun(2), "number");
+    AssertType(a.fun1(), "void");
+    AssertType(a.fun2(), "string");
+    AssertType(a.fun3(), "boolean");
+    AssertType(a.fun4(), "class_instance");
+    AssertType(a.fun5(), "array");
 }

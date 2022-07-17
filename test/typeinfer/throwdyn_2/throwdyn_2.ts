@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     let test : {
         age : number,
     } = {
         age : 10,
     }
+    AssertType(test, "object");
     throw test;
 }

@@ -204,7 +204,7 @@ public:
 
     size_t PUBLIC_API AddConstString(JSTaggedValue string);
 
-    bool PUBLIC_API GetTypeInferenceLog() const;
+    bool PUBLIC_API IsTypeVerifyEnabled() const;
 
     bool IsBuiltinsDTSEnabled() const
     {
@@ -230,6 +230,8 @@ public:
         ASSERT(index < constantStringTable_.size());
         return JSHandle<EcmaString>(reinterpret_cast<uintptr_t>(&(constantStringTable_.at(index))));
     }
+
+    std::string PUBLIC_API GetStdStringById(size_t index) const;
 
     CVector<JSTaggedType> GetStaticHClassTable() const
     {

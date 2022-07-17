@@ -330,7 +330,6 @@ template("host_typeinfer_test_action") {
 
   _test_ts_path_ = "./${_target_name_}.ts"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
-  _test_expect_path_ = "./expect_output.txt"
 
   ts2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
@@ -339,10 +338,7 @@ template("host_typeinfer_test_action") {
     dst_file = rebase_path(_test_abc_path_)
     extra_args = [ "--debug" ]
 
-    in_puts = [
-      _test_ts_path_,
-      _test_expect_path_,
-    ]
+    in_puts = [ _test_ts_path_ ]
     out_puts = [ _test_abc_path_ ]
   }
 
@@ -361,7 +357,7 @@ template("host_typeinfer_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    _aot_compile_options_ = " --asm-interpreter=true" + " --log-Type-Infer=true"
+    _aot_compile_options_ = " --typeinfer-verify=true"
 
     args = [
       "--script-file",
@@ -370,8 +366,8 @@ template("host_typeinfer_test_action") {
       _aot_compile_options_,
       "--script-args",
       _script_args_,
-      "--expect-gatetype",
-      rebase_path(_test_expect_path_),
+      "--expect-output",
+      "0",
       "--env-path",
       rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
           "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +

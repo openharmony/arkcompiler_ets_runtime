@@ -74,7 +74,10 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
                                           bool noThrow)
 {
     if (outir != Circuit::NullGate()) {
-        acc_.SetGateType(outir, acc_.GetGateType(hir));
+        auto type = acc_.GetGateType(hir);
+        if (type.IsTSType()) {
+            acc_.SetGateType(outir, type);
+        }
     }
     auto uses = acc_.Uses(hir);
     for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
