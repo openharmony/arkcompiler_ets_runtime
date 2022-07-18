@@ -171,7 +171,7 @@ private:
                                  Register actualNumArgs, Register argV, Label *pushCallThis);
     static void CopyArgumentWithArgV(ExtendedAssembler *assembler, Register argc, Register argV);
     static void PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,
-                                    Register thisObj, Register newTarget);
+                                    Register thisObj, Register newTarget, Register currentSp);
     static void PopJSFunctionArgs(ExtendedAssembler *assembler, Register expectedNumArgs, Register actualNumArgs);
     static void PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Register prevFp);
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);

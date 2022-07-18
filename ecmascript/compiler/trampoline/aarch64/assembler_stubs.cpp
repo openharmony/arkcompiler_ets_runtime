@@ -227,7 +227,7 @@ void AssemblerStubs::OptimizedCallOptimized(ExtendedAssembler *assembler)
     __ BindAssemblerStub(RTSTUB_ID(OptimizedCallOptimized));
     Register glue(X0);
     Register expectedNumArgs(X1);
-    Register actualNumArgs(X2, W);
+    Register actualNumArgs(X2);
     Register codeAddr(X3);
     Register argV(X4);
     Register env(X5);
@@ -1953,12 +1953,12 @@ void AssemblerStubs::CopyArgumentWithArgV(ExtendedAssembler *assembler, Register
 }
 
 void AssemblerStubs::PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,
-                                         Register thisObj, Register newTarget)
+                                         Register thisObj, Register newTarget, Register currentSp)
 {
     Register sp(SP);
-    __ Str(thisObj, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Str(newTarget, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Str(jsfunc, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(thisObj, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(newTarget, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(jsfunc, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
 }
 
 void AssemblerStubs::PopJSFunctionArgs(ExtendedAssembler *assembler, Register expectedNumArgs, Register actualNumArgs)
@@ -2068,28 +2068,33 @@ void AssemblerStubs::JSCallWithArgV(ExtendedAssembler *assembler)
     Register thisObj(X4);
     Register argV(X5);
     Register env(X6);
+    Register currentSp = __ AvailableRegister1();
     Register callsiteSp = __ AvailableRegister2();
     Label pushCallThis;
 
     __ Mov(callsiteSp, sp);
     PushOptimizedFrame(assembler, callsiteSp);
-    __ Cbz(actualNumArgs, &pushCallThis);
+    Register argC(X7);
+    __ Add(actualNumArgs, actualNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+    __ Mov(argC, actualNumArgs);
+    IncreaseStackForArguments(assembler, argC, currentSp);
     {
         TempRegister1Scope scope1(assembler);
+        TempRegister2Scope scope2(assembler);
         Register tmp = __ TempRegister1();
-        __ Mov(tmp, actualNumArgs);
-        CopyArgumentWithArgV(assembler, tmp, argV);
+        Register op = __ TempRegister2();
+        __ Sub(tmp, actualNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+        PushArgsWithArgv(assembler, glue, tmp, argV, op, currentSp, &pushCallThis, nullptr);
     }
     __ Bind(&pushCallThis);
-    PushMandatoryJSArgs(assembler, jsfunc, thisObj, newTarget);
-    __ Add(actualNumArgs, actualNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
-    __ Str(actualNumArgs, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    PushMandatoryJSArgs(assembler, jsfunc, thisObj, newTarget, currentSp);
+    __ Str(actualNumArgs, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Ldr(env, MemoryOperand(jsfunc, JSFunction::LEXICAL_ENV_OFFSET));
-    __ Str(env, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(env, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
 
     __ CallAssemblerStub(RTSTUB_ID(JSCall), false);
-    __ Add(sp, sp, Immediate(FRAME_SLOT_SIZE));
-    __ Ldr(actualNumArgs, MemoryOperand(sp, 0));
+
+    __ Ldr(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
     PopJSFunctionArgs(assembler, actualNumArgs, actualNumArgs);
     PopOptimizedFrame(assembler);
     __ Ret();

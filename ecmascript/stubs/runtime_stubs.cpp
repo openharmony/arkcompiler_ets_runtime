@@ -1667,6 +1667,19 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
     return JSTypedArray::FastSetPropertyByIndex(thread, obj, idx.GetInt(), value, JSType(jsType.GetInt())).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DebugAOTPrint)
+{
+    RUNTIME_STUBS_HEADER(DebugAOTPrint);
+    JSTaggedValue fmtMessageId = GetArg(argv, argc, 0);
+    std::string format = MessageString::GetMessageString(fmtMessageId.GetInt());
+    va_list args;
+    //    va_start(args, fmtMessageId.GetInt());
+    std::string result = panda::helpers::string::Vformat(format.c_str(), args);
+    std::cerr << "aot " << result << std::endl;
+    va_end(args);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(OptNewObjWithIHClass)
 {
     RUNTIME_STUBS_HEADER(OptNewObjWithIHClass);
