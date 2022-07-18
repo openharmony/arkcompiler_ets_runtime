@@ -127,8 +127,8 @@ private:
     static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
         Register op);
 
-    static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register callTarget,
-        Register method, Register pc, Register op);
+    static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register currentSlot,
+        Register callTarget, Register method, Register pc, Register op);
 
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode);
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *pushCallThis,
@@ -144,8 +144,8 @@ private:
         Register op, Register fp, Label *next, Label *stackOverflow);
     static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register glue, Register argc, Register temp,
         Register fp, Label *next, Label *stackOverflow);
-    static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register numArgs, Register op,
-        Label *stackOverflow);
+    static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register currentSlot, Register numArgs,
+        Register op, Label *stackOverflow);
     static void SaveFpAndJumpSize(ExtendedAssembler *assembler, Immediate jumpSize);
 
     static void PushAsmInterpEntryFrame(ExtendedAssembler *assembler);
@@ -157,8 +157,8 @@ private:
     static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);
 
     static void PushGeneratorFrameState(ExtendedAssembler *assembler, Register &prevSpRegister, Register &fpRegister,
-        Register &callTargetRegister, Register &methodRegister, Register &contextRegister, Register &pcRegister,
-        Register &operatorRegister);
+        Register &currentSlotRegister, Register &callTargetRegister, Register &methodRegister,
+        Register &contextRegister, Register &pcRegister, Register &operatorRegister);
 
     static void CallBCStub(ExtendedAssembler *assembler, Register &newSp, Register &glue,
         Register &callTarget, Register &method, Register &pc, Register &temp);

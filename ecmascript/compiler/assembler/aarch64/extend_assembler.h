@@ -50,7 +50,7 @@ public:
             UNREACHABLE();
         }
         temp1InUse_ = true;
-        return X7;
+        return X9;
     }
     Register TempRegister2()
     {
@@ -59,17 +59,22 @@ public:
             UNREACHABLE();
         }
         temp2InUse_ = true;
-        return X16;
+        return X10;
     }
     Register AvailableRegister1() const
     {
-        // X17 is neither callee saved reegister nor argument register
-        return X17;
+        // X11 is neither callee saved reegister nor argument register
+        return X11;
     }
     Register AvailableRegister2() const
     {
-        // X18 is neither callee saved reegister nor argument register
-        return X18;
+        // X12 is neither callee saved reegister nor argument register
+        return X12;
+    }
+    Register AvailableRegister3() const
+    {
+        // X13 is neither callee saved reegister nor argument register
+        return X13;
     }
     Register CallDispatcherArgument(kungfu::CallDispatchInputs index)
     {

@@ -754,6 +754,7 @@ void AssemblerStubs::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode 
     Label stackOverflow;
     Register glueRegister = __ GlueRegister();
     Register fpRegister = __ AvailableRegister1();
+    Register currentSlotRegister = __ AvailableRegister3();
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register argcRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARGC);
     if (!kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
@@ -761,14 +762,23 @@ void AssemblerStubs::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode 
     }
     // save fp
     __ Mov(fpRegister, Register(SP));
+    __ Mov(currentSlotRegister, Register(SP));
+
+    {
+        // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
+        [[maybe_unused]] TempRegister1Scope scope(assembler);
+        Register tempRegister = __ TempRegister1();
+        __ Ldr(tempRegister, MemoryOperand(glueRegister, JSThread::GlueData::GetStackLimitOffset(false)));
+        __ Mov(Register(SP), tempRegister);
+    }
 
     auto jumpSize = kungfu::AssemblerModule::GetJumpSizeFromJSCallMode(mode);
     if (mode == JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV) {
         Register thisRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         [[maybe_unused]] TempRegister1Scope scope(assembler);
         Register tempArgcRegister = __ TempRegister1();
-        __ PushArgc(argcRegister, tempArgcRegister, fpRegister);
-        __ Str(thisRegister, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        __ PushArgc(argcRegister, tempArgcRegister, currentSlotRegister);
+        __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         jumpSize = 0;
     }
 
@@ -838,7 +848,7 @@ void AssemblerStubs::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMo
 {
     Register glueRegister = __ GlueRegister();
     auto argc = kungfu::AssemblerModule::GetArgcFromJSCallMode(mode);
-    Register fpRegister = __ AvailableRegister1();
+    Register currentSlotRegister = __ AvailableRegister3();
     // call range
     if (argc < 0) {
         Register numRegister = __ AvailableRegister2();
@@ -847,20 +857,20 @@ void AssemblerStubs::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMo
         __ Mov(numRegister, argcRegister);
         [[maybe_unused]] TempRegister1Scope scope(assembler);
         Register opRegister = __ TempRegister1();
-        PushArgsWithArgv(assembler, glueRegister, numRegister, argvRegister, opRegister, fpRegister, pushCallThis,
-            stackOverflow);
+        PushArgsWithArgv(assembler, glueRegister, numRegister, argvRegister, opRegister, currentSlotRegister,
+            pushCallThis, stackOverflow);
     } else if (argc > 0) {
         Register arg0 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
         Register arg1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
         Register arg2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         if (argc > 2) { // 2: call arg2
-            __ Str(arg2, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Str(arg2, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         }
         if (argc > 1) {
-            __ Str(arg1, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Str(arg1, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         }
         if (argc > 0) {
-            __ Str(arg0, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Str(arg0, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         }
     }
 }
@@ -872,7 +882,7 @@ void AssemblerStubs::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMo
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register argcRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARGC);
     Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARGV);
-    Register fpRegister = __ AvailableRegister1();
+    Register currentSlotRegister = __ AvailableRegister3();
     Register arg0 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
     Register arg1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
     Label noExtraEntry;
@@ -886,9 +896,9 @@ void AssemblerStubs::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMo
         [[maybe_unused]] TempRegister1Scope scope1(assembler);
         Register tempArgcRegister = __ TempRegister1();
         if (argc >= 0) {
-            __ PushArgc(argc, tempArgcRegister, fpRegister);
+            __ PushArgc(argc, tempArgcRegister, currentSlotRegister);
         } else {
-            __ PushArgc(argcRegister, tempArgcRegister, fpRegister);
+            __ PushArgc(argcRegister, tempArgcRegister, currentSlotRegister);
         }
         // fall through
     }
@@ -898,8 +908,8 @@ void AssemblerStubs::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMo
             {
                 [[maybe_unused]] TempRegister1Scope scope(assembler);
                 Register tempRegister = __ TempRegister1();
-                PushUndefinedWithArgc(assembler, glueRegister, declaredNumArgsRegister, tempRegister, fpRegister,
-                    nullptr, stackOverflow);
+                PushUndefinedWithArgc(assembler, glueRegister, declaredNumArgsRegister, tempRegister,
+                    currentSlotRegister, nullptr, stackOverflow);
             }
             __ B(fastPathEntry);
             return;
@@ -913,7 +923,7 @@ void AssemblerStubs::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMo
         }
         [[maybe_unused]] TempRegister2Scope scope2(assembler);
         Register tempRegister = __ TempRegister2();
-        PushUndefinedWithArgc(assembler, glueRegister, diffRegister, tempRegister, fpRegister, &pushArgsEntry,
+        PushUndefinedWithArgc(assembler, glueRegister, diffRegister, tempRegister, currentSlotRegister, &pushArgsEntry,
             stackOverflow);
         __ B(fastPathEntry);
     }
@@ -933,20 +943,20 @@ void AssemblerStubs::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMo
         if (argc < 0) {
             [[maybe_unused]] TempRegister1Scope scope(assembler);
             Register opRegister = __ TempRegister1();
-            PushArgsWithArgv(assembler, glueRegister, declaredNumArgsRegister, argvRegister, opRegister, fpRegister,
-                nullptr, stackOverflow);
+            PushArgsWithArgv(assembler, glueRegister, declaredNumArgsRegister, argvRegister, opRegister,
+                currentSlotRegister, nullptr, stackOverflow);
         } else if (argc > 0) {
             Label pushArgs0;
             if (argc > 2) {  // 2: call arg2
                 // decalare is 2 or 1 now
                 __ Cmp(declaredNumArgsRegister, Immediate(1));
                 __ B(Condition::EQ, &pushArgs0);
-                __ Str(arg1, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+                __ Str(arg1, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
             }
             if (argc > 1) {
                 __ Bind(&pushArgs0);
                 // decalare is is 1 now
-                __ Str(arg0, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+                __ Str(arg0, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
             }
         }
         __ B(pushCallThis);
@@ -1081,40 +1091,44 @@ void AssemblerStubs::CallNativeWithArgv(ExtendedAssembler *assembler, bool callN
     Register opArgc(X8);
     Register opArgv(X9);
     Register temp(X10);
-    Register fpRegister(X11);
+    Register currentSlotRegister(X11);
     Register spRegister(SP);
 
     Label pushThis;
     Label stackOverflow;
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV, temp, argc);
 
-    __ Mov(fpRegister, spRegister);
+    __ Mov(currentSlotRegister, spRegister);
+    // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
+    __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
+    __ Mov(Register(SP), temp);
+
     __ Mov(opArgc, argc);
     __ Mov(opArgv, argv);
-    PushArgsWithArgv(assembler, glue, opArgc, opArgv, temp, fpRegister, &pushThis, &stackOverflow);
+    PushArgsWithArgv(assembler, glue, opArgc, opArgv, temp, currentSlotRegister, &pushThis, &stackOverflow);
 
     __ Bind(&pushThis);
     // newTarget
     if (callNew) {
         // 16: this & newTarget
-        __ Stp(callTarget, thisObj, MemoryOperand(fpRegister, -16, AddrMode::PREINDEX));
+        __ Stp(callTarget, thisObj, MemoryOperand(currentSlotRegister, -16, AddrMode::PREINDEX));
     } else {
         __ Mov(temp, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         // 16: this & newTarget
-        __ Stp(temp, thisObj, MemoryOperand(fpRegister, -16, AddrMode::PREINDEX));
+        __ Stp(temp, thisObj, MemoryOperand(currentSlotRegister, -16, AddrMode::PREINDEX));
     }
     // callTarget
-    __ Str(callTarget, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Add(temp, fpRegister, Immediate(40));  // 40: skip frame type, numArgs, func, newTarget and this
+    __ Str(callTarget, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Add(temp, currentSlotRegister, Immediate(40));  // 40: skip frame type, numArgs, func, newTarget and this
     __ Add(Register(FP), temp, Operand(argc, LSL, 3));  // 3: argc * 8
 
     __ Add(temp, argc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
     // 2: thread & argc
-    __ Stp(glue, temp, MemoryOperand(fpRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Add(Register(X0), fpRegister, Immediate(0));
+    __ Stp(glue, temp, MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Add(Register(X0), currentSlotRegister, Immediate(0));
 
-    __ Align16(fpRegister);
-    __ Mov(spRegister, fpRegister);
+    __ Align16(currentSlotRegister);
+    __ Mov(spRegister, currentSlotRegister);
 
     CallNativeInternal(assembler, nativeCode);
     __ Ret();
@@ -1137,7 +1151,7 @@ void AssemblerStubs::CallNativeWithArgv(ExtendedAssembler *assembler, bool callN
         __ Add(Register(FP), temp, Immediate(48));  // 48: skip frame type, numArgs, func, newTarget, this and align
 
         Register runtimeId(X11);
-        Register trampoline(X16);
+        Register trampoline(X12);
         __ Mov(runtimeId, Immediate(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException));
         // 3 : 3 means *8
         __ Add(trampoline, glue, Operand(runtimeId, LSL, 3));
@@ -1492,27 +1506,34 @@ void AssemblerStubs::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *assemb
     Register callTarget(X4);
     Register method(X5);
     Register temp(X6); // can not be used to store any variable
-    Register fpRegister(X7);
+    Register currentSlotRegister(X7);
+    Register fpRegister(X9);
     Register nRegsRegister(X26, W);
     Register regsArrayRegister(X27);
     Register newSp(X28);
     __ Ldr(callTarget, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_METHOD_OFFSET));
     __ Ldr(method, MemoryOperand(callTarget, JSFunctionBase::METHOD_OFFSET));
     __ PushFpAndLr();
+    // save fp
     __ Mov(fpRegister, spRegister);
+    __ Mov(currentSlotRegister, spRegister);
+    // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
+    __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
+    __ Mov(Register(SP), temp);
     // push context regs
     __ Ldr(nRegsRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_NREGS_OFFSET));
     __ Ldr(regsArrayRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET));
     __ Add(regsArrayRegister, regsArrayRegister, Immediate(TaggedArray::DATA_OFFSET));
-    PushArgsWithArgv(assembler, glue, nRegsRegister, regsArrayRegister, temp, fpRegister, &pushFrameState,
+    PushArgsWithArgv(assembler, glue, nRegsRegister, regsArrayRegister, temp, currentSlotRegister, &pushFrameState,
         &stackOverflow);
 
     __ Bind(&pushFrameState);
-    __ Mov(newSp, fpRegister);
+    __ Mov(newSp, currentSlotRegister);
     // push frame state
-    PushGeneratorFrameState(assembler, prevSpRegister, fpRegister, callTarget, method, contextRegister, pc, temp);
-    __ Align16(fpRegister);
-    __ Mov(Register(SP), fpRegister);
+    PushGeneratorFrameState(
+        assembler, prevSpRegister, fpRegister, currentSlotRegister, callTarget, method, contextRegister, pc, temp);
+    __ Align16(currentSlotRegister);
+    __ Mov(Register(SP), currentSlotRegister);
     // call bc stub
     CallBCStub(assembler, newSp, glue, callTarget, method, pc, temp);
 
@@ -1526,7 +1547,7 @@ void AssemblerStubs::PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
 {
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
-    Register fpRegister = __ AvailableRegister1();
+    Register currentSlotRegister = __ AvailableRegister3();
 
     Label pushVregs;
     Label pushNewTarget;
@@ -1542,10 +1563,10 @@ void AssemblerStubs::PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
         [[maybe_unused]] TempRegister1Scope scope1(assembler);
         Register tempRegister = __ TempRegister1();
         __ Mov(tempRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));
-        __ Str(tempRegister, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Str(tempRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     } else {
         Register thisRegister = GetThisRegsiter(assembler, mode);
-        __ Str(thisRegister, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
     __ Bind(&pushNewTarget);
     {
@@ -1554,16 +1575,16 @@ void AssemblerStubs::PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
             [[maybe_unused]] TempRegister1Scope scope1(assembler);
             Register newTarget = __ TempRegister1();
             __ Mov(newTarget, Immediate(JSTaggedValue::VALUE_UNDEFINED));
-            __ Str(newTarget, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Str(newTarget, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         } else {
             Register newTargetRegister = GetNewTargetRegsiter(assembler, mode);
-            __ Str(newTargetRegister, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+            __ Str(newTargetRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         }
     }
     __ Bind(&pushCallTarget);
     {
         __ Tbz(callFieldRegister, JSMethod::HaveFuncBit::START_BIT, &pushVregs);
-        __ Str(callTargetRegister, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Str(callTargetRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
     __ Bind(&pushVregs);
     {
@@ -1579,6 +1600,7 @@ void AssemblerStubs::PushVregs(ExtendedAssembler *assembler, Label *stackOverflo
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register fpRegister = __ AvailableRegister1();
+    Register currentSlotRegister = __ AvailableRegister3();
 
     Label pushFrameStateAndCall;
     [[maybe_unused]] TempRegister1Scope scope1(assembler);
@@ -1586,21 +1608,21 @@ void AssemblerStubs::PushVregs(ExtendedAssembler *assembler, Label *stackOverflo
     // args register can be reused now.
     Register numVregsRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
     GetNumVregsFromCallField(assembler, callFieldRegister, numVregsRegister);
-    PushUndefinedWithArgc(assembler, glue, numVregsRegister, tempRegister, fpRegister, &pushFrameStateAndCall,
+    PushUndefinedWithArgc(assembler, glue, numVregsRegister, tempRegister, currentSlotRegister, &pushFrameStateAndCall,
         stackOverflow);
     // fall through
     __ Bind(&pushFrameStateAndCall);
     {
         Register newSpRegister = __ AvailableRegister2();
-        __ Mov(newSpRegister, fpRegister);
+        __ Mov(newSpRegister, currentSlotRegister);
 
         [[maybe_unused]] TempRegister2Scope scope2(assembler);
         Register pcRegister = __ TempRegister2();
-        PushFrameState(assembler, prevSpRegister, fpRegister, callTargetRegister, methodRegister, pcRegister,
-            tempRegister);
+        PushFrameState(assembler, prevSpRegister, fpRegister, currentSlotRegister, callTargetRegister, methodRegister,
+            pcRegister, tempRegister);
 
-        __ Align16(fpRegister);
-        __ Mov(Register(SP), fpRegister);
+        __ Align16(currentSlotRegister);
+        __ Mov(Register(SP), currentSlotRegister);
         DispatchCall(assembler, pcRegister, newSpRegister);
     }
 }
@@ -1633,18 +1655,17 @@ void AssemblerStubs::DispatchCall(ExtendedAssembler *assembler, Register pcRegis
     __ Br(tempRegister);
 }
 
-void AssemblerStubs::PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp,
+void AssemblerStubs::PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register currentSlot,
     Register callTarget, Register method, Register pc, Register op)
 {
     __ Mov(op, Immediate(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME)));
-    __ Stp(prevSp, op, MemoryOperand(fp, -16, AddrMode::PREINDEX));                 // -16: frame type & prevSp
+    __ Stp(prevSp, op, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));            // -16: frame type & prevSp
     __ Ldr(pc, MemoryOperand(method, JSMethod::GetBytecodeArrayOffset(false)));
-    __ Mov(op, Register(SP));
-    __ Stp(op, pc, MemoryOperand(fp, -16, AddrMode::PREINDEX));                     // -16: pc & fp
+    __ Stp(fp, pc, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));                // -16: pc & fp
     __ Ldr(op, MemoryOperand(callTarget, JSFunction::LEXICAL_ENV_OFFSET));
-    __ Stp(op, Register(Zero), MemoryOperand(fp, -16, AddrMode::PREINDEX));         // -16: jumpSizeAfterCall & env
+    __ Stp(op, Register(Zero), MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));    // -16: jumpSizeAfterCall & env
     __ Mov(op, Immediate(JSTaggedValue::VALUE_HOLE));
-    __ Stp(callTarget, op, MemoryOperand(fp, -16, AddrMode::PREINDEX));             // -16: acc & callTarget
+    __ Stp(callTarget, op, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));        // -16: acc & callTarget
 }
 
 void AssemblerStubs::GetNumVregsFromCallField(ExtendedAssembler *assembler, Register callField, Register numVregs)
@@ -1665,7 +1686,7 @@ void AssemblerStubs::GetDeclaredNumArgsFromCallField(ExtendedAssembler *assemble
 }
 
 void AssemblerStubs::PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, Register argc,
-    Register argv, Register op, Register fp, Label *next, Label *stackOverflow)
+    Register argv, Register op, Register currentSlot, Label *next, Label *stackOverflow)
 {
     Label loopBeginning;
     if (next != nullptr) {
@@ -1673,39 +1694,39 @@ void AssemblerStubs::PushArgsWithArgv(ExtendedAssembler *assembler, Register glu
         __ B(Condition::LS, next);
     }
     if (stackOverflow != nullptr) {
-        StackOverflowCheck(assembler, glue, argc, op, stackOverflow);
+        StackOverflowCheck(assembler, glue, currentSlot, argc, op, stackOverflow);
     }
     __ Add(argv, argv, Operand(argc.W(), UXTW, 3));  // 3: argc * 8
     __ Bind(&loopBeginning);
     __ Ldr(op, MemoryOperand(argv, -8, PREINDEX));  // -8: 8 bytes
-    __ Str(op, MemoryOperand(fp, -8, PREINDEX));  // -8: 8 bytes
+    __ Str(op, MemoryOperand(currentSlot, -8, PREINDEX));  // -8: 8 bytes
     __ Sub(argc.W(), argc.W(), Immediate(1));
     __ Cbnz(argc.W(), &loopBeginning);
 }
 
 void AssemblerStubs::PushUndefinedWithArgc(ExtendedAssembler *assembler, Register glue, Register argc, Register temp,
-    Register fp, Label *next, Label *stackOverflow)
+    Register currentSlot, Label *next, Label *stackOverflow)
 {
     if (next != nullptr) {
         __ Cmp(argc.W(), Immediate(0));
         __ B(Condition::LE, next);
     }
     if (stackOverflow != nullptr) {
-        StackOverflowCheck(assembler, glue, argc, temp, stackOverflow);
+        StackOverflowCheck(assembler, glue, currentSlot, argc, temp, stackOverflow);
     }
     Label loopBeginning;
     __ Mov(temp, Immediate(JSTaggedValue::VALUE_UNDEFINED));
     __ Bind(&loopBeginning);
-    __ Str(temp, MemoryOperand(fp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(temp, MemoryOperand(currentSlot, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Sub(argc.W(), argc.W(), Immediate(1));
     __ Cbnz(argc.W(), &loopBeginning);
 }
 
-void AssemblerStubs::StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register numArgs, Register op,
-    Label *stackOverflow)
+void AssemblerStubs::StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register currentSlot,
+    Register numArgs, Register op, Label *stackOverflow)
 {
     __ Ldr(op, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
-    __ Sub(op, Register(SP), Operand(op, UXTX, 0));
+    __ Sub(op, currentSlot, Operand(op, UXTX, 0));
     __ Cmp(op, Operand(numArgs, LSL, 3));  // 3: each args occupies 8 bytes
     __ B(Condition::LE, stackOverflow);
 }
@@ -1791,12 +1812,12 @@ void AssemblerStubs::PopAsmInterpBridgeFrame(ExtendedAssembler *assembler)
 }
 
 void AssemblerStubs::PushGeneratorFrameState(ExtendedAssembler *assembler, Register &prevSpRegister,
-    Register &fpRegister, Register &callTargetRegister, Register &methodRegister,
+    Register &fpRegister, Register &currentSlotRegister, Register &callTargetRegister, Register &methodRegister,
     Register &contextRegister, Register &pcRegister, Register &operatorRegister)
 {
     __ Mov(operatorRegister, Immediate(static_cast<int64_t>(FrameType::ASM_INTERPRETER_FRAME)));
-    // 2 : frameType and prevSp
-    __ Stp(prevSpRegister, operatorRegister, MemoryOperand(fpRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Stp(prevSpRegister, operatorRegister,
+        MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));  // 2 : frameType and prevSp
     __ Ldr(pcRegister, MemoryOperand(methodRegister, JSMethod::GetBytecodeArrayOffset(false)));
     // offset need 8 align, GENERATOR_NREGS_OFFSET instead of GENERATOR_BC_OFFSET_OFFSET
     __ Ldr(operatorRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_NREGS_OFFSET));
@@ -1804,18 +1825,16 @@ void AssemblerStubs::PushGeneratorFrameState(ExtendedAssembler *assembler, Regis
     __ Lsr(operatorRegister, operatorRegister, 32);
     __ Add(pcRegister, operatorRegister, pcRegister);
     __ Add(pcRegister, pcRegister, Immediate(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8)));
-    // pc and fp
-    __ Mov(operatorRegister, Register(SP));
-    // 2 : 2 means pair
-    __ Stp(operatorRegister, pcRegister, MemoryOperand(fpRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    // 2 : pc and fp
+    __ Stp(fpRegister, pcRegister, MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // jumpSizeAfterCall
-    __ Str(Register(Zero), MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(Register(Zero), MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Ldr(operatorRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_LEXICALENV_OFFSET));
     // env
-    __ Str(operatorRegister, MemoryOperand(fpRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(operatorRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Ldr(operatorRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_ACC_OFFSET));
-    // 2 : acc and callTarget
-    __ Stp(callTargetRegister, operatorRegister, MemoryOperand(fpRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Stp(callTargetRegister, operatorRegister,
+        MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));  // 2 : acc and callTarget
 }
 
 void AssemblerStubs::CallBCStub(ExtendedAssembler *assembler, Register &newSp, Register &glue,
