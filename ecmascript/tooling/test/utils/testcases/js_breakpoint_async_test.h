@@ -58,7 +58,7 @@ public:
         };
 
         vmDeath = [this]() {
-            ASSERT_EQ(breakpointCounter_, 2U);
+            ASSERT_EQ(breakpointCounter_, 2U);  // 2: break point counter
             return true;
         };
     }

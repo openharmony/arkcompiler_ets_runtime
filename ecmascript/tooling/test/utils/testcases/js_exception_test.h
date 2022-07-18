@@ -24,7 +24,7 @@ public:
     JsExceptionTest()
     {
         vmStart = [this] {
-            location_ = TestUtil::GetLocation("exception.js", 22, 0, pandaFile_.c_str());
+            location_ = TestUtil::GetLocation("exception.js", 22, 0, pandaFile_.c_str());  // 22：breakpointer line
             ASSERT_TRUE(location_.GetMethodId().IsValid());
             return true;
         };
@@ -81,8 +81,8 @@ public:
         };
 
         vmDeath = [this]() {
-            ASSERT_EQ(breakpointCounter_, 1U);
-            ASSERT_EQ(exceptionCounter_, 1U);
+            ASSERT_EQ(breakpointCounter_, 1U);  // 1: break point counter
+            ASSERT_EQ(exceptionCounter_, 1U);  // 1: exception counter
             return true;
         };
     }
