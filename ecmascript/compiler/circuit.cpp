@@ -77,7 +77,7 @@ GateRef Circuit::NewGate(OpCode opcode, MachineType bitValue, BitField bitfield,
     ASSERT(opcode.GetMachineType() == MachineType::FLEX);
     auto newGate = new (gateSpace) Gate(gateCount_, opcode, bitValue, bitfield, inPtrList.data(), type, mark);
     gateCount_++;
-    return SaveGatePtr(newGate);
+    return GetGateRef(newGate);
 }
 
 GateRef Circuit::NewGate(OpCode opcode, MachineType bitValue, BitField bitfield, const std::vector<GateRef> &inList,
@@ -108,7 +108,7 @@ GateRef Circuit::NewGate(OpCode opcode, BitField bitfield, size_t numIns, const 
     auto newGate = new (gateSpace) Gate(gateCount_, opcode, opcode.GetMachineType(), bitfield, inPtrList.data(), type,
                                         mark);
     gateCount_++;
-    return SaveGatePtr(newGate);
+    return GetGateRef(newGate);
 }
 
 GateRef Circuit::NewGate(OpCode opcode, BitField bitfield, const std::vector<GateRef> &inList, GateType type,
@@ -147,12 +147,12 @@ std::vector<GateRef> Circuit::GetAllGates() const
     for (size_t out = sizeof(Gate); out < circuitSize_;
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         out += Gate::GetGateSize(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetIndex() + 1)) {
-        gateList.push_back(SaveGatePtr(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetGateConst()));
+        gateList.push_back(GetGateRef(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetGateConst()));
     }
     return gateList;
 }
 
-GateRef Circuit::SaveGatePtr(const Gate *gate) const
+GateRef Circuit::GetGateRef(const Gate *gate) const
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     return static_cast<GateRef>(reinterpret_cast<const uint8_t *>(gate) - GetDataPtrConst(0));
@@ -273,7 +273,7 @@ std::vector<GateRef> Circuit::GetInVector(GateRef gate) const
     std::vector<GateRef> result;
     const Gate *curGate = LoadGatePtrConst(gate);
     for (size_t idx = 0; idx < curGate->GetNumIns(); idx++) {
-        result.push_back(SaveGatePtr(curGate->GetInGateConst(idx)));
+        result.push_back(GetGateRef(curGate->GetInGateConst(idx)));
     }
     return result;
 }
@@ -282,7 +282,7 @@ GateRef Circuit::GetIn(GateRef gate, size_t idx) const
 {
     ASSERT(idx < LoadGatePtrConst(gate)->GetNumIns());
     const Gate *curGate = LoadGatePtrConst(gate);
-    return SaveGatePtr(curGate->GetInGateConst(idx));
+    return GetGateRef(curGate->GetInGateConst(idx));
 }
 
 bool Circuit::IsInGateNull(GateRef gate, size_t idx) const
@@ -303,10 +303,10 @@ std::vector<GateRef> Circuit::GetOutVector(GateRef gate) const
     const Gate *curGate = LoadGatePtrConst(gate);
     if (!curGate->IsFirstOutNull()) {
         const Out *curOut = curGate->GetFirstOutConst();
-        result.push_back(SaveGatePtr(curOut->GetGateConst()));
+        result.push_back(GetGateRef(curOut->GetGateConst()));
         while (!curOut->IsNextOutNull()) {
             curOut = curOut->GetNextOutConst();
-            result.push_back(SaveGatePtr(curOut->GetGateConst()));
+            result.push_back(GetGateRef(curOut->GetGateConst()));
         }
     }
     return result;
@@ -400,16 +400,6 @@ void Circuit::SetBitField(GateRef gate, BitField bitfield)
 void Circuit::Print(GateRef gate) const
 {
     LoadGatePtrConst(gate)->Print();
-}
-
-std::vector<uint8_t> Circuit::GetDataSection() const
-{
-    return dataSection_;
-}
-
-void Circuit::SetDataSection(const std::vector<uint8_t> &data)
-{
-    dataSection_ = data;
 }
 
 size_t Circuit::GetCircuitDataSize() const

@@ -194,8 +194,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp(uintptr_t curPc) const
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             ASSERT(thread_ != nullptr);
-            auto callSiteSp = reinterpret_cast<uintptr_t>(current_) +
-                thread_->GetEcmaVM()->GetFileLoader()->GetStackMapParser()->GetFuncFpDelta(curPc);
+            auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + stackmapParser_->GetFuncFpDelta(curPc);
             return callSiteSp;
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME : {

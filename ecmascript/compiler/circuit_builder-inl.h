@@ -571,11 +571,6 @@ void Label::SetDepend(GateRef depend)
     return impl_->SetDepend(depend);
 }
 
-GateType Environment::GetGateType(GateRef gate) const
-{
-    return circuit_->LoadGatePtr(gate)->GetGateType();
-}
-
 Label Environment::GetLabelFromSelector(GateRef sel)
 {
     Label::LabelImpl *rawlabel = phiToLabels_[sel];

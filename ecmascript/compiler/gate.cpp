@@ -783,12 +783,12 @@ const Gate *In::GetGateConst() const
 
 void In::SetGateNull()
 {
-    gatePtr_ = 0;
+    gatePtr_ = Gate::InvalidGateRef;
 }
 
 bool In::IsGateNull() const
 {
-    return gatePtr_ == 0;
+    return gatePtr_ == Gate::InvalidGateRef;
 }
 
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)

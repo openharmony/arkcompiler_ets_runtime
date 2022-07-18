@@ -231,7 +231,7 @@ private:
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
 class LLVMIRBuilder {
 public:
-    explicit LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, const Circuit *circuit,
+    explicit LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                            LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
                            CallSignature::CallConv callConv, bool enableLog = false);
     ~LLVMIRBuilder();
@@ -311,7 +311,7 @@ private:
     void SaveLexicalEnvOnFrame(LLVMValueRef value);
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
-    const Circuit *circuit_ {nullptr};
+    Circuit *circuit_ {nullptr};
     BasicBlock *currentBb_ {nullptr};
     int lineNumber_ {0};
 

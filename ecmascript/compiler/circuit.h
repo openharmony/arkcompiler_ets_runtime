@@ -83,18 +83,7 @@ public:
     [[nodiscard]] MachineType GetMachineType(GateRef gate) const;
     void SetMark(GateRef gate, MarkCode mark) const;
     [[nodiscard]] bool Verify(GateRef gate) const;
-    [[nodiscard]] Gate *LoadGatePtr(GateRef shift);
-    [[nodiscard]] const Gate *LoadGatePtrConst(GateRef shift) const;
-    [[nodiscard]] GateRef SaveGatePtr(const Gate *gate) const;
-    [[nodiscard]] std::vector<uint8_t> GetDataSection() const;
-    void SetDataSection(const std::vector<uint8_t> &data);
-    [[nodiscard]] size_t GetCircuitDataSize() const;
-    [[nodiscard]] const void *GetSpaceDataStartPtrConst() const;
-    [[nodiscard]] const void *GetSpaceDataEndPtrConst() const;
-    [[nodiscard]] const uint8_t *GetDataPtrConst(size_t offset) const;
-    [[nodiscard]] uint8_t *GetDataPtr(size_t offset);
-    [[nodiscard]] size_t GetSpaceDataSize() const;
-    void SetSpaceDataSize(size_t sz);
+    [[nodiscard]] GateRef GetGateRef(const Gate *gate) const;
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
     GateRef GetConstantGate(MachineType bitValue, BitField bitfield,
@@ -102,8 +91,17 @@ public:
     size_t GetGateCount() const;
 
 private:
+    void SetSpaceDataSize(size_t sz);
     uint8_t *AllocateSpace(size_t gateSize);
     Gate *AllocateGateSpace(size_t numIns);
+    [[nodiscard]] size_t GetCircuitDataSize() const;
+    [[nodiscard]] const void *GetSpaceDataStartPtrConst() const;
+    [[nodiscard]] const void *GetSpaceDataEndPtrConst() const;
+    [[nodiscard]] const uint8_t *GetDataPtrConst(size_t offset) const;
+    [[nodiscard]] uint8_t *GetDataPtr(size_t offset);
+    [[nodiscard]] size_t GetSpaceDataSize() const;
+    [[nodiscard]] Gate *LoadGatePtr(GateRef shift);
+    [[nodiscard]] const Gate *LoadGatePtrConst(GateRef shift) const;
 
 private:
     std::vector<uint8_t> space_ {};
@@ -113,6 +111,9 @@ private:
     std::vector<uint8_t> dataSection_ {};
     std::map<std::tuple<MachineType, BitField, GateType>, GateRef> constantCache_ {};
     panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
+
+    friend class GateAccessor;
+    friend class Verifier;
 };
 }  // namespace panda::ecmascript::kungfu
 
