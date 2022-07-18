@@ -110,7 +110,7 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
 
                 if (success && desc.IsEnumerable()) {
                     JSTaggedValue value = desc.GetValue().GetTaggedValue();
-                    if (value.IsUndefined()) {
+                    if (value.IsUndefined() || JSHandle<JSTaggedValue>::Cast(from)->IsJSProxy()) {
                         value = FastRuntimeStub::FastGetPropertyByValue(thread, from.GetTaggedValue(),
                                                                         key.GetTaggedValue());
                     }
