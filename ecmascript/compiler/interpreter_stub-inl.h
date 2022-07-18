@@ -33,7 +33,7 @@ GateRef InterpreterStub::GetVregValue(GateRef sp, GateRef idx)
 
 GateRef InterpreterStub::ReadInst8_0(GateRef pc)
 {
-    return Load(VariableType::INT8(), pc, IntPtr(1));
+    return Load(VariableType::INT8(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
 }
 
 GateRef InterpreterStub::ReadInst8_1(GateRef pc)
@@ -83,24 +83,27 @@ GateRef InterpreterStub::ReadInst4_0(GateRef pc)
 
 GateRef InterpreterStub::ReadInst4_1(GateRef pc)
 {
+    // 1 : skip 1 byte of bytecode
     return Int8And(
-        Int8LSR(Load(VariableType::INT8(), pc, IntPtr(1)), Int8(4)), Int8(0xf));
+        Int8LSR(Load(VariableType::INT8(), pc, IntPtr(1)), Int8(4)), Int8(0xf));  // 4: read 4 byte of bytecode
 }
 
 GateRef InterpreterStub::ReadInst4_2(GateRef pc)
 {
+    // 2 : skip 1 byte of bytecode
     return Int8And(Load(VariableType::INT8(), pc, IntPtr(2)), Int8(0xf));
 }
 
 GateRef InterpreterStub::ReadInst4_3(GateRef pc)
 {
+    // 2 : skip 1 byte of bytecode
     return Int8And(
-        Int8LSR(Load(VariableType::INT8(), pc, IntPtr(2)), Int8(4)), Int8(0xf));
+        Int8LSR(Load(VariableType::INT8(), pc, IntPtr(2)), Int8(4)), Int8(0xf));  // 4 : read 4 byte of bytecode
 }
 
 GateRef InterpreterStub::ReadInstSigned8_0(GateRef pc)
 {
-    GateRef x = Load(VariableType::INT8(), pc, IntPtr(1));
+    GateRef x = Load(VariableType::INT8(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
     return GetEnvironment()->GetBulder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
 }
 
@@ -119,11 +122,11 @@ GateRef InterpreterStub::ReadInstSigned32_0(GateRef pc)
     /* 4 : skip 8 bits of opcode and 24 bits of low bits */
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(4));
     GateRef currentInst = GetEnvironment()->GetBulder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
-    GateRef currentInst1 = Int32LSL(currentInst, Int32(8));
+    GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_2(pc)));
-    GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));
+    GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst4 = Int32Add(currentInst3, ZExtInt8ToInt32(ReadInst8_1(pc)));
-    GateRef currentInst5 = Int32LSL(currentInst4, Int32(8));
+    GateRef currentInst5 = Int32LSL(currentInst4, Int32(8));  // 8 : set as high 8 bits
     return Int32Add(currentInst5, ZExtInt8ToInt32(ReadInst8_0(pc)));
 }
 
@@ -140,7 +143,7 @@ GateRef InterpreterStub::ReadInst16_1(GateRef pc)
     /* 3 : skip 8 bits of opcode, 8 bits of prefix and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_2(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
-    /* 2: skip 8 bits of opcode and 8 bits of prefix */
+    /* 2 : skip 8 bits of opcode and 8 bits of prefix */
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_1(pc)));
 }
 
@@ -149,7 +152,7 @@ GateRef InterpreterStub::ReadInst16_2(GateRef pc)
     /* 4 : skip 8 bits of opcode, first parameter of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_3(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
-    /* 3: skip 8 bits of opcode and first parameter of 16 bits */
+    /* 3 : skip 8 bits of opcode and first parameter of 16 bits */
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_2(pc)));
 }
 
@@ -158,7 +161,7 @@ GateRef InterpreterStub::ReadInst16_3(GateRef pc)
     /* 5 : skip 8 bits of opcode, 8 bits of prefix, first parameter of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_4(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
-    /* 4: skip 8 bits of opcode, 8 bits of prefix and first parameter of 16 bits */
+    /* 4 : skip 8 bits of opcode, 8 bits of prefix and first parameter of 16 bits */
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_3(pc)));
 }
 
@@ -167,7 +170,7 @@ GateRef InterpreterStub::ReadInst16_5(GateRef pc)
     /* 7 : skip 8 bits of opcode, 8 bits of prefix, first 2 parameters of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_6(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
-    /* 6: skip 8 bits of opcode, 8 bits of prefix and first 2 parameters of 16 bits */
+    /* 6 : skip 8 bits of opcode, 8 bits of prefix and first 2 parameters of 16 bits */
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_5(pc)));
 }
 
@@ -352,6 +355,7 @@ GateRef InterpreterStub::CheckStackOverflow(GateRef glue, GateRef sp)
 GateRef InterpreterStub::PushArg(GateRef glue, GateRef sp, GateRef value)
 {
     GateRef newSp = PointerSub(sp, IntPtr(sizeof(JSTaggedType)));
+    // 0 : skip 0 byte of bytecode
     Store(VariableType::INT64(), glue, newSp, IntPtr(0), value);
     return newSp;
 }
@@ -369,7 +373,7 @@ GateRef InterpreterStub::PushUndefined(GateRef glue, GateRef sp, GateRef num)
     Branch(Int32LessThan(*i, num), &pushUndefinedBegin, &pushUndefinedEnd);
     LoopBegin(&pushUndefinedBegin);
     newSp = PushArg(glue, *newSp, Int64(JSTaggedValue::VALUE_UNDEFINED));
-    i = Int32Add(*i, Int32(1));
+    i = Int32Add(*i, Int32(1));  // 1 : set as high 1 bits
     Branch(Int32LessThan(*i, num), &pushUndefinedAgain, &pushUndefinedEnd);
     Bind(&pushUndefinedAgain);
     LoopEnd(&pushUndefinedBegin);
@@ -393,7 +397,7 @@ GateRef InterpreterStub::PushRange(GateRef glue, GateRef sp, GateRef array, Gate
     LoopBegin(&pushArgsBegin);
     GateRef arg = GetVregValue(array, ChangeInt32ToIntPtr(*i));
     newSp = PushArg(glue, *newSp, arg);
-    i = Int32Sub(*i, Int32(1));
+    i = Int32Sub(*i, Int32(1));  // 1 : set as high 1 bits
     Branch(Int32GreaterThanOrEqual(*i, startIndex), &pushArgsAgain, &pushArgsEnd);
     Bind(&pushArgsAgain);
     LoopEnd(&pushArgsBegin);
@@ -411,52 +415,52 @@ GateRef InterpreterStub::GetCurrentFrame(GateRef glue)
 GateRef InterpreterStub::ReadInst32_0(GateRef pc)
 {
     GateRef currentInst = ZExtInt8ToInt32(ReadInst8_3(pc));
-    GateRef currentInst1 = Int32LSL(currentInst, Int32(8));
+    GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_2(pc)));
-    GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));
+    GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst4 = Int32Add(currentInst3, ZExtInt8ToInt32(ReadInst8_1(pc)));
-    GateRef currentInst5 = Int32LSL(currentInst4, Int32(8));
+    GateRef currentInst5 = Int32LSL(currentInst4, Int32(8));  // 8 : set as high 8 bits
     return Int32Add(currentInst5, ZExtInt8ToInt32(ReadInst8_0(pc)));
 }
 
 GateRef InterpreterStub::ReadInst32_1(GateRef pc)
 {
     GateRef currentInst = ZExtInt8ToInt32(ReadInst8_4(pc));
-    GateRef currentInst1 = Int32LSL(currentInst, Int32(8));
+    GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_3(pc)));
-    GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));
+    GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst4 = Int32Add(currentInst3, ZExtInt8ToInt32(ReadInst8_2(pc)));
-    GateRef currentInst5 = Int32LSL(currentInst4, Int32(8));
+    GateRef currentInst5 = Int32LSL(currentInst4, Int32(8));  // 8 : set as high 8 bits
     return Int32Add(currentInst5, ZExtInt8ToInt32(ReadInst8_1(pc)));
 }
 
 GateRef InterpreterStub::ReadInst32_2(GateRef pc)
 {
     GateRef currentInst = ZExtInt8ToInt32(ReadInst8_5(pc));
-    GateRef currentInst1 = Int32LSL(currentInst, Int32(8));
+    GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_4(pc)));
-    GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));
+    GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst4 = Int32Add(currentInst3, ZExtInt8ToInt32(ReadInst8_3(pc)));
-    GateRef currentInst5 = Int32LSL(currentInst4, Int32(8));
+    GateRef currentInst5 = Int32LSL(currentInst4, Int32(8));  // 8 : set as high 8 bits
     return Int32Add(currentInst5, ZExtInt8ToInt32(ReadInst8_2(pc)));
 }
 
 GateRef InterpreterStub::ReadInst64_0(GateRef pc)
 {
     GateRef currentInst = ZExtInt8ToInt64(ReadInst8_7(pc));
-    GateRef currentInst1 = Int64LSL(currentInst, Int64(8));
+    GateRef currentInst1 = Int64LSL(currentInst, Int64(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int64Add(currentInst1, ZExtInt8ToInt64(ReadInst8_6(pc)));
-    GateRef currentInst3 = Int64LSL(currentInst2, Int64(8));
+    GateRef currentInst3 = Int64LSL(currentInst2, Int64(8));  // 8 : set as high 8 bits
     GateRef currentInst4 = Int64Add(currentInst3, ZExtInt8ToInt64(ReadInst8_5(pc)));
-    GateRef currentInst5 = Int64LSL(currentInst4, Int64(8));
+    GateRef currentInst5 = Int64LSL(currentInst4, Int64(8));  // 8 : set as high 8 bits
     GateRef currentInst6 = Int64Add(currentInst5, ZExtInt8ToInt64(ReadInst8_4(pc)));
-    GateRef currentInst7 = Int64LSL(currentInst6, Int64(8));
+    GateRef currentInst7 = Int64LSL(currentInst6, Int64(8));  // 8 : set as high 8 bits
     GateRef currentInst8 = Int64Add(currentInst7, ZExtInt8ToInt64(ReadInst8_3(pc)));
-    GateRef currentInst9 = Int64LSL(currentInst8, Int64(8));
+    GateRef currentInst9 = Int64LSL(currentInst8, Int64(8));  // 8 : set as high 8 bits
     GateRef currentInst10 = Int64Add(currentInst9, ZExtInt8ToInt64(ReadInst8_2(pc)));
-    GateRef currentInst11 = Int64LSL(currentInst10, Int64(8));
+    GateRef currentInst11 = Int64LSL(currentInst10, Int64(8));  // 8 : set as high 8 bits
     GateRef currentInst12 = Int64Add(currentInst11, ZExtInt8ToInt64(ReadInst8_1(pc)));
-    GateRef currentInst13 = Int64LSL(currentInst12, Int64(8));
+    GateRef currentInst13 = Int64LSL(currentInst12, Int64(8));  // 8 : set as high 8 bits
     return Int64Add(currentInst13, ZExtInt8ToInt64(ReadInst8_0(pc)));
 }
 
