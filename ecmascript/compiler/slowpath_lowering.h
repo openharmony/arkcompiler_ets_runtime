@@ -131,6 +131,7 @@ private:
                        const std::vector<GateRef> &exceptionControl,
                        bool noThrow = false);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
+    void ReplaceHirToJSCall(GateRef hirGate, GateRef callGate, GateRef glue);
     void ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate);
     void LowerExceptionHandler(GateRef hirGate);
     // environment must be initialized

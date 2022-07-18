@@ -459,6 +459,8 @@ void AssemblerStubs::JSCallBody(ExtendedAssembler *assembler, Register jsfunc)
     Register actualArgC(X4);
     Label callNativeMethod;
     Label callOptimizedMethod;
+    __ Ldr(Register(X5), MemoryOperand(jsfunc, JSFunction::LEXICAL_ENV_OFFSET));
+    __ Str(Register(X5), MemoryOperand(sp, 0));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(actualArgC, MemoryOperand(sp, FRAME_SLOT_SIZE));
     __ Ldr(callField, MemoryOperand(method, JSMethod::GetCallFieldOffset(false)));
