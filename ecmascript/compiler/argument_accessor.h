@@ -18,6 +18,8 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate.h"
+#include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/js_method.h"
 
 namespace panda::ecmascript::kungfu {
@@ -45,6 +47,7 @@ public:
     // jsmethod must be set
     GateRef GetArgGate(const size_t currentVreg) const;
     GateRef GetCommonArgGate(const CommonArgIdx arg) const;
+    void FillArgsGateType(const TypeRecorder *typeRecorder);
 
 private:
     std::vector<GateRef> GetFunctionArgs() const;

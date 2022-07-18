@@ -1866,6 +1866,9 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     for (size_t argIdx = funcIdx; argIdx < actualNumArgs; argIdx++) {
         argAcc_.NewArg(argIdx);
     }
+    if (hasTypes_) {
+        argAcc_.FillArgsGateType(&typeRecorder_);
+    }
 }
 
 void BytecodeCircuitBuilder::CollectPredsInfo()
@@ -2324,24 +2327,12 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
     }
 }
 
-GateType BytecodeCircuitBuilder::GetRealGateType(const uint16_t reg, const GateType gateType)
-{
-    if (file_->HasTSTypes()) {
-        auto curType = GateType(tsLoader_->GetGTFromPandaFile(*pf_, reg, method_));
-        auto type = curType.IsAnyType() ? gateType : curType;
-        return type;
-    }
-
-    return GateType::AnyType();
-}
-
 // recursive variables renaming algorithm
-GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId,
-    const uint8_t *end, const uint16_t reg, const bool acc, const GateType gateType)
+GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t *end,
+                                               const uint16_t reg, const bool acc)
 {
     ASSERT(end != nullptr);
     auto tmpReg = reg;
-    auto tsType = GetRealGateType(tmpReg, gateType);
     // find def-site in bytecodes of basic block
     auto ans = Circuit::NullGate();
     auto &bb = graph_.at(bbId);
@@ -2355,6 +2346,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId,
         }
     }
     std::reverse(instList.begin(), instList.end());
+    GateType type = GateType::AnyType();
     auto tmpAcc = acc;
     for (auto pcIter = instList.begin(); pcIter != instList.end(); pcIter++) { // upper bound
         auto curInfo = GetBytecodeInfo(*pcIter);
@@ -2369,10 +2361,15 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId,
                     ASSERT(!tmpAcc);
                     ASSERT(curInfo.inputs.size() == 1);
                     tmpReg = std::get<VirtualRegister>(curInfo.inputs.at(0)).GetId();
-                    tsType = GetRealGateType(tmpReg, tsType);
+                }
+                if (hasTypes_) {
+                    type = typeRecorder_.UpdateType(pcToBCOffset_.at(*pcIter) - 1, type);
                 }
             } else {
                 ans = byteCodeToJSGate_.at(*pcIter);
+                if (hasTypes_ && !type.IsAnyType()) {
+                    gateAcc_.SetGateType(ans, type);
+                }
                 break;
             }
         }
@@ -2385,9 +2382,9 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId,
         auto resumeGate = byteCodeToJSGate_.at(*pcIter);
         GateRef resumeDependGate = accessor.GetDep(resumeGate);
         ans = circuit_.NewGate(OpCode(OpCode::RESTORE_REGISTER), MachineType::I64, tmpReg,
-                               {resumeDependGate}, GateType::NJSValue());
+                               {resumeDependGate}, GateType::AnyType());
         accessor.SetDep(resumeGate, ans);
-        auto saveRegGate = RenameVariable(bbId, *pcIter - 1, tmpReg, tmpAcc, tsType);
+        auto saveRegGate = RenameVariable(bbId, *pcIter - 1, tmpReg, tmpAcc);
         auto nextPcIter = pcIter;
         nextPcIter++;
         ASSERT(GetBytecodeInfo(*nextPcIter).opcode == EcmaOpcode::SUSPENDGENERATOR_PREF_V8_V8);
@@ -2426,15 +2423,13 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId,
         // find def-site in function args
         ASSERT(!tmpAcc);
         ans = argAcc_.GetArgGate(tmpReg);
-        circuit_.SetGateType(ans, tsType);
         return ans;
     }
     if (ans == Circuit::NullGate()) {
         // recursively find def-site in dominator block
-        return RenameVariable(bb.iDominator->id, bb.iDominator->end, tmpReg, tmpAcc, tsType);
+        return RenameVariable(bb.iDominator->id, bb.iDominator->end, tmpReg, tmpAcc);
     } else {
         // def-site already found
-        circuit_.SetGateType(ans, tsType);
         return ans;
     }
 }
@@ -2482,6 +2477,12 @@ void BytecodeCircuitBuilder::BuildCircuit()
             continue;
         }
         const auto &[id, pc] = it->second;
+        if (hasTypes_) {
+            auto type = typeRecorder_.GetType(pcToBCOffset_.at(pc) - 1);
+            if (!type.IsAnyType()) {
+                gateAcc_.SetGateType(gate, type);
+            }
+        }
         auto bytecodeInfo = GetBytecodeInfo(pc);
         [[maybe_unused]] size_t numValueInputs = bytecodeInfo.ComputeTotalValueCount();
         [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount() + bytecodeInfo.vregOut.size();
