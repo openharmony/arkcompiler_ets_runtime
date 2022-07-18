@@ -130,7 +130,6 @@ void Heap::Initialize()
 
 void Heap::Destroy()
 {
-    Prepare();
     if (workManager_ != nullptr) {
         delete workManager_;
         workManager_ = nullptr;
@@ -281,7 +280,7 @@ void Heap::CompactHeapBeforeFork()
 
 void Heap::DisableParallelGC()
 {
-    Prepare();
+    WaitAllTasksFinished();
     parallelGC_ = false;
     maxEvacuateTaskCount_ = 0;
     maxMarkTaskCount_ = 0;
@@ -658,6 +657,16 @@ void Heap::WaitClearTaskFinished()
     os::memory::LockHolder holder(waitClearTaskFinishedMutex_);
     while (!clearTaskFinished_) {
         waitClearTaskFinishedCV_.Wait(&waitClearTaskFinishedMutex_);
+    }
+}
+
+void Heap::WaitAllTasksFinished()
+{
+    WaitRunningTaskFinished();
+    sweeper_->EnsureAllTaskFinished();
+    WaitClearTaskFinished();
+    if (concurrentMarker_->IsEnabled() && thread_->IsMarking()) {
+        concurrentMarker_->WaitMarkingFinished();
     }
 }
 
