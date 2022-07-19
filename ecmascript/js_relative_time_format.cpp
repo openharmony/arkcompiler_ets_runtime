@@ -67,8 +67,6 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
         if (!JSLocale::IsNormativeNumberingSystem(numberingSystemStdStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid numberingSystem", relativeTimeFormat);
         }
-    } else {
-        relativeTimeFormat->SetNumberingSystem(thread, globalConst->GetHandledLatnString());
     }
 
     // 10. Let localeData be %RelativeTimeFormat%.[[LocaleData]].

@@ -981,9 +981,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_RELATIVE_TIME_FORMAT: {
             JSRelativeTimeFormat::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
-            JSRelativeTimeFormat::Cast(*obj)->SetInitializedRelativeTimeFormat(thread_, JSTaggedValue::Undefined());
             JSRelativeTimeFormat::Cast(*obj)->SetNumberingSystem(thread_, JSTaggedValue::Undefined());
-            JSRelativeTimeFormat::Cast(*obj)->SetAvailableLocales(thread_, JSTaggedValue::Undefined());
             JSRelativeTimeFormat::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
             JSRelativeTimeFormat::Cast(*obj)->SetStyle(RelativeStyleOption::EXCEPTION);
             JSRelativeTimeFormat::Cast(*obj)->SetNumeric(NumericOption::EXCEPTION);

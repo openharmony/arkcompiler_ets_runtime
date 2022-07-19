@@ -633,7 +633,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_RELATIVE_TIME_FORMAT: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSRelativeTimeFormat::SIZE, 6U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSRelativeTimeFormat::SIZE, 4U);
                 NEW_OBJECT_AND_DUMP(JSRelativeTimeFormat, JS_RELATIVE_TIME_FORMAT)
                 break;
             }
