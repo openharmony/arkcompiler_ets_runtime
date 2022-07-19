@@ -13,25 +13,35 @@
  * limitations under the License.
  */
 
-#include "execute_fuzzer.h"
+#include "biginttoint64_fuzzer.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/base/string_helper.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
-namespace OHOS {
-    // staic constexpr auto PANDA_MAIN_PATH = "pandastdlib/pandastdlib.bin";
-    static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 
-    void ExecuteFuzzTest(const uint8_t* data, size_t size)
+namespace OHOS {
+    void BigIntToInt64FuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetGcType(RuntimeOption::GC_TYPE::GEN_GC);
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        auto vm = JSNApi::CreateJSVM(option);
+        EcmaVM *vm = JSNApi::CreateJSVM(option);
         [[maybe_unused]] LocalScope scope(vm);
-        Local<StringRef> entry = StringRef::NewFromUtf8(vm, PANDA_MAIN_FUNCTION);
-        std::string a = entry->StringRef::ToString();
-        JSNApi::Execute(vm, data, size, a);
+        int64_t input = 0;
+        size_t maxByteLen = 8;
+        if (size > maxByteLen) {
+            size = maxByteLen;
+        }
+        if (memcpy_s(&input, maxByteLen, data, size) != EOK) {
+            std::cout << "memcpy_s failed!";
+            UNREACHABLE();
+        }
+        Local<BigIntRef> bigint = BigIntRef::New(vm, input);
+
+        int64_t cValue = 0;
+        bool lossless = false;
+        bigint->BigIntToInt64(vm, &cValue, &lossless);
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -40,6 +50,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::ExecuteFuzzTest(data, size);
+    OHOS::BigIntToInt64FuzzTest(data, size);
     return 0;
 }
