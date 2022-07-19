@@ -2523,18 +2523,12 @@ void JSRelativeTimeFormat::Dump(std::ostream &os) const
     os << " - Locale: ";
     GetLocale().Dump(os);
     os << "\n";
-    os << " - InitializedRelativeTimeFormat: ";
-    GetInitializedRelativeTimeFormat().Dump(os);
-    os << "\n";
     os << " - NumberingSystem: ";
     GetNumberingSystem().Dump(os);
     os << "\n";
     os << " - Style: " << static_cast<int>(GetStyle());
     os << "\n";
     os << " - Numeric: " << static_cast<int>(GetNumeric());
-    os << "\n";
-    os << " - AvailableLocales: ";
-    GetAvailableLocales().Dump(os);
     os << "\n";
     os << " - IcuField: ";
     GetIcuField().Dump(os);
@@ -4497,11 +4491,9 @@ void JSDateTimeFormat::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
 void JSRelativeTimeFormat::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("Locale"), GetLocale()));
-    vec.push_back(std::make_pair(CString("InitializedRelativeTimeFormat"), GetInitializedRelativeTimeFormat()));
     vec.push_back(std::make_pair(CString("NumberingSystem"), GetNumberingSystem()));
     vec.push_back(std::make_pair(CString("Style"), JSTaggedValue(static_cast<int>(GetStyle()))));
     vec.push_back(std::make_pair(CString("Numeric"), JSTaggedValue(static_cast<int>(GetNumeric()))));
-    vec.push_back(std::make_pair(CString("AvailableLocales"), GetAvailableLocales()));
     vec.push_back(std::make_pair(CString("IcuField"), GetIcuField()));
     JSObject::DumpForSnapshot(vec);
 }
