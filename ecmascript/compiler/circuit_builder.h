@@ -581,7 +581,6 @@ public:
         return arguments_.at(index);
     }
 
-    inline GateType GetGateType(GateRef gate) const;
     inline Label GetLabelFromSelector(GateRef sel);
     inline void AddSelectorToLabel(GateRef sel, Label label);
     inline LabelImpl *NewLabel(Environment *env, GateRef control = -1);
@@ -647,7 +646,6 @@ public:
     GateRef AddPhiOperand(GateRef val);
     GateRef AddOperandToSelector(GateRef val, size_t idx, GateRef in);
     GateRef TryRemoveTrivialPhi(GateRef phi);
-    void RerouteOuts(const std::vector<Out *> &outs, Gate *newGate);
     bool IsSelector(GateRef gate) const
     {
         return env_->GetCircuit()->IsSelector(gate);
@@ -661,6 +659,11 @@ public:
         return id_;
     }
 private:
+    Circuit* GetCircuit() const
+    {
+        return env_->GetCircuit();
+    }
+
     uint32_t id_;
     VariableType type_;
     GateRef currentValue_ {0};

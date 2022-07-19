@@ -209,7 +209,7 @@ MachineType CircuitBuilder::GetMachineTypeFromVariableType(VariableType type)
 GateRef CircuitBuilder::BinaryArithmetic(OpCode opcode, MachineType machineType, GateRef left, GateRef right)
 {
     auto circuit = GetCircuit();
-    GateType type = circuit->LoadGatePtr(left)->GetGateType();
+    GateType type = GateAccessor(circuit).GetGateType(left);
     return circuit->NewGate(opcode, machineType, 0, { left, right }, type);
 }
 
@@ -522,14 +522,14 @@ Environment::Environment(GateRef hir, Circuit *circuit, CircuitBuilder *builder)
     : circuit_(circuit), circuitBuilder_(builder)
 {
     circuitBuilder_->SetEnvironment(this);
-    auto hirGate = circuit_->LoadGatePtr(hir);
-    entry_ = Label(NewLabel(this, circuit_->SaveGatePtr(hirGate->GetInGate(0))));
+    GateAccessor acc(circuit);
+    entry_ = Label(NewLabel(this, acc.GetIn(hir, 0)));
     currentLabel_ = &entry_;
     currentLabel_->Seal();
-    auto dependEntry = circuit_->SaveGatePtr(hirGate->GetInGate(1));
+    auto dependEntry = acc.GetIn(hir, 1);
     currentLabel_->SetDepend(dependEntry);
-    for (size_t i = 2; i < hirGate->GetNumIns(); i++) {
-        inputList_.emplace_back(circuit_->SaveGatePtr(hirGate->GetInGate(i)));
+    for (size_t i = 2; i < acc.GetNumIns(hir); i++) {
+        inputList_.emplace_back(acc.GetIn(hir, i));
     }
 }
 
@@ -782,8 +782,7 @@ void Label::LabelImpl::AppendPredecessor(Label::LabelImpl *predecessor)
 
 bool Label::LabelImpl::IsNeedSeal() const
 {
-    auto control = env_->GetCircuit()->LoadGatePtr(predeControl_);
-    auto stateCount = control->GetOpCode().GetStateCount(control->GetBitField());
+    auto stateCount = GateAccessor(env_->GetCircuit()).GetStateCount(predeControl_);
     return predecessors_.size() >= stateCount;
 }
 
@@ -817,68 +816,48 @@ GateRef Variable::AddOperandToSelector(GateRef val, size_t idx, GateRef in)
     return val;
 }
 
-GateRef Variable::TryRemoveTrivialPhi(GateRef phiVal)
+GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
 {
-    Gate *phi = env_->GetCircuit()->LoadGatePtr(phiVal);
-    Gate *same = nullptr;
-    for (size_t i = 1; i < phi->GetNumIns(); ++i) {
-        In *phiIn = phi->GetIn(i);
-        Gate *op = (!phiIn->IsGateNull()) ? phiIn->GetGate() : nullptr;
-        if (op == same || op == phi) {
+    GateAccessor acc(GetCircuit());
+    GateRef same = Gate::InvalidGateRef;
+    const size_t inNum = acc.GetNumIns(phi);
+    for (size_t i = 1; i < inNum; ++i) {
+        GateRef phiIn = acc.GetIn(phi, i);
+        if (phiIn == same || phiIn == phi) {
             continue;  // unique value or self-reference
         }
-        if (same != nullptr) {
-            return phiVal;  // the phi merges at least two valusses: not trivial
+        if (same != Gate::InvalidGateRef) {
+            return phi;  // the phi merges at least two valusses: not trivial
         }
-        same = op;
+        same = phiIn;
     }
-    if (same == nullptr) {
+    if (same == Gate::InvalidGateRef) {
         // the phi is unreachable or in the start block
-        GateType type = env_->GetCircuit()->GetGateType(phiVal);
-        same = env_->GetCircuit()->LoadGatePtr(env_->GetBulder()->UndefineConstant(type));
+        GateType type = acc.GetGateType(phi);
+        same = env_->GetBulder()->UndefineConstant(type);
     }
-    auto same_addr_shift = env_->GetCircuit()->SaveGatePtr(same);
-
     // remove the trivial phi
     // get all users of phi except self
-    std::vector<Out *> outs;
-    if (!phi->IsFirstOutNull()) {
-        Out *phiOut = phi->GetFirstOut();
-        while (!phiOut->IsNextOutNull()) {
-            if (phiOut->GetGate() != phi) {
-                // remove phi
-                outs.push_back(phiOut);
-            }
-            phiOut = phiOut->GetNextOut();
-        }
-        // save last phi out
-        if (phiOut->GetGate() != phi) {
-            outs.push_back(phiOut);
+    std::vector<GateRef> outs;
+    auto uses = acc.Uses(phi);
+    for (auto use = uses.begin(); use != uses.end(); use++) {
+        GateRef u = *use;
+        if (u != phi) {
+            outs.push_back(u);
+            acc.ReplaceIn(use, same);
         }
     }
-    // reroute all outs of phi to same and remove phi
-    RerouteOuts(outs, same);
-    phi->DeleteGate();
+    acc.DeleteGate(phi);
 
     // try to recursiveby remove all phi users, which might have vecome trivial
     for (auto out : outs) {
-        if (IsSelector(out->GetGate())) {
-            auto out_addr_shift = env_->GetCircuit()->SaveGatePtr(out->GetGate());
-            auto result = TryRemoveTrivialPhi(out_addr_shift);
-            if (same_addr_shift == out_addr_shift) {
-                same_addr_shift = result;
+        if (acc.IsSelector(out)) {
+            auto result = TryRemoveTrivialPhi(out);
+            if (same == out) {
+                same = result;
             }
         }
     }
-    return same_addr_shift;
-}
-
-void Variable::RerouteOuts(const std::vector<Out *> &outs, Gate *newGate)
-{
-    // reroute all outs to new node
-    for (auto out : outs) {
-        size_t idx = out->GetIndex();
-        out->GetGate()->ModifyIn(idx, newGate);
-    }
+    return same;
 }
 }  // namespace panda::ecmascript::kungfu

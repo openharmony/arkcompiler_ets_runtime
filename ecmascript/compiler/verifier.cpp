@@ -32,7 +32,7 @@ bool Verifier::RunDataIntegrityCheck(const Circuit *circuit)
     size_t out = sizeof(Gate);
     GateRef prevGate = 0;
     while (true) {
-        GateRef gate = circuit->SaveGatePtr(
+        GateRef gate = circuit->GetGateRef(
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             reinterpret_cast<const Out *>(circuit->LoadGatePtrConst(GateRef(out)))->GetGateConst());
         if (gate < prevGate + static_cast<int64_t>(sizeof(Gate)) ||
@@ -64,7 +64,7 @@ bool Verifier::RunDataIntegrityCheck(const Circuit *circuit)
                 LOG_COMPILER(ERROR) << "id: " << std::dec << circuit->GetId(gate);
                 return false;
             }
-            if (gatesSet.count(circuit->SaveGatePtr(curIn->GetGateConst())) == 0) {
+            if (gatesSet.count(circuit->GetGateRef(curIn->GetGateConst())) == 0) {
                 LOG_COMPILER(ERROR) << "[Verifier][Error] Circuit data is corrupted (invalid in address)";
                 LOG_COMPILER(ERROR) << "id: " << std::dec << circuit->GetId(gate);
                 return false;
@@ -79,7 +79,7 @@ bool Verifier::RunDataIntegrityCheck(const Circuit *circuit)
                     LOG_COMPILER(ERROR) << "id: " << std::dec << circuit->GetId(gate);
                     return false;
                 }
-                if (gatesSet.count(circuit->SaveGatePtr(curOut->GetGateConst())) == 0) {
+                if (gatesSet.count(circuit->GetGateRef(curOut->GetGateConst())) == 0) {
                     LOG_COMPILER(ERROR) << "[Verifier][Error] Circuit data is corrupted (invalid out address)";
                     LOG_COMPILER(ERROR) << "id: " << std::dec << circuit->GetId(gate);
                     return false;
@@ -92,7 +92,7 @@ bool Verifier::RunDataIntegrityCheck(const Circuit *circuit)
                         LOG_COMPILER(ERROR) << "id: " << std::dec << circuit->GetId(gate);
                         return false;
                     }
-                    if (gatesSet.count(circuit->SaveGatePtr(curOut->GetGateConst())) == 0) {
+                    if (gatesSet.count(circuit->GetGateRef(curOut->GetGateConst())) == 0) {
                         LOG_COMPILER(ERROR) << "[Verifier][Error] Circuit data is corrupted (invalid out address)";
                         LOG_COMPILER(ERROR) << "id: " << std::dec << circuit->GetId(gate);
                         return false;

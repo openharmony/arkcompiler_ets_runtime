@@ -52,7 +52,7 @@
 #include "securec.h"
 
 namespace panda::ecmascript::kungfu {
-LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, const Circuit *circuit,
+LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                              LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
                              CallSignature::CallConv callConv, bool enableLog)
     : compCfg_(cfg), scheduledGates_(schedule), circuit_(circuit), module_(module->GetModule()),
@@ -997,7 +997,7 @@ void LLVMIRBuilder::HandleConstant(GateRef gate)
 void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bit width
 {
     LLVMValueRef llvmValue = nullptr;
-    auto machineType = circuit_->LoadGatePtrConst(gate)->GetMachineType();
+    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
     if (machineType == MachineType::ARCH) {
         if (compCfg_->Is32Bit()) {
             machineType = MachineType::I32;
@@ -1074,7 +1074,7 @@ void LLVMIRBuilder::HandleParameter(GateRef gate)
 
 void LLVMIRBuilder::VisitParameter(GateRef gate)
 {
-    int argth = static_cast<int>(circuit_->LoadGatePtrConst(gate)->GetBitField());
+    int argth = static_cast<int>(GateAccessor(circuit_).GetBitField(gate));
     if (callConv_ == CallSignature::CallConv::WebKitJSCallConv) {
         if (compCfg_->Is32Bit() && argth > 0) {
             argth += CompilationConfig::FAKE_REGISTER_PARAMTERS_ARM32;
@@ -1132,7 +1132,7 @@ void LLVMIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef result = nullptr;
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e1));
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e2));
-    auto machineType = circuit_->LoadGatePtrConst(gate)->GetMachineType();
+    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
     if (machineType == MachineType::I32) {
         result = LLVMBuildSRem(builder_, e1Value, e2Value, "");
     } else if (machineType == MachineType::F64) {
@@ -1269,7 +1269,7 @@ void LLVMIRBuilder::VisitIntRev(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e1));
-    auto machineType = circuit_->LoadGatePtrConst(gate)->GetMachineType();
+    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
     LLVMValueRef result = nullptr;
     if (machineType <= MachineType::I64 && machineType >= MachineType::I1) {
         result = LLVMBuildNot(builder_, e1Value, "");
@@ -1312,7 +1312,8 @@ LLVMTypeRef LLVMIRBuilder::ConvertLLVMTypeFromGate(GateRef gate) const
             return LLVMPointerType(LLVMInt64Type(), 1);
         }
     }
-    switch (circuit_->LoadGatePtrConst(gate)->GetMachineType()) {
+    MachineType t = GateAccessor(circuit_).GetMachineType(gate);
+    switch (t) {
         case MachineType::NOVALUE:
             return LLVMVoidType();
         case MachineType::I1:
@@ -1401,7 +1402,7 @@ void LLVMIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
     */
     LLVMTypeRef returnType = ConvertLLVMTypeFromGate(gate);
 
-    auto machineType = circuit_->LoadGatePtrConst(gate)->GetMachineType();
+    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
     if (IsAddIntergerType(machineType)) {
         auto e1Type = LLVMGetTypeKind(ConvertLLVMTypeFromGate(e1));
         if (e1Type == LLVMVectorTypeKind) {
@@ -1436,7 +1437,7 @@ void LLVMIRBuilder::VisitSub(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    auto machineType = circuit_->LoadGatePtrConst(gate)->GetMachineType();
+    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
     if (machineType == MachineType::I16 || machineType == MachineType::I32 ||
         machineType == MachineType::I64 || machineType == MachineType::ARCH) {
         result = LLVMBuildSub(builder_, e1Value, e2Value, "");
@@ -1472,7 +1473,7 @@ void LLVMIRBuilder::VisitMul(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    auto machineType = circuit_->LoadGatePtrConst(gate)->GetMachineType();
+    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
     if (IsMulIntergerType(machineType)) {
         result = LLVMBuildMul(builder_, e1Value, e2Value, "");
     } else if (machineType == MachineType::F64) {
@@ -1544,8 +1545,9 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    auto e1ValCode = circuit_->LoadGatePtrConst(e1)->GetMachineType();
-    [[maybe_unused]]auto e2ValCode = circuit_->LoadGatePtrConst(e2)->GetMachineType();
+    GateAccessor acc(circuit_);
+    auto e1ValCode = acc.GetMachineType(e1);
+    [[maybe_unused]]auto e2ValCode = acc.GetMachineType(e2);
     ASSERT((e1ValCode == e2ValCode) ||
         (compCfg_->Is32Bit() && (e1ValCode == MachineType::ARCH) && (e2ValCode == MachineType::I32)) ||
         (compCfg_->Is64Bit() && (e1ValCode == MachineType::ARCH) && (e2ValCode == MachineType::I64)) ||
@@ -1769,8 +1771,8 @@ void LLVMIRBuilder::VisitIntLsl(GateRef gate, GateRef e1, GateRef e2)
 void LLVMIRBuilder::VisitZExtInt(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    ASSERT(GetBitWidthFromMachineType(circuit_->LoadGatePtrConst(e1)->GetMachineType()) <=
-        GetBitWidthFromMachineType(circuit_->LoadGatePtrConst(gate)->GetMachineType()));
+    ASSERT(GetBitWidthFromMachineType(GateAccessor(circuit_).GetMachineType(e1)) <=
+           GetBitWidthFromMachineType(GateAccessor(circuit_).GetMachineType(gate)));
     LLVMValueRef result = LLVMBuildZExt(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
     gate2LValue_[gate] = result;
 }
@@ -1791,8 +1793,8 @@ void LLVMIRBuilder::HandleCastIntXToIntY(GateRef gate)
 void LLVMIRBuilder::VisitCastIntXToIntY(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    ASSERT(GetBitWidthFromMachineType(circuit_->LoadGatePtrConst(e1)->GetMachineType()) >=
-        GetBitWidthFromMachineType(circuit_->LoadGatePtrConst(gate)->GetMachineType()));
+    ASSERT(GetBitWidthFromMachineType(GateAccessor(circuit_).GetMachineType(e1)) >=
+           GetBitWidthFromMachineType(GateAccessor(circuit_).GetMachineType(gate)));
     LLVMValueRef result = LLVMBuildIntCast2(builder_, e1Value, ConvertLLVMTypeFromGate(gate), 1, "");
     gate2LValue_[gate] = result;
 }
@@ -1855,8 +1857,9 @@ void LLVMIRBuilder::HandleBitCast(GateRef gate)
 void LLVMIRBuilder::VisitBitCast(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    [[maybe_unused]] auto gateValCode = circuit_->LoadGatePtrConst(gate)->GetMachineType();
-    [[maybe_unused]] auto e1ValCode = circuit_->LoadGatePtrConst(e1)->GetMachineType();
+    GateAccessor acc(circuit_);
+    [[maybe_unused]] auto gateValCode = acc.GetMachineType(gate);
+    [[maybe_unused]] auto e1ValCode = acc.GetMachineType(e1);
     ASSERT(GetBitWidthFromMachineType(gateValCode) == GetBitWidthFromMachineType(e1ValCode));
     auto returnType = ConvertLLVMTypeFromGate(gate);
     LLVMValueRef result = LLVMBuildBitCast(builder_, e1Value, returnType, "");

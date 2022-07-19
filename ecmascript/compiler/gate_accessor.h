@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_COMPILER_GATE_ACCESSOR_H
 #define ECMASCRIPT_COMPILER_GATE_ACCESSOR_H
 
-#include "circuit.h"
-#include "gate.h"
+#include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/gate.h"
 
 namespace panda::ecmascript::kungfu {
 class GateAccessor {
@@ -30,7 +30,7 @@ public:
 
         GateRef operator*() const
         {
-            return circuit_->SaveGatePtr(out_->GetGateConst());
+            return circuit_->GetGateRef(out_->GetGateConst());
         }
 
         const ConstUsesIterator operator++()
@@ -88,7 +88,7 @@ public:
 
         GateRef operator*() const
         {
-            return circuit_->SaveGatePtr(out_->GetGate());
+            return circuit_->GetGateRef(out_->GetGate());
         }
 
         const UsesIterator& operator++()
@@ -153,7 +153,7 @@ public:
 
         GateRef operator*() const
         {
-            return circuit_->SaveGatePtr(in_->GetGateConst());
+            return circuit_->GetGateRef(in_->GetGateConst());
         }
 
         const ConstInsIterator& operator++()
@@ -195,7 +195,7 @@ public:
 
         GateRef operator*()
         {
-            return circuit_->SaveGatePtr(in_->GetGate());
+            return circuit_->GetGateRef(in_->GetGate());
         }
 
         const InsIterator& operator++()
@@ -348,6 +348,10 @@ public:
     void DeleteGate(GateRef gate);
     MachineType GetMachineType(GateRef gate) const;
     GateRef GetConstantGate(MachineType bitValue, BitField bitfield, GateType type) const;
+    bool IsSelector(GateRef g) const
+    {
+        return GetGateType(g).GetType() == OpCode::VALUE_SELECTOR;
+    }
 
 private:
     [[nodiscard]] ConstUsesIterator ConstUseBegin(GateRef gate) const

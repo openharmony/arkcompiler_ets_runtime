@@ -2465,15 +2465,15 @@ void BytecodeCircuitBuilder::BuildCircuit()
     for (const auto &[key, value]: jsgateToBytecode_) {
         byteCodeToJSGate_[value.second] = key;
     }
-    GateAccessor accessor = GateAccessor(&circuit_);
+    GateAccessor acc(&circuit_);
     // resolve def-site of virtual regs and set all value inputs
     for (auto gate: circuit_.GetAllGates()) {
-        auto valueCount = accessor.GetInValueCount(gate);
+        auto valueCount = acc.GetInValueCount(gate);
         auto it = jsgateToBytecode_.find(gate);
         if (it == jsgateToBytecode_.cend()) {
             continue;
         }
-        if (circuit_.LoadGatePtrConst(gate)->GetOpCode() == OpCode::CONSTANT) {
+        if (acc.GetOpCode(gate) == OpCode::CONSTANT) {
             continue;
         }
         const auto &[id, pc] = it->second;
@@ -2488,8 +2488,8 @@ void BytecodeCircuitBuilder::BuildCircuit()
         [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount() + bytecodeInfo.vregOut.size();
         ASSERT(numValueInputs == valueCount);
         ASSERT(numValueOutputs <= 1);
-        auto stateCount = accessor.GetStateCount(gate);
-        auto dependCount = accessor.GetDependCount(gate);
+        auto stateCount = acc.GetStateCount(gate);
+        auto dependCount = acc.GetDependCount(gate);
         for (size_t valueIdx = 0; valueIdx < valueCount; valueIdx++) {
             auto inIdx = valueIdx + stateCount + dependCount;
             if (!circuit_.IsInGateNull(gate, inIdx)) {

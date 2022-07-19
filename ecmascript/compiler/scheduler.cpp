@@ -14,11 +14,8 @@
  */
 
 #include "ecmascript/compiler/scheduler.h"
-
-#include <cmath>
-
+#include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/ecma_macros.h"
 
 namespace panda::ecmascript::kungfu {
 using DominatorTreeInfo = std::tuple<std::vector<GateRef>, std::unordered_map<GateRef, size_t>,
@@ -215,7 +212,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
             auto predUpperBound = predResult.value();
             if (!isAncestor(curUpperBound, predUpperBound) && !isAncestor(predUpperBound, curUpperBound)) {
                 LOG_COMPILER(ERROR) << "[Verifier][Error] Scheduling upper bound of gate (id="
-                                    << circuit->LoadGatePtrConst(curGate)->GetId() << ") does not exist";
+                                    << GateAccessor(const_cast<Circuit*>(circuit)).GetId(curGate) << ") does not exist";
                 return std::nullopt;
             }
             if (isAncestor(curUpperBound, predUpperBound)) {
