@@ -615,9 +615,9 @@ void AssemblerStubs::JSCallBody(ExtendedAssembler *assembler, Register jsfunc)
         Register argC(X5);
         Register runtimeId(X6);
         __ Mov(argC, Immediate(1));
-        __ Mov(runtimeId, RTSTUB_ID(ThrowTypeError));
+        __ Mov(runtimeId, Immediate(RTSTUB_ID(ThrowTypeError)));
         // 2 : 2 means pair
-        __ Stp(argC, runtimeId, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Stp(runtimeId, argC, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
         __ Mov(Register(X0), Immediate(JSTaggedValue::VALUE_EXCEPTION));
         // 4 : 4 means stack slot
