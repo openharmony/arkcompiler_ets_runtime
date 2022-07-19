@@ -65,6 +65,8 @@
 #include "ecmascript/builtins/builtins_weak_set.h"
 #include "ecmascript/containers/containers_arraylist.h"
 #include "ecmascript/containers/containers_deque.h"
+#include "ecmascript/containers/containers_hashmap.h"
+#include "ecmascript/containers/containers_hashset.h"
 #include "ecmascript/containers/containers_lightweightmap.h"
 #include "ecmascript/containers/containers_lightweightset.h"
 #include "ecmascript/containers/containers_linked_list.h"
@@ -98,6 +100,8 @@
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_regexp_iterator.h"
 #include "ecmascript/js_set_iterator.h"
+#include "ecmascript/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api_hashset_iterator.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/mem/heap.h"
@@ -166,6 +170,8 @@ using RelativeTimeFormat = builtins::BuiltinsRelativeTimeFormat;
 using Collator = builtins::BuiltinsCollator;
 using PluralRules = builtins::BuiltinsPluralRules;
 using ArrayList = containers::ContainersArrayList;
+using HashMap = containers::ContainersHashMap;
+using HashSet = containers::ContainersHashSet;
 using LightWeightMap = containers::ContainersLightWeightMap;
 using LightWeightSet = containers::ContainersLightWeightSet;
 using TreeMap = containers::ContainersTreeMap;
@@ -714,6 +720,32 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(ArrayList::Set),
     reinterpret_cast<uintptr_t>(ArrayList::GetSize),
     reinterpret_cast<uintptr_t>(JSAPIArrayListIterator::Next),
+    reinterpret_cast<uintptr_t>(HashMap::HashMapConstructor),
+    reinterpret_cast<uintptr_t>(HashMap::HasKey),
+    reinterpret_cast<uintptr_t>(HashMap::HasValue),
+    reinterpret_cast<uintptr_t>(HashMap::Replace),
+    reinterpret_cast<uintptr_t>(HashMap::Keys),
+    reinterpret_cast<uintptr_t>(HashMap::Values),
+    reinterpret_cast<uintptr_t>(HashMap::Entries),
+    reinterpret_cast<uintptr_t>(HashMap::ForEach),
+    reinterpret_cast<uintptr_t>(HashMap::Set),
+    reinterpret_cast<uintptr_t>(HashMap::SetAll),
+    reinterpret_cast<uintptr_t>(HashMap::Remove),
+    reinterpret_cast<uintptr_t>(HashMap::Get),
+    reinterpret_cast<uintptr_t>(HashMap::Clear),
+    reinterpret_cast<uintptr_t>(HashMap::GetLength),
+    reinterpret_cast<uintptr_t>(HashMap::IsEmpty),
+    reinterpret_cast<uintptr_t>(HashSet::HashSetConstructor),
+    reinterpret_cast<uintptr_t>(HashSet::IsEmpty),
+    reinterpret_cast<uintptr_t>(HashSet::Has),
+    reinterpret_cast<uintptr_t>(HashSet::Add),
+    reinterpret_cast<uintptr_t>(HashSet::Remove),
+    reinterpret_cast<uintptr_t>(HashSet::Clear),
+    reinterpret_cast<uintptr_t>(HashSet::GetLength),
+    reinterpret_cast<uintptr_t>(HashSet::Values),
+    reinterpret_cast<uintptr_t>(HashSet::Entries),
+    reinterpret_cast<uintptr_t>(JSAPIHashMapIterator::Next),
+    reinterpret_cast<uintptr_t>(JSAPIHashSetIterator::Next),
     reinterpret_cast<uintptr_t>(LightWeightMap::HasAll),
     reinterpret_cast<uintptr_t>(LightWeightMap::HasKey),
     reinterpret_cast<uintptr_t>(LightWeightMap::HasValue),

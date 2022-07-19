@@ -1,0 +1,224 @@
+/*
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ecmascript/containers/containers_private.h"
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_function.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_iterator.h"
+#include "ecmascript/js_api_hashset.h"
+#include "ecmascript/js_api_hashset_iterator.h"
+#include "ecmascript/js_object-inl.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/tests/test_helper.h"
+
+using namespace panda;
+using namespace panda::ecmascript;
+
+namespace panda::test {
+class JSAPIHashSetTest : public testing::Test {
+public:
+    static void SetUpTestCase()
+    {
+        GTEST_LOG_(INFO) << "SetUpTestCase";
+    }
+
+    static void TearDownTestCase()
+    {
+        GTEST_LOG_(INFO) << "TearDownCase";
+    }
+
+    void SetUp() override
+    {
+        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
+    }
+
+    void TearDown() override
+    {
+        TestHelper::DestroyEcmaVMWithScope(instance, scope);
+    }
+
+    EcmaVM *instance {nullptr};
+    ecmascript::EcmaHandleScope *scope {nullptr};
+    JSThread *thread {nullptr};
+
+protected:
+    JSAPIHashSet *CreateHashSet()
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+
+        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
+        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
+        JSHandle<JSTaggedValue> value =
+            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+
+        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        objCallInfo->SetFunction(JSTaggedValue::Undefined());
+        objCallInfo->SetThis(value.GetTaggedValue());
+        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::HashSet)));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        JSHandle<JSTaggedValue> constructor(thread, result);
+        JSHandle<JSAPIHashSet> set(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+        JSTaggedValue hashSetArray = TaggedHashArray::Create(thread);
+        set->SetTable(thread, hashSetArray);
+        set->SetSize(0);
+        return *set;
+    }
+};
+
+HWTEST_F_L0(JSAPIHashSetTest, HashSetCreate)
+{
+    JSAPIHashSet *set = CreateHashSet();
+    EXPECT_TRUE(set != nullptr);
+}
+
+HWTEST_F_L0(JSAPIHashSetTest, HashSetAddAndHas)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+
+    // test JSAPIHashSet
+    JSHandle<JSAPIHashSet> hashSet(thread, CreateHashSet());
+    std::string myValue("myvalue");
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        std::string iValue = myValue + std::to_string(i);
+        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+        JSAPIHashSet::Add(thread, hashSet, value);
+    }
+    EXPECT_EQ(hashSet->GetSize(), NODE_NUMBERS);
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        std::string iValue = myValue + std::to_string(i);
+        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+
+        // test has
+        JSTaggedValue bHas = hashSet->Has(thread, value.GetTaggedValue());
+        EXPECT_EQ(bHas, JSTaggedValue::True());
+    }
+}
+
+HWTEST_F_L0(JSAPIHashSetTest, HashSetRemoveAndHas)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+
+    // test JSAPIHashSet
+    JSHandle<JSAPIHashSet> hashSet(thread, CreateHashSet());
+    std::string myValue("myvalue");
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        std::string iValue = myValue + std::to_string(i);
+        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+        JSAPIHashSet::Add(thread, hashSet, value);
+    }
+    EXPECT_EQ(hashSet->GetSize(), NODE_NUMBERS);
+
+    for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {
+        std::string iValue = myValue + std::to_string(i);
+        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+        [[maybe_unused]] JSTaggedValue rvalue = JSAPIHashSet::Remove(thread, hashSet, value.GetTaggedValue());
+    }
+    EXPECT_EQ(hashSet->GetSize(), NODE_NUMBERS / 2);
+
+    for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {
+        std::string iValue = myValue + std::to_string(i);
+        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+
+        // test has
+        JSTaggedValue has = hashSet->Has(thread, value.GetTaggedValue());
+        EXPECT_EQ(has, JSTaggedValue::False());
+    }
+
+    for (uint32_t i = NODE_NUMBERS / 2; i < NODE_NUMBERS; i++) {
+        std::string iValue = myValue + std::to_string(i);
+        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+
+        // test has
+        JSTaggedValue has = hashSet->Has(thread, value.GetTaggedValue());
+        EXPECT_EQ(has, JSTaggedValue::True());
+    }
+}
+
+HWTEST_F_L0(JSAPIHashSetTest, HashSetClearAddHas)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+
+    // test JSAPIHashSet
+    JSHandle<JSAPIHashSet> hashSet(thread, CreateHashSet());
+    std::string myValue("myvalue");
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        std::string iValue = myValue + std::to_string(i);
+        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+        JSAPIHashSet::Add(thread, hashSet, value);
+    }
+    EXPECT_EQ(hashSet->GetSize(), NODE_NUMBERS);
+
+    hashSet->Clear(thread);
+    JSTaggedValue isEmpty = hashSet->IsEmpty();
+    EXPECT_EQ(isEmpty, JSTaggedValue::True());
+}
+
+HWTEST_F_L0(JSAPIHashSetTest, JSAPIHashSetIterator)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIHashSet> hashSet(thread, CreateHashSet());
+
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        value.Update(JSTaggedValue(i));
+        JSAPIHashSet::Add(thread, hashSet, value);
+    }
+
+    // test value
+    JSHandle<JSTaggedValue> valueIter(factory->NewJSAPIHashSetIterator(hashSet, IterationKind::VALUE));
+    JSMutableHandle<JSTaggedValue> valueIterResult(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        valueIterResult.Update(JSIterator::IteratorStep(thread, valueIter).GetTaggedValue());
+        JSHandle<JSTaggedValue> tmpIterValue = JSIterator::IteratorValue(thread, valueIterResult);
+        JSTaggedValue iterValueFlag = hashSet->Has(thread, tmpIterValue.GetTaggedValue());
+        EXPECT_EQ(JSTaggedValue::True(), iterValueFlag);
+    }
+    // test end
+    valueIterResult.Update(JSIterator::IteratorStep(thread, valueIter).GetTaggedValue());
+    EXPECT_EQ(JSTaggedValue::False(), valueIterResult.GetTaggedValue());
+
+    // test key and value
+    JSHandle<JSTaggedValue> indexKey(thread, JSTaggedValue(0));
+    JSHandle<JSTaggedValue> elementKey(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> iter(factory->NewJSAPIHashSetIterator(hashSet, IterationKind::KEY_AND_VALUE));
+    JSMutableHandle<JSTaggedValue> iterResult(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        iterResult.Update(JSIterator::IteratorStep(thread, iter).GetTaggedValue());
+        result.Update(JSIterator::IteratorValue(thread, iterResult).GetTaggedValue());
+        EXPECT_EQ(JSTaggedValue(i), JSObject::GetProperty(thread, result, indexKey).GetValue().GetTaggedValue());
+        JSHandle<JSTaggedValue> tmpValue = JSObject::GetProperty(thread, result, elementKey).GetValue();
+        JSTaggedValue iterValueFlag = hashSet->Has(thread, tmpValue.GetTaggedValue());
+        EXPECT_EQ(JSTaggedValue::True(), iterValueFlag);
+    }
+}
+}  // namespace panda::test

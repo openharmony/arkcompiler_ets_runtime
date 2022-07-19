@@ -69,6 +69,10 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_global_object.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_api_hashmap.h"
+#include "ecmascript/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api_hashset.h"
+#include "ecmascript/js_api_hashset_iterator.h"
 #include "ecmascript/js_intl.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_map.h"
@@ -103,7 +107,9 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
+#include "ecmascript/tagged_hash_array.h"
 #include "ecmascript/tagged_list.h"
+#include "ecmascript/tagged_node.h"
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/template_map.h"
 #include "ecmascript/tests/test_helper.h"
@@ -185,6 +191,28 @@ static JSHandle<JSSet> NewJSSet(JSThread *thread, ObjectFactory *factory, JSHand
     JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread));
     jsSet->SetLinkedSet(thread, linkedSet);
     return jsSet;
+}
+
+static JSHandle<JSAPIHashMap> NewJSAPIHashMap(JSThread *thread, ObjectFactory *factory)
+{
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+    JSHandle<JSHClass> mapClass = factory->NewEcmaDynClass(JSAPIHashMap::SIZE, JSType::JS_API_HASH_MAP, proto);
+    JSHandle<JSAPIHashMap> jsHashMap = JSHandle<JSAPIHashMap>::Cast(factory->NewJSObjectWithInit(mapClass));
+    jsHashMap->SetTable(thread, TaggedHashArray::Create(thread));
+    jsHashMap->SetSize(0);
+    return jsHashMap;
+}
+
+static JSHandle<JSAPIHashSet> NewJSAPIHashSet(JSThread *thread, ObjectFactory *factory)
+{
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+    JSHandle<JSHClass> setClass = factory->NewEcmaDynClass(JSAPIHashSet::SIZE, JSType::JS_API_HASH_SET, proto);
+    JSHandle<JSAPIHashSet> jsHashSet = JSHandle<JSAPIHashSet>::Cast(factory->NewJSObjectWithInit(setClass));
+    jsHashSet->SetTable(thread, TaggedHashArray::Create(thread));
+    jsHashSet->SetSize(0);
+    return jsHashSet;
 }
 
 static JSHandle<JSAPITreeMap> NewJSAPITreeMap(JSThread *thread, ObjectFactory *factory)
@@ -952,6 +980,42 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 JSHandle<JSAPIArrayList> jsArrayList = NewJSAPIArrayList(thread, factory, proto);
                 JSHandle<JSAPIArrayListIterator> jsArrayListIter = factory->NewJSAPIArrayListIterator(jsArrayList);
                 DUMP_FOR_HANDLE(jsArrayListIter)
+                break;
+            }
+            case JSType::LINKED_NODE: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), LinkedNode::SIZE, 4U);
+                break;
+            }
+            case JSType::RB_TREENODE: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), RBTreeNode::SIZE, 7U);;
+                break;
+            }
+            case JSType::JS_API_HASH_MAP: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashMap::SIZE, 2U);
+                JSHandle<JSAPIHashMap> jsHashMap = NewJSAPIHashMap(thread, factory);
+                DUMP_FOR_HANDLE(jsHashMap)
+                break;
+            }
+            case JSType::JS_API_HASH_SET: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSet::SIZE, 2U);
+                JSHandle<JSAPIHashSet> jsHashSet = NewJSAPIHashSet(thread, factory);
+                DUMP_FOR_HANDLE(jsHashSet)
+                break;
+            }
+            case JSType::JS_API_HASHMAP_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashMapIterator::SIZE, 3U);
+                JSHandle<JSAPIHashMap> jsHashMap = NewJSAPIHashMap(thread, factory);
+                JSHandle<JSAPIHashMapIterator> jsHashMapIter =
+                    factory->NewJSAPIHashMapIterator(jsHashMap, IterationKind::KEY);
+                DUMP_FOR_HANDLE(jsHashMapIter)
+                break;
+            }
+            case JSType::JS_API_HASHSET_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSetIterator::SIZE, 4U);
+                JSHandle<JSAPIHashSet> jsHashSet = NewJSAPIHashSet(thread, factory);
+                JSHandle<JSAPIHashSetIterator> jsHashSetIter =
+                    factory->NewJSAPIHashSetIterator(jsHashSet, IterationKind::KEY);
+                DUMP_FOR_HANDLE(jsHashSetIter)
                 break;
             }
             case JSType::JS_API_LIGHT_WEIGHT_MAP: {

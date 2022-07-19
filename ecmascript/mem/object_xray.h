@@ -30,6 +30,10 @@
 #include "ecmascript/js_api_arraylist_iterator.h"
 #include "ecmascript/js_api_deque.h"
 #include "ecmascript/js_api_deque_iterator.h"
+#include "ecmascript/js_api_hashmap.h"
+#include "ecmascript/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api_hashset.h"
+#include "ecmascript/js_api_hashset_iterator.h"
 #include "ecmascript/js_api_lightweightmap.h"
 #include "ecmascript/js_api_lightweightmap_iterator.h"
 #include "ecmascript/js_api_lightweightset.h"
@@ -92,6 +96,7 @@
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
 #include "ecmascript/require/js_cjs_module.h"
@@ -502,6 +507,24 @@ public:
                 TSFunctionType::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::TS_ARRAY_TYPE:
+                break;
+            case JSType::RB_TREENODE:
+                RBTreeNode::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::LINKED_NODE:
+                LinkedNode::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::JS_API_HASH_MAP:
+                JSAPIHashMap::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::JS_API_HASH_SET:
+                JSAPIHashSet::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::JS_API_HASHMAP_ITERATOR:
+                JSAPIHashMapIterator::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::JS_API_HASHSET_ITERATOR:
+                JSAPIHashSetIterator::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::JS_API_TREE_MAP:
                 JSAPITreeMap::Cast(object)->VisitRangeSlot(visitor);

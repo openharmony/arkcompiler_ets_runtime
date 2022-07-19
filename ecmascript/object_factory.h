@@ -108,6 +108,13 @@ class JSAPIArrayList;
 class JSAPIArrayListIterator;
 class JSAPIDeque;
 class JSAPIDequeIterator;
+class TaggedHashArray;
+class LinkedNode;
+class RBTreeNode;
+class JSAPIHashMap;
+class JSAPIHashSet;
+class JSAPIHashMapIterator;
+class JSAPIHashSetIterator;
 class JSAPILightWeightMap;
 class JSAPILightWeightMapIterator;
 class JSAPILightWeightSet;
@@ -504,6 +511,14 @@ public:
     JSHandle<JSAPIStackIterator> NewJSAPIStackIterator(const JSHandle<JSAPIStack> &stack);
     JSHandle<JSAPIVector> NewJSAPIVector(uint32_t capacity);
     JSHandle<JSAPIVectorIterator> NewJSAPIVectorIterator(const JSHandle<JSAPIVector> &vector);
+    JSHandle<JSAPIHashMapIterator> NewJSAPIHashMapIterator(const JSHandle<JSAPIHashMap> &hashMap, IterationKind kind);
+    JSHandle<JSAPIHashSetIterator> NewJSAPIHashSetIterator(const JSHandle<JSAPIHashSet> &hashSet, IterationKind kind);
+    JSHandle<TaggedHashArray> NewTaggedHashArray(uint32_t length);
+    JSHandle<LinkedNode> NewLinkedNode(int hash, const JSHandle<JSTaggedValue> &key,
+                                       const JSHandle<JSTaggedValue> &value,
+                                       const JSHandle<LinkedNode> &next);
+    JSHandle<RBTreeNode> NewTreeNode(int hash, const JSHandle<JSTaggedValue> &key,
+                                     const JSHandle<JSTaggedValue> &value);
     // --------------------------------------module--------------------------------------------
     JSHandle<ModuleNamespace> NewModuleNamespace();
     JSHandle<ImportEntry> NewImportEntry();

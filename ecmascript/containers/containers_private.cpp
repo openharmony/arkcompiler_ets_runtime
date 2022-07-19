@@ -17,6 +17,8 @@
 
 #include "containers_arraylist.h"
 #include "containers_deque.h"
+#include "containers_hashmap.h"
+#include "containers_hashset.h"
 #include "containers_lightweightmap.h"
 #include "containers_lightweightset.h"
 #include "containers_linked_list.h"
@@ -34,6 +36,10 @@
 #include "ecmascript/js_api_arraylist_iterator.h"
 #include "ecmascript/js_api_deque.h"
 #include "ecmascript/js_api_deque_iterator.h"
+#include "ecmascript/js_api_hashmap.h"
+#include "ecmascript/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api_hashset.h"
+#include "ecmascript/js_api_hashset_iterator.h"
 #include "ecmascript/js_api_lightweightmap.h"
 #include "ecmascript/js_api_lightweightmap_iterator.h"
 #include "ecmascript/js_api_lightweightset.h"
@@ -120,8 +126,14 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
             res = InitializeContainer(thread, thisValue, InitializeLinkedList, "LinkedListConstructor");
             break;
         }
-        case ContainerTag::HashMap:
-        case ContainerTag::HashSet:
+        case ContainerTag::HashMap: {
+            res = InitializeContainer(thread, thisValue, InitializeHashMap, "HashMapConstructor");
+            break;
+        }
+        case ContainerTag::HashSet: {
+            res = InitializeContainer(thread, thisValue, InitializeHashSet, "HashSetConstructor");
+            break;
+        }
         case ContainerTag::END:
             break;
         default:
@@ -1053,5 +1065,150 @@ void ContainersPrivate::InitializeListIterator(JSThread *thread, const JSHandle<
     SetFrozenFunction(thread, setIteratorPrototype, "next", JSAPIListIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, setIteratorPrototype, "list Iterator");
     globalConst->SetConstant(ConstantIndex::LIST_ITERATOR_PROTOTYPE_INDEX, setIteratorPrototype.GetTaggedValue());
+}
+
+JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // HashMap.prototype
+    JSHandle<JSObject> hashMapFuncPrototype = factory->NewEmptyJSObject();
+    JSHandle<JSTaggedValue> hashMapFuncPrototypeValue(hashMapFuncPrototype);
+    // HashMap.prototype_or_dynclass
+    JSHandle<JSHClass> hashMapInstanceDynclass =
+        factory->NewEcmaDynClass(JSAPIHashMap::SIZE, JSType::JS_API_HASH_MAP, hashMapFuncPrototypeValue);
+    // HashMap() = new Function()
+    JSHandle<JSTaggedValue> hashMapFunction(NewContainerConstructor(
+        thread, hashMapFuncPrototype, ContainersHashMap::HashMapConstructor, "HashMap", FuncLength::ZERO));
+    JSHandle<JSFunction>::Cast(hashMapFunction)->SetFunctionPrototype(thread, hashMapInstanceDynclass.GetTaggedValue());
+
+    // "constructor" property on the prototype
+    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(hashMapFuncPrototype), constructorKey, hashMapFunction);
+    // HashMap.prototype.set()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "set", ContainersHashMap::Set, FuncLength::TWO);
+     // HashMap.prototype.setall()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "setAll", ContainersHashMap::SetAll, FuncLength::ONE);
+    // HashMap.prototype.isEmpty()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "isEmpty", ContainersHashMap::IsEmpty, FuncLength::ZERO);
+    // HashMap.prototype.remove()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "remove", ContainersHashMap::Remove, FuncLength::ONE);
+     // HashMap.prototype.clear()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "clear", ContainersHashMap::Clear, FuncLength::ZERO);
+    // HashMap.prototype.get()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "get", ContainersHashMap::Get, FuncLength::ONE);
+    // HashMap.prototype.forEach()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "forEach", ContainersHashMap::ForEach, FuncLength::TWO);
+    // HashMap.prototype.hasKey()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "hasKey", ContainersHashMap::HasKey, FuncLength::ONE);
+     // HashMap.prototype.hasValue()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "hasValue", ContainersHashMap::HasValue, FuncLength::ONE);
+     // HashMap.prototype.replace()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "replace", ContainersHashMap::Replace, FuncLength::TWO);
+    // HashMap.prototype.keys()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "keys", ContainersHashMap::Keys, FuncLength::ZERO);
+    // HashMap.prototype.Values()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "values", ContainersHashMap::Values, FuncLength::ZERO);
+    // HashMap.prototype.keys()
+    SetFrozenFunction(thread, hashMapFuncPrototype, "entries", ContainersHashMap::Entries, FuncLength::ZERO);
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    // @@ToStringTag
+    SetStringTagSymbol(thread, env, hashMapFuncPrototype, "HashMap");
+    // %HashMapPrototype% [ @@iterator ]
+    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> entries(factory->NewFromASCII("entries"));
+    JSHandle<JSTaggedValue> entriesFunc =
+        JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(hashMapFuncPrototype), entries);
+    PropertyDescriptor descriptor(thread, entriesFunc, false, false, false);
+    JSObject::DefineOwnProperty(thread, hashMapFuncPrototype, iteratorSymbol, descriptor);
+
+    JSHandle<JSTaggedValue> lengthGetter =
+        CreateGetter(thread, ContainersHashMap::GetLength, "length", FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
+    SetGetter(thread, hashMapFuncPrototype, lengthKey, lengthGetter);
+    InitializeHashMapIterator(thread);
+    return hashMapFunction;
+}
+
+void ContainersPrivate::InitializeHashMapIterator(JSThread *thread)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSHClass> iteratorFuncDynclass =
+        JSHandle<JSHClass>::Cast(globalConst->GetHandledJSAPIIteratorFuncDynClass());
+    // HashMapIterator.prototype
+    JSHandle<JSObject> hashMapIteratorPrototype(factory->NewJSObject(iteratorFuncDynclass));
+    // HashMapIterator.prototype.next()
+    SetFrozenFunction(thread, hashMapIteratorPrototype, "next", JSAPIHashMapIterator::Next, FuncLength::ZERO);
+    SetStringTagSymbol(thread, env, hashMapIteratorPrototype, "HashMap Iterator");
+    
+    globalConst->SetConstant(ConstantIndex::HASHMAP_ITERATOR_PROTOTYPE_INDEX,
+                             hashMapIteratorPrototype.GetTaggedValue());
+}
+
+JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // HashSet.prototype
+    JSHandle<JSObject> hashSetFuncPrototype = factory->NewEmptyJSObject();
+    JSHandle<JSTaggedValue> hashSetFuncPrototypeValue(hashSetFuncPrototype);
+    // HashSet.prototype_or_dynclass
+    JSHandle<JSHClass> hashSetInstanceDynclass =
+        factory->NewEcmaDynClass(JSAPIHashSet::SIZE, JSType::JS_API_HASH_SET, hashSetFuncPrototypeValue);
+    // HashSet() = new Function()
+    JSHandle<JSTaggedValue> hashSetFunction(NewContainerConstructor(
+        thread, hashSetFuncPrototype, ContainersHashSet::HashSetConstructor, "HashSet", FuncLength::ZERO));
+    JSHandle<JSFunction>::Cast(hashSetFunction)->SetFunctionPrototype(thread, hashSetInstanceDynclass.GetTaggedValue());
+
+    // "constructor" property on the prototype
+    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(hashSetFuncPrototype), constructorKey, hashSetFunction);
+
+    SetFrozenFunction(thread, hashSetFuncPrototype, "isEmpty", ContainersHashSet::IsEmpty, FuncLength::ZERO);
+    SetFrozenFunction(thread, hashSetFuncPrototype, "has", ContainersHashSet::Has, FuncLength::ONE);
+    SetFrozenFunction(thread, hashSetFuncPrototype, "add", ContainersHashSet::Add, FuncLength::ONE);
+    SetFrozenFunction(thread, hashSetFuncPrototype, "has", ContainersHashSet::Has, FuncLength::ONE);
+    SetFrozenFunction(thread, hashSetFuncPrototype, "remove", ContainersHashSet::Remove, FuncLength::ONE);
+    SetFrozenFunction(thread, hashSetFuncPrototype, "clear", ContainersHashSet::Clear, FuncLength::ZERO);
+    SetFrozenFunction(thread, hashSetFuncPrototype, "values", ContainersHashSet::Values, FuncLength::ZERO);
+    SetFrozenFunction(thread, hashSetFuncPrototype, "entries", ContainersHashSet::Entries, FuncLength::ZERO);
+    SetFrozenFunction(thread, hashSetFuncPrototype, "forEach", ContainersHashSet::ForEach, FuncLength::TWO);
+    
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    // @@ToStringTag
+    SetStringTagSymbol(thread, env, hashSetFuncPrototype, "HashSet");
+    // %HashSetPrototype% [ @@iterator ]
+    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> values(thread, globalConst->GetValuesString());
+    JSHandle<JSTaggedValue> valuesFunc =
+        JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(hashSetFuncPrototype), values);
+    PropertyDescriptor descriptor(thread, valuesFunc, false, false, false);
+    JSObject::DefineOwnProperty(thread, hashSetFuncPrototype, iteratorSymbol, descriptor);
+
+    JSHandle<JSTaggedValue> lengthGetter =
+        CreateGetter(thread, ContainersHashSet::GetLength, "length", FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
+    SetGetter(thread, hashSetFuncPrototype, lengthKey, lengthGetter);
+    InitializeHashSetIterator(thread);
+    return hashSetFunction;
+}
+
+void ContainersPrivate::InitializeHashSetIterator(JSThread *thread)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSHClass> iteratorFuncDynclass =
+        JSHandle<JSHClass>::Cast(globalConst->GetHandledJSAPIIteratorFuncDynClass());
+
+    // HashSetIterator.prototype
+    JSHandle<JSObject> hashSetIteratorPrototype(factory->NewJSObject(iteratorFuncDynclass));
+    // HashSetIterator.prototype.next()
+    SetFrozenFunction(thread, hashSetIteratorPrototype, "next", JSAPIHashSetIterator::Next, FuncLength::ZERO);
+    SetStringTagSymbol(thread, env, hashSetIteratorPrototype, "HashSet Iterator");
+    globalConst->SetConstant(ConstantIndex::HASHSET_ITERATOR_PROTOTYPE_INDEX,
+                             hashSetIteratorPrototype.GetTaggedValue());
 }
 }  // namespace panda::ecmascript::containers

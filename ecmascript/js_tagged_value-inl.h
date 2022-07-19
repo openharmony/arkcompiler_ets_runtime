@@ -452,6 +452,16 @@ inline bool JSTaggedValue::IsTaggedArray() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTaggedArray();
 }
 
+inline bool JSTaggedValue::IsLinkedNode() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsLinkedNode();
+}
+
+inline bool JSTaggedValue::IsRBTreeNode() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsRBTreeNode();
+}
+
 inline bool JSTaggedValue::IsNativePointer() const
 {
     return IsJSNativePointer();
@@ -585,6 +595,16 @@ inline bool JSTaggedValue::IsJSListFormat() const
 inline bool JSTaggedValue::IsJSAPIArrayList() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIArrayList();
+}
+
+inline bool JSTaggedValue::IsJSAPIHashMap() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIHashMap();
+}
+
+inline bool JSTaggedValue::IsJSAPIHashSet() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIHashSet();
 }
 
 inline bool JSTaggedValue::IsJSAPITreeMap() const
@@ -973,6 +993,16 @@ inline bool JSTaggedValue::IsJSRegExpIterator() const
 inline bool JSTaggedValue::IsJSMapIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSMapIterator();
+}
+
+inline bool JSTaggedValue::IsJSAPIHashMapIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIHashMapIterator();
+}
+
+inline bool JSTaggedValue::IsJSAPIHashSetIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIHashSetIterator();
 }
 
 inline bool JSTaggedValue::IsJSAPITreeMapIterator() const

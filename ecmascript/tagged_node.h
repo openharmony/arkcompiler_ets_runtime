@@ -1,0 +1,157 @@
+/*
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef ECMASCRIPT_TAGGED_NODE_H
+#define ECMASCRIPT_TAGGED_NODE_H
+
+#include "ecmascript/js_thread.h"
+#include "ecmascript/mem/tagged_object.h"
+#include "js_tagged_value-inl.h"
+
+namespace panda::ecmascript {
+class TaggedNode : public TaggedObject {
+public:
+    void InitTaggedNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value)
+    {
+        this->SetHash(thread, JSTaggedValue(hash));
+        this->SetKey(thread, key.GetTaggedValue());
+        this->SetValue(thread, value.GetTaggedValue());
+    }
+
+    static TaggedNode *Cast(TaggedObject *object)
+    {
+        return static_cast<TaggedNode *>(object);
+    }
+
+    static constexpr size_t HASH_OFFSET = TaggedObject::TaggedObjectSize();
+    ACCESSORS(Hash, HASH_OFFSET, KEY_OFFSET);
+    ACCESSORS(Key, KEY_OFFSET, VALUE_OFFSET);
+    ACCESSORS(Value, VALUE_OFFSET, DATA_OFFSET);
+
+    static constexpr size_t SIZE = DATA_OFFSET;
+    DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
+
+    void VisitObjects(const EcmaObjectRangeVisitor &visitor)
+    {
+        // no field in this object
+        VisitRangeSlot(visitor);
+    }
+
+    static int Hash(JSTaggedValue key)
+    {
+        if (key.IsDouble() && key.GetDouble() == 0.0) {
+            key = JSTaggedValue(0);
+        }
+        if (key.IsSymbol()) {
+            auto symbolString = JSSymbol::Cast(key.GetTaggedObject());
+            return static_cast<JSTaggedNumber>(symbolString->GetHashField()).GetInt();
+        }
+        if (key.IsString()) {
+            auto keyString = reinterpret_cast<EcmaString *>(key.GetTaggedObject());
+            return keyString->GetHashcode();
+        }
+        if (key.IsECMAObject()) {
+            int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
+            if (hash == 0) {
+                uint64_t keyValue = key.GetRawData();
+                hash = GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
+                ECMAObject::Cast(key.GetTaggedObject())->SetHash(hash);
+            }
+            return hash;
+        }
+
+        // Int, Double, Special and HeapObject(except symbol and string)
+        uint64_t keyValue = key.GetRawData();
+        return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
+    }
+};
+
+class LinkedNode : public TaggedNode {
+public:
+    void InitLinkedNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key,
+                        JSHandle<JSTaggedValue> value, JSHandle<LinkedNode> next)
+    {
+        this->SetNext(thread, next);
+        this->InitTaggedNode(thread, hash, key, value);
+    }
+
+    static LinkedNode *Cast(TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsLinkedNode());
+        return static_cast<LinkedNode *>(object);
+    }
+
+    static constexpr size_t NEXT_OFFSET = TaggedNode::SIZE;
+    ACCESSORS(Next, NEXT_OFFSET, DATA_OFFSET);
+
+    static constexpr size_t SIZE = DATA_OFFSET;
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(TaggedNode, NEXT_OFFSET, SIZE)
+
+    static JSHandle<RBTreeNode> Treeing(JSThread *thread, const JSHandle<LinkedNode> &head);
+};
+
+class RBTreeNode : public TaggedNode {
+public:
+    struct LinkedNodeStruct {
+        JSHandle<LinkedNode> lowerHead;
+        JSHandle<LinkedNode> lowerTail;
+        JSHandle<LinkedNode> higherHead;
+        JSHandle<LinkedNode> higherTail;
+    };
+
+    static RBTreeNode *Cast(TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsRBTreeNode());
+        return static_cast<RBTreeNode *>(object);
+    }
+    static constexpr size_t LEFT_OFFSET = TaggedNode::SIZE;
+    ACCESSORS(Left, LEFT_OFFSET, RIGHT_OFFSET);
+    ACCESSORS(Right, RIGHT_OFFSET, ISRED_OFFSET);
+    ACCESSORS(IsRed, ISRED_OFFSET, COUNT_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(Count, uint32_t, COUNT_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(TaggedNode, LEFT_OFFSET, COUNT_OFFSET)
+
+    void InitRBTreeNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key,
+                        JSHandle<JSTaggedValue> value, int count);
+    static void Divide(JSThread *thread, JSHandle<TaggedHashArray> table,
+                       JSHandle<JSTaggedValue> nodeVa, int index, int bit);
+    static JSHandle<RBTreeNode> Set(JSThread *thread, JSHandle<RBTreeNode> treeNode, int hash,
+                                    JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value);
+    static JSTaggedValue Delete(JSThread *thread, const JSTaggedValue &treeNodeVa,
+                                int hash, const JSTaggedValue &key, JSTaggedValue &oldValue);
+    static JSTaggedValue GetTreeNode(JSThread *thread, JSHandle<JSTaggedValue> treeNodeVa, int hash,
+                                     JSHandle<JSTaggedValue> key);
+    static void InOrderTraverse(JSThread *thread, const JSHandle<RBTreeNode> &treeNode,
+                                JSHandle<LinkedNode> &head, JSHandle<LinkedNode> &tail);
+    static JSHandle<LinkedNode> Detreeing(JSThread *thread, const JSHandle<RBTreeNode> &root);
+    static uint32_t Count(JSTaggedValue nodeValue);
+    static int Compare(int hash1, JSTaggedValue key1, int hash2, JSTaggedValue key2);
+private:
+    static void InOrderTraverse(JSThread *thread, const JSHandle<RBTreeNode> &treeNode,
+                                int bit, LinkedNodeStruct &nodeStruct);
+    static bool IsRed(JSTaggedValue treeNodeValue);
+    static JSTaggedValue Balance(JSThread *thread, RBTreeNode *treeNode);
+    static JSTaggedValue DeleteMin(JSThread *thread, RBTreeNode *treeNode);
+    RBTreeNode *RotateLeft(JSThread *thread);
+    RBTreeNode *RotateRight(JSThread *thread);
+    void FlipColors(JSThread *thread);
+    RBTreeNode *MoveRedLeft(JSThread *thread);
+    RBTreeNode *MoveRedRight(JSThread *thread);
+    RBTreeNode *Min();
+};
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_TAGGED_NODE_H

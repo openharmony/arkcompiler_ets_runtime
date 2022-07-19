@@ -654,6 +654,30 @@ namespace panda::ecmascript {
     V(PlainArray, SetValueAt)                 \
     V(PlainArray, GetValueAt)                 \
     V(PlainArray, GetSize)                    \
+    V(HashMap, Constructor)                   \
+    V(HashMap, HasKey)                        \
+    V(HashMap, HasValue)                      \
+    V(HashMap, Replace)                       \
+    V(HashMap, Keys)                          \
+    V(HashMap, Values)                        \
+    V(HashMap, Entries)                       \
+    V(HashMap, ForEach)                       \
+    V(HashMap, Set)                           \
+    V(HashMap, SetAll)                        \
+    V(HashMap, Remove)                        \
+    V(HashMap, Get)                           \
+    V(HashMap, Clear)                         \
+    V(HashMap, GetLength)                     \
+    V(HashMap, IsEmpty)                       \
+    V(HashSet, Constructor)                   \
+    V(HashSet, IsEmpty)                       \
+    V(HashSet, Has)                           \
+    V(HashSet, Add)                           \
+    V(HashSet, Remove)                        \
+    V(HashSet, Clear)                         \
+    V(HashSet, GetLength)                     \
+    V(HashSet, Values)                        \
+    V(HashSet, Entries)                       \
     V(TreeMap, Constructor)                   \
     V(TreeMap, HasKey)                        \
     V(TreeMap, HasValue)                      \

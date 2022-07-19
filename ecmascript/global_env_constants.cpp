@@ -36,6 +36,8 @@
 #include "ecmascript/js_api_plain_array_iterator.h"
 #include "ecmascript/js_api_queue_iterator.h"
 #include "ecmascript/js_api_stack_iterator.h"
+#include "ecmascript/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api_hashset_iterator.h"
 #include "ecmascript/js_api_tree_map_iterator.h"
 #include "ecmascript/js_api_tree_set_iterator.h"
 #include "ecmascript/js_api_vector_iterator.h"
@@ -65,6 +67,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_type.h"
 
 namespace panda::ecmascript {
@@ -219,10 +222,18 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
                 factory->NewEcmaDynClass(dynClassClass, JSAPIStackIterator::SIZE, JSType::JS_API_STACK_ITERATOR));
     SetConstant(ConstantIndex::JS_API_VECTOR_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaDynClass(dynClassClass, JSAPIVectorIterator::SIZE, JSType::JS_API_VECTOR_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_HASH_MAP_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaDynClass(dynClassClass, JSAPIHashMapIterator::SIZE, JSType::JS_API_HASHMAP_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_HASH_SET_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaDynClass(dynClassClass, JSAPIHashSetIterator::SIZE, JSType::JS_API_HASHSET_ITERATOR));
     SetConstant(ConstantIndex::JS_API_TREE_MAP_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaDynClass(dynClassClass, JSAPITreeMapIterator::SIZE, JSType::JS_API_TREEMAP_ITERATOR));
     SetConstant(ConstantIndex::JS_API_TREE_SET_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaDynClass(dynClassClass, JSAPITreeSetIterator::SIZE, JSType::JS_API_TREESET_ITERATOR));
+    SetConstant(ConstantIndex::LINKED_NODE_CLASS_INDEX,
+                factory->NewEcmaDynClass(dynClassClass, LinkedNode::SIZE, JSType::LINKED_NODE));
+    SetConstant(ConstantIndex::RB_TREENODE_CLASS_INDEX,
+                factory->NewEcmaDynClass(dynClassClass, RBTreeNode::SIZE, JSType::RB_TREENODE));
     SetConstant(ConstantIndex::CELL_RECORD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, CellRecord::SIZE, JSType::CELL_RECORD));
     SetConstant(ConstantIndex::OBJECT_DYN_CLASS_INDEX, factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT));
