@@ -15,11 +15,18 @@
 
 #ifndef ECMASCRIPT_SAMPLING_PROCESSOR_H
 #define ECMASCRIPT_SAMPLING_PROCESSOR_H
-#include <pthread.h>
+
+#include <csignal>
+#include <cstdint>
+
 #include "ecmascript/taskpool/task.h"
+
+#include "macros.h"
 
 namespace panda::ecmascript {
 class SamplesRecord;
+class JSThread;
+class EcmaVM;
 class SamplingProcessor : public Task {
 public:
     static uint64_t GetMicrosecondsTimeStamp();

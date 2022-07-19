@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/jspandafile/accessor/module_data_accessor.h"
+
 #include "libpandafile/helpers.h"
 
 namespace panda::ecmascript::jspandafile {

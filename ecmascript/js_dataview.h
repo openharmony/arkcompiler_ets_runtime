@@ -16,12 +16,17 @@
 #ifndef ECMASCRIPT_JSDATAVIEW_H
 #define ECMASCRIPT_JSDATAVIEW_H
 
+#include <cstddef>
+#include <cstdint>
+
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_object.h"
 
 namespace panda::ecmascript {
 enum class DataViewType : uint8_t {
     BIGINT64 = 0, BIGUINT64, FLOAT32, FLOAT64, INT8, INT16, INT32, UINT8, UINT16, UINT32, UINT8_CLAMPED
 };
+
 class JSDataView : public JSObject {
 public:
     CAST_CHECK(JSDataView, IsDataView);

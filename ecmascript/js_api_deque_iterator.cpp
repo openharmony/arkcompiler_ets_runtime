@@ -14,12 +14,19 @@
  */
 
 #include "js_api_deque_iterator.h"
-#include "builtins/builtins_errors.h"
-#include "ecmascript/base/typed_array_helper-inl.h"
-#include "ecmascript/base/typed_array_helper.h"
-#include "global_env.h"
+
+#include "ecmascript/base/builtins_base.h"
+#include "ecmascript/ecma_handle_scope.h"
+#include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/global_env_constants.h"
+#include "ecmascript/global_env_constants-inl.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_iterator.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_thread.h"
+#include "ecmascript/tagged_array.h"
+
 #include "js_api_deque.h"
-#include "object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

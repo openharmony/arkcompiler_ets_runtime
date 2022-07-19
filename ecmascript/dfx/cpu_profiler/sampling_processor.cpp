@@ -12,14 +12,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 
 #include <csignal>
+#include <pthread.h>
+#include <unistd.h>
+
 #include <sys/time.h>
+
+#include "ecmascript/base/config.h"
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
 SamplingProcessor::SamplingProcessor(SamplesRecord *generator, int interval, bool outToFile)

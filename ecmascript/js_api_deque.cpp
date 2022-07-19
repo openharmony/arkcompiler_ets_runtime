@@ -15,11 +15,18 @@
 
 #include "js_api_deque.h"
 
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_api_deque_iterator.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/tagged_array.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
+class JSAPIDequelterator;
+
 void JSAPIDeque::InsertFront(JSThread *thread, const JSHandle<JSAPIDeque> &deque, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<TaggedArray> elements(thread, deque->GetElements());
