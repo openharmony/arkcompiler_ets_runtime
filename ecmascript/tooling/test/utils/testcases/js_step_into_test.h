@@ -30,8 +30,8 @@ public:
         };
 
         vmDeath = [this]() {
-            ASSERT_EQ(breakpointCounter_, 1);
-            ASSERT_EQ(stepCompleteCounter_, 1);
+            ASSERT_EQ(breakpointCounter_, 1);  // 1: break point counter
+            ASSERT_EQ(stepCompleteCounter_, 1);  // 1: step complete counter
             return true;
         };
 
