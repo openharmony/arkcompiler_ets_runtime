@@ -128,7 +128,7 @@ bool HeapSnapshot::FinishSnapshot()
 
 void HeapSnapshot::RecordSampleTime()
 {
-    timeStamps_.emplace_back(sequenceId_ + SEQ_STEP);
+    timeStamps_.emplace_back(sequenceId_);
 }
 
 void HeapSnapshot::PushHeapStat(Stream* stream)
@@ -168,7 +168,7 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
         stream->UpdateHeapStats(&statsBuffer.front(), static_cast<int32_t>(statsBuffer.size()));
         statsBuffer.clear();
     }
-    stream->UpdateLastSeenObjectId(sequenceId_);
+    stream->UpdateLastSeenObjectId(sequenceId);
 }
 
 Node *HeapSnapshot::AddNode(TaggedObject* address)
