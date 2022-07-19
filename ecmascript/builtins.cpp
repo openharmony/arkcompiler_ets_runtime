@@ -74,7 +74,6 @@
 #include "ecmascript/builtins/builtins_weak_set.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/file_loader.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_array_iterator.h"
@@ -305,7 +304,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializePluralRules(env);
     InitializeDisplayNames(env);
     InitializeListFormat(env);
-    InitializeIcuData();
 
     InitializeModuleNamespace(env, objFuncDynclass);
     InitializeCjsModule(env);
@@ -324,7 +322,6 @@ void Builtins::InitializeForSnapshot(JSThread *thread)
     vm_ = thread->GetEcmaVM();
     factory_ = vm_->GetFactory();
 
-    InitializeIcuData();
     // Initialize ArkTools
     if (vm_->GetJSOptions().EnableArkTools()) {
         auto env = vm_->GetGlobalEnv();
@@ -3376,22 +3373,5 @@ void Builtins::InitializeCjsRequire(const JSHandle<GlobalEnv> &env) const
     SetFunction(env, cjsRequirePrototype, "Main", BuiltinsCjsRequire::Main, FunctionLength::ONE);
 
     env->SetCjsRequireFunction(thread_, cjsRequireFunction);
-}
-
-void Builtins::InitializeIcuData()
-{
-    ASSERT(vm_ != nullptr);
-    JSRuntimeOptions options = vm_->GetJSOptions();
-    std::string icuPath = options.GetIcuDataPath();
-    if (icuPath == "default") {
-        if (!WIN_OR_MAC_PLATFORM) {
-            SetHwIcuDirectory();
-        }
-    } else {
-        std::string absPath;
-        if (FileLoader::GetAbsolutePath(icuPath, absPath)) {
-            u_setDataDirectory(absPath.c_str());
-        }
-    }
 }
 }  // namespace panda::ecmascript

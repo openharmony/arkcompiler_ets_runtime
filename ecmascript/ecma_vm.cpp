@@ -268,6 +268,7 @@ EcmaVM::~EcmaVM()
 {
     LOG_ECMA(INFO) << "Destruct ecma_vm, vm address is: " << this;
     vmInitialized_ = false;
+    heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy();
 
     if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
