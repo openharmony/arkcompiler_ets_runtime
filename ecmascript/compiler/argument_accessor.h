@@ -36,8 +36,13 @@ enum class CommonArgIdx : uint8_t {
 class ArgumentAccessor {
 public:
     explicit ArgumentAccessor(Circuit *circuit, const JSMethod *method = nullptr)
-        : circuit_(circuit), method_(method),
-          argRoot_(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))) {}
+        : circuit_(circuit),
+          method_(method),
+          argRoot_(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))),
+          args_(0)
+    {
+        CollectArgs();
+    }
     ~ArgumentAccessor() = default;
 
     void NewCommonArg(const CommonArgIdx argIndex, MachineType machineType, GateType gateType);
@@ -48,15 +53,16 @@ public:
     GateRef GetArgGate(const size_t currentVreg) const;
     GateRef GetCommonArgGate(const CommonArgIdx arg) const;
     void FillArgsGateType(const TypeRecorder *typeRecorder);
+    void CollectArgs();
 
 private:
-    std::vector<GateRef> GetFunctionArgs() const;
     size_t GetFunctionArgIndex(const size_t currentVreg, const bool haveFunc,
                                const bool haveNewTarget, const bool haveThis) const;
 
     Circuit *circuit_ {nullptr};
     const JSMethod *method_ {nullptr};
     GateRef argRoot_;
+    std::vector<GateRef> args_;
 };
 }
 #endif  // ECMASCRIPT_COMPILER_ARGUMENT_ACCESSOR_H

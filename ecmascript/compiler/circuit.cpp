@@ -119,7 +119,8 @@ GateRef Circuit::NewGate(OpCode opcode, BitField bitfield, const std::vector<Gat
 
 void Circuit::PrintAllGates() const
 {
-    const auto &gateList = GetAllGates();
+    std::vector<GateRef> gateList;
+    GetAllGates(gateList);
     for (const auto &gate : gateList) {
         LoadGatePtrConst(gate)->Print();
     }
@@ -127,7 +128,8 @@ void Circuit::PrintAllGates() const
 
 void Circuit::PrintAllGates(BytecodeCircuitBuilder &builder) const
 {
-    const auto &gateList = GetAllGates();
+    std::vector<GateRef> gateList;
+    GetAllGates(gateList);
     for (const auto &gate : gateList) {
         auto item = builder.GetGateToBytecode().find(gate);
         if (item != builder.GetGateToBytecode().end()) {
@@ -139,9 +141,9 @@ void Circuit::PrintAllGates(BytecodeCircuitBuilder &builder) const
     }
 }
 
-std::vector<GateRef> Circuit::GetAllGates() const
+void Circuit::GetAllGates(std::vector<GateRef>& gateList) const
 {
-    std::vector<GateRef> gateList;
+    gateList.clear();
     gateList.push_back(0);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     for (size_t out = sizeof(Gate); out < circuitSize_;
@@ -149,7 +151,6 @@ std::vector<GateRef> Circuit::GetAllGates() const
         out += Gate::GetGateSize(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetIndex() + 1)) {
         gateList.push_back(GetGateRef(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetGateConst()));
     }
-    return gateList;
 }
 
 GateRef Circuit::GetGateRef(const Gate *gate) const
@@ -210,7 +211,8 @@ void Circuit::AdvanceTime() const
 
 void Circuit::ResetAllGateTimeStamps() const
 {
-    const auto &gateList = GetAllGates();
+    std::vector<GateRef> gateList;
+    GetAllGates(gateList);
     for (auto &gate : gateList) {
         const_cast<Gate *>(LoadGatePtrConst(gate))->SetMark(MarkCode::NO_MARK, 0);
     }
@@ -238,7 +240,7 @@ bool Circuit::Verify(GateRef gate) const
 
 GateRef Circuit::NullGate()
 {
-    return -1;
+    return Gate::InvalidGateRef;
 }
 
 bool Circuit::IsLoopHead(GateRef gate) const

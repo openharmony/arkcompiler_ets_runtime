@@ -300,6 +300,13 @@ private:
     bool IsHeapPointerType(LLVMTypeRef valueType);
 
 private:
+    enum class CallInputs : size_t {
+        DEPEND = 0,
+        TARGET,
+        GLUE,
+        FIRST_PARAMETER
+    };
+
     LLVMValueRef GetGlue(const std::vector<GateRef> &inList);
     LLVMValueRef GetRTStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetCoStubOffset(LLVMValueRef glue, int index);
@@ -311,7 +318,8 @@ private:
     void SaveLexicalEnvOnFrame(LLVMValueRef value);
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
-    Circuit *circuit_ {nullptr};
+    const Circuit *circuit_ {nullptr};
+    const GateAccessor acc_;
     BasicBlock *currentBb_ {nullptr};
     int lineNumber_ {0};
 
@@ -331,13 +339,6 @@ private:
     LLVMTypeRef slotType_;
     CallSignature::CallConv callConv_ = CallSignature::CallConv::CCallConv;
     bool enableLog_ {false};
-
-    enum class CallInputs : size_t {
-        DEPEND = 0,
-        TARGET,
-        GLUE,
-        FIRST_PARAMETER,
-    };
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // PANDA_RUNTIME_ECMASCRIPT_COMPILER_LLVM_IR_BUILDER_H

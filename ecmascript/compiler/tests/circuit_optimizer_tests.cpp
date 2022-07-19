@@ -25,11 +25,13 @@ using ecmascript::kungfu::Circuit;
 using ecmascript::kungfu::OpCode;
 using ecmascript::kungfu::GateType;
 using ecmascript::kungfu::MachineType;
+using ecmascript::kungfu::GateAccessor;
 
 HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
 {
     // construct a circuit
     Circuit circuit;
+    GateAccessor acc(&circuit);
     auto n = circuit.NewGate(OpCode(OpCode::ARG),
                              MachineType::I64,
                              0,
@@ -74,14 +76,14 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
                                 0,
                                 {constantB, selectorA},
                                 GateType::NJSValue());
-    circuit.NewIn(selectorA, 2, newX);
-    circuit.NewIn(selectorB,
-                  2,
-                  circuit.NewGate(OpCode(OpCode::SUB),
-                                  MachineType::I64,
-                                  0,
-                                  {selectorB, constantC},
-                                  GateType::NJSValue()));
+    acc.NewIn(selectorA, 2, newX);
+    acc.NewIn(selectorB,
+              2,
+              circuit.NewGate(OpCode(OpCode::SUB),
+                              MachineType::I64,
+                              0,
+                              {selectorB, constantC},
+                              GateType::NJSValue()));
     auto predicate = circuit.NewGate(OpCode(OpCode::NE),
                                      0,
                                      {selectorB, constantD},
@@ -102,7 +104,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
                                     0,
                                     {ifTrue},
                                     GateType::Empty());
-    circuit.NewIn(loopBegin, 1, loopBack);
+    acc.NewIn(loopBegin, 1, loopBack);
     auto ret = circuit.NewGate(OpCode(OpCode::RETURN),
                                0,
                                {ifFalse,
@@ -123,11 +125,11 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
         EXPECT_EQ(optimizeResult, true);
         // check optimization result (returned value is constant 2)
         EXPECT_TRUE(solver.GetReachabilityLattice(ret).IsReachable());
-        EXPECT_TRUE(solver.GetValueLattice(circuit.GetIn(ret, 2)).GetValue() == 1);
+        EXPECT_TRUE(solver.GetValueLattice(acc.GetIn(ret, 2)).GetValue() == 1);
     }
     {
         // modify the initial value of x to 2
-        circuit.SetBitField(constantA, 2);
+        acc.SetBitField(constantA, 2);
     }
     {
         ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
@@ -137,13 +139,13 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
         EXPECT_EQ(optimizeResult, true);
         // check optimization result (returned value is not constant)
         EXPECT_TRUE(solver.GetReachabilityLattice(ret).IsReachable());
-        EXPECT_TRUE(solver.GetValueLattice(circuit.GetIn(ret, 2)).IsBot());
+        EXPECT_TRUE(solver.GetValueLattice(acc.GetIn(ret, 2)).IsBot());
     }
     {
         // set the initial value of n to fixed value 0 (instead of function argument)
-        circuit.SetBitField(n, 0);
-        circuit.SetOpCode(n, OpCode(OpCode::CONSTANT));
-        circuit.ModifyIn(n, 0, Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST)));
+        acc.SetBitField(n, 0);
+        acc.SetOpCode(n, OpCode(OpCode::CONSTANT));
+        acc.ReplaceIn(n, 0, Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST)));
     }
     {
         ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
@@ -153,13 +155,14 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
         EXPECT_EQ(optimizeResult, true);
         // check optimization result (returned value is constant 0)
         EXPECT_TRUE(solver.GetReachabilityLattice(ret).IsReachable());
-        EXPECT_TRUE(solver.GetValueLattice(circuit.GetIn(ret, 2)).GetValue() == 0);
+        EXPECT_TRUE(solver.GetValueLattice(acc.GetIn(ret, 2)).GetValue() == 0);
     }
 }
 
 HWTEST_F_L0(CircuitOptimizerTests, TestSubgraphRewriteFramework)
 {
     Circuit circuit;
+    GateAccessor acc(&circuit);
     const uint64_t numOfConstants = 100;
     const uint64_t numOfUses = 10;
     std::random_device randomDevice;
@@ -200,8 +203,8 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSubgraphRewriteFramework)
     ecmascript::kungfu::SubgraphRewriteRuleCP rule;
     ecmascript::kungfu::SubGraphRewriteFramework rewriter(&rule);
     rewriter.Run(&circuit);
-    auto returnValue = circuit.GetIn(ret, 2);
-    EXPECT_TRUE(circuit.GetOpCode(returnValue) == OpCode(OpCode::CONSTANT));
-    EXPECT_TRUE(circuit.GetBitField(returnValue) == (numOfUses) * (numOfConstants) * (numOfConstants - 1) / 2);
+    auto returnValue = acc.GetIn(ret, 2);
+    EXPECT_TRUE(acc.GetOpCode(returnValue) == OpCode(OpCode::CONSTANT));
+    EXPECT_TRUE(acc.GetBitField(returnValue) == (numOfUses) * (numOfConstants) * (numOfConstants - 1) / 2);
 }
 } // namespace panda::test

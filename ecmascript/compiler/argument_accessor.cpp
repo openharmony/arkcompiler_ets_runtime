@@ -45,21 +45,12 @@ GateRef ArgumentAccessor::GetArgGate(const size_t currentVreg) const
     auto haveNewTarget = method_->HaveNewTargetWithCallField();
     auto haveThis = method_->HaveThisWithCallField();
     auto index = GetFunctionArgIndex(reg, haveFunc, haveNewTarget, haveThis);
-    auto argsArray = GetFunctionArgs();
-    return argsArray.at(index);
+    return args_.at(index);
 }
 
 GateRef ArgumentAccessor::GetCommonArgGate(const CommonArgIdx arg) const
 {
-    auto argsArray = GetFunctionArgs();
-    return argsArray.at(static_cast<size_t>(arg));
-}
-
-std::vector<GateRef> ArgumentAccessor::GetFunctionArgs() const
-{
-    auto argsArray = circuit_->GetOutVector(argRoot_);
-    std::reverse(argsArray.begin(), argsArray.end());
-    return argsArray;
+    return args_.at(static_cast<size_t>(arg));
 }
 
 size_t ArgumentAccessor::GetFunctionArgIndex(const size_t currentVreg, const bool haveFunc,
@@ -114,6 +105,14 @@ void ArgumentAccessor::FillArgsGateType(const TypeRecorder *typeRecorder)
             auto gate = GetArgGate(offsetArgs + argIndex);
             gateAcc.SetGateType(gate, argType);
         }
+    }
+}
+
+void ArgumentAccessor::CollectArgs()
+{
+    if (args_.size() == 0) {
+        GateAccessor(circuit_).GetOutVector(argRoot_, args_);
+        std::reverse(args_.begin(), args_.end());
     }
 }
 }  // namespace panda::ecmascript::kungfu

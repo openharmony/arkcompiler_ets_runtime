@@ -51,57 +51,56 @@ public:
                     MarkCode mark = MarkCode::NO_MARK);
     void PrintAllGates() const;
     void PrintAllGates(BytecodeCircuitBuilder &builder) const;
-    [[nodiscard]] std::vector<GateRef> GetAllGates() const;
-    [[nodiscard]] static GateRef GetCircuitRoot(OpCode opcode);
-    void AdvanceTime() const;
-    void ResetAllGateTimeStamps() const;
-    [[nodiscard]] static GateRef NullGate();
-    [[nodiscard]] bool IsLoopHead(GateRef gate) const;
-    [[nodiscard]] bool IsSelector(GateRef gate) const;
-    [[nodiscard]] bool IsControlCase(GateRef gate) const;
-    [[nodiscard]] GateRef GetIn(GateRef gate, size_t idx) const;
-    [[nodiscard]] bool IsInGateNull(GateRef gate, size_t idx) const;
-    [[nodiscard]] bool IsFirstOutNull(GateRef gate) const;
-    [[nodiscard]] std::vector<GateRef> GetInVector(GateRef gate) const;
-    [[nodiscard]] std::vector<GateRef> GetOutVector(GateRef gate) const;
-    void NewIn(GateRef gate, size_t idx, GateRef in);
-    void ModifyIn(GateRef gate, size_t idx, GateRef in);
-    void DeleteIn(GateRef gate, size_t idx);
-    void DecreaseIn(GateRef gate, size_t idx);
-    void DeleteGate(GateRef gate);
-    [[nodiscard]] GateId GetId(GateRef gate) const;
-    [[nodiscard]] BitField GetBitField(GateRef gate) const;
-    void SetBitField(GateRef gate, BitField bitfield);
+    void GetAllGates(std::vector<GateRef>& gates) const;
+    static GateRef GetCircuitRoot(OpCode opcode);
+    static GateRef NullGate();
     void Print(GateRef gate) const;
-    void SetOpCode(GateRef gate, OpCode opcode);
-    void SetGateType(GateRef gate, GateType type);
-    void SetMachineType(GateRef gate, MachineType machineType);
-    [[nodiscard]] OpCode GetOpCode(GateRef gate) const;
-    [[nodiscard]] TimeStamp GetTime() const;
-    [[nodiscard]] MarkCode GetMark(GateRef gate) const;
-    [[nodiscard]] GateType GetGateType(GateRef gate) const;
-    [[nodiscard]] MachineType GetMachineType(GateRef gate) const;
-    void SetMark(GateRef gate, MarkCode mark) const;
-    [[nodiscard]] bool Verify(GateRef gate) const;
-    [[nodiscard]] GateRef GetGateRef(const Gate *gate) const;
+    bool Verify(GateRef gate) const;
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
-    GateRef GetConstantGate(MachineType bitValue, BitField bitfield,
-                            GateType type);
+    GateRef GetConstantGate(MachineType bitValue, BitField bitfield, GateType type);
     size_t GetGateCount() const;
 
 private:
+    GateType GetGateType(GateRef gate) const;
+    GateRef GetGateRef(const Gate *gate) const;
+    MachineType GetMachineType(GateRef gate) const;
+    void SetMark(GateRef gate, MarkCode mark) const;
+    OpCode GetOpCode(GateRef gate) const;
+    void SetMachineType(GateRef gate, MachineType machineType);
+    void SetGateType(GateRef gate, GateType type);
+    void SetOpCode(GateRef gate, OpCode opcode);
+    GateId GetId(GateRef gate) const;
+    void SetBitField(GateRef gate, BitField bitfield);
+    void DeleteGate(GateRef gate);
+    void DecreaseIn(GateRef gate, size_t idx);
+    TimeStamp GetTime() const;
+    MarkCode GetMark(GateRef gate) const;
+    BitField GetBitField(GateRef gate) const;
+    void DeleteIn(GateRef gate, size_t idx);
+    void ModifyIn(GateRef gate, size_t idx, GateRef in);
+    void NewIn(GateRef gate, size_t idx, GateRef in);
+    std::vector<GateRef> GetOutVector(GateRef gate) const;
+    std::vector<GateRef> GetInVector(GateRef gate) const;
+    bool IsFirstOutNull(GateRef gate) const;
+    bool IsInGateNull(GateRef gate, size_t idx) const;
+    GateRef GetIn(GateRef gate, size_t idx) const;
+    bool IsSelector(GateRef gate) const;
+    bool IsControlCase(GateRef gate) const;
+    bool IsLoopHead(GateRef gate) const;
+    void AdvanceTime() const;
+    void ResetAllGateTimeStamps() const;
     void SetSpaceDataSize(size_t sz);
     uint8_t *AllocateSpace(size_t gateSize);
     Gate *AllocateGateSpace(size_t numIns);
-    [[nodiscard]] size_t GetCircuitDataSize() const;
-    [[nodiscard]] const void *GetSpaceDataStartPtrConst() const;
-    [[nodiscard]] const void *GetSpaceDataEndPtrConst() const;
-    [[nodiscard]] const uint8_t *GetDataPtrConst(size_t offset) const;
-    [[nodiscard]] uint8_t *GetDataPtr(size_t offset);
-    [[nodiscard]] size_t GetSpaceDataSize() const;
-    [[nodiscard]] Gate *LoadGatePtr(GateRef shift);
-    [[nodiscard]] const Gate *LoadGatePtrConst(GateRef shift) const;
+    size_t GetCircuitDataSize() const;
+    const void *GetSpaceDataStartPtrConst() const;
+    const void *GetSpaceDataEndPtrConst() const;
+    const uint8_t *GetDataPtrConst(size_t offset) const;
+    uint8_t *GetDataPtr(size_t offset);
+    size_t GetSpaceDataSize() const;
+    Gate *LoadGatePtr(GateRef shift);
+    const Gate *LoadGatePtrConst(GateRef shift) const;
 
 private:
     std::vector<uint8_t> space_ {};
@@ -114,6 +113,7 @@ private:
 
     friend class GateAccessor;
     friend class Verifier;
+    friend class Scheduler;
 };
 }  // namespace panda::ecmascript::kungfu
 

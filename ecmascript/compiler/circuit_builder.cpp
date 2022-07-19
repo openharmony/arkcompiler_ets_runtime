@@ -209,7 +209,7 @@ MachineType CircuitBuilder::GetMachineTypeFromVariableType(VariableType type)
 GateRef CircuitBuilder::BinaryArithmetic(OpCode opcode, MachineType machineType, GateRef left, GateRef right)
 {
     auto circuit = GetCircuit();
-    GateType type = GateAccessor(circuit).GetGateType(left);
+    GateType type = acc_.GetGateType(left);
     return circuit->NewGate(opcode, machineType, 0, { left, right }, type);
 }
 
@@ -655,7 +655,8 @@ GateRef Label::LabelImpl::ReadVariable(Variable *var)
 {
     if (valueMap_.find(var) != valueMap_.end()) {
         auto result = valueMap_.at(var);
-        if (!env_->GetCircuit()->GetOpCode(result).IsNop()) {
+        GateAccessor acc(env_->GetCircuit());
+        if (!acc.GetOpCode(result).IsNop()) {
             return result;
         }
     }
@@ -702,7 +703,7 @@ void Label::LabelImpl::Bind()
     if (IsLoopHead()) {
         // 2 means input number of depend selector gate
         loopDepend_ = env_->GetBulder()->Selector(OpCode(OpCode::DEPEND_SELECTOR), predeControl_, {}, 2);
-        env_->GetCircuit()->NewIn(loopDepend_, 1, predecessors_[0]->GetDepend());
+        GateAccessor(env_->GetCircuit()).NewIn(loopDepend_, 1, predecessors_[0]->GetDepend());
         depend_ = loopDepend_;
     }
     if (IsNeedSeal()) {
@@ -721,7 +722,7 @@ void Label::LabelImpl::MergeAllControl()
     if (IsLoopHead()) {
         ASSERT(predecessors_.size() == 2);  // 2 : Loop Head only support two predecessors_
         ASSERT(otherPredeControls_.size() == 1);
-        env_->GetCircuit()->NewIn(predeControl_, 1, otherPredeControls_[0]);
+        GateAccessor(env_->GetCircuit()).NewIn(predeControl_, 1, otherPredeControls_[0]);
         return;
     }
 
@@ -760,7 +761,7 @@ void Label::LabelImpl::MergeAllDepend()
         // Add loop depend to in of depend_seclector
         ASSERT(loopDepend_ != -1);
         // 2 mean 3rd input gate for loopDepend_(depend_selector)
-        env_->GetCircuit()->NewIn(loopDepend_, 2, predecessors_[1]->GetDepend());
+        GateAccessor(env_->GetCircuit()).NewIn(loopDepend_, 2, predecessors_[1]->GetDepend());
         return;
     }
 
@@ -788,22 +789,22 @@ bool Label::LabelImpl::IsNeedSeal() const
 
 bool Label::LabelImpl::IsLoopHead() const
 {
-    return env_->GetCircuit()->IsLoopHead(predeControl_);
+    return GateAccessor(env_->GetCircuit()).IsLoopHead(predeControl_);
 }
 
 bool Label::LabelImpl::IsControlCase() const
 {
-    return env_->GetCircuit()->IsControlCase(predeControl_);
+    return GateAccessor(env_->GetCircuit()).IsControlCase(predeControl_);
 }
 
 GateRef Variable::AddPhiOperand(GateRef val)
 {
-    ASSERT(IsSelector(val));
+    ASSERT(GateAccessor(env_->GetCircuit()).IsSelector(val));
     Label label = env_->GetLabelFromSelector(val);
     size_t idx = 0;
     for (auto pred : label.GetPredecessors()) {
         auto preVal = pred.ReadVariable(this);
-        ASSERT(!env_->GetCircuit()->GetOpCode(preVal).IsNop());
+        ASSERT(!GateAccessor(env_->GetCircuit()).GetOpCode(preVal).IsNop());
         idx++;
         val = AddOperandToSelector(val, idx, preVal);
     }
@@ -812,7 +813,7 @@ GateRef Variable::AddPhiOperand(GateRef val)
 
 GateRef Variable::AddOperandToSelector(GateRef val, size_t idx, GateRef in)
 {
-    env_->GetCircuit()->NewIn(val, idx, in);
+    GateAccessor(env_->GetCircuit()).NewIn(val, idx, in);
     return val;
 }
 

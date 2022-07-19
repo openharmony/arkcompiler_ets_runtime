@@ -18,9 +18,10 @@
 namespace panda::ecmascript::kungfu {
 void TypeLowering::RunTypeLowering()
 {
-    const auto &gateList = circuit_->GetAllGates();
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
     for (const auto &gate : gateList) {
-        auto op = circuit_->GetOpCode(gate);
+        auto op = acc_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
             Lower(gate);
         }
@@ -84,7 +85,7 @@ void TypeLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noTh
     }
 
     // delete old gate
-    circuit_->DeleteGate(hirGate);
+    acc_.DeleteGate(hirGate);
 }
 
 GateRef TypeLowering::LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel)

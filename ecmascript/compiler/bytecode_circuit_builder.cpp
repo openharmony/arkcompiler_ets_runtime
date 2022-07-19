@@ -1892,6 +1892,7 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     for (size_t argIdx = funcIdx; argIdx < actualNumArgs; argIdx++) {
         argAcc_.NewArg(argIdx);
     }
+    argAcc_.CollectArgs();
     if (hasTypes_) {
         argAcc_.FillArgsGateType(&typeRecorder_);
     }
@@ -1961,7 +1962,7 @@ void BytecodeCircuitBuilder::NewMerge(GateRef &state, GateRef &depend, size_t nu
     depend = circuit_.NewGate(OpCode(OpCode::DEPEND_SELECTOR), numOfIns,
                               std::vector<GateRef>(numOfIns + 1, Circuit::NullGate()),
                               GateType::Empty());
-    circuit_.NewIn(depend, 0, state);
+    gateAcc_.NewIn(depend, 0, state);
 }
 
 void BytecodeCircuitBuilder::NewLoopBegin(BytecodeRegion &bb)
@@ -2030,17 +2031,17 @@ void BytecodeCircuitBuilder::SetBlockPred(BytecodeRegion &bbNext, const GateRef 
                                           const GateRef &depend, bool isLoopBack)
 {
     if (bbNext.numOfLoopBacks == 0) {
-        circuit_.NewIn(bbNext.stateStart, bbNext.statePredIndex, state);
-        circuit_.NewIn(bbNext.dependStart, bbNext.statePredIndex + 1, depend);
+        gateAcc_.NewIn(bbNext.stateStart, bbNext.statePredIndex, state);
+        gateAcc_.NewIn(bbNext.dependStart, bbNext.statePredIndex + 1, depend);
     } else {
         if (isLoopBack) {
-            circuit_.NewIn(bbNext.mergeLoopBackEdges, bbNext.loopBackIndex, state);
-            circuit_.NewIn(bbNext.depLoopBack, bbNext.loopBackIndex + 1, depend);
+            gateAcc_.NewIn(bbNext.mergeLoopBackEdges, bbNext.loopBackIndex, state);
+            gateAcc_.NewIn(bbNext.depLoopBack, bbNext.loopBackIndex + 1, depend);
             bbNext.loopBackIndex++;
             ASSERT(bbNext.loopBackIndex <= bbNext.numOfLoopBacks);
         } else {
-            circuit_.NewIn(bbNext.mergeForwardEdges, bbNext.forwardIndex, state);
-            circuit_.NewIn(bbNext.depForward, bbNext.forwardIndex + 1, depend);
+            gateAcc_.NewIn(bbNext.mergeForwardEdges, bbNext.forwardIndex, state);
+            gateAcc_.NewIn(bbNext.depForward, bbNext.forwardIndex + 1, depend);
             bbNext.forwardIndex++;
             ASSERT(bbNext.forwardIndex <= bbNext.numOfStatePreds - bbNext.numOfLoopBacks);
         }
@@ -2127,8 +2128,8 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, Ga
     }
     // 1: store bcoffset in the end.
     AddBytecodeOffsetInfo(gate, bytecodeInfo, numValueInputs + 1, const_cast<uint8_t *>(pc));
-    circuit_.NewIn(gate, 0, state);
-    circuit_.NewIn(gate, 1, depend);
+    gateAcc_.NewIn(gate, 0, state);
+    gateAcc_.NewIn(gate, 1, depend);
     auto ifSuccess = circuit_.NewGate(OpCode(OpCode::IF_SUCCESS), 0, {gate}, GateType::Empty());
     auto ifException = circuit_.NewGate(OpCode(OpCode::IF_EXCEPTION), 0, {gate}, GateType::Empty());
     if (!bb.catchs.empty()) {
@@ -2185,8 +2186,8 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
                                 std::vector<GateRef>(2 + numValueInputs, // 2: state and depend input
                                                      Circuit::NullGate()),
                                 GateType::Empty());
-        circuit_.NewIn(gate, 0, state);
-        circuit_.NewIn(gate, 1, depend);
+        gateAcc_.NewIn(gate, 0, state);
+        gateAcc_.NewIn(gate, 1, depend);
         auto ifTrue = circuit_.NewGate(OpCode(OpCode::IF_TRUE), 0, {gate}, GateType::Empty());
         auto ifFalse = circuit_.NewGate(OpCode(OpCode::IF_FALSE), 0, {gate}, GateType::Empty());
         ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
@@ -2312,10 +2313,10 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         currentPhi =
             circuit_.NewGate(OpCode(OpCode::VALUE_SELECTOR), MachineType::I64, bb.numOfStatePreds,
                              std::vector<GateRef>(1 + bb.numOfStatePreds, Circuit::NullGate()), GateType::AnyType());
-        circuit_.NewIn(currentPhi, 0, bb.stateStart);
+        gateAcc_.NewIn(currentPhi, 0, bb.stateStart);
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predPc, isException] = bb.expandedPreds.at(i);
-            circuit_.NewIn(currentPhi, i + 1, RenameVariable(predId, predPc, reg, acc));
+            gateAcc_.NewIn(currentPhi, i + 1, RenameVariable(predId, predPc, reg, acc));
         }
     } else {
         // 2: the number of value inputs and it is in accord with LOOP_BEGIN
@@ -2324,27 +2325,27 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         auto loopBackValue =
             circuit_.NewGate(OpCode(OpCode::VALUE_SELECTOR), MachineType::I64, bb.numOfLoopBacks,
                              std::vector<GateRef>(1 + bb.numOfLoopBacks, Circuit::NullGate()), GateType::AnyType());
-        circuit_.NewIn(loopBackValue, 0, bb.mergeLoopBackEdges);
+        gateAcc_.NewIn(loopBackValue, 0, bb.mergeLoopBackEdges);
         bb.loopBackIndex = 1;  // 1: start index of value inputs
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predPc, isException] = bb.expandedPreds.at(i);
             if (bb.loopbackBlocks.count(predId)) {
-                circuit_.NewIn(loopBackValue, bb.loopBackIndex++, RenameVariable(predId, predPc, reg, acc));
+                gateAcc_.NewIn(loopBackValue, bb.loopBackIndex++, RenameVariable(predId, predPc, reg, acc));
             }
         }
         auto forwardValue = circuit_.NewGate(
             OpCode(OpCode::VALUE_SELECTOR), MachineType::I64, bb.numOfStatePreds - bb.numOfLoopBacks,
             std::vector<GateRef>(1 + bb.numOfStatePreds - bb.numOfLoopBacks, Circuit::NullGate()), GateType::AnyType());
-        circuit_.NewIn(forwardValue, 0, bb.mergeForwardEdges);
+        gateAcc_.NewIn(forwardValue, 0, bb.mergeForwardEdges);
         bb.forwardIndex = 1;  // 1: start index of value inputs
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predPc, isException] = bb.expandedPreds.at(i);
             if (!bb.loopbackBlocks.count(predId)) {
-                circuit_.NewIn(forwardValue, bb.forwardIndex++, RenameVariable(predId, predPc, reg, acc));
+                gateAcc_.NewIn(forwardValue, bb.forwardIndex++, RenameVariable(predId, predPc, reg, acc));
             }
         }
-        circuit_.NewIn(currentPhi, 1, forwardValue);   // 1: index of forward value input
-        circuit_.NewIn(currentPhi, 2, loopBackValue);  // 2: index of loop-back value input
+        gateAcc_.NewIn(currentPhi, 1, forwardValue);   // 1: index of forward value input
+        gateAcc_.NewIn(currentPhi, 2, loopBackValue);  // 2: index of loop-back value input
     }
 }
 
@@ -2399,30 +2400,30 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
         }
         // New RESTORE_REGISTER HIR, used to restore the register content when processing resume instruction.
         // New SAVE_REGISTER HIR, used to save register content when processing suspend instruction.
-        GateAccessor accessor(&circuit_);
         auto resumeGate = byteCodeToJSGate_.at(*pcIter);
-        GateRef resumeDependGate = accessor.GetDep(resumeGate);
+        GateRef resumeDependGate = gateAcc_.GetDep(resumeGate);
         ans = circuit_.NewGate(OpCode(OpCode::RESTORE_REGISTER), MachineType::I64, tmpReg,
                                {resumeDependGate}, GateType::AnyType());
-        accessor.SetDep(resumeGate, ans);
+        gateAcc_.SetDep(resumeGate, ans);
         auto saveRegGate = RenameVariable(bbId, *pcIter - 1, tmpReg, tmpAcc);
         auto nextPcIter = pcIter;
         nextPcIter++;
         ASSERT(GetBytecodeInfo(*nextPcIter).opcode == EcmaOpcode::SUSPENDGENERATOR_PREF_V8_V8);
         GateRef suspendGate = byteCodeToJSGate_.at(*nextPcIter);
-        auto dependGate = accessor.GetDep(suspendGate);
+        auto dependGate = gateAcc_.GetDep(suspendGate);
         auto newDependGate = circuit_.NewGate(OpCode(OpCode::SAVE_REGISTER), tmpReg, {dependGate, saveRegGate},
                                               GateType::Empty());
-        accessor.SetDep(suspendGate, newDependGate);
+        gateAcc_.SetDep(suspendGate, newDependGate);
         break;
     }
     // find GET_EXCEPTION gate if this is a catch block
     if (ans == Circuit::NullGate() && tmpAcc) {
         if (!bb.trys.empty()) {
-            const auto &outList = circuit_.GetOutVector(bb.dependStart);
+            std::vector<GateRef> outList;
+            gateAcc_.GetOutVector(bb.dependStart, outList);
             ASSERT(outList.size() == 1);
             const auto &getExceptionGate = outList.at(0);
-            ASSERT(circuit_.GetOpCode(getExceptionGate) == OpCode::GET_EXCEPTION);
+            ASSERT(gateAcc_.GetOpCode(getExceptionGate) == OpCode::GET_EXCEPTION);
             ans = getExceptionGate;
         }
     }
@@ -2486,15 +2487,16 @@ void BytecodeCircuitBuilder::BuildCircuit()
     for (const auto &[key, value]: jsgateToBytecode_) {
         byteCodeToJSGate_[value.second] = key;
     }
-    GateAccessor acc(&circuit_);
     // resolve def-site of virtual regs and set all value inputs
-    for (auto gate: circuit_.GetAllGates()) {
-        auto valueCount = acc.GetInValueCount(gate);
+    std::vector<GateRef> gates;
+    circuit_.GetAllGates(gates);
+    for (auto gate: gates) {
+        auto valueCount = gateAcc_.GetInValueCount(gate);
         auto it = jsgateToBytecode_.find(gate);
         if (it == jsgateToBytecode_.cend()) {
             continue;
         }
-        if (acc.GetOpCode(gate) == OpCode::CONSTANT) {
+        if (gateAcc_.GetOpCode(gate) == OpCode::CONSTANT) {
             continue;
         }
         const auto &[id, pc] = it->second;
@@ -2509,20 +2511,20 @@ void BytecodeCircuitBuilder::BuildCircuit()
         [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount() + bytecodeInfo.vregOut.size();
         ASSERT(numValueInputs == valueCount);
         ASSERT(numValueOutputs <= 1);
-        auto stateCount = acc.GetStateCount(gate);
-        auto dependCount = acc.GetDependCount(gate);
+        auto stateCount = gateAcc_.GetStateCount(gate);
+        auto dependCount = gateAcc_.GetDependCount(gate);
         for (size_t valueIdx = 0; valueIdx < valueCount; valueIdx++) {
             auto inIdx = valueIdx + stateCount + dependCount;
-            if (!circuit_.IsInGateNull(gate, inIdx)) {
+            if (!gateAcc_.IsInGateNull(gate, inIdx)) {
                 continue;
             }
             if (valueIdx < bytecodeInfo.inputs.size()) {
-                circuit_.NewIn(gate, inIdx,
+                gateAcc_.NewIn(gate, inIdx,
                                RenameVariable(id, pc - 1,
                                               std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId(),
                                               false));
             } else {
-                circuit_.NewIn(gate, inIdx, RenameVariable(id, pc - 1, 0, true));
+                gateAcc_.NewIn(gate, inIdx, RenameVariable(id, pc - 1, 0, true));
             }
         }
     }
@@ -2536,12 +2538,11 @@ void BytecodeCircuitBuilder::AddBytecodeOffsetInfo(GateRef &gate, const Bytecode
                                                    uint8_t *pc)
 {
     if (info.IsCall()) {
-        GateAccessor acc(&circuit_);
         auto bcOffset = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                          pcToBCOffset_[pc],
                                          {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                          GateType::NJSValue());
-        acc.NewIn(gate, bcOffsetIndex, bcOffset);
+        gateAcc_.NewIn(gate, bcOffsetIndex, bcOffset);
     }
 }
 
