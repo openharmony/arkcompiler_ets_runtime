@@ -30,7 +30,7 @@ class BigInt : public TaggedObject {
 public:
     Comparestr static ComString(const CString &a, const CString &b);
     static constexpr uint32_t DATEBITS = sizeof(uint32_t) * 8; // 8 : one-bit number of bytes
-    static constexpr uint32_t MAXBITS = 1024 * 1024; // 1024 * 1024 : Maximum space that can be opened up
+    static constexpr uint32_t MAXBITS = 1_MB; // 1 MB : Maximum space that can be opened up
     static constexpr uint32_t MAXSIZE = MAXBITS / DATEBITS; // the maximum value of size
     static constexpr uint32_t MAXOCTALVALUE = 7; // 7 : max octal value
     static constexpr uint32_t BINARY = 2; // 2 : binary

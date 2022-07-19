@@ -95,7 +95,7 @@ uint64_t SamplingProcessor::GetMicrosecondsTimeStamp()
 
 void SamplingProcessor::WriteSampleDataToFile()
 {
-    if (!generator_->fileHandle_.is_open() || generator_->GetSampleData().size() < 1024 * 1024) { // 1024 * 1024:1M
+    if (!generator_->fileHandle_.is_open() || generator_->GetSampleData().size() < 1_MB) { // 1M
         return;
     }
     if (firstWrite_) {

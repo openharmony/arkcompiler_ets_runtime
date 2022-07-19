@@ -106,9 +106,6 @@ void Heap::Initialize()
     parallelGC_ = ecmaVm_->GetJSOptions().EnableParallelGC();
     bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
     markType_ = MarkType::MARK_YOUNG;
-#if ECMASCRIPT_DISABLE_PARALLEL_GC
-    parallelGC_ = false;
-#endif
 #if ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     concurrentMarkerEnabled = false;
 #endif

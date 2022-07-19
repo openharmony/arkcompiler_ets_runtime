@@ -71,7 +71,7 @@ static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = DEFAULT_REGION_SIZE * 2 /
 static constexpr size_t CHUNK_ALIGN_SIZE = 4_KB;
 static constexpr size_t MIN_CHUNK_AREA_SIZE = 4_KB;
 static constexpr size_t MAX_CACHED_CHUNK_AREA_SIZE = 16_KB;
-static constexpr size_t MAX_CHUNK_AREA_SIZE = 1 * 1024_KB;
+static constexpr size_t MAX_CHUNK_AREA_SIZE = 1_MB;
 
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);

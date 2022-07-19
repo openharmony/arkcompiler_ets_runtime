@@ -362,7 +362,7 @@ public:
     static constexpr int PROPERTIES_GROW_SIZE = 4;
     static constexpr int FAST_ELEMENTS_FACTOR = 3;
     static constexpr int MIN_GAP = 256;
-    static constexpr int MAX_GAP = 1024;
+    static constexpr int MAX_GAP = 1_KB;
     static constexpr uint32_t MAX_ELEMENT_INDEX = std::numeric_limits<uint32_t>::max();
 
     CAST_CHECK(JSObject, IsECMAObject);

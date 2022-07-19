@@ -25,6 +25,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "libpandabase/macros.h"
+#include "libpandabase/mem/mem.h"
 
 namespace panda {
 class JSNApiHelper;
@@ -61,7 +62,7 @@ using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 
-static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256 * 1024 * 1024;
+static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
 static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
 

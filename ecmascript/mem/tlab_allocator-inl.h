@@ -22,8 +22,8 @@
 #include "ecmascript/mem/full_gc.h"
 
 namespace panda::ecmascript {
-static constexpr size_t MIN_BUFFER_SIZE = 31 * 1024;
-static constexpr size_t SMALL_OBJECT_SIZE = 8 * 1024;
+static constexpr size_t MIN_BUFFER_SIZE = 31_KB;
+static constexpr size_t SMALL_OBJECT_SIZE = 8_KB;
 
 TlabAllocator::TlabAllocator(Heap *heap)
     : heap_(heap), enableExpandYoung_(true)

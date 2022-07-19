@@ -160,7 +160,6 @@ public:
 
     JSThread *GetJSThread() const
     {
-#if defined(ECMASCRIPT_ENABLE_THREAD_CHECK) && ECMASCRIPT_ENABLE_THREAD_CHECK
         // Exclude GC thread
         if (options_.EnableThreadCheck()) {
             if (thread_ == nullptr) {
@@ -173,7 +172,6 @@ public:
                                         << " currentThread:" << JSThread::GetCurrentThreadId();
             }
         }
-#endif
         return thread_;
     }
 
