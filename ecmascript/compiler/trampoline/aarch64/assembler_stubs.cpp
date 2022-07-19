@@ -2044,7 +2044,7 @@ void AssemblerStubs::PushOptimizedFrame(ExtendedAssembler *assembler, Register c
     Register frameType = __ TempRegister2();
     __ SaveFpAndLr();
     // construct frame
-    __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_FRAME)));
+    __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_BRIDGE_FRAME)));
     // 2 : 2 means pairs
     __ Stp(callSiteSp, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
 }

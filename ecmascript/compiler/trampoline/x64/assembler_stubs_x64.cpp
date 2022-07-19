@@ -2178,7 +2178,7 @@ void AssemblerStubsX64::PushOptimizedFrame(ExtendedAssembler *assembler, Registe
     __ Pushq(rbp);
     __ Movq(rsp, rbp);
     // construct frame
-    __ Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_FRAME));
+    __ Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_BRIDGE_FRAME));
     __ Pushq(callSiteSp);
 }
 
