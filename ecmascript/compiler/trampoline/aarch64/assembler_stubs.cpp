@@ -78,21 +78,23 @@ void AssemblerStubs::CallRuntime(ExtendedAssembler *assembler)
     Register frameType(X2);
     // construct Leave Frame and callee save
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME)));
+    // 2 : 2 means pairs
     __ Stp(tmp, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
     __ Add(fp, sp, Immediate(16));  // 16: skip frame type and tmp
     __ Str(fp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 
     // load runtime trampoline address
     Register rtfunc(X19);
-    __ Ldr(tmp, MemoryOperand(fp, GetStackArgOffSetToFp(0)));
+    __ Ldr(tmp, MemoryOperand(fp, GetStackArgOffSetToFp(0)));  // 0: the first arg id
     // 3 : 3 means 2 << 3 = 8
     __ Add(tmp, glue, Operand(tmp, LSL, 3));
     __ Ldr(rtfunc, MemoryOperand(tmp, JSThread::GlueData::GetRTStubEntriesOffset(false)));
-    __ Ldr(argC, MemoryOperand(fp, GetStackArgOffSetToFp(1)));
-    __ Add(argV, fp, Immediate(GetStackArgOffSetToFp(2)));
+    __ Ldr(argC, MemoryOperand(fp, GetStackArgOffSetToFp(1)));  // 1: the second arg id
+    __ Add(argV, fp, Immediate(GetStackArgOffSetToFp(2)));  // 2: the third arg id
     __ Blr(rtfunc);
 
     // callee restore
+    // 0 : 0 restore size
     __ Ldr(tmp, MemoryOperand(sp, 0));
 
     // descontruct frame
@@ -184,6 +186,7 @@ void AssemblerStubs::JSFunctionEntry(ExtendedAssembler *assembler)
         __ Mov(Register(X19), expectedNumArgs);
         __ Ldr(env, MemoryOperand(argV, actualNumArgs, UXTW, SHIFT_OF_FRAMESLOT));
         __ Str(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
+        // 0 : 0 restore size
         __ Str(env, MemoryOperand(sp, 0));
         __ Blr(codeAddr);
     }
@@ -260,7 +263,7 @@ void AssemblerStubs::OptimizedCallOptimized(ExtendedAssembler *assembler)
     {
         __ Mov(Register(X19), expectedNumArgs);
         __ Str(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
-        __ Str(env, MemoryOperand(sp, 0));
+        __ Str(env, MemoryOperand(sp, 0)); // 0: means zero size
         __ Blr(codeAddr);
     }
 
@@ -336,8 +339,7 @@ void AssemblerStubs::PopLeaveFrame(ExtendedAssembler *assembler, bool isBuiltin)
 
 // uint64_t CallBuiltinTrampoline(uintptr_t glue, uintptr_t codeAddress, uint32_t argc, ...)
 // webkit_jscc calling convention call runtime_id's runtion function(c-abi)
-// Input:
-// %x0 - glue
+// Input:        %x0 - glue
 // stack layout: sp + N*8 argvN
 //               ........
 //               sp + 24: argv0
@@ -523,7 +525,7 @@ void AssemblerStubs::JSCallBody(ExtendedAssembler *assembler, Register jsfunc)
         Register env(X5);
 
         Register argV(X6);
-        __ Add(argV, basefp, Immediate(GetStackArgOffSetToFp(0)));
+        __ Add(argV, basefp, Immediate(GetStackArgOffSetToFp(0))); // 0: first index id
         __ Ldr(actualArgC, MemoryOperand(argV, FRAME_SLOT_SIZE));
         __ Ldr(env, MemoryOperand(argV, 0));
 

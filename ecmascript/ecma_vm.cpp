@@ -459,8 +459,8 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     JSHandle<CjsModule> module = factory->NewCjsModule();
     JSHandle<JSTaggedValue> require = GetGlobalEnv()->GetCjsRequireFunction();
     JSHandle<CjsExports> exports = factory->NewCjsExports();
-    JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());;
-    JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());;
+    JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
     RequireManager::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
     CJSInfo cjsInfo(module, require, exports, filename, dirname);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);

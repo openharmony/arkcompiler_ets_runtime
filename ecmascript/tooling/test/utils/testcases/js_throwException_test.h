@@ -41,7 +41,7 @@ public:
             auto jsLocation = callFrames[0]->GetLocation();
             ASSERT_TRUE(jsLocation != nullptr);
             ASSERT_EQ(jsLocation->GetLine(), 28); // 28: breakpointer line
-            ASSERT_EQ(jsLocation->GetColumn(), 0);
+            ASSERT_EQ(jsLocation->GetColumn(), 0); // 0: breakpointer column
             TestUtil::SuspendUntilContinue(DebugEvent::BREAKPOINT, location);
             return true;
         };
@@ -84,8 +84,8 @@ public:
         };
 
         vmDeath = [this]() {
-            ASSERT_EQ(breakpointCounter_, 1U);
-            ASSERT_EQ(exceptionCounter_, 2U);
+            ASSERT_EQ(breakpointCounter_, 1U);  // 1: break point counter
+            ASSERT_EQ(exceptionCounter_, 2U);  // 2: exception counter
             return true;
         };
     }
