@@ -114,10 +114,12 @@ void LLVMStackMapParser::CollectBaseAndDerivedPointers(const CallSiteInfo* infos
         const DwarfRegAndOffsetType& derivedInfo = infos->at(j + 1);
         uintptr_t base = GetStackSlotAddress(baseInfo, callSiteSp, callsiteFp);
         uintptr_t derived = GetStackSlotAddress(derivedInfo, callSiteSp, callsiteFp);
-        baseSet.emplace(base);
         if (*reinterpret_cast<uintptr_t *>(base) == 0)
         {
             base = derived;
+        }
+        if (*reinterpret_cast<uintptr_t *>(base) != 0) {
+            baseSet.emplace(base);
         }
         if (base != derived) {
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
