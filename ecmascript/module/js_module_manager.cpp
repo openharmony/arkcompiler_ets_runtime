@@ -56,11 +56,14 @@ JSTaggedValue ModuleManager::GetModuleValueOutter(JSTaggedValue key)
         LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
     }
     JSTaggedValue moduleEnvironment = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetEnvironment();
-    ASSERT(!moduleEnvironment.IsUndefined());
-    JSTaggedValue resolvedBinding = LinkedHashMap::Cast(moduleEnvironment.GetTaggedObject())->Get(key);
-    if (resolvedBinding.IsUndefined()) {
+    if (moduleEnvironment.IsUndefined()) {
         return thread->GlobalConstants()->GetUndefined();
     }
+    int entry = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->FindEntry(key);
+    if (entry == -1) {
+        return thread->GlobalConstants()->GetUndefined();
+    }
+    JSTaggedValue resolvedBinding = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->GetValue(entry);
     ASSERT(resolvedBinding.IsResolvedBinding());
     ResolvedBinding *binding = ResolvedBinding::Cast(resolvedBinding.GetTaggedObject());
     JSTaggedValue resolvedModule = binding->GetModule();
@@ -167,11 +170,14 @@ JSTaggedValue ModuleManager::GetModuleNamespace(JSTaggedValue localName)
         LOG_FULL(FATAL) << "GetModuleNamespace currentModule failed";
     }
     JSTaggedValue moduleEnvironment = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetEnvironment();
-    ASSERT(!moduleEnvironment.IsUndefined());
-    JSTaggedValue moduleNamespace = LinkedHashMap::Cast(moduleEnvironment.GetTaggedObject())->Get(localName);
-    if (moduleNamespace.IsUndefined()) {
+    if (moduleEnvironment.IsUndefined()) {
         return vm_->GetJSThread()->GlobalConstants()->GetUndefined();
     }
+    int entry = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->FindEntry(localName);
+    if (entry == -1) {
+        return vm_->GetJSThread()->GlobalConstants()->GetUndefined();
+    }
+    JSTaggedValue moduleNamespace = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->GetValue(entry);
     ASSERT(moduleNamespace.IsModuleNamespace());
     return moduleNamespace;
 }
