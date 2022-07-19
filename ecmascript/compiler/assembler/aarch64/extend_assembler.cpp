@@ -24,30 +24,30 @@ Register ExtendedAssembler::cppJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUN
 void ExtendedAssembler::CalleeSave()
 {
     Register sp(SP);
-    Stp(Register(X27), Register(X28), MemoryOperand(sp, -16, PREINDEX));
-    Stp(Register(X25), Register(X26), MemoryOperand(sp, -16, PREINDEX));
-    Stp(Register(X23), Register(X24), MemoryOperand(sp, -16, PREINDEX));
-    Stp(Register(X21), Register(X22), MemoryOperand(sp, -16, PREINDEX));
-    Stp(Register(X19), Register(X20), MemoryOperand(sp, -16, PREINDEX));
+    Stp(Register(X27), Register(X28), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
+    Stp(Register(X25), Register(X26), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
+    Stp(Register(X23), Register(X24), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
+    Stp(Register(X21), Register(X22), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
+    Stp(Register(X19), Register(X20), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
 
-    Stp(VectorRegister(v14), VectorRegister(v15), MemoryOperand(sp, -16, PREINDEX));
-    Stp(VectorRegister(v12), VectorRegister(v13), MemoryOperand(sp, -16, PREINDEX));
-    Stp(VectorRegister(v10), VectorRegister(v11), MemoryOperand(sp, -16, PREINDEX));
-    Stp(VectorRegister(v8), VectorRegister(v9), MemoryOperand(sp, -16, PREINDEX));
+    Stp(VectorRegister(v14), VectorRegister(v15), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
+    Stp(VectorRegister(v12), VectorRegister(v13), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
+    Stp(VectorRegister(v10), VectorRegister(v11), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
+    Stp(VectorRegister(v8), VectorRegister(v9), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
 }
 
 void ExtendedAssembler::CalleeRestore()
 {
     Register sp(SP);
-    Ldp(VectorRegister(v8), VectorRegister(v9), MemoryOperand(sp, 16, POSTINDEX));
-    Ldp(VectorRegister(v10), VectorRegister(v11), MemoryOperand(sp, 16, POSTINDEX));
-    Ldp(VectorRegister(v12), VectorRegister(v13), MemoryOperand(sp, 16, POSTINDEX));
-    Ldp(VectorRegister(v14), VectorRegister(v15), MemoryOperand(sp, 16, POSTINDEX));
-    Ldp(Register(X19), Register(X20), MemoryOperand(sp, 16, POSTINDEX));
-    Ldp(Register(X21), Register(X22), MemoryOperand(sp, 16, POSTINDEX));
-    Ldp(Register(X23), Register(X24), MemoryOperand(sp, 16, POSTINDEX));
-    Ldp(Register(X25), Register(X26), MemoryOperand(sp, 16, POSTINDEX));
-    Ldp(Register(X27), Register(X28), MemoryOperand(sp, 16, POSTINDEX));
+    Ldp(VectorRegister(v8), VectorRegister(v9), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(VectorRegister(v10), VectorRegister(v11), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(VectorRegister(v12), VectorRegister(v13), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(VectorRegister(v14), VectorRegister(v15), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X19), Register(X20), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X21), Register(X22), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X23), Register(X24), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X25), Register(X26), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X27), Register(X28), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
 }
 
 void ExtendedAssembler::CallAssemblerStub(int id, bool isTail)
@@ -68,39 +68,39 @@ void ExtendedAssembler::BindAssemblerStub(int id)
 void ExtendedAssembler::PushFpAndLr()
 {
     Register sp(SP);
-    Stp(Register(X29), Register(X30), MemoryOperand(sp, -16, PREINDEX));
+    Stp(Register(X29), Register(X30), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
 }
 
 void ExtendedAssembler::SaveFpAndLr()
 {
     Register sp(SP);
-    Stp(Register(X29), Register(X30), MemoryOperand(sp, -16, PREINDEX));
+    Stp(Register(X29), Register(X30), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
     Mov(Register(X29), Register(SP));
 }
 
 void ExtendedAssembler::RestoreFpAndLr()
 {
     Register sp(SP);
-    Ldp(Register(X29), Register(X30), MemoryOperand(sp, 16, POSTINDEX));
+    Ldp(Register(X29), Register(X30), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
 }
 
 void ExtendedAssembler::PushLrAndFp()
 {
     Register sp(SP);
-    Stp(Register(X30), Register(X29), MemoryOperand(sp, -16, PREINDEX));  // 16: 2 registers
+    Stp(Register(X30), Register(X29), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
 }
 
 void ExtendedAssembler::SaveLrAndFp()
 {
     Register sp(SP);
-    Stp(Register(X30), Register(X29), MemoryOperand(sp, -16, PREINDEX));  // 16: 2 registers
+    Stp(Register(X30), Register(X29), MemoryOperand(sp, -PAIR_SLOT_SIZE, PREINDEX));
     Mov(Register(X29), Register(SP));
 }
 
 void ExtendedAssembler::RestoreLrAndFp()
 {
     Register sp(SP);
-    Ldp(Register(X30), Register(X29), MemoryOperand(sp, 16, POSTINDEX));  // 16: 2 registers
+    Ldp(Register(X30), Register(X29), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
 }
 
 void ExtendedAssembler::PushArgsWithArgv(Register argc, Register argv, Register op,

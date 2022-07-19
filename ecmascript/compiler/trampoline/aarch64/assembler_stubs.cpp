@@ -36,8 +36,7 @@ using Label = panda::ecmascript::Label;
 // uint64_t CallRuntime(uintptr_t glue, uint64_t runtime_id, uint64_t argc, ...)
 // webkit_jscc calling convention call runtime_id's runtion function(c-abi)
 // JSTaggedType (*)(uintptr_t argGlue, uint64_t argc, JSTaggedType argv[])
-// Input:
-// %x0 - glue
+// Input:        %x0 - glue
 // stack layout: sp + N*8 argvN
 //               ........
 //               sp + 24: argv1
