@@ -61,9 +61,7 @@ public:
     void AdvanceTime() const;
 
 private:
-    static const size_t INITIAL_SPACE = 1U << 0U;  // this should be tuned
-    static const size_t MAX_SPACE = 1U << 24U;     // this should be tuned
-    static const size_t SCALE_RATE = 1U << 1U;     // this should be tuned
+    static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
 
     void Print(GateRef gate) const;
     GateType GetGateType(GateRef gate) const;
@@ -93,7 +91,6 @@ private:
     bool IsControlCase(GateRef gate) const;
     bool IsLoopHead(GateRef gate) const;
     void ResetAllGateTimeStamps() const;
-    void SetSpaceDataSize(size_t sz);
     uint8_t *AllocateSpace(size_t gateSize);
     Gate *AllocateGateSpace(size_t numIns);
     size_t GetCircuitDataSize() const;
@@ -101,12 +98,11 @@ private:
     const void *GetSpaceDataEndPtrConst() const;
     const uint8_t *GetDataPtrConst(size_t offset) const;
     uint8_t *GetDataPtr(size_t offset);
-    size_t GetSpaceDataSize() const;
     Gate *LoadGatePtr(GateRef shift);
     const Gate *LoadGatePtrConst(GateRef shift) const;
 
 private:
-    std::vector<uint8_t> space_ {};
+    void* space_;
     size_t circuitSize_;
     size_t gateCount_;
     TimeStamp time_;

@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/mem_mmap.h"
+#include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
 
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
-
 namespace panda::ecmascript::kungfu {
-Circuit::Circuit() : space_(), circuitSize_(0), gateCount_(0), time_(1), dataSection_()
+Circuit::Circuit() : space_(nullptr), circuitSize_(0), gateCount_(0), time_(1), dataSection_()
 {
+    space_ = panda::ecmascript::base::MemMmap::Mmap(CIRCUIT_SPACE, false);
     NewGate(OpCode(OpCode::CIRCUIT_ROOT), 0, {}, GateType::Empty());  // circuit root
     auto circuitRoot = Circuit::GetCircuitRoot(OpCode(OpCode::CIRCUIT_ROOT));
     NewGate(OpCode(OpCode::STATE_ENTRY), 0, {circuitRoot}, GateType::Empty());
@@ -32,19 +33,15 @@ Circuit::Circuit() : space_(), circuitSize_(0), gateCount_(0), time_(1), dataSec
     NewGate(OpCode(OpCode::ARG_LIST), 0, {circuitRoot}, GateType::Empty());
 }
 
+Circuit::~Circuit()
+{
+    panda::ecmascript::base::MemMmap::Munmap(space_, CIRCUIT_SPACE);
+}
+
 uint8_t *Circuit::AllocateSpace(size_t gateSize)
 {
     circuitSize_ += gateSize;
-    if (UNLIKELY(GetSpaceDataSize() == 0)) {
-        SetSpaceDataSize(INITIAL_SPACE);
-    }
-    while (UNLIKELY(GetSpaceDataSize() < circuitSize_)) {
-        SetSpaceDataSize(GetSpaceDataSize() * SCALE_RATE);
-    }
-    if (UNLIKELY(GetSpaceDataSize() > MAX_SPACE)) {
-        return nullptr;  // abort compilation
-    }
-    if (UNLIKELY(GetSpaceDataStartPtrConst() == nullptr)) {
+    if (circuitSize_ > CIRCUIT_SPACE) {
         return nullptr;  // abort compilation
     }
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -197,8 +194,6 @@ GateRef Circuit::GetCircuitRoot(OpCode opcode)
             UNREACHABLE();
     }
 }
-
-Circuit::~Circuit() {}
 
 void Circuit::AdvanceTime() const
 {
@@ -425,23 +420,13 @@ const void *Circuit::GetSpaceDataEndPtrConst() const
 const uint8_t *Circuit::GetDataPtrConst(size_t offset) const
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    return space_.data() + offset;
+    return static_cast<uint8_t *>(space_) + offset;
 }
 
 uint8_t *Circuit::GetDataPtr(size_t offset)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    return space_.data() + offset;
-}
-
-size_t Circuit::GetSpaceDataSize() const
-{
-    return space_.size();
-}
-
-void Circuit::SetSpaceDataSize(size_t sz)
-{
-    return space_.resize(sz);
+    return static_cast<uint8_t *>(space_) + offset;
 }
 
 panda::ecmascript::FrameType Circuit::GetFrameType() const
