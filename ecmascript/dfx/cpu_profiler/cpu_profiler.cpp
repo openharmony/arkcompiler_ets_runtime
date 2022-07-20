@@ -217,6 +217,7 @@ CpuProfiler::~CpuProfiler()
         delete generator_;
         generator_ = nullptr;
     }
+    singleton_ = nullptr;
 }
 
 void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
