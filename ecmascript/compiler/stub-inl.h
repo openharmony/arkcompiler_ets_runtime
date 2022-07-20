@@ -131,55 +131,55 @@ inline GateRef Stub::Argument(size_t index)
 inline GateRef Stub::Int1Argument(size_t index)
 {
     GateRef argument = Argument(index);
-    env_.GetCircuit()->SetOpCode(argument, OpCode(OpCode::ARG));
-    env_.GetCircuit()->SetMachineType(argument, MachineType::I1);
+    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
+    acc_.SetMachineType(argument, MachineType::I1);
     return argument;
 }
 
 inline GateRef Stub::Int32Argument(size_t index)
 {
     GateRef argument = Argument(index);
-    env_.GetCircuit()->SetOpCode(argument, OpCode(OpCode::ARG));
-    env_.GetCircuit()->SetMachineType(argument, MachineType::I32);
+    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
+    acc_.SetMachineType(argument, MachineType::I32);
     return argument;
 }
 
 inline GateRef Stub::Int64Argument(size_t index)
 {
     GateRef argument = Argument(index);
-    env_.GetCircuit()->SetOpCode(argument, OpCode(OpCode::ARG));
-    env_.GetCircuit()->SetMachineType(argument, MachineType::I64);
+    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
+    acc_.SetMachineType(argument, MachineType::I64);
     return argument;
 }
 
 inline GateRef Stub::TaggedArgument(size_t index)
 {
     GateRef argument = Argument(index);
-    env_.GetCircuit()->SetOpCode(argument, OpCode(OpCode::ARG));
-    env_.GetCircuit()->SetGateType(argument, GateType::TaggedValue());
-    env_.GetCircuit()->SetMachineType(argument, MachineType::I64);
+    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
+    acc_.SetGateType(argument, GateType::TaggedValue());
+    acc_.SetMachineType(argument, MachineType::I64);
     return argument;
 }
 
 inline GateRef Stub::TaggedPointerArgument(size_t index, GateType type)
 {
     GateRef argument = Argument(index);
-    env_.GetCircuit()->SetOpCode(argument, OpCode(OpCode::ARG));
-    env_.GetCircuit()->SetGateType(argument, type);
-    env_.GetCircuit()->SetMachineType(argument, MachineType::I64);
+    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
+    acc_.SetGateType(argument, type);
+    acc_.SetMachineType(argument, MachineType::I64);
     return argument;
 }
 
 inline GateRef Stub::PtrArgument(size_t index, GateType type)
 {
     GateRef argument = Argument(index);
-    env_.GetCircuit()->SetGateType(argument, type);
+    acc_.SetGateType(argument, type);
     if (env_.IsArch64Bit()) {
-        env_.GetCircuit()->SetOpCode(argument, OpCode(OpCode::ARG));
-        env_.GetCircuit()->SetMachineType(argument, MachineType::I64);
+        acc_.SetOpCode(argument, OpCode(OpCode::ARG));
+        acc_.SetMachineType(argument, MachineType::I64);
     } else if (env_.IsArch32Bit()) {
-        env_.GetCircuit()->SetOpCode(argument, OpCode(OpCode::ARG));
-        env_.GetCircuit()->SetMachineType(argument, MachineType::I32);
+        acc_.SetOpCode(argument, OpCode(OpCode::ARG));
+        acc_.SetMachineType(argument, MachineType::I32);
     } else {
         UNREACHABLE();
     }
@@ -189,16 +189,16 @@ inline GateRef Stub::PtrArgument(size_t index, GateType type)
 inline GateRef Stub::Float32Argument(size_t index)
 {
     GateRef argument = Argument(index);
-    env_.GetCircuit()->SetOpCode(argument, OpCode(OpCode::ARG));
-    env_.GetCircuit()->SetMachineType(argument, MachineType::F32);
+    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
+    acc_.SetMachineType(argument, MachineType::F32);
     return argument;
 }
 
 inline GateRef Stub::Float64Argument(size_t index)
 {
     GateRef argument = Argument(index);
-    env_.GetCircuit()->SetOpCode(argument, OpCode(OpCode::ARG));
-    env_.GetCircuit()->SetMachineType(argument, MachineType::F64);
+    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
+    acc_.SetMachineType(argument, MachineType::F64);
     return argument;
 }
 

@@ -238,14 +238,14 @@ GateRef CircuitBuilder::DoubleToTaggedTypeNGC(GateRef x)
 
 GateRef CircuitBuilder::Tagged(GateRef x)
 {
-    GetCircuit()->SetGateType(x, GateType::TaggedValue());
+    acc_.SetGateType(x, GateType::TaggedValue());
     return Int64Or(x, Int64(JSTaggedValue::TAG_INT));
 }
 
 GateRef CircuitBuilder::DoubleToTagged(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
-    GetCircuit()->SetGateType(val, GateType::TaggedValue());
+    acc_.SetGateType(val, GateType::TaggedValue());
     return Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
 }
 

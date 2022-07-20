@@ -55,7 +55,7 @@ namespace panda::ecmascript::kungfu {
 LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                              LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
                              CallSignature::CallConv callConv, bool enableLog)
-    : compCfg_(cfg), scheduledGates_(schedule), circuit_(circuit), module_(module->GetModule()),
+    : compCfg_(cfg), scheduledGates_(schedule), circuit_(circuit), acc_(circuit), module_(module->GetModule()),
       function_(function), llvmModule_(module), callConv_(callConv), enableLog_(enableLog)
 {
     builder_ = LLVMCreateBuilder();
@@ -213,7 +213,7 @@ void LLVMIRBuilder::Build()
     for (size_t bbIdx = 0; bbIdx < scheduledGates_->size(); bbIdx++) {
         const std::vector<GateRef>& bb = scheduledGates_->at(bbIdx);
         for (size_t instIdx = bb.size(); instIdx > 0; instIdx--) {
-            GateId gateId = circuit_->GetId(bb[instIdx - 1]);
+            GateId gateId = acc_.GetId(bb[instIdx - 1]);
             instID2bbID_[gateId] = static_cast<int>(bbIdx);
         }
     }
@@ -221,29 +221,33 @@ void LLVMIRBuilder::Build()
     for (size_t bbIdx = 0; bbIdx < scheduledGates_->size(); bbIdx++) {
         const std::vector<GateRef>& bb = scheduledGates_->at(bbIdx);
         OperandsVector predecessors;
-        for (auto in : circuit_->GetInVector(bb[0])) {
-            if (!circuit_->GetOpCode(in).IsState()) {
+        std::vector<GateRef> ivec;
+        acc_.GetInVector(bb[0], ivec);
+        for (auto in : ivec) {
+            if (!acc_.GetOpCode(in).IsState()) {
                 continue;
             }
-            predecessors.insert(instID2bbID_[circuit_->GetId(in)]);
+            predecessors.insert(instID2bbID_[acc_.GetId(in)]);
         }
         LinkToLLVMCfg(bbIdx, predecessors);
 
         for (size_t instIdx = bb.size(); instIdx > 0; instIdx--) {
             GateRef gate = bb[instIdx - 1];
-            std::vector<GateRef> ins = circuit_->GetInVector(gate);
-            std::vector<GateRef> outs = circuit_->GetOutVector(gate);
+            std::vector<GateRef> ins;
+            acc_.GetInVector(gate, ins);
+            std::vector<GateRef> outs;
+            acc_.GetOutVector(gate, outs);
 
             if (IsLogEnabled()) {
                 circuit_->Print(gate);
             }
 
-            auto found = opHandlers_.find(circuit_->GetOpCode(gate));
+            auto found = opHandlers_.find(acc_.GetOpCode(gate));
             if (found != opHandlers_.end()) {
                 (this->*(found->second))(gate);
                 continue;
             }
-            if (illegalOpHandlers_.find(circuit_->GetOpCode(gate)) == illegalOpHandlers_.end()) {
+            if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
                 LOG_COMPILER(ERROR) << "The gate below need to be translated ";
                 circuit_->Print(gate);
                 UNREACHABLE();
@@ -481,8 +485,9 @@ LLVMTypeRef LLVMIRBuilder::GetMachineRepType(MachineRep rep) const
 
 void LLVMIRBuilder::HandleCall(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    OpCode callOp = circuit_->GetOpCode(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
+    OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL) {
         VisitCall(gate, ins, callOp);
     } else {
@@ -492,19 +497,22 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
 
 void LLVMIRBuilder::HandleBytecodeCall(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
     VisitBytecodeCall(gate, ins);
 }
 
 void LLVMIRBuilder::HandleDebuggerBytecodeCall(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
     VisitDebuggerBytecodeCall(gate, ins);
 }
 
 void LLVMIRBuilder::HandleRuntimeCall(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
     VisitRuntimeCall(gate, ins);
 }
 
@@ -554,7 +562,7 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
 
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
-    int index = static_cast<int>(circuit_->GetBitField(inList[static_cast<int>(CallInputs::TARGET)]));
+    int index = static_cast<int>(acc_.GetBitField(inList[static_cast<int>(CallInputs::TARGET)]));
     params.push_back(LLVMConstInt(LLVMInt64Type(), index, 0)); // target
     params.push_back(LLVMConstInt(LLVMInt64Type(),
         inList.size() - static_cast<size_t>(CallInputs::FIRST_PARAMETER), 0)); // argc
@@ -571,7 +579,8 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
 
 void LLVMIRBuilder::HandleRuntimeCallWithArgv(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
     VisitRuntimeCallWithArgv(gate, ins);
 }
 
@@ -589,7 +598,7 @@ void LLVMIRBuilder::VisitRuntimeCallWithArgv(GateRef gate, const std::vector<Gat
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
 
-    BitField index = circuit_->GetBitField(inList[static_cast<size_t>(CallInputs::TARGET)]);
+    BitField index = acc_.GetBitField(inList[static_cast<size_t>(CallInputs::TARGET)]);
     auto targetId = LLVMConstInt(LLVMInt64Type(), index, 0);
     params.push_back(targetId); // target
     for (size_t paraIdx = static_cast<size_t>(CallInputs::FIRST_PARAMETER); paraIdx < inList.size(); ++paraIdx) {
@@ -704,7 +713,7 @@ void LLVMIRBuilder::ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueR
 void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, OpCode op)
 {
     static_assert(static_cast<size_t>(CallInputs::FIRST_PARAMETER) == 3);
-    const size_t index = circuit_->GetBitField(inList[static_cast<size_t>(CallInputs::TARGET)]);
+    const size_t index = acc_.GetBitField(inList[static_cast<size_t>(CallInputs::TARGET)]);
     const CallSignature *calleeDescriptor = nullptr;
     LLVMValueRef glue = GetGlue(inList);
     LLVMValueRef rtoffset;
@@ -843,7 +852,7 @@ void LLVMIRBuilder::HandleAlloca(GateRef gate)
 
 void LLVMIRBuilder::VisitAlloca(GateRef gate)
 {
-    uint64_t machineRep = circuit_->GetBitField(gate);
+    uint64_t machineRep = acc_.GetBitField(gate);
     LLVMTypeRef dataType = GetMachineRepType(static_cast<MachineRep>(machineRep));
     gate2LValue_[gate] = LLVMBuildPtrToInt(builder_, LLVMBuildAlloca(builder_, dataType, ""),
                                               ConvertLLVMTypeFromGate(gate), "");
@@ -851,7 +860,8 @@ void LLVMIRBuilder::VisitAlloca(GateRef gate)
 
 void LLVMIRBuilder::HandlePhi(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
     VisitPhi(gate, ins);
 }
 
@@ -859,10 +869,11 @@ void LLVMIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &srcGates)
 {
     LLVMTypeRef type = ConvertLLVMTypeFromGate(gate);
     LLVMValueRef phi = LLVMBuildPhi(builder_, type, "");
-    std::vector<GateRef> relMergeIns = circuit_->GetInVector(srcGates[0]);
+    std::vector<GateRef> relMergeIns;
+    acc_.GetInVector(srcGates[0], relMergeIns);
     bool addToPhiRebuildList = false;
     for (int i = 1; i < static_cast<int>(srcGates.size()); i++) {
-        GateId gateId = circuit_->GetId(relMergeIns[i - 1]);
+        GateId gateId = acc_.GetId(relMergeIns[i - 1]);
         int bbIdx = instID2bbID_[gateId];
         int cnt = static_cast<int>(bbID2BB_.count(bbIdx));
         // if cnt = 0 means bb with current bbIdx hasn't been created
@@ -912,7 +923,8 @@ void LLVMIRBuilder::VisitReturn([[maybe_unused]] GateRef gate, [[maybe_unused]] 
 
 void LLVMIRBuilder::HandleReturn(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
     VisitReturn(gate, 1, ins);
 }
 
@@ -953,14 +965,15 @@ void LLVMIRBuilder::LinkToLLVMCfg(int bbId, const OperandsVector &predecessors)
 
 void LLVMIRBuilder::HandleGoto(GateRef gate)
 {
-    std::vector<GateRef> outs = circuit_->GetOutVector(gate);
-    int block = instID2bbID_[circuit_->GetId(gate)];
-    int bbOut = instID2bbID_[circuit_->GetId(outs[0])];
-    switch (circuit_->GetOpCode(gate)) {
+    std::vector<GateRef> outs;
+    acc_.GetOutVector(gate, outs);
+    int block = instID2bbID_[acc_.GetId(gate)];
+    int bbOut = instID2bbID_[acc_.GetId(outs[0])];
+    switch (acc_.GetOpCode(gate)) {
         case OpCode::MERGE:
         case OpCode::LOOP_BEGIN: {
             for (const auto &out : outs) {
-                bbOut = instID2bbID_[circuit_->GetId(out)];
+                bbOut = instID2bbID_[acc_.GetId(out)];
                 VisitGoto(block, bbOut);
             }
             break;
@@ -990,14 +1003,14 @@ void LLVMIRBuilder::VisitGoto(int block, int bbOut)
 
 void LLVMIRBuilder::HandleConstant(GateRef gate)
 {
-    std::bitset<64> value = circuit_->GetBitField(gate); // 64: bit width
+    std::bitset<64> value = acc_.GetBitField(gate); // 64: bit width
     VisitConstant(gate, value);
 }
 
 void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bit width
 {
     LLVMValueRef llvmValue = nullptr;
-    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
+    auto machineType = acc_.GetMachineType(gate);
     if (machineType == MachineType::ARCH) {
         if (compCfg_->Is32Bit()) {
             machineType = MachineType::I32;
@@ -1044,7 +1057,7 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
 
 void LLVMIRBuilder::HandleRelocatableData(GateRef gate)
 {
-    uint64_t value = circuit_->GetBitField(gate);
+    uint64_t value = acc_.GetBitField(gate);
     VisitRelocatableData(gate, value);
 }
 
@@ -1057,13 +1070,15 @@ void LLVMIRBuilder::VisitRelocatableData(GateRef gate, uint64_t value)
 
 void LLVMIRBuilder::HandleZExtInt(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
     VisitZExtInt(gate, ins[0]);
 }
 
 void LLVMIRBuilder::HandleSExtInt(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
     VisitSExtInt(gate, ins[0]);
 }
 
@@ -1074,7 +1089,7 @@ void LLVMIRBuilder::HandleParameter(GateRef gate)
 
 void LLVMIRBuilder::VisitParameter(GateRef gate)
 {
-    int argth = static_cast<int>(GateAccessor(circuit_).GetBitField(gate));
+    int argth = static_cast<int>(acc_.GetBitField(gate));
     if (callConv_ == CallSignature::CallConv::WebKitJSCallConv) {
         if (compCfg_->Is32Bit() && argth > 0) {
             argth += CompilationConfig::FAKE_REGISTER_PARAMTERS_ARM32;
@@ -1109,19 +1124,21 @@ void LLVMIRBuilder::SaveLexicalEnvOnFrame(LLVMValueRef value)
 
 void LLVMIRBuilder::HandleBranch(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    std::vector<GateRef> outs = circuit_->GetOutVector(gate);
-    GateRef bTrue = (circuit_->GetOpCode(outs[0]) == OpCode::IF_TRUE) ? outs[0] : outs[1];
-    GateRef bFalse = (circuit_->GetOpCode(outs[0]) == OpCode::IF_FALSE) ? outs[0] : outs[1];
-    int bbTrue = instID2bbID_[circuit_->GetId(bTrue)];
-    int bbFalse = instID2bbID_[circuit_->GetId(bFalse)];
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
+    std::vector<GateRef> outs;
+    acc_.GetOutVector(gate, outs);
+    GateRef bTrue = (acc_.GetOpCode(outs[0]) == OpCode::IF_TRUE) ? outs[0] : outs[1];
+    GateRef bFalse = (acc_.GetOpCode(outs[0]) == OpCode::IF_FALSE) ? outs[0] : outs[1];
+    int bbTrue = instID2bbID_[acc_.GetId(bTrue)];
+    int bbFalse = instID2bbID_[acc_.GetId(bFalse)];
     VisitBranch(gate, ins[1], bbTrue, bbFalse);
 }
 
 void LLVMIRBuilder::HandleMod(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitMod(gate, g0, g1);
 }
 
@@ -1132,7 +1149,7 @@ void LLVMIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef result = nullptr;
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e1));
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e2));
-    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
+    auto machineType = acc_.GetMachineType(gate);
     if (machineType == MachineType::I32) {
         result = LLVMBuildSRem(builder_, e1Value, e2Value, "");
     } else if (machineType == MachineType::F64) {
@@ -1165,8 +1182,10 @@ void LLVMIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfalse
 
 void LLVMIRBuilder::HandleSwitch(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    std::vector<GateRef> outs = circuit_->GetOutVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
+    std::vector<GateRef> outs;
+    acc_.GetOutVector(gate, outs);
     VisitSwitch(gate, ins[1], outs);
 }
 
@@ -1177,21 +1196,21 @@ void LLVMIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector<G
     BasicBlock *curOutBB = nullptr;
     LLVMBasicBlockRef llvmDefaultOutBB = nullptr;
     for (int i = 0; i < caseNum; i++) {
-        curOutBB = EnsureBB(instID2bbID_[circuit_->GetId(outList[i])]);
+        curOutBB = EnsureBB(instID2bbID_[acc_.GetId(outList[i])]);
         EnsureLBB(curOutBB);
-        if (circuit_->GetOpCode(outList[i]) == OpCode::DEFAULT_CASE) {
+        if (acc_.GetOpCode(outList[i]) == OpCode::DEFAULT_CASE) {
             llvmDefaultOutBB = curOutBB->GetImpl<BasicBlockImpl>()->lBB_;
         }
     }
     LLVMValueRef result = LLVMBuildSwitch(builder_, cond, llvmDefaultOutBB, static_cast<uint32_t>(caseNum - 1));
     LLVMBasicBlockRef llvmCurOutBB = nullptr;
     for (int i = 0; i < caseNum; i++) {
-        if (circuit_->GetOpCode(outList[i]) == OpCode::DEFAULT_CASE) {
+        if (acc_.GetOpCode(outList[i]) == OpCode::DEFAULT_CASE) {
             continue;
         }
-        curOutBB = EnsureBB(instID2bbID_[circuit_->GetId(outList[i])]);
+        curOutBB = EnsureBB(instID2bbID_[acc_.GetId(outList[i])]);
         llvmCurOutBB = curOutBB->GetImpl<BasicBlockImpl>()->lBB_;
-        LLVMAddCase(result, LLVMConstInt(ConvertLLVMTypeFromGate(input), circuit_->GetBitField(outList[i]), 0),
+        LLVMAddCase(result, LLVMConstInt(ConvertLLVMTypeFromGate(input), acc_.GetBitField(outList[i]), 0),
                     llvmCurOutBB);
     }
     EndCurrentBlock();
@@ -1261,7 +1280,8 @@ LLVMValueRef LLVMIRBuilder::CanonicalizeToPtr(LLVMValueRef value)
 
 void LLVMIRBuilder::HandleIntRev(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
+    std::vector<GateRef> ins;
+    acc_.GetInVector(gate, ins);
     VisitIntRev(gate, ins[0]);
 }
 
@@ -1269,7 +1289,7 @@ void LLVMIRBuilder::VisitIntRev(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e1));
-    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
+    auto machineType = acc_.GetMachineType(gate);
     LLVMValueRef result = nullptr;
     if (machineType <= MachineType::I64 && machineType >= MachineType::I1) {
         result = LLVMBuildNot(builder_, e1Value, "");
@@ -1305,14 +1325,14 @@ bool LLVMIRBuilder::IsGCRelated(GateType typeCode) const
 
 LLVMTypeRef LLVMIRBuilder::ConvertLLVMTypeFromGate(GateRef gate) const
 {
-    if (IsGCRelated(circuit_->GetGateType(gate))) {
+    if (IsGCRelated(acc_.GetGateType(gate))) {
         if (compCfg_->Is32Bit()) {
             return LLVMVectorType(LLVMPointerType(LLVMInt8Type(), 1), 2);
         } else {
             return LLVMPointerType(LLVMInt64Type(), 1);
         }
     }
-    MachineType t = GateAccessor(circuit_).GetMachineType(gate);
+    MachineType t = acc_.GetMachineType(gate);
     switch (t) {
         case MachineType::NOVALUE:
             return LLVMVoidType();
@@ -1373,8 +1393,8 @@ int64_t LLVMIRBuilder::GetBitWidthFromMachineType(MachineType machineType) const
 
 void LLVMIRBuilder::HandleAdd(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitAdd(gate, g0, g1);
 }
 
@@ -1402,7 +1422,7 @@ void LLVMIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
     */
     LLVMTypeRef returnType = ConvertLLVMTypeFromGate(gate);
 
-    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
+    auto machineType = acc_.GetMachineType(gate);
     if (IsAddIntergerType(machineType)) {
         auto e1Type = LLVMGetTypeKind(ConvertLLVMTypeFromGate(e1));
         if (e1Type == LLVMVectorTypeKind) {
@@ -1427,8 +1447,8 @@ void LLVMIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
 
 void LLVMIRBuilder::HandleSub(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitSub(gate, g0, g1);
 }
 
@@ -1437,7 +1457,7 @@ void LLVMIRBuilder::VisitSub(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
+    auto machineType = acc_.GetMachineType(gate);
     if (machineType == MachineType::I16 || machineType == MachineType::I32 ||
         machineType == MachineType::I64 || machineType == MachineType::ARCH) {
         result = LLVMBuildSub(builder_, e1Value, e2Value, "");
@@ -1451,8 +1471,8 @@ void LLVMIRBuilder::VisitSub(GateRef gate, GateRef e1, GateRef e2)
 
 void LLVMIRBuilder::HandleMul(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitMul(gate, g0, g1);
 }
 
@@ -1473,7 +1493,7 @@ void LLVMIRBuilder::VisitMul(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    auto machineType = GateAccessor(circuit_).GetMachineType(gate);
+    auto machineType = acc_.GetMachineType(gate);
     if (IsMulIntergerType(machineType)) {
         result = LLVMBuildMul(builder_, e1Value, e2Value, "");
     } else if (machineType == MachineType::F64) {
@@ -1486,58 +1506,58 @@ void LLVMIRBuilder::VisitMul(GateRef gate, GateRef e1, GateRef e2)
 
 void LLVMIRBuilder::HandleFloatDiv(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitFloatDiv(gate, g0, g1);
 }
 
 void LLVMIRBuilder::HandleIntDiv(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitIntDiv(gate, g0, g1);
 }
 
 void LLVMIRBuilder::HandleUDiv(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitUDiv(gate, g0, g1);
 }
 
 void LLVMIRBuilder::HandleIntOr(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitIntOr(gate, g0, g1);
 }
 
 void LLVMIRBuilder::HandleIntXor(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitIntXor(gate, g0, g1);
 }
 
 void LLVMIRBuilder::HandleIntLsr(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitIntLsr(gate, g0, g1);
 }
 
 void LLVMIRBuilder::HandleIntAsr(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitIntAsr(gate, g0, g1);
 }
 
 void LLVMIRBuilder::HandleCmp(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    std::vector<GateRef> outs = circuit_->GetOutVector(gate);
-    VisitCmp(gate, ins[0], ins[1]);
+    GateRef left = acc_.GetIn(gate, 0);
+    GateRef right = acc_.GetIn(gate, 1);
+    VisitCmp(gate, left, right);
 }
 
 void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
@@ -1545,9 +1565,8 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    GateAccessor acc(circuit_);
-    auto e1ValCode = acc.GetMachineType(e1);
-    [[maybe_unused]]auto e2ValCode = acc.GetMachineType(e2);
+    auto e1ValCode = acc_.GetMachineType(e1);
+    [[maybe_unused]]auto e2ValCode = acc_.GetMachineType(e2);
     ASSERT((e1ValCode == e2ValCode) ||
         (compCfg_->Is32Bit() && (e1ValCode == MachineType::ARCH) && (e2ValCode == MachineType::I32)) ||
         (compCfg_->Is64Bit() && (e1ValCode == MachineType::ARCH) && (e2ValCode == MachineType::I64)) ||
@@ -1555,7 +1574,7 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
         (compCfg_->Is64Bit() && (e2ValCode == MachineType::ARCH) && (e1ValCode == MachineType::I64)));
     LLVMIntPredicate intOpcode = LLVMIntEQ;
     LLVMRealPredicate realOpcode = LLVMRealPredicateFalse;
-    switch (circuit_->GetOpCode(gate)) {
+    switch (acc_.GetOpCode(gate)) {
         case OpCode::SLT: {
             intOpcode = LLVMIntSLT;
             realOpcode = LLVMRealOLT;
@@ -1625,47 +1644,37 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
 
 void LLVMIRBuilder::HandleLoad(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    std::vector<GateRef> outs = circuit_->GetOutVector(gate);
-    GateRef base = ins[1];
-    VisitLoad(gate, base);
+    VisitLoad(gate, acc_.GetIn(gate, 1));
 }
 
 void LLVMIRBuilder::HandleStore(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    std::vector<GateRef> outs = circuit_->GetOutVector(gate);
-    VisitStore(gate, ins[2], ins[1]);  // 2:baseAddr gate, 1:data gate
+    VisitStore(gate, acc_.GetIn(gate, 2), acc_.GetIn(gate, 1));  // 2:baseAddr gate, 1:data gate
 }
 
 void LLVMIRBuilder::HandleChangeInt32ToDouble(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    VisitChangeInt32ToDouble(gate, ins[0]);
+    VisitChangeInt32ToDouble(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::HandleChangeUInt32ToDouble(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    VisitChangeUInt32ToDouble(gate, ins[0]);
+    VisitChangeUInt32ToDouble(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::HandleChangeDoubleToInt32(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    VisitChangeDoubleToInt32(gate, ins[0]);
+    VisitChangeDoubleToInt32(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::HandleChangeTaggedPointerToInt64(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    VisitChangeTaggedPointerToInt64(gate, ins[0]);
+    VisitChangeTaggedPointerToInt64(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::HandleChangeInt64ToTagged(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    VisitChangeInt64ToTagged(gate, ins[0]);
+    VisitChangeInt64ToTagged(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::VisitIntDiv(GateRef gate, GateRef e1, GateRef e2)
@@ -1706,8 +1715,8 @@ void LLVMIRBuilder::VisitIntOr(GateRef gate, GateRef e1, GateRef e2)
 
 void LLVMIRBuilder::HandleIntAnd(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitIntAnd(gate, g0, g1);
 }
 
@@ -1753,8 +1762,8 @@ void LLVMIRBuilder::VisitIntAsr(GateRef gate, GateRef e1, GateRef e2)
 
 void LLVMIRBuilder::HandleIntLsl(GateRef gate)
 {
-    auto g0 = circuit_->GetIn(gate, 0);
-    auto g1 = circuit_->GetIn(gate, 1);
+    auto g0 = acc_.GetIn(gate, 0);
+    auto g1 = acc_.GetIn(gate, 1);
     VisitIntLsl(gate, g0, g1);
 }
 
@@ -1771,8 +1780,8 @@ void LLVMIRBuilder::VisitIntLsl(GateRef gate, GateRef e1, GateRef e2)
 void LLVMIRBuilder::VisitZExtInt(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    ASSERT(GetBitWidthFromMachineType(GateAccessor(circuit_).GetMachineType(e1)) <=
-           GetBitWidthFromMachineType(GateAccessor(circuit_).GetMachineType(gate)));
+    ASSERT(GetBitWidthFromMachineType(acc_.GetMachineType(e1)) <=
+           GetBitWidthFromMachineType(acc_.GetMachineType(gate)));
     LLVMValueRef result = LLVMBuildZExt(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
     gate2LValue_[gate] = result;
 }
@@ -1786,15 +1795,14 @@ void LLVMIRBuilder::VisitSExtInt(GateRef gate, GateRef e1)
 
 void LLVMIRBuilder::HandleCastIntXToIntY(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    VisitCastIntXToIntY(gate, ins[0]);
+    VisitCastIntXToIntY(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::VisitCastIntXToIntY(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    ASSERT(GetBitWidthFromMachineType(GateAccessor(circuit_).GetMachineType(e1)) >=
-           GetBitWidthFromMachineType(GateAccessor(circuit_).GetMachineType(gate)));
+    ASSERT(GetBitWidthFromMachineType(acc_.GetMachineType(e1)) >=
+           GetBitWidthFromMachineType(acc_.GetMachineType(gate)));
     LLVMValueRef result = LLVMBuildIntCast2(builder_, e1Value, ConvertLLVMTypeFromGate(gate), 1, "");
     gate2LValue_[gate] = result;
 }
@@ -1850,16 +1858,14 @@ void LLVMIRBuilder::VisitChangeInt64ToTagged(GateRef gate, GateRef e1)
 
 void LLVMIRBuilder::HandleBitCast(GateRef gate)
 {
-    std::vector<GateRef> ins = circuit_->GetInVector(gate);
-    VisitBitCast(gate, ins[0]);
+    VisitBitCast(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::VisitBitCast(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    GateAccessor acc(circuit_);
-    [[maybe_unused]] auto gateValCode = acc.GetMachineType(gate);
-    [[maybe_unused]] auto e1ValCode = acc.GetMachineType(e1);
+    [[maybe_unused]] auto gateValCode = acc_.GetMachineType(gate);
+    [[maybe_unused]] auto e1ValCode = acc_.GetMachineType(e1);
     ASSERT(GetBitWidthFromMachineType(gateValCode) == GetBitWidthFromMachineType(e1ValCode));
     auto returnType = ConvertLLVMTypeFromGate(gate);
     LLVMValueRef result = LLVMBuildBitCast(builder_, e1Value, returnType, "");

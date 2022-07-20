@@ -62,7 +62,8 @@ void TypeInfer::TraverseCircuit()
 
 void TypeInfer::TypeInferPrint() const
 {
-    const auto &gateList = circuit_->GetAllGates();
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
     std::string log("TestInfer:");
     for (const auto &gate : gateList) {
         auto type = gateAccessor_.GetGateType(gate);

@@ -83,6 +83,49 @@ GateRef GateAccessor::GetState(GateRef gate, size_t idx) const
     return circuit_->GetIn(gate, idx);
 }
 
+void GateAccessor::GetInVector(GateRef gate, std::vector<GateRef>& ins) const
+{
+    const Gate *curGate = circuit_->LoadGatePtrConst(gate);
+    for (size_t idx = 0; idx < curGate->GetNumIns(); idx++) {
+        ins.push_back(circuit_->GetGateRef(curGate->GetInGateConst(idx)));
+    }
+}
+
+void GateAccessor::GetOutVector(GateRef gate, std::vector<GateRef>& outs) const
+{
+    const Gate *curGate = circuit_->LoadGatePtrConst(gate);
+    if (!curGate->IsFirstOutNull()) {
+        const Out *curOut = curGate->GetFirstOutConst();
+        GateRef ref = circuit_->GetGateRef(curOut->GetGateConst());
+        outs.push_back(ref);
+        while (!curOut->IsNextOutNull()) {
+            curOut = curOut->GetNextOutConst();
+            ref = circuit_->GetGateRef(curOut->GetGateConst());
+            outs.push_back(ref);
+        }
+    }
+}
+
+bool GateAccessor::IsInGateNull(GateRef gate, size_t idx) const
+{
+    return circuit_->IsInGateNull(gate, idx);
+}
+
+bool GateAccessor::IsSelector(GateRef g) const
+{
+    return GetOpCode(g) == OpCode::VALUE_SELECTOR;
+}
+
+bool GateAccessor::IsControlCase(GateRef gate) const
+{
+    return circuit_->IsControlCase(gate);
+}
+
+bool GateAccessor::IsLoopHead(GateRef gate) const
+{
+    return circuit_->IsLoopHead(gate);
+}
+
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -214,6 +257,14 @@ void GateAccessor::ReplaceIn(GateRef gate, size_t index, GateRef in)
 {
     circuit_->ModifyIn(gate, index, in);
 }
+
+void GateAccessor::DeleteIn(GateRef gate, size_t idx)
+{
+    ASSERT(idx < circuit_->LoadGatePtrConst(gate)->GetNumIns());
+    ASSERT(!circuit_->IsInGateNull(gate, idx));
+    circuit_->LoadGatePtr(gate)->DeleteIn(idx);
+}
+
 void GateAccessor::ReplaceStateIn(GateRef gate, GateRef in, size_t index)
 {
     ASSERT(index < GetStateCount(gate));
@@ -242,6 +293,11 @@ void GateAccessor::DeleteGate(GateRef gate)
 MachineType GateAccessor::GetMachineType(GateRef gate) const
 {
     return circuit_->GetMachineType(gate);
+}
+
+void GateAccessor::SetMachineType(GateRef gate, MachineType type)
+{
+    circuit_->SetMachineType(gate, type);
 }
 
 GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, GateType type) const

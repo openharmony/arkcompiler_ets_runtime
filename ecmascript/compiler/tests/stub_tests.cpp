@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/ecma_vm.h"
@@ -65,8 +66,9 @@ public:
                                   [[maybe_unused]] const Circuit &netOfGates) const
     {
         if (thread->GetEcmaVM()->GetJSOptions().WasSetlogCompiledMethods()) {
+            GateAccessor acc(const_cast<Circuit*>(&netOfGates));
             for (size_t bbIdx = 0; bbIdx < cfg.size(); bbIdx++) {
-                LOG_COMPILER(INFO) << (netOfGates.GetOpCode(cfg[bbIdx].front()).IsCFGMerge() ? "MERGE_" : "BB_")
+                LOG_COMPILER(INFO) << (acc.GetOpCode(cfg[bbIdx].front()).IsCFGMerge() ? "MERGE_" : "BB_")
                                    << bbIdx << ":";
                 for (size_t instIdx = cfg[bbIdx].size(); instIdx > 0; instIdx--) {
                     netOfGates.Print(cfg[bbIdx][instIdx - 1]);

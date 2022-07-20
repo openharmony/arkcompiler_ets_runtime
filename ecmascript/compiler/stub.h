@@ -16,10 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_STUB_H
 #define ECMASCRIPT_COMPILER_STUB_H
 
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/global_env_constants.h"
@@ -32,7 +29,7 @@ using namespace panda::ecmascript;
 class Stub {
 public:
     explicit Stub(const char *name, int argCount, Circuit *circuit)
-        : builder_(circuit), env_(argCount, &builder_), methodName_(name)
+        : builder_(circuit), acc_(circuit), env_(argCount, &builder_), methodName_(name)
     {
     }
     virtual ~Stub() = default;
@@ -479,6 +476,7 @@ private:
     GateRef FastBinaryOp(GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp);
     CircuitBuilder builder_;
+    GateAccessor acc_;
     Environment env_;
     std::string methodName_;
 };

@@ -85,15 +85,19 @@ public:
     bool UpdateValueLattice(GateRef gate, const ValueLattice &valueLattice);
     bool UpdateReachabilityLattice(GateRef gate, const ReachabilityLattice &reachabilityLattice);
     virtual bool Run(GateRef gate) = 0;
+    LatticeUpdateRule() : circuit_(nullptr), acc_(circuit_) {}
+    virtual ~LatticeUpdateRule() {}
 
 protected:
     std::function<ValueLattice &(GateRef)> valueLatticeMap_;
     std::function<ReachabilityLattice &(GateRef)> reachabilityLatticeMap_;
-    Circuit *circuit_ = nullptr;
+    Circuit *circuit_;
+    GateAccessor acc_;
 };
 
 class LatticeUpdateRuleSCCP : public LatticeUpdateRule {
 public:
+    ~LatticeUpdateRuleSCCP() override {}
     bool Run(GateRef gate) override;
     bool RunCircuitRoot(GateRef gate);
     bool RunStateEntry(GateRef gate);
@@ -191,11 +195,15 @@ public:
 
 class SubgraphRewriteRule {
 public:
+    SubgraphRewriteRule() : circuit_(nullptr), acc_(circuit_)
+    {
+    }
     void Initialize(Circuit *circuit);
     virtual bool Run(GateRef gate) = 0;
 
 protected:
     Circuit *circuit_ = nullptr;
+    GateAccessor acc_;
 };
 
 class SubgraphRewriteRuleCP : public SubgraphRewriteRule {
@@ -215,6 +223,7 @@ public:
 
 private:
     Circuit *circuit_;
+    GateAccessor acc_;
     LatticeUpdateRule *latticeUpdateRule_;
     std::map<GateRef, ValueLattice> valueLatticesMap_;
     std::map<GateRef, ReachabilityLattice> reachabilityLatticesMap_;
@@ -228,6 +237,7 @@ public:
 
 private:
     Circuit *circuit_;
+    GateAccessor acc_;
     SubgraphRewriteRule *subgraphRewriteRule_;
 };
 }  // namespace panda::ecmascript::kungfu

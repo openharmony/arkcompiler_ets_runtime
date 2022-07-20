@@ -16,12 +16,6 @@
 #ifndef ECMASCRIPT_COMPILER_SCHEDULER_H
 #define ECMASCRIPT_COMPILER_SCHEDULER_H
 
-#include <algorithm>
-#include <deque>
-#include <functional>
-#include <numeric>
-#include <unordered_map>
-
 #include "ecmascript/compiler/circuit.h"
 
 namespace panda::ecmascript::kungfu {

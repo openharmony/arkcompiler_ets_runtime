@@ -205,6 +205,7 @@ void LatticeUpdateRule::Initialize(Circuit *circuit,
                                    std::function<ReachabilityLattice &(GateRef)> reachabilityLattice)
 {
     circuit_ = circuit;
+    acc_ = GateAccessor(circuit);
     valueLatticeMap_ = std::move(valueLattice);
     reachabilityLatticeMap_ = std::move(reachabilityLattice);
 }
@@ -323,7 +324,7 @@ bool LatticeUpdateRuleSCCP::Run(GateRef gate)
         {OpCode::UNSIGNED_FLOAT_TO_INT, [&]() -> bool { return RunUnsignedFloatToInt(gate); }},
         {OpCode::BITCAST, [&]() -> bool { return RunBitCast(gate); }},
     };
-    return functionTable.at(GateAccessor(circuit_).GetOpCode(gate))();
+    return functionTable.at(acc_.GetOpCode(gate))();
 }
 
 bool LatticeUpdateRuleSCCP::RunCircuitRoot([[maybe_unused]] GateRef gate)
@@ -373,45 +374,45 @@ bool LatticeUpdateRuleSCCP::RunArgList([[maybe_unused]] GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunReturn(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunReturnVoid(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunThrow(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunOrdinaryBlock(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunIfBranch(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunSwitchBranch(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunIfTrue(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     const bool predicateMayBeTrue =
-        valueLatticeMap_(GateAccessor(circuit_).GetIn(previousState, 1)) <= ValueLattice(1);
+        valueLatticeMap_(acc_.GetIn(previousState, 1)) <= ValueLattice(1);
     return UpdateReachabilityLattice(gate,
                                      reachabilityLatticeMap_(previousState)
                                          * ReachabilityLattice(predicateMayBeTrue));
@@ -419,9 +420,9 @@ bool LatticeUpdateRuleSCCP::RunIfTrue(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunIfFalse(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     const bool predicateMayBeFalse =
-        valueLatticeMap_(GateAccessor(circuit_).GetIn(previousState, 1)) <= ValueLattice(0);
+        valueLatticeMap_(acc_.GetIn(previousState, 1)) <= ValueLattice(0);
     return UpdateReachabilityLattice(gate,
                                      reachabilityLatticeMap_(previousState)
                                          * ReachabilityLattice(predicateMayBeFalse));
@@ -430,23 +431,22 @@ bool LatticeUpdateRuleSCCP::RunIfFalse(GateRef gate)
 bool LatticeUpdateRuleSCCP::RunSwitchCase(GateRef gate)
 {
     const bool valueMayMatch =
-        valueLatticeMap_(GateAccessor(circuit_).GetIn(GateAccessor(circuit_).GetIn(gate, 0), 1))
-            <= ValueLattice(GateAccessor(circuit_).GetBitField(gate));
+        valueLatticeMap_(acc_.GetIn(acc_.GetIn(gate, 0), 1))
+            <= ValueLattice(acc_.GetBitField(gate));
     return UpdateReachabilityLattice(gate,
-                                     reachabilityLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0))
-                                         * ReachabilityLattice(valueMayMatch));
+                                     reachabilityLatticeMap_(acc_.GetIn(gate, 0)) * ReachabilityLattice(valueMayMatch));
 }
 
 bool LatticeUpdateRuleSCCP::RunDefaultCase(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunMerge(GateRef gate)
 {
     ReachabilityLattice reachable;
-    for (const auto &input : GateAccessor(circuit_).ConstIns(gate)) {
+    for (const auto &input : acc_.ConstIns(gate)) {
         reachable = reachable + reachabilityLatticeMap_(input);
     }
     return UpdateReachabilityLattice(gate, reachable);
@@ -455,7 +455,7 @@ bool LatticeUpdateRuleSCCP::RunMerge(GateRef gate)
 bool LatticeUpdateRuleSCCP::RunLoopBegin(GateRef gate)
 {
     ReachabilityLattice reachable;
-    for (const auto &input : GateAccessor(circuit_).ConstIns(gate)) {
+    for (const auto &input : acc_.ConstIns(gate)) {
         reachable = reachable + reachabilityLatticeMap_(input);
     }
     return UpdateReachabilityLattice(gate, reachable);
@@ -463,19 +463,19 @@ bool LatticeUpdateRuleSCCP::RunLoopBegin(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunLoopBack(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunValueSelector(GateRef gate)
 {
-    const auto relatedState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto relatedState = acc_.GetIn(gate, 0);
     ValueLattice value;
     size_t cnt = 0;
-    for (const auto &input : GateAccessor(circuit_).ConstIns(gate)) {
+    for (const auto &input : acc_.ConstIns(gate)) {
         if (cnt > 0) {
             value = value.Meet(reachabilityLatticeMap_(
-                GateAccessor(circuit_).GetIn(relatedState, cnt - 1)).Implies(valueLatticeMap_(input)));
+                acc_.GetIn(relatedState, cnt - 1)).Implies(valueLatticeMap_(input)));
         }
         cnt++;
     }
@@ -484,13 +484,13 @@ bool LatticeUpdateRuleSCCP::RunValueSelector(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunDependSelector(GateRef gate)
 {
-    const auto relatedState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto relatedState = acc_.GetIn(gate, 0);
     ValueLattice value;
     size_t cnt = 0;
-    for (const auto &input : GateAccessor(circuit_).ConstIns(gate)) {
+    for (const auto &input : acc_.ConstIns(gate)) {
         if (cnt > 0) {
             value = value.Meet(reachabilityLatticeMap_(
-                GateAccessor(circuit_).GetIn(relatedState, cnt - 1)).Implies(valueLatticeMap_(input)));
+                acc_.GetIn(relatedState, cnt - 1)).Implies(valueLatticeMap_(input)));
         }
         cnt++;
     }
@@ -502,8 +502,8 @@ bool LatticeUpdateRuleSCCP::RunDependSelector(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunDependRelay(GateRef gate)
 {
-    const auto relatedState = GateAccessor(circuit_).GetIn(gate, 0);
-    ValueLattice value = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const auto relatedState = acc_.GetIn(gate, 0);
+    ValueLattice value = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (!value.IsTop()) {
         value = ValueLattice(LatticeStatus::BOT);
     }
@@ -513,7 +513,7 @@ bool LatticeUpdateRuleSCCP::RunDependRelay(GateRef gate)
 bool LatticeUpdateRuleSCCP::RunDependAnd(GateRef gate)
 {
     ValueLattice value = ValueLattice(LatticeStatus::BOT);
-    for (const auto &input : GateAccessor(circuit_).ConstIns(gate)) {
+    for (const auto &input : acc_.ConstIns(gate)) {
         if (valueLatticeMap_(input).IsTop()) {
             value = ValueLattice(LatticeStatus::TOP);
         }
@@ -523,26 +523,26 @@ bool LatticeUpdateRuleSCCP::RunDependAnd(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunJSBytecode(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState))
         || UpdateValueLattice(gate, reachabilityLatticeMap_(gate).Implies(ValueLattice(LatticeStatus::BOT)));
 }
 
 bool LatticeUpdateRuleSCCP::RunIfSuccess(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunIfException(GateRef gate)
 {
-    const auto previousState = GateAccessor(circuit_).GetIn(gate, 0);
+    const auto previousState = acc_.GetIn(gate, 0);
     return UpdateReachabilityLattice(gate, reachabilityLatticeMap_(previousState));
 }
 
 bool LatticeUpdateRuleSCCP::RunGetException(GateRef gate)
 {
-    return UpdateValueLattice(gate, valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0)).Implies(
+    return UpdateValueLattice(gate, valueLatticeMap_(acc_.GetIn(gate, 0)).Implies(
         ValueLattice(LatticeStatus::BOT)));
 }
 
@@ -603,73 +603,73 @@ bool LatticeUpdateRuleSCCP::RunRelocatableData(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunConstant(GateRef gate)
 {
-    const auto constantValue = ValueLattice(GateAccessor(circuit_).GetBitField(gate));
+    const auto constantValue = ValueLattice(acc_.GetBitField(gate));
     return UpdateValueLattice(gate, constantValue);
 }
 
 bool LatticeUpdateRuleSCCP::RunZExtToInt64(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunZExtToInt32(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunZExtToInt16(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunZExtToArch(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunSExtToInt64(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunSExtToInt32(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunSExtToArch(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunTruncToInt32(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunTruncToInt1(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunTruncToInt16(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunRev(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     if (operandA.IsMid()) {
         return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value()));
     }
@@ -678,8 +678,8 @@ bool LatticeUpdateRuleSCCP::RunRev(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunAdd(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -691,8 +691,8 @@ bool LatticeUpdateRuleSCCP::RunAdd(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunSub(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -704,8 +704,8 @@ bool LatticeUpdateRuleSCCP::RunSub(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunMul(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -717,8 +717,8 @@ bool LatticeUpdateRuleSCCP::RunMul(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunExp(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -742,8 +742,8 @@ bool LatticeUpdateRuleSCCP::RunExp(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunSDiv(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -757,8 +757,8 @@ bool LatticeUpdateRuleSCCP::RunSDiv(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunSMod(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -772,8 +772,8 @@ bool LatticeUpdateRuleSCCP::RunSMod(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunUDiv(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -785,8 +785,8 @@ bool LatticeUpdateRuleSCCP::RunUDiv(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunUMod(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -798,8 +798,8 @@ bool LatticeUpdateRuleSCCP::RunUMod(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunFDiv(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -813,8 +813,8 @@ bool LatticeUpdateRuleSCCP::RunFDiv(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunFMod(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -828,8 +828,8 @@ bool LatticeUpdateRuleSCCP::RunFMod(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunAnd(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -841,8 +841,8 @@ bool LatticeUpdateRuleSCCP::RunAnd(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunXor(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -854,8 +854,8 @@ bool LatticeUpdateRuleSCCP::RunXor(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunOr(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -867,8 +867,8 @@ bool LatticeUpdateRuleSCCP::RunOr(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunLSL(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -880,8 +880,8 @@ bool LatticeUpdateRuleSCCP::RunLSL(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunLSR(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -893,8 +893,8 @@ bool LatticeUpdateRuleSCCP::RunLSR(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunASR(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -908,8 +908,8 @@ bool LatticeUpdateRuleSCCP::RunASR(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunSLT(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -923,8 +923,8 @@ bool LatticeUpdateRuleSCCP::RunSLT(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunSLE(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -938,8 +938,8 @@ bool LatticeUpdateRuleSCCP::RunSLE(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunSGT(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -953,8 +953,8 @@ bool LatticeUpdateRuleSCCP::RunSGT(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunSGE(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -968,8 +968,8 @@ bool LatticeUpdateRuleSCCP::RunSGE(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunULT(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -981,8 +981,8 @@ bool LatticeUpdateRuleSCCP::RunULT(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunULE(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -994,8 +994,8 @@ bool LatticeUpdateRuleSCCP::RunULE(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunUGT(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1007,8 +1007,8 @@ bool LatticeUpdateRuleSCCP::RunUGT(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunUGE(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1020,8 +1020,8 @@ bool LatticeUpdateRuleSCCP::RunUGE(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunFLT(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1035,8 +1035,8 @@ bool LatticeUpdateRuleSCCP::RunFLT(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunFLE(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1050,8 +1050,8 @@ bool LatticeUpdateRuleSCCP::RunFLE(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunFGT(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1065,8 +1065,8 @@ bool LatticeUpdateRuleSCCP::RunFGT(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunFGE(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1080,8 +1080,8 @@ bool LatticeUpdateRuleSCCP::RunFGE(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunEQ(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1093,8 +1093,8 @@ bool LatticeUpdateRuleSCCP::RunEQ(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunNE(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 1));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1116,49 +1116,50 @@ bool LatticeUpdateRuleSCCP::RunStore(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunTaggedToInt64(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunInt64ToTagged(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunSignedIntToFloat(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunUnsignedIntToFloat(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunFloatToSignedInt(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunUnsignedFloatToInt(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 bool LatticeUpdateRuleSCCP::RunBitCast(GateRef gate)
 {
-    const ValueLattice &operandA = valueLatticeMap_(GateAccessor(circuit_).GetIn(gate, 0));
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
 void SubgraphRewriteRule::Initialize(Circuit *circuit)
 {
     circuit_ = circuit;
+    acc_ = GateAccessor(circuit);
 }
 
 bool SubgraphRewriteRuleCP::Run(GateRef gate)
@@ -1167,25 +1168,26 @@ bool SubgraphRewriteRuleCP::Run(GateRef gate)
         {OpCode::ADD, [&]() -> bool { return RunAdd(gate); }},
         {OpCode::SUB, [&]() -> bool { return RunSub(gate); }},
     };
-    if (!functionTable.count(GateAccessor(circuit_).GetOpCode(gate))) {
+    if (!functionTable.count(acc_.GetOpCode(gate))) {
         return false;
     }
-    return functionTable.at(GateAccessor(circuit_).GetOpCode(gate))();
+    return functionTable.at(acc_.GetOpCode(gate))();
 }
 
 bool SubgraphRewriteRuleCP::RunAdd(GateRef gate)
 {
-    const auto &operandA = GateAccessor(circuit_).GetIn(gate, 0);
-    const auto &operandB = GateAccessor(circuit_).GetIn(gate, 1);
-    if (GateAccessor(circuit_).GetOpCode(operandA) == OpCode(OpCode::CONSTANT)
-        && GateAccessor(circuit_).GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
-        circuit_->DeleteIn(gate, 0);
-        circuit_->DeleteIn(gate, 1);
-        GateAccessor(circuit_).SetOpCode(gate, OpCode(OpCode::CONSTANT));
-        circuit_->NewIn(gate, 0, Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST)));
-        const auto valueA = GateAccessor(circuit_).GetBitField(operandA);
-        const auto valueB = GateAccessor(circuit_).GetBitField(operandB);
-        GateAccessor(circuit_).SetBitField(gate, valueA + valueB);
+    GateAccessor acc(circuit_);
+    const auto &operandA = acc_.GetIn(gate, 0);
+    const auto &operandB = acc_.GetIn(gate, 1);
+    if (acc_.GetOpCode(operandA) == OpCode(OpCode::CONSTANT)
+        && acc_.GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
+        acc_.DeleteIn(gate, 0);
+        acc_.DeleteIn(gate, 1);
+        acc_.SetOpCode(gate, OpCode(OpCode::CONSTANT));
+        acc_.NewIn(gate, 0, Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST)));
+        const auto valueA = acc_.GetBitField(operandA);
+        const auto valueB = acc_.GetBitField(operandB);
+        acc_.SetBitField(gate, valueA + valueB);
         return true;
     }
     return false;
@@ -1193,30 +1195,32 @@ bool SubgraphRewriteRuleCP::RunAdd(GateRef gate)
 
 bool SubgraphRewriteRuleCP::RunSub(GateRef gate)
 {
-    const auto &operandA = GateAccessor(circuit_).GetIn(gate, 0);
-    const auto &operandB = GateAccessor(circuit_).GetIn(gate, 1);
-    if (GateAccessor(circuit_).GetOpCode(operandA) == OpCode(OpCode::CONSTANT)
-        && GateAccessor(circuit_).GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
-        circuit_->DeleteIn(gate, 0);
-        circuit_->DeleteIn(gate, 1);
-        GateAccessor(circuit_).SetOpCode(gate, OpCode(OpCode::CONSTANT));
-        circuit_->NewIn(gate, 0, Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST)));
-        const auto valueA = GateAccessor(circuit_).GetBitField(operandA);
-        const auto valueB = GateAccessor(circuit_).GetBitField(operandB);
-        GateAccessor(circuit_).SetBitField(gate, valueA - valueB);
+    GateAccessor acc(circuit_);
+    const auto &operandA = acc_.GetIn(gate, 0);
+    const auto &operandB = acc_.GetIn(gate, 1);
+    if (acc_.GetOpCode(operandA) == OpCode(OpCode::CONSTANT)
+        && acc_.GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
+        acc_.DeleteIn(gate, 0);
+        acc_.DeleteIn(gate, 1);
+        acc_.SetOpCode(gate, OpCode(OpCode::CONSTANT));
+        acc_.NewIn(gate, 0, Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST)));
+        const auto valueA = acc_.GetBitField(operandA);
+        const auto valueB = acc_.GetBitField(operandB);
+        acc_.SetBitField(gate, valueA - valueB);
         return true;
     }
     return false;
 }
 
 LatticeEquationsSystemSolverFramework::LatticeEquationsSystemSolverFramework(LatticeUpdateRule *latticeUpdateRule)
-    : circuit_(nullptr), latticeUpdateRule_(latticeUpdateRule)
+    : circuit_(nullptr), acc_(nullptr), latticeUpdateRule_(latticeUpdateRule)
 {
 }
 
 bool LatticeEquationsSystemSolverFramework::Run(Circuit *circuit, bool enableLogging)
 {
     circuit_ = circuit;
+    acc_ = GateAccessor(circuit);
     auto valueLatticeMapFunction = [&](GateRef gate) -> ValueLattice & {
         return valueLatticesMap_[gate];
     };
@@ -1226,7 +1230,9 @@ bool LatticeEquationsSystemSolverFramework::Run(Circuit *circuit, bool enableLog
     latticeUpdateRule_->Initialize(circuit_, valueLatticeMapFunction, reachabilityLatticeMapFunction);
     std::deque<GateRef> workList;
     std::set<GateRef> workSet;
-    for (auto gate : circuit_->GetAllGates()) {
+    std::vector<GateRef> gates;
+    circuit_->GetAllGates(gates);
+    for (auto gate : gates) {
         workList.push_back(gate);
         workSet.insert(gate);
     }
@@ -1234,8 +1240,8 @@ bool LatticeEquationsSystemSolverFramework::Run(Circuit *circuit, bool enableLog
         const auto gate = workList.front();
         workList.pop_front();
         workSet.erase(gate);
-        if (latticeUpdateRule_->Run(gate) || GateAccessor(circuit_).GetOpCode(gate).IsCFGMerge()) {
-            for (const auto &output : GateAccessor(circuit_).ConstUses(gate)) {
+        if (latticeUpdateRule_->Run(gate) || acc_.GetOpCode(gate).IsCFGMerge()) {
+            for (const auto &output : acc_.ConstUses(gate)) {
                 if (!workSet.count(output)) {
                     workList.push_back(output);  // work queue
                     workSet.insert(output);
@@ -1244,7 +1250,8 @@ bool LatticeEquationsSystemSolverFramework::Run(Circuit *circuit, bool enableLog
         }
     }
     if (enableLogging) {
-        for (auto gate : circuit_->GetAllGates()) {
+        circuit_->GetAllGates(gates);
+        for (auto gate : gates) {
             if (valueLatticesMap_.count(gate)) {
                 if (valueLatticesMap_.at(gate).IsTop()) {
                     std::cerr << "[Top]";
@@ -1262,7 +1269,7 @@ bool LatticeEquationsSystemSolverFramework::Run(Circuit *circuit, bool enableLog
                 }
             }
             std::cerr << " ";
-            GateAccessor(circuit_).Print(gate);
+            acc_.Print(gate);
         }
     }
     return true;
@@ -1279,17 +1286,20 @@ const ReachabilityLattice &LatticeEquationsSystemSolverFramework::GetReachabilit
 }
 
 SubGraphRewriteFramework::SubGraphRewriteFramework(SubgraphRewriteRule *subgraphRewriteRule)
-    : circuit_(nullptr), subgraphRewriteRule_(subgraphRewriteRule)
+    : circuit_(nullptr), acc_(nullptr), subgraphRewriteRule_(subgraphRewriteRule)
 {
 }
 
 bool SubGraphRewriteFramework::Run(Circuit *circuit, bool enableLogging)
 {
     circuit_ = circuit;
+    acc_ = GateAccessor(circuit);
     subgraphRewriteRule_->Initialize(circuit_);
     std::deque<GateRef> workList;
     std::set<GateRef> workSet;
-    for (auto gate : circuit_->GetAllGates()) {
+    std::vector<GateRef> gates;
+    circuit_->GetAllGates(gates);
+    for (auto gate : gates) {
         workList.push_back(gate);
         workSet.insert(gate);
     }
@@ -1298,7 +1308,7 @@ bool SubGraphRewriteFramework::Run(Circuit *circuit, bool enableLogging)
         workList.pop_front();
         workSet.erase(gate);
         if (subgraphRewriteRule_->Run(gate)) {
-            for (const auto &output : GateAccessor(circuit_).ConstUses(gate)) {
+            for (const auto &output : acc_.ConstUses(gate)) {
                 if (!workSet.count(output)) {
                     workList.push_front(output);  // work stack
                     workSet.insert(output);
@@ -1307,8 +1317,9 @@ bool SubGraphRewriteFramework::Run(Circuit *circuit, bool enableLogging)
         }
     }
     if (enableLogging) {
-        for (auto gate : circuit_->GetAllGates()) {
-            GateAccessor(circuit_).Print(gate);
+        circuit_->GetAllGates(gates);
+        for (auto gate : gates) {
+            acc_.Print(gate);
         }
     }
     return true;

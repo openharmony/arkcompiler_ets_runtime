@@ -313,33 +313,36 @@ public:
 
     ~GateAccessor() = default;
 
-    [[nodiscard]] size_t GetNumIns(GateRef gate) const;
-    [[nodiscard]] OpCode GetOpCode(GateRef gate) const;
+    void GetInVector(GateRef gate, std::vector<GateRef>& ins) const;
+    void GetOutVector(GateRef gate, std::vector<GateRef>& outs) const;
+    size_t GetNumIns(GateRef gate) const;
+    OpCode GetOpCode(GateRef gate) const;
     void SetOpCode(GateRef gate, OpCode::Op opcode);
-    [[nodiscard]] BitField GetBitField(GateRef gate) const;
+    BitField GetBitField(GateRef gate) const;
     void SetBitField(GateRef gate, BitField bitField);
     void Print(GateRef gate) const;
-    [[nodiscard]] GateId GetId(GateRef gate) const;
-    [[nodiscard]] GateRef GetValueIn(GateRef gate, size_t idx = 0) const;
-    [[nodiscard]] size_t GetNumValueIn(GateRef gate) const;
-    [[nodiscard]] GateRef GetIn(GateRef gate, size_t idx) const;
-    [[nodiscard]] GateRef GetState(GateRef gate, size_t idx = 0) const;
-    [[nodiscard]] GateRef GetDep(GateRef gate, size_t idx = 0) const;
-    [[nodiscard]] size_t GetImmediateId(GateRef gate) const;
-    [[nodiscard]] bool IsDependIn(const UsesIterator &useIt) const;
+    GateId GetId(GateRef gate) const;
+    GateRef GetValueIn(GateRef gate, size_t idx = 0) const;
+    size_t GetNumValueIn(GateRef gate) const;
+    GateRef GetIn(GateRef gate, size_t idx) const;
+    GateRef GetState(GateRef gate, size_t idx = 0) const;
+    GateRef GetDep(GateRef gate, size_t idx = 0) const;
+    size_t GetImmediateId(GateRef gate) const;
+    bool IsDependIn(const UsesIterator &useIt) const;
     void SetDep(GateRef gate, GateRef depGate, size_t idx = 0);
     void ReplaceIn(UsesIterator &useIt, GateRef replaceGate);
     // Add for lowering
-    [[nodiscard]] GateType GetGateType(GateRef gate) const;
+    GateType GetGateType(GateRef gate) const;
     void SetGateType(GateRef gate, GateType gt);
     void DeleteExceptionDep(UsesIterator &useIt);
     void DeleteIn(UsesIterator &useIt);
+    void DeleteIn(GateRef gate, size_t idx);
     void DeleteGate(UsesIterator &useIt);
     void DecreaseIn(UsesIterator &useIt);
     void NewIn(GateRef gate, size_t idx, GateRef in);
-    [[nodiscard]] size_t GetStateCount(GateRef gate) const;
-    [[nodiscard]] size_t GetDependCount(GateRef gate) const;
-    [[nodiscard]] size_t GetInValueCount(GateRef gate) const;
+    size_t GetStateCount(GateRef gate) const;
+    size_t GetDependCount(GateRef gate) const;
+    size_t GetInValueCount(GateRef gate) const;
     void ReplaceAllDepends(GateRef gate, GateRef replaceDependIn);
     void ReplaceIn(GateRef gate, size_t index, GateRef in);
     void ReplaceStateIn(GateRef gate, GateRef in, size_t index = 0);
@@ -347,14 +350,15 @@ public:
     void ReplaceValueIn(GateRef gate, GateRef in, size_t index = 0);
     void DeleteGate(GateRef gate);
     MachineType GetMachineType(GateRef gate) const;
+    void SetMachineType(GateRef gate, MachineType type);
     GateRef GetConstantGate(MachineType bitValue, BitField bitfield, GateType type) const;
-    bool IsSelector(GateRef g) const
-    {
-        return GetGateType(g).GetType() == OpCode::VALUE_SELECTOR;
-    }
+    bool IsInGateNull(GateRef gate, size_t idx) const;
+    bool IsSelector(GateRef g) const;
+    bool IsControlCase(GateRef gate) const;
+    bool IsLoopHead(GateRef gate) const;
 
 private:
-    [[nodiscard]] ConstUsesIterator ConstUseBegin(GateRef gate) const
+    ConstUsesIterator ConstUseBegin(GateRef gate) const
     {
         if (circuit_->LoadGatePtrConst(gate)->IsFirstOutNull()) {
             return ConstUsesIterator(circuit_, nullptr);
@@ -363,12 +367,12 @@ private:
         return ConstUsesIterator(circuit_, use);
     }
 
-    [[nodiscard]] ConstUsesIterator ConstUseEnd() const
+    ConstUsesIterator ConstUseEnd() const
     {
         return ConstUsesIterator(circuit_, nullptr);
     }
 
-    [[nodiscard]] UsesIterator UseBegin(GateRef gate) const
+    UsesIterator UseBegin(GateRef gate) const
     {
         if (circuit_->LoadGatePtrConst(gate)->IsFirstOutNull()) {
             return UsesIterator(circuit_, nullptr, 0);
@@ -377,29 +381,29 @@ private:
         return UsesIterator(circuit_, use, gate);
     }
 
-    [[nodiscard]] UsesIterator UseEnd() const
+    UsesIterator UseEnd() const
     {
         return UsesIterator(circuit_, nullptr, 0);
     }
 
-    [[nodiscard]] ConstInsIterator ConstInBegin(GateRef gate) const
+    ConstInsIterator ConstInBegin(GateRef gate) const
     {
         return ConstInsIterator(circuit_, &reinterpret_cast<const In *>(circuit_->LoadGatePtrConst(gate) + 1)[0]);
     }
 
-    [[nodiscard]] ConstInsIterator ConstInEnd(GateRef gate) const
+    ConstInsIterator ConstInEnd(GateRef gate) const
     {
         auto endIndex = circuit_->LoadGatePtrConst(gate)->GetNumIns();
         return ConstInsIterator(circuit_,
                                 &reinterpret_cast<const In *>(circuit_->LoadGatePtrConst(gate) + 1)[endIndex]);
     }
 
-    [[nodiscard]] InsIterator InBegin(GateRef gate)
+    InsIterator InBegin(GateRef gate)
     {
         return InsIterator(circuit_, &reinterpret_cast<In *>(circuit_->LoadGatePtr(gate) + 1)[0]);
     }
 
-    [[nodiscard]] InsIterator InEnd(GateRef gate)
+    InsIterator InEnd(GateRef gate)
     {
         auto endIndex = circuit_->LoadGatePtrConst(gate)->GetNumIns();
         return InsIterator(circuit_, &reinterpret_cast<In *>(circuit_->LoadGatePtr(gate) + 1)[endIndex]);

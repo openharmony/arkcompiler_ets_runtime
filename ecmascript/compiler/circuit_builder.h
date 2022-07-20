@@ -188,8 +188,11 @@ private:
 
 class CircuitBuilder {
 public:
-    explicit CircuitBuilder(Circuit *circuit) : circuit_(circuit) {}
-    explicit CircuitBuilder(Circuit *circuit, CompilationConfig *cmpCfg) : circuit_(circuit), cmpCfg_(cmpCfg) {}
+    explicit CircuitBuilder(Circuit *circuit) : circuit_(circuit), acc_(circuit) {}
+    explicit CircuitBuilder(Circuit *circuit, CompilationConfig *cmpCfg)
+        : circuit_(circuit), acc_(circuit), cmpCfg_(cmpCfg)
+    {
+    }
     ~CircuitBuilder() = default;
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
@@ -401,6 +404,7 @@ public:
 
 private:
     Circuit *circuit_ {nullptr};
+    GateAccessor acc_;
     Environment *env_ {nullptr};
     CompilationConfig *cmpCfg_ {nullptr};
 };
@@ -646,14 +650,6 @@ public:
     GateRef AddPhiOperand(GateRef val);
     GateRef AddOperandToSelector(GateRef val, size_t idx, GateRef in);
     GateRef TryRemoveTrivialPhi(GateRef phi);
-    bool IsSelector(GateRef gate) const
-    {
-        return env_->GetCircuit()->IsSelector(gate);
-    }
-    bool IsSelector(const Gate *gate) const
-    {
-        return gate->GetOpCode() == OpCode::VALUE_SELECTOR;
-    }
     uint32_t GetId() const
     {
         return id_;
