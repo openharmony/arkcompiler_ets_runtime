@@ -147,9 +147,11 @@ void GateAccessor::DeleteExceptionDep(UsesIterator &useIt)
         size_t idx = useIt.GetIndex();
         auto merge = GetState(*useIt, 0);
         circuit_->DecreaseIn(merge, idx - 1);
-        auto valueSelector = *(Uses(merge).begin());
-        if (circuit_->GetOpCode(valueSelector) == OpCode::VALUE_SELECTOR) {
-            circuit_->DecreaseIn(valueSelector, idx);
+        auto mergeUses = Uses(merge);
+        for (auto useGate : mergeUses) {
+            if (circuit_->GetOpCode(useGate) == OpCode::VALUE_SELECTOR) {
+                circuit_->DecreaseIn(useGate, idx);
+            }
         }
         DecreaseIn(useIt);
     }

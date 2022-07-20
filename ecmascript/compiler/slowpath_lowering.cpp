@@ -1021,9 +1021,7 @@ void SlowPathLowering::LowerThrowConstAssignment(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerThrowThrowNotExists(GateRef gate, GateRef glue)
 {
     const int id = RTSTUB_ID(ThrowThrowNotExists);
-    // 1: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0)});
+    GateRef newGate = LowerCallRuntime(glue, id, {});
     ReplaceHirToThrowCall(gate, newGate);
 }
 
@@ -1115,7 +1113,7 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
         { loadException, holeCst, val }, VariableType::INT64().GetGateType());
     auto uses = acc_.Uses(hirGate);
     for (auto it = uses.begin(); it != uses.end(); it++) {
-        if (acc_.GetDep(*it) == hirGate && acc_.IsDependIn(it)) {
+        if (acc_.GetOpCode(*it) != OpCode::VALUE_SELECTOR && acc_.IsDependIn(it)) {
             acc_.ReplaceIn(it, clearException);
         } else {
             acc_.ReplaceIn(it, loadException);
@@ -1651,25 +1649,22 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
     GateRef condition = builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE);
     GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition);
     GateRef ifTrue = builder_.IfTrue(ifBranch);
-    trueState.emplace_back(ifTrue);
     GateRef ifFalse = builder_.IfFalse(ifBranch);
+    trueState.emplace_back(isEqualJump ? ifTrue : ifFalse);
 
     // (GET_ACC().IsInt() && GET_ACC().GetInt())
     std::vector<GateRef> intFalseState;
-    ifBranch = builder_.Branch(ifFalse, builder_.TaggedIsInt(value));
+    ifBranch = isEqualJump ? builder_.Branch(ifFalse, builder_.TaggedIsInt(value))
+        : builder_.Branch(ifTrue, builder_.TaggedIsInt(value));
     GateRef isInt = builder_.IfTrue(ifBranch);
     GateRef notInt = builder_.IfFalse(ifBranch);
     intFalseState.emplace_back(notInt);
     condition = builder_.Equal(builder_.TaggedGetInt(value), builder_.Int32(0));
     ifBranch = builder_.Branch(isInt, condition);
     GateRef isZero = builder_.IfTrue(ifBranch);
-    trueState.emplace_back(isZero);
     GateRef notZero = builder_.IfFalse(ifBranch);
-    if (isEqualJump) {
-        intFalseState.emplace_back(notZero);
-    } else {
-        intFalseState.emplace_back(isZero);
-    }
+    trueState.emplace_back(isEqualJump ? isZero : notZero);
+    intFalseState.emplace_back(isEqualJump ? notZero : isZero);
     auto mergeIntState = builder_.Merge(intFalseState.data(), intFalseState.size());
 
     // (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)
@@ -1681,13 +1676,9 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
     condition = builder_.Equal(builder_.TaggedCastToDouble(value), builder_.Double(0));
     ifBranch = builder_.Branch(isDouble, condition);
     GateRef isDoubleZero = builder_.IfTrue(ifBranch);
-    trueState.emplace_back(isDoubleZero);
     GateRef notDoubleZero = builder_.IfFalse(ifBranch);
-    if (isEqualJump) {
-        doubleFalseState.emplace_back(notDoubleZero);
-    } else {
-        doubleFalseState.emplace_back(isDoubleZero);
-    }
+    trueState.emplace_back(isEqualJump ? isDoubleZero : notDoubleZero);
+    doubleFalseState.emplace_back(isEqualJump ? notDoubleZero : isDoubleZero);
     auto mergeFalseState = builder_.Merge(doubleFalseState.data(), doubleFalseState.size());
 
     GateRef mergeTrueState = builder_.Merge(trueState.data(), trueState.size());
@@ -3005,8 +2996,8 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
     std::vector<GateRef> failControl;
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef bitFieldOffset = builder_.IntPtr(JSGeneratorObject::BIT_FIELD_OFFSET);
-    GateRef bitField = builder_.Load(VariableType::INT64(), obj, bitFieldOffset);
-    auto bitfieldlsr = builder_.Int32LSR(builder_.TruncInt64ToInt32(bitField),
+    GateRef bitField = builder_.Load(VariableType::INT32(), obj, bitFieldOffset);
+    auto bitfieldlsr = builder_.Int32LSR(bitField,
         builder_.Int32(JSGeneratorObject::ResumeModeBits::START_BIT));
     GateRef resumeModeBits = builder_.Int32And(
         bitfieldlsr,

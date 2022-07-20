@@ -197,6 +197,15 @@ struct BytecodeRegion {
     {
         return id < target.id;
     }
+
+    void SortCatches()
+    {
+        if (catchs.size() > 1) {
+            std::sort(catchs.begin(), catchs.end(), [](BytecodeRegion *first, BytecodeRegion *second) {
+                return first->start < second->start;
+            });
+        }
+    }
 };
 
 using BytecodeGraph = std::vector<BytecodeRegion>;
@@ -478,6 +487,7 @@ private:
     void ComputeDomFrontiers(const std::vector<size_t> &immDom);
     void RemoveDeadRegions(const std::map<size_t, size_t> &dfsTimestamp);
     void InsertPhi();
+    void InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo);
     void UpdateCFG();
     // build circuit
     void BuildCircuitArgs();
@@ -501,6 +511,7 @@ private:
     void PrintGraph();
     void PrintBytecodeInfo();
     void PrintBBInfo();
+    void PrintDefsitesInfo(const std::map<uint16_t, std::set<size_t>> &defsitesInfo);
 
     inline bool IsEntryBlock(const size_t bbId) const
     {
