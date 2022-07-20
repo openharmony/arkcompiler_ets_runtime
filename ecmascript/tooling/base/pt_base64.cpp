@@ -29,6 +29,7 @@ static uint8_t decodeMap[] = {
     255, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 255, 255, 255, 255, 255
 };
+static char encodeMap[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"};
 uint32_t PtBase64::Decode(const std::string &input, std::string &output)
 {
     size_t srcLen = input.size();
@@ -72,5 +73,53 @@ uint32_t PtBase64::Decode(const std::string &input, std::string &output)
     strDecode.resize(decodeLen);
     output = std::move(strDecode);
     return decodeLen;
+}
+
+uint32_t PtBase64::Encode(const std::string &input, std::string &output)
+{
+    uint32_t srcLen = input.size();
+    if (srcLen == 0) {
+        return 0;
+    }
+
+    uint32_t lastLen = srcLen % DECODE_STR_LEN;
+    uint32_t encodeLen;
+    uint32_t equalsCnt;
+    if (lastLen == 0) {
+        encodeLen = srcLen / DECODE_STR_LEN * ENCODE_STR_LEN;
+        equalsCnt = 0;
+    } else {
+        encodeLen = (srcLen / DECODE_STR_LEN + 1) * ENCODE_STR_LEN;
+        equalsCnt = DECODE_STR_LEN - lastLen;
+    }
+
+    uint32_t i = 0;
+    uint32_t j = 0;
+    uint32_t index = 0;
+    std::string strEncode;
+    strEncode.resize(encodeLen);
+    const char* src = input.data();
+    while (i + 3 < encodeLen) { // 3: the last encode str
+        index = src[j] >> 2; // 2: shift 2bits
+        strEncode[i] = encodeMap[index];
+        index = ((src[j] & 0x03) << 4) | (src[j + 1] >> 4); // 4: shift 4bits
+        strEncode[i + 1] = encodeMap[index];
+        index = ((src[j + 1] & 0x0F) << 2) | (src[j + 2] >> 6); // 2: shift 2bits, 6: shift 6bits
+        strEncode[i + 2] = encodeMap[index]; // 2: the second char
+        index = src[j + 2] & 0x3F; // 2: the second char
+        strEncode[i + 3] = encodeMap[index]; // 3: the third char
+
+        i += ENCODE_STR_LEN;
+        j += DECODE_STR_LEN;
+    }
+
+    if (equalsCnt == 1) {
+        strEncode[encodeLen - 1] = '=';
+    } else if (equalsCnt == 2) { // 2: Equal's count
+        strEncode[encodeLen - 1] = '=';
+        strEncode[encodeLen - 2] = '='; // 2: the last two chars
+    }
+    output = std::move(strEncode);
+    return encodeLen;
 }
 }  // namespace panda::ecmascript::tooling

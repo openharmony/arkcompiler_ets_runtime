@@ -42,23 +42,31 @@ public:
 
 HWTEST_F_L0(PtBase64Test, ShortTextTest)
 {
-    std::string src = "SGVsbG8=";
+    std::string dec = "Hello";
+    std::string enc;
     std::string des;
-    PtBase64 ptBase64;
-    uint32_t len = ptBase64.Decode(src, des);
+    uint32_t len = PtBase64::Encode(dec, enc);
+    EXPECT_EQ(static_cast<int>(len), 8);
+    EXPECT_EQ(enc, "SGVsbG8=");
+
+    len = PtBase64::Decode(enc, des);
     EXPECT_EQ(static_cast<int>(len), 5);
     EXPECT_EQ(des, "Hello");
 }
 
 HWTEST_F_L0(PtBase64Test, LongTextTest)
 {
-    std::string src = "SWYgeW91IGNhbiBzZWUgdGhpcyBtZXNzYWdlLCBpdCBtZWFucyB0aGF0IFB0QmFzZTY0RGVjb2RlIHdvcmtzIHdlbGw=";
-    std::string str = "If you can see this message, it means that PtBase64Decode works well";
+    std::string enc = "SWYgeW91IGNhbiBzZWUgdGhpcyBtZXNzYWdlLCBpdCBtZWFucyB0aGF0IFB0QmFzZTY0RGVjb2RlIHdvcmtzIHdlbGw=";
+    std::string dec = "If you can see this message, it means that PtBase64Decode works well";
     std::string des;
-    PtBase64 ptBase64;
-    uint32_t len = ptBase64.Decode(src, des);
+
+    uint32_t len = PtBase64::Encode(dec, des);
+    EXPECT_EQ(static_cast<int>(len), 92);
+    EXPECT_EQ(enc, des);
+
+    len = PtBase64::Decode(enc, des);
     EXPECT_EQ(static_cast<int>(len), 68);
-    EXPECT_EQ(des, str);
+    EXPECT_EQ(des, dec);
 }
 
 HWTEST_F_L0(PtBase64Test, ErrorTextTest)
@@ -67,6 +75,10 @@ HWTEST_F_L0(PtBase64Test, ErrorTextTest)
     std::string des;
     PtBase64 ptBase64;
     uint32_t len = ptBase64.Decode(src, des);
+    EXPECT_EQ(static_cast<int>(len), 0);
+    EXPECT_EQ(des, "");
+
+    len = PtBase64::Encode("", des);
     EXPECT_EQ(static_cast<int>(len), 0);
     EXPECT_EQ(des, "");
 }

@@ -25,6 +25,7 @@ public:
     ~PtBase64() = default;
 
     static uint32_t Decode(const std::string &input, std::string &output);
+    static uint32_t Encode(const std::string &input, std::string &output);
 };
 }  // namespace panda::ecmascript::tooling
 #endif
