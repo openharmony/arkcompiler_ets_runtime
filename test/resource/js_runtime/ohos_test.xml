@@ -22,6 +22,7 @@
             <option name="push" value="obj/ark/js_runtime/ecmascript/tooling/test/RangeError.abc -> /data/test" src="out"/>
             <option name="push" value="obj/ark/js_runtime/ecmascript/tooling/test/syntaxException.abc -> /data/test" src="out"/>
             <option name="push" value="obj/ark/js_runtime/ecmascript/tooling/test/throwException.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/ark/js_runtime/ecmascript/tooling/test/StepInto.abc -> /data/test" src="out"/>
             <option name="push" value="test/test/libjsdebugtest.so -> /data/test" src="out"/>
             <option name="push" value="test/test/libdebugger_entry.so -> /data/test" src="out"/>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
