@@ -156,7 +156,7 @@ public:
 
 private:
     static HourCycleOption OptionToHourCycle(const std::string &hc);
-
+    // 2: number of elements
     static Value TrackValue(int32_t beginning, int32_t ending, std::array<int32_t, 2> begin,
                             std::array<int32_t, 2> end);
 

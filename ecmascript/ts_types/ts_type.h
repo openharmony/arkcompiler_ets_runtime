@@ -26,7 +26,6 @@
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
 namespace panda::ecmascript {
-
 class TSType : public TaggedObject {
 public:
     static constexpr size_t BIT_FIELD_OFFSET = TaggedObjectSize();

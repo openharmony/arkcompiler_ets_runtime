@@ -473,52 +473,60 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
         uint8_t opCode = byteCode.GetU8(GetCurrentPC());
         switch (opCode) {
             case RegExpOpCode::OP_DOTS:
-            case RegExpOpCode::OP_ALL:
+            case RegExpOpCode::OP_ALL: {
                 if (!HandleOpAll(opCode)) {
                     return false;
                 }
                 break;
+            }
             case RegExpOpCode::OP_CHAR32:
-            case RegExpOpCode::OP_CHAR:
+            case RegExpOpCode::OP_CHAR: {
                 if (!HandleOpChar(byteCode, opCode)) {
                     return false;
                 }
                 break;
+            }
             case RegExpOpCode::OP_NOT_WORD_BOUNDARY:
-            case RegExpOpCode::OP_WORD_BOUNDARY:
+            case RegExpOpCode::OP_WORD_BOUNDARY: {
                 if (!HandleOpWordBoundary(opCode)) {
                     return false;
                 }
                 break;
-            case RegExpOpCode::OP_LINE_START:
+            }
+            case RegExpOpCode::OP_LINE_START: {
                 if (!HandleOpLineStart(opCode)) {
                     return false;
                 }
                 break;
-            case RegExpOpCode::OP_LINE_END:
+            }
+            case RegExpOpCode::OP_LINE_END: {
                 if (!HandleOpLineEnd(opCode)) {
                     return false;
                 }
                 break;
-            case RegExpOpCode::OP_SAVE_START:
+            }
+            case RegExpOpCode::OP_SAVE_START: {
                 HandleOpSaveStart(byteCode, opCode);
                 break;
-            case RegExpOpCode::OP_SAVE_END:
+            }
+            case RegExpOpCode::OP_SAVE_END: {
                 HandleOpSaveEnd(byteCode, opCode);
                 break;
+            }
             case RegExpOpCode::OP_GOTO: {
                 uint32_t offset = byteCode.GetU32(GetCurrentPC() + 1);
                 Advance(opCode, offset);
-            } break;
+                break;
+            }
             case RegExpOpCode::OP_MATCH: {
                 // jump to match ahead
                 if (MatchFailed(true)) {
                     return false;
                 }
-            } break;
-            case RegExpOpCode::OP_MATCH_END: {
+                break;
+            }
+            case RegExpOpCode::OP_MATCH_END:
                 return true;
-            } break;
             case RegExpOpCode::OP_SAVE_RESET:
                 HandleOpSaveReset(byteCode, opCode);
                 break;
@@ -530,19 +538,20 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
             case RegExpOpCode::OP_SPLIT_FIRST:
                 HandleOpSplitFirst(byteCode, opCode);
                 break;
-            case RegExpOpCode::OP_PREV:
+            case RegExpOpCode::OP_PREV: {
                 if (!HandleOpPrev(opCode)) {
                     return false;
                 }
                 break;
+            }
             case RegExpOpCode::OP_LOOP_GREEDY:
             case RegExpOpCode::OP_LOOP:
                 HandleOpLoop(byteCode, opCode);
                 break;
-            case RegExpOpCode::OP_PUSH_CHAR: {
+            case RegExpOpCode::OP_PUSH_CHAR:
                 PushStack(reinterpret_cast<uintptr_t>(GetCurrentPtr()));
                 Advance(opCode);
-            } break;
+                break;
             case RegExpOpCode::OP_CHECK_CHAR: {
                 if (PopStack() != reinterpret_cast<uintptr_t>(GetCurrentPtr())) {
                     Advance(opCode);
@@ -550,31 +559,35 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
                     uint32_t offset = byteCode.GetU32(GetCurrentPC() + 1);
                     Advance(opCode, offset);
                 }
-            } break;
-            case RegExpOpCode::OP_PUSH: {
+                break;
+            }
+            case RegExpOpCode::OP_PUSH:
                 PushStack(0);
                 Advance(opCode);
-            } break;
-            case RegExpOpCode::OP_POP: {
+                break;
+            case RegExpOpCode::OP_POP:
                 PopStack();
                 Advance(opCode);
-            } break;
-            case RegExpOpCode::OP_RANGE32:
+                break;
+            case RegExpOpCode::OP_RANGE32: {
                 if (!HandleOpRange32(byteCode)) {
                     return false;
                 }
                 break;
-            case RegExpOpCode::OP_RANGE:
+            }
+            case RegExpOpCode::OP_RANGE: {
                 if (!HandleOpRange(byteCode)) {
                     return false;
                 }
                 break;
+            }
             case RegExpOpCode::OP_BACKREFERENCE:
-            case RegExpOpCode::OP_BACKWARD_BACKREFERENCE:
+            case RegExpOpCode::OP_BACKWARD_BACKREFERENCE: {
                 if (!HandleOpBackReference(byteCode, opCode)) {
                     return false;
                 }
                 break;
+            }
             default:
                 UNREACHABLE();
         }

@@ -212,7 +212,7 @@ HWTEST_F_L0(BuiltinsSetTest, ForEach)
         JSSet *jsSet = JSSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
         EXPECT_EQ(jsSet->GetSize(), i + 1);
     }
-    // test foreach;
+    // test foreach
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func =
         factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(), reinterpret_cast<void *>(TestClass::TestFunc));

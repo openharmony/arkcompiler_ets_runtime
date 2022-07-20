@@ -1045,7 +1045,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, ConstantPool 
                 {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                   "Derived constructor must return object or undefined");
+                        "Derived constructor must return object or undefined");
                     thread->SetException(error.GetTaggedValue());
                 }
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
@@ -1093,7 +1093,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, ConstantPool 
                 {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                   "Derived constructor must return object or undefined");
+                        "Derived constructor must return object or undefined");
                     thread->SetException(error.GetTaggedValue());
                 }
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
@@ -1990,7 +1990,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, ConstantPool 
         uint16_t firstArgRegIdx = READ_INST_8_3();
         LOG_INST() << "intrinsics::newobjDynrange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             thread->CheckSafepoint();
             ctor = GET_VREG_VALUE(firstArgRegIdx);  // may be moved by GC

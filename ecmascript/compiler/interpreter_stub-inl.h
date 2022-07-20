@@ -81,8 +81,8 @@ GateRef InterpreterStub::ReadInst4_0(GateRef pc)
 
 GateRef InterpreterStub::ReadInst4_1(GateRef pc)
 {
-    return Int8And(
-        Int8LSR(Load(StubMachineType::UINT8, pc, GetIntPtrConstant(1)), GetInt8Constant(4)), GetInt8Constant(0xf));
+    return Int8And(Int8LSR(Load(StubMachineType::UINT8, pc, GetIntPtrConstant(1)),
+        GetInt8Constant(4)), GetInt8Constant(0xf)); // 4 : read 4 byte of bytecode
 }
 
 GateRef InterpreterStub::ReadInst4_2(GateRef pc)
@@ -92,6 +92,7 @@ GateRef InterpreterStub::ReadInst4_2(GateRef pc)
 
 GateRef InterpreterStub::ReadInst4_3(GateRef pc)
 {
+    // 4: read 4 byte of bytecode
     return Int8And(
         Int8LSR(Load(StubMachineType::UINT8, pc, GetIntPtrConstant(2)), GetInt8Constant(4)), GetInt8Constant(0xf));
 }

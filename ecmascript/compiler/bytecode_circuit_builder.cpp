@@ -1942,7 +1942,9 @@ void BytecodeCircuitBuilder::BuildCircuit(BytecodeGraph &byteCodeGraph)
                     circuit_.NewIn(bbNext->stateStart, bbNext->statePredIndex, ifException);
                     circuit_.NewIn(bbNext->dependStart, bbNext->statePredIndex + 1, gate);
                     bbNext->statePredIndex++;
-                    bbNext->expandedPreds.push_back( {bb.id, pcPrev, true} );
+                    bbNext->expandedPreds.push_back(
+                        {bb.id, pcPrev, true}
+                    );
                     ASSERT(bbNext->statePredIndex <= bbNext->numOfStatePreds);
                 } else {
                     auto constant = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
@@ -1970,7 +1972,9 @@ void BytecodeCircuitBuilder::BuildCircuit(BytecodeGraph &byteCodeGraph)
                     circuit_.NewIn(bbNext->stateStart, bbNext->statePredIndex, stateCur);
                     circuit_.NewIn(bbNext->dependStart, bbNext->statePredIndex + 1, dependCur);
                     bbNext->statePredIndex++;
-                    bbNext->expandedPreds.push_back( {bb.id, pcPrev, false} );
+                    bbNext->expandedPreds.push_back(
+                        {bb.id, pcPrev, false}
+                    );
                     ASSERT(bbNext->statePredIndex <= bbNext->numOfStatePreds);
                 }
             } else if (IsJump(static_cast<EcmaOpcode>(bytecodeInfo.opcode))) {
@@ -1999,14 +2003,18 @@ void BytecodeCircuitBuilder::BuildCircuit(BytecodeGraph &byteCodeGraph)
                             circuit_.NewIn(bbNext->stateStart, bbNext->statePredIndex, ifFalse);
                             circuit_.NewIn(bbNext->dependStart, bbNext->statePredIndex + 1, gate);
                             bbNext->statePredIndex++;
-                            bbNext->expandedPreds.push_back( {bb.id, pcPrev, false} );
+                            bbNext->expandedPreds.push_back(
+                                {bb.id, pcPrev, false}
+                            );
                             ASSERT(bbNext->statePredIndex <= bbNext->numOfStatePreds);
                             bitSet |= 1;
                         } else {
                             circuit_.NewIn(bbNext->stateStart, bbNext->statePredIndex, ifTrue);
                             circuit_.NewIn(bbNext->dependStart, bbNext->statePredIndex + 1, gate);
                             bbNext->statePredIndex++;
-                            bbNext->expandedPreds.push_back( {bb.id, pcPrev, false} );
+                            bbNext->expandedPreds.push_back(
+                                {bb.id, pcPrev, false}
+                            );
                             ASSERT(bbNext->statePredIndex <= bbNext->numOfStatePreds);
                             bitSet |= 2; // 2:verify
                         }
@@ -2020,7 +2028,9 @@ void BytecodeCircuitBuilder::BuildCircuit(BytecodeGraph &byteCodeGraph)
                     circuit_.NewIn(bbNext->stateStart, bbNext->statePredIndex, stateCur);
                     circuit_.NewIn(bbNext->dependStart, bbNext->statePredIndex + 1, dependCur);
                     bbNext->statePredIndex++;
-                    bbNext->expandedPreds.push_back( {bb.id, pcPrev, false} );
+                    bbNext->expandedPreds.push_back(
+                        {bb.id, pcPrev, false}
+                    );
                     ASSERT(bbNext->statePredIndex <= bbNext->numOfStatePreds);
                     break;
                 }
@@ -2053,7 +2063,9 @@ void BytecodeCircuitBuilder::BuildCircuit(BytecodeGraph &byteCodeGraph)
                     circuit_.NewIn(bbNext->stateStart, bbNext->statePredIndex, stateCur);
                     circuit_.NewIn(bbNext->dependStart, bbNext->statePredIndex + 1, dependCur);
                     bbNext->statePredIndex++;
-                    bbNext->expandedPreds.push_back( {bb.id, pcPrev, false} );
+                    bbNext->expandedPreds.push_back(
+                        {bb.id, pcPrev, false}
+                    );
                     ASSERT(bbNext->statePredIndex <= bbNext->numOfStatePreds);
                 }
             } else {

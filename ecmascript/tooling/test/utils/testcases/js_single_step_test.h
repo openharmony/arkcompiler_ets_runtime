@@ -24,14 +24,14 @@ public:
     JsSingleStepTest()
     {
         vmStart = [this] {
-            locationStart_ = TestUtil::GetLocation("Sample.js", 19, 0, pandaFile_.c_str());
-            locationEnd_ = TestUtil::GetLocation("Sample.js", 22, 0, pandaFile_.c_str());
+            locationStart_ = TestUtil::GetLocation("Sample.js", 19, 0, pandaFile_.c_str()); // 19: line number
+            locationEnd_ = TestUtil::GetLocation("Sample.js", 22, 0, pandaFile_.c_str());  // 22: line number
             return true;
         };
 
         vmDeath = [this]() {
-            ASSERT_NE(stepCounter_, 0);
-            ASSERT_EQ(breakpointCounter_, 2);
+            ASSERT_NE(stepCounter_, 0);  // 0: step counter
+            ASSERT_EQ(breakpointCounter_, 2);  // 2: breakpointer counter
             return true;
         };
 

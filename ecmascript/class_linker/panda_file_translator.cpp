@@ -375,7 +375,6 @@ void PandaFileTranslator::UpdateICOffset(JSMethod *method, uint8_t *pc)
         default:
             return;
     }
-
     *(pc + 1) = offset;
 }
 
