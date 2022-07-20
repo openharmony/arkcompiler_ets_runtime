@@ -80,8 +80,8 @@ namespace panda::ecmascript {
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config)
 {
     JSRuntimeOptions newOptions = options;
-    // windows or mac disable asm interpreter and use c interpreter
-#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
+    // only define SUPPORT_ENABLE_ASM_INTERP can enable asm-interpreter
+#if !defined(SUPPORT_ENABLE_ASM_INTERP)
     newOptions.SetEnableAsmInterpreter(false);
 #endif
     auto vm = new EcmaVM(newOptions, config);
