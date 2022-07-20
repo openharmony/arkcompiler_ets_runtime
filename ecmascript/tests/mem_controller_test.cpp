@@ -109,7 +109,7 @@ HWTEST_F_L0(MemControllerTest, VerifyMutatorSpeed)
     // non movable object
     auto nonMovableArray = objectFactory->NewTaggedArray(2, JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE);
     // huge space object
-    static constexpr size_t SIZE = 1024 * 1024;
+    static constexpr size_t SIZE = 1_MB;
     auto hugeArray = objectFactory->NewTaggedArray(SIZE);
 
     auto newSpace = heap->GetNewSpace();

@@ -481,9 +481,9 @@ public:
     }
 
 private:
-    static constexpr uint64_t INTERNAL_MEMORY_SIZE_LIMIT_DEFAULT = 2147483648;
-    static constexpr uint64_t COMPILER_MEMORY_SIZE_LIMIT_DEFAULT = 268435456;
-    static constexpr uint64_t CODE_CACHE_SIZE_LIMIT_DEFAULT = 33554432;
+    static constexpr uint64_t INTERNAL_MEMORY_SIZE_LIMIT_DEFAULT = 2_GB;
+    static constexpr uint64_t COMPILER_MEMORY_SIZE_LIMIT_DEFAULT = 256_MB;
+    static constexpr uint64_t CODE_CACHE_SIZE_LIMIT_DEFAULT = 32_MB;
 
     PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
@@ -510,7 +510,7 @@ private:
     PandArg<uint32_t> relocationMode_ {"reloc-mode", 2,
         R"(Relocation configuration on llvm back end. Default: "2")"};
     PandArg<uint32_t> maxNonmovableSpaceCapacity_ {"maxNonmovableSpaceCapacity",
-        4 * 1024 * 1024,
+        4_MB,
         R"(set max nonmovable space capacity)"};
     PandArg<bool> enableAsmInterpreter_ {"asm-interpreter", true,
         R"(Enable asm interpreter. Default: true)"};
@@ -520,7 +520,7 @@ private:
     AsmInterParsedOption asmInterParsedOption_;
     PandArg<uint64_t> internalMemorySizeLimit_ {"internal-memory-size-limit", INTERNAL_MEMORY_SIZE_LIMIT_DEFAULT,
         R"(Max internal memory used by the VM. Default: 2147483648)"};
-    PandArg<uint32_t> heapSizeLimit_ {"heap-size-limit", 512 * 1024 * 1024,
+    PandArg<uint32_t> heapSizeLimit_ {"heap-size-limit", 512_MB,
         R"(Max heap size. Default: 512M)"};
     PandArg<bool> enableIC_ {"enable-ic", true, R"(switch of inline cache. Default: true)"};
     PandArg<std::string> snapshotFile_ {"snapshot-file", R"(/system/etc/snapshot)",

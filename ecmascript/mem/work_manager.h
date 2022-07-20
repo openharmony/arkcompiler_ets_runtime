@@ -25,7 +25,7 @@ using SlotNeedUpdate = std::pair<TaggedObject *, ObjectSlot>;
 
 static constexpr uint32_t MARKSTACK_MAX_SIZE = 100;
 static constexpr uint32_t STACK_AREA_SIZE = sizeof(uintptr_t) * MARKSTACK_MAX_SIZE;
-static constexpr uint32_t SPACE_SIZE = 8 * 1024;
+static constexpr uint32_t SPACE_SIZE = 8_KB;
 
 class Heap;
 class Stack;

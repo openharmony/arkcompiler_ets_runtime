@@ -192,7 +192,7 @@ double MemController::CalculateAverageSpeed(const base::GCRingBuffer<BytesAndDur
         return 0;
     }
     double speed = bytes / durations;
-    const int maxSpeed = 1024 * 1024 * 1024;
+    const int maxSpeed = 1_GB;
     const int minSpeed = 1;
     if (speed >= maxSpeed) {
         return maxSpeed;

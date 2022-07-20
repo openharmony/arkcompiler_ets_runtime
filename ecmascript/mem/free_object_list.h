@@ -19,6 +19,7 @@
 #include <cstddef>
 
 #include "ecmascript/mem/free_object_set.h"
+#include "libpandabase/mem/mem.h"
 #include "utils/span.h"
 
 namespace panda::ecmascript {
@@ -80,7 +81,7 @@ private:
     static constexpr size_t MIN_SIZE = 16;
     static constexpr size_t SMALL_SET_MAX_SIZE = 256;
     static constexpr size_t LARGE_SET_MAX_SIZE = 65536;
-    static constexpr size_t HUGE_SET_MAX_SIZE = 255 * 1024;
+    static constexpr size_t HUGE_SET_MAX_SIZE = 255_KB;
     static constexpr int SMALL_SET_MAX_INDEX = 29;
     static constexpr int NUMBER_OF_LAST_LARGE = NUMBER_OF_SETS - 2;
     static constexpr int NUMBER_OF_LAST_HUGE = NUMBER_OF_SETS - 1;

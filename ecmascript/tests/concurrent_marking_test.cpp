@@ -67,19 +67,17 @@ public:
 
 HWTEST_F_L0(ConcurrentMarkingTest, PerformanceWithConcurrentMarking)
 {
-    uint32_t rootLength = 1024;
+    uint32_t length = 1_KB;
     JSHandle<TaggedArray> rootArray =
-        CreateTaggedArray(rootLength, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
-    for (uint32_t i = 0; i < rootLength; i++) {
-        uint32_t subArrayLength = 1024;
-        auto array = CreateTaggedArray(subArrayLength, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+    for (uint32_t i = 0; i < length; i++) {
+        auto array = CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
         rootArray->Set(thread, i, array);
     }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->TriggerConcurrentMarking();  // concurrent mark
-    for (uint32_t i = 0; i < rootLength; i++) {
-        uint32_t subArrayLength = 1024;
-        auto array = CreateTaggedArray(subArrayLength, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+    for (uint32_t i = 0; i < length; i++) {
+        auto array = CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
         rootArray->Set(thread, i, array);
     }
     heap->CollectGarbage(TriggerGCType::OLD_GC);
@@ -87,18 +85,16 @@ HWTEST_F_L0(ConcurrentMarkingTest, PerformanceWithConcurrentMarking)
 
 HWTEST_F_L0(ConcurrentMarkingTest, PerformanceWithoutConcurrentMarking)
 {
-    uint32_t rootLength = 1024;
+    uint32_t length = 1_KB;
     JSHandle<TaggedArray> rootArray =
-        CreateTaggedArray(rootLength, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
-    for (uint32_t i = 0; i < rootLength; i++) {
-        uint32_t subArrayLength = 1024;
-        auto array = CreateTaggedArray(subArrayLength, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+    for (uint32_t i = 0; i < length; i++) {
+        auto array = CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
         rootArray->Set(thread, i, array);
     }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    for (uint32_t i = 0; i < rootLength; i++) {
-        uint32_t subArrayLength = 1024;
-        auto array = CreateTaggedArray(subArrayLength, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+    for (uint32_t i = 0; i < length; i++) {
+        auto array = CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
         rootArray->Set(thread, i, array);
     }
     heap->CollectGarbage(TriggerGCType::OLD_GC);

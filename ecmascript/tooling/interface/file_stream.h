@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "ecmascript/tooling/interface/stream.h"
+#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 class FileStream : public Stream {
@@ -34,7 +35,7 @@ public:
     // Get chunk's size
     int GetSize() override
     {
-        const static int fileChunkSize = 10240;
+        const static int fileChunkSize = 10_KB;
         return fileChunkSize;
     }
 
@@ -65,7 +66,7 @@ public:
     // Get chunk's size
     int GetSize() override
     {
-        const static int fileChunkSize = 10240;
+        const static int fileChunkSize = 10_KB;
         return fileChunkSize;
     }
 

@@ -20,6 +20,7 @@
 #include <string>
 #include "time.h"
 #include "libpandabase/macros.h"
+#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 class Heap;
@@ -62,7 +63,7 @@ private:
 
     float sizeToMB(size_t size)
     {
-        return (float)size / MB;
+        return (float)size / 1_MB;
     }
 
     size_t lastSemiGCCount_ = 0;
@@ -110,7 +111,6 @@ private:
     size_t longPauseTime_ = 0;
 
     static constexpr uint32_t THOUSAND = 1000;
-    static constexpr uint32_t MB = 1 * 1024 * 1024;
 
     NO_COPY_SEMANTIC(GCStats);
     NO_MOVE_SEMANTIC(GCStats);

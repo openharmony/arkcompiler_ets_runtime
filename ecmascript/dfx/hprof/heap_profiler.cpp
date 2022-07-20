@@ -143,8 +143,7 @@ CString HeapProfiler::GetTimeStamp()
 bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
 {
     if (vm->IsInitialized()) {
-        const_cast<Heap *>(vm->GetHeap())->CollectGarbage(TriggerGCType::YOUNG_GC);
-        const_cast<Heap *>(vm->GetHeap())->CollectGarbage(TriggerGCType::OLD_GC);
+        const_cast<Heap *>(vm->GetHeap())->CollectGarbage(TriggerGCType::FULL_GC);
         return true;
     }
     return false;

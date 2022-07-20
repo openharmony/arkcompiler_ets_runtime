@@ -109,7 +109,7 @@ private:
         void EndOfStream() override {}
         int GetSize() override
         {
-            static const int heapProfilerChunkSise = 102400;
+            static const int heapProfilerChunkSise = 100_KB;
             return heapProfilerChunkSise;
         }
         bool WriteChunk(char *data, int32_t size) override
