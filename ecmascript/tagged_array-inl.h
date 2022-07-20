@@ -155,16 +155,6 @@ inline JSHandle<TaggedArray> TaggedArray::SetCapacity(const JSThread *thread, co
     return newArray;
 }
 
-inline JSHandle<TaggedArray> TaggedArray::SetCapacityInOldSpace(const JSThread *thread,
-                                                                const JSHandle<TaggedArray> &array, uint32_t capa)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    uint32_t oldLength = array->GetLength();
-    JSHandle<TaggedArray> newArray =
-        factory->CopyArray(array, oldLength, capa, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
-    return newArray;
-}
-
 inline bool TaggedArray::IsDictionaryMode() const
 {
     return GetClass()->IsDictionary();

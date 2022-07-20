@@ -323,18 +323,15 @@ public:
     JSHandle<BigInt> NewBigInt(uint32_t length);
     // use for copy properties keys's array to another array
     JSHandle<TaggedArray> ExtendArray(const JSHandle<TaggedArray> &old, uint32_t length,
-                                      JSTaggedValue initVal = JSTaggedValue::Hole(),
-                                      MemSpaceType type = MemSpaceType::SEMI_SPACE);
+                                      JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<TaggedArray> CopyPartArray(const JSHandle<TaggedArray> &old, uint32_t start, uint32_t end);
     JSHandle<TaggedArray> CopyArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
-                                    JSTaggedValue initVal = JSTaggedValue::Hole(),
-                                    MemSpaceType type = MemSpaceType::SEMI_SPACE);
+                                    JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old, const JSHandle<JSTaggedValue> &env,
                                           const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &constpool);
 
-    JSHandle<LayoutInfo> CreateLayoutInfo(int properties, MemSpaceType type = MemSpaceType::SEMI_SPACE,
-                                          JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<LayoutInfo> CreateLayoutInfo(int properties, JSTaggedValue initVal = JSTaggedValue::Hole());
 
     JSHandle<LayoutInfo> ExtendLayoutInfo(const JSHandle<LayoutInfo> &old, int properties,
                                           JSTaggedValue initVal = JSTaggedValue::Hole());
@@ -428,14 +425,13 @@ public:
                                                         void *data = nullptr,
                                                         bool nonMovable = false);
 
-    JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length);
+    JSHandle<JSObject> GetObjectLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> SetLayoutInObjHClass(const JSHandle<TaggedArray> &properties, size_t length,
                                             const JSHandle<JSHClass> &objClass);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByDynClass(JSMethod *method, const JSHandle<JSHClass> &clazz,
-                                                 FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-                                                 MemSpaceType type = MemSpaceType::SEMI_SPACE);
+                                                 FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     JSHandle<JSFunction> NewJSFunctionByDynClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
 
@@ -547,11 +543,6 @@ public:
 
     JSHandle<JSHClass> CreateIteratorResultInstanceClass();
 
-    // --------------------------------------old space object--------------------------------------------
-    JSHandle<JSObject> NewOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
-    TaggedObject *NewOldSpaceDynObject(const JSHandle<JSHClass> &dynclass);
-    JSHandle<TaggedArray> NewOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
-
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
@@ -607,8 +598,7 @@ private:
     JSHandle<EcmaString> GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
     // For MUtf-8 string data
-    EcmaString *GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len, bool canBeCompressed,
-                                            MemSpaceType type = MemSpaceType::SEMI_SPACE) const;
+    EcmaString *GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len, bool canBeCompressed) const;
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                   bool canBeCompress) const;
@@ -619,15 +609,12 @@ private:
                                                   const JSHandle<EcmaString> &secondString);
 
     inline EcmaString *AllocStringObject(size_t size);
-    inline EcmaString *AllocOldSpaceStringObject(size_t size);
     inline EcmaString *AllocNonMovableStringObject(size_t size);
     JSHandle<TaggedArray> NewEmptyArray();  // only used for EcmaVM.
 
     JSHandle<JSHClass> CreateJSArguments();
     JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto);
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
-
-    inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type);
 
     friend class Builtins;    // create builtins object need dynclass
     friend class JSFunction;  // create prototype_or_dynclass need dynclass

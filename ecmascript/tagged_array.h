@@ -75,9 +75,6 @@ public:
     static JSHandle<TaggedArray> SetCapacity(const JSThread *thread, const JSHandle<TaggedArray> &array,
                                              uint32_t capa);
 
-    static JSHandle<TaggedArray> SetCapacityInOldSpace(const JSThread *thread, const JSHandle<TaggedArray> &array,
-                                                       uint32_t capa);
-
     inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length);
 
     static inline bool ShouldTrim(uint32_t oldLength, uint32_t newLength)
