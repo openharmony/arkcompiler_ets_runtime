@@ -45,6 +45,10 @@
 #include "ecmascript/js_api_arraylist_iterator.h"
 #include "ecmascript/js_api_deque.h"
 #include "ecmascript/js_api_deque_iterator.h"
+#include "ecmascript/js_api_hashmap.h"
+#include "ecmascript/js_api_hashset.h"
+#include "ecmascript/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api_hashset_iterator.h"
 #include "ecmascript/js_api_lightweightmap.h"
 #include "ecmascript/js_api_lightweightmap_iterator.h"
 #include "ecmascript/js_api_lightweightset.h"
@@ -113,7 +117,9 @@
 #include "ecmascript/record.h"
 #include "ecmascript/shared_mm/shared_mm.h"
 #include "ecmascript/symbol_table.h"
+#include "ecmascript/tagged_hash_array.h"
 #include "ecmascript/tagged_list.h"
+#include "ecmascript/tagged_node.h"
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/template_map.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
@@ -1126,6 +1132,14 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_API_ARRAY_LIST:
             JSAPIArrayList::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
             break;
+        case JSType::JS_API_HASH_MAP:
+            JSAPIHashMap::Cast(*obj)->SetSize(0);
+            JSAPIHashMap::Cast(*obj)->SetTable(thread_, JSTaggedValue::Undefined());
+            break;
+        case JSType::JS_API_HASH_SET:
+            JSAPIHashSet::Cast(*obj)->SetSize(0);
+            JSAPIHashSet::Cast(*obj)->SetTable(thread_, JSTaggedValue::Undefined());
+            break;
         case JSType::JS_API_TREE_MAP:
             JSAPITreeMap::Cast(*obj)->SetTreeMap(thread_, JSTaggedValue::Undefined());
             break;
@@ -1250,6 +1264,8 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
         case JSType::JS_API_STACK_ITERATOR:
         case JSType::JS_API_VECTOR_ITERATOR:
+        case JSType::JS_API_HASHMAP_ITERATOR:
+        case JSType::JS_API_HASHSET_ITERATOR:
         case JSType::JS_ARRAY_ITERATOR:
         case JSType::JS_API_PLAIN_ARRAY_ITERATOR:
             break;
@@ -2032,6 +2048,46 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
     return array;
 }
 
+JSHandle<TaggedHashArray> ObjectFactory::NewTaggedHashArray(uint32_t length)
+{
+    if (length == 0) {
+        return JSHandle<TaggedHashArray>::Cast(EmptyArray());
+    }
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+    JSHandle<TaggedHashArray> array(thread_, header);
+    array->InitializeWithSpecialValue(JSTaggedValue::Hole(), length);
+    return array;
+}
+
+JSHandle<LinkedNode> ObjectFactory::NewLinkedNode(int hash, const JSHandle<JSTaggedValue> &key,
+                                                  const JSHandle<JSTaggedValue> &value,
+                                                  const JSHandle<LinkedNode> &next)
+{
+    NewObjectHook();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(globalConst->GetLinkedNode().GetTaggedObject()), LinkedNode::SIZE);
+    JSHandle<LinkedNode> node(thread_, header);
+    node->InitLinkedNode(thread_, hash, key, value, next);
+
+    return node;
+}
+
+JSHandle<RBTreeNode> ObjectFactory::NewTreeNode(int hash, const JSHandle<JSTaggedValue> &key,
+                                                const JSHandle<JSTaggedValue> &value)
+{
+    NewObjectHook();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(globalConst->GetRBTreeNode().GetTaggedObject()), RBTreeNode::SIZE);
+    JSHandle<RBTreeNode> treenode(thread_, header);
+    treenode->InitRBTreeNode(thread_, hash, key, value, 1);
+    return treenode;
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewDictionaryArray(uint32_t length)
 {
     NewObjectHook();
@@ -2438,6 +2494,45 @@ JSHandle<JSMapIterator> ObjectFactory::NewJSMapIterator(const JSHandle<JSMap> &m
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedMap(thread_, map->GetLinkedMap());
     iter->SetNextIndex(0);
+    iter->SetIterationKind(kind);
+    return iter;
+}
+
+JSHandle<JSAPIHashMapIterator> ObjectFactory::NewJSAPIHashMapIterator(const JSHandle<JSAPIHashMap> &hashMap,
+                                                                      IterationKind kind)
+{
+    NewObjectHook();
+    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetHashMapIteratorPrototype());
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIHashMapIteratorClass());
+    dynHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPIHashMapIterator> iter(NewJSObject(dynHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedHashMap(thread_, hashMap);
+    iter->SetNextIndex(0);
+    iter->SetTaggedQueue(JSTaggedValue::Undefined());
+    JSHandle<TaggedQueue> queue = NewTaggedQueue(0);
+    iter->SetTaggedQueue(thread_, queue);
+    iter->SetIterationKind(kind);
+    return iter;
+}
+
+JSHandle<JSAPIHashSetIterator> ObjectFactory::NewJSAPIHashSetIterator(const JSHandle<JSAPIHashSet> &hashSet,
+                                                                      IterationKind kind)
+{
+    NewObjectHook();
+    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetHashSetIteratorPrototype());
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIHashSetIteratorClass());
+    dynHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPIHashSetIterator> iter(NewJSObject(dynHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedHashSet(thread_, hashSet);
+    iter->SetNextIndex(0);
+    iter->SetTableIndex(0);
+    iter->SetTaggedQueue(JSTaggedValue::Undefined());
+    JSHandle<TaggedQueue> queue = NewTaggedQueue(0);
+    iter->SetTaggedQueue(thread_, queue);
     iter->SetIterationKind(kind);
     return iter;
 }

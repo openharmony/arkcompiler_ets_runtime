@@ -414,7 +414,7 @@ HWTEST_F_L0(BuiltinsNumberTest, parseInt)
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsNumber::ParseInt(ecmaRuntimeCallInfo);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(291)).GetRawData());
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<int>(291)).GetRawData());
     TestHelper::TearDownFrame(thread, prev);
 }
 

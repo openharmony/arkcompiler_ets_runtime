@@ -210,7 +210,8 @@ JSTaggedValue BuiltinsNumber::ParseInt(EcmaRuntimeCallInfo *argv)
     }
 
     JSTaggedValue result = NumberHelper::StringToDoubleWithRadix(str.begin(), str.end(), radix);
-    return result;
+    int32_t resTmp = NumberHelper::DoubleInRangeInt32(result.GetNumber());
+    return JSTaggedValue(resTmp);
 }
 
 // prototype

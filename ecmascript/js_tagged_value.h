@@ -474,6 +474,8 @@ public:
     bool IsString() const;
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;
+    bool IsLinkedNode() const;
+    bool IsRBTreeNode() const;
     bool IsNativePointer() const;
     bool IsJSNativePointer() const;
     bool IsBoolean() const;
@@ -566,6 +568,10 @@ public:
     // non ECMA standard jsapis
     bool IsJSAPIArrayList() const;
     bool IsJSAPIArrayListIterator() const;
+    bool IsJSAPIHashMap() const;
+    bool IsJSAPIHashMapIterator() const;
+    bool IsJSAPIHashSet() const;
+    bool IsJSAPIHashSetIterator() const;
     bool IsJSAPILightWeightMap() const;
     bool IsJSAPILightWeightMapIterator() const;
     bool IsJSAPILightWeightSet() const;

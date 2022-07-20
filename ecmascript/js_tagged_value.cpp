@@ -971,6 +971,8 @@ bool JSTaggedValue::HasContainerProperty(JSThread *thread, const JSHandle<JSTagg
             JSHandle<JSAPILinkedList> linkedList = JSHandle<JSAPILinkedList>::Cast(obj);
             return linkedList->Has(key.GetTaggedValue());
         }
+        case JSType::JS_API_HASH_MAP:
+        case JSType::JS_API_HASH_SET:
         case JSType::JS_API_LIGHT_WEIGHT_MAP:
         case JSType::JS_API_LIGHT_WEIGHT_SET:
         case JSType::JS_API_TREE_MAP:
@@ -995,13 +997,6 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerPropertyKeys(JSThread *threa
         case JSType::JS_API_ARRAY_LIST: {
             return JSAPIArrayList::OwnKeys(thread, JSHandle<JSAPIArrayList>::Cast(obj));
         }
-        case JSType::JS_API_LIGHT_WEIGHT_MAP: {
-            return JSHandle<TaggedArray>(thread,
-                                         JSHandle<JSAPILightWeightMap>::Cast(obj)->GetValues());
-        }
-        case JSType::JS_API_LIGHT_WEIGHT_SET: {
-            return JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>(obj));
-        }
         case JSType::JS_API_QUEUE: {
             return JSAPIQueue::OwnKeys(thread, JSHandle<JSAPIQueue>::Cast(obj));
         }
@@ -1020,6 +1015,10 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerPropertyKeys(JSThread *threa
         case JSType::JS_API_LINKED_LIST: {
             return JSAPILinkedList::OwnKeys(thread, JSHandle<JSAPILinkedList>::Cast(obj));
         }
+        case JSType::JS_API_HASH_MAP:
+        case JSType::JS_API_HASH_SET:
+        case JSType::JS_API_LIGHT_WEIGHT_MAP:
+        case JSType::JS_API_LIGHT_WEIGHT_SET:
         case JSType::JS_API_TREE_MAP:
         case JSType::JS_API_TREE_SET: {
             return JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>(obj));
