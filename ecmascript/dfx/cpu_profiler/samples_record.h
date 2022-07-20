@@ -89,6 +89,7 @@ private:
     struct FrameInfo GetMethodInfo(JSMethod *method);
     struct FrameInfo GetGcInfo();
 
+    int previousId_ = 0;
     std::atomic_bool isLastSample_ = false;
     std::unique_ptr<struct ProfileInfo> profileInfo_;
     CVector<int> stackTopLines_;
