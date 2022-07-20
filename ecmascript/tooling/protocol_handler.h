@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_TOOLING_PROTOCOL_HANDLER_H
 #define ECMASCRIPT_TOOLING_PROTOCOL_HANDLER_H
 
+#include <condition_variable>
 #include <functional>
 #include <queue>
 #include <memory>
@@ -25,13 +26,21 @@
 namespace panda::ecmascript::tooling {
 class ProtocolHandler final : public ProtocolChannel {
 public:
-    ProtocolHandler(std::function<void(const std::string &)> callback, const EcmaVM *vm)
+    enum DispatchStatus : int32_t {
+        UNKNOWN = 0,
+        DISPATCHING,
+        DISPATCHED
+    };
+
+    ProtocolHandler(std::function<void(const void *, const std::string &)> callback, const EcmaVM *vm)
         : callback_(std::move(callback)), dispatcher_(vm, this), vm_(vm) {}
     ~ProtocolHandler() override = default;
 
     void WaitForDebugger() override;
     void RunIfWaitingForDebugger() override;
-    void ProcessCommand(const std::string &msg);
+    void ProcessCommand();
+    void DispatchCommand(std::string &&msg);
+    int32_t GetDispatchStatus();
     void SendResponse(const DispatchRequest &request, const DispatchResponse &response,
                       const PtBaseReturns &result) override;
     void SendNotification(const PtBaseEvents &events) override;
@@ -42,11 +51,16 @@ private:
     std::unique_ptr<PtJson> CreateErrorReply(const DispatchResponse &response);
     void SendReply(const PtJson &reply);
 
-    std::function<void(const std::string &)> callback_;
+    std::function<void(const void *, const std::string &)> callback_;
     Dispatcher dispatcher_;
 
     bool waitingForDebugger_ {false};
     const EcmaVM *vm_ {nullptr};
+
+    std::condition_variable requestQueueCond_;
+    std::queue<std::string> requestQueue_;
+    std::mutex requestLock_;
+    std::atomic<bool> isDispatchingMessage_ {false};
 };
 }  // namespace panda::ecmascript::tooling
 
