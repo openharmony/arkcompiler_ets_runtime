@@ -758,7 +758,7 @@ JSTaggedValue BuiltinsMath::Trunc(EcmaRuntimeCallInfo *argv)
     if (!std::isfinite(value)) {
         // if value is +infinite, -infinite, NaN, -NaN, VRegisterTag is double
         if (!std::isnan(std::abs(value))) {
-            // if value is +infinite, -infinite, result is value ;
+            // if value is +infinite, -infinite, result is value
             result = value;
         }
     } else {

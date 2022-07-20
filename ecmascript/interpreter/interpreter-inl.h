@@ -1019,11 +1019,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, ConstantPool 
             state->acc = acc;
             return;
         }
-
         thread->SetCurrentSPFrame(sp);
-
         constpool = ConstantPool::Cast(prevState->constpool.GetTaggedObject());
-
         if (IsFastNewFrameExit(currentSp)) {
             JSFunction *func = JSFunction::Cast(GetThisFunction(currentSp).GetTaggedObject());
             if (acc.IsECMAObject()) {
@@ -1050,7 +1047,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, ConstantPool 
             SET_ACC(thisObject);
             INTERPRETER_HANDLE_RETURN();
         }
-
         INTERPRETER_HANDLE_RETURN();
     }
     HANDLE_OPCODE(HANDLE_RETURNUNDEFINED_PREF) {
@@ -1071,11 +1067,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, ConstantPool 
             state->acc = JSTaggedValue::Undefined();
             return;
         }
-
         thread->SetCurrentSPFrame(sp);
-
         constpool = ConstantPool::Cast(prevState->constpool.GetTaggedObject());
-
         if (IsFastNewFrameExit(currentSp)) {
             JSFunction *func = JSFunction::Cast(GetThisFunction(currentSp).GetTaggedObject());
             if (func->IsBase()) {
