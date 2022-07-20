@@ -269,30 +269,4 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     ASSERT_PRINT(isOneByte == EcmaString::CanBeCompressed(newString), "isOneByte does not match the real value!");
     return JSTaggedValue(newString);
 }
-
-JSTaggedValue JSStableArray::IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
-                                     JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len)
-{
-    JSHandle<TaggedArray> elements(thread, JSHandle<JSObject>::Cast(receiver)->GetElements());
-    while (from < len) {
-        JSTaggedValue value = elements->Get(from);
-        if (!value.IsUndefined() && !value.IsHole()) {
-            if (JSTaggedValue::StrictEqual(searchElement.GetTaggedValue(), value)) {
-                return JSTaggedValue(from);
-            }
-        } else {
-            bool exist = JSTaggedValue::HasProperty(thread, receiver, from);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (exist) {
-                JSHandle<JSTaggedValue> kValueHandle = JSArray::FastGetPropertyByValue(thread, receiver, from);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                if (JSTaggedValue::StrictEqual(thread, searchElement, kValueHandle)) {
-                    return JSTaggedValue(from);
-                }
-            }
-        }
-        from++;
-    }
-    return JSTaggedValue(-1);
-}
 }  // namespace panda::ecmascript

@@ -17,7 +17,6 @@
 #define ECMASCRIPT_STRING_TABLE_H
 
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
@@ -38,10 +37,6 @@ public:
     EcmaString *CreateAndInternStringNonMovable(const uint8_t *utf8Data, uint32_t utf8Len);
     EcmaString *GetOrInternString(const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress);
     EcmaString *GetOrInternString(EcmaString *string);
-    EcmaString *GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
-                                               MemSpaceType type);
-    EcmaString *GetOrInternStringWithSpaceType(const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress,
-                                               MemSpaceType type);
 
     void SweepWeakReference(const WeakRootVisitor &visitor);
     bool CheckStringTableValidity();

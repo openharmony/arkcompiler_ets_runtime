@@ -32,9 +32,8 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     uint32_t nonStaticNum = static_cast<uint32_t>(literal->Get(thread, literalBufferLength - 1).GetInt());
 
     // Reserve sufficient length to prevent frequent creation.
-    JSHandle<TaggedArray> nonStaticKeys = factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
-    JSHandle<TaggedArray> nonStaticProperties =
-        factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+    JSHandle<TaggedArray> nonStaticKeys = factory->NewTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+    JSHandle<TaggedArray> nonStaticProperties = factory->NewTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
 
     nonStaticKeys->Set(thread, CONSTRUCTOR_INDEX, globalConst->GetConstructorString());
 
@@ -59,8 +58,8 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     uint32_t staticNum = (literalBufferLength - 1) / 2 - nonStaticNum;
 
     // Reserve sufficient length to prevent frequent creation.
-    JSHandle<TaggedArray> staticKeys = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
-    JSHandle<TaggedArray> staticProperties = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+    JSHandle<TaggedArray> staticKeys = factory->NewTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+    JSHandle<TaggedArray> staticProperties = factory->NewTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
 
     staticKeys->Set(thread, LENGTH_INDEX, globalConst->GetLengthString());
     staticKeys->Set(thread, NAME_INDEX, globalConst->GetNameString());
@@ -134,8 +133,7 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
             if (JSTaggedValue::StringToElementIndex(firstValue.GetTaggedValue(), &elementIndex)) {
                 ASSERT(elementIndex < JSObject::MAX_ELEMENT_INDEX);
                 uint32_t elementsLength = elements->GetLength();
-                elements =
-                    TaggedArray::SetCapacityInOldSpace(thread, elements, elementsLength + 2); // 2: key-value pair
+                elements = TaggedArray::SetCapacity(thread, elements, elementsLength + 2);  // 2: key-value pair
                 elements->Set(thread, elementsLength, firstValue);
                 elements->Set(thread, elementsLength + 1, secondValue);
                 withElementsFlag = true;
@@ -181,7 +179,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, J
     JSHandle<JSHClass> hclass;
     if (LIKELY(length <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length, MemSpaceType::OLD_SPACE);
+        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length);
         for (uint32_t index = 0; index < length; ++index) {
             key.Update(keys->Get(index));
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -222,7 +220,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
     JSHandle<JSHClass> hclass;
     if (LIKELY(length <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length, MemSpaceType::OLD_SPACE);
+        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length);
         for (uint32_t index = 0; index < length; ++index) {
             key.Update(keys->Get(index));
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -280,12 +278,12 @@ JSHandle<JSFunction> ClassHelper::DefineClassTemplate(JSThread *thread, JSHandle
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     JSHandle<JSHClass> prototypeHClass(thread, extractor->GetPrototypeHClass());
-    JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
+    JSHandle<JSObject> prototype = factory->NewJSObject(prototypeHClass);
 
     JSHandle<JSHClass> constructorHClass(thread, extractor->GetConstructorHClass());
-    JSHandle<JSFunction> constructor =
-        factory->NewJSFunctionByDynClass(extractor->GetConstructorMethod(), constructorHClass,
-                                         FunctionKind::CLASS_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
+    JSHandle<JSFunction> constructor = factory->NewJSFunctionByDynClass(extractor->GetConstructorMethod(),
+                                                                        constructorHClass,
+                                                                        FunctionKind::CLASS_CONSTRUCTOR);
 
     // non-static
     JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());

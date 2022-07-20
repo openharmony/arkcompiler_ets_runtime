@@ -47,39 +47,15 @@ inline EcmaString *EcmaString::CreateEmptyString(const EcmaVM *vm)
 }
 
 /* static */
-inline EcmaString *EcmaString::AllocStringObjectWithSpaceType(size_t length, bool compressed, const EcmaVM *vm,
-                                                              MemSpaceType type)
-{
-    size_t size = compressed ? ComputeSizeUtf8(length) : ComputeSizeUtf16(length);
-    EcmaString *string = nullptr;
-    switch (type) {
-        case MemSpaceType::SEMI_SPACE:
-            string = vm->GetFactory()->AllocStringObject(size);
-            break;
-        case MemSpaceType::OLD_SPACE:
-            string = vm->GetFactory()->AllocOldSpaceStringObject(size);
-            break;
-        case MemSpaceType::NON_MOVABLE:
-            string = vm->GetFactory()->AllocNonMovableStringObject(size);
-            break;
-        default:
-            UNREACHABLE();
-    }
-    string->SetLength(length, compressed);
-    string->SetRawHashcode(0);
-    return string;
-}
-
-/* static */
 inline EcmaString *EcmaString::CreateFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len, const EcmaVM *vm,
-                                              bool canBeCompress, MemSpaceType type)
+                                              bool canBeCompress)
 {
     if (utf8Len == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
     EcmaString *string = nullptr;
     if (canBeCompress) {
-        string = AllocStringObjectWithSpaceType(utf8Len, true, vm, type);
+        string = AllocStringObject(utf8Len, true, vm);
         ASSERT(string != nullptr);
 
         if (memcpy_s(string->GetDataUtf8Writable(), utf8Len, utf8Data, utf8Len) != EOK) {
@@ -88,7 +64,7 @@ inline EcmaString *EcmaString::CreateFromUtf8(const uint8_t *utf8Data, uint32_t 
         }
     } else {
         auto utf16Len = base::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
-        string = AllocStringObjectWithSpaceType(utf16Len, false, vm, type);
+        string = AllocStringObject(utf16Len, false, vm);
         ASSERT(string != nullptr);
 
         [[maybe_unused]] auto len =
@@ -106,7 +82,7 @@ inline EcmaString *EcmaString::CreateFromUtf8NonMovable(const EcmaVM *vm, const 
     if (utf8Len == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
-    EcmaString *string = AllocStringObjectWithSpaceType(utf8Len, true, vm, MemSpaceType::NON_MOVABLE);
+    EcmaString *string = AllocStringObjectNonMovable(vm, utf8Len);
     ASSERT(string != nullptr);
     if (memcpy_s(string->GetDataUtf8Writable(), utf8Len, utf8Data, utf8Len) != EOK) {
         LOG_FULL(FATAL) << "memcpy_s failed";
@@ -117,12 +93,12 @@ inline EcmaString *EcmaString::CreateFromUtf8NonMovable(const EcmaVM *vm, const 
 }
 
 inline EcmaString *EcmaString::CreateFromUtf16(const uint16_t *utf16Data, uint32_t utf16Len, const EcmaVM *vm,
-                                               bool canBeCompress, MemSpaceType type)
+                                               bool canBeCompress)
 {
     if (utf16Len == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
-    auto string = AllocStringObjectWithSpaceType(utf16Len, canBeCompress, vm, type);
+    auto string = AllocStringObject(utf16Len, canBeCompress, vm);
     ASSERT(string != nullptr);
 
     if (canBeCompress) {
@@ -162,6 +138,17 @@ inline EcmaString *EcmaString::AllocStringObject(size_t length, bool compressed,
     size_t size = compressed ? ComputeSizeUtf8(length) : ComputeSizeUtf16(length);
     auto string = reinterpret_cast<EcmaString *>(vm->GetFactory()->AllocStringObject(size));
     string->SetLength(length, compressed);
+    string->SetRawHashcode(0);
+    return string;
+}
+
+/* static */
+inline EcmaString *EcmaString::AllocStringObjectNonMovable(const EcmaVM *vm, size_t length)
+{
+    // we only consider compressable string which is utf8 strings
+    size_t size = ComputeSizeUtf8(length);
+    auto string = reinterpret_cast<EcmaString *>(vm->GetFactory()->AllocNonMovableStringObject(size));
+    string->SetLength(length, true);
     string->SetRawHashcode(0);
     return string;
 }

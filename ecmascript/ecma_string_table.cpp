@@ -157,32 +157,6 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
     return string;
 }
 
-EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf8Len,
-                                                            bool canBeCompress, MemSpaceType type)
-{
-    EcmaString *result = GetString(utf8Data, utf8Len, canBeCompress);
-    if (result != nullptr) {
-        return result;
-    }
-
-    result = EcmaString::CreateFromUtf8(utf8Data, utf8Len, vm_, canBeCompress, type);
-    InternString(result);
-    return result;
-}
-
-EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint16_t *utf16Data, uint32_t utf16Len,
-                                                            bool canBeCompress, MemSpaceType type)
-{
-    EcmaString *result = GetString(utf16Data, utf16Len);
-    if (result != nullptr) {
-        return result;
-    }
-
-    result = EcmaString::CreateFromUtf16(utf16Data, utf16Len, vm_, canBeCompress, type);
-    InternString(result);
-    return result;
-}
-
 void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
 {
     for (auto it = table_.begin(); it != table_.end();) {

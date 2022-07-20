@@ -417,7 +417,6 @@ public:
     static bool Less(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
     static bool Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
     static bool StrictEqual(const JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
-    static bool StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y);
     static bool SameValueNumberic(const JSTaggedValue &x, const JSTaggedValue &y);
 
     // ES6 7.4 Operations on Iterator Objects
@@ -627,7 +626,6 @@ public:
                                     const JSHandle<JSTaggedValue> &y);
     static ComparisonResult StrictNumberCompare(double x, double y);
     static bool StrictNumberEquals(double x, double y);
-    static bool StringCompare(EcmaString *xStr, EcmaString *yStr);
 
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     inline uint32_t GetKeyHashCode() const;
