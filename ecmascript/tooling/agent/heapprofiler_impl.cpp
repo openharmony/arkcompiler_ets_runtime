@@ -281,8 +281,7 @@ DispatchResponse HeapProfilerImpl::GetHeapObjectId([[maybe_unused]] const GetHea
     return DispatchResponse::Fail("GetHeapObjectId not support now");
 }
 
-DispatchResponse HeapProfilerImpl::GetObjectByHeapObjectId(
-    [[maybe_unused]] const GetObjectByHeapObjectIdParams &params,
+DispatchResponse HeapProfilerImpl::GetObjectByHeapObjectId([[maybe_unused]] const GetObjectByHeapObjectIdParams &params,
     [[maybe_unused]] std::unique_ptr<RemoteObject> *remoteObjectResult)
 {
     return DispatchResponse::Fail("GetObjectByHeapObjectId not support now");

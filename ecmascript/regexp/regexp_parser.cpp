@@ -245,15 +245,17 @@ void RegExpParser::ParseAlternative(bool isBackward)
                 LineStartOpCode lineStartOp;
                 lineStartOp.EmitOpCode(&buffer_, 0);
                 Advance();
-            } break;
+                break;
+            }
             case '$': {
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
                 PrintF("Assertion %c line end \n", c0_);
                 LineEndOpCode lineEndOp;
                 lineEndOp.EmitOpCode(&buffer_, 0);
                 Advance();
-            } break;
-            case '\\':
+                break;
+            }
+            case '\\': {
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
                 PrintF("Escape %c \n", c0_);
                 Advance();
@@ -264,15 +266,17 @@ void RegExpParser::ParseAlternative(bool isBackward)
                         WordBoundaryOpCode wordBoundaryOp;
                         wordBoundaryOp.EmitOpCode(&buffer_, 0);
                         Advance();
-                    } break;
+                        break;
+                    }
                     case 'B': {
                         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
                         PrintF("Assertion %c \n", c0_);
                         NotWordBoundaryOpCode notWordBoundaryOp;
                         notWordBoundaryOp.EmitOpCode(&buffer_, 0);
                         Advance();
-                    } break;
-                    default:
+                        break;
+                    }
+                    default: {
                         isAtom = true;
                         int atomValue = ParseAtomEscape(isBackward);
                         if (atomValue != -1) {
@@ -304,14 +308,17 @@ void RegExpParser::ParseAlternative(bool isBackward)
                             }
                         }
                         break;
+                    }
                 }
                 break;
+            }
             case '(': {
                 Advance();
                 isAtom = ParseAssertionCapture(&captureIndex, isBackward);
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
                 Advance();
-            } break;
+                break;
+            }
             case '.': {
                 PrevOpCode prevOp;
                 if (isBackward) {
@@ -331,7 +338,8 @@ void RegExpParser::ParseAlternative(bool isBackward)
                 PrintF("Atom %c match any \n", c0_);
                 isAtom = true;
                 Advance();
-            } break;
+                break;
+            }
             case '[': {
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
                 PrintF("Atom %c match range \n", c0_);
@@ -365,7 +373,8 @@ void RegExpParser::ParseAlternative(bool isBackward)
                 if (isBackward) {
                     prevOp.EmitOpCode(&buffer_, 0);
                 }
-            } break;
+                break;
+            }
             case '*':
             case '+':
             case '?':
@@ -390,7 +399,7 @@ void RegExpParser::ParseAlternative(bool isBackward)
                     return;
                 }
                 [[fallthrough]];
-            default:
+            default: {
                 // PatternCharacter
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
                 PrintF("PatternCharacter %c\n", c0_);
@@ -427,6 +436,7 @@ void RegExpParser::ParseAlternative(bool isBackward)
                 }
                 Advance();
                 break;
+            }
         }
         if (isAtom && !isError_) {
             ParseQuantifier(atomBcStart, captureIndex, captureCount_ - 1);
@@ -491,7 +501,8 @@ bool RegExpParser::ParseAssertionCapture(int *captureIndex, bool isBackward)
                     MatchAheadOpCode matchAheadOp;
                     uint32_t len = buffer_.size_ - start;
                     matchAheadOp.InsertOpCode(&buffer_, start, len);
-                } break;
+                    break;
+                }
                 // (?!Disjunction[?U, ?N])
                 case '!': {
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
@@ -504,8 +515,9 @@ bool RegExpParser::ParseAssertionCapture(int *captureIndex, bool isBackward)
                     NegativeMatchAheadOpCode matchAheadOp;
                     uint32_t len = buffer_.size_ - start;
                     matchAheadOp.InsertOpCode(&buffer_, start, len);
-                } break;
-                case '<':
+                    break;
+                }
+                case '<': {
                     Advance();
                     // (?<=Disjunction[?U, ?N])
                     if (c0_ == '=') {
@@ -551,6 +563,7 @@ bool RegExpParser::ParseAssertionCapture(int *captureIndex, bool isBackward)
                         goto parseCapture;  // NOLINTNEXTLINE(cppcoreguidelines-avoid-goto)
                     }
                     break;
+                }
                 // (?:Disjunction[?U, ?N])
                 case ':':
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
@@ -636,7 +649,7 @@ bool RegExpParser::ParserIntervalQuantifier(int *pmin, int *pmax)
     *pmin = ParseDecimalDigits();
     *pmax = *pmin;
     switch (c0_) {
-        case ',':
+        case ',': {
             Advance();
             if (c0_ == '}') {
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
@@ -654,6 +667,7 @@ bool RegExpParser::ParserIntervalQuantifier(int *pmin, int *pmax)
                 }
             }
             break;
+        }
         case '}':
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
             PrintF("QuantifierPrefix{DecimalDigits}\n");
@@ -704,7 +718,8 @@ void RegExpParser::ParseQuantifier(size_t atomBcStart, int captureStart, int cap
                 ParseError("Invalid repetition count");
                 return;
             }
-        } break;
+            break;
+        }
         default:
             break;
     }
@@ -832,11 +847,12 @@ int RegExpParser::ParseCaptureCount(const char *groupName)
                 } else {
                     captureIndex++;
                 }
-            } break;
+                break;
+            }
             case '\\':
                 p++;  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 break;
-            case '[':
+            case '[': {
                 while (p < end_ && *p != ']') {
                     if (*p == '\\') {
                         p++;  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -844,6 +860,7 @@ int RegExpParser::ParseCaptureCount(const char *groupName)
                     p++;  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 }
                 break;
+            }
             default:
                 break;
         }
@@ -892,7 +909,8 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
                 BackReferenceOpCode backReferenceOp;
                 backReferenceOp.EmitOpCode(&buffer_, capture);
             }
-        } break;
+            break;
+        }
         // CharacterClassEscape
         case 'd': {
             // [0-9]
@@ -902,7 +920,8 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, g_rangeD);
             goto parseLookBehind;
-        } break;
+            break;
+        }
         case 'D': {
             // [^0-9]
             RangeSet atomRange(g_rangeD);
@@ -913,7 +932,8 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, atomRange);
             goto parseLookBehind;
-        } break;
+            break;
+        }
         case 's': {
             // [\f\n\r\t\v]
             RangeOpCode rangeOp;
@@ -922,7 +942,8 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, g_rangeS);
             goto parseLookBehind;
-        } break;
+            break;
+        }
         case 'S': {
             RangeSet atomRange(g_rangeS);
             Range32OpCode rangeOp;
@@ -932,7 +953,8 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, atomRange);
             goto parseLookBehind;
-        } break;
+            break;
+        }
         case 'w': {
             // [A-Za-z0-9]
             RangeOpCode rangeOp;
@@ -941,7 +963,8 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, g_rangeW);
             goto parseLookBehind;
-        } break;
+            break;
+        }
         case 'W': {
             // [^A-Za-z0-9]
             RangeSet atomRange(g_rangeW);
@@ -952,7 +975,8 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, atomRange);
             goto parseLookBehind;
-        } break;
+            break;
+        }
         // P{UnicodePropertyValueExpression}
         // p{UnicodePropertyValueExpression}
         case 'P':
@@ -991,7 +1015,8 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
             Advance();
-        } break;
+            break;
+        }
         parseLookBehind: {
             if (isBackward) {
                 prevOp.EmitOpCode(&buffer_, 0);
@@ -1066,7 +1091,7 @@ int RegExpParser::ParseCharacterEscape()
             Advance();
             break;
         // c ControlLetter
-        case 'c':
+        case 'c': {
             Advance();
             if ((c0_ >= 'A' && c0_ <= 'Z') || (c0_ >= 'a' && c0_ <= 'z')) {
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
@@ -1083,7 +1108,8 @@ int RegExpParser::ParseCharacterEscape()
                 }
             }
             break;
-        case '0':
+        }
+        case '0': {
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
             PrintF("CharacterEscape 0 [lookahead ∉ DecimalDigit]\n");
             if (IsUtf16() && !(*pc_ >= '0' && *pc_ <= '9')) {  // NOLINTNEXTLINE(readability-magic-numbers)
@@ -1092,13 +1118,14 @@ int RegExpParser::ParseCharacterEscape()
                 break;
             }
             [[fallthrough]];
+        }
         case '1':
         case '2':
         case '3':
         case '4':
         case '5':
         case '6':
-        case '7':
+        case '7': {
             if (IsUtf16()) {
                 // With /u, decimal escape is not interpreted as octal character code.
                 ParseError("Invalid class escape");
@@ -1106,6 +1133,7 @@ int RegExpParser::ParseCharacterEscape()
             }
             result = ParseOctalLiteral();
             break;
+        }
         // ParseHexEscapeSequence
         // ParseRegExpUnicodeEscapeSequence
         case 'x': {
@@ -1133,7 +1161,8 @@ int RegExpParser::ParseCharacterEscape()
             // If \u is not followed by a two-digit hexadecimal, treat it
             // as an identity escape.
             result = 'u';
-        } break;
+            break;
+        }
         // IdentityEscape[?U]
         case '$':
         case '(':
@@ -1155,7 +1184,7 @@ int RegExpParser::ParseCharacterEscape()
             result = c0_;
             Advance();
             break;
-        default:
+        default: {
             if (IsUtf16()) {
                 ParseError("Invalid unicode escape");
                 return 0;
@@ -1165,6 +1194,7 @@ int RegExpParser::ParseCharacterEscape()
             result = c0_;
             Advance();
             break;
+        }
     }
     return result;
 }
@@ -1233,15 +1263,17 @@ uint32_t RegExpParser::ParseClassAtom(RangeSet *atom)
         case '\\': {
             Advance();
             ret = static_cast<uint32_t>(ParseClassEscape(atom));
-        } break;
+            break;
+        }
         case KEY_EOF:
             break;
-        case 0:
+        case 0: {
             if (pc_ >= end_) {
                 return UINT32_MAX;
             }
             [[fallthrough]];
-        default:
+        }
+        default: {
             uint32_t value = c0_;
             size_t u16_size = 0;
             if (c0_ > INT8_MAX) {  // NOLINTNEXTLINE(readability-magic-numbers)
@@ -1259,6 +1291,7 @@ uint32_t RegExpParser::ParseClassAtom(RangeSet *atom)
             atom->Insert(RangeSet(value));
             ret = value;
             break;
+        }
     }
     return ret;
 }
