@@ -996,6 +996,7 @@ JSHandle<JSArray> JSDateTimeFormat::ConstructFDateIntervalToJSArray(JSThread *th
     // Let index be 0.
     int index = 0;
     int32_t preEndPos = 0;
+    // 2: number of elements
     std::array<int32_t, 2> begin {};
     std::array<int32_t, 2> end {};
     begin[0] = begin[1] = end[0] = end[1] = 0;
@@ -1069,7 +1070,7 @@ JSHandle<JSArray> JSDateTimeFormat::ConstructFDateIntervalToJSArray(JSThread *th
 }
 
 Value JSDateTimeFormat::TrackValue(int32_t beginning, int32_t ending,
-                                   std::array<int32_t, 2> begin, std::array<int32_t, 2> end)
+                                   std::array<int32_t, 2> begin, std::array<int32_t, 2> end) // 2: number of elements
 {
     Value value = Value::SHARED;
     if ((begin[0] <= beginning) && (beginning <= end[0]) && (begin[0] <= ending) && (ending <= end[0])) {
@@ -1341,6 +1342,7 @@ std::string JSDateTimeFormat::ConstructGMTTimeZoneID(const std::string &input)
         return "";
     }
     std::string ret = "Etc/GMT";
+    // 7 : start position specified by string
     if (regex_match(input.substr(7), std::regex("[+-][1][0-4]")) || (regex_match(input.substr(7),
         std::regex("[+-][0-9]")) || input.substr(7) == "0")) {
         return ret + input.substr(7);

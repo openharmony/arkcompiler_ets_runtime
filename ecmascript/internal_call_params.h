@@ -57,24 +57,24 @@ public:
     inline void MakeArgv(const JSHandle<T> &arg)
     {
         EnableFixedModeAndSetLength(1);
-        fixed_data_[0] = arg.GetTaggedType();
+        fixed_data_[0] = arg.GetTaggedType();  // 0: first index
     }
 
     template<typename T0, typename T1>
     inline void MakeArgv(const JSHandle<T0> &arg0, const JSHandle<T1> &arg1)
     {
         EnableFixedModeAndSetLength(2);
-        fixed_data_[0] = arg0.GetTaggedType();
-        fixed_data_[1] = arg1.GetTaggedType();
+        fixed_data_[0] = arg0.GetTaggedType();  // 0: first index
+        fixed_data_[1] = arg1.GetTaggedType();  // 1: second index
     }
 
     template<typename T0, typename T1, typename T2>
     inline void MakeArgv(const JSHandle<T0> &arg0, const JSHandle<T1> &arg1, const JSHandle<T2> &arg2)
     {
         EnableFixedModeAndSetLength(3);
-        fixed_data_[0] = arg0.GetTaggedType();
-        fixed_data_[1] = arg1.GetTaggedType();
-        fixed_data_[2] = arg2.GetTaggedType();
+        fixed_data_[0] = arg0.GetTaggedType();  // 0: first index
+        fixed_data_[1] = arg1.GetTaggedType();  // 1: second indexs
+        fixed_data_[2] = arg2.GetTaggedType();  // 2: third index
     }
 
     template<typename T0, typename T1, typename T2, typename T3>
@@ -82,10 +82,10 @@ public:
                          const JSHandle<T3> &arg3)
     {
         EnableFixedModeAndSetLength(4);
-        fixed_data_[0] = arg0.GetTaggedType();
-        fixed_data_[1] = arg1.GetTaggedType();
-        fixed_data_[2] = arg2.GetTaggedType();
-        fixed_data_[3] = arg3.GetTaggedType();
+        fixed_data_[0] = arg0.GetTaggedType();  // 0: first index
+        fixed_data_[1] = arg1.GetTaggedType();  // 1: second index
+        fixed_data_[2] = arg2.GetTaggedType();  // 2: third index
+        fixed_data_[3] = arg3.GetTaggedType();  // 3: fourth index
     }
 
     inline void MakeEmptyArgv()
@@ -96,32 +96,32 @@ public:
     inline void MakeArgv(const JSTaggedValue arg)
     {
         EnableFixedModeAndSetLength(1);
-        fixed_data_[0] = arg.GetRawData();
+        fixed_data_[0] = arg.GetRawData(); // 0: first index
     }
 
     inline void MakeArgv(const JSTaggedValue arg0, const JSTaggedValue arg1)
     {
         EnableFixedModeAndSetLength(2);
-        fixed_data_[0] = arg0.GetRawData();
-        fixed_data_[1] = arg1.GetRawData();
+        fixed_data_[0] = arg0.GetRawData();  // 0: first index
+        fixed_data_[1] = arg1.GetRawData();  // 1: second index
     }
 
     inline void MakeArgv(const JSTaggedValue arg0, const JSTaggedValue arg1, const JSTaggedValue arg2)
     {
         EnableFixedModeAndSetLength(3);
-        fixed_data_[0] = arg0.GetRawData();
-        fixed_data_[1] = arg1.GetRawData();
-        fixed_data_[2] = arg2.GetRawData();
+        fixed_data_[0] = arg0.GetRawData();  // 0: first index
+        fixed_data_[1] = arg1.GetRawData();  // 1: second index
+        fixed_data_[2] = arg2.GetRawData();  // 2: third index
     }
 
     inline void MakeArgv(const JSTaggedValue arg0, const JSTaggedValue arg1, const JSTaggedValue arg2,
                          const JSTaggedValue arg3)
     {
         EnableFixedModeAndSetLength(4);
-        fixed_data_[0] = arg0.GetRawData();
-        fixed_data_[1] = arg1.GetRawData();
-        fixed_data_[2] = arg2.GetRawData();
-        fixed_data_[3] = arg3.GetRawData();
+        fixed_data_[0] = arg0.GetRawData();  // 0: first index
+        fixed_data_[1] = arg1.GetRawData();  // 1: second index
+        fixed_data_[2] = arg2.GetRawData();  // 2: third index
+        fixed_data_[3] = arg3.GetRawData();  // 3: fourth index
     }
 
     void MakeArgv(const EcmaRuntimeCallInfo *info, uint32_t position);

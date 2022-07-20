@@ -271,8 +271,7 @@ DispatchResponse HeapProfilerImpl::GetHeapObjectId([[maybe_unused]] const GetHea
     return DispatchResponse::Ok();
 }
 
-DispatchResponse HeapProfilerImpl::GetObjectByHeapObjectId(
-    [[maybe_unused]] const GetObjectByHeapObjectIdParams &params,
+DispatchResponse HeapProfilerImpl::GetObjectByHeapObjectId([[maybe_unused]] const GetObjectByHeapObjectIdParams &params,
     [[maybe_unused]] std::unique_ptr<RemoteObject> *remoteObjectResult)
 {
     LOG(ERROR, DEBUGGER) << "GetObjectByHeapObjectId not support now.";
@@ -292,7 +291,7 @@ DispatchResponse HeapProfilerImpl::StartSampling([[maybe_unused]]const StartSamp
 }
 
 DispatchResponse HeapProfilerImpl::StartTrackingHeapObjects(
-    [[maybe_unused]]const StartTrackingHeapObjectsParams &params)
+    [[maybe_unused]] const StartTrackingHeapObjectsParams &params)
 {
     bool result = panda::DFXJSNApi::StartHeapTracking(vm_, INTERVAL, true, &stream_);
     if (result) {

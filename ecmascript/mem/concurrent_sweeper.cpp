@@ -27,16 +27,16 @@ ConcurrentSweeper::ConcurrentSweeper(Heap *heap, bool concurrentSweep)
 {
 }
 
-void ConcurrentSweeper::PostConcurrentSweepTasks(bool fullGC)                                              
-{                                                                                                          
-    if (concurrentSweep_) {                                                                                
-        if (!fullGC) {                                                                                     
-            Platform::GetCurrentPlatform()->PostTask(std::make_unique<SweeperTask>(this, OLD_SPACE));      
-        }                                                                                                  
-        Platform::GetCurrentPlatform()->PostTask(std::make_unique<SweeperTask>(this, NON_MOVABLE));        
-        Platform::GetCurrentPlatform()->PostTask(std::make_unique<SweeperTask>(this, MACHINE_CODE_SPACE)); 
-    }                                                                                                      
-} 
+void ConcurrentSweeper::PostConcurrentSweepTasks(bool fullGC)
+{
+    if (concurrentSweep_) {
+        if (!fullGC) {
+            Platform::GetCurrentPlatform()->PostTask(std::make_unique<SweeperTask>(this, OLD_SPACE));
+        }
+        Platform::GetCurrentPlatform()->PostTask(std::make_unique<SweeperTask>(this, NON_MOVABLE));
+        Platform::GetCurrentPlatform()->PostTask(std::make_unique<SweeperTask>(this, MACHINE_CODE_SPACE));
+    }
+}
 
 void ConcurrentSweeper::SweepPhases(bool fullGC)
 {

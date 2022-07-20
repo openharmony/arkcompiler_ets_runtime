@@ -305,8 +305,10 @@ std::array<size_t, 4> OpCode::GetOpCodeNumInsArray(BitField bitfield) const
 size_t OpCode::GetOpCodeNumIns(BitField bitfield) const
 {
     auto numInsArray = GetOpCodeNumInsArray(bitfield);
-    // 2 : 2 means the third element.
-    // 3 : 3 means the fourth element.
+    // 0 : 0 means the first element
+    // 1 : 1 means the second element
+    // 2 : 2 means the third element
+    // 3 : 3 means the fourth element
     return numInsArray[0] + numInsArray[1] + numInsArray[2] + numInsArray[3];
 }
 
@@ -1003,17 +1005,17 @@ void Gate::SetBitField(BitField bitfield)
 std::string Gate::MachineTypeStr(MachineType machineType) const
 {
     const std::map<MachineType, const char *> strMap = {
-            {NOVALUE, "NOVALUE"},
-            {ANYVALUE, "ANYVALUE"},
-            {ARCH, "ARCH"},
-            {FLEX, "FLEX"},
-            {I1, "I1"},
-            {I8, "I8"},
-            {I16, "I16"},
-            {I32, "I32"},
-            {I64, "I64"},
-            {F32, "F32"},
-            {F64, "F64"},
+        {NOVALUE, "NOVALUE"},
+        {ANYVALUE, "ANYVALUE"},
+        {ARCH, "ARCH"},
+        {FLEX, "FLEX"},
+        {I1, "I1"},
+        {I8, "I8"},
+        {I16, "I16"},
+        {I32, "I32"},
+        {I64, "I64"},
+        {F32, "F32"},
+        {F64, "F64"},
     };
     if (strMap.count(machineType) > 0) {
         return strMap.at(machineType);
@@ -1024,12 +1026,12 @@ std::string Gate::MachineTypeStr(MachineType machineType) const
 std::string Gate::GateTypeStr(GateType gateType) const
 {
     const std::map<GateType, const char *> strMap = {
-            {C_VALUE, "C_VALUE"},
-            {TAGGED_VALUE, "TAGGED_VALUE"},
-            {TAGGED_POINTER, "TAGGED_POINTER"},
-            {TAGGED_NO_POINTER, "TAGGED_NO_POINTER"},
-            {EMPTY, "EMPTY"},
-            {JS_ANY, "JS_ANY"},
+        {C_VALUE, "C_VALUE"},
+        {TAGGED_VALUE, "TAGGED_VALUE"},
+        {TAGGED_POINTER, "TAGGED_POINTER"},
+        {TAGGED_NO_POINTER, "TAGGED_NO_POINTER"},
+        {EMPTY, "EMPTY"},
+        {JS_ANY, "JS_ANY"},
     };
 
     if (strMap.count(gateType) > 0) {

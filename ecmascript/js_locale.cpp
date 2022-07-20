@@ -1312,7 +1312,7 @@ int ConvertValue(const UErrorCode &status, std::string &value, const std::string
     }
 
     if (key == "kf" && value == "true") {
-        return 2;
+        return 2;  // 2: in this case normalizedKeyword is empty string
     }
     return 0;
 }
@@ -1331,7 +1331,7 @@ JSHandle<EcmaString> JSLocale::NormalizeKeywordValue(JSThread *thread, const JSH
     if (result == 1) {
         return JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledUndefinedString());
     }
-    if (result == 2) {
+    if (result == 2) {  // 2: in this case normalizedKeyword is empty string
         return factory->GetEmptyString();
     }
     return factory->NewFromStdString(value);

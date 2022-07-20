@@ -118,7 +118,7 @@ bool BuiltinsGlobal::IsInMarkURISet(uint16_t ch)
 
 bool BuiltinsGlobal::IsHexDigits(uint16_t ch)
 {
-    return ('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'F') || ('a' <= ch && ch <= 'f');
+    return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f');
 }
 
 // 18.2.6

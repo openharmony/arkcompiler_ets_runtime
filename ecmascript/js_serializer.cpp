@@ -127,9 +127,7 @@ bool JSSerializer::WriteRawData(const void *data, size_t length)
             return false;
         }
     }
-    errno_t rc;
-    rc = memcpy_s(buffer_ + bufferSize_, bufferCapacity_ - bufferSize_, data, length);
-    if (rc != EOK) {
+    if (memcpy_s(buffer_ + bufferSize_, bufferCapacity_ - bufferSize_, data, length) != EOK) {
         LOG(ERROR, RUNTIME) << "Failed to memcpy_s Data";
         return false;
     }
@@ -187,9 +185,7 @@ bool JSSerializer::ExpandBuffer(size_t requestedSize)
     if (newBuffer == nullptr) {
         return false;
     }
-    errno_t rc;
-    rc = memcpy_s(newBuffer, newCapacity, buffer_, bufferSize_);
-    if (rc != EOK) {
+    if (memcpy_s(newBuffer, newCapacity, buffer_, bufferSize_) != EOK) {
         LOG(ERROR, RUNTIME) << "Failed to memcpy_s Data";
         free(newBuffer);
         return false;
