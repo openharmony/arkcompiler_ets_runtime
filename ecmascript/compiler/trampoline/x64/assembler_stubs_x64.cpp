@@ -428,6 +428,8 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
     Register jsMethod = rdx;
     Register argV = r9;
     {
+        __ Movq(Operand(jsFuncReg, JSFunction::LEXICAL_ENV_OFFSET), rdx);
+        __ Movq(rdx, Operand(rsp, FRAME_SLOT_SIZE));
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // get method
         __ Movl(Operand(rsp, DOUBLE_SLOT_SIZE), argc); // sp + 16 actual argc
         __ Mov(Operand(jsMethod, JSMethod::GetCallFieldOffset(false)), methodCallField); // get call field
@@ -451,7 +453,7 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
         __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
         __ Movq(rsp, r8);
         Register envReg = r9;
-        __ Movq(Operand(r8, DOUBLE_SLOT_SIZE), envReg); // get env
+        __ Movq(Operand(r8, FRAME_SLOT_SIZE), envReg); // get env
         argvReg = r8;
         __ Addq(TRIPLE_SLOT_SIZE, argvReg); // get argv
         __ Cmpl(expectedNumArgsReg, rdx); // expectedNumArgs <= actualNumArgs
@@ -694,6 +696,8 @@ void AssemblerStubsX64::JSCall(ExtendedAssembler *assembler)
     Register jsMethod = rdx;
     Register argV = r9;
     {
+        __ Movq(Operand(jsFuncReg, JSFunction::LEXICAL_ENV_OFFSET), rdx);
+        __ Movq(rdx, Operand(rsp, FRAME_SLOT_SIZE));
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // get method
         __ Movl(Operand(rsp, DOUBLE_SLOT_SIZE), argc); // sp + 16 actual argc
         __ Mov(Operand(jsMethod, JSMethod::GetCallFieldOffset(false)), methodCallField); // get call field

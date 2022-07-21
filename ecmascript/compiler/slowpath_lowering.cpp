@@ -119,6 +119,37 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
     acc_.DeleteGate(hir);
 }
 
+void SlowPathLowering::ReplaceHirToJSCall(GateRef hirGate, GateRef callGate, GateRef glue)
+{
+    GateRef stateInGate = acc_.GetState(hirGate);
+    // copy depend-wire of hirGate to callGate
+    GateRef dependInGate = acc_.GetDep(hirGate);
+    acc_.SetDep(callGate, dependInGate);
+
+    GateRef exceptionOffset = builder_.IntPtr(JSThread::GlueData::GetExceptionOffset(false));
+    GateRef exception = builder_.Load(VariableType::JS_ANY(), glue, exceptionOffset);
+    acc_.SetDep(exception, callGate);
+    GateRef equal = builder_.NotEqual(exception, builder_.Int64(JSTaggedValue::VALUE_HOLE));
+    GateRef ifBranch = builder_.Branch(stateInGate, equal);
+
+    auto uses = acc_.Uses(hirGate);
+    for (auto it = uses.begin(); it != uses.end(); it++) {
+        if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
+            acc_.SetOpCode(*it, OpCode::IF_FALSE);
+            acc_.ReplaceIn(it, ifBranch);
+        } else {
+            if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
+                acc_.SetOpCode(*it, OpCode::IF_TRUE);
+                acc_.ReplaceIn(it, ifBranch);
+            } else {
+                acc_.ReplaceIn(it, callGate);
+            }
+        }
+    }
+
+    // delete old gate
+    acc_.DeleteGate(hirGate);
+}
 
 /*
  * lower to slowpath call like this pattern:
@@ -871,7 +902,7 @@ void SlowPathLowering::LowerToJSCall(GateRef gate, GateRef glue, const std::vect
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCall));
     GateRef target = builder_.IntPtr(RTSTUB_ID(JSCall));
     GateRef newGate = builder_.Call(cs, glue, target, dependEntry_, args);
-    ReplaceHirToCall(gate, newGate);
+    ReplaceHirToJSCall(gate, newGate, glue);
 }
 
 void SlowPathLowering::LowerCallArg0Dyn(GateRef gate, GateRef glue)
@@ -883,7 +914,7 @@ void SlowPathLowering::LowerCallArg0Dyn(GateRef gate, GateRef glue)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
-    GateRef env = builder_.GetLexicalEnv(func);
+    GateRef env = builder_.Undefined();
     GateRef bcOffset = acc_.GetValueIn(gate, 1);
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, bcOffset});
 }
@@ -897,7 +928,7 @@ void SlowPathLowering::LowerCallArg1Dyn(GateRef gate, GateRef glue)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
-    GateRef env = builder_.GetLexicalEnv(func);
+    GateRef env = builder_.Undefined();
     GateRef bcOffset = acc_.GetValueIn(gate, 2); // 2: bytecode offset
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, acc_.GetValueIn(gate, 1), bcOffset});
 }
@@ -911,7 +942,7 @@ void SlowPathLowering::LowerCallArgs2Dyn(GateRef gate, GateRef glue)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
-    GateRef env = builder_.GetLexicalEnv(func);
+    GateRef env = builder_.Undefined();
     GateRef bcOffset = acc_.GetValueIn(gate, 3); // 3: bytecode offset
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, acc_.GetValueIn(gate, 1),
         acc_.GetValueIn(gate, 2), bcOffset});
@@ -925,7 +956,7 @@ void SlowPathLowering::LowerCallArgs3Dyn(GateRef gate, GateRef glue)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
-    GateRef env = builder_.GetLexicalEnv(func);
+    GateRef env = builder_.Undefined();
     GateRef bcOffset = acc_.GetValueIn(gate, 4); // 4: bytecode offset
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, acc_.GetValueIn(gate, 1),
         acc_.GetValueIn(gate, 2), acc_.GetValueIn(gate, 3), bcOffset});
@@ -941,7 +972,7 @@ void SlowPathLowering::LowerCallIThisRangeDyn(GateRef gate, GateRef glue)
     GateRef callTarget = acc_.GetValueIn(gate, 0);
     GateRef thisObj = acc_.GetValueIn(gate, 1);
     GateRef newTarget = builder_.Undefined();
-    GateRef env = builder_.GetLexicalEnv(callTarget);
+    GateRef env = builder_.Undefined();
     vec.emplace_back(glue);
     vec.emplace_back(env);
     vec.emplace_back(actualArgc);
@@ -975,7 +1006,7 @@ void SlowPathLowering::LowerCallIRangeDyn(GateRef gate, GateRef glue)
     GateRef callTarget = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    GateRef env = builder_.GetLexicalEnv(callTarget);
+    GateRef env = builder_.Undefined();
     vec.emplace_back(glue);
     vec.emplace_back(env);
     vec.emplace_back(actualArgc);

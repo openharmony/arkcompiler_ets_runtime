@@ -118,7 +118,7 @@ void LLVMStackMapParser::CollectBaseAndDerivedPointers(const CallSiteInfo* infos
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
                 if (!isVerifying) {
 #endif
-                    data->emplace(std::make_pair(base, derived),  *reinterpret_cast<uintptr_t *>(base));
+                    (*data)[std::make_pair(base, derived)] = *reinterpret_cast<uintptr_t *>(base);
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
                 }
 #endif

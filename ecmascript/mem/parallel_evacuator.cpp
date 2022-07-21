@@ -51,6 +51,7 @@ void ParallelEvacuator::Evacuate()
     Initialize();
     EvacuateSpace();
     UpdateReference();
+    heap_->UpdateDerivedObjectInStack();
     Finalize();
     heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticConcurrentEvacuate(clockScope.GetPauseTime());
 }
