@@ -444,6 +444,44 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     return tagged;
 }
 
+JSTaggedValue EcmaInterpreter::ExecuteAotJSFunction(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    // current is entry frame.
+    JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
+    std::vector<JSTaggedType> args; // 7: number of para
+    auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
+
+    JSHandle<JSTaggedValue> func = info->GetFunction();
+    ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(func.GetTaggedValue().GetTaggedObject());
+    ASSERT(callTarget != nullptr);
+    JSMethod *method = callTarget->GetCallTarget();
+
+    int32_t numArgs = info->GetArgsNumber();
+    int32_t declaredNumArgs = static_cast<int32_t>(method->GetNumArgsWithCallField());
+    JSFunction *mainFunc = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
+    JSTaggedValue env = mainFunc->GetLexicalEnv();
+    thread->CheckSafepoint();
+
+    args.emplace_back(info->GetFunctionValue().GetRawData());
+    args.emplace_back(info->GetNewTargetValue().GetRawData());
+    args.emplace_back(info->GetThisValue().GetRawData());
+    for (int i = 0; i < numArgs; i++) {
+        args.emplace_back(info->GetCallArgValue(i).GetRawData());
+    }
+    args.emplace_back(env.GetRawData());
+    auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread->GetGlueAddr(),
+                                                        reinterpret_cast<uintptr_t>(thread->GetLastLeaveFrame()),
+                                                        declaredNumArgs + NUM_MANDATORY_JSFUNC_ARGS,
+                                                        numArgs + NUM_MANDATORY_JSFUNC_ARGS,
+                                                        args.data(),
+                                                        mainFunc->GetCodeEntry());
+    InterpretedEntryFrame *entryState = GET_ENTRY_FRAME(sp);
+    JSTaggedType *prevSp = entryState->base.prev;
+    thread->SetCurrentSPFrame(prevSp);
+    return res;
+}
+
 JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
 {
     if (info == nullptr) {
@@ -452,17 +490,22 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
 
     JSThread *thread = info->GetThread();
     INTERPRETER_TRACE(thread, Execute);
-    if (thread->IsAsmInterpreter()) {
-        return InterpreterAssembly::Execute(info);
-    }
+
     JSHandle<JSTaggedValue> func = info->GetFunction();
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(func.GetTaggedValue().GetTaggedObject());
     ASSERT(callTarget != nullptr);
     JSMethod *method = callTarget->GetCallTarget();
+    if (method->IsAotWithCallField()) {
+        return EcmaInterpreter::ExecuteAotJSFunction(info);
+    }
+
+    if (thread->IsAsmInterpreter()) {
+        return InterpreterAssembly::Execute(info);
+    }
+
     if (method->IsNativeWithCallField()) {
         return EcmaInterpreter::ExecuteNative(info);
     }
-
     // current is entry frame.
     JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
     int32_t actualNumArgs = info->GetArgsNumber();

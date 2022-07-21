@@ -143,7 +143,7 @@ void AssemblerStubs::IncreaseStackForArguments(ExtendedAssembler *assembler, Reg
 //        +--------------------------+
 void AssemblerStubs::JSFunctionEntry(ExtendedAssembler *assembler)
 {
-    Register glue(X20);
+    Register glue(X0);
     Register prevFp(X1);
     Register expectedNumArgs(X2);
     Register actualNumArgs(X3);
@@ -185,6 +185,7 @@ void AssemblerStubs::JSFunctionEntry(ExtendedAssembler *assembler)
         TempRegister1Scope scope1(assembler);
         Register env = __ TempRegister1();
         __ Mov(Register(X19), expectedNumArgs);
+        __ Mov(Register(X20), glue);
         __ Ldr(env, MemoryOperand(argV, actualNumArgs, UXTW, SHIFT_OF_FRAMESLOT));
         __ Str(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
         // 0 : 0 restore size
@@ -197,8 +198,9 @@ void AssemblerStubs::JSFunctionEntry(ExtendedAssembler *assembler)
     __ Ldr(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
     PopJSFunctionArgs(assembler, Register(X19), actualNumArgs);
 
+    __ Mov(Register(X2), Register(X20));
     // pop prevLeaveFrameFp to restore thread->currentFrame_
-    PopJSFunctionEntryFrame(assembler, glue);
+    PopJSFunctionEntryFrame(assembler, Register(X2));
     __ Ret();
 }
 
