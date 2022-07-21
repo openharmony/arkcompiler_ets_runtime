@@ -50,6 +50,7 @@ public:
             OHOS::HiviewDFX::HiLog::Error(LABEL, "%{public}s", stream_.str().c_str());
         } else {
             OHOS::HiviewDFX::HiLog::Fatal(LABEL, "%{public}s", stream_.str().c_str());
+            std::abort();
         }
     }
     template<class type>
