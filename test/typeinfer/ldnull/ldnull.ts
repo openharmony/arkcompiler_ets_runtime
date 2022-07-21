@@ -13,5 +13,6 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 let num = null;
-typeof(num);
+AssertType(num, "null");

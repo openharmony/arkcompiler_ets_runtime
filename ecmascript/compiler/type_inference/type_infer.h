@@ -69,7 +69,9 @@ private:
     bool InferNewObjSpread(GateRef gate);
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
-    void TypeInferPrint() const;
+    void Verify() const;
+    void TypeCheck(GateRef gate) const;
+    void PrintType(GateRef gate) const;
 
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};

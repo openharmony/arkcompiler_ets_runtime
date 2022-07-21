@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     async function add(num1:number, num2:number):Promise<number> {
         let ans = num1 + num2;
         return ans;
     }
-    typeof(add(1, 2));
+    AssertType(add, "function");
 }

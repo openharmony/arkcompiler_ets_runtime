@@ -13,12 +13,24 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
+    class A {
+        v1:number;
+        constructor(v1:number) {
+            this.v1 = v1;
+        }
+    }
+
     let arr1:string[] = ["a", "b", "c"];
     let arr2:number[] = [1, 2, 3, 4];
     let arr3:boolean[] = [true, false, false];
+    let a1 = new A(0);
+    let a2 = new A(1);
+    let arr4:A[] = [a1, a2];
     let t = 1;
-    typeof(arr1[t]);
-    typeof(arr2[t]);
-    typeof(arr3[t]);
+    AssertType(arr1[t], "string");
+    AssertType(arr2[t], "number");
+    AssertType(arr3[t], "boolean");
+    AssertType(arr4[t], "class_instance");
 }

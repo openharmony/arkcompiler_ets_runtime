@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     let arr1:string[]= [];
-    typeof(arr1);
+    AssertType(typeof(arr1), "array");
 }

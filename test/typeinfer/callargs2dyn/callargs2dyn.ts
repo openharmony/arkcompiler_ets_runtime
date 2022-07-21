@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     function foo(flag1:boolean, flag2:boolean):boolean
     {
         return flag1 && flag2;
     }
-    typeof(foo(true, false));
+    let value = foo(true, false);
+    AssertType(value, "boolean");
 }

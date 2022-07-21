@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 var num1:number = 1;
 num1 = 2;
 num1 = 3;
 num1 =10;
 var ans = num1;
+AssertType(ans, "number");

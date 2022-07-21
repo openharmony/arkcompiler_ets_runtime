@@ -74,7 +74,9 @@ public:
     bool Run(PassData* data, bool enableLog, BytecodeCircuitBuilder *builder, TSLoader *tsLoader)
     {
         TypeInfer typeInfer(builder, data->GetCircuit(), tsLoader, enableLog);
-        typeInfer.TraverseCircuit();
+        if (builder->HasTypes()) {
+            typeInfer.TraverseCircuit();
+        }
         return true;
     }
 };
@@ -85,7 +87,9 @@ public:
              TSLoader *tsLoader)
     {
         TypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsLoader, enableLog);
-        lowering.RunTypeLowering();
+        if (builder->HasTypes()) {
+            lowering.RunTypeLowering();
+        }
         return true;
     }
 };

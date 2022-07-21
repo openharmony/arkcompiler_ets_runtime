@@ -70,7 +70,7 @@ public:
         parser->Add(&startupTime_);
         parser->Add(&snapshotOutputFile_);
         parser->Add(&enableRuntimeStat_);
-        parser->Add(&logTypeInfer_);
+        parser->Add(&typeInferVerify_);
         parser->Add(&builtinsDTS_);
     }
 
@@ -460,14 +460,14 @@ public:
         snapshotOutputFile_.SetValue(std::move(value));
     }
 
-    bool GetLogTypeInfer() const
+    bool EnableTypeInferVerify() const
     {
-        return logTypeInfer_.GetValue();
+        return typeInferVerify_.GetValue();
     }
 
-    void SetLogTypeInfer(bool value)
+    void SetEnableTypeInferVerify(bool value)
     {
-        logTypeInfer_.SetValue(value);
+        typeInferVerify_.SetValue(value);
     }
 
     bool WasSetBuiltinsDTS() const
@@ -539,8 +539,8 @@ private:
         R"(Path to snapshot output file. Default: "snapshot")"};
     PandArg<bool> enableRuntimeStat_ {"enable-runtime-stat", false,
         R"(enable statistics of runtime state. Default: false)"};
-    PandArg<bool> logTypeInfer_ {"log-Type-Infer", false,
-        R"(print aot type infer log. Default: false)"};
+    PandArg<bool> typeInferVerify_ {"typeinfer-verify", false,
+        R"(Enable type verify for type inference tests. Default: false)"};
     PandArg<bool> isWorker_ {"IsWorker", false,
         R"(whether is worker vm)"};
     PandArg<std::string> builtinsDTS_ {"builtins-dts",

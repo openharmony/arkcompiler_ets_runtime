@@ -13,15 +13,16 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     let num1:number = 1;
     let num2:number = 2;
-    typeof(num1 >= num2);
-    typeof(num1 > num2);
-    typeof(num1 < num2);
-    typeof(num1 <= num2);
-    typeof(num1 == num2);
-    typeof(num1 != num2);
-    typeof(num1 === num2);
-    typeof(num1 !== num2);
+    AssertType(num1 >= num2, "boolean");
+    AssertType(num1 > num2, "boolean");
+    AssertType(num1 < num2, "boolean");
+    AssertType(num1 <= num2, "boolean");
+    AssertType(num1 == num2, "boolean");
+    AssertType(num1 != num2, "boolean");
+    AssertType(num1 === num2, "boolean");
+    AssertType(num1 !== num2, "boolean");
 }

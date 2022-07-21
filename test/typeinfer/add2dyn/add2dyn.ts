@@ -13,9 +13,28 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
+    let num1 : number = 1;
+    let num2 : number = 2;
+    let ans1 = num1 + num2;
+    AssertType(ans1, "number");
+
     let arr1 : number[] = [1, 2];
     let arr2 : number[] = [1, 2];
-    let ans = arr1[0] + arr2[0];
-    typeof(ans)
+    let ans2 = arr1[0] + arr2[0];
+    AssertType(ans2, "number");
+
+    let arr3 : string[] = ['1'];
+    let arr4 : string[] = ['1'];
+    let ans3 = arr3[0] + arr4[0];
+    AssertType(ans3, "string");
+
+    let str1 : string = '1';
+    let str2 : string = '2';
+    let ans4 = str1 + str2;
+    AssertType(ans4, "string");
+
+    let ans5 = arr1[0] + arr3[0];
+    AssertType(ans5, "string");
 }
