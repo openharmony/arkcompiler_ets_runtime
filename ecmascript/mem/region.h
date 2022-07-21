@@ -18,11 +18,12 @@
 
 #include <sanitizer/asan_interface.h>
 
+#include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/free_object_list.h"
 #include "ecmascript/mem/gc_bitset.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "libpandabase/os/mutex.h"
-#include "libpandabase/utils/aligned_storage.h"
 #include "securec.h"
 
 namespace panda {
@@ -84,11 +85,6 @@ static inline std::string ToSpaceTypeName(uint8_t space)
     }
 }
 
-#define REGION_OFFSET_LIST(V)                                                             \
-    V(GCBITSET, GCBitset, markGCBitset_, FLAG, sizeof(uint32_t), sizeof(uint64_t))              \
-    V(OLDTONEWSET, OldToNewSet, oldToNewSet_, GCBITSET, sizeof(uint32_t), sizeof(uint64_t)) \
-    V(BEGIN, Begin, begin_, OLDTONEWSET, sizeof(uint32_t), sizeof(uint64_t))
-
 // |---------------------------------------------------------------------------------------|
 // |                                   Region (256 kb)                                     |
 // |---------------------------------|--------------------------------|--------------------|
@@ -98,23 +94,13 @@ static inline std::string ToSpaceTypeName(uint8_t space)
 class Region {
 public:
     Region(JSThread *thread, uintptr_t allocateBase, uintptr_t begin, uintptr_t end, RegionSpaceFlag spaceType)
-        : thread_(thread),
+        : packedData_(begin, end, spaceType),
+          thread_(thread),
           allocateBase_(allocateBase),
           end_(end),
           highWaterMark_(end),
           aliveObject_(0),
-          wasted_(0)
-    {
-        flags_.spaceFlag_ = spaceType;
-        flags_.gcFlags_ = 0;
-        bitsetSize_ = (spaceType == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE) ?
-            GCBitset::BYTE_PER_WORD : GCBitset::SizeOfGCBitset(end - begin);
-        markGCBitset_ = new (ToVoidPtr(begin)) GCBitset();
-        markGCBitset_->Clear(bitsetSize_);
-        begin_ = AlignUp(begin + bitsetSize_, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-        // The object region marked with poison until it is allocated if is_asan is true
-        ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin_), GetSize());
-    }
+          wasted_(0) {}
 
     ~Region() = default;
     NO_COPY_SEMANTIC(Region);
@@ -142,7 +128,7 @@ public:
 
     uintptr_t GetBegin() const
     {
-        return begin_;
+        return packedData_.begin_;
     }
 
     uintptr_t GetEnd() const
@@ -162,7 +148,7 @@ public:
 
     size_t GetSize() const
     {
-        return end_ - begin_;
+        return end_ - packedData_.begin_;
     }
 
     JSThread *GetJSThread() const
@@ -172,23 +158,23 @@ public:
 
     bool IsGCFlagSet(RegionGCFlags flag) const
     {
-        return (flags_.gcFlags_ & flag) == flag;
+        return (packedData_.flags_.gcFlags_ & flag) == flag;
     }
 
     void SetGCFlag(RegionGCFlags flag)
     {
-        flags_.gcFlags_ |= flag;
+        packedData_.flags_.gcFlags_ |= flag;
     }
 
     void ClearGCFlag(RegionGCFlags flag)
     {
         // NOLINTNEXTLINE(hicpp-signed-bitwise)
-        flags_.gcFlags_ &= ~flag;
+        packedData_.flags_.gcFlags_ &= ~flag;
     }
 
     std::string GetSpaceTypeName()
     {
-        return ToSpaceTypeName(flags_.spaceFlag_);
+        return ToSpaceTypeName(packedData_.flags_.spaceFlag_);
     }
 
     // Mark bitset
@@ -233,17 +219,17 @@ public:
 
     void Invalidate()
     {
-        flags_.spaceFlag_ = RegionSpaceFlag::UNINITIALIZED;
+        packedData_.flags_.spaceFlag_ = RegionSpaceFlag::UNINITIALIZED;
     }
 
     bool InYoungSpace() const
     {
-        return flags_.spaceFlag_ == RegionSpaceFlag::IN_YOUNG_SPACE;
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_YOUNG_SPACE;
     }
 
     bool InOldSpace() const
     {
-        return flags_.spaceFlag_ == RegionSpaceFlag::IN_OLD_SPACE;
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_OLD_SPACE;
     }
 
     bool InYoungOrOldSpace() const
@@ -253,32 +239,32 @@ public:
 
     bool InHugeObjectSpace() const
     {
-        return flags_.spaceFlag_ == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE;
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE;
     }
 
     bool InMachineCodeSpace() const
     {
-        return flags_.spaceFlag_ == RegionSpaceFlag::IN_MACHINE_CODE_SPACE;
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_MACHINE_CODE_SPACE;
     }
 
     bool InNonMovableSpace() const
     {
-        return flags_.spaceFlag_  == RegionSpaceFlag::IN_NON_MOVABLE_SPACE;
+        return packedData_.flags_.spaceFlag_  == RegionSpaceFlag::IN_NON_MOVABLE_SPACE;
     }
 
     bool InSnapshotSpace() const
     {
-        return flags_.spaceFlag_ == RegionSpaceFlag::IN_SNAPSHOT_SPACE;
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_SNAPSHOT_SPACE;
     }
 
     bool InReadOnlySpace() const
     {
-        return flags_.spaceFlag_ == RegionSpaceFlag::IN_READ_ONLY_SPACE;
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_READ_ONLY_SPACE;
     }
 
     bool InHeapSpace() const
     {
-        uint8_t space = flags_.spaceFlag_;
+        uint8_t space = packedData_.flags_.spaceFlag_;
         return (space == RegionSpaceFlag::IN_YOUNG_SPACE ||
                 space == RegionSpaceFlag::IN_OLD_SPACE ||
                 space == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE ||
@@ -330,7 +316,7 @@ public:
 
     bool InRange(uintptr_t address) const
     {
-        return address >= begin_ && address <= end_;
+        return address >= packedData_.begin_ && address <= end_;
     }
 
     uintptr_t GetAllocateBase() const
@@ -341,7 +327,7 @@ public:
     size_t GetAllocatedBytes(uintptr_t top = 0)
     {
         ASSERT(top == 0 || InRange(top));
-        return (top == 0) ? (highWaterMark_ - begin_) : (top - begin_);
+        return (top == 0) ? (highWaterMark_ - packedData_.begin_) : (top - packedData_.begin_);
     }
 
     void SetHighWaterMark(uintptr_t mark)
@@ -363,7 +349,7 @@ public:
 
     int SetReadOnlyAndMarked()
     {
-        markGCBitset_->SetAllBits(bitsetSize_);
+        packedData_.markGCBitset_->SetAllBits(packedData_.bitsetSize_);
         // NOLINT(hicpp-signed-bitwise)
 #ifndef PANDA_TARGET_WINDOWS
         int res = mprotect(reinterpret_cast<void *>(allocateBase_), GetCapacity(), PROT_READ);
@@ -459,59 +445,75 @@ public:
 
     void SwapRSetForConcurrentSweeping()
     {
-        sweepingRSet_ = oldToNewSet_;
-        oldToNewSet_ = nullptr;
+        sweepingRSet_ = packedData_.oldToNewSet_;
+        packedData_.oldToNewSet_ = nullptr;
     }
 
     // should call in js-thread
     void MergeRSetForConcurrentSweeping();
 
-    static constexpr uint32_t GetOldToNewSetOffset(bool is32Bit = false)
-    {
-        return is32Bit ? REGION_OLDTONEWSET_OFFSET_32 : REGION_OLDTONEWSET_OFFSET_64;
-    }
+    struct alignas(JSTaggedValue::TaggedTypeSize()) PackedPtr : public base::AlignedPointer {
+        uint8_t spaceFlag_;
+        uint16_t  gcFlags_;
+    };
 
-    static constexpr uint32_t GetGCBitsetOffset(bool is32Bit = false)
-    {
-        return is32Bit ? REGION_GCBITSET_OFFSET_32 : REGION_GCBITSET_OFFSET_64;
-    }
+    struct PackedData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
+                                                 base::AlignedSize> {
+        enum class Index : size_t {
+            FlagIndex = 0,
+            MarkGCBitSetIndex,
+            OldToNewSetIndex,
+            BeginIndex,
+            BitSetSizeIndex,
+            NumOfMembers
+        };
 
-    static constexpr uint32_t GetFlagOffset(bool is32Bit = false)
-    {
-        return is32Bit ? REGION_FLAG_OFFSET_32 : REGION_FLAG_OFFSET_64;
-    }
+        static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
 
-    static constexpr uint32_t GetBeginOffset(bool is32Bit = false)
-    {
-        return is32Bit ? REGION_BEGIN_OFFSET_32 : REGION_BEGIN_OFFSET_64;
-    }
+        inline PackedData(uintptr_t begin, uintptr_t end, RegionSpaceFlag spaceType)
+        {
+            flags_.spaceFlag_ = spaceType;
+            flags_.gcFlags_ = 0;
+            bitsetSize_ = (spaceType == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE) ?
+                GCBitset::BYTE_PER_WORD : GCBitset::SizeOfGCBitset(end - begin);
+            markGCBitset_ = new (ToVoidPtr(begin)) GCBitset();
+            markGCBitset_->Clear(bitsetSize_);
+            begin_ = AlignUp(begin + bitsetSize_, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+            // The object region marked with poison until it is allocated if is_asan is true
+            ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin_), (end - begin));
+        }
 
-    #define REGION_OFFSET_MACRO(name, camelName, memberName, lastName, lastSize32, lastSize64)              \
-        static constexpr uint32_t REGION_##name##_OFFSET_32 = REGION_##lastName##_OFFSET_32 + (lastSize32); \
-        static constexpr uint32_t REGION_##name##_OFFSET_64 = REGION_##lastName##_OFFSET_64 + (lastSize64);
-    static constexpr uint32_t REGION_FLAG_OFFSET_32 = 0U;
-    static constexpr uint32_t REGION_FLAG_OFFSET_64 = 0U;
-    REGION_OFFSET_LIST(REGION_OFFSET_MACRO)
-    #undef REGION_OFFSET_MACRO
+        static size_t GetFlagOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::FlagIndex)>(isArch32);
+        }
 
-    static constexpr bool CheckLayout()
-    {
-#ifdef PANDA_TARGET_32
-        #define REGION_OFFSET_ASSERT(name, camelName, memberName, lastName, lastSize32, lastSize64)         \
-        static_assert(MEMBER_OFFSET(Region, memberName) == (Get##camelName##Offset(true)));
-        REGION_OFFSET_LIST(REGION_OFFSET_ASSERT)
-        static_assert(GetFlagOffset(true) == MEMBER_OFFSET(Region, flags_));
-        #undef REGION_OFFSET_ASSERT
-#endif
-#ifdef PANDA_TARGET_64
-        #define REGION_OFFSET_ASSERT(name, camelName, memberName, lastName, lastSize32, lastSize64)         \
-        static_assert(MEMBER_OFFSET(Region, memberName) == (Get##camelName##Offset(false)));
-        REGION_OFFSET_LIST(REGION_OFFSET_ASSERT)
-        static_assert(GetFlagOffset(false) == MEMBER_OFFSET(Region, flags_));
-        #undef REGION_OFFSET_ASSERT
-#endif
-        return true;
-    }
+        static size_t GetGCBitsetOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::MarkGCBitSetIndex)>(isArch32);
+        }
+
+        static size_t GetOldToNewSetOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::OldToNewSetIndex)>(isArch32);
+        }
+
+        static size_t GetBeginOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::BeginIndex)>(isArch32);
+        }
+
+        alignas(EAS) PackedPtr flags_;
+        alignas(EAS) GCBitset *markGCBitset_ {nullptr};
+        alignas(EAS) RememberedSet *oldToNewSet_ {nullptr};
+        alignas(EAS) uintptr_t begin_ {0};
+        alignas(EAS) size_t bitsetSize_ {0};
+    };
+    STATIC_ASSERT_EQ_ARCH(sizeof(PackedData), PackedData::SizeArch32, PackedData::SizeArch64);
 
 private:
     static constexpr double MOST_OBJECT_ALIVE_THRESHOLD_PERCENT = 0.8;
@@ -520,17 +522,7 @@ private:
     RememberedSet *GetOrCreateCrossRegionRememberedSet();
     RememberedSet *GetOrCreateOldToNewRememberedSet();
 
-    static constexpr size_t PACKED_PTR_NUM_BYTES = sizeof(uintptr_t) / sizeof(uint8_t);
-
-    struct PackedPtr : public AlignedStorage<sizeof(uintptr_t), sizeof(uint8_t), PACKED_PTR_NUM_BYTES> {
-        Aligned<uint8_t> spaceFlag_;
-        Aligned<uint16_t> gcFlags_;
-    } flags_;
-    static_assert(sizeof(flags_) == PackedPtr::GetSize());
-
-    GCBitset *markGCBitset_ {nullptr};
-    RememberedSet *oldToNewSet_ {nullptr};
-    uintptr_t begin_;
+    PackedData packedData_;
     /*
      * The thread instance here is used by the GC barriers to get marking related information
      * and perform marking related operations. The barriers will indirectly access such information
@@ -545,7 +537,6 @@ private:
     uintptr_t end_;
     uintptr_t highWaterMark_;
     std::atomic_size_t aliveObject_ {0};
-    size_t bitsetSize_ {0};
     Region *next_ {nullptr};
     Region *prev_ {nullptr};
 
@@ -558,9 +549,6 @@ private:
     friend class Snapshot;
     friend class SnapshotProcessor;
 };
-
-static_assert(Region::CheckLayout());
 }  // namespace ecmascript
 }  // namespace panda
-
 #endif  // ECMASCRIPT_MEM_REGION_H

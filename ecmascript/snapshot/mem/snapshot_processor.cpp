@@ -1009,13 +1009,13 @@ void SnapshotProcessor::WriteSpaceObjectToFile(Space* space, std::fstream &write
                 // file. Because in the snapshot file the region object and the associated region will be serialized
                 // together to an area which has the fixed size of DEFAULT_REGION_SIZE.
                 // Need to relax this assumption / limitation.
-                ASSERT(alignedRegionObjSize + (current->end_ - ToUintPtr(current->markGCBitset_)) ==
+                ASSERT(alignedRegionObjSize + (current->end_ - ToUintPtr(current->packedData_.markGCBitset_)) ==
                        DEFAULT_REGION_SIZE);
 
                 // Firstly, serialize the region object into the file;
                 writer.write(reinterpret_cast<char *>(current), alignedRegionObjSize);
                 // Secondly, write the valid region memory (from the GC bit set at the beginning to end).
-                writer.write(reinterpret_cast<char *>(current->markGCBitset_),
+                writer.write(reinterpret_cast<char *>(current->packedData_.markGCBitset_),
                              DEFAULT_REGION_SIZE - alignedRegionObjSize);
                 writer.flush();
             }
@@ -1023,8 +1023,8 @@ void SnapshotProcessor::WriteSpaceObjectToFile(Space* space, std::fstream &write
         // Firstly, serialize the region object into the file;
         writer.write(reinterpret_cast<char *>(lastRegion), alignedRegionObjSize);
         // Secondly, write the valid region memory (from the GC bit set at the beginning to high water mark).
-        writer.write(reinterpret_cast<char *>(lastRegion->markGCBitset_),
-                     lastRegion->highWaterMark_ - ToUintPtr(lastRegion->markGCBitset_));
+        writer.write(reinterpret_cast<char *>(lastRegion->packedData_.markGCBitset_),
+                     lastRegion->highWaterMark_ - ToUintPtr(lastRegion->packedData_.markGCBitset_));
         writer.flush();
         space->ReclaimRegions();
     }
@@ -1047,7 +1047,7 @@ uint32_t SnapshotProcessor::StatisticsSpaceObjectSize(Space* space)
     if (regionCount > 0) {
         auto lastRegion = space->GetCurrentRegion();
         size_t alignedRegionObjSize = AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        size_t lastRegionSize = lastRegion->highWaterMark_ - ToUintPtr(lastRegion->markGCBitset_);
+        size_t lastRegionSize = lastRegion->highWaterMark_ - ToUintPtr(lastRegion->packedData_.markGCBitset_);
         // fixme: Except for the last region of a space,
         // currently the snapshot feature assumes that every serialized region must have fixed size.
         // The original region size plus the aligned region object size should not exceed DEFAULT_REGION_SIZE.
@@ -1130,12 +1130,13 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         uint32_t regionIndex = *(reinterpret_cast<GCBitset *>(oldMarkGCBitsetAddr)->Words());
         regionIndexMap_.emplace(regionIndex, region);
 
-        size_t copyBytes = fileRegion->highWaterMark_ - fileRegion->begin_;
+        size_t copyBytes = fileRegion->highWaterMark_ - fileRegion->packedData_.begin_;
         // Retrieve the data beginning address based on the serialized data format.
-        uintptr_t copyFrom = oldMarkGCBitsetAddr + (fileRegion->begin_ - ToUintPtr(fileRegion->markGCBitset_));
-        ASSERT(copyBytes <= region->end_ - region->begin_);
+        uintptr_t copyFrom = oldMarkGCBitsetAddr +
+            (fileRegion->packedData_.begin_ - ToUintPtr(fileRegion->packedData_.markGCBitset_));
+        ASSERT(copyBytes <= region->end_ - region->packedData_.begin_);
 
-        if (memcpy_s(ToVoidPtr(region->begin_),
+        if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
                      copyBytes,
                      ToVoidPtr(copyFrom),
                      copyBytes) != EOK) {
@@ -1143,7 +1144,7 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
             UNREACHABLE();
         }
 
-        region->highWaterMark_ = region->begin_ + copyBytes;
+        region->highWaterMark_ = region->packedData_.begin_ + copyBytes;
         // Other information like aliveObject size, wasted size etc. in the region object to restore.
         region->aliveObject_ = fileRegion->AliveObject();
         region->wasted_ = fileRegion->wasted_;
