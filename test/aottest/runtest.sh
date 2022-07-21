@@ -21,6 +21,7 @@ run_args=""
 run_mode="aot"
 make_opt=""
 cur_dir=$(pwd)
+out_dir="out/$product/clang_x64/aottest"
 timeout=20
 
 check_result_fexit()
@@ -117,20 +118,14 @@ do
     esac
 done
 
-if [ ! -d "$cur_dir/ark" ]; then
-    echo "Please run at openharmony root dir that ark located"
+if [ ! -d "$cur_dir/arkcompiler" ]; then
+    echo "Please run at openharmony root dir that arkcompiler located"
     exit 0
 fi
 
 # run test
 test_name=$(basename $test_name)
 echo "Run test: $test_dir/$test_name ================="
-
-out_dir="out/$product/clang_x64/aottest"
-if [ ! -f "$out_dir/stub.m" ]; then
-    make -f $test_dir/makefile $run_args stub
-    check_result_fexit "make stub.m FAILED"
-fi
 
 module=""
 if [ -n "$(grep 'import' $(ls $test_dir/$test_name/$test_name.[tj]s))" ]; then
