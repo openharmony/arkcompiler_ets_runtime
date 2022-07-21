@@ -65,7 +65,7 @@ class JSHandle;
 class JSArrayBuffer;
 class JSFunction;
 class Program;
-class TSLoader;
+class TSManager;
 class FileLoader;
 class ModuleManager;
 class CjsModule;
@@ -234,9 +234,9 @@ public:
         return moduleManager_;
     }
 
-    TSLoader *GetTSLoader() const
+    TSManager *GetTSManager() const
     {
-        return tsLoader_;
+        return tsManager_;
     }
 
     FileLoader *GetFileLoader() const
@@ -419,7 +419,7 @@ private:
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
-    TSLoader *tsLoader_ {nullptr};
+    TSManager *tsManager_ {nullptr};
     SnapshotEnv *snapshotEnv_ {nullptr};
     bool optionalLogEnabled_ {false};
     FileLoader *fileLoader_ {nullptr};

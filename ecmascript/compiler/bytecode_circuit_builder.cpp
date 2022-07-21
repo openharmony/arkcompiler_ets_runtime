@@ -17,7 +17,7 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 void BytecodeCircuitBuilder::BytecodeToCircuit()
@@ -2042,7 +2042,7 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<StringId>(input)) {
-            size_t index = tsLoader_->GetStringIdx(constantPool_, std::get<StringId>(input).GetId());
+            size_t index = tsManager_->GetStringIdx(constantPool_, std::get<StringId>(input).GetId());
             inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32, index,
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());

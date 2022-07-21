@@ -35,7 +35,7 @@
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/template_string.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 
@@ -1773,7 +1773,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t
 
 JSTaggedValue RuntimeStubs::RuntimeOptNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
-    CVector<JSTaggedType> hclassTable = thread->GetEcmaVM()->GetTSLoader()->GetStaticHClassTable();
+    CVector<JSTaggedType> hclassTable = thread->GetEcmaVM()->GetTSManager()->GetStaticHClassTable();
 
     int32_t ihcIndex = GetArg(argv, argc, argc - 1).GetInt();  // last element
     JSHandle<JSHClass> ihc(thread, JSTaggedValue(hclassTable[ihcIndex]));

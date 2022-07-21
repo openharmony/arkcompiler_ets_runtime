@@ -49,33 +49,22 @@ enum class TSPrimitiveType : int {
 class GlobalTSTypeRef {
 public:
     explicit GlobalTSTypeRef(uint32_t type = 0) : type_(type) {}
-    explicit GlobalTSTypeRef(int moduleId, int localId, int typeKind) : type_(0)
+    explicit GlobalTSTypeRef(int moduleId, int localId) : type_(0)
     {
-        SetKind(typeKind);
-        SetLocalId(localId);
-        SetModuleId(moduleId);
-    }
-
-    explicit GlobalTSTypeRef(int moduleId, int localId, TSTypeKind typeKind) : type_(0)
-    {
-        SetKind(static_cast<int>(typeKind));
         SetLocalId(localId);
         SetModuleId(moduleId);
     }
 
     ~GlobalTSTypeRef() = default;
 
-    static constexpr int TS_TYPE_RESERVED_COUNT = 50;
     static constexpr int LOCAL_ID_BITS = 16;
-    static constexpr int MODULE_ID_BITS = 7;
-    static constexpr int KIND_BITS = 6;
+    static constexpr int MODULE_ID_BITS = 13;
     static constexpr int GC_TYPE_BITS = 2;
     static constexpr int FLAG_BITS = 1;
-    FIRST_BIT_FIELD(Type, LocalId, uint16_t, LOCAL_ID_BITS);           // 0 ~ 15
-    NEXT_BIT_FIELD(Type, ModuleId, uint8_t, MODULE_ID_BITS, LocalId);  // 16 ~ 22
-    NEXT_BIT_FIELD(Type, Kind, uint8_t, KIND_BITS, ModuleId);          // 23 ~ 28
-    NEXT_BIT_FIELD(Type, GCType, uint8_t, GC_TYPE_BITS, Kind);         // 29 ~ 30
-    NEXT_BIT_FIELD(Type, Flag, bool, FLAG_BITS, GCType);               // 31: 0: TS type, 1: MIR type
+    FIRST_BIT_FIELD(Type, LocalId, uint16_t, LOCAL_ID_BITS);            // 0 ~ 15
+    NEXT_BIT_FIELD(Type, ModuleId, uint16_t, MODULE_ID_BITS, LocalId);  // 16 ~ 28
+    NEXT_BIT_FIELD(Type, GCType, uint8_t, GC_TYPE_BITS, ModuleId);      // 29 ~ 30
+    NEXT_BIT_FIELD(Type, Flag, bool, FLAG_BITS, GCType);                // 31: 0: TS type, 1: MIR type
 
     static GlobalTSTypeRef Default()
     {
@@ -97,11 +86,6 @@ public:
         type_ = 0;
     }
 
-    bool IsBuiltinType() const
-    {
-        return type_ < TS_TYPE_RESERVED_COUNT;
-    }
-
     bool IsDefault() const
     {
         return type_ == 0;
@@ -117,14 +101,19 @@ public:
         return type_ == other.type_;
     }
 
+    bool operator !=(const GlobalTSTypeRef &other) const
+    {
+        return type_ != other.type_;
+    }
+
     void Dump() const
     {
-        uint32_t kind = GetKind();
         uint32_t gcType = GetGCType();
         uint32_t moduleId = GetModuleId();
         uint32_t localId = GetLocalId();
-        LOG_ECMA(ERROR) << "kind: " << kind << " gcType: " << gcType
-                               << " moduleId: " << moduleId << " localId: " << localId;
+        LOG_ECMA(ERROR) << " gcType: " << gcType
+                        << " moduleId: " << moduleId
+                        << " localId: " << localId;
     }
 
 private:

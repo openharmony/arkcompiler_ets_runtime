@@ -2933,7 +2933,7 @@ JSHandle<TSObjectType> ObjectFactory::NewTSObjectType(uint32_t numOfKeys)
     JSHandle<TSObjectType> objectType(thread_, header);
     objectType->SetHClass(thread_, JSTaggedValue::Undefined());
     objectType->SetObjLayoutInfo(thread_, JSTaggedValue::Undefined());
-    objectType->SetGTRef(GlobalTSTypeRef::Default());
+    objectType->SetGT(GlobalTSTypeRef::Default());
 
     JSHandle<TSObjLayoutInfo> tsPropInfo = CreateTSObjLayoutInfo(numOfKeys);
     objectType->SetObjLayoutInfo(thread_, tsPropInfo);
@@ -2948,11 +2948,11 @@ JSHandle<TSClassType> ObjectFactory::NewTSClassType()
         JSHClass::Cast(thread_->GlobalConstants()->GetTSClassTypeClass().GetTaggedObject()));
     JSHandle<TSClassType> classType(thread_, header);
 
-    classType->SetGTRef(GlobalTSTypeRef::Default());
+    classType->SetGT(GlobalTSTypeRef::Default());
     classType->SetInstanceType(thread_, JSTaggedValue::Undefined());
     classType->SetConstructorType(thread_, JSTaggedValue::Undefined());
     classType->SetPrototypeType(thread_, JSTaggedValue::Undefined());
-    classType->SetExtensionGTRawData(0);
+    classType->SetExtensionGT(GlobalTSTypeRef::Default());
     classType->SetHasLinked(false);
 
     return classType;
@@ -2967,7 +2967,7 @@ JSHandle<TSInterfaceType> ObjectFactory::NewTSInterfaceType()
     JSHandle<TSInterfaceType> interfaceType(thread_, header);
 
     JSHandle<TaggedArray> extends = EmptyArray();
-    interfaceType->SetGTRef(GlobalTSTypeRef::Default());
+    interfaceType->SetGT(GlobalTSTypeRef::Default());
     interfaceType->SetExtends(thread_, extends);
     interfaceType->SetFields(thread_, JSTaggedValue::Undefined());
 
@@ -2984,7 +2984,7 @@ JSHandle<TSUnionType> ObjectFactory::NewTSUnionType(uint32_t length)
         JSHClass::Cast(thread_->GlobalConstants()->GetTSUnionTypeClass().GetTaggedObject()));
     JSHandle<TSUnionType> unionType(thread_, header);
 
-    unionType->SetGTRef(GlobalTSTypeRef::Default());
+    unionType->SetGT(GlobalTSTypeRef::Default());
     unionType->SetComponents(thread_, JSTaggedValue::Undefined());
     JSHandle<TaggedArray> componentTypes = NewTaggedArray(length, JSTaggedValue::Undefined());
     unionType->SetComponents(thread_, componentTypes);
@@ -3000,8 +3000,8 @@ JSHandle<TSClassInstanceType> ObjectFactory::NewTSClassInstanceType()
         JSHClass::Cast(thread_->GlobalConstants()->GetTSClassInstanceTypeClass().GetTaggedObject()));
     JSHandle<TSClassInstanceType> classInstanceType(thread_, header);
 
-    classInstanceType->SetGTRef(GlobalTSTypeRef::Default());
-    classInstanceType->SetClassRefGT(GlobalTSTypeRef::Default());
+    classInstanceType->SetGT(GlobalTSTypeRef::Default());
+    classInstanceType->SetClassGT(GlobalTSTypeRef::Default());
 
     return classInstanceType;
 }
@@ -3014,8 +3014,8 @@ JSHandle<TSImportType> ObjectFactory::NewTSImportType()
         JSHClass::Cast(thread_->GlobalConstants()->GetTSImportTypeClass().GetTaggedObject()));
     JSHandle<TSImportType> importType(thread_, header);
 
-    importType->SetGTRef(GlobalTSTypeRef::Default());
-    importType->SetTargetRefGT(GlobalTSTypeRef::Default());
+    importType->SetGT(GlobalTSTypeRef::Default());
+    importType->SetTargetGT(GlobalTSTypeRef::Default());
     importType->SetImportPath(thread_, JSTaggedValue::Undefined());
 
     return importType;
@@ -3032,7 +3032,7 @@ JSHandle<TSFunctionType> ObjectFactory::NewTSFunctionType(uint32_t length)
 
     JSHandle<TaggedArray> parameterTypes = NewTaggedArray(length + TSFunctionType::DEFAULT_LENGTH,
                                                           JSTaggedValue::Undefined());
-    functionType->SetGTRef(GlobalTSTypeRef::Default());
+    functionType->SetGT(GlobalTSTypeRef::Default());
     functionType->SetParameterTypes(thread_, parameterTypes);
 
     return functionType;
@@ -3046,7 +3046,7 @@ JSHandle<TSArrayType> ObjectFactory::NewTSArrayType()
         JSHClass::Cast(thread_->GlobalConstants()->GetTSArrayTypeClass().GetTaggedObject()));
 
     JSHandle<TSArrayType> arrayType(thread_, header);
-    arrayType->SetElementTypeRef(0);
+    arrayType->SetElementGT(GlobalTSTypeRef::Default());
 
     return arrayType;
 }

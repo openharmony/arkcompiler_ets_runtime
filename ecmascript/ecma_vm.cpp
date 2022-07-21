@@ -62,7 +62,7 @@
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/tagged_queue.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
@@ -193,8 +193,8 @@ bool EcmaVM::Initialize()
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     moduleManager_ = new ModuleManager(this);
     debuggerManager_->Initialize();
-    tsLoader_ = new TSLoader(this);
-    tsLoader_->Initialize();
+    tsManager_ = new TSManager(this);
+    tsManager_->Initialize();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Initialize();
@@ -321,9 +321,9 @@ EcmaVM::~EcmaVM()
         moduleManager_ = nullptr;
     }
 
-    if (tsLoader_ != nullptr) {
-        delete tsLoader_;
-        tsLoader_ = nullptr;
+    if (tsManager_ != nullptr) {
+        delete tsManager_;
+        tsManager_ = nullptr;
     }
 
     if (snapshotEnv_ != nullptr) {
@@ -672,7 +672,7 @@ void EcmaVM::Iterate(const RootVisitor &v)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&frameworkProgram_)));
     moduleManager_->Iterate(v);
-    tsLoader_->Iterate(v);
+    tsManager_->Iterate(v);
     fileLoader_->Iterate(v);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Iterate(v);

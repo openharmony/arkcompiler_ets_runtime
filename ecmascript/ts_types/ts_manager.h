@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TS_TYPES_TS_LOADER_H
-#define ECMASCRIPT_TS_TYPES_TS_LOADER_H
+#ifndef ECMASCRIPT_TS_TYPES_TS_MANAGER_H
+#define ECMASCRIPT_TS_TYPES_TS_MANAGER_H
 
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/js_handle.h"
@@ -22,6 +22,13 @@
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
 namespace panda::ecmascript {
+enum class MTableIdx : uint8_t {
+    PRIMITIVE = 0,
+    BUILTIN,
+    INFERRED_UNTION,
+    NUM_OF_DEFAULT_TABLES,
+};
+
 class TSModuleTable : public TaggedArray {
 public:
 
@@ -85,10 +92,10 @@ private:
     }
 };
 
-class TSLoader {
+class TSManager {
 public:
-    explicit TSLoader(EcmaVM *vm);
-    ~TSLoader() = default;
+    explicit TSManager(EcmaVM *vm);
+    ~TSManager() = default;
 
     void Initialize();
 
@@ -128,34 +135,13 @@ public:
         return table->GetNumberOfTSTypeTables();
     }
 
-    inline static TSTypeKind PUBLIC_API GetTypeKind(kungfu::GateType gateType)
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());
-        return GetTypeKind(gt);
-    }
-
-    inline static TSTypeKind GetTypeKind(GlobalTSTypeRef gt)
-    {
-        return static_cast<TSTypeKind>(gt.GetKind());
-    }
-
     JSHandle<EcmaString> GenerateAmiPath(JSHandle<EcmaString> cur, JSHandle<EcmaString> rel) const;
 
     JSHandle<EcmaString> GenerateImportVar(JSHandle<EcmaString> import) const;
 
     JSHandle<EcmaString> GenerateImportRelativePath(JSHandle<EcmaString> importRel) const;
 
-    GlobalTSTypeRef PUBLIC_API GetGTByLocalID(const panda_file::File &pf, const uint32_t localId) const;
-
-    static GlobalTSTypeRef PUBLIC_API GetPrimitiveGT(TSPrimitiveType type)
-    {
-        return GlobalTSTypeRef(static_cast<uint32_t>(type));
-    }
-
-    static GlobalTSTypeRef PUBLIC_API GetBuiltinsGT(int type)
-    {
-        return GlobalTSTypeRef(type);  // not implement yet.
-    }
+    GlobalTSTypeRef PUBLIC_API CreateGT(const panda_file::File &pf, const uint32_t localId) const;
 
     GlobalTSTypeRef PUBLIC_API GetImportTypeTargetGT(GlobalTSTypeRef gt) const;
 
@@ -256,12 +242,36 @@ public:
 
     void GenerateStaticHClass(JSHandle<TSTypeTable> tsTypeTable);
 
-    JSHandle<JSTaggedValue> GetType(const GlobalTSTypeRef &gt) const;
+    JSHandle<JSTaggedValue> GetTSType(const GlobalTSTypeRef &gt) const;
+
+    std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
+
+#define IS_TSTYPEKIND_METHOD_LIST(V)              \
+    V(Primitive, TSTypeKind::PRIMITIVE)           \
+    V(Class, TSTypeKind::CLASS)                   \
+    V(ClassInstance, TSTypeKind::CLASS_INSTANCE)  \
+    V(Function, TSTypeKind::FUNCTION)             \
+    V(Union, TSTypeKind::UNION)                   \
+    V(Array, TSTypeKind::ARRAY)                   \
+    V(Object, TSTypeKind::OBJECT)                 \
+    V(ImportT, TSTypeKind::IMPORT)                \
+    V(Interface, TSTypeKind::INTERFACE_KIND)
+
+#define IS_TSTYPEKIND(NAME, TSTYPEKIND)                                                \
+    bool inline PUBLIC_API Is##NAME##TypeKind(const kungfu::GateType &gateType) const  \
+    {                                                                                  \
+        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());                      \
+        ASSERT(gt.GetFlag() == 0);                                                     \
+        return GetTypeKind(gt) == (TSTYPEKIND);                                        \
+    }
+
+    IS_TSTYPEKIND_METHOD_LIST(IS_TSTYPEKIND)
+#undef IS_TSTYPEKIND
 
 private:
 
-    NO_COPY_SEMANTIC(TSLoader);
-    NO_MOVE_SEMANTIC(TSLoader);
+    NO_COPY_SEMANTIC(TSManager);
+    NO_MOVE_SEMANTIC(TSManager);
 
     void LinkTSTypeTable(JSHandle<TSTypeTable> table);
 
@@ -277,7 +287,13 @@ private:
 
     void SetInferTypeTable(JSHandle<TSTypeTable> inferTable);
 
+    TSTypeKind PUBLIC_API GetTypeKind(const GlobalTSTypeRef &gt) const;
+
+    std::string GetPrimitiveStr(const GlobalTSTypeRef &gt) const;
+
     EcmaVM *vm_ {nullptr};
+    JSThread *thread_ {nullptr};
+    ObjectFactory *factory_ {nullptr};
     JSTaggedValue globalModuleTable_ {JSTaggedValue::Hole()};
     CVector<JSTaggedType> constantStringTable_ {};
     CVector<JSTaggedType> staticHClassTable_ {};  // store hclass which produced from static type info
@@ -286,4 +302,4 @@ private:
 };
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_TS_TYPES_TS_LOADER_H
+#endif  // ECMASCRIPT_TS_TYPES_TS_MANAGER_H

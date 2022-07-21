@@ -39,7 +39,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "libpandabase/utils/string_helpers.h"
 
 namespace panda::ecmascript {
@@ -1232,8 +1232,8 @@ DEF_RUNTIME_STUBS(LoadValueFromConstantStringTable)
 {
     RUNTIME_STUBS_HEADER(LoadValueFromConstantStringTable);
     JSTaggedValue id = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    auto tsLoader = thread->GetEcmaVM()->GetTSLoader();
-    return tsLoader->GetStringById(id.GetInt()).GetTaggedValue().GetRawData();
+    auto tsManager = thread->GetEcmaVM()->GetTSManager();
+    return tsManager->GetStringById(id.GetInt()).GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(JumpToCInterpreter)
