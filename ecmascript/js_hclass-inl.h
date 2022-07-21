@@ -176,6 +176,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
     switch (type) {
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
+        case JSType::LEXICAL_ENV:
             size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(),
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
             break;

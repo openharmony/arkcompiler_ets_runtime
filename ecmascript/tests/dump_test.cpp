@@ -771,7 +771,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(globalEnv->GetBigIntFunction())
                 break;
             }
-            case JSType::TAGGED_ARRAY: {
+            case JSType::TAGGED_ARRAY:
+            case JSType::LEXICAL_ENV: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray)
                 break;

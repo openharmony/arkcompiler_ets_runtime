@@ -21,6 +21,7 @@
 #include <string>
 #include <unwind.h>
 
+#include "ecmascript/log_wrapper.h"
 #include "mem/mem.h"
 
 namespace panda::ecmascript {

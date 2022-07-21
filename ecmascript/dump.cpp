@@ -133,6 +133,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "JSHClass";
         case JSType::TAGGED_ARRAY:
             return "TaggedArray";
+        case JSType::LEXICAL_ENV:
+            return "LexicalEnv";
         case JSType::TAGGED_DICTIONARY:
             return "TaggedDictionary";
         case JSType::STRING:
@@ -530,6 +532,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::TEMPLATE_MAP:
+        case JSType::LEXICAL_ENV:
             DumpArrayClass(TaggedArray::Cast(obj), os);
             break;
         case JSType::STRING:
@@ -3321,6 +3324,7 @@ static void DumpObject(TaggedObject *obj,
             return;
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
+        case JSType::LEXICAL_ENV:
             DumpArrayClass(TaggedArray::Cast(obj), vec);
             return;
         case JSType::STRING:

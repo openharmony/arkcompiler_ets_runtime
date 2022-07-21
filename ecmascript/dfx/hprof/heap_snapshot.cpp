@@ -204,6 +204,14 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             arrayName.append("]");
             return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
         }
+        case JSType::LEXICAL_ENV: {
+            CString arrayName;
+            TaggedArray *array = TaggedArray::Cast(entry);
+            arrayName = "LexicalEnv[";
+            arrayName.append(ToCString(array->GetLength()));
+            arrayName.append("]");
+            return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
+        }
         case JSType::HCLASS:
             return GetString("HiddenClass");
         case JSType::TAGGED_DICTIONARY: {

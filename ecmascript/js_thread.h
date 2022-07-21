@@ -23,7 +23,6 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/dfx/vm_thread_control.h"
-#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/mem/visitor.h"
@@ -34,6 +33,7 @@ class EcmaHandleScope;
 class EcmaVM;
 class HeapRegionAllocator;
 class PropertiesCache;
+class EcmaGlobalStorage;
 
 enum class MarkStatus : uint8_t {
     READY_TO_MARK,
@@ -249,6 +249,10 @@ public:
     }
 
     void Iterate(const RootVisitor &v0, const RootRangeVisitor &v1);
+
+#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+    void IterateHandleWithCheck(const RootVisitor &v0, const RootRangeVisitor &v1);
+#endif
 
     uintptr_t* PUBLIC_API ExpandHandleStorage();
     void PUBLIC_API ShrinkHandleStorage(int prevIndex);

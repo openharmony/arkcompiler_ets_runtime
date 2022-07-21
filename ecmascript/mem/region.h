@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_MEM_REGION_H
 #define ECMASCRIPT_MEM_REGION_H
 
+#include <sanitizer/asan_interface.h>
+
 #include "ecmascript/mem/free_object_list.h"
 #include "ecmascript/mem/gc_bitset.h"
 #include "ecmascript/mem/remembered_set.h"
@@ -110,6 +112,8 @@ public:
         markGCBitset_ = new (ToVoidPtr(begin)) GCBitset();
         markGCBitset_->Clear(bitsetSize_);
         begin_ = AlignUp(begin + bitsetSize_, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+        // The object region marked with poison until it is allocated if is_asan is true
+        ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin_), GetSize());
     }
 
     ~Region() = default;

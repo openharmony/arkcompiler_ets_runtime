@@ -75,6 +75,8 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread);
     AddRegion(region);
+    // It need to mark unpoison when huge object being allocated.
+    ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);
     return region->GetBegin();
 }
 

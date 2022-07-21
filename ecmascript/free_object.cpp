@@ -19,6 +19,9 @@
 namespace panda::ecmascript {
 FreeObject *FreeObject::FillFreeObject(EcmaVM *vm, uintptr_t address, size_t size)
 {
-    return vm->GetFactory()->FillFreeObject(address, size);
+    ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(address), size);
+    FreeObject *freeObject = vm->GetFactory()->FillFreeObject(address, size);
+    ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(address), size);
+    return freeObject;
 }
 }  // namespace panda::ecmascript

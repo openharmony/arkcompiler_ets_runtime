@@ -256,12 +256,16 @@ void SparseSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
         while (curPtr < endPtr) {
             auto freeObject = FreeObject::Cast(curPtr);
             size_t objSize;
+            // If curPtr is freeObject, It must to mark unpoison first.
+            ASAN_UNPOISON_MEMORY_REGION(freeObject, TaggedObject::TaggedObjectSize());
             if (!freeObject->IsFreeObject()) {
                 auto obj = reinterpret_cast<TaggedObject *>(curPtr);
                 visitor(obj);
                 objSize = obj->GetClass()->SizeFromJSHClass(obj);
             } else {
+                freeObject->AsanUnPoisonFreeObject();
                 objSize = freeObject->Available();
+                freeObject->AsanPoisonFreeObject();
             }
             curPtr += objSize;
             CHECK_OBJECT_SIZE(objSize);
