@@ -81,15 +81,6 @@ struct BCStubEntries {
         return reinterpret_cast<Address*>(stubEntries_);
     }
 
-    static int32_t GetStubEntryOffset(int32_t stubId)
-    {
-#ifdef PANDA_TARGET_32
-        return stubId * sizeof(uint32_t);
-#else
-        return stubId * sizeof(uint64_t);
-#endif
-    }
-
     Address Get(size_t index)
     {
         ASSERT(index < COUNT);
