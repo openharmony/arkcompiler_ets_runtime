@@ -465,6 +465,11 @@ public:
         return jsgateToBytecode_.at(gate).second;
     }
 
+    [[nodiscard]] const JSMethod* GetMethod() const
+    {
+        return method_;
+    }
+
     BytecodeInfo GetBytecodeInfo(const uint8_t *pc);
     // for external users, circuit must be built
     BytecodeInfo GetByteCodeInfo(const GateRef gate)

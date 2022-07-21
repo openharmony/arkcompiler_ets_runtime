@@ -241,7 +241,9 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(OptLdLexVarDyn)                     \
     V(OptStLexVarDyn)                     \
     V(JSObjectGetMethod)                  \
-    V(DebugAOTPrint)
+    V(DebugAOTPrint)                      \
+    V(OptLdSuperByValue)                  \
+    V(OptStSuperByValue)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

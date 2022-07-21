@@ -118,7 +118,7 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
             useIt = noThrow ? acc_.DeleteExceptionDep(useIt)
                             : acc_.ReplaceIn(useIt, exceptionControl[1]);
         // if hir isThrow
-        } else if (op != OpCode::VALUE_SELECTOR && useIt.GetIndex() == 1) {
+        } else if (op != OpCode::VALUE_SELECTOR && useIt.GetIndex() == 1 && !acc_.IsValueIn(*useIt, useIt.GetIndex())) {
             useIt = acc_.ReplaceIn(useIt, successControl[1]);
         // replace data flow with data output in label successExit(incluing JSgates and phigates)
         } else {
@@ -626,10 +626,10 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerStObjByValue(gate, glue);
             break;
         case LDSUPERBYNAME_PREF_ID32_V8:
-            LowerLdSuperByName(gate, glue);
+            LowerLdSuperByName(gate, glue, jsFunc);
             break;
         case STSUPERBYNAME_PREF_ID32_V8:
-            LowerStSuperByName(gate, glue);
+            LowerStSuperByName(gate, glue, jsFunc);
             break;
         case CREATEGENERATOROBJ_PREF_V8:
             LowerCreateGeneratorObj(gate, glue);
@@ -718,7 +718,8 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
     GateRef context =
         builder_.Load(VariableType::JS_POINTER(), genObj, builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET));
     // new tagged array
-    const size_t arrLength = 65536; // 65536: Maximum number of virtual registers
+    auto method = bcBuilder_->GetMethod();
+    const size_t arrLength = method->GetNumVregs() + method->GetNumArgs();
     GateRef length = builder_.Int32((arrLength));
     GateRef taggedLength = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(length));
     const int arrayId = RTSTUB_ID(NewTaggedArray);
@@ -774,11 +775,11 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
 
 void SlowPathLowering::LowerSuspendGenerator(GateRef gate, GateRef glue, [[maybe_unused]]GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuspendGeneratorPrefV8V8)));
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     SaveFrameToContext(gate, glue, jsFunc);
     acc_.SetDep(gate, builder_.GetDepend());
+    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuspendGeneratorPrefV8V8)));
     const int id = RTSTUB_ID(OptSuspendGenerator);
     GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2)});
     ReplaceHirToCall(gate, newGate);
@@ -2142,7 +2143,7 @@ void SlowPathLowering::LowerPopLexicalEnv(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerLdSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdSuperByValuePrefV8V8)));
-    const int id = RTSTUB_ID(LdSuperByValue);
+    const int id = RTSTUB_ID(OptLdSuperByValue);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -2154,7 +2155,7 @@ void SlowPathLowering::LowerLdSuperByValue(GateRef gate, GateRef glue, GateRef j
 void SlowPathLowering::LowerStSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStSuperByValuePrefV8V8)));
-    const int id = RTSTUB_ID(StSuperByValue);
+    const int id = RTSTUB_ID(OptStSuperByValue);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -2675,7 +2676,7 @@ void SlowPathLowering::LowerStObjByValue(GateRef gate, GateRef glue)
     ReplaceHirToSubCfg(gate, Circuit::NullGate(), successControl, failControl);
 }
 
-void SlowPathLowering::LowerLdSuperByName(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdSuperByNamePrefId32V8)));
     Label successExit(&builder_);
@@ -2684,14 +2685,15 @@ void SlowPathLowering::LowerLdSuperByName(GateRef gate, GateRef glue)
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     auto args1 = { builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0))) };
     GateRef prop = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), args1, true);
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdSuperByValue), {prop, acc_.GetValueIn(gate, 1)}, true);
+    GateRef result =
+        LowerCallRuntime(glue, RTSTUB_ID(OptLdSuperByValue), {acc_.GetValueIn(gate, 1), prop, jsFunc}, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
-void SlowPathLowering::LowerStSuperByName(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStSuperByNamePrefId32V8)));
     Label successExit(&builder_);
@@ -2700,8 +2702,8 @@ void SlowPathLowering::LowerStSuperByName(GateRef gate, GateRef glue)
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     auto args1 = { builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0))) };
     GateRef prop = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), args1, true);
-    auto args2 = { prop, acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2) };
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(StSuperByValue), args2, true);
+    auto args2 = { acc_.GetValueIn(gate, 1), prop, acc_.GetValueIn(gate, 2), jsFunc };
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(OptStSuperByValue), args2, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
@@ -2850,8 +2852,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     res = LowerCallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), argsCloneClass, true);
     Label isException(&builder_);
     Label isNotException(&builder_);
-    builder_.Branch(builder_.IsSpecial(*res, JSTaggedValue::VALUE_EXCEPTION),
-        &isException, &isNotException);
+    builder_.Branch(builder_.IsSpecial(*res, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
 
     std::vector<GateRef> successControl;
     std::vector<GateRef> exceptionControl;
@@ -3152,12 +3153,10 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
     std::vector<GateRef> failControl;
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef bitFieldOffset = builder_.IntPtr(JSGeneratorObject::BIT_FIELD_OFFSET);
-    GateRef bitField = builder_.Load(VariableType::INT64(), obj, bitFieldOffset);
-    auto bitfieldlsr = builder_.Int32LSR(builder_.TruncInt64ToInt32(bitField),
-        builder_.Int32(JSGeneratorObject::ResumeModeBits::START_BIT));
-    GateRef resumeModeBits = builder_.Int32And(
-        bitfieldlsr,
-        builder_.Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
+    GateRef bitField = builder_.Load(VariableType::INT32(), obj, bitFieldOffset);
+    auto bitfieldlsr = builder_.Int32LSR(bitField, builder_.Int32(JSGeneratorObject::ResumeModeBits::START_BIT));
+    GateRef resumeModeBits = builder_.Int32And(bitfieldlsr,
+                                               builder_.Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
     auto resumeMode = builder_.ZExtInt32ToInt64(resumeModeBits);
     GateRef result = builder_.TaggedTypeNGC(resumeMode);
     successControl.emplace_back(builder_.GetState());

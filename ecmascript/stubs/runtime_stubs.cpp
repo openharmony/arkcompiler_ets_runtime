@@ -627,6 +627,15 @@ DEF_RUNTIME_STUBS(LdSuperByValue)
     return RuntimeLdSuperByValue(thread, obj, key, thisFunc).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(OptLdSuperByValue)
+{
+    RUNTIME_STUBS_HEADER(OptLdSuperByValue);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue thisFunc = GetArg(argv, argc, 2);  // 2: means the second parameter
+    return RuntimeLdSuperByValue(thread, obj, key, thisFunc).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(StSuperByValue)
 {
     RUNTIME_STUBS_HEADER(StSuperByValue);
@@ -635,6 +644,16 @@ DEF_RUNTIME_STUBS(StSuperByValue)
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
     JSTaggedValue thisFunc = InterpreterAssembly::GetThisFunction(sp);
+    return RuntimeStSuperByValue(thread, obj, key, value, thisFunc).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(OptStSuperByValue)
+{
+    RUNTIME_STUBS_HEADER(OptStSuperByValue);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue thisFunc = GetArg(argv, argc, 3);  // 3: means the third parameter
     return RuntimeStSuperByValue(thread, obj, key, value, thisFunc).GetRawData();
 }
 

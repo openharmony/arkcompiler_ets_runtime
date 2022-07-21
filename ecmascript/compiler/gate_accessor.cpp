@@ -354,4 +354,10 @@ GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, G
 {
     return circuit_->GetConstantGate(bitValue, bitfield, type);
 }
+
+bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
+{
+    size_t valueStartIndex = GetStateCount(gate) + GetDependCount(gate);
+    return (index >= valueStartIndex && index < GetNumIns(gate));
+}
 }  // namespace panda::ecmascript::kungfu
