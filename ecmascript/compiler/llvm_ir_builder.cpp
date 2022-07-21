@@ -239,7 +239,7 @@ void LLVMIRBuilder::Build()
             acc_.GetOutVector(gate, outs);
 
             if (IsLogEnabled()) {
-                circuit_->Print(gate);
+                acc_.Print(gate);
             }
 
             auto found = opHandlers_.find(acc_.GetOpCode(gate));
@@ -249,7 +249,7 @@ void LLVMIRBuilder::Build()
             }
             if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
                 LOG_COMPILER(ERROR) << "The gate below need to be translated ";
-                circuit_->Print(gate);
+                acc_.Print(gate);
                 UNREACHABLE();
             }
         }

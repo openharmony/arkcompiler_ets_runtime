@@ -22,6 +22,7 @@ using DominatorTreeInfo = std::tuple<std::vector<GateRef>, std::unordered_map<Ga
     std::vector<size_t>>;
 DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
 {
+    GateAccessor acc(const_cast<Circuit*>(circuit));
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::unordered_map<GateRef, size_t> dfsTimestamp;
@@ -30,17 +31,19 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         size_t timestamp = 0;
         std::deque<GateRef> pendingList;
         auto startGate = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-        circuit->SetMark(startGate, MarkCode::VISITED);
+        acc.SetMark(startGate, MarkCode::VISITED);
         pendingList.push_back(startGate);
         while (!pendingList.empty()) {
             auto curGate = pendingList.back();
             dfsTimestamp[curGate] = timestamp++;
             pendingList.pop_back();
             bbGatesList.push_back(curGate);
-            if (circuit->GetOpCode(curGate) != OpCode::LOOP_BACK) {
-                for (const auto &succGate : circuit->GetOutVector(curGate)) {
-                    if (circuit->GetOpCode(succGate).IsState() && circuit->GetMark(succGate) == MarkCode::NO_MARK) {
-                        circuit->SetMark(succGate, MarkCode::VISITED);
+            if (acc.GetOpCode(curGate) != OpCode::LOOP_BACK) {
+                std::vector<GateRef> succGates;
+                acc.GetOutVector(curGate, succGates);
+                for (const auto &succGate : succGates) {
+                    if (acc.GetOpCode(succGate).IsState() && acc.GetMark(succGate) == MarkCode::NO_MARK) {
+                        acc.SetMark(succGate, MarkCode::VISITED);
                         pendingList.push_back(succGate);
                     }
                 }
@@ -66,7 +69,9 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
                 size_t origSize = curDom.size();
                 curDom.resize(dom.size());
                 std::iota(curDom.begin(), curDom.end(), 0);
-                for (const auto &predGate : circuit->GetInVector(bbGatesList[idx])) {
+                std::vector<GateRef> preGates;
+                acc.GetInVector(bbGatesList[idx], preGates);
+                for (const auto &predGate : preGates) {
                     if (bbGatesAddrToIdx.count(predGate) > 0) {
                         std::vector<size_t> tmp(curDom.size());
                         const auto &predDom = dom[bbGatesAddrToIdx[predGate]];
@@ -106,6 +111,7 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit, [[maybe
         UNREACHABLE();
     }
 #endif
+    GateAccessor acc(const_cast<Circuit*>(circuit));
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
@@ -166,17 +172,20 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit, [[maybe
         for (const auto &schedulableGate : order) {
             result[lowerBound.at(schedulableGate)].push_back(schedulableGate);
         }
-        auto argList = circuit->GetOutVector(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST)));
+        std::vector<GateRef> argList;
+        acc.GetOutVector(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST)), argList);
         std::sort(argList.begin(), argList.end(), [&](const GateRef &lhs, const GateRef &rhs) -> bool {
-            return circuit->GetBitField(lhs) > circuit->GetBitField(rhs);
+            return acc.GetBitField(lhs) > acc.GetBitField(rhs);
         });
         for (const auto &arg : argList) {
             result.front().push_back(arg);
         }
         for (const auto &bbGate : bbGatesList) {
-            for (const auto &succGate : circuit->GetOutVector(bbGate)) {
-                if (circuit->GetOpCode(succGate).IsFixed()) {
-                    result[bbGatesAddrToIdx.at(circuit->GetIn(succGate, 0))].push_back(succGate);
+            std::vector<GateRef> succGates;
+            acc.GetOutVector(bbGate, succGates);
+            for (const auto &succGate : succGates) {
+                if (acc.GetOpCode(succGate).IsFixed()) {
+                    result[bbGatesAddrToIdx.at(acc.GetIn(succGate, 0))].push_back(succGate);
                 }
             }
         }
@@ -188,23 +197,26 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
     const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
     const std::function<bool(size_t, size_t)> &isAncestor, const std::vector<GateRef> &schedulableGatesList)
 {
+    GateAccessor acc(const_cast<Circuit*>(circuit));
     std::unordered_map<GateRef, size_t> upperBound;
     std::function<std::optional<size_t>(GateRef)> dfs = [&](GateRef curGate) -> std::optional<size_t> {
         if (upperBound.count(curGate) > 0) {
             return upperBound[curGate];
         }
-        if (circuit->GetOpCode(curGate).IsProlog() || circuit->GetOpCode(curGate).IsRoot()) {
+        if (acc.GetOpCode(curGate).IsProlog() || acc.GetOpCode(curGate).IsRoot()) {
             return 0;
         }
-        if (circuit->GetOpCode(curGate).IsFixed()) {
-            return bbGatesAddrToIdx.at(circuit->GetIn(curGate, 0));
+        if (acc.GetOpCode(curGate).IsFixed()) {
+            return bbGatesAddrToIdx.at(acc.GetIn(curGate, 0));
         }
-        if (circuit->GetOpCode(curGate).IsState()) {
+        if (acc.GetOpCode(curGate).IsState()) {
             return bbGatesAddrToIdx.at(curGate);
         }
         // then cur is schedulable
         size_t curUpperBound = 0;
-        for (const auto &predGate : circuit->GetInVector(curGate)) {
+        std::vector<GateRef> predGates;
+        acc.GetInVector(curGate, predGates);
+        for (const auto &predGate : predGates) {
             auto predResult = dfs(predGate);
             if (!predResult.has_value()) {
                 return std::nullopt;
@@ -235,21 +247,26 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
     const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
     const std::function<size_t(size_t, size_t)> &lowestCommonAncestor, std::vector<GateRef> *order)
 {
+    GateAccessor acc(const_cast<Circuit*>(circuit));
     std::unordered_map<GateRef, size_t> lowerBound;
     std::unordered_map<GateRef, size_t> useCount;
     std::deque<GateRef> pendingList;
     std::vector<GateRef> bbAndFixedGatesList;
     for (const auto &item : bbGatesAddrToIdx) {
         bbAndFixedGatesList.push_back(item.first);
-        for (const auto &succGate : circuit->GetOutVector(item.first)) {
-            if (circuit->GetOpCode(succGate).IsFixed()) {
+        std::vector<GateRef> succGates;
+        acc.GetOutVector(item.first, succGates);
+        for (const auto &succGate : succGates) {
+            if (acc.GetOpCode(succGate).IsFixed()) {
                 bbAndFixedGatesList.push_back(succGate);
             }
         }
     }
     std::function<void(GateRef)> dfsVisit = [&](GateRef curGate) {
-        for (const auto &prevGate : circuit->GetInVector(curGate)) {
-            if (circuit->GetOpCode(prevGate).IsSchedulable()) {
+        std::vector<GateRef> prevGates;
+        acc.GetInVector(curGate, prevGates);
+        for (const auto &prevGate : prevGates) {
+            if (acc.GetOpCode(prevGate).IsSchedulable()) {
                 useCount[prevGate]++;
                 if (useCount[prevGate] == 1) {
                     dfsVisit(prevGate);
@@ -262,15 +279,17 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
     }
     std::function<void(GateRef)> dfsFinish = [&](GateRef curGate) {
         size_t cnt = 0;
-        for (const auto &prevGate : circuit->GetInVector(curGate)) {
-            if (circuit->GetOpCode(prevGate).IsSchedulable()) {
+        std::vector<GateRef> prevGates;
+        acc.GetInVector(curGate, prevGates);
+        for (const auto &prevGate : prevGates) {
+            if (acc.GetOpCode(prevGate).IsSchedulable()) {
                 useCount[prevGate]--;
                 size_t curLowerBound;
-                if (circuit->GetOpCode(curGate).IsState()) {  // cur_opcode would not be STATE_ENTRY
+                if (acc.GetOpCode(curGate).IsState()) {  // cur_opcode would not be STATE_ENTRY
                     curLowerBound = bbGatesAddrToIdx.at(curGate);
-                } else if (circuit->GetOpCode(curGate).IsFixed()) {
+                } else if (acc.GetOpCode(curGate).IsFixed()) {
                     ASSERT(cnt > 0);
-                    curLowerBound = bbGatesAddrToIdx.at(circuit->GetIn(circuit->GetIn(curGate, 0), cnt - 1));
+                    curLowerBound = bbGatesAddrToIdx.at(acc.GetIn(acc.GetIn(curGate, 0), cnt - 1));
                 } else {
                     curLowerBound = lowerBound.at(curGate);
                 }
@@ -297,33 +316,38 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
 
 void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circuit *circuit)
 {
+    GateAccessor acc(const_cast<Circuit*>(circuit));
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
     std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit);
     LOG_COMPILER(INFO) << "==========================================================================";
     for (size_t bbIdx = 0; bbIdx < cfg->size(); bbIdx++) {
-        LOG_COMPILER(INFO) << "BB_" << bbIdx << "_" << circuit->GetOpCode((*cfg)[bbIdx].front()).Str() << ":"
+        LOG_COMPILER(INFO) << "BB_" << bbIdx << "_" << acc.GetOpCode((*cfg)[bbIdx].front()).Str() << ":"
                            << "  immDom=" << immDom[bbIdx];
         LOG_COMPILER(INFO) << "  pred=[";
         bool isFirst = true;
-        for (const auto &predStates : circuit->GetInVector((*cfg)[bbIdx].front())) {
-            if (circuit->GetOpCode(predStates).IsState() || circuit->GetOpCode(predStates) == OpCode::STATE_ENTRY) {
-                LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(predStates);
+        std::vector<GateRef> predStates;
+        acc.GetInVector((*cfg)[bbIdx].front(), predStates);
+        for (const auto &predState : predStates) {
+            if (acc.GetOpCode(predState).IsState() || acc.GetOpCode(predState) == OpCode::STATE_ENTRY) {
+                LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(predState);
                 isFirst = false;
             }
         }
         LOG_COMPILER(INFO) << "]  succ=[";
         isFirst = true;
-        for (const auto &succStates : circuit->GetOutVector((*cfg)[bbIdx].front())) {
-            if (circuit->GetOpCode(succStates).IsState() || circuit->GetOpCode(succStates) == OpCode::STATE_ENTRY) {
-                LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(succStates);
+        std::vector<GateRef> succStates;
+        acc.GetOutVector((*cfg)[bbIdx].front(), succStates);
+        for (const auto &succState : succStates) {
+            if (acc.GetOpCode(succState).IsState() || acc.GetOpCode(succState) == OpCode::STATE_ENTRY) {
+                LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(succState);
                 isFirst = false;
             }
         }
         LOG_COMPILER(INFO) << "]";
         for (size_t instIdx = (*cfg)[bbIdx].size(); instIdx > 0; instIdx--) {
-            circuit->Print((*cfg)[bbIdx][instIdx - 1]);
+            acc.Print((*cfg)[bbIdx][instIdx - 1]);
         }
     }
     LOG_COMPILER(INFO) << "==========================================================================";

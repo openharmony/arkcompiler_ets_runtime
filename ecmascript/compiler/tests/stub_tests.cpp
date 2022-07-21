@@ -71,7 +71,7 @@ public:
                 LOG_COMPILER(INFO) << (acc.GetOpCode(cfg[bbIdx].front()).IsCFGMerge() ? "MERGE_" : "BB_")
                                    << bbIdx << ":";
                 for (size_t instIdx = cfg[bbIdx].size(); instIdx > 0; instIdx--) {
-                    netOfGates.Print(cfg[bbIdx][instIdx - 1]);
+                    acc.Print(cfg[bbIdx][instIdx - 1]);
                 }
             }
         }
