@@ -74,13 +74,39 @@ void name##Stub::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,      
                                      GateRef acc, GateRef hotnessCounter)
 #endif
 
-#define DISPATCH(format)                                                                  \
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,               \
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::format)))
+// TYPE:{OFFSET, ACC_RES, ACC_VARACC, JUMP, SSD}
+#define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
 
-#define DISPATCH_WITH_ACC(format)                                                         \
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter,           \
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::format)))
+// Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, offset)
+#define DISPATCH_OFFSET(offset)                                                           \
+    DISPATCH_BASE(profileTypeInfo, acc, hotnessCounter, offset)
+
+// Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, offset)
+#define DISPATCH_ACC_RES(offset) DISPATCH_ACC(res, offset)
+
+// Dispatch(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter, offset)
+#define DISPATCH_ACC_VARACC(offset) DISPATCH_ACC(*varAcc, offset)
+
+// Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, offset)
+#define DISPATCH_JUMP(offset)                                                             \
+    DISPATCH_BASE(*varProfileTypeInfo, acc, *varHotnessCounter, offset)
+
+#define DISPATCH_SSD(offset)                                                              \
+    Dispatch(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc,           \
+             *varHotnessCounter, offset)
+
+#define INT_PTR(format)                                                                   \
+    IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::format))
+
+#define DISPATCH_BASE(...)                                                                \
+    Dispatch(glue, sp, pc, constpool, __VA_ARGS__)
+
+#define DISPATCH_ACC(acc, offset)                                                         \
+    DISPATCH_BASE(profileTypeInfo, acc, hotnessCounter, offset)
+
+#define DISPATCH_WITH_ACC(format) DISPATCH_BAK(ACC_VARACC, INT_PTR(format))
+
+#define DISPATCH(format) DISPATCH_BAK(OFFSET, INT_PTR(format))
 
 #define DISPATCH_LAST()                                                                   \
     DispatchLast(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter)           \
@@ -1579,8 +1605,7 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
     DispatchLast(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc,
                  *varHotnessCounter);
     Bind(&notException);
-    Dispatch(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc,
-             *varHotnessCounter, IntPtr(0));
+    DISPATCH_BAK(SSD, IntPtr(0));
 }
 
 DECLARE_ASM_HANDLER(BCDebuggerEntry)
@@ -1608,7 +1633,7 @@ DECLARE_ASM_HANDLER(BCDebuggerExceptionEntry)
 DECLARE_ASM_HANDLER(HandleOverflow)
 {
     FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(OPCODE_OVERFLOW)) });
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, IntPtr(0));
+    DISPATCH_BAK(OFFSET, IntPtr(0));
 }
 
 DECLARE_ASM_HANDLER(HandleLdaDynV8)
@@ -1637,7 +1662,7 @@ DECLARE_ASM_HANDLER(HandleJmpImm8)
     Label slowPath(env);
 
     UPDATE_HOTNESS(sp);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+    DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
 
 DECLARE_ASM_HANDLER(HandleJmpImm16)
@@ -1651,7 +1676,7 @@ DECLARE_ASM_HANDLER(HandleJmpImm16)
     Label slowPath(env);
 
     UPDATE_HOTNESS(sp);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+    DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
 
 DECLARE_ASM_HANDLER(HandleJmpImm32)
@@ -1664,7 +1689,7 @@ DECLARE_ASM_HANDLER(HandleJmpImm32)
     Label dispatch(env);
     Label slowPath(env);
     UPDATE_HOTNESS(sp);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+    DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
 
 DECLARE_ASM_HANDLER(HandleLdLexVarDynPrefImm4Imm4)
@@ -4076,11 +4101,10 @@ DECLARE_ASM_HANDLER(HandleJeqzImm8)
         Label dispatch(env);
         Label slowPath(env);
         UPDATE_HOTNESS(sp);
-        Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+        DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter,
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_NONE)));
+    DISPATCH_BAK(JUMP, INT_PTR(PREF_NONE));
 }
 
 DECLARE_ASM_HANDLER(HandleJeqzImm16)
@@ -4119,11 +4143,10 @@ DECLARE_ASM_HANDLER(HandleJeqzImm16)
         Label dispatch(env);
         Label slowPath(env);
         UPDATE_HOTNESS(sp);
-        Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+        DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter,
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16)));
+    DISPATCH_BAK(JUMP, INT_PTR(IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleJnezImm8)
@@ -4162,11 +4185,10 @@ DECLARE_ASM_HANDLER(HandleJnezImm8)
         Label dispatch(env);
         Label slowPath(env);
         UPDATE_HOTNESS(sp);
-        Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+        DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter,
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_NONE)));
+    DISPATCH_BAK(JUMP, INT_PTR(PREF_NONE));
 }
 
 DECLARE_ASM_HANDLER(HandleJnezImm16)
@@ -4205,11 +4227,10 @@ DECLARE_ASM_HANDLER(HandleJnezImm16)
         Label dispatch(env);
         Label slowPath(env);
         UPDATE_HOTNESS(sp);
-        Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+        DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter,
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16)));
+    DISPATCH_BAK(JUMP, INT_PTR(IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleReturnDyn)
@@ -4952,7 +4973,7 @@ DECLARE_ASM_HANDLER(HandleCallArg0DynPrefV8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallArg1DynPrefV8V8)
@@ -4973,7 +4994,7 @@ DECLARE_ASM_HANDLER(HandleCallArg1DynPrefV8V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallArgs2DynPrefV8V8V8)
@@ -4997,7 +5018,7 @@ DECLARE_ASM_HANDLER(HandleCallArgs2DynPrefV8V8V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallArgs3DynPrefV8V8V8V8)
@@ -5023,7 +5044,7 @@ DECLARE_ASM_HANDLER(HandleCallArgs3DynPrefV8V8V8V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallIRangeDynPrefImm16V8)
@@ -5046,7 +5067,7 @@ DECLARE_ASM_HANDLER(HandleCallIRangeDynPrefImm16V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallIThisRangeDynPrefImm16V8)
@@ -5071,7 +5092,7 @@ DECLARE_ASM_HANDLER(HandleCallIThisRangeDynPrefImm16V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleLdBigIntPrefId32)
