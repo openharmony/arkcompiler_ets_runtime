@@ -47,12 +47,11 @@ void SamplesRecord::AddSample(CVector<JSMethod *> sample, uint64_t sampleTimeSta
     if (isLastSample_.load()) {
         return;
     }
-    static int PreviousId = 0;
     struct MethodKey methodkey;
     struct CpuProfileNode methodNode;
     if (staticGcState_) {
         methodkey.method = reinterpret_cast<JSMethod*>(INT_MAX);
-        methodNode.parentId = methodkey.parentId = PreviousId;
+        methodNode.parentId = methodkey.parentId = previousId_;
         auto result = methodMap_.find(methodkey);
         if (result == methodMap_.end()) {
             methodNode.id = static_cast<int>(methodMap_.size() + 1);
@@ -84,7 +83,7 @@ void SamplesRecord::AddSample(CVector<JSMethod *> sample, uint64_t sampleTimeSta
             if (result == methodMap_.end()) {
                 int id = static_cast<int>(methodMap_.size() + 1);
                 methodMap_.insert(std::make_pair(methodkey, id));
-                PreviousId = methodNode.id = id;
+                previousId_ = methodNode.id = id;
                 methodNode.codeEntry = GetMethodInfo(methodkey.method);
                 stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
                 profileInfo_->nodes.push_back(methodNode);
@@ -92,13 +91,13 @@ void SamplesRecord::AddSample(CVector<JSMethod *> sample, uint64_t sampleTimeSta
                     profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
                 }
             } else {
-                PreviousId = methodNode.id = result->second;
+                previousId_ = methodNode.id = result->second;
             }
         }
     }
     static uint64_t threadStartTime = 0;
     struct SampleInfo sampleInfo;
-    int sampleNodeId = methodNode.id == 0 ? PreviousId = 1, 1 : methodNode.id;
+    int sampleNodeId = methodNode.id == 0 ? previousId_ = 1, 1 : methodNode.id;
     int timeDelta = static_cast<int>(sampleTimeStamp -
         (threadStartTime == 0 ? profileInfo_->startTime : threadStartTime));
     if (outToFile) {
