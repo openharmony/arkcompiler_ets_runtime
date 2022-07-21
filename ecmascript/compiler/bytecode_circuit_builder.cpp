@@ -271,8 +271,7 @@ void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo(std::map<uint8_t *, uint8
 
     // Supplementary end block info
     for (auto iter = endBlockPc.begin(); iter != endBlockPc.end(); iter += 2) { // 2: index
-        bytecodeBlockInfos.emplace_back(*iter, SplitKind::END,
-                                                          std::vector<uint8_t *>(1, *(iter + 1)));
+        bytecodeBlockInfos.emplace_back(*iter, SplitKind::END, std::vector<uint8_t *>(1, *(iter + 1)));
     }
     // Supplementary start block info
     for (auto iter = startBlockPc.begin(); iter != startBlockPc.end(); iter++) {

@@ -455,8 +455,7 @@ public:
         const char *localeCountry = locale.getCountry();
         const char *localeScript = locale.getScript();
         if (localeCountry[0] != '\0' && localeScript[0] != '\0') {
-            std::string removeCountry;
-            removeCountry = locale.getLanguage();
+            std::string removeCountry = locale.getLanguage();
             removeCountry.append("-");
             removeCountry.append(localeScript);
             return CheckLocales(removeCountry.c_str(), key, packageName, res);

@@ -199,7 +199,7 @@ HWTEST_F_L0(BuiltinsMapTest, ForEach)
         JSMap *jsMap = JSMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
         EXPECT_EQ(jsMap->GetSize(), i + 1);
     }
-    // test foreach;
+    // test foreach
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFunc));
 

@@ -118,7 +118,7 @@ public:
 
     inline int GetNumberOfTSTypeTable() const
     {
-        return Get(NUMBER_ELEMENTS_OFFSET).GetInt();;
+        return Get(NUMBER_ELEMENTS_OFFSET).GetInt();
     }
 
     static uint32_t GetTSTypeTableOffset(int entry)

@@ -78,7 +78,8 @@ JSHandle<TSTypeTable> TSTypeTable::GenerateTypeTable(JSThread *thread, const pan
     }
 
     JSHandle<TaggedArray> exportValueTable = GetExportTableFromPandFile(thread, pf);
-    if (exportValueTable->GetLength() != 0) { //add exprotValueTable to tSTypeTable if isn't empty
+    // add exprotValueTable to tSTypeTable if isn't empty
+    if (exportValueTable->GetLength() != 0) {
         table->Set(thread, table->GetLength() - 1, exportValueTable);
     }
 

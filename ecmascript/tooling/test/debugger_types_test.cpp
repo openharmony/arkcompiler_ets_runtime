@@ -25,10 +25,8 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::tooling;
 
 namespace panda::test {
-
 // Duplicate name of panda::ecmascript::PropertyDescriptor in js_object-inl.h
 using panda::ecmascript::tooling::PropertyDescriptor;
-
 using ObjectType = RemoteObject::TypeName;
 using ObjectSubType = RemoteObject::SubTypeName;
 using ObjectClassName = RemoteObject::ClassName;

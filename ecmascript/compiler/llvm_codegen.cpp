@@ -55,7 +55,7 @@
 using namespace panda::ecmascript;
 namespace panda::ecmascript::kungfu {
 void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, int index,
-                                                const CompilationConfig *cfg)
+                                              const CompilationConfig *cfg)
 {
     LLVMValueRef function = module_->GetStubFunction(index);
     LLVMIRBuilder builder(&graph, circuit, module_, function, cfg);

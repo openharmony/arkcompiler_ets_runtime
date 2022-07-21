@@ -47,8 +47,7 @@ bool DateUtils::IsLeap(int64_t year)
 // static
 int64_t DateUtils::GetDaysInYear(int64_t year)
 {
-    int64_t number;
-    number = IsLeap(year) ? (DAYS_IN_YEAR + 1) : DAYS_IN_YEAR;
+    int64_t number = IsLeap(year) ? (DAYS_IN_YEAR + 1) : DAYS_IN_YEAR;
     return number;
 }
 
@@ -257,8 +256,7 @@ JSTaggedValue JSDate::LocalParseStringToMs(const CString &str)
     int localHours = 0;
     int localMinutes = 0;
     int64_t localMs = 0;
-    CString::size_type localSpace;
-    localSpace = str.find(' ', index);
+    CString::size_type localSpace = str.find(' ', index);
     CString strMonth = str.substr(localSpace + 1, LENGTH_MONTH_NAME);
     for (int i = 0; i < MOUTH_PER_YEAR; i++) {
         if (strMonth == monthName[i]) {
