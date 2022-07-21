@@ -863,8 +863,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 JSHandle<JSHClass> pendingClass(thread,
                     JSHClass::Cast(globalConst->GetPendingJobClass().GetTaggedObject()));
                 JSHandle<TaggedObject> pendingJob(thread, factory->NewDynObject(pendingClass));
-                ecmascript::job::PendingJob::Cast(*pendingJob)->SetJob(JSTaggedValue::Undefined());
-                ecmascript::job::PendingJob::Cast(*pendingJob)->SetArguments(JSTaggedValue::Undefined());
+                ecmascript::job::PendingJob::Cast(*pendingJob)->SetJob(thread, JSTaggedValue::Undefined());
+                ecmascript::job::PendingJob::Cast(*pendingJob)->SetArguments(thread, JSTaggedValue::Undefined());
                 DUMP_FOR_HANDLE(pendingJob)
                 break;
             }

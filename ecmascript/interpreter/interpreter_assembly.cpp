@@ -3634,7 +3634,7 @@ inline JSTaggedValue InterpreterAssembly::UpdateHotnessCounter(JSThread* thread,
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
         auto method = function->GetMethod();
         auto res = SlowRuntimeStub::NotifyInlineCache(thread, function, method);
-        function->SetProfileTypeInfo(res);
+        function->SetProfileTypeInfo(thread, res);
         return res;
     }
     return profileTypeInfo;

@@ -222,7 +222,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         EcmaVM *vm = thread->GetEcmaVM();
         JSHandle<SourceTextModule> module =
             vm->GetModuleManager()->HostGetImportedModule(jsPandaFile->GetJSPandaFileDesc());
-        jsFunc->SetModule(module.GetTaggedValue());
+        jsFunc->SetModule(thread, module.GetTaggedValue());
     }
     return jsFunc;
 }
