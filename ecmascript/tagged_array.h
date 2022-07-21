@@ -54,12 +54,6 @@ public:
     {
         ASSERT(elemSize != 0);
         size_t size = DATA_OFFSET + elemSize * length;
-#ifdef PANDA_TARGET_32
-        size_t sizeLimit = (std::numeric_limits<size_t>::max() - DATA_OFFSET) / elemSize;
-        if (UNLIKELY(sizeLimit < static_cast<size_t>(length))) {
-            return 0;
-        }
-#endif
         return size;
     }
 
