@@ -22,6 +22,16 @@ size_t GateAccessor::GetNumIns(GateRef gate) const
     return gatePtr->GetNumIns();
 }
 
+MarkCode GateAccessor::GetMark(GateRef gate) const
+{
+    return circuit_->GetMark(gate);
+}
+
+void GateAccessor::SetMark(GateRef gate, MarkCode mark)
+{
+    circuit_->SetMark(gate, mark);
+}
+
 OpCode GateAccessor::GetOpCode(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);

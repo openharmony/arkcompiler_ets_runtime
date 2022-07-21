@@ -282,22 +282,22 @@ public:
         }
     };
 
-    [[nodiscard]] ConstInWrapper ConstIns(GateRef gate)
+    ConstInWrapper ConstIns(GateRef gate)
     {
         return { circuit_, gate };
     }
 
-    [[nodiscard]] InWrapper Ins(GateRef gate)
+    InWrapper Ins(GateRef gate)
     {
         return { circuit_, gate };
     }
 
-    [[nodiscard]] ConstUseWrapper ConstUses(GateRef gate)
+    ConstUseWrapper ConstUses(GateRef gate)
     {
         return { circuit_, gate };
     }
 
-    [[nodiscard]] UseWrapper Uses(GateRef gate)
+    UseWrapper Uses(GateRef gate)
     {
         return { circuit_, gate };
     }
@@ -356,6 +356,8 @@ public:
     bool IsSelector(GateRef g) const;
     bool IsControlCase(GateRef gate) const;
     bool IsLoopHead(GateRef gate) const;
+    MarkCode GetMark(GateRef gate) const;
+    void SetMark(GateRef gate, MarkCode mark);
 
 private:
     ConstUsesIterator ConstUseBegin(GateRef gate) const
