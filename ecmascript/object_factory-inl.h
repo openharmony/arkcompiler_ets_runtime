@@ -40,6 +40,13 @@ EcmaString *ObjectFactory::AllocStringObject(size_t size)
         JSHClass::Cast(thread_->GlobalConstants()->GetStringClass().GetTaggedObject()), size));
 }
 
+EcmaString *ObjectFactory::AllocOldSpaceStringObject(size_t size)
+{
+    NewObjectHook();
+    return reinterpret_cast<EcmaString *>(heap_->AllocateOldOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetStringClass().GetTaggedObject()), size));
+}
+
 JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointer,
                                                             const DeleteEntryPoint &callBack,
                                                             void *data,
@@ -91,6 +98,20 @@ void ObjectFactory::NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(icuPoint, callback);
     obj->SetIcuField(thread_, pointer.GetTaggedValue());
+}
+
+TaggedObject *ObjectFactory::AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type)
+{
+    switch (type) {
+        case MemSpaceType::SEMI_SPACE:
+            return heap_->AllocateYoungOrHugeObject(cls, size);
+        case MemSpaceType::OLD_SPACE:
+            return heap_->AllocateOldOrHugeObject(cls, size);
+        case MemSpaceType::NON_MOVABLE:
+            return heap_->AllocateNonMovableOrHugeObject(cls, size);
+        default:
+            UNREACHABLE();
+    }
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_OBJECT_FACTORY_INL_H

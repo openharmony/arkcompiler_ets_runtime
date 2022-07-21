@@ -1148,6 +1148,12 @@ JSTaggedValue BuiltinsArray::IndexOf(EcmaRuntimeCallInfo *argv)
     //   b. If k < 0, let k be 0.
     double from = (fromIndex >= 0) ? fromIndex : ((len + fromIndex) >= 0 ? len + fromIndex : 0);
 
+    // if it is stable array, we can go to fast path
+    if (thisObjVal->IsStableJSArray(thread)) {
+        return JSStableArray::IndexOf(thread, thisObjVal, searchElement, static_cast<uint32_t>(from),
+                                      static_cast<uint32_t>(len));
+    }
+
     // 11. Repeat, while k<len
     //   a. Let kPresent be HasProperty(O, ToString(k)).
     //   b. ReturnIfAbrupt(kPresent).

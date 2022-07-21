@@ -330,8 +330,7 @@ inline bool JSTaggedValue::SameValue(const JSTaggedValue &x, const JSTaggedValue
         return SameValueNumberic(x, y);
     }
     if (x.IsString() && y.IsString()) {
-        return EcmaString::StringsAreEqual(static_cast<EcmaString *>(x.GetTaggedObject()),
-                                           static_cast<EcmaString *>(y.GetTaggedObject()));
+        return StringCompare(EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
     }
     if (x.IsBigInt() && y.IsBigInt()) {
         return BigInt::SameValue(x, y);
@@ -397,18 +396,25 @@ inline bool JSTaggedValue::StrictNumberEquals(double x, double y)
 inline bool JSTaggedValue::StrictEqual([[maybe_unused]] const JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                        const JSHandle<JSTaggedValue> &y)
 {
-    if (x->IsNumber() && y->IsNumber()) {
-        return StrictNumberEquals(x->ExtractNumber(), y->ExtractNumber());
+    return StrictEqual(x.GetTaggedValue(), y.GetTaggedValue());
+}
+
+inline bool JSTaggedValue::StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y)
+{
+    if (x.IsNumber() && y.IsNumber()) {
+        return StrictNumberEquals(x.ExtractNumber(), y.ExtractNumber());
     }
 
-    if (x.GetTaggedValue() == y.GetTaggedValue()) {
+    if (x == y) {
         return true;
     }
-    if (x->IsString() && y->IsString()) {
-        return EcmaString::StringsAreEqual(x.GetObject<EcmaString>(), y.GetObject<EcmaString>());
+
+    if (x.IsString() && y.IsString()) {
+        return StringCompare(EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
     }
-    if (x->IsBigInt() && y->IsBigInt()) {
-        return BigInt::Equal(x.GetTaggedValue(), y.GetTaggedValue());
+
+    if (x.IsBigInt() && y.IsBigInt()) {
+        return BigInt::Equal(x, y);
     }
     return false;
 }
@@ -1348,6 +1354,14 @@ inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
     double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
                                                   base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
     return JSTaggedNumber(d);
+}
+
+inline bool JSTaggedValue::StringCompare(EcmaString *xStr, EcmaString *yStr)
+{
+    if (xStr->IsInternString() && yStr->IsInternString()) {
+        return xStr == yStr;
+    }
+    return EcmaString::StringsAreEqual(xStr, yStr);
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_VALUE_INL_H

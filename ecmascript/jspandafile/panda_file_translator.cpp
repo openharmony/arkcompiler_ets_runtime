@@ -143,16 +143,16 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
         if (value.GetConstpoolType() == ConstPoolType::STRING) {
             panda_file::File::EntityId id(it.first);
             auto foundStr = pf->GetStringData(id);
-            auto string = factory->GetRawStringFromStringTable(foundStr.data,
-                                                               foundStr.utf16_length, foundStr.is_ascii);
+            auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length, foundStr.is_ascii,
+                                                               MemSpaceType::OLD_SPACE);
             constpool->Set(thread, value.GetConstpoolIndex(), JSTaggedValue(string));
         } else if (value.GetConstpoolType() == ConstPoolType::BASE_FUNCTION) {
             panda_file::File::EntityId id(it.first);
             auto method = jsPandaFile->FindMethods(it.first);
             ASSERT(method != nullptr);
 
-            JSHandle<JSFunction> jsFunc =
-                factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::BASE_CONSTRUCTOR);
+            JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(
+                method, dynclass, FunctionKind::BASE_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntry(jsPandaFile, jsFunc);
             }
@@ -163,8 +163,8 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             auto method = jsPandaFile->FindMethods(it.first);
             ASSERT(method != nullptr);
 
-            JSHandle<JSFunction> jsFunc =
-                factory->NewJSFunctionByDynClass(method, normalDynclass, FunctionKind::NORMAL_FUNCTION);
+            JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(
+                method, normalDynclass, FunctionKind::NORMAL_FUNCTION, MemSpaceType::OLD_SPACE);
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntry(jsPandaFile, jsFunc);
             }
@@ -214,8 +214,8 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             auto method = jsPandaFile->FindMethods(it.first);
             ASSERT(method != nullptr);
 
-            JSHandle<JSFunction> jsFunc =
-                factory->NewJSFunctionByDynClass(method, normalDynclass, FunctionKind::NORMAL_FUNCTION);
+            JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(
+                method, normalDynclass, FunctionKind::NORMAL_FUNCTION, MemSpaceType::OLD_SPACE);
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntry(jsPandaFile, jsFunc);
             }
@@ -268,7 +268,7 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
     // link JSPandaFile
     JSHandle<JSNativePointer> jsPandaFilePointer = factory->NewJSNativePointer(
         const_cast<JSPandaFile *>(jsPandaFile), JSPandaFileManager::RemoveJSPandaFile,
-        JSPandaFileManager::GetInstance());
+        JSPandaFileManager::GetInstance(), true);
     constpool->Set(thread, constpoolIndex, jsPandaFilePointer.GetTaggedValue());
 
     DefineClassesInConstPool(thread, constpool, jsPandaFile);

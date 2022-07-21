@@ -287,7 +287,7 @@ JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSOb
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        
+
         if (!kValue.IsHole()) {
             key.Update(JSTaggedValue(k));
             info->SetCallArg(kValue, key.GetTaggedValue(), thisObjVal.GetTaggedValue());
@@ -352,5 +352,31 @@ JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JS
         }
     }
     return base::BuiltinsBase::GetTaggedBoolean(true);
+}
+
+JSTaggedValue JSStableArray::IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
+                                     JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len)
+{
+    JSHandle<TaggedArray> elements(thread, JSHandle<JSObject>::Cast(receiver)->GetElements());
+    while (from < len) {
+        JSTaggedValue value = elements->Get(from);
+        if (!value.IsUndefined() && !value.IsHole()) {
+            if (JSTaggedValue::StrictEqual(searchElement.GetTaggedValue(), value)) {
+                return JSTaggedValue(from);
+            }
+        } else {
+            bool exist = JSTaggedValue::HasProperty(thread, receiver, from);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (exist) {
+                JSHandle<JSTaggedValue> kValueHandle = JSArray::FastGetPropertyByValue(thread, receiver, from);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                if (JSTaggedValue::StrictEqual(thread, searchElement, kValueHandle)) {
+                    return JSTaggedValue(from);
+                }
+            }
+        }
+        from++;
+    }
+    return JSTaggedValue(-1);
 }
 }  // namespace panda::ecmascript
