@@ -237,8 +237,7 @@ void HeapProfilerImpl::Frontend::ResetProfiles()
     }
 }
 
-DispatchResponse HeapProfilerImpl::AddInspectedHeapObject(
-    [[maybe_unused]] const AddInspectedHeapObjectParams &params)
+DispatchResponse HeapProfilerImpl::AddInspectedHeapObject([[maybe_unused]] const AddInspectedHeapObjectParams &params)
 {
     LOG(ERROR, DEBUGGER) << "AddInspectedHeapObject not support now.";
     return DispatchResponse::Ok();

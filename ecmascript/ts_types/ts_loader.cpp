@@ -440,7 +440,7 @@ JSHandle<TSModuleTable> TSModuleTable::AddTypeTable(JSThread *thread, JSHandle<T
     int numberOfTSTypeTable = table->GetNumberOfTSTypeTable();
     if (GetTSTypeTableOffset(numberOfTSTypeTable) > table->GetLength()) {
         table = JSHandle<TSModuleTable>(TaggedArray::SetCapacity(thread, JSHandle<TaggedArray>(table),
-                                        table->GetLength() * INCREASE_CAPACITY_RATE));
+            table->GetLength() * INCREASE_CAPACITY_RATE));
     }
 
     // increase 1 tstypeTable

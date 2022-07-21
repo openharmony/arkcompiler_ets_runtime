@@ -102,8 +102,8 @@ void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> 
             if (hitraceId.IsValid()) {
                 HiTrace::SetId(hitraceId);
                 if (hitraceId.IsFlagEnabled(HITRACE_FLAG_TP_INFO)) {
-                    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_SR,
-                                    hitraceId, "Before %s queue job execute", "Promise");
+                    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_SR, hitraceId,
+                        "Before %s queue job execute", "Promise");
                 }
             }
         }
@@ -113,8 +113,8 @@ void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> 
         if (pendingJob->GetChainId() != 0) {
             if (hitraceId.IsValid()) {
                 if (hitraceId.IsFlagEnabled(HITRACE_FLAG_TP_INFO)) {
-                    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_SS,
-                                    hitraceId, "After %s queue job execute", "Promise");
+                    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_SS, hitraceId,
+                        "After %s queue job execute", "Promise");
                 }
                 HiTrace::ClearId();
             }
@@ -140,8 +140,8 @@ void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> 
             if (hitraceId.IsValid()) {
                 HiTrace::SetId(hitraceId);
                 if (hitraceId.IsFlagEnabled(HITRACE_FLAG_TP_INFO)) {
-                    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_SR,
-                                    hitraceId, "Before %s queue job execute", "Script");
+                    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_SR, hitraceId,
+                        "Before %s queue job execute", "Script");
                 }
             }
         }
@@ -151,8 +151,8 @@ void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> 
         if (pendingJob->GetChainId() != 0) {
             if (hitraceId.IsValid()) {
                 if (hitraceId.IsFlagEnabled(HITRACE_FLAG_TP_INFO)) {
-                    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_SS,
-                                    hitraceId, "After %s queue job execute", "Script");
+                    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_SS, hitraceId,
+                        "After %s queue job execute", "Script");
                 }
                 HiTrace::ClearId();
             }

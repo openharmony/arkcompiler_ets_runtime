@@ -1281,8 +1281,7 @@ JSTaggedValue BuiltinsTypedArray::Sort(EcmaRuntimeCallInfo *argv)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSHandle<JSTaggedValue> yValue = JSTaggedValue::GetProperty(thread, thisObjVal, j).GetValue();
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            int32_t compareResult;
-            compareResult = TypedArrayHelper::SortCompare(thread, callbackFnHandle, buffer, xValue, yValue);
+            int32_t compareResult = TypedArrayHelper::SortCompare(thread, callbackFnHandle, buffer, xValue, yValue);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
                 JSTaggedValue::SetProperty(thread, thisObjVal, j - 1, yValue, true);
