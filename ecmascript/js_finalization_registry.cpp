@@ -126,11 +126,11 @@ void JSFinalizationRegistry::CleanFinRegLists(JSThread *thread, JSHandle<JSFinal
     }
     if (!obj->GetPrev().IsNull()) {
         JSHandle<JSFinalizationRegistry> prev(thread, obj->GetPrev());
-        prev->SetNext(obj->GetNext());
+        prev->SetNext(thread, obj->GetNext());
     }
     if (!obj->GetNext().IsNull()) {
         JSHandle<JSFinalizationRegistry> next(thread, obj->GetNext());
-        next->SetPrev(obj->GetPrev());
+        next->SetPrev(thread, obj->GetPrev());
     } else {
         env->SetFinRegLists(thread, obj->GetPrev());
     }
