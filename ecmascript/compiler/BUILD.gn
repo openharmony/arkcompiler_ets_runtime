@@ -247,7 +247,7 @@ if (!defined(ark_standalone_build)) {
 
   ohos_executable("ark_stub_compiler") {
     deps = [ ":ark_stub_compiler_set" ]
-
+    ldflags = [ "-Wl,--lto-O0" ]
     install_enable = false
 
     part_name = "ark_js_runtime"
