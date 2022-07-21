@@ -24,8 +24,8 @@
 namespace panda::ecmascript::kungfu {
 class InterpreterStub : public Stub {
 public:
-    InterpreterStub(const char* name, int argCount, Circuit *circuit)
-        : Stub(name, argCount, circuit) {}
+    InterpreterStub(CallSignature *callSignature, Circuit *circuit)
+        : Stub(callSignature, circuit) {}
     ~InterpreterStub() = default;
     NO_MOVE_SEMANTIC(InterpreterStub);
     NO_COPY_SEMANTIC(InterpreterStub);
@@ -116,8 +116,8 @@ private:
 #define DECLARE_HANDLE_STUB_CLASS(name)                                                         \
     class name##Stub : public InterpreterStub {                                                 \
     public:                                                                                     \
-        explicit name##Stub(Circuit *circuit) : InterpreterStub(#name,                          \
-            static_cast<int>(InterpreterHandlerInputs::NUM_OF_INPUTS), circuit)                 \
+        explicit name##Stub(CallSignature *callSignature, Circuit *circuit)                     \
+            : InterpreterStub(callSignature, circuit)                                           \
         {                                                                                       \
             circuit->SetFrameType(FrameType::INTERPRETER_FRAME);                                \
         }                                                                                       \

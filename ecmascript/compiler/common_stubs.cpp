@@ -26,81 +26,6 @@
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
 
-#ifndef NDEBUG
-void MulGCTestStub::GenerateCircuit(const CompilationConfig *cfg)
-{
-    Stub::GenerateCircuit(cfg);
-    auto env = GetEnvironment();
-    GateRef glue = PtrArgument(0);
-    GateRef x = Int64Argument(1);
-    GateRef y = Int64Argument(2); // 2: 3rd argument
-
-    DEFVARIABLE(intX, VariableType::INT64(), Int64(0));
-    DEFVARIABLE(intY, VariableType::INT64(), Int64(0));
-    DEFVARIABLE(valuePtr, VariableType::INT64(), Int64(0));
-    DEFVARIABLE(doubleX, VariableType::FLOAT64(), Double(0));
-    DEFVARIABLE(doubleY, VariableType::FLOAT64(), Double(0));
-    Label xIsNumber(env);
-    Label xNotNumberOryNotNumber(env);
-    Label xIsNumberAndyIsNumber(env);
-    Label xIsDoubleAndyIsDouble(env);
-    Branch(TaggedIsNumber(x), &xIsNumber, &xNotNumberOryNotNumber);
-    Bind(&xIsNumber);
-    {
-        Label yIsNumber(env);
-        // if right.IsNumber()
-        Branch(TaggedIsNumber(y), &yIsNumber, &xNotNumberOryNotNumber);
-        Bind(&yIsNumber);
-        {
-            Label xIsInt(env);
-            Label xNotInt(env);
-            Branch(TaggedIsInt(x), &xIsInt, &xNotInt);
-            Bind(&xIsInt);
-            {
-                intX = TaggedCastToInt64(x);
-                doubleX = CastInt64ToFloat64(*intX);
-                Jump(&xIsNumberAndyIsNumber);
-            }
-            Bind(&xNotInt);
-            {
-                doubleX = TaggedCastToDouble(x);
-                Jump(&xIsNumberAndyIsNumber);
-            }
-        }
-    }
-    Bind(&xNotNumberOryNotNumber);
-    Return(Hole(VariableType::JS_ANY()));
-    Label yIsInt(env);
-    Label yNotInt(env);
-    Bind(&xIsNumberAndyIsNumber);
-    {
-        Branch(TaggedIsInt(y), &yIsInt, &yNotInt);
-        Bind(&yIsInt);
-        {
-            intY = TaggedCastToInt64(y);
-            doubleY = CastInt64ToFloat64(*intY);
-            Jump(&xIsDoubleAndyIsDouble);
-        }
-        Bind(&yNotInt);
-        {
-            doubleY = TaggedCastToDouble(y);
-            Jump(&xIsDoubleAndyIsDouble);
-        }
-    }
-    Bind(&xIsDoubleAndyIsDouble);
-    doubleX = DoubleMul(*doubleX, *doubleY);
-    GateRef ptr1 = CallRuntime(glue, RTSTUB_ID(GetTaggedArrayPtrTest), {Int64(JSTaggedValue::VALUE_UNDEFINED)});
-    GateRef ptr2 = CallRuntime(glue, RTSTUB_ID(GetTaggedArrayPtrTest), {ptr1});
-    auto value1 = GetValueFromTaggedArray(VariableType::INT64(), ptr1, Int32(0));
-    GateRef tmp = CastInt64ToFloat64(value1);
-    doubleX = DoubleMul(*doubleX, tmp);
-    auto value2 = GetValueFromTaggedArray(VariableType::INT64(), ptr2, Int32(1));
-    tmp = CastInt64ToFloat64(value2);
-    doubleX = DoubleMul(*doubleX, tmp);
-    Return(DoubleBuildTaggedWithNoGC(*doubleX));
-}
-#endif
-
 void AddStub::GenerateCircuit(const CompilationConfig *cfg)
 {
     Stub::GenerateCircuit(cfg);
@@ -466,8 +391,10 @@ void JsProxyCallInternalStub::GenerateCircuit(const CompilationConfig *cfg)
         }
         Bind(&isNotUndefined);
         {
+            const int JSPROXY_NUM_ARGS = 3;
             GateRef arrHandle = CallRuntime(glue, RTSTUB_ID(CreateArrayFromList), argc, argv);
-            GateRef thisArg = Load(VariableType::JS_POINTER(), argv, IntPtr(2*sizeof(JSTaggedValue)));
+            // 2: this offset
+            GateRef thisArg = Load(VariableType::JS_POINTER(), argv, IntPtr(2 * sizeof(JSTaggedValue)));
             GateRef numArgs = Int64(JSPROXY_NUM_ARGS + NUM_MANDATORY_JSFUNC_ARGS);
             GateRef lexEnv = Load(VariableType::JS_POINTER(), method, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
             result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
@@ -483,12 +410,13 @@ CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()
 {
-#define INIT_SIGNATURES(name, counter)                                                 \
+#define INIT_SIGNATURES(name)                                                          \
     name##CallSignature::Initialize(&callSigns_[name]);                                \
     callSigns_[name].SetID(name);                                                      \
     callSigns_[name].SetConstructor(                                                   \
         [](void* ciruit) {                                                             \
-            return static_cast<void*>(new name##Stub(static_cast<Circuit*>(ciruit)));  \
+            return static_cast<void*>(                                                 \
+                new name##Stub(&callSigns_[name], static_cast<Circuit*>(ciruit)));     \
         });
 
     COMMON_STUB_ID_LIST(INIT_SIGNATURES)

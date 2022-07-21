@@ -17,157 +17,23 @@
 #define ECMASCRIPT_COMPILER_TEST_STUBS_H
 
 #include "ecmascript/compiler/stub.h"
+#include "test_stubs_signature.h"
 
 namespace panda::ecmascript::kungfu {
-#define IGNORE_TEST_STUB(name, count)
 
 #ifndef NDEBUG
-#define TEST_STUB_LIST(V)               \
-    V(FooAOT, 7)                        \
-    V(Foo1AOT, 7)                       \
-    V(Foo2AOT, 7)                       \
-    V(FooNativeAOT, 7)                  \
-    V(FooBoundAOT, 7)                   \
-    V(BarAOT, 7)                        \
-    V(Bar1AOT, 8)                       \
-    V(FooProxyAOT, 7)                   \
-    V(FooProxy2AOT, 7)                  \
-    V(Bar2AOT, 7)                       \
-    V(TestAbsoluteAddressRelocation, 1)
-#else
-    #define TEST_STUB_LIST(V)
+#define DECLARE_STUB_CLASS(name)                                              \
+    class name##Stub : public Stub {                                          \
+    public:                                                                   \
+        explicit name##Stub(CallSignature *callSignature, Circuit *circuit)   \
+            : Stub(callSignature, circuit) {}                                 \
+        ~name##Stub() = default;                                              \
+        NO_MOVE_SEMANTIC(name##Stub);                                         \
+        NO_COPY_SEMANTIC(name##Stub);                                         \
+        void GenerateCircuit(const CompilationConfig *cfg) override;          \
+    };
+    TEST_STUB_SIGNATRUE_LIST(DECLARE_STUB_CLASS)
+#undef DECLARE_STUB_CLASS
 #endif
-
-class FooAOTStub : public Stub {
-public:
-    // 8 : 8 means argument counts
-    explicit FooAOTStub(Circuit *circuit) : Stub("FooAOT", 8, circuit)
-    {
-    }
-    ~FooAOTStub() = default;
-    NO_MOVE_SEMANTIC(FooAOTStub);
-    NO_COPY_SEMANTIC(FooAOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class BarAOTStub : public Stub {
-public:
-    // 8 : 8 means argument counts
-    explicit BarAOTStub(Circuit *circuit) : Stub("BarAOT", 8, circuit)
-    {
-    }
-    ~BarAOTStub() = default;
-    NO_MOVE_SEMANTIC(BarAOTStub);
-    NO_COPY_SEMANTIC(BarAOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class Foo1AOTStub : public Stub {
-public:
-    // 8 : 8 means argument counts
-    explicit Foo1AOTStub(Circuit *circuit) : Stub("Foo1AOT", 8, circuit)
-    {
-    }
-    ~Foo1AOTStub() = default;
-    NO_MOVE_SEMANTIC(Foo1AOTStub);
-    NO_COPY_SEMANTIC(Foo1AOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class Foo2AOTStub : public Stub {
-public:
-    // 8 : 8 means argument counts
-    explicit Foo2AOTStub(Circuit *circuit) : Stub("Foo2AOT", 8, circuit)
-    {
-    }
-    ~Foo2AOTStub() = default;
-    NO_MOVE_SEMANTIC(Foo2AOTStub);
-    NO_COPY_SEMANTIC(Foo2AOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class FooNativeAOTStub : public Stub {
-public:
-    // 8 : 8 means argument counts
-    explicit FooNativeAOTStub(Circuit *circuit) : Stub("FooNativeAOT", 8, circuit)
-    {
-    }
-    ~FooNativeAOTStub() = default;
-    NO_MOVE_SEMANTIC(FooNativeAOTStub);
-    NO_COPY_SEMANTIC(FooNativeAOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class FooBoundAOTStub : public Stub {
-public:
-    // 8 : 8 means argument counts
-    explicit FooBoundAOTStub(Circuit *circuit) : Stub("FooBoundAOT", 8, circuit)
-    {
-    }
-    ~FooBoundAOTStub() = default;
-    NO_MOVE_SEMANTIC(FooBoundAOTStub);
-    NO_COPY_SEMANTIC(FooBoundAOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class Bar1AOTStub : public Stub {
-public:
-    // 9 : 9 means argument counts
-    explicit Bar1AOTStub(Circuit *circuit) : Stub("Bar1AOT", 9, circuit)
-    {
-    }
-    ~Bar1AOTStub() = default;
-    NO_MOVE_SEMANTIC(Bar1AOTStub);
-    NO_COPY_SEMANTIC(Bar1AOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class FooProxyAOTStub : public Stub {
-public:
-    // 8 : 8 means argument counts
-    explicit FooProxyAOTStub(Circuit *circuit) : Stub("FooProxyAOT", 8, circuit)
-    {
-    }
-    ~FooProxyAOTStub() = default;
-    NO_MOVE_SEMANTIC(FooProxyAOTStub);
-    NO_COPY_SEMANTIC(FooProxyAOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class FooProxy2AOTStub : public Stub {
-public:
-    // 8 : 8 means argument counts
-    explicit FooProxy2AOTStub(Circuit *circuit) : Stub("FooProxy2AOTStub", 8, circuit)
-    {
-    }
-    ~FooProxy2AOTStub() = default;
-    NO_MOVE_SEMANTIC(FooProxy2AOTStub);
-    NO_COPY_SEMANTIC(FooProxy2AOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class Bar2AOTStub : public Stub {
-public:
-    // 6 : 6 means argument counts
-    explicit Bar2AOTStub(Circuit *circuit) : Stub("Bar2AOT", 6, circuit)
-    {
-    }
-    ~Bar2AOTStub() = default;
-    NO_MOVE_SEMANTIC(Bar2AOTStub);
-    NO_COPY_SEMANTIC(Bar2AOTStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
-
-class TestAbsoluteAddressRelocationStub : public Stub {
-public:
-    // 2 : 2 means argument counts
-    explicit TestAbsoluteAddressRelocationStub(Circuit *circuit) : Stub("TestAbsoluteAddressRelocation", 1, circuit)
-    {
-    }
-    ~TestAbsoluteAddressRelocationStub() = default;
-    NO_MOVE_SEMANTIC(TestAbsoluteAddressRelocationStub);
-    NO_COPY_SEMANTIC(TestAbsoluteAddressRelocationStub);
-    void GenerateCircuit(const CompilationConfig *cfg) override;
-};
 }
 #endif

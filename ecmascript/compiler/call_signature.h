@@ -63,7 +63,7 @@ public:
     using TailCallBit = VariadicArgsBit::NextField<bool, 1>;
     using GCLeafFunctionBit = TailCallBit::NextField<bool, 1>;
 
-    explicit CallSignature(std::string name, int flags, int paramCounter, ArgumentsOrder order, VariableType returnType)
+    explicit CallSignature(std::string name, int flags, size_t paramCounter, ArgumentsOrder order, VariableType returnType)
         : name_(name), paramCounter_(paramCounter), order_(order), returnType_(returnType)
     {
         SetTargetKind(TargetKind::COMMON_STUB);
@@ -87,7 +87,7 @@ public:
         constructor_ = other.constructor_;
         if (paramCounter_ > 0 && other.paramsType_ != nullptr) {
             paramsType_ = std::make_unique<std::vector<VariableType>>(paramCounter_);
-            for (int i = 0; i < paramCounter_; i++) {
+            for (size_t i = 0; i < paramCounter_; i++) {
                 (*paramsType_)[i] = other.GetParametersType()[i];
             }
         }
@@ -104,7 +104,7 @@ public:
         constructor_ = other.constructor_;
         if (paramCounter_ > 0 && other.paramsType_ != nullptr) {
             paramsType_ = std::make_unique<std::vector<VariableType>>(paramCounter_);
-            for (int i = 0; i < paramCounter_; i++) {
+            for (size_t i = 0; i < paramCounter_; i++) {
                 (*paramsType_)[i] = other.GetParametersType()[i];
             }
         }
@@ -158,7 +158,7 @@ public:
     {
         if (paramCounter_ > 0 && paramsType_ == nullptr) {
             paramsType_ = std::make_unique<std::vector<VariableType>>(paramCounter_);
-            for (int i = 0; i < paramCounter_; i++) {
+            for (size_t i = 0; i < paramCounter_; i++) {
                 (*paramsType_)[i] = paramsType[i];
             }
         }
@@ -173,7 +173,7 @@ public:
         }
     }
 
-    int GetParametersCount() const
+    size_t GetParametersCount() const
     {
         return paramCounter_;
     }
@@ -275,7 +275,7 @@ public:
 
 private:
     std::string name_;
-    int paramCounter_ {0};
+    size_t paramCounter_ {0};
     int id_ {-1};
     ArgumentsOrder order_ {ArgumentsOrder::DEFAULT_ORDER};
     VariableType returnType_ {VariableType::VOID()};
