@@ -28,16 +28,14 @@ using namespace panda::ecmascript;
 
 class Stub {
 public:
-    explicit Stub(const char *name, int argCount, Circuit *circuit)
-        : builder_(circuit), acc_(circuit), env_(argCount, &builder_), methodName_(name)
-    {
-    }
+    explicit Stub(CallSignature *callSignature, Circuit *circuit);
     virtual ~Stub() = default;
     NO_MOVE_SEMANTIC(Stub);
     NO_COPY_SEMANTIC(Stub);
     virtual void GenerateCircuit(const CompilationConfig *cfg)
     {
         env_.SetCompilationConfig(cfg);
+        InitializeArguments();
     }
     CircuitBuilder* GetBuilder()
     {
@@ -47,13 +45,17 @@ public:
     {
         return &env_;
     }
+    CallSignature *GetCallSignature() const
+    {
+        return callSignature_;
+    }
     int NextVariableId()
     {
         return env_.NextVariableId();
     }
-    std::string GetMethodName() const
+    const std::string &GetMethodName() const
     {
-        return methodName_;
+        return callSignature_->GetName();
     }
     // constant
     GateRef Int8(int8_t value);
@@ -78,8 +80,8 @@ public:
     GateRef Int32Argument(size_t index);
     GateRef Int64Argument(size_t index);
     GateRef TaggedArgument(size_t index);
-    GateRef TaggedPointerArgument(size_t index, GateType type = GateType::TaggedPointer());
-    GateRef PtrArgument(size_t index, GateType type = GateType::NJSValue());
+    GateRef TaggedPointerArgument(size_t index);
+    GateRef PtrArgument(size_t index);
     GateRef Float32Argument(size_t index);
     GateRef Float64Argument(size_t index);
     GateRef Alloca(int size);
@@ -475,10 +477,11 @@ private:
     GateRef FastAddSubAndMul(GateRef left, GateRef right);
     GateRef FastBinaryOp(GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp);
+    void InitializeArguments();
+    CallSignature *callSignature_;
     CircuitBuilder builder_;
     GateAccessor acc_;
     Environment env_;
-    std::string methodName_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_STUB_H

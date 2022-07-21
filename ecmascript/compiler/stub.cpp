@@ -27,6 +27,28 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
+Stub::Stub(CallSignature *callSignature, Circuit *circuit)
+    : callSignature_(callSignature), builder_(circuit),
+      acc_(circuit), env_(callSignature->GetParametersCount(), &builder_)
+{
+}
+
+void Stub::InitializeArguments()
+{
+    auto argLength = callSignature_->GetParametersCount();
+    auto paramsType = callSignature_->GetParametersType();
+    for (size_t i = 0; i < argLength; i++) {
+        GateRef argument = Argument(i);
+        if (paramsType[i] == VariableType::NATIVE_POINTER()) {
+            auto type = env_.IsArch64Bit() ? MachineType::I64 : MachineType::I32;
+            acc_.SetMachineType(argument, type);
+        } else {
+            acc_.SetMachineType(argument, paramsType[i].GetMachineType());
+        }
+        acc_.SetGateType(argument, paramsType[i].GetGateType());
+    }
+}
+
 void Stub::Jump(Label *label)
 {
     ASSERT(label);
@@ -4008,7 +4030,7 @@ GateRef Stub::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
     }
     GateRef sp = 0;
     if (env->IsAsmInterp()) {
-        sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));
+        sp = Argument(static_cast<size_t>(InterpreterHandlerInputs::SP));
     }
     Label methodisAot(env);
     Label methodNotAot(env);

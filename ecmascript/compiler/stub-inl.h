@@ -130,76 +130,42 @@ inline GateRef Stub::Argument(size_t index)
 
 inline GateRef Stub::Int1Argument(size_t index)
 {
-    GateRef argument = Argument(index);
-    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
-    acc_.SetMachineType(argument, MachineType::I1);
-    return argument;
+    return Argument(index);
 }
 
 inline GateRef Stub::Int32Argument(size_t index)
 {
-    GateRef argument = Argument(index);
-    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
-    acc_.SetMachineType(argument, MachineType::I32);
-    return argument;
+    return Argument(index);
 }
 
 inline GateRef Stub::Int64Argument(size_t index)
 {
-    GateRef argument = Argument(index);
-    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
-    acc_.SetMachineType(argument, MachineType::I64);
-    return argument;
+    return Argument(index);
 }
 
 inline GateRef Stub::TaggedArgument(size_t index)
 {
-    GateRef argument = Argument(index);
-    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
-    acc_.SetGateType(argument, GateType::TaggedValue());
-    acc_.SetMachineType(argument, MachineType::I64);
-    return argument;
+    return Argument(index);
 }
 
-inline GateRef Stub::TaggedPointerArgument(size_t index, GateType type)
+inline GateRef Stub::TaggedPointerArgument(size_t index)
 {
-    GateRef argument = Argument(index);
-    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
-    acc_.SetGateType(argument, type);
-    acc_.SetMachineType(argument, MachineType::I64);
-    return argument;
+    return Argument(index);
 }
 
-inline GateRef Stub::PtrArgument(size_t index, GateType type)
+inline GateRef Stub::PtrArgument(size_t index)
 {
-    GateRef argument = Argument(index);
-    acc_.SetGateType(argument, type);
-    if (env_.IsArch64Bit()) {
-        acc_.SetOpCode(argument, OpCode(OpCode::ARG));
-        acc_.SetMachineType(argument, MachineType::I64);
-    } else if (env_.IsArch32Bit()) {
-        acc_.SetOpCode(argument, OpCode(OpCode::ARG));
-        acc_.SetMachineType(argument, MachineType::I32);
-    } else {
-        UNREACHABLE();
-    }
-    return argument;
+    return Argument(index);
 }
 
 inline GateRef Stub::Float32Argument(size_t index)
 {
-    GateRef argument = Argument(index);
-    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
-    acc_.SetMachineType(argument, MachineType::F32);
-    return argument;
+    return Argument(index);
 }
 
 inline GateRef Stub::Float64Argument(size_t index)
 {
-    GateRef argument = Argument(index);
-    acc_.SetOpCode(argument, OpCode(OpCode::ARG));
-    acc_.SetMachineType(argument, MachineType::F64);
-    return argument;
+    return Argument(index);
 }
 
 inline GateRef Stub::Alloca(int size)
@@ -254,7 +220,7 @@ inline GateRef Stub::UpdateLeaveFrameAndCallNGCRuntime(GateRef glue, int index,
         // CpuProfiler will get the latest leaveFrame_ in thread to up frames.
         // So it's necessary to update leaveFrame_ if the program enters the c++ environment.
         // We use the latest asm interpreter frame to update it when CallNGCRuntime.
-        GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));
+        GateRef sp = Argument(static_cast<size_t>(InterpreterHandlerInputs::SP));
         GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(env_.Is32Bit()));
         Store(VariableType::NATIVE_POINTER(), glue, glue, spOffset, sp);
     }
@@ -282,8 +248,8 @@ inline void Stub::FatalPrint(GateRef glue, std::initializer_list<GateRef> args)
 void Stub::SavePcIfNeeded(GateRef glue)
 {
     if (env_.IsAsmInterp()) {
-        GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));
-        GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));
+        GateRef sp = Argument(static_cast<size_t>(InterpreterHandlerInputs::SP));
+        GateRef pc = Argument(static_cast<size_t>(InterpreterHandlerInputs::PC));
         GateRef frame = PtrSub(sp,
             IntPtr(AsmInterpretedFrame::GetSize(GetEnvironment()->IsArch32Bit())));
         Store(VariableType::INT64(), glue, frame,
@@ -294,44 +260,15 @@ void Stub::SavePcIfNeeded(GateRef glue)
 // memory
 inline GateRef Stub::Load(VariableType type, GateRef base, GateRef offset)
 {
-    auto depend = env_.GetCurrentLabel()->GetDepend();
-    if (env_.IsArch64Bit()) {
-        GateRef val = Int64Add(base, offset);
-        if (type == VariableType::NATIVE_POINTER()) {
-            type = VariableType::INT64();
-        }
-        GateRef result = env_.GetCircuit()->NewGate(OpCode(OpCode::LOAD), type.GetMachineType(),
-            0, { depend, val }, type.GetGateType());
-        env_.GetCurrentLabel()->SetDepend(result);
-        return result;
+    if (type == VariableType::NATIVE_POINTER()) {
+        type = env_.IsArch64Bit() ? VariableType::INT64() : VariableType::INT32();
     }
-    if (env_.IsArch32Bit()) {
-        GateRef val = Int32Add(base, offset);
-        if (type == VariableType::NATIVE_POINTER()) {
-            type = VariableType::INT32();
-        }
-        GateRef result = env_.GetCircuit()->NewGate(OpCode(OpCode::LOAD), type.GetMachineType(),
-            0, { depend, val }, type.GetGateType());
-        env_.GetCurrentLabel()->SetDepend(result);
-        return result;
-    }
-    UNREACHABLE();
+    return builder_.Load(type, base, offset);
 }
 
 inline GateRef Stub::Load(VariableType type, GateRef base)
 {
-    if (type == VariableType::NATIVE_POINTER()) {
-        if (env_.IsArch64Bit()) {
-            type = VariableType::INT64();
-        } else {
-            type = VariableType::INT32();
-        }
-    }
-    auto depend = env_.GetCurrentLabel()->GetDepend();
-    GateRef result = env_.GetCircuit()->NewGate(OpCode(OpCode::LOAD), type.GetMachineType(),
-        0, { depend, base }, type.GetGateType());
-    env_.GetCurrentLabel()->SetDepend(result);
-    return result;
+    return Load(type, base, IntPtr(0));
 }
 
 // arithmetic

@@ -1935,7 +1935,7 @@ LLVMTypeRef LLVMModule::GetFuncType(const CallSignature *stubDescriptor)
             }
         }
 
-        for (int i = 1; i < paramCount; i++) {
+        for (size_t i = 1; i < paramCount; i++) {
             paramTys.push_back(ConvertLLVMTypeFromVariableType(paramsType[i]));
         }
     }
