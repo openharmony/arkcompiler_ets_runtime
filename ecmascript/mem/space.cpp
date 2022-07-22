@@ -59,23 +59,20 @@ void Space::ClearAndFreeRegion(Region *region)
     heapRegionAllocator_->FreeRegion(region);
 }
 
-HugeObjectSpace::HugeObjectSpace(HeapRegionAllocator *heapRegionAllocator,
+HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
                                  size_t initialCapacity, size_t maximumCapacity)
-    : Space(heapRegionAllocator,
-            MemSpaceType::HUGE_OBJECT_SPACE,
-            initialCapacity,
-            maximumCapacity)
+    : Space(heapRegionAllocator, MemSpaceType::HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity),
+      heap_(heap)
 {
 }
 
 uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
 {
-    if (committedSize_ + objectSize >= maximumCapacity_) {
+    size_t alignedSize = AlignUp(objectSize + sizeof(Region), PANDA_POOL_ALIGNMENT_IN_BYTES);
+    if (heap_->OldSpaceExceedCapacity(alignedSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
     }
-
-    size_t alignedSize = AlignUp(objectSize + sizeof(Region), PANDA_POOL_ALIGNMENT_IN_BYTES);
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread);
     AddRegion(region);
     return region->GetBegin();

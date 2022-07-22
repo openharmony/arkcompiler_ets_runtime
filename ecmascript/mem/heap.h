@@ -236,7 +236,7 @@ public:
 
     void CollectGarbage(TriggerGCType gcType);
 
-    void CheckAndTriggerOldGC();
+    void CheckAndTriggerOldGC(size_t size = 0);
 
     /*
      * Parallel GC related configurations and utilities.
@@ -389,6 +389,19 @@ public:
     bool ContainObject(TaggedObject *object) const;
 
     size_t VerifyHeapObjects() const;
+
+    bool OldSpaceExceedCapacity(size_t size) const
+    {
+        size_t totalSize = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize() + size;
+        return totalSize >= oldSpace_->GetMaximumCapacity();
+    }
+
+    bool OldSpaceExceedLimit() const
+    {
+        size_t totalSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
+        return totalSize >= oldSpace_->GetInitialCapacity();
+    }
+
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool IsVerifying() const
     {
