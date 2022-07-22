@@ -436,7 +436,6 @@ void FrameHandler::CollectBCOffsetInfo()
     thread_->GetEcmaVM()->ClearExceptionBCList();
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
     FrameIterator it(current, thread_);
-    ASSERT(it.GetFrameType() == FrameType::BUILTIN_CALL_LEAVE_FRAME);
     auto leaveFrame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
     auto returnAddr = leaveFrame->GetReturnAddr();
     // skip native function, need to fixit later.

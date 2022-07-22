@@ -152,8 +152,11 @@ using JSFunctionEntryType = uint64_t (*)(uintptr_t glue, uintptr_t prevFp, uint3
     V(StoreICByName)                      \
     V(UpdateHotnessCounter)               \
     V(GetModuleNamespace)                 \
+    V(GetModuleNamespaceOnJSFunc)         \
     V(StModuleVar)                        \
+    V(StModuleVarOnJSFunc)                \
     V(LdModuleVar)                        \
+    V(LdModuleVarOnJSFunc)                \
     V(ThrowDyn)                           \
     V(GetPropIterator)                    \
     V(AsyncFunctionEnter)                 \
@@ -206,6 +209,7 @@ using JSFunctionEntryType = uint64_t (*)(uintptr_t glue, uintptr_t prevFp, uint3
     V(ThrowSetterIsUndefinedException)    \
     V(ThrowNotCallableException)          \
     V(ThrowCallConstructorException)      \
+    V(ThrowNonConstructorException)       \
     V(ThrowStackOverflowException)        \
     V(ThrowDerivedMustReturnException)    \
     V(CallNative)                         \
@@ -376,8 +380,14 @@ private:
     static inline JSTaggedValue RuntimeSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                         const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName);
+    static inline JSTaggedValue RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName,
+                                                             JSTaggedValue jsFunc);
     static inline void RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value);
+    static inline void RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value,
+                                             JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner);
+    static inline JSTaggedValue RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner,
+                                                      JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeGetPropIterator(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeAsyncFunctionEnter(JSThread *thread);
     static inline JSTaggedValue RuntimeGetIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj);

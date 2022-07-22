@@ -815,9 +815,21 @@ JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTagged
     return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName);
 }
 
+JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName,
+                                                      JSTaggedValue jsFunc)
+{
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName, jsFunc);
+}
+
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
     thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value);
+}
+
+void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value,
+                                      JSTaggedValue jsFunc)
+{
+    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner)
@@ -828,6 +840,17 @@ JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue k
     }
 
     return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(key);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner,
+                                               JSTaggedValue jsFunc)
+{
+    if (inner) {
+        JSTaggedValue moduleValue = thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(key, jsFunc);
+        return moduleValue;
+    }
+
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(key, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetPropIterator(JSThread *thread, const JSHandle<JSTaggedValue> &value)
@@ -1742,6 +1765,12 @@ JSTaggedValue RuntimeStubs::RuntimeNewAotObjDynRange(JSThread *thread, uintptr_t
     }
 
     JSTaggedValue object = JSFunction::Construct(info);
+    if (!object.IsUndefined() && !object.IsECMAObject() && !JSHandle<JSFunction>(ctor)->IsBase()) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
+                                                       "Derived constructor must return object or undefined");
+        thread->SetException(error.GetTaggedValue());
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return object;
 }

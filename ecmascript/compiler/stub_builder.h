@@ -464,6 +464,7 @@ public:
     GateRef NewLexicalEnv(GateRef glue, GateRef numSlots, GateRef parent);
     GateRef NewJSObject(GateRef glue, GateRef hclass);
     GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor);
+    GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
                            JSCallMode mode, std::initializer_list<GateRef> args);
     GateRef IsFastTypeArray(GateRef jsType);

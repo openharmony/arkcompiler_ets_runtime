@@ -206,6 +206,19 @@ struct BytecodeRegion {
             });
         }
     }
+    void UpdateTryCatchInfo()
+    {
+        for (auto catchBlock : catchs) {
+            auto tryBlock = std::find(catchBlock->trys.begin(), catchBlock->trys.end(), this);
+            if (tryBlock != catchBlock->trys.end()) {
+                catchBlock->trys.erase(tryBlock);
+            }
+            if (catchBlock->trys.size() == 0) {
+                catchBlock->isDead = true;
+            }
+        }
+        catchs.clear();
+    }
 };
 
 using BytecodeGraph = std::vector<BytecodeRegion>;
@@ -475,6 +488,20 @@ public:
         return hasTypes_;
     }
 
+    template <class Callback>
+    void EnumerateBlock(BytecodeRegion &bb, const Callback &cb)
+    {
+        auto pc = bb.start;
+        while (pc <= bb.end) {
+            auto bytecodeInfo = GetBytecodeInfo(pc);
+            bool ret = cb(pc, bytecodeInfo);
+            if (!ret) {
+                break;
+            }
+            pc += bytecodeInfo.offset;
+        }
+    }
+
 private:
     void PUBLIC_API CollectBytecodeBlockInfo(uint8_t* pc, std::vector<CfgInfo> &bytecodeBlockInfos);
 
@@ -494,6 +521,7 @@ private:
     void InsertPhi();
     void InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo);
     void UpdateCFG();
+    bool ShouldBeDead(BytecodeRegion &curBlock);
     // build circuit
     void BuildCircuitArgs();
     void CollectPredsInfo();
