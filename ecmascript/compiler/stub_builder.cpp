@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/stub.h"
+#include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
-#include "ecmascript/compiler/stub-inl.h"
+#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_api_arraylist.h"
 #include "ecmascript/js_api_vector.h"
 #include "ecmascript/js_object.h"
@@ -27,13 +27,13 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
-Stub::Stub(CallSignature *callSignature, Circuit *circuit)
+StubBuilder::StubBuilder(CallSignature *callSignature, Circuit *circuit)
     : callSignature_(callSignature), builder_(circuit),
       acc_(circuit), env_(callSignature->GetParametersCount(), &builder_)
 {
 }
 
-void Stub::InitializeArguments()
+void StubBuilder::InitializeArguments()
 {
     auto argLength = callSignature_->GetParametersCount();
     auto paramsType = callSignature_->GetParametersType();
@@ -49,7 +49,7 @@ void Stub::InitializeArguments()
     }
 }
 
-void Stub::Jump(Label *label)
+void StubBuilder::Jump(Label *label)
 {
     ASSERT(label);
     auto currentLabel = env_.GetCurrentLabel();
@@ -61,7 +61,7 @@ void Stub::Jump(Label *label)
     env_.SetCurrentLabel(nullptr);
 }
 
-void Stub::Branch(GateRef condition, Label *trueLabel, Label *falseLabel)
+void StubBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel)
 {
     auto currentLabel = env_.GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -76,7 +76,7 @@ void Stub::Branch(GateRef condition, Label *trueLabel, Label *falseLabel)
     env_.SetCurrentLabel(nullptr);
 }
 
-void Stub::Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys)
+void StubBuilder::Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys)
 {
     auto currentLabel = env_.GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -97,7 +97,7 @@ void Stub::Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label 
     env_.SetCurrentLabel(nullptr);
 }
 
-void Stub::LoopBegin(Label *loopHead)
+void StubBuilder::LoopBegin(Label *loopHead)
 {
     ASSERT(loopHead);
     auto loopControl = env_.GetBulder()->LoopBegin(loopHead->GetControl());
@@ -107,7 +107,7 @@ void Stub::LoopBegin(Label *loopHead)
     env_.SetCurrentLabel(loopHead);
 }
 
-void Stub::LoopEnd(Label *loopHead)
+void StubBuilder::LoopEnd(Label *loopHead)
 {
     ASSERT(loopHead);
     auto currentLabel = env_.GetCurrentLabel();
@@ -123,7 +123,7 @@ void Stub::LoopEnd(Label *loopHead)
 }
 
 // FindElementWithCache in ecmascript/layout_info-inl.h
-GateRef Stub::FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
+GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
     GateRef key, GateRef propsNum)
 {
     auto env = GetEnvironment();
@@ -185,7 +185,7 @@ GateRef Stub::FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hCl
     return ret;
 }
 
-GateRef Stub::FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index)
+GateRef StubBuilder::FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -242,7 +242,7 @@ GateRef Stub::FindElementFromNumberDictionary(GateRef glue, GateRef elements, Ga
 }
 
 // int TaggedHashTable<Derived>::FindEntry(const JSTaggedValue &key) in tagged_hash_table.h
-GateRef Stub::FindEntryFromNameDictionary(GateRef glue, GateRef elements, GateRef key)
+GateRef StubBuilder::FindEntryFromNameDictionary(GateRef glue, GateRef elements, GateRef key)
 {
     auto env = GetEnvironment();
     Label funcEntry(env);
@@ -345,14 +345,14 @@ GateRef Stub::FindEntryFromNameDictionary(GateRef glue, GateRef elements, GateRe
     return ret;
 }
 
-GateRef Stub::IsMatchInTransitionDictionary(GateRef element, GateRef key, GateRef metaData, GateRef attr)
+GateRef StubBuilder::IsMatchInTransitionDictionary(GateRef element, GateRef key, GateRef metaData, GateRef attr)
 {
     return TruncInt32ToInt1(Int32And(ZExtInt1ToInt32(Int64Equal(element, key)),
         ZExtInt1ToInt32(Int32Equal(metaData, attr))));
 }
 
 // metaData is int32 type
-GateRef Stub::FindEntryFromTransitionDictionary(GateRef glue, GateRef elements, GateRef key, GateRef metaData)
+GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef elements, GateRef key, GateRef metaData)
 {
     auto env = GetEnvironment();
     Label funcEntry(env);
@@ -459,7 +459,7 @@ GateRef Stub::FindEntryFromTransitionDictionary(GateRef glue, GateRef elements, 
     return ret;
 }
 
-GateRef Stub::JSObjectGetProperty(VariableType returnType, GateRef obj, GateRef hClass, GateRef attr)
+GateRef StubBuilder::JSObjectGetProperty(VariableType returnType, GateRef obj, GateRef hClass, GateRef attr)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -497,7 +497,7 @@ GateRef Stub::JSObjectGetProperty(VariableType returnType, GateRef obj, GateRef 
     return ret;
 }
 
-void Stub::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef attr, GateRef value)
+void StubBuilder::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef attr, GateRef value)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -528,7 +528,7 @@ void Stub::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRe
     return;
 }
 
-GateRef Stub::ComputePropertyCapacityInJSObj(GateRef oldLength)
+GateRef StubBuilder::ComputePropertyCapacityInJSObj(GateRef oldLength)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -554,7 +554,7 @@ GateRef Stub::ComputePropertyCapacityInJSObj(GateRef oldLength)
     return ret;
 }
 
-GateRef Stub::CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor)
+GateRef StubBuilder::CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -614,7 +614,7 @@ GateRef Stub::CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, G
     return ret;
 }
 
-GateRef Stub::CallSetterHelper(GateRef glue, GateRef receiver, GateRef accessor, GateRef value)
+GateRef StubBuilder::CallSetterHelper(GateRef glue, GateRef receiver, GateRef accessor, GateRef value)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -662,7 +662,7 @@ GateRef Stub::CallSetterHelper(GateRef glue, GateRef receiver, GateRef accessor,
     return ret;
 }
 
-GateRef Stub::ShouldCallSetter(GateRef receiver, GateRef holder, GateRef accessor, GateRef attr)
+GateRef StubBuilder::ShouldCallSetter(GateRef receiver, GateRef holder, GateRef accessor, GateRef attr)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -699,7 +699,7 @@ GateRef Stub::ShouldCallSetter(GateRef receiver, GateRef holder, GateRef accesso
     return ret;
 }
 
-void Stub::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr)
+void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -740,7 +740,7 @@ void Stub::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, Gate
 
 // if condition:objHandle->IsJSArray() &&
 //      keyHandle.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()
-GateRef Stub::SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key)
+GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key)
 {
     GateRef gConstOffset = PtrAdd(glue,
                                   IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_.Is32Bit())));
@@ -754,7 +754,7 @@ GateRef Stub::SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef
 }
 
 // Note: set return exit node
-GateRef Stub::AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value,
+GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value,
                                 GateRef propertyAttributes)
 {
     auto env = GetEnvironment();
@@ -881,14 +881,14 @@ GateRef Stub::AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, Gat
     return ret;
 }
 
-void Stub::ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val)
+void StubBuilder::ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val)
 {
     GateRef msgIntId = Int32(messageId);
     CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedTypeNGC(msgIntId) });
     Return(val);
 }
 
-GateRef Stub::TaggedToRepresentation(GateRef value)
+GateRef StubBuilder::TaggedToRepresentation(GateRef value)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -927,7 +927,7 @@ GateRef Stub::TaggedToRepresentation(GateRef value)
     return ret;
 }
 
-void Stub::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
+void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
 {
     auto depend = env_.GetCurrentLabel()->GetDepend();
     GateRef result;
@@ -954,7 +954,7 @@ void Stub::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, 
     return;
 }
 
-void Stub::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value)
+void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1027,7 +1027,7 @@ void Stub::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRe
     return;
 }
 
-GateRef Stub::TaggedIsString(GateRef obj)
+GateRef StubBuilder::TaggedIsString(GateRef obj)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1048,7 +1048,7 @@ GateRef Stub::TaggedIsString(GateRef obj)
     return ret;
 }
 
-GateRef Stub::TaggedIsStringOrSymbol(GateRef obj)
+GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1076,7 +1076,7 @@ GateRef Stub::TaggedIsStringOrSymbol(GateRef obj)
     return ret;
 }
 
-GateRef Stub::TaggedIsBigInt(GateRef obj)
+GateRef StubBuilder::TaggedIsBigInt(GateRef obj)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1097,7 +1097,7 @@ GateRef Stub::TaggedIsBigInt(GateRef obj)
     return ret;
 }
 
-GateRef Stub::IsUtf16String(GateRef string)
+GateRef StubBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
     GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
@@ -1106,7 +1106,7 @@ GateRef Stub::IsUtf16String(GateRef string)
         Int32(EcmaString::STRING_UNCOMPRESSED));
 }
 
-GateRef Stub::IsUtf8String(GateRef string)
+GateRef StubBuilder::IsUtf8String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
     GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
@@ -1115,7 +1115,7 @@ GateRef Stub::IsUtf8String(GateRef string)
         Int32(EcmaString::STRING_COMPRESSED));
 }
 
-GateRef Stub::IsInternalString(GateRef string)
+GateRef StubBuilder::IsInternalString(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
     GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
@@ -1124,14 +1124,14 @@ GateRef Stub::IsInternalString(GateRef string)
         Int32(0));
 }
 
-GateRef Stub::IsDigit(GateRef ch)
+GateRef StubBuilder::IsDigit(GateRef ch)
 {
     return TruncInt32ToInt1(
         Int32And(SExtInt1ToInt32(Int32LessThanOrEqual(ch, Int32('9'))),
                  SExtInt1ToInt32(Int32GreaterThanOrEqual(ch, Int32('0')))));
 }
 
-GateRef Stub::StringToElementIndex(GateRef string)
+GateRef StubBuilder::StringToElementIndex(GateRef string)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1246,7 +1246,7 @@ GateRef Stub::StringToElementIndex(GateRef string)
     return ret;
 }
 
-GateRef Stub::TryToElementsIndex(GateRef key)
+GateRef StubBuilder::TryToElementsIndex(GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1296,7 +1296,7 @@ GateRef Stub::TryToElementsIndex(GateRef key)
     return ret;
 }
 
-GateRef Stub::LoadFromField(GateRef receiver, GateRef handlerInfo)
+GateRef StubBuilder::LoadFromField(GateRef receiver, GateRef handlerInfo)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1324,7 +1324,7 @@ GateRef Stub::LoadFromField(GateRef receiver, GateRef handlerInfo)
     return ret;
 }
 
-GateRef Stub::LoadGlobal(GateRef cell)
+GateRef StubBuilder::LoadGlobal(GateRef cell)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1349,7 +1349,7 @@ GateRef Stub::LoadGlobal(GateRef cell)
     return ret;
 }
 
-GateRef Stub::CheckPolyHClass(GateRef cachedValue, GateRef hclass)
+GateRef StubBuilder::CheckPolyHClass(GateRef cachedValue, GateRef hclass)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1390,7 +1390,7 @@ GateRef Stub::CheckPolyHClass(GateRef cachedValue, GateRef hclass)
     return ret;
 }
 
-GateRef Stub::LoadICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder, GateRef argHandler)
+GateRef StubBuilder::LoadICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder, GateRef argHandler)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1462,7 +1462,7 @@ GateRef Stub::LoadICWithHandler(GateRef glue, GateRef receiver, GateRef argHolde
     return ret;
 }
 
-GateRef Stub::LoadElement(GateRef receiver, GateRef key)
+GateRef StubBuilder::LoadElement(GateRef receiver, GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1495,7 +1495,7 @@ GateRef Stub::LoadElement(GateRef receiver, GateRef key)
     return ret;
 }
 
-GateRef Stub::ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handler)
+GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handler)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1584,7 +1584,7 @@ GateRef Stub::ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRe
     return ret;
 }
 
-GateRef Stub::GetArrayLength(GateRef object)
+GateRef StubBuilder::GetArrayLength(GateRef object)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1612,7 +1612,7 @@ GateRef Stub::GetArrayLength(GateRef object)
     return ret;
 }
 
-GateRef Stub::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder, GateRef value, GateRef argHandler)
+GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder, GateRef value, GateRef argHandler)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1699,7 +1699,7 @@ GateRef Stub::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHold
     return ret;
 }
 
-void Stub::StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler)
+void StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1726,7 +1726,7 @@ void Stub::StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef han
     env->SubCfgExit();
 }
 
-void Stub::StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler)
+void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1772,7 +1772,7 @@ void Stub::StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, Ga
     env->SubCfgExit();
 }
 
-GateRef Stub::StoreGlobal(GateRef glue, GateRef value, GateRef cell)
+GateRef StubBuilder::StoreGlobal(GateRef glue, GateRef value, GateRef cell)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1799,7 +1799,7 @@ GateRef Stub::StoreGlobal(GateRef glue, GateRef value, GateRef cell)
 }
 
 template<typename DictionaryT>
-GateRef Stub::GetAttributesFromDictionary(GateRef elements, GateRef entry)
+GateRef StubBuilder::GetAttributesFromDictionary(GateRef elements, GateRef entry)
 {
     GateRef arrayIndex =
     Int32Add(Int32(DictionaryT::TABLE_HEADER_SIZE),
@@ -1810,7 +1810,7 @@ GateRef Stub::GetAttributesFromDictionary(GateRef elements, GateRef entry)
 }
 
 template<typename DictionaryT>
-GateRef Stub::GetValueFromDictionary(VariableType returnType, GateRef elements, GateRef entry)
+GateRef StubBuilder::GetValueFromDictionary(VariableType returnType, GateRef elements, GateRef entry)
 {
     GateRef arrayIndex =
         Int32Add(Int32(DictionaryT::TABLE_HEADER_SIZE),
@@ -1821,7 +1821,7 @@ GateRef Stub::GetValueFromDictionary(VariableType returnType, GateRef elements, 
 }
 
 template<typename DictionaryT>
-GateRef Stub::GetKeyFromDictionary(VariableType returnType, GateRef elements, GateRef entry)
+GateRef StubBuilder::GetKeyFromDictionary(VariableType returnType, GateRef elements, GateRef entry)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -1853,7 +1853,7 @@ GateRef Stub::GetKeyFromDictionary(VariableType returnType, GateRef elements, Ga
     return ret;
 }
 
-inline void Stub::UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr)
+inline void StubBuilder::UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr)
 {
     GateRef arrayIndex =
         Int32Add(Int32(NameDictionary::TABLE_HEADER_SIZE),
@@ -1869,7 +1869,7 @@ inline void Stub::UpdateValueAndAttributes(GateRef glue, GateRef elements, GateR
     Store(VariableType::INT64(), glue, elements, dataOffset, IntToTaggedNGC(attr));
 }
 
-inline void Stub::UpdateValueInDict(GateRef glue, GateRef elements, GateRef index, GateRef value)
+inline void StubBuilder::UpdateValueInDict(GateRef glue, GateRef elements, GateRef index, GateRef value)
 {
     GateRef arrayIndex = Int32Add(Int32(NameDictionary::TABLE_HEADER_SIZE),
         Int32Mul(index, Int32(NameDictionary::ENTRY_SIZE)));
@@ -1877,7 +1877,7 @@ inline void Stub::UpdateValueInDict(GateRef glue, GateRef elements, GateRef inde
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, valueIndex, value);
 }
 
-GateRef Stub::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index)
+GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2007,7 +2007,7 @@ GateRef Stub::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index)
     return ret;
 }
 
-GateRef Stub::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue)
+GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2082,7 +2082,7 @@ GateRef Stub::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValu
     return ret;
 }
 
-GateRef Stub::GetPropertyByName(GateRef glue, GateRef receiver, GateRef key)
+GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2220,7 +2220,7 @@ GateRef Stub::GetPropertyByName(GateRef glue, GateRef receiver, GateRef key)
     return ret;
 }
 
-void Stub::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHClass)
+void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHClass)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2238,7 +2238,7 @@ void Stub::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHClass)
     return;
 }
 
-GateRef Stub::FindTransitions(GateRef glue, GateRef receiver, GateRef hclass, GateRef key, GateRef metaData)
+GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hclass, GateRef key, GateRef metaData)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2326,7 +2326,7 @@ GateRef Stub::FindTransitions(GateRef glue, GateRef receiver, GateRef hclass, Ga
     return ret;
 }
 
-GateRef Stub::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn)
+GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2458,7 +2458,7 @@ GateRef Stub::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, 
     return ret;
 }
 
-GateRef Stub::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn)
+GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -2699,7 +2699,7 @@ GateRef Stub::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, Gat
     return ret;
 }
 
-GateRef Stub::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn)
+GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn)
 {
     auto env = GetEnvironment();
     Label subEntry1(env);
@@ -2771,7 +2771,7 @@ GateRef Stub::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, Ga
     return ret;
 }
 
-void Stub::NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClass)
+void StubBuilder::NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClass)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2795,7 +2795,7 @@ void Stub::NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClas
     return;
 }
 
-GateRef Stub::GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType)
+GateRef StubBuilder::GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2822,7 +2822,7 @@ GateRef Stub::GetContainerProperty(GateRef glue, GateRef receiver, GateRef index
     return ret;
 }
 
-GateRef Stub::FastTypeOf(GateRef glue, GateRef obj)
+GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2962,7 +2962,7 @@ GateRef Stub::FastTypeOf(GateRef glue, GateRef obj)
     return ret;
 }
 
-GateRef Stub::FastStrictEqual(GateRef glue, GateRef left, GateRef right)
+GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3078,7 +3078,7 @@ GateRef Stub::FastStrictEqual(GateRef glue, GateRef left, GateRef right)
     return ret;
 }
 
-GateRef Stub::FastEqual(GateRef left, GateRef right)
+GateRef StubBuilder::FastEqual(GateRef left, GateRef right)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3184,7 +3184,7 @@ GateRef Stub::FastEqual(GateRef left, GateRef right)
     return ret;
 }
 
-GateRef Stub::FastToBoolean(GateRef value)
+GateRef StubBuilder::FastToBoolean(GateRef value)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3270,7 +3270,7 @@ GateRef Stub::FastToBoolean(GateRef value)
     return ret;
 }
 
-GateRef Stub::FastDiv(GateRef left, GateRef right)
+GateRef StubBuilder::FastDiv(GateRef left, GateRef right)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3377,7 +3377,7 @@ GateRef Stub::FastDiv(GateRef left, GateRef right)
     return ret;
 }
 
-GateRef Stub::FastBinaryOp(GateRef left, GateRef right,
+GateRef StubBuilder::FastBinaryOp(GateRef left, GateRef right,
                            const BinaryOperation& intOp,
                            const BinaryOperation& floatOp)
 {
@@ -3451,7 +3451,7 @@ GateRef Stub::FastBinaryOp(GateRef left, GateRef right,
 }
 
 template<OpCode::Op Op>
-GateRef Stub::FastAddSubAndMul(GateRef left, GateRef right)
+GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right)
 {
     auto intOperation = [=](Environment *env, GateRef left, GateRef right) {
         Label entry(env);
@@ -3489,22 +3489,22 @@ GateRef Stub::FastAddSubAndMul(GateRef left, GateRef right)
     return FastBinaryOp(left, right, intOperation, floatOperation);
 }
 
-GateRef Stub::FastAdd(GateRef left, GateRef right)
+GateRef StubBuilder::FastAdd(GateRef left, GateRef right)
 {
     return FastAddSubAndMul<OpCode::ADD>(left, right);
 }
 
-GateRef Stub::FastSub(GateRef left, GateRef right)
+GateRef StubBuilder::FastSub(GateRef left, GateRef right)
 {
     return FastAddSubAndMul<OpCode::SUB>(left, right);
 }
 
-GateRef Stub::FastMul(GateRef left, GateRef right)
+GateRef StubBuilder::FastMul(GateRef left, GateRef right)
 {
     return FastAddSubAndMul<OpCode::MUL>(left, right);
 }
 
-GateRef Stub::FastMod(GateRef glue, GateRef left, GateRef right)
+GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3644,7 +3644,7 @@ GateRef Stub::FastMod(GateRef glue, GateRef left, GateRef right)
     return ret;
 }
 
-GateRef Stub::GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key)
+GateRef StubBuilder::GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key)
 {
     auto env = GetEnvironment();
     Label entryLabel(env);
@@ -3666,7 +3666,7 @@ GateRef Stub::GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key)
     return ret;
 }
 
-GateRef Stub::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index)
+GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3700,7 +3700,7 @@ GateRef Stub::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index)
     return ret;
 }
 
-GateRef Stub::DoubleToInt(GateRef glue, GateRef x)
+GateRef StubBuilder::DoubleToInt(GateRef glue, GateRef x)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3735,7 +3735,7 @@ GateRef Stub::DoubleToInt(GateRef glue, GateRef x)
     return ret;
 }
 
-void Stub::ReturnExceptionIfAbruptCompletion(GateRef glue)
+void StubBuilder::ReturnExceptionIfAbruptCompletion(GateRef glue)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3752,7 +3752,7 @@ void Stub::ReturnExceptionIfAbruptCompletion(GateRef glue)
     return;
 }
 
-GateRef Stub::GetHashcodeFromString(GateRef glue, GateRef value)
+GateRef StubBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -3774,7 +3774,7 @@ GateRef Stub::GetHashcodeFromString(GateRef glue, GateRef value)
     return ret;
 }
 
-GateRef Stub::AllocateInYoung(GateRef glue, GateRef size)
+GateRef StubBuilder::AllocateInYoung(GateRef glue, GateRef size)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3813,7 +3813,7 @@ GateRef Stub::AllocateInYoung(GateRef glue, GateRef size)
     return ret;
 }
 
-void Stub::InitializeWithSpeicalValue(
+void StubBuilder::InitializeWithSpeicalValue(
     GateRef glue, GateRef object, GateRef value, GateRef start, GateRef end)
 {
     auto env = GetEnvironment();
@@ -3842,7 +3842,7 @@ void Stub::InitializeWithSpeicalValue(
     env->SubCfgExit();
 }
 
-void Stub::InitializeTaggedArrayWithSpeicalValue(
+void StubBuilder::InitializeTaggedArrayWithSpeicalValue(
     GateRef glue, GateRef array, GateRef value, GateRef start, GateRef length)
 {
     Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), length);
@@ -3853,7 +3853,7 @@ void Stub::InitializeTaggedArrayWithSpeicalValue(
     InitializeWithSpeicalValue(glue, array, value, dataOffset, endOffset);
 }
 
-GateRef Stub::NewLexicalEnv(GateRef glue, GateRef numSlots, GateRef parent)
+GateRef StubBuilder::NewLexicalEnv(GateRef glue, GateRef numSlots, GateRef parent)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3890,7 +3890,7 @@ GateRef Stub::NewLexicalEnv(GateRef glue, GateRef numSlots, GateRef parent)
     return object;
 }
 
-GateRef Stub::NewJSObject(GateRef glue, GateRef hclass)
+GateRef StubBuilder::NewJSObject(GateRef glue, GateRef hclass)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3927,7 +3927,7 @@ GateRef Stub::NewJSObject(GateRef glue, GateRef hclass)
     return object;
 }
 
-GateRef Stub::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
+GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
                              JSCallMode mode, std::initializer_list<GateRef> args)
 {
     auto env = GetEnvironment();
@@ -4149,7 +4149,7 @@ GateRef Stub::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
     return ret;
 }
 
-GateRef Stub::TryStringOrSymbelToElementIndex(GateRef key)
+GateRef StubBuilder::TryStringOrSymbelToElementIndex(GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4258,7 +4258,7 @@ GateRef Stub::TryStringOrSymbelToElementIndex(GateRef key)
     return ret;
 }
 
-GateRef Stub::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType)
+GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4310,7 +4310,7 @@ GateRef Stub::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef
     return ret;
 }
 
-GateRef Stub::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
+GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                          GateRef jsType)
 {
     auto env = GetEnvironment();

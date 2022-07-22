@@ -18,7 +18,7 @@
 
 #include "circuit.h"
 #include "ecmascript/js_method.h"
-#include "stub.h"
+#include "stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
 using ControlFlowGraph = std::vector<std::vector<GateRef>>;

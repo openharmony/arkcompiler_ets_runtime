@@ -19,16 +19,16 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/stub.h"
+#include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
-class InterpreterStub : public Stub {
+class InterpreterStubBuilder : public StubBuilder {
 public:
-    InterpreterStub(CallSignature *callSignature, Circuit *circuit)
-        : Stub(callSignature, circuit) {}
-    ~InterpreterStub() = default;
-    NO_MOVE_SEMANTIC(InterpreterStub);
-    NO_COPY_SEMANTIC(InterpreterStub);
+    InterpreterStubBuilder(CallSignature *callSignature, Circuit *circuit)
+        : StubBuilder(callSignature, circuit) {}
+    ~InterpreterStubBuilder() = default;
+    NO_MOVE_SEMANTIC(InterpreterStubBuilder);
+    NO_COPY_SEMANTIC(InterpreterStubBuilder);
     virtual void GenerateCircuit(const CompilationConfig *cfg) = 0;
 
     inline void SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val);
@@ -114,16 +114,16 @@ private:
 };
 
 #define DECLARE_HANDLE_STUB_CLASS(name)                                                         \
-    class name##Stub : public InterpreterStub {                                                 \
+    class name##StubBuilder : public InterpreterStubBuilder {                                   \
     public:                                                                                     \
-        explicit name##Stub(CallSignature *callSignature, Circuit *circuit)                     \
-            : InterpreterStub(callSignature, circuit)                                           \
+        explicit name##StubBuilder(CallSignature *callSignature, Circuit *circuit)              \
+            : InterpreterStubBuilder(callSignature, circuit)                                    \
         {                                                                                       \
             circuit->SetFrameType(FrameType::INTERPRETER_FRAME);                                \
         }                                                                                       \
-        ~name##Stub() = default;                                                                \
-        NO_MOVE_SEMANTIC(name##Stub);                                                           \
-        NO_COPY_SEMANTIC(name##Stub);                                                           \
+        ~name##StubBuilder() = default;                                                         \
+        NO_MOVE_SEMANTIC(name##StubBuilder);                                                    \
+        NO_COPY_SEMANTIC(name##StubBuilder);                                                    \
         void GenerateCircuit(const CompilationConfig *cfg) override;                            \
                                                                                                 \
     private:                                                                                    \

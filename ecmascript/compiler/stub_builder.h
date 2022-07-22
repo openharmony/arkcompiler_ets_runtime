@@ -26,12 +26,12 @@ using namespace panda::ecmascript;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
 
-class Stub {
+class StubBuilder {
 public:
-    explicit Stub(CallSignature *callSignature, Circuit *circuit);
-    virtual ~Stub() = default;
-    NO_MOVE_SEMANTIC(Stub);
-    NO_COPY_SEMANTIC(Stub);
+    explicit StubBuilder(CallSignature *callSignature, Circuit *circuit);
+    virtual ~StubBuilder() = default;
+    NO_MOVE_SEMANTIC(StubBuilder);
+    NO_COPY_SEMANTIC(StubBuilder);
     virtual void GenerateCircuit(const CompilationConfig *cfg)
     {
         env_.SetCompilationConfig(cfg);

@@ -16,16 +16,16 @@
 #include "test_stubs.h"
 
 #include "ecmascript/compiler/llvm_ir_builder.h"
-#include "ecmascript/compiler/stub-inl.h"
+#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/message_string.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
 #ifndef NDEBUG
-void FooAOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void FooAOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef env = TaggedArgument(1);
     GateRef argc = Int64Argument(2);
@@ -44,9 +44,9 @@ void FooAOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(result);
 }
 
-void BarAOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void BarAOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     [[maybe_unused]] GateRef env = TaggedArgument(1);
     [[maybe_unused]] GateRef argc = Int64Argument(2);
@@ -59,9 +59,9 @@ void BarAOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(result);
 }
 
-void Foo1AOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void Foo1AOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef env = TaggedArgument(1);
     GateRef argc = Int64Argument(2);
@@ -80,9 +80,9 @@ void Foo1AOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(result);
 }
 
-void Bar1AOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void Bar1AOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef env = TaggedArgument(1);
     GateRef argc = Int64Argument(2);
@@ -102,9 +102,9 @@ void Bar1AOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(result2);
 }
 
-void Foo2AOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void Foo2AOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef env = TaggedArgument(1);
     GateRef argc = Int64Argument(2);
@@ -124,9 +124,9 @@ void Foo2AOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(result);
 }
 
-void FooNativeAOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void FooNativeAOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef env = TaggedArgument(1);
     GateRef argc = Int64Argument(2);
@@ -144,9 +144,9 @@ void FooNativeAOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(result);
 }
 
-void FooBoundAOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void FooBoundAOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef env = TaggedArgument(1);
     GateRef argc = Int64Argument(2);
@@ -169,9 +169,9 @@ void FooBoundAOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(result);
 }
 
-void FooProxyAOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void FooProxyAOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef env = TaggedArgument(1);
     GateRef argc = Int64Argument(2);
@@ -192,9 +192,9 @@ void FooProxyAOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(result);
 }
 
-void FooProxy2AOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void FooProxy2AOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef env = TaggedArgument(1);
     GateRef argc = Int64Argument(2);
@@ -216,9 +216,9 @@ void FooProxy2AOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(result);
 }
 
-void Bar2AOTStub::GenerateCircuit(const CompilationConfig *cfg)
+void Bar2AOTStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     [[maybe_unused]] GateRef glue = PtrArgument(0);
     [[maybe_unused]] GateRef env = TaggedArgument(1);
     [[maybe_unused]] GateRef argc = Int64Argument(2);
@@ -229,9 +229,9 @@ void Bar2AOTStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(thisObj);
 }
 
-void TestAbsoluteAddressRelocationStub::GenerateCircuit(const CompilationConfig *cfg)
+void TestAbsoluteAddressRelocationStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     auto env = GetEnvironment();
     GateRef a = Int64Argument(0);
     Label start(env);

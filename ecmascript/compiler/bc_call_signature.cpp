@@ -31,7 +31,7 @@ void BytecodeStubCSigns::Initialize()
     callSigns_[name].SetConstructor(                                     \
     [](void* ciruit) {                                                   \
         return static_cast<void*>(                                       \
-            new name##Stub(&callSigns_[name],                            \
+            new name##StubBuilder(&callSigns_[name],                     \
                 static_cast<Circuit*>(ciruit)));                         \
     });
     INTERPRETER_BC_STUB_LIST(INIT_SIGNATURES)
@@ -45,7 +45,7 @@ void BytecodeStubCSigns::Initialize()
     callSigns_[name].SetConstructor(                                                        \
     [](void* ciruit) {                                                                      \
         return static_cast<void*>(                                                          \
-            new name##Stub(&callSigns_[name], static_cast<Circuit*>(ciruit)));              \
+            new name##StubBuilder(&callSigns_[name], static_cast<Circuit*>(ciruit)));       \
     });
     ASM_INTERPRETER_BC_HELPER_STUB_LIST(INIT_HELPER_SIGNATURES)
 #undef INIT_HELPER_SIGNATURES

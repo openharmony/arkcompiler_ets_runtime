@@ -21,93 +21,93 @@
 #include "ecmascript/js_generator_object.h"
 
 namespace panda::ecmascript::kungfu {
-void InterpreterStub::SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val)
+void InterpreterStubBuilder::SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val)
 {
     Store(VariableType::INT64(), glue, sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx), val);
 }
 
-GateRef InterpreterStub::GetVregValue(GateRef sp, GateRef idx)
+GateRef InterpreterStubBuilder::GetVregValue(GateRef sp, GateRef idx)
 {
     return Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
 }
 
-GateRef InterpreterStub::ReadInst8_0(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst8_0(GateRef pc)
 {
     return Load(VariableType::INT8(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst8_1(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst8_1(GateRef pc)
 {
     return Load(VariableType::INT8(), pc, IntPtr(2));  // 2 : skip 1 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst8_2(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst8_2(GateRef pc)
 {
     return Load(VariableType::INT8(), pc, IntPtr(3));  // 3 : skip 1 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst8_3(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst8_3(GateRef pc)
 {
     return Load(VariableType::INT8(), pc, IntPtr(4));  // 4 : skip 1 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst8_4(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst8_4(GateRef pc)
 {
     return Load(VariableType::INT8(), pc, IntPtr(5));  // 5 : skip 1 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst8_5(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst8_5(GateRef pc)
 {
     return Load(VariableType::INT8(), pc, IntPtr(6));  // 6 : skip 1 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst8_6(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst8_6(GateRef pc)
 {
     return Load(VariableType::INT8(), pc, IntPtr(7));  // 7 : skip 1 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst8_7(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst8_7(GateRef pc)
 {
     return Load(VariableType::INT8(), pc, IntPtr(8));  // 8 : skip 1 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst8_8(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst8_8(GateRef pc)
 {
     return Load(VariableType::INT8(), pc, IntPtr(9));  // 9 : skip 1 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst4_0(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst4_0(GateRef pc)
 {
     return Int8And(Load(VariableType::INT8(), pc, IntPtr(1)), Int8(0xf));
 }
 
-GateRef InterpreterStub::ReadInst4_1(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst4_1(GateRef pc)
 {
     // 1 : skip 1 byte of bytecode
     return Int8And(
         Int8LSR(Load(VariableType::INT8(), pc, IntPtr(1)), Int8(4)), Int8(0xf));  // 4: read 4 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInst4_2(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst4_2(GateRef pc)
 {
     // 2 : skip 1 byte of bytecode
     return Int8And(Load(VariableType::INT8(), pc, IntPtr(2)), Int8(0xf));
 }
 
-GateRef InterpreterStub::ReadInst4_3(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst4_3(GateRef pc)
 {
     // 2 : skip 1 byte of bytecode
     return Int8And(
         Int8LSR(Load(VariableType::INT8(), pc, IntPtr(2)), Int8(4)), Int8(0xf));  // 4 : read 4 byte of bytecode
 }
 
-GateRef InterpreterStub::ReadInstSigned8_0(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInstSigned8_0(GateRef pc)
 {
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
     return GetEnvironment()->GetBulder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
 }
 
-GateRef InterpreterStub::ReadInstSigned16_0(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInstSigned16_0(GateRef pc)
 {
     /* 2 : skip 8 bits of opcode and 8 bits of low bits */
     GateRef currentInst = Load(VariableType::INT8(), pc, IntPtr(2));
@@ -117,7 +117,7 @@ GateRef InterpreterStub::ReadInstSigned16_0(GateRef pc)
     return Int32Add(currentInst2, ZExtInt8ToInt32(ReadInst8_0(pc)));
 }
 
-GateRef InterpreterStub::ReadInstSigned32_0(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInstSigned32_0(GateRef pc)
 {
     /* 4 : skip 8 bits of opcode and 24 bits of low bits */
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(4));
@@ -130,7 +130,7 @@ GateRef InterpreterStub::ReadInstSigned32_0(GateRef pc)
     return Int32Add(currentInst5, ZExtInt8ToInt32(ReadInst8_0(pc)));
 }
 
-GateRef InterpreterStub::ReadInst16_0(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst16_0(GateRef pc)
 {
     /* 2 : skip 8 bits of opcode and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_1(pc));
@@ -138,7 +138,7 @@ GateRef InterpreterStub::ReadInst16_0(GateRef pc)
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_0(pc)));
 }
 
-GateRef InterpreterStub::ReadInst16_1(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst16_1(GateRef pc)
 {
     /* 3 : skip 8 bits of opcode, 8 bits of prefix and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_2(pc));
@@ -147,7 +147,7 @@ GateRef InterpreterStub::ReadInst16_1(GateRef pc)
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_1(pc)));
 }
 
-GateRef InterpreterStub::ReadInst16_2(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst16_2(GateRef pc)
 {
     /* 4 : skip 8 bits of opcode, first parameter of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_3(pc));
@@ -156,7 +156,7 @@ GateRef InterpreterStub::ReadInst16_2(GateRef pc)
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_2(pc)));
 }
 
-GateRef InterpreterStub::ReadInst16_3(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst16_3(GateRef pc)
 {
     /* 5 : skip 8 bits of opcode, 8 bits of prefix, first parameter of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_4(pc));
@@ -165,7 +165,7 @@ GateRef InterpreterStub::ReadInst16_3(GateRef pc)
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_3(pc)));
 }
 
-GateRef InterpreterStub::ReadInst16_5(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst16_5(GateRef pc)
 {
     /* 7 : skip 8 bits of opcode, 8 bits of prefix, first 2 parameters of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_6(pc));
@@ -174,69 +174,69 @@ GateRef InterpreterStub::ReadInst16_5(GateRef pc)
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_5(pc)));
 }
 
-GateRef InterpreterStub::GetFrame(GateRef CurrentSp)
+GateRef InterpreterStubBuilder::GetFrame(GateRef CurrentSp)
 {
     return PtrSub(CurrentSp, IntPtr(AsmInterpretedFrame::GetSize(GetEnvironment()->IsArch32Bit())));
 }
 
-GateRef InterpreterStub::GetPcFromFrame(GateRef frame)
+GateRef InterpreterStubBuilder::GetPcFromFrame(GateRef frame)
 {
     return Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetPcOffset(GetEnvironment()->IsArch32Bit())));
 }
 
-GateRef InterpreterStub::GetFunctionFromFrame(GateRef frame)
+GateRef InterpreterStubBuilder::GetFunctionFromFrame(GateRef frame)
 {
     return Load(VariableType::JS_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetFunctionOffset(GetEnvironment()->IsArch32Bit())));
 }
 
-GateRef InterpreterStub::GetCallSizeFromFrame(GateRef frame)
+GateRef InterpreterStubBuilder::GetCallSizeFromFrame(GateRef frame)
 {
     return Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetCallSizeOffset(GetEnvironment()->IsArch32Bit())));
 }
 
-GateRef InterpreterStub::GetAccFromFrame(GateRef frame)
+GateRef InterpreterStubBuilder::GetAccFromFrame(GateRef frame)
 {
     return Load(VariableType::JS_ANY(), frame,
         IntPtr(AsmInterpretedFrame::GetAccOffset(GetEnvironment()->IsArch32Bit())));
 }
 
-GateRef InterpreterStub::GetEnvFromFrame(GateRef frame)
+GateRef InterpreterStubBuilder::GetEnvFromFrame(GateRef frame)
 {
     return Load(VariableType::JS_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetEnvOffset(GetEnvironment()->IsArch32Bit())));
 }
 
-GateRef InterpreterStub::GetEnvFromFunction(GateRef function)
+GateRef InterpreterStubBuilder::GetEnvFromFunction(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
 
-GateRef InterpreterStub::GetProfileTypeInfoFromFunction(GateRef function)
+GateRef InterpreterStubBuilder::GetProfileTypeInfoFromFunction(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
 }
 
-GateRef InterpreterStub::GetModuleFromFunction(GateRef function)
+GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::ECMA_MODULE_OFFSET));
 }
 
-GateRef InterpreterStub::GetConstpoolFromFunction(GateRef function)
+GateRef InterpreterStubBuilder::GetConstpoolFromFunction(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::CONSTANT_POOL_OFFSET));
 }
 
 // only use for fast new, not universal API
-GateRef InterpreterStub::GetThisObjectFromFastNewFrame(GateRef prevSp)
+GateRef InterpreterStubBuilder::GetThisObjectFromFastNewFrame(GateRef prevSp)
 {
     auto idx = AsmInterpretedFrame::ReverseIndex::THIS_OBJECT_REVERSE_INDEX;
     return Load(VariableType::JS_ANY(), prevSp, IntPtr(idx * sizeof(JSTaggedType)));
 }
 
-GateRef InterpreterStub::GetResumeModeFromGeneratorObject(GateRef obj)
+GateRef InterpreterStubBuilder::GetResumeModeFromGeneratorObject(GateRef obj)
 {
     GateRef bitfieldOffset = IntPtr(JSGeneratorObject::BIT_FIELD_OFFSET);
     GateRef bitfield = Load(VariableType::INT32(), obj, bitfieldOffset);
@@ -245,43 +245,43 @@ GateRef InterpreterStub::GetResumeModeFromGeneratorObject(GateRef obj)
         Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
 }
 
-void InterpreterStub::SetPcToFrame(GateRef glue, GateRef frame, GateRef value)
+void InterpreterStubBuilder::SetPcToFrame(GateRef glue, GateRef frame, GateRef value)
 {
     Store(VariableType::INT64(), glue, frame,
         IntPtr(AsmInterpretedFrame::GetPcOffset(GetEnvironment()->IsArch32Bit())), value);
 }
 
-void InterpreterStub::SetCallSizeToFrame(GateRef glue, GateRef frame, GateRef value)
+void InterpreterStubBuilder::SetCallSizeToFrame(GateRef glue, GateRef frame, GateRef value)
 {
     Store(VariableType::NATIVE_POINTER(), glue, frame,
           IntPtr(AsmInterpretedFrame::GetCallSizeOffset(GetEnvironment()->IsArch32Bit())), value);
 }
 
-void InterpreterStub::SetAccToFrame(GateRef glue, GateRef frame, GateRef value)
+void InterpreterStubBuilder::SetAccToFrame(GateRef glue, GateRef frame, GateRef value)
 {
     Store(VariableType::INT64(), glue, frame,
           IntPtr(AsmInterpretedFrame::GetAccOffset(GetEnvironment()->IsArch32Bit())), value);
 }
 
-void InterpreterStub::SetEnvToFrame(GateRef glue, GateRef frame, GateRef value)
+void InterpreterStubBuilder::SetEnvToFrame(GateRef glue, GateRef frame, GateRef value)
 {
     Store(VariableType::INT64(), glue, frame,
           IntPtr(AsmInterpretedFrame::GetEnvOffset(GetEnvironment()->IsArch32Bit())), value);
 }
 
-void InterpreterStub::SetFunctionToFrame(GateRef glue, GateRef frame, GateRef value)
+void InterpreterStubBuilder::SetFunctionToFrame(GateRef glue, GateRef frame, GateRef value)
 {
     Store(VariableType::INT64(), glue, frame,
           IntPtr(AsmInterpretedFrame::GetFunctionOffset(GetEnvironment()->IsArch32Bit())), value);
 }
 
-void InterpreterStub::SetConstantPoolToFunction(GateRef glue, GateRef function, GateRef value)
+void InterpreterStubBuilder::SetConstantPoolToFunction(GateRef glue, GateRef function, GateRef value)
 {
     Store(VariableType::INT64(), glue, function,
           IntPtr(JSFunction::CONSTANT_POOL_OFFSET), value);
 }
 
-void InterpreterStub::SetResolvedToFunction(GateRef glue, GateRef function, GateRef value)
+void InterpreterStubBuilder::SetResolvedToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef bitfield = GetFunctionBitFieldFromJSFunction(function);
     GateRef mask = Int32(
@@ -291,19 +291,19 @@ void InterpreterStub::SetResolvedToFunction(GateRef glue, GateRef function, Gate
     Store(VariableType::INT32(), glue, function, IntPtr(JSFunction::BIT_FIELD_OFFSET), result);
 }
 
-void InterpreterStub::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value)
+void InterpreterStubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value);
 }
 
-void InterpreterStub::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
+void InterpreterStubBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, function, offset, value);
 }
 
-void InterpreterStub::SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
+void InterpreterStubBuilder::SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
                                     GateRef env, GateRef pc, GateRef prev, GateRef type)
 {
     GateRef state = GetFrame(sp);
@@ -318,33 +318,33 @@ void InterpreterStub::SetFrameState(GateRef glue, GateRef sp, GateRef function, 
     Store(VariableType::INT64(), glue, state, frameTypeOffset, type);
 }
 
-GateRef InterpreterStub::GetCurrentSpFrame(GateRef glue)
+GateRef InterpreterStubBuilder::GetCurrentSpFrame(GateRef glue)
 {
     bool isArch32 = GetEnvironment()->Is32Bit();
     GateRef spOffset = IntPtr(JSThread::GlueData::GetCurrentFrameOffset(isArch32));
     return Load(VariableType::NATIVE_POINTER(), glue, spOffset);
 }
 
-void InterpreterStub::SetCurrentSpFrame(GateRef glue, GateRef value)
+void InterpreterStubBuilder::SetCurrentSpFrame(GateRef glue, GateRef value)
 {
     GateRef spOffset = IntPtr(JSThread::GlueData::GetCurrentFrameOffset(GetEnvironment()->Is32Bit()));
     Store(VariableType::NATIVE_POINTER(), glue, glue, spOffset, value);
 }
 
-GateRef InterpreterStub::GetLastLeaveFrame(GateRef glue)
+GateRef InterpreterStubBuilder::GetLastLeaveFrame(GateRef glue)
 {
     bool isArch32 = GetEnvironment()->Is32Bit();
     GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(isArch32));
     return Load(VariableType::NATIVE_POINTER(), glue, spOffset);
 }
 
-void InterpreterStub::SetLastLeaveFrame(GateRef glue, GateRef value)
+void InterpreterStubBuilder::SetLastLeaveFrame(GateRef glue, GateRef value)
 {
     GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(GetEnvironment()->Is32Bit()));
     Store(VariableType::NATIVE_POINTER(), glue, glue, spOffset, value);
 }
 
-GateRef InterpreterStub::CheckStackOverflow(GateRef glue, GateRef sp)
+GateRef InterpreterStubBuilder::CheckStackOverflow(GateRef glue, GateRef sp)
 {
     GateRef frameBaseOffset = IntPtr(JSThread::GlueData::GetFrameBaseOffset(GetEnvironment()->IsArch32Bit()));
     GateRef frameBase = Load(VariableType::NATIVE_POINTER(), glue, frameBaseOffset);
@@ -352,7 +352,7 @@ GateRef InterpreterStub::CheckStackOverflow(GateRef glue, GateRef sp)
         PtrAdd(frameBase, IntPtr(JSThread::RESERVE_STACK_SIZE * sizeof(JSTaggedType))));
 }
 
-GateRef InterpreterStub::PushArg(GateRef glue, GateRef sp, GateRef value)
+GateRef InterpreterStubBuilder::PushArg(GateRef glue, GateRef sp, GateRef value)
 {
     GateRef newSp = PointerSub(sp, IntPtr(sizeof(JSTaggedType)));
     // 0 : skip 0 byte of bytecode
@@ -360,7 +360,7 @@ GateRef InterpreterStub::PushArg(GateRef glue, GateRef sp, GateRef value)
     return newSp;
 }
 
-GateRef InterpreterStub::PushUndefined(GateRef glue, GateRef sp, GateRef num)
+GateRef InterpreterStubBuilder::PushUndefined(GateRef glue, GateRef sp, GateRef num)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -383,7 +383,7 @@ GateRef InterpreterStub::PushUndefined(GateRef glue, GateRef sp, GateRef num)
     return ret;
 }
 
-GateRef InterpreterStub::PushRange(GateRef glue, GateRef sp, GateRef array, GateRef startIndex, GateRef endIndex)
+GateRef InterpreterStubBuilder::PushRange(GateRef glue, GateRef sp, GateRef array, GateRef startIndex, GateRef endIndex)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -407,12 +407,12 @@ GateRef InterpreterStub::PushRange(GateRef glue, GateRef sp, GateRef array, Gate
     return ret;
 }
 
-GateRef InterpreterStub::GetCurrentFrame(GateRef glue)
+GateRef InterpreterStubBuilder::GetCurrentFrame(GateRef glue)
 {
     return GetLastLeaveFrame(glue);
 }
 
-GateRef InterpreterStub::ReadInst32_0(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst32_0(GateRef pc)
 {
     GateRef currentInst = ZExtInt8ToInt32(ReadInst8_3(pc));
     GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
@@ -423,7 +423,7 @@ GateRef InterpreterStub::ReadInst32_0(GateRef pc)
     return Int32Add(currentInst5, ZExtInt8ToInt32(ReadInst8_0(pc)));
 }
 
-GateRef InterpreterStub::ReadInst32_1(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst32_1(GateRef pc)
 {
     GateRef currentInst = ZExtInt8ToInt32(ReadInst8_4(pc));
     GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
@@ -434,7 +434,7 @@ GateRef InterpreterStub::ReadInst32_1(GateRef pc)
     return Int32Add(currentInst5, ZExtInt8ToInt32(ReadInst8_1(pc)));
 }
 
-GateRef InterpreterStub::ReadInst32_2(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst32_2(GateRef pc)
 {
     GateRef currentInst = ZExtInt8ToInt32(ReadInst8_5(pc));
     GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
@@ -445,7 +445,7 @@ GateRef InterpreterStub::ReadInst32_2(GateRef pc)
     return Int32Add(currentInst5, ZExtInt8ToInt32(ReadInst8_2(pc)));
 }
 
-GateRef InterpreterStub::ReadInst64_0(GateRef pc)
+GateRef InterpreterStubBuilder::ReadInst64_0(GateRef pc)
 {
     GateRef currentInst = ZExtInt8ToInt64(ReadInst8_7(pc));
     GateRef currentInst1 = Int64LSL(currentInst, Int64(8));  // 8 : set as high 8 bits
@@ -465,12 +465,12 @@ GateRef InterpreterStub::ReadInst64_0(GateRef pc)
 }
 
 template<typename... Args>
-void InterpreterStub::DispatchBase(GateRef target, GateRef glue, Args... args)
+void InterpreterStubBuilder::DispatchBase(GateRef target, GateRef glue, Args... args)
 {
     GetEnvironment()->GetBulder()->CallBCHandler(glue, target, {glue, args...});
 }
 
-void InterpreterStub::Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool, GateRef profileTypeInfo,
+void InterpreterStubBuilder::Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool, GateRef profileTypeInfo,
                                GateRef acc, GateRef hotnessCounter, GateRef format)
 {
     GateRef newPc = PtrAdd(pc, format);
@@ -480,7 +480,7 @@ void InterpreterStub::Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef con
     Return();
 }
 
-void InterpreterStub::DispatchLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+void InterpreterStubBuilder::DispatchLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                    GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef target = PtrMul(IntPtr(BytecodeStubCSigns::ID_ExceptionHandler), IntPtrSize());
@@ -488,7 +488,7 @@ void InterpreterStub::DispatchLast(GateRef glue, GateRef sp, GateRef pc, GateRef
     Return();
 }
 
-void InterpreterStub::DispatchDebugger(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+void InterpreterStubBuilder::DispatchDebugger(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                        GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef opcode = Load(VariableType::INT8(), pc);
@@ -498,7 +498,7 @@ void InterpreterStub::DispatchDebugger(GateRef glue, GateRef sp, GateRef pc, Gat
     Return();
 }
 
-void InterpreterStub::DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                            GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef target = PtrMul(IntPtr(BytecodeStubCSigns::ID_ExceptionHandler), IntPtrSize());
@@ -507,12 +507,12 @@ void InterpreterStub::DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc,
     Return();
 }
 
-GateRef InterpreterStub::GetObjectFromConstPool(GateRef constpool, GateRef index)
+GateRef InterpreterStubBuilder::GetObjectFromConstPool(GateRef constpool, GateRef index)
 {
     return GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, index);
 }
 
-GateRef InterpreterStub::FunctionIsResolved(GateRef object)
+GateRef InterpreterStubBuilder::FunctionIsResolved(GateRef object)
 {
     GateRef bitfield = GetFunctionBitFieldFromJSFunction(object);
     // decode
@@ -523,7 +523,7 @@ GateRef InterpreterStub::FunctionIsResolved(GateRef object)
         Int32(0));
 }
 
-GateRef InterpreterStub::GetHotnessCounterFromMethod(GateRef method)
+GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
 {
     auto env = GetEnvironment();
     GateRef x = Load(VariableType::INT16(), method,
@@ -531,7 +531,7 @@ GateRef InterpreterStub::GetHotnessCounterFromMethod(GateRef method)
     return GetEnvironment()->GetBulder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
 }
 
-void InterpreterStub::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
+void InterpreterStubBuilder::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
 {
     auto env = GetEnvironment();
     GateRef newValue = env->GetBulder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT16), value);
@@ -539,7 +539,7 @@ void InterpreterStub::SetHotnessCounter(GateRef glue, GateRef method, GateRef va
           IntPtr(JSMethod::GetHotnessCounterOffset(env->IsArch32Bit())), newValue);
 }
 
-void InterpreterStub::DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                      GateRef profileTypeInfo, GateRef acc,
                                      GateRef hotnessCounter, int index)
 {

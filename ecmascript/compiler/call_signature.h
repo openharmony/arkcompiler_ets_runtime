@@ -25,7 +25,6 @@
 #include "test_stubs_signature.h"
 
 namespace panda::ecmascript::kungfu {
-class Stub;
 class Circuit;
 
 enum class ArgumentsOrder {
