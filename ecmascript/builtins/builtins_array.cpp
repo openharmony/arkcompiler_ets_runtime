@@ -705,6 +705,15 @@ JSTaggedValue BuiltinsArray::Every(EcmaRuntimeCallInfo *argv)
     //   e. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     uint32_t k = 0;
+    JSTaggedValue callResult = GetTaggedBoolean(true);
+    if (thisObjVal->IsStableJSArray(thread)) {
+        callResult = JSStableArray::HandleEveryOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
+        if (!callResult.ToBoolean()) {
+            return GetTaggedBoolean(false);
+        }
+    }
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    const int32_t argsLength = 3; // 3: «kValue, k, O»
     while (k < len) {
         bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, k);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -712,16 +721,13 @@ JSTaggedValue BuiltinsArray::Every(EcmaRuntimeCallInfo *argv)
             JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             key.Update(JSTaggedValue(k));
-            const int32_t argsLength = 3; // 3: «kValue, k, O»
-            JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
-            JSTaggedValue callResult = JSFunction::Call(info);
+            callResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            bool boolResult = callResult.ToBoolean();
-            if (!boolResult) {
+            if (!callResult.ToBoolean()) {
                 return GetTaggedBoolean(false);
             }
         }
@@ -1065,6 +1071,11 @@ JSTaggedValue BuiltinsArray::ForEach(EcmaRuntimeCallInfo *argv)
     //   e. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     uint32_t k = 0;
+    if (thisObjVal->IsStableJSArray(thread)) {
+        JSStableArray::HandleforEachOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
+    }
+    const int32_t argsLength = 3; // 3: «kValue, k, O»
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     while (k < len) {
         bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, k);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1072,8 +1083,6 @@ JSTaggedValue BuiltinsArray::ForEach(EcmaRuntimeCallInfo *argv)
             JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             key.Update(JSTaggedValue(k));
-            const int32_t argsLength = 3; // 3: «kValue, k, O»
-            JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
