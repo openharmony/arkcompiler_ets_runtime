@@ -1150,12 +1150,16 @@ void SlowPathLowering::LowerThrowUndefinedIfHole(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerThrowIfSuperNotCorrectCall(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowIfSuperNotCorrectCallPrefImm16)));
-    const int id = RTSTUB_ID(ThrowIfSuperNotCorrectCall);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    auto args = { builder_.TaggedTypeNGC(acc_.GetValueIn(gate, 0)), acc_.GetValueIn(gate, 1) };
-    GateRef newGate = LowerCallRuntime(glue, id, args);
-    ReplaceHirToThrowCall(gate, newGate);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
+        {builder_.TaggedTypeNGC(acc_.GetValueIn(gate, 0)), acc_.GetValueIn(gate, 1)}, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerThrowDeleteSuperProperty(GateRef gate, GateRef glue)
@@ -1684,21 +1688,26 @@ void SlowPathLowering::LowerGetIteratorNext(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuperCallPrefImm16V8)));
-    const int id = RTSTUB_ID(SuperCall);
+    const int id = RTSTUB_ID(OptSuperCall);
+    std::vector<GateRef> vec;
     // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef func = acc_.GetValueIn(gate, 2);
-    GateRef firstVRegIdx = acc_.GetValueIn(gate, 1);
-    GateRef length = acc_.GetValueIn(gate, 0);
-    GateRef newGate = LowerCallRuntime(glue, id, { func, newTarget, builder_.TaggedTypeNGC(firstVRegIdx),
-          builder_.TaggedTypeNGC(length) });
+    ASSERT(acc_.GetNumValueIn(gate) > 0);
+    size_t numIns = acc_.GetNumValueIn(gate);
+    size_t funcIndex = numIns - 1;
+    GateRef func = acc_.GetValueIn(gate, funcIndex);
+    vec.emplace_back(func);
+    vec.emplace_back(newTarget);
+    for (size_t i = 0; i < funcIndex; i++) {
+        vec.emplace_back(acc_.GetValueIn(gate, i));
+    }
+    GateRef newGate = LowerCallRuntime(glue, id, vec);
     ReplaceHirToCall(gate, newGate);
 }
 
 void SlowPathLowering::LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef newTarget)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuperCallSpreadPrefV8)));
-    const int id = RTSTUB_ID(SuperCallSpread);
+    const int id = RTSTUB_ID(OptSuperCallSpread);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef func = acc_.GetValueIn(gate, 1);
@@ -2095,18 +2104,17 @@ void SlowPathLowering::LowerDefineAsyncFunc(GateRef gate, GateRef glue, GateRef 
 void SlowPathLowering::LowerNewLexicalEnvDyn(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNewLexEnvDynPrefImm16)));
-    std::vector<GateRef> successControl;
-    std::vector<GateRef> failControl;
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef lexEnv = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(OptNewLexicalEnvDyn),
         {builder_.TaggedTypeNGC(acc_.GetValueIn(gate, 0)), lexEnv}, true);
-    successControl.emplace_back(builder_.GetState());
-    successControl.emplace_back(builder_.GetDepend());
-    failControl.emplace_back(Circuit::NullGate());
-    failControl.emplace_back(Circuit::NullGate());
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerNewLexicalEnvWithNameDyn(GateRef gate, GateRef glue, GateRef jsFunc)
@@ -2845,31 +2853,30 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     GateRef proto = acc_.GetValueIn(gate, 4);
     GateRef constpool = GetConstPool(jsFunc);
 
-    DEFVAlUE(res, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
-
-    Label isResolved(&builder_);
-    Label isNotResolved(&builder_);
-    auto argsCloneClass = { classTemplate, proto, lexicalEnv, constpool };
-    res = LowerCallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), argsCloneClass, true);
     Label isException(&builder_);
     Label isNotException(&builder_);
-    builder_.Branch(builder_.IsSpecial(*res, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
-
+    auto args = { classTemplate, proto, lexicalEnv, constpool };
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), args, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
+        &isException, &isNotException);
     std::vector<GateRef> successControl;
     std::vector<GateRef> exceptionControl;
+    builder_.Bind(&isNotException);
+    {
+        GateRef newLexicalEnv = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
+        builder_.SetLexicalEnvToFunction(glue, result, newLexicalEnv);
+        builder_.SetModuleToFunction(glue, result, builder_.GetModuleFromFunction(jsFunc));
+        LowerCallRuntime(glue, RTSTUB_ID(SetClassConstructorLength),
+            { result, builder_.TaggedTypeNGC(length) }, true);
+        successControl.emplace_back(builder_.GetState());
+        successControl.emplace_back(builder_.GetDepend());
+    }
     builder_.Bind(&isException);
     {
         exceptionControl.emplace_back(builder_.GetState());
         exceptionControl.emplace_back(builder_.GetDepend());
     }
-    builder_.Bind(&isNotException);
-    GateRef newLexicalEnv = acc_.GetValueIn(gate, 3);
-    builder_.SetLexicalEnvToFunction(glue, *res, newLexicalEnv);
-    auto args = { *res, builder_.TaggedTypeNGC(length) };
-    LowerCallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), args, true);
-    successControl.emplace_back(builder_.GetState());
-    successControl.emplace_back(builder_.GetDepend());
-    ReplaceHirToSubCfg(gate, *res, successControl, exceptionControl);
+    ReplaceHirToSubCfg(gate, result, successControl, exceptionControl);
 }
 
 void SlowPathLowering::LowerDefineFuncDyn(GateRef gate, GateRef glue, GateRef jsFunc)

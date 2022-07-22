@@ -206,18 +206,44 @@ struct BytecodeRegion {
             });
         }
     }
-    void UpdateTryCatchInfo()
+
+    void UpdateTryCatchInfoForDeadBlock()
     {
-        for (auto catchBlock : catchs) {
-            auto tryBlock = std::find(catchBlock->trys.begin(), catchBlock->trys.end(), this);
-            if (tryBlock != catchBlock->trys.end()) {
-                catchBlock->trys.erase(tryBlock);
+        // Try-Catch infos of dead block should be cleared
+        UpdateTryCatchInfo();
+        isDead = true;
+    }
+
+    void UpdateRedundantTryCatchInfo(bool noThrow)
+    {
+        // if block which can throw exception has serval catchs block, only the innermost catch block is useful
+        if (!noThrow && catchs.size() > 1) {
+            size_t innerMostIndex = 1;
+            UpdateTryCatchInfo(innerMostIndex);
+        }
+    }
+
+    void UpdateTryCatchInfoIfNoThrow(bool noThrow)
+    {
+        // if block has no general insts, try-catch infos of it should be cleared
+        if (noThrow && !catchs.empty()) {
+            UpdateTryCatchInfo();
+        }
+    }
+
+private:
+    void UpdateTryCatchInfo(size_t index = 0)
+    {
+        for (auto catchBlock = catchs.begin() + index; catchBlock != catchs.end(); catchBlock++) {
+            auto tryBlock = std::find((*catchBlock)->trys.begin(), (*catchBlock)->trys.end(), this);
+            if (tryBlock != (*catchBlock)->trys.end()) {
+                (*catchBlock)->trys.erase(tryBlock);
             }
-            if (catchBlock->trys.size() == 0) {
-                catchBlock->isDead = true;
+            if ((*catchBlock)->trys.size() == 0) {
+                (*catchBlock)->isDead = true;
             }
         }
-        catchs.clear();
+        catchs.erase(catchs.begin() + index, catchs.end());
     }
 };
 

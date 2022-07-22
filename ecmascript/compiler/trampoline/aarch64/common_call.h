@@ -74,11 +74,23 @@ public:
 
     static void JSCall(ExtendedAssembler *assembler);
 
+    static void ConstructorJSCall(ExtendedAssembler *assembler);
+
     static void CallRuntimeWithArgv(ExtendedAssembler *assembler);
     
     static void JSCallWithArgV(ExtendedAssembler *assembler);
+    
+    static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
 
 private:
+    static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
+                            Label *nonCallable, Label *notJSFunction);
+    static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp);
+    static void CallOptimziedMethodInternal(ExtendedAssembler *assembler, Register jsfunc, Register actualArgC,
+                                            Register callField, Register sp);
+    static void JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Register glue,
+                                            Register actualArgC, Register jsfunc, int stubId);
+    static void JSProxyCallInternal(ExtendedAssembler *assembler, Register sp, Register jsfunc);
     static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);
     static void PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,
                                     Register thisObj, Register newTarget, Register currentSp);
@@ -90,7 +102,8 @@ private:
     static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp);
     static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
-    static void JSCallBody(ExtendedAssembler *assembler, Register jsfunc);
+    static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc);
+    static void ConstructorJSCallInternal(ExtendedAssembler *assembler, Register jsfunc);
 };
 
 class AsmInterpreterCall : public CommonCall {

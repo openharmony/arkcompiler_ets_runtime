@@ -557,6 +557,26 @@ DEF_CALL_SIGNATURE(JSCall)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(ConstructorJSCall)
+{
+    // 6 : 6 input parameters
+    CallSignature constructorJsCall("ConstructorJSCall", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = constructorJsCall;
+    std::array<VariableType, 6> params = { // 6 : 6 input parameters
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),      // lexenv
+        VariableType::INT64(),       // actual argC
+        VariableType::JS_ANY(),      // call target
+        VariableType::JS_ANY(),      // new target
+        VariableType::JS_ANY(),      // thisobj
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::WebKitJSCallConv);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(JSProxyCallInternalWithArgV)
 {
     // 4 : 4 input parameters
@@ -788,6 +808,26 @@ DEF_CALL_SIGNATURE(JSCallWithArgV)
     CallSignature jSCallWithArgV("JSCallWithArgV", 0, 6,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = jSCallWithArgV;
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::INT64(),            // actualNumArgs
+        VariableType::JS_ANY(),           // jsfunc
+        VariableType::JS_ANY(),           // newTarget
+        VariableType::JS_ANY(),           // this
+        VariableType::NATIVE_POINTER(),   // argV
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(ConstructorJSCallWithArgV)
+{
+    // 6 : 6 input parameters
+    CallSignature constructorJSCallWithArgV("ConstructorJSCallWithArgV", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = constructorJSCallWithArgV;
     // 6 : 6 input parameters
     std::array<VariableType, 6> params = {
         VariableType::NATIVE_POINTER(),   // glue

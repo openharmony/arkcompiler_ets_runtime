@@ -67,7 +67,9 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CallRuntimeWithArgv)                   \
     V(JSFunctionEntry)                       \
     V(JSCall)                                \
+    V(ConstructorJSCall)                     \
     V(JSCallWithArgV)                        \
+    V(ConstructorJSCallWithArgV)             \
     V(JSProxyCallInternalWithArgV)           \
     V(OptimizedCallOptimized)
 
@@ -135,6 +137,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CloseIterator)                      \
     V(CopyModule)                         \
     V(SuperCallSpread)                    \
+    V(OptSuperCallSpread)                 \
     V(DelObjProp)                         \
     V(NewObjSpreadDyn)                    \
     V(CreateIterResultObj)                \
@@ -224,6 +227,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CallSpreadDyn)                      \
     V(DefineGetterSetterByValue)          \
     V(SuperCall)                          \
+    V(OptSuperCall)                       \
     V(LdBigInt)                           \
     V(ToNumeric)                          \
     V(NewLexicalEnvWithNameDyn)           \
@@ -511,6 +515,7 @@ private:
     static inline JSTaggedValue RuntimeSuperCall(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                  const JSHandle<JSTaggedValue> &newTarget, uint16_t firstVRegIdx,
                                                  uint16_t length);
+    static inline JSTaggedValue RuntimeOptSuperCall(JSThread *thread, uintptr_t argv, uint32_t argc);
     static inline JSTaggedValue RuntimeThrowTypeError(JSThread *thread, const char *message);
     static inline JSTaggedValue RuntimeGetCallSpreadArgs(JSThread *thread, const JSHandle<JSTaggedValue> &array);
     static inline JSTaggedValue RuntimeThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);

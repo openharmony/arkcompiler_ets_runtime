@@ -330,6 +330,7 @@ private:
     V(CallGetter)                           \
     V(CallSetter)                           \
     V(JSCallWithArgV)                       \
+    V(ConstructorJSCallWithArgV)            \
     V(ResumeRspAndDispatch)                 \
     V(ResumeRspAndReturn)                   \
     V(ResumeCaughtFrameAndDispatch)         \
@@ -350,6 +351,7 @@ private:
     V(CallIThisRangeDyn)                    \
     V(CallIRangeDyn)                        \
     V(JSCall)                               \
+    V(ConstructorJSCall)                    \
     V(JSFunctionEntry)                      \
     V(JSProxyCallInternalWithArgV)          \
     V(CreateArrayFromList)                  \
