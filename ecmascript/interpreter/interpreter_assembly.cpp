@@ -212,7 +212,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
-    INTERPRETER_TRACE(thread, Execute);
+    INTERPRETER_TRACE(thread, AsmExecute);
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER

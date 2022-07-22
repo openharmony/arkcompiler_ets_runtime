@@ -163,6 +163,7 @@ namespace panda::ecmascript {
     V(NewLexicalEnvDyn)             \
     V(ExecuteNative)                \
     V(Execute)                      \
+    V(AsmExecute)                   \
     V(ToJSTaggedValueWithInt32)     \
     V(ToJSTaggedValueWithUint32)    \
     V(ThrowIfSuperNotCorrectCall)   \

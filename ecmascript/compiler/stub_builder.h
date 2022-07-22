@@ -447,6 +447,7 @@ public:
     inline GateRef ComputeTaggedArraySize(GateRef length);
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
+    inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     void InitializeTaggedArrayWithSpeicalValue(
         GateRef glue, GateRef array, GateRef value, GateRef start, GateRef length);
     void InitializeWithSpeicalValue(

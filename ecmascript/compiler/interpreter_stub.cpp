@@ -221,6 +221,29 @@ DECLARE_ASM_HANDLER(HandleGetUnmappedArgsPref)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     auto env = GetEnvironment();
+    GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(sp, Int32(0));
+    // 32: high 32 bits = startIdx, low 32 bits = numArgs
+    GateRef startIdx = TruncInt64ToInt32(Int64LSR(startIdxAndNumArgs, Int64(32)));
+    GateRef numArgs = TruncInt64ToInt32(startIdxAndNumArgs);
+
+    Label newArgumentsObj(env);
+    Label checkException(env);
+    Label dispatch(env);
+    Label slowPath(env);
+    GateRef argumentsList = NewArgumentsList(glue, sp, startIdx, numArgs);
+    Branch(TaggedIsException(argumentsList), &slowPath, &newArgumentsObj);
+    Bind(&newArgumentsObj);
+    GateRef argumentsObj = NewArgumentsObj(glue, argumentsList, numArgs);
+    Branch(TaggedIsException(argumentsObj), &slowPath, &checkException);
+    Bind(&checkException);
+    Branch(HasPendingException(glue), &slowPath, &dispatch);
+    Bind(&dispatch);
+    {
+        varAcc = argumentsObj;
+        DISPATCH_WITH_ACC(PREF_NONE);
+    }
+
+    Bind(&slowPath);
     GateRef res = CallRuntime(glue, RTSTUB_ID(GetUnmapedArgs), {});
     Label isException(env);
     Label notException(env);

@@ -509,6 +509,17 @@ public:
         return finalizationCheckState_;
     }
 
+    GlobalEnv *GetGlueGlobalEnv()
+    {
+        return glueData_.glueGlobalEnv_;
+    }
+
+    void SetGlueGlobalEnv(GlobalEnv *global)
+    {
+        ASSERT(global != nullptr);
+        glueData_.glueGlobalEnv_ = global;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -524,6 +535,7 @@ public:
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
+                                                 base::AlignedPointer,
                                                  GlobalEnvConstants> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -540,6 +552,7 @@ public:
             StateBitFieldIndex,
             FrameBaseIndex,
             StackLimitIndex,
+            GlueGlobalEnvIndex,
             GlobalConstIndex,
             NumOfMembers
         };
@@ -620,6 +633,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::StackLimitIndex)>(isArch32);
         }
 
+        static size_t GetGlueGlobalEnvOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::GlueGlobalEnvIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -634,6 +652,7 @@ public:
         alignas(EAS) volatile uint64_t threadStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackLimit_ {0};
+        alignas(EAS) GlobalEnv *glueGlobalEnv_;
         alignas(EAS) GlobalEnvConstants globalConst_;
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
