@@ -145,6 +145,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
 bool EcmaVM::Initialize()
 {
     LOG_ECMA(INFO) << "EcmaVM Initialize";
+    LOG_ECMA(INFO) << "Asm interpreter enabled : " << (options_.GetEnableAsmInterpreter() ? "true" : "false");
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
