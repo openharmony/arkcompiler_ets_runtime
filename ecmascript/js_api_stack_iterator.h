@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_JS_API_STACK_ITERATOR_H
 #define ECMASCRIPT_JS_API_STACK_ITERATOR_H
 
-#include "js_api_stack.h"
-#include "js_object.h"
+#include "ecmascript/js_api_stack.h"
+#include "ecmascript/js_object.h"
 
 namespace panda::ecmascript {
 class JSAPIStackIterator : public JSObject {

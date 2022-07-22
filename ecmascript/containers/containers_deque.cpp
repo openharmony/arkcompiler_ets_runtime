@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "containers_deque.h"
+#include "ecmascript/containers/containers_deque.h"
+
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/typed_array_helper.h"

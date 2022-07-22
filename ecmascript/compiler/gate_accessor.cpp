@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "gate_accessor.h"
+#include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 size_t GateAccessor::GetNumIns(GateRef gate) const

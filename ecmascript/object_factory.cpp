@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecma_string_table.h"
-#include "ecma_vm.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/builtins.h"
@@ -27,7 +25,9 @@
 #include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/builtins/builtins_proxy.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -115,6 +115,9 @@
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/record.h"
+#include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/require/js_cjs_module.h"
+#include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/shared_mm/shared_mm.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -125,9 +128,6 @@
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
-#include "ecmascript/require/js_cjs_exports.h"
-#include "ecmascript/require/js_cjs_module.h"
-#include "ecmascript/require/js_cjs_require.h"
 
 namespace panda::ecmascript {
 using Error = builtins::BuiltinsError;

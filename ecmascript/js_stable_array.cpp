@@ -13,15 +13,16 @@
  * limitations under the License.
  */
 
-#include "js_stable_array.h"
+#include "ecmascript/js_stable_array.h"
+
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
-#include "interpreter/fast_runtime_stub-inl.h"
 
 namespace panda::ecmascript {
 JSTaggedValue JSStableArray::Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)

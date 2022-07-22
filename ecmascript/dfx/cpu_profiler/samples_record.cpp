@@ -16,11 +16,13 @@
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 
 #include <climits>
+
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_method.h"
+
 namespace panda::ecmascript {
 SamplesRecord::SamplesRecord()
 {

@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef ECMASCRIPT_COMPILER_CALL_SIGNATURE_H
 #define ECMASCRIPT_COMPILER_CALL_SIGNATURE_H
 
@@ -20,8 +21,10 @@
 #include <memory>
 
 #include "ecmascript/compiler/variable_type.h"
+
 #include "libpandabase/macros.h"
 #include "libpandabase/utils/bit_field.h"
+
 #include "test_stubs_signature.h"
 
 namespace panda::ecmascript::kungfu {

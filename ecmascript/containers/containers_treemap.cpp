@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "containers_treemap.h"
+#include "ecmascript/containers/containers_treemap.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api_tree_map.h"

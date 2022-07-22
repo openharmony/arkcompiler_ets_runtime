@@ -13,15 +13,18 @@
  * limitations under the License.
  */
 
-#include "js_api_lightweightmap.h"
+#include "ecmascript/js_api_lightweightmap.h"
+
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/object_factory.h"
+
 #include "libpandabase/utils/bit_utils.h"
-#include "object_factory.h"
+
 #include "utils/bit_utils.h"
 
 namespace panda::ecmascript {

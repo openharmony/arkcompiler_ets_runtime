@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include "js_array_iterator.h"
-#include "builtins/builtins_errors.h"
+#include "ecmascript/js_array_iterator.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
-#include "global_env.h"
-#include "js_array.h"
-#include "object_factory.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/object_factory.h"
+
+#include "builtins/builtins_errors.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

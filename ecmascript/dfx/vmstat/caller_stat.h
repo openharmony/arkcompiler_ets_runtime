@@ -17,10 +17,11 @@
 #define ECMASCRIPT_VMSTAT_CALLER_STAT_H
 
 #include <cstdint>
-#include <string>
+#include <cstring>
 #include <time.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 
 #include "ecmascript/mem/c_string.h"
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {

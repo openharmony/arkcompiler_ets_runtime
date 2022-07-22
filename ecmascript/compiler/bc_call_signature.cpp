@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "ecmascript/compiler/bc_call_signature.h"
+
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/stubs/runtime_stubs.h"

@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
-#include "linked_hash_table.h"
+#include "ecmascript/linked_hash_table.h"
+
 #include "ecmascript/js_object-inl.h"
+#include "ecmascript/object_factory.h"
+
 #include "libpandabase/utils/bit_utils.h"
-#include "object_factory.h"
 
 namespace panda::ecmascript {
 template<typename Derived, typename HashObject>

@@ -17,10 +17,10 @@
 #ifndef ECMASCRIPT_COMPILER_STUB_INL_H
 #define ECMASCRIPT_COMPILER_STUB_INL_H
 
-#include "ecmascript/compiler/bc_call_signature.h"
-#include "ecmascript/compiler/stub.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/stub.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/proto_change_details.h"

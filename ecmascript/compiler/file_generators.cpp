@@ -12,10 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "file_generators.h"
+
+#include "ecmascript/compiler/file_generators.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ts_types/ts_loader.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
+
 #include "llvm_ir_builder.h"
 
 namespace panda::ecmascript::kungfu {

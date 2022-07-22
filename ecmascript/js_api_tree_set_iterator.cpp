@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#include "js_api_tree_set_iterator.h"
+#include "ecmascript/js_api_tree_set_iterator.h"
 
-#include "base/builtins_base.h"
-#include "js_api_tree_set.h"
-#include "js_array.h"
-#include "tagged_tree.h"
-#include "object_factory.h"
+#include "ecmascript/base/builtins_base.h"
+#include "ecmascript/js_api_tree_set.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/tagged_tree.h"
+#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

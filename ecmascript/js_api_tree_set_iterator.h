@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_JS_API_TREE_SET_ITERATOR_H
 #define ECMASCRIPT_JS_API_TREE_SET_ITERATOR_H
 
-#include "js_iterator.h"
-#include "js_object.h"
+#include "ecmascript/js_iterator.h"
+#include "ecmascript/js_object.h"
 
 namespace panda::ecmascript {
 /**

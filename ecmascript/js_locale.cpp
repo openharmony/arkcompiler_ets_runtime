@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-#include "base/string_helper.h"
-#include "ecma_macros.h"
-#include "ecma_vm.h"
-#include "global_env.h"
-#include "js_locale.h"
-#include "object_factory.h"
+#include "ecmascript/js_locale.h"
+
+#include "ecmascript/base/string_helper.h"
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/object_factory.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push

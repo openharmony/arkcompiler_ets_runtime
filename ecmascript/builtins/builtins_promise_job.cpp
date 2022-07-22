@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_promise_job.h"
+
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -21,6 +22,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_tagged_value.h"
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::builtins {

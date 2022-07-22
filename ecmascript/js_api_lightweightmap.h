@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_JS_API_LIGHTWEIGHTMAP_H
 #define ECMASCRIPT_JS_API_LIGHTWEIGHTMAP_H
 
-#include "js_object.h"
-#include "js_tagged_value-inl.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript {
 enum class AccossorsKind { HASH = 0, KEY, VALUE };

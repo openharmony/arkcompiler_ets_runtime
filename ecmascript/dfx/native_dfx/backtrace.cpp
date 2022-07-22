@@ -18,7 +18,7 @@
 #include <dlfcn.h>
 #include <iomanip>
 #include <ios>
-#include <string>
+#include <cstring>
 #include <unwind.h>
 
 #include "ecmascript/log_wrapper.h"

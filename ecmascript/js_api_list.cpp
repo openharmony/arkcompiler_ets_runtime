@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "js_api_list.h"
+#include "ecmascript/js_api_list.h"
+
 #include "ecmascript/js_api_list_iterator.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"

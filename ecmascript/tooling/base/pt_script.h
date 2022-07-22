@@ -16,8 +16,9 @@
 #ifndef ECMASCRIPT_TOOLING_BASE_PT_SCRIPT_H
 #define ECMASCRIPT_TOOLING_BASE_PT_SCRIPT_H
 
-#include "libpandabase/macros.h"
 #include "ecmascript/tooling/base/pt_types.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::tooling {
 enum class ScriptMatchType : uint8_t {

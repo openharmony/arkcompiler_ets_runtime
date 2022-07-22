@@ -14,7 +14,9 @@
  */
 
 #include "ecmascript/builtins/builtins_regexp.h"
+
 #include <cmath>
+
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"

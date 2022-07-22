@@ -12,11 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef ECMASCRIPT_COMPILER_ASSEMBLER_AARCH64_H
 #define ECMASCRIPT_COMPILER_ASSEMBLER_AARCH64_H
 
 #include "ecmascript/compiler/assembler/assembler.h"
-#include "assembler_aarch64_constants.h"
+#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64_constants.h"
 
 namespace panda::ecmascript::aarch64 {
 class Register {

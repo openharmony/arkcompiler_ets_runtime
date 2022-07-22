@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
+
 #include "ecmascript/base/string_helper.h"
 
 namespace panda::ecmascript::builtins {

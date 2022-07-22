@@ -16,12 +16,12 @@
 #ifndef ECMASCRIPT_JS_PLURAL_RULES_H
 #define ECMASCRIPT_JS_PLURAL_RULES_H
 
-#include "js_array.h"
-#include "js_hclass.h"
-#include "js_intl.h"
-#include "js_locale.h"
-#include "js_object.h"
-#include "js_tagged_value.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_intl.h"
+#include "ecmascript/js_locale.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript {
 constexpr int MNFD_DEFAULT = 0;

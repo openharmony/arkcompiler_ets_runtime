@@ -18,7 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
-#include "js_function.h"
+#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript {
 class JSAsyncAwaitStatusFunction : public JSFunction {

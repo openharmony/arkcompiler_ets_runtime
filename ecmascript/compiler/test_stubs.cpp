@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "test_stubs.h"
+#include "ecmascript/compiler/test_stubs.h"
 
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/stub-inl.h"

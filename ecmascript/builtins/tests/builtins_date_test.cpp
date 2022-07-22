@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_date.h"
+
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"

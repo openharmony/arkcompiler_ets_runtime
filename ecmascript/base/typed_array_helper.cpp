@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/base/typed_array_helper.h"
+
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/base/error_type.h"

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "js_proxy.h"
+#include "ecmascript/js_proxy.h"
+
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"

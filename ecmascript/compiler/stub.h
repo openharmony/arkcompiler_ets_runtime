@@ -17,8 +17,9 @@
 #define ECMASCRIPT_COMPILER_STUB_H
 
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/gate.h"
+#include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
 
 namespace panda::ecmascript::kungfu {

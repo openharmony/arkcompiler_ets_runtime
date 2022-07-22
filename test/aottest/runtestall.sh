@@ -78,8 +78,8 @@ test_package=""
 log_file=""
 baseline_file=""
 
-if [ ! -d "$cur_dir/ark" ]; then
-    echo "Please run at openharmony root dir that ark located"
+if [ ! -d "$cur_dir/arkcompiler" ]; then
+    echo "Please run at openharmony root dir that arkcompiler located"
     exit 0
 fi
 

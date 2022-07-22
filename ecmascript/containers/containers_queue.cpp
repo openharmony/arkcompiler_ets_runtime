@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "containers_queue.h"
+#include "ecmascript/containers/containers_queue.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api_queue.h"

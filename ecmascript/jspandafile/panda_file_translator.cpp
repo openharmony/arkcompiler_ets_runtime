@@ -29,6 +29,7 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/ts_types/ts_type_table.h"
 #include "ecmascript/ts_types/ts_loader.h"
+
 #include "libpandabase/mem/mem.h"
 #include "libpandabase/utils/utf.h"
 #include "libpandafile/bytecode_instruction-inl.h"

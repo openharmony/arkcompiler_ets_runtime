@@ -17,8 +17,8 @@
 #define ECMASCRIPT_BASE_NUMBER_HELPER_H
 
 #include <cstdint>
-#include "ecmascript/ecma_string.h"
 
+#include "ecmascript/ecma_string.h"
 #include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript::base {

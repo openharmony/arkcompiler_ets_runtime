@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "js_api_stack.h"
+#include "ecmascript/js_api_stack.h"
 
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "js_api_deque.h"
+#include "ecmascript/js_api_deque.h"
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_object.h"

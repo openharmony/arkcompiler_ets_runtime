@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "runtime_stubs-inl.h"
+#include "ecmascript/stubs/runtime_stubs-inl.h"
+
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/call_signature.h"
@@ -39,8 +40,9 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
-#include "libpandabase/utils/string_helpers.h"
 #include "ecmascript/ts_types/ts_loader.h"
+
+#include "libpandabase/utils/string_helpers.h"
 
 namespace panda::ecmascript {
 #if defined(__clang__)

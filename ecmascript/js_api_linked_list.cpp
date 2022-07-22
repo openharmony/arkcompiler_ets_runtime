@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-#include "js_api_linked_list.h"
+#include "ecmascript/js_api_linked_list.h"
+
 #include "ecmascript/js_api_linked_list_iterator.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
-#include "tagged_list.h"
+#include "ecmascript/tagged_list.h"
 
 namespace panda::ecmascript {
 JSTaggedValue JSAPILinkedList::Insert(JSThread *thread, const JSHandle<JSAPILinkedList> &list,

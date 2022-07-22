@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
-#include "js_api_lightweightmap_iterator.h"
-#include "builtins/builtins_errors.h"
+#include "ecmascript/js_api_lightweightmap_iterator.h"
+
+#include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
-#include "global_env.h"
-#include "js_api_lightweightmap.h"
-#include "js_array.h"
-#include "object_factory.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_api_lightweightmap.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
