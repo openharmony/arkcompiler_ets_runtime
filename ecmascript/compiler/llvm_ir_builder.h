@@ -23,7 +23,7 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/stub.h"
+#include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"

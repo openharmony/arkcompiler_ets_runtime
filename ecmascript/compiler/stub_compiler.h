@@ -22,7 +22,6 @@
 #include "llvm_ir_builder.h"
 
 namespace panda::ecmascript::kungfu {
-class Stub;
 class StubCompiler {
 public:
     StubCompiler(std::string &triple, std::string &filePath, size_t optLevel, size_t relocMode,

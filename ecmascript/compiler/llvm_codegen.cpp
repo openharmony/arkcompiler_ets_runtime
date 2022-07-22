@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/stub-inl.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/object_factory.h"
 

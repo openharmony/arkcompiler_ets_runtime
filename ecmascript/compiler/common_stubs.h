@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_COMMON_STUBS_H
 #define ECMASCRIPT_COMPILER_COMMON_STUBS_H
 
-#include "ecmascript/compiler/stub.h"
+#include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/compiler/test_stubs.h"
 
 namespace panda::ecmascript::kungfu {
@@ -48,15 +48,15 @@ namespace panda::ecmascript::kungfu {
     COMMON_STUB_LIST(V)                 \
     TEST_STUB_SIGNATRUE_LIST(V)
 
-#define DECLARE_STUB_CLASS(name)                                              \
-    class name##Stub : public Stub {                                          \
-    public:                                                                   \
-        explicit name##Stub(CallSignature *callSignature, Circuit *circuit)   \
-            : Stub(callSignature, circuit) {}                                 \
-        ~name##Stub() = default;                                              \
-        NO_MOVE_SEMANTIC(name##Stub);                                         \
-        NO_COPY_SEMANTIC(name##Stub);                                         \
-        void GenerateCircuit(const CompilationConfig *cfg) override;          \
+#define DECLARE_STUB_CLASS(name)                                                   \
+    class name##StubBuilder : public StubBuilder {                                 \
+    public:                                                                        \
+        explicit name##StubBuilder(CallSignature *callSignature, Circuit *circuit) \
+            : StubBuilder(callSignature, circuit) {}                               \
+        ~name##StubBuilder() = default;                                            \
+        NO_MOVE_SEMANTIC(name##StubBuilder);                                       \
+        NO_COPY_SEMANTIC(name##StubBuilder);                                       \
+        void GenerateCircuit(const CompilationConfig *cfg) override;               \
     };
     COMMON_STUB_LIST(DECLARE_STUB_CLASS)
 #undef DECLARE_STUB_CLASS

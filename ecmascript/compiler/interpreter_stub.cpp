@@ -18,7 +18,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
-#include "ecmascript/compiler/stub-inl.h"
+#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -33,9 +33,9 @@
 namespace panda::ecmascript::kungfu {
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
 #define DECLARE_ASM_HANDLER(name)                                                         \
-void name##Stub::GenerateCircuit(const CompilationConfig *cfg)                            \
+void name##StubBuilder::GenerateCircuit(const CompilationConfig *cfg)                     \
 {                                                                                         \
-    Stub::GenerateCircuit(cfg);                                                           \
+    StubBuilder::GenerateCircuit(cfg);                                                    \
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));      \
     GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));          \
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));          \
@@ -49,14 +49,14 @@ void name##Stub::GenerateCircuit(const CompilationConfig *cfg)                  
     DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(name)) });                             \
     GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);   \
 }                                                                                         \
-void name##Stub::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,                \
+void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,         \
                                      GateRef constpool, GateRef profileTypeInfo,          \
                                      GateRef acc, GateRef hotnessCounter)
 #else
 #define DECLARE_ASM_HANDLER(name)                                                         \
-void name##Stub::GenerateCircuit(const CompilationConfig *cfg)                            \
+void name##StubBuilder::GenerateCircuit(const CompilationConfig *cfg)                     \
 {                                                                                         \
-    Stub::GenerateCircuit(cfg);                                                           \
+    StubBuilder::GenerateCircuit(cfg);                                                    \
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));      \
     GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));          \
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));          \
@@ -69,7 +69,7 @@ void name##Stub::GenerateCircuit(const CompilationConfig *cfg)                  
         static_cast<size_t>(InterpreterHandlerInputs::HOTNESS_COUNTER));                  \
     GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);   \
 }                                                                                         \
-void name##Stub::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,                \
+void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,         \
                                      GateRef constpool, GateRef profileTypeInfo,          \
                                      GateRef acc, GateRef hotnessCounter)
 #endif

@@ -21,14 +21,14 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
-#include "stub-inl.h"
+#include "stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
 
-void AddStub::GenerateCircuit(const CompilationConfig *cfg)
+void AddStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     (void)glue;
     GateRef x = TaggedArgument(1);
@@ -36,9 +36,9 @@ void AddStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(FastAdd(x, y));
 }
 
-void SubStub::GenerateCircuit(const CompilationConfig *cfg)
+void SubStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     (void)glue;
     GateRef x = TaggedArgument(1);
@@ -46,9 +46,9 @@ void SubStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(FastSub(x, y));
 }
 
-void MulStub::GenerateCircuit(const CompilationConfig *cfg)
+void MulStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     (void)glue;
     GateRef x = TaggedArgument(1);
@@ -56,9 +56,9 @@ void MulStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(FastMul(x, y));
 }
 
-void DivStub::GenerateCircuit(const CompilationConfig *cfg)
+void DivStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     (void)glue;
     GateRef x = TaggedArgument(1);
@@ -66,26 +66,26 @@ void DivStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(FastDiv(x, y));
 }
 
-void ModStub::GenerateCircuit(const CompilationConfig *cfg)
+void ModStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
     Return(FastMod(glue, x, y));
 }
 
-void TypeOfStub::GenerateCircuit(const CompilationConfig *cfg)
+void TypeOfStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     Return(FastTypeOf(glue, obj));
 }
 
-void EqualStub::GenerateCircuit(const CompilationConfig *cfg)
+void EqualStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     (void)glue;
     GateRef x = TaggedArgument(1);
@@ -93,18 +93,18 @@ void EqualStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(FastEqual(x, y));
 }
 
-void GetPropertyByIndexStub::GenerateCircuit(const CompilationConfig *cfg)
+void GetPropertyByIndexStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
     Return(GetPropertyByIndex(glue, receiver, index));
 }
 
-void SetPropertyByIndexStub::GenerateCircuit(const CompilationConfig *cfg)
+void SetPropertyByIndexStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
@@ -112,9 +112,9 @@ void SetPropertyByIndexStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(SetPropertyByIndex(glue, receiver, index, value, false));
 }
 
-void SetPropertyByIndexWithOwnStub::GenerateCircuit(const CompilationConfig *cfg)
+void SetPropertyByIndexWithOwnStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
@@ -122,18 +122,18 @@ void SetPropertyByIndexWithOwnStub::GenerateCircuit(const CompilationConfig *cfg
     Return(SetPropertyByIndex(glue, receiver, index, value, true));
 }
 
-void GetPropertyByNameStub::GenerateCircuit(const CompilationConfig *cfg)
+void GetPropertyByNameStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
     Return(GetPropertyByName(glue, receiver, key));
 }
 
-void SetPropertyByNameStub::GenerateCircuit(const CompilationConfig *cfg)
+void SetPropertyByNameStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
@@ -141,9 +141,9 @@ void SetPropertyByNameStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(SetPropertyByName(glue, receiver, key, value, false));
 }
 
-void SetPropertyByNameWithOwnStub::GenerateCircuit(const CompilationConfig *cfg)
+void SetPropertyByNameWithOwnStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
@@ -151,18 +151,18 @@ void SetPropertyByNameWithOwnStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(SetPropertyByName(glue, receiver, key, value, true));
 }
 
-void GetPropertyByValueStub::GenerateCircuit(const CompilationConfig *cfg)
+void GetPropertyByValueStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
     Return(GetPropertyByValue(glue, receiver, key));
 }
 
-void SetPropertyByValueStub::GenerateCircuit(const CompilationConfig *cfg)
+void SetPropertyByValueStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
@@ -170,9 +170,9 @@ void SetPropertyByValueStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(SetPropertyByValue(glue, receiver, key, value, false));
 }
 
-void SetPropertyByValueWithOwnStub::GenerateCircuit(const CompilationConfig *cfg)
+void SetPropertyByValueWithOwnStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
@@ -180,9 +180,9 @@ void SetPropertyByValueWithOwnStub::GenerateCircuit(const CompilationConfig *cfg
     Return(SetPropertyByValue(glue, receiver, key, value, true));
 }
 
-void TryLoadICByNameStub::GenerateCircuit(const CompilationConfig *cfg)
+void TryLoadICByNameStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
@@ -220,9 +220,9 @@ void TryLoadICByNameStub::GenerateCircuit(const CompilationConfig *cfg)
     }
 }
 
-void TryLoadICByValueStub::GenerateCircuit(const CompilationConfig *cfg)
+void TryLoadICByValueStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
@@ -260,9 +260,9 @@ void TryLoadICByValueStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(Hole());
 }
 
-void TryStoreICByNameStub::GenerateCircuit(const CompilationConfig *cfg)
+void TryStoreICByNameStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
@@ -298,9 +298,9 @@ void TryStoreICByNameStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(Hole(VariableType::INT64()));
 }
 
-void TryStoreICByValueStub::GenerateCircuit(const CompilationConfig *cfg)
+void TryStoreICByValueStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
@@ -338,9 +338,9 @@ void TryStoreICByValueStub::GenerateCircuit(const CompilationConfig *cfg)
     Return(Hole(VariableType::INT64()));
 }
 
-void SetValueWithBarrierStub::GenerateCircuit(const CompilationConfig *cfg)
+void SetValueWithBarrierStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
@@ -349,9 +349,9 @@ void SetValueWithBarrierStub::GenerateCircuit(const CompilationConfig *cfg)
     Return();
 }
 
-void JsProxyCallInternalStub::GenerateCircuit(const CompilationConfig *cfg)
+void JsProxyCallInternalStubBuilder::GenerateCircuit(const CompilationConfig *cfg)
 {
-    Stub::GenerateCircuit(cfg);
+    StubBuilder::GenerateCircuit(cfg);
     auto env = GetEnvironment();
     Label exit(env);
     Label isNull(env);
@@ -410,13 +410,13 @@ CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()
 {
-#define INIT_SIGNATURES(name)                                                          \
-    name##CallSignature::Initialize(&callSigns_[name]);                                \
-    callSigns_[name].SetID(name);                                                      \
-    callSigns_[name].SetConstructor(                                                   \
-        [](void* ciruit) {                                                             \
-            return static_cast<void*>(                                                 \
-                new name##Stub(&callSigns_[name], static_cast<Circuit*>(ciruit)));     \
+#define INIT_SIGNATURES(name)                                                             \
+    name##CallSignature::Initialize(&callSigns_[name]);                                   \
+    callSigns_[name].SetID(name);                                                         \
+    callSigns_[name].SetConstructor(                                                      \
+        [](void* ciruit) {                                                                \
+            return static_cast<void*>(                                                    \
+                new name##StubBuilder(&callSigns_[name], static_cast<Circuit*>(ciruit))); \
         });
 
     COMMON_STUB_ID_LIST(INIT_SIGNATURES)

@@ -104,7 +104,7 @@ HWTEST_F_L0(StubTest, FastAddTest)
     Circuit netOfGates;
     CallSignature callSignature;
     AddCallSignature::Initialize(&callSignature);
-    AddStub optimizer(&callSignature, &netOfGates);
+    AddStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -143,7 +143,7 @@ HWTEST_F_L0(StubTest, FastSubTest)
     Circuit netOfGates;
     CallSignature callSignature;
     SubCallSignature::Initialize(&callSignature);
-    SubStub optimizer(&callSignature, &netOfGates);
+    SubStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -178,7 +178,7 @@ HWTEST_F_L0(StubTest, FastMulTest)
     Circuit netOfGates;
     CallSignature callSignature;
     MulCallSignature::Initialize(&callSignature);
-    MulStub optimizer(&callSignature, &netOfGates);
+    MulStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -232,7 +232,7 @@ HWTEST_F_L0(StubTest, FastDivTest)
     Circuit netOfGates;
     CallSignature callSignature;
     DivCallSignature::Initialize(&callSignature);
-    DivStub optimizer(&callSignature, &netOfGates);
+    DivStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -279,7 +279,7 @@ HWTEST_F_L0(StubTest, FastModTest)
     Circuit netOfGates;
     CallSignature callSignature;
     ModCallSignature::Initialize(&callSignature);
-    ModStub optimizer(&callSignature, &netOfGates);
+    ModStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -345,7 +345,7 @@ HWTEST_F_L0(StubTest, TryLoadICByName)
     Circuit netOfGates;
     CallSignature callSignature;
     TryLoadICByNameCallSignature::Initialize(&callSignature);
-    TryLoadICByNameStub optimizer(&callSignature, &netOfGates);
+    TryLoadICByNameStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -364,7 +364,7 @@ HWTEST_F_L0(StubTest, TryLoadICByValue)
     Circuit netOfGates;
     CallSignature callSignature;
     TryLoadICByValueCallSignature::Initialize(&callSignature);
-    TryLoadICByValueStub optimizer(&callSignature, &netOfGates);
+    TryLoadICByValueStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -383,7 +383,7 @@ HWTEST_F_L0(StubTest, TryStoreICByName)
     Circuit netOfGates;
     CallSignature callSignature;
     TryStoreICByNameCallSignature::Initialize(&callSignature);
-    TryStoreICByNameStub optimizer(&callSignature, &netOfGates);
+    TryStoreICByNameStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -402,7 +402,7 @@ HWTEST_F_L0(StubTest, TryStoreICByValue)
     Circuit netOfGates;
     CallSignature callSignature;
     TryStoreICByValueCallSignature::Initialize(&callSignature);
-    TryStoreICByValueStub optimizer(&callSignature, &netOfGates);
+    TryStoreICByValueStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -867,7 +867,7 @@ HWTEST_F_L0(StubTest, GetPropertyByIndexStub)
     Circuit netOfGates;
     CallSignature callSignature;
     GetPropertyByIndexCallSignature::Initialize(&callSignature);
-    GetPropertyByIndexStub optimizer(&callSignature, &netOfGates);
+    GetPropertyByIndexStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -899,7 +899,7 @@ HWTEST_F_L0(StubTest, SetPropertyByIndexStub)
     Circuit netOfGates;
     CallSignature callSignature;
     SetPropertyByIndexCallSignature::Initialize(&callSignature);
-    SetPropertyByIndexStub optimizer(&callSignature, &netOfGates);
+    SetPropertyByIndexStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
@@ -935,7 +935,7 @@ HWTEST_F_L0(StubTest, GetPropertyByNameStub)
     Circuit netOfGates;
     CallSignature callSignature;
     GetPropertyByNameCallSignature::Initialize(&callSignature);
-    GetPropertyByNameStub optimizer(&callSignature, &netOfGates);
+    GetPropertyByNameStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
@@ -973,7 +973,7 @@ HWTEST_F_L0(StubTest, SetPropertyByNameStub)
     Circuit netOfGates;
     CallSignature callSignature;
     SetPropertyByNameCallSignature::Initialize(&callSignature);
-    SetPropertyByNameStub optimizer(&callSignature, &netOfGates);
+    SetPropertyByNameStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -1008,7 +1008,7 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     Circuit netOfGates2;
     CallSignature callSignature;
     GetPropertyByIndexCallSignature::Initialize(&callSignature);
-    GetPropertyByIndexStub getPropertyByIndexStub(&callSignature, &netOfGates2);
+    GetPropertyByIndexStubBuilder getPropertyByIndexStub(&callSignature, &netOfGates2);
     getPropertyByIndexStub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates2.PrintAllGates();
     auto cfg2 = Scheduler::Run(&netOfGates2);
@@ -1020,7 +1020,7 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     Circuit netOfGates1;
     CallSignature callSignature1;
     GetPropertyByNameCallSignature::Initialize(&callSignature1);
-    GetPropertyByNameStub getPropertyByNameStub(&callSignature1, &netOfGates1);
+    GetPropertyByNameStubBuilder getPropertyByNameStub(&callSignature1, &netOfGates1);
     getPropertyByNameStub.GenerateCircuit(stubModule.GetCompilationConfig());
     bool result = Verifier::Run(&netOfGates1);
     ASSERT_TRUE(result);
@@ -1033,7 +1033,7 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     Circuit netOfGates;
     CallSignature callSignature2;
     GetPropertyByValueCallSignature::Initialize(&callSignature2);
-    GetPropertyByValueStub optimizer(&callSignature2, &netOfGates);
+    GetPropertyByValueStubBuilder optimizer(&callSignature2, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     result = Verifier::Run(&netOfGates);
@@ -1102,7 +1102,7 @@ HWTEST_F_L0(StubTest, FastTypeOfTest)
     Circuit netOfGates;
     CallSignature callSignature;
     TypeOfCallSignature::Initialize(&callSignature);
-    TypeOfStub optimizer(&callSignature, &netOfGates);
+    TypeOfStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
@@ -1190,7 +1190,7 @@ HWTEST_F_L0(StubTest, FastEqualTest)
     Circuit netOfGates;
     CallSignature callSignature;
     EqualCallSignature::Initialize(&callSignature);
-    EqualStub optimizer(&callSignature, &netOfGates);
+    EqualStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
@@ -1423,7 +1423,7 @@ HWTEST_F_L0(StubTest, RelocateTest)
     Circuit netOfGates;
     CallSignature callSignature;
     TestAbsoluteAddressRelocationCallSignature::Initialize(&callSignature);
-    TestAbsoluteAddressRelocationStub optimizer(&callSignature, &netOfGates);
+    TestAbsoluteAddressRelocationStubBuilder optimizer(&callSignature, &netOfGates);
     optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
