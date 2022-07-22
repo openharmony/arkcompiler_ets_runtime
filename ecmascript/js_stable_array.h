@@ -30,6 +30,12 @@ public:
                                 double start, double insertCount, double actualDeleteCount);
     static JSTaggedValue Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue HandleEveryOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                             JSHandle<JSTaggedValue> callbackFnHandle,
+                                             JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
+    static JSTaggedValue HandleforEachOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                               JSHandle<JSTaggedValue> callbackFnHandle,
+                                               JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H
