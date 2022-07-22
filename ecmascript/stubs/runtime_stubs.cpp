@@ -1717,6 +1717,15 @@ DEF_RUNTIME_STUBS(OptStLexVarDyn)
     return JSTaggedValue::VALUE_HOLE;
 }
 
+DEF_RUNTIME_STUBS(JSObjectGetMethod)
+{
+    RUNTIME_STUBS_HEADER(JSObjectGetMethod);
+    JSHandle<JSTaggedValue> obj(thread, GetArg(argv, argc, 0));
+    JSHandle<JSTaggedValue> key(thread, GetArg(argv, argc, 1));
+    JSHandle<JSTaggedValue> result = JSObject::GetMethod(thread, obj, key);
+    return result->GetRawData();
+}
+
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
