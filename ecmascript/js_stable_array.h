@@ -36,6 +36,8 @@ public:
     static JSTaggedValue HandleforEachOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                JSHandle<JSTaggedValue> callbackFnHandle,
                                                JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
+    static JSTaggedValue IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
+                                 JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H
