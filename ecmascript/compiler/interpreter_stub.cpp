@@ -3639,46 +3639,30 @@ DECLARE_ASM_HANDLER(HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef methodId = ReadInst16_1(pc);
-    GateRef literalId = ReadInst16_3(pc);
     GateRef length = ReadInst16_5(pc);
     GateRef v0 = ReadInst8_7(pc);
     GateRef v1 = ReadInst8_8(pc);
 
     GateRef classTemplate = GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId));
-    GateRef literalBuffer = GetObjectFromConstPool(constpool, ZExtInt16ToInt32(literalId));
     GateRef lexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v1));
 
-    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), { classTemplate, proto, lexicalEnv, constpool });
 
-    Label isResolved(env);
-    Label isNotResolved(env);
-    Label afterCheckResolved(env);
-    Branch(FunctionIsResolved(classTemplate), &isResolved, &isNotResolved);
-    Bind(&isResolved);
-    {
-        res = CallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), { classTemplate, proto, lexicalEnv, constpool });
-        Jump(&afterCheckResolved);
-    }
-    Bind(&isNotResolved);
-    {
-        res = CallRuntime(glue, RTSTUB_ID(ResolveClass),
-                          { classTemplate, literalBuffer, proto, lexicalEnv, constpool });
-        Jump(&afterCheckResolved);
-    }
-    Bind(&afterCheckResolved);
     Label isException(env);
     Label isNotException(env);
-    Branch(TaggedIsException(*res), &isException, &isNotException);
+    Branch(TaggedIsException(res), &isException, &isNotException);
     Bind(&isException);
     {
         DISPATCH_LAST_WITH_ACC();
     }
     Bind(&isNotException);
     GateRef newLexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));  // slow runtime may gc
-    SetLexicalEnvToFunction(glue, *res, newLexicalEnv);
-    CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { *res, Int16ToTaggedTypeNGC(length) });
-    varAcc = *res;
+    SetLexicalEnvToFunction(glue, res, newLexicalEnv);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
+    CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedTypeNGC(length) });
+    varAcc = res;
     DISPATCH_WITH_ACC(PREF_ID16_IMM16_IMM16_V8_V8);
 }
 
