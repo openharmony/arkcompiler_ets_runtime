@@ -14,9 +14,12 @@
  */
 
 #include "ecmascript/js_displaynames.h"
-#include "cstring.h"
+
+#include <cstring>
+
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
+
 #include "unicode/errorcode.h"
 #include "unicode/locdspnm.h"
 #include "unicode/locid.h"

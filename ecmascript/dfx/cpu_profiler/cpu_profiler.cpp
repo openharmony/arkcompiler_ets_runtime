@@ -20,12 +20,12 @@
 #include <climits>
 #include <fstream>
 
-#include "ecmascript/frames.h"
-#include "ecmascript/file_loader.h"
-#include "ecmascript/taskpool/taskpool.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
+#include "ecmascript/frames.h"
+#include "ecmascript/file_loader.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
 std::atomic<CpuProfiler*> CpuProfiler::singleton_ = nullptr;

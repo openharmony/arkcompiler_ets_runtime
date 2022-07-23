@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
+#include "ecmascript/builtins/builtins_json.h"
+
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
 
-#include "algorithm"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_errors.h"
-#include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/builtins/builtins_proxy.h"
 #include "ecmascript/builtins/builtins_typedarray.h"
 #include "ecmascript/ecma_runtime_call_info.h"

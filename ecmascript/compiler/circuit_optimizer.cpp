@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-#include "circuit_optimizer.h"
-
-#include <utility>
+#include "ecmascript/compiler/circuit_optimizer.h"
 
 namespace panda::ecmascript::kungfu {
 ValueLattice::ValueLattice() : value_(0), status_(LatticeStatus::TOP)

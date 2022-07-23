@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "containers_vector.h"
+#include "ecmascript/containers/containers_vector.h"
 
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/number_helper.h"

@@ -24,7 +24,9 @@
 
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/frames.h"
+
 #include "libpandabase/macros.h"
+
 #include "securec.h"
 
 namespace panda::ecmascript::kungfu {

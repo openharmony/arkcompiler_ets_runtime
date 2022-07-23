@@ -22,7 +22,9 @@
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/region.h"
+
 #include "libpandabase/utils/type_helpers.h"
+
 #include "securec.h"
 
 namespace panda::ecmascript {

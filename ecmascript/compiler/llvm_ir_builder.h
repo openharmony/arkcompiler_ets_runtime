@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/js_method.h"
+
 #include "llvm-c/Core.h"
 
 namespace panda::ecmascript::kungfu {

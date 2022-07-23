@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "ecmascript/compiler/type.h"
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {

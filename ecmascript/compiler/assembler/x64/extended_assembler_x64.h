@@ -12,10 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef ECMASCRIPT_COMPILER_EXTENDED_ASSEMBLER_X64_H
 #define ECMASCRIPT_COMPILER_EXTENDED_ASSEMBLER_X64_H
 
-#include "assembler_x64.h"
+#include "ecmascript/compiler/assembler/x64/assembler_x64.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 

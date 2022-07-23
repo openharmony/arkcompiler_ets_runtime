@@ -14,7 +14,9 @@
  */
 
 #include "ecmascript/compiler/stub_builder.h"
+
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_vector.h"
@@ -23,7 +25,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_table.h"
-#include "ecmascript/compiler/rt_call_signature.h"
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {

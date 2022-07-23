@@ -18,13 +18,14 @@
 
 #include <cstdint>
 
+#include "ecmascript/ecma_param_configuration.h"
+#include "ecmascript/mem/tagged_object.h"
+
+#include "libpandabase/mem/mem.h"
+
 #ifndef PANDA_TARGET_WINDOWS
 #include <sys/mman.h>
 #endif
-
-#include "ecmascript/ecma_param_configuration.h"
-#include "ecmascript/mem/tagged_object.h"
-#include "libpandabase/mem/mem.h"
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage, bugprone-lambda-function-name)
 #define LOG_ECMA_MEM(level) LOG_GC(level) << __func__ << ":" << __LINE__ << " "

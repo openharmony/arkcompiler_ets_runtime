@@ -17,8 +17,8 @@
 #define ECMASCRIPT_BUILTINS_BUILTINS_CJS_MODULE_H
 
 #include "ecmascript/base/builtins_base.h"
-#include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/require/js_cjs_module.h"
 
 namespace panda::ecmascript::builtins {
 class BuiltinsCjsModule : public base::BuiltinsBase {

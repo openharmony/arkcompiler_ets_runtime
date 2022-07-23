@@ -13,11 +13,15 @@
  * limitations under the License.
  */
 
-#include "js_date.h"
+#include "ecmascript/js_date.h"
+
 #include <ctime>
 #include <regex>
+
+#include "ecmascript/base/builtins_base.h"
+
 #include <sys/time.h>
-#include "base/builtins_base.h"
+
 #ifdef PANDA_TARGET_WINDOWS
 #include <timezoneapi.h>
 #endif

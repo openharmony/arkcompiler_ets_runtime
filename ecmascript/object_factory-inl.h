@@ -16,14 +16,14 @@
 #ifndef ECMASCRIPT_OBJECT_FACTORY_INL_H
 #define ECMASCRIPT_OBJECT_FACTORY_INL_H
 
-#include "object_factory.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/mem/barriers-inl.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 EcmaString *ObjectFactory::AllocNonMovableStringObject(size_t size)

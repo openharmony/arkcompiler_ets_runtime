@@ -13,7 +13,8 @@
  * limitations under the License.
  */
  
-#include "containers_plainarray.h"
+#include "ecmascript/containers/containers_plainarray.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/js_iterator.h"

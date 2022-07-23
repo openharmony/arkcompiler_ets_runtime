@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
+
 #include "securec.h"
 
 namespace panda::ecmascript {

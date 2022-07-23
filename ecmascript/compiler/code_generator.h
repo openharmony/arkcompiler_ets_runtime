@@ -16,9 +16,9 @@
 #ifndef ECMASCRIPT_COMPILER_CODE_GENERATOR_H
 #define ECMASCRIPT_COMPILER_CODE_GENERATOR_H
 
-#include "circuit.h"
+#include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/js_method.h"
-#include "stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
 using ControlFlowGraph = std::vector<std::vector<GateRef>>;

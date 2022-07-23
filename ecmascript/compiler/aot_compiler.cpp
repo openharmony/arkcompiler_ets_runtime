@@ -19,16 +19,17 @@
 #include <vector>
 
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/napi/include/jsnapi.h"
+
 #include "generated/base_options.h"
 #include "libpandabase/os/native_stack.h"
 #include "libpandabase/utils/pandargs.h"
 #include "libpandabase/utils/span.h"
 #include "libpandafile/file.h"
-#include "pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
 void BlockSignals()

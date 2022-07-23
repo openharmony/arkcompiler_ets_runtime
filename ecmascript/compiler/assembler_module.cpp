@@ -12,15 +12,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "assembler_module.h"
 
-#include "ecmascript/compiler/assembler/x64/assembler_x64.h"
+#include "ecmascript/compiler/assembler_module.h"
+
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+#include "ecmascript/compiler/assembler/x64/assembler_x64.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/trampoline/x64/assembler_stubs_x64.h"
 #include "ecmascript/compiler/trampoline/aarch64/assembler_stubs.h"
+#include "ecmascript/compiler/trampoline/x64/assembler_stubs_x64.h"
+#include "ecmascript/compiler/rt_call_signature.h"
+
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {

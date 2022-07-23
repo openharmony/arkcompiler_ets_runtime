@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_BUILTINS_BUILTINS_PROXY_H
 #define ECMASCRIPT_BUILTINS_BUILTINS_PROXY_H
 
-#include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 

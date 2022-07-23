@@ -13,22 +13,22 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/builtins/builtins_weak_ref.h"
+
+#include "ecmascript/base/builtins_base.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_weak_ref.h"
-#include "ecmascript/tests/test_helper.h"
-#include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
-
 #include "ecmascript/object_factory.h"
+#include "ecmascript/tests/test_helper.h"
 #include "ecmascript/tagged_array-inl.h"
 
 

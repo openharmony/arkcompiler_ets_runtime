@@ -13,21 +13,23 @@
  * limitations under the License.
  */
 
-#include "accessor_data.h"
+#include "ecmascript/js_object-inl.h"
+
+#include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_thread.h"
-#include "global_dictionary-inl.h"
-#include "js_array.h"
-#include "js_for_in_iterator.h"
-#include "js_hclass.h"
-#include "js_iterator.h"
-#include "object_factory.h"
-#include "property_attributes.h"
-#include "tagged_array-inl.h"
+#include "ecmascript/global_dictionary-inl.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_for_in_iterator.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_iterator.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/property_attributes.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 PropertyAttributes::PropertyAttributes(const PropertyDescriptor &desc)

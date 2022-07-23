@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/ic/invoke_cache.h"
+
 #include "ecmascript/interpreter/interpreter-inl.h"
 
 namespace panda::ecmascript {

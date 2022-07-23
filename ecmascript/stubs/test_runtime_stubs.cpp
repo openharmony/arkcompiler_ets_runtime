@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "runtime_stubs.h"
+#include "ecmascript/stubs/runtime_stubs.h"
+
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/ecma_vm.h"

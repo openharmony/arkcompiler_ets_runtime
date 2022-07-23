@@ -12,14 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "ecmascript/builtins/builtins_cjs_require.h"
+
+#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/builtins/builtins_cjs_require.h"
+#include "ecmascript/require/js_cjs_module.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsCjsRequire::CjsRequireConstructor(EcmaRuntimeCallInfo *argv)
