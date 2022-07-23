@@ -23,7 +23,7 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
 
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class TaggedObject;

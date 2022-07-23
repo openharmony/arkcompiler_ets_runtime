@@ -21,7 +21,7 @@
 
 #include "ecmascript/taskpool/task.h"
 
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class SamplesRecord;

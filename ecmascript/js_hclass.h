@@ -17,13 +17,14 @@
 #define ECMASCRIPT_JS_HCLASS_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/property_attributes.h"
+#include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
-#include "utils/bit_field.h"
+#include "ecmascript/property_attributes.h"
+
+#include "libpandabase/utils/bit_field.h"
 
 /*
  *                         JS Object and JS HClass Layout

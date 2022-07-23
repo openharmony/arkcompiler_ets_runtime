@@ -17,7 +17,8 @@
 #define ECMASCRIPT_PROPERTY_ATTRIBUTES_H
 
 #include "ecmascript/js_tagged_value.h"
-#include "utils/bit_field.h"
+
+#include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
 class PropertyDescriptor;

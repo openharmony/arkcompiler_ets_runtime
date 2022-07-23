@@ -18,6 +18,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/log_wrapper.h"
+
 #include "libpandabase/trace/trace.h"
 
 #if defined(ENABLE_BYTRACE)

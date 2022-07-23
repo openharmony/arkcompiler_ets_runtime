@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_HPROF_HEAP_PROFILER_INTERFACE_H
 #define ECMASCRIPT_HPROF_HEAP_PROFILER_INTERFACE_H
 
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class EcmaVM;

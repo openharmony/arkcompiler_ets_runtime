@@ -21,8 +21,7 @@
 #include "ecmascript/mem/free_object_set.h"
 
 #include "libpandabase/mem/mem.h"
-
-#include "utils/span.h"
+#include "libpandabase/utils/span.h"
 
 namespace panda::ecmascript {
 class FreeObjectList {

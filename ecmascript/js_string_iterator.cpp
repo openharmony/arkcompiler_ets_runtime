@@ -19,6 +19,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {

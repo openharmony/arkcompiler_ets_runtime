@@ -114,6 +114,7 @@
 #include "ecmascript/require/js_cjs_exports.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
+
 #include "ohos/init_data.h"
 
 namespace panda::ecmascript {

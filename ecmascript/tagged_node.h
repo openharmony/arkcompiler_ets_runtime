@@ -17,8 +17,8 @@
 #define ECMASCRIPT_TAGGED_NODE_H
 
 #include "ecmascript/js_thread.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/tagged_object.h"
-#include "js_tagged_value-inl.h"
 
 namespace panda::ecmascript {
 class TaggedNode : public TaggedObject {

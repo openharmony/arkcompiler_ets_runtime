@@ -17,6 +17,7 @@
 #define ECMASCRIPT_JS_FORIN_ITERATOR_H
 
 #include <utility>
+
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tagged_array-inl.h"

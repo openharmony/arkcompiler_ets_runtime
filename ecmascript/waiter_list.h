@@ -18,7 +18,8 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/c_containers.h"
-#include "os/mutex.h"
+
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 using Mutex = os::memory::Mutex;

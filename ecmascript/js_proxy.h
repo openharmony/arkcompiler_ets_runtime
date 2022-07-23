@@ -16,9 +16,9 @@
 #ifndef ECMASCRIPT_JSPROXY_H
 #define ECMASCRIPT_JSPROXY_H
 
-#include "ecmascript/tagged_array.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
 class JSProxy final : public ECMAObject {
