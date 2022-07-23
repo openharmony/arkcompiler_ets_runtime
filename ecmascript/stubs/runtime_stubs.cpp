@@ -27,7 +27,7 @@
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
-#include "ecmascript/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_proxy.h"
