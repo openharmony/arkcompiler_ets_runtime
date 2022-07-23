@@ -875,12 +875,12 @@ DEF_RUNTIME_STUBS(SuspendGenerator)
     return RuntimeSuspendGenerator(thread, obj, value).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(SuspendAotGenerator)
+DEF_RUNTIME_STUBS(OptSuspendGenerator)
 {
-    RUNTIME_STUBS_HEADER(SuspendAotGenerator);
+    RUNTIME_STUBS_HEADER(OptSuspendGenerator);
     JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeSuspendAotGenerator(thread, obj, value).GetRawData();
+    return RuntimeOptSuspendGenerator(thread, obj, value).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(UpFrame)
@@ -1192,7 +1192,8 @@ DEF_RUNTIME_STUBS(Add2Dyn)
     RUNTIME_STUBS_HEADER(Add2Dyn);
     JSHandle<JSTaggedValue> left = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> right = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeAdd2Dyn(thread, left, right).GetRawData();
+    JSTaggedValue res = RuntimeAdd2Dyn(thread, left, right);
+    return res.GetRawData();
 }
 
 DEF_RUNTIME_STUBS(Sub2Dyn)
@@ -1584,67 +1585,67 @@ DEF_RUNTIME_STUBS(NewLexicalEnvWithNameDyn)
         static_cast<uint16_t>(scopeId.GetInt())).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetAotUnmapedArgs)
+DEF_RUNTIME_STUBS(OptGetUnmapedArgs)
 {
-    RUNTIME_STUBS_HEADER(GetAotUnmapedArgs);
+    RUNTIME_STUBS_HEADER(OptGetUnmapedArgs);
     JSTaggedValue actualNumArgs = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeGetAotUnmapedArgs(thread, actualNumArgs.GetInt()).GetRawData();
+    return RuntimeOptGetUnmapedArgs(thread, actualNumArgs.GetInt()).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetAotUnmapedArgsWithRestArgs)
+DEF_RUNTIME_STUBS(OptGetUnmapedArgsWithRestArgs)
 {
-    RUNTIME_STUBS_HEADER(GetAotUnmapedArgsWithRestArgs);
+    RUNTIME_STUBS_HEADER(OptGetUnmapedArgsWithRestArgs);
     JSTaggedValue actualNumArgs = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeGetAotUnmapedArgsWithRestArgs(thread, actualNumArgs.GetInt()).GetRawData();
+    return RuntimeOptGetUnmapedArgsWithRestArgs(thread, actualNumArgs.GetInt()).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetAotLexicalEnv)
+DEF_RUNTIME_STUBS(OptGetLexicalEnv)
 {
-    RUNTIME_STUBS_HEADER(GetAotLexicalEnv);
-    return RuntimeGetAotLexEnv(thread).GetRawData();
+    RUNTIME_STUBS_HEADER(OptGetLexicalEnv);
+    return RuntimeOptGetLexEnv(thread).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(NewAotLexicalEnvDyn)
+DEF_RUNTIME_STUBS(OptNewLexicalEnvDyn)
 {
-    RUNTIME_STUBS_HEADER(NewAotLexicalEnvDyn);
+    RUNTIME_STUBS_HEADER(OptNewLexicalEnvDyn);
     JSTaggedValue numVars = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> currentLexEnv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeNewAotLexicalEnvDyn(thread, static_cast<uint16_t>(numVars.GetInt()), currentLexEnv).GetRawData();
+    return RuntimeOptNewLexicalEnvDyn(thread, static_cast<uint16_t>(numVars.GetInt()), currentLexEnv).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(NewAotLexicalEnvWithNameDyn)
+DEF_RUNTIME_STUBS(OptNewLexicalEnvWithNameDyn)
 {
-    RUNTIME_STUBS_HEADER(NewAotLexicalEnvWithNameDyn);
+    RUNTIME_STUBS_HEADER(OptNewLexicalEnvWithNameDyn);
     JSTaggedValue taggedNumVars = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue taggedScopeId = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> currentLexEnv = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
     uint16_t numVars = static_cast<uint16_t>(taggedNumVars.GetInt());
     uint16_t scopeId = static_cast<uint16_t>(taggedScopeId.GetInt());
-    return RuntimeNewAotLexicalEnvWithNameDyn(thread, numVars, scopeId, currentLexEnv, func).GetRawData();
+    return RuntimeOptNewLexicalEnvWithNameDyn(thread, numVars, scopeId, currentLexEnv, func).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(PopAotLexicalEnv)
+DEF_RUNTIME_STUBS(OptPopLexicalEnv)
 {
-    RUNTIME_STUBS_HEADER(PopAotLexicalEnv);
-    JSTaggedValue currentLexenv = RuntimeGetAotLexEnv(thread);
+    RUNTIME_STUBS_HEADER(OptPopLexicalEnv);
+    JSTaggedValue currentLexenv = RuntimeOptGetLexEnv(thread);
     JSTaggedValue parentLexenv = LexicalEnv::Cast(currentLexenv.GetTaggedObject())->GetParentEnv();
-    RuntimeSetAotLexEnv(thread, parentLexenv);
+    RuntimeOptSetLexEnv(thread, parentLexenv);
     return JSTaggedValue::VALUE_HOLE;
 }
 
-DEF_RUNTIME_STUBS(CopyAotRestArgs)
+DEF_RUNTIME_STUBS(OptCopyRestArgs)
 {
-    RUNTIME_STUBS_HEADER(CopyAotRestArgs);
+    RUNTIME_STUBS_HEADER(OptCopyRestArgs);
     JSTaggedValue actualArgc = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue restIndex = GetArg(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeCopyAotRestArgs(thread, actualArgc.GetInt(), restIndex.GetInt()).GetRawData();
+    return RuntimeOptCopyRestArgs(thread, actualArgc.GetInt(), restIndex.GetInt()).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(NewAotObjDynRange)
+DEF_RUNTIME_STUBS(OptNewObjDynRange)
 {
-    RUNTIME_STUBS_HEADER(NewAotObjDynRange);
-    return RuntimeNewAotObjDynRange(thread, argv, argc).GetRawData();
+    RUNTIME_STUBS_HEADER(OptNewObjDynRange);
+    return RuntimeOptNewObjDynRange(thread, argv, argc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetTypeArrayPropertyByIndex)
@@ -1666,18 +1667,18 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
     return JSTypedArray::FastSetPropertyByIndex(thread, obj, idx.GetInt(), value, JSType(jsType.GetInt())).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(AotNewObjWithIHClass)
+DEF_RUNTIME_STUBS(OptNewObjWithIHClass)
 {
-    RUNTIME_STUBS_HEADER(AotNewObjWithIHClass);
-    return RuntimeAotNewObjWithIHClass(thread, argv, argc).GetRawData();
+    RUNTIME_STUBS_HEADER(OptNewObjWithIHClass);
+    return RuntimeOptNewObjWithIHClass(thread, argv, argc).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(LdAotLexVarDyn)
+DEF_RUNTIME_STUBS(OptLdLexVarDyn)
 {
-    RUNTIME_STUBS_HEADER(LdAotLexVarDyn);
+    RUNTIME_STUBS_HEADER(OptLdLexVarDyn);
     JSTaggedValue level = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue slot = GetArg(argv, argc, 1);  // 1: means the first parameter
-    JSTaggedValue env = RuntimeGetAotLexEnv(thread);
+    JSTaggedValue env = RuntimeOptGetLexEnv(thread);
     for (int32_t i = 0; i < level.GetInt(); i++) {
         JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
         ASSERT(!taggedParentEnv.IsUndefined());
@@ -1686,13 +1687,13 @@ DEF_RUNTIME_STUBS(LdAotLexVarDyn)
     return LexicalEnv::Cast(env.GetTaggedObject())->GetProperties(slot.GetInt()).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(StAotLexVarDyn)
+DEF_RUNTIME_STUBS(OptStLexVarDyn)
 {
-    RUNTIME_STUBS_HEADER(StAotLexVarDyn);
+    RUNTIME_STUBS_HEADER(OptStLexVarDyn);
     JSTaggedValue level = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue slot = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSTaggedValue value = GetArg(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue env = RuntimeGetAotLexEnv(thread);
+    JSTaggedValue env = RuntimeOptGetLexEnv(thread);
 
     for (int32_t i = 0; i < level.GetInt(); i++) {
         JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
@@ -1715,12 +1716,11 @@ JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue
     return arrHandle.GetTaggedValue().GetRawData();
 }
 
-JSTaggedType RuntimeStubs::JSObjectGetMethod([[maybe_unused]]uintptr_t argGlue,
-    JSTaggedValue handler, JSTaggedValue key)
+DEF_RUNTIME_STUBS(JSObjectGetMethod)
 {
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    JSHandle<JSTaggedValue> obj(thread, handler);
-    JSHandle<JSTaggedValue> value(thread, key);
+    RUNTIME_STUBS_HEADER(JSObjectGetMethod);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
     JSHandle<JSTaggedValue> result = JSObject::GetMethod(thread, obj, value);
     return result->GetRawData();
 }

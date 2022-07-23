@@ -123,7 +123,7 @@ void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
     }
     args[range] = ihcIndex;
 
-    const int id = RTSTUB_ID(AotNewObjWithIHClass);
+    const int id = RTSTUB_ID(OptNewObjWithIHClass);
     GateRef newGate = LowerCallRuntime(glue, id, args);
     ReplaceHirToCall(gate, newGate);
 }

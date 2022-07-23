@@ -71,7 +71,6 @@ using JSFunctionEntryType = uint64_t (*)(uintptr_t glue, uintptr_t prevFp, uint3
     V(DoubleToInt)                             \
     V(FloatMod)                                \
     V(FindElementWithCache)                    \
-    V(JSObjectGetMethod)                       \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
     V(BigIntEquals)                            \
@@ -219,21 +218,22 @@ using JSFunctionEntryType = uint64_t (*)(uintptr_t glue, uintptr_t prevFp, uint3
     V(LdBigInt)                           \
     V(ToNumeric)                          \
     V(NewLexicalEnvWithNameDyn)           \
-    V(GetAotUnmapedArgs)                  \
-    V(GetAotUnmapedArgsWithRestArgs)      \
-    V(CopyAotRestArgs)                    \
+    V(OptGetUnmapedArgs)                  \
+    V(OptGetUnmapedArgsWithRestArgs)      \
+    V(OptCopyRestArgs)                    \
     V(NotifyBytecodePcChanged)            \
-    V(GetAotLexicalEnv)                   \
-    V(NewAotLexicalEnvDyn)                \
-    V(NewAotLexicalEnvWithNameDyn)        \
-    V(SuspendAotGenerator)                \
-    V(NewAotObjDynRange)                  \
+    V(OptGetLexicalEnv)                   \
+    V(OptNewLexicalEnvDyn)                \
+    V(OptNewLexicalEnvWithNameDyn)        \
+    V(OptSuspendGenerator)                \
+    V(OptNewObjDynRange)                  \
     V(GetTypeArrayPropertyByIndex)        \
     V(SetTypeArrayPropertyByIndex)        \
-    V(AotNewObjWithIHClass)               \
-    V(PopAotLexicalEnv)                   \
-    V(LdAotLexVarDyn)                     \
-    V(StAotLexVarDyn)
+    V(OptNewObjWithIHClass)               \
+    V(OptPopLexicalEnv)                   \
+    V(OptLdLexVarDyn)                     \
+    V(OptStLexVarDyn)                     \
+    V(JSObjectGetMethod)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -281,7 +281,6 @@ public:
     static void FatalPrint(int fmtMessageId, ...);
     static void MarkingBarrier([[maybe_unused]]uintptr_t argGlue, uintptr_t slotAddr,
         Region *objectRegion, TaggedObject *value, Region *valueRegion);
-    static JSTaggedType JSObjectGetMethod([[maybe_unused]]uintptr_t argGlue, JSTaggedValue handler, JSTaggedValue key);
     static JSTaggedType CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
     static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, Region* region, uintptr_t addr);
     static int32_t DoubleToInt(double x);
@@ -481,24 +480,24 @@ private:
     static inline JSTaggedValue RuntimeThrowSyntaxError(JSThread *thread, const char *message);
     static inline JSTaggedValue RuntimeLdBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &numberBigInt);
     static inline JSTaggedValue RuntimeNewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId);
-    static inline JSTaggedValue RuntimeGetAotUnmapedArgs(JSThread *thread, uint32_t actualNumArgs);
-    static inline JSTaggedValue RuntimeGetAotUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs);
+    static inline JSTaggedValue RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t actualNumArgs);
+    static inline JSTaggedValue RuntimeOptGetUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs);
     static inline JSTaggedValue RuntimeGetUnmapedJSArgumentObj(JSThread *thread,
                                                                const JSHandle<TaggedArray> &argumentsList);
-    static inline JSTaggedValue RuntimeNewAotLexicalEnvDyn(JSThread *thread, uint16_t numVars,
+    static inline JSTaggedValue RuntimeOptNewLexicalEnvDyn(JSThread *thread, uint16_t numVars,
                                                            JSHandle<JSTaggedValue> &currentLexEnv);
-    static inline JSTaggedValue RuntimeNewAotLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId,
+    static inline JSTaggedValue RuntimeOptNewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId,
                                                                    JSHandle<JSTaggedValue> &currentLexEnv,
                                                                    JSHandle<JSTaggedValue> &func);
-    static inline JSTaggedValue RuntimeCopyAotRestArgs(JSThread *thread, uint32_t actualArgc, uint32_t restIndex);
-    static inline JSTaggedValue RuntimeSuspendAotGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
+    static inline JSTaggedValue RuntimeOptCopyRestArgs(JSThread *thread, uint32_t actualArgc, uint32_t restIndex);
+    static inline JSTaggedValue RuntimeOptSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                            const JSHandle<JSTaggedValue> &value);
-    static inline JSTaggedValue RuntimeNewAotObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc);
+    static inline JSTaggedValue RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc);
 
-    static inline JSTaggedValue RuntimeAotNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc);
-    static inline JSTaggedValue RuntimeGetAotLexEnv(JSThread *thread);
-    static inline void RuntimeSetAotLexEnv(JSThread *thread, JSTaggedValue lexEnv);
-    static inline JSTaggedValue RuntimeGenerateAotScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func);
+    static inline JSTaggedValue RuntimeOptNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc);
+    static inline JSTaggedValue RuntimeOptGetLexEnv(JSThread *thread);
+    static inline void RuntimeOptSetLexEnv(JSThread *thread, JSTaggedValue lexEnv);
+    static inline JSTaggedValue RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func);
     static inline JSTaggedType *GetActualArgv(JSThread *thread);
     static inline OptimizedJSFunctionFrame *GetOptimizedJSFunctionFrame(JSThread *thread);
 };

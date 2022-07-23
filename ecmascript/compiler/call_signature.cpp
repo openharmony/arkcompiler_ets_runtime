@@ -1050,20 +1050,4 @@ DEF_CALL_SIGNATURE(CreateArrayFromList)
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_VARARGS);
 }
-
-DEF_CALL_SIGNATURE(JSObjectGetMethod)
-{
-    // 3 : 3 input parameters
-    CallSignature jsObjectGetMethod("JSObjectGetMethod", 0, 3, ArgumentsOrder::DEFAULT_ORDER,
-                                     VariableType::JS_POINTER());
-    *callSign = jsObjectGetMethod;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER(),
-        VariableType::JS_POINTER(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
 }  // namespace panda::ecmascript::kungfu
