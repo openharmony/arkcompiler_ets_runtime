@@ -78,6 +78,7 @@ if (defined(ark_standalone_build)) {
         "//arkcompiler/ets_runtime/ecmascript/tooling/test:unittest",
         "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
       ]
+      deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
     }
   }
 
@@ -115,11 +116,6 @@ if (defined(ark_standalone_build)) {
         deps += [ "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test" ]
         deps +=
             [ "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test" ]
-      }
-
-      # fuzz test
-      if (is_standard_system) {
-        deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
       }
     }
   }
