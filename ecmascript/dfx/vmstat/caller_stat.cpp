@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "caller_stat.h"
+#include "ecmascript/dfx/vmstat/caller_stat.h"
 
 namespace panda::ecmascript {
 void PandaRuntimeTimer::Start(PandaRuntimeCallerStat *callerStat, PandaRuntimeTimer *parent)

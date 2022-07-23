@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_symbol.h"
+
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
@@ -28,6 +29,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/tests/test_helper.h"
+
 #include "utils/bit_utils.h"
 
 using namespace panda::ecmascript;

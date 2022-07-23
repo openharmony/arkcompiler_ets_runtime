@@ -16,11 +16,11 @@
 #ifndef ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUGGER_MANAGER_H
 #define ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUGGER_MANAGER_H
 
-#include "libpandabase/os/library_loader.h"
-
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/tooling/interface/notification_manager.h"
+
+#include "libpandabase/os/library_loader.h"
 
 namespace panda::ecmascript::tooling {
 class ProtocolHandler;

@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_BUILTINS_BUILTINS_BOOLEAN_H
 #define ECMASCRIPT_BUILTINS_BUILTINS_BOOLEAN_H
 
-#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript::builtins {
 class BuiltinsBoolean : public base::BuiltinsBase {

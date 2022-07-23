@@ -14,10 +14,7 @@
  */
 
 #include "ecmascript/napi/include/dfx_jsnapi.h"
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
-#include "ecmascript/dfx/cpu_profiler/samples_record.h"
-#endif
+
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/ecma_vm.h"
@@ -27,6 +24,10 @@
 #include "ecmascript/tooling/interface/file_stream.h"
 #include "ecmascript/tooling/interface/stream.h"
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#include "ecmascript/dfx/cpu_profiler/samples_record.h"
+#endif
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "include/faultloggerd_client.h"
 #endif

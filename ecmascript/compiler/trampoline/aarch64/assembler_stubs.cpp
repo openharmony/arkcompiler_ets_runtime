@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "assembler_stubs.h"
+#include "ecmascript/compiler/trampoline/aarch64/assembler_stubs.h"
 
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/argument_accessor.h"
@@ -24,9 +24,10 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_method.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/runtime_call_id.h"
-#include "ecmascript/js_generator_object.h"
+
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::aarch64 {

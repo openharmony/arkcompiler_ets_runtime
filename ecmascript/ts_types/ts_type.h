@@ -21,8 +21,9 @@
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/ts_types/ts_loader.h"
-#include "utils/bit_field.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
+
+#include "utils/bit_field.h"
 
 namespace panda::ecmascript {
 class TSType : public TaggedObject {

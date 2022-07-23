@@ -13,11 +13,14 @@
  * limitations under the License.
  */
 
-#include "builtins_math.h"
+#include "ecmascript/builtins/builtins_math.h"
+
 #include <cmath>
 #include <random>
+
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_number.h"
+
 #include "utils/bit_utils.h"
 
 namespace panda::ecmascript::builtins {

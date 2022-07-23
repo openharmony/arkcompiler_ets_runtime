@@ -13,8 +13,9 @@
  * limitations under the License.
  */
  
-#include "js_api_plain_array.h"
-#include "js_api_plain_array_iterator.h"
+#include "ecmascript/js_api_plain_array.h"
+
+#include "ecmascript/js_api_plain_array_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_tagged_value.h"

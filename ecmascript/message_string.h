@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MESSAGE_STRING_H
 
 #include <string>
+
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 

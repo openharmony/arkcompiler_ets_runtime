@@ -21,6 +21,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/linked_hash_table.h"
+
 namespace panda::ecmascript {
 // -------------------------------CellRecordVector-----------------------------------
 JSHandle<CellRecordVector> CellRecordVector::Append(const JSThread *thread, const JSHandle<CellRecordVector> &array,

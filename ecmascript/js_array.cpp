@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_array.h"
+
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/ecma_vm.h"

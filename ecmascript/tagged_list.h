@@ -17,10 +17,10 @@
 #define ECMASCRIPT_TAGGED_LIST_H
 
 #include "ecmascript/js_tagged_value.h"
-#include "js_handle.h"
-#include "js_symbol.h"
-#include "js_tagged_number.h"
-#include "tagged_array.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_symbol.h"
+#include "ecmascript/js_tagged_number.h"
+#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
 template<typename Derived>

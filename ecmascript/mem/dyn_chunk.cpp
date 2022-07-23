@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "dyn_chunk.h"
+#include "ecmascript/mem/dyn_chunk.h"
+
 #include "securec.h"
 
 namespace panda::ecmascript {

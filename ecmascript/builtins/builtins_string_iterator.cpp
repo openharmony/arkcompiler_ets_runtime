@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "builtins_string_iterator.h"
+#include "ecmascript/builtins/builtins_string_iterator.h"
+
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_iterator.h"

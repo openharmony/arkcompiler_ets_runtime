@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/mem/mem_map_allocator.h"
+
 #if defined(PANDA_TARGET_WINDOWS)
 #include <io.h>
 #include <sysinfoapi.h>

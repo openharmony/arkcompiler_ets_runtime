@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "containers_linked_list.h"
+#include "ecmascript/containers/containers_linked_list.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api_linked_list.h"

@@ -20,8 +20,9 @@
 #include <sstream>
 
 #include "ecmascript/mem/c_string.h"
-#include "os/mem.h"
 #include "ecmascript/tooling/interface/stream.h"
+
+#include "os/mem.h"
 
 namespace panda::ecmascript {
 using fstream = std::fstream;

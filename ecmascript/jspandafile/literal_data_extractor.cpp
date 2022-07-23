@@ -22,6 +22,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/tagged_array-inl.h"
+
 #include "libpandafile/literal_data_accessor-inl.h"
 
 namespace panda::ecmascript {

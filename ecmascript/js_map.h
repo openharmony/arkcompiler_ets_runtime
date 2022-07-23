@@ -17,8 +17,9 @@
 #define ECMASCRIPT_JSMAP_H
 
 #include <limits>
-#include "js_object.h"
-#include "js_tagged_value-inl.h"
+
+#include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript {
 class JSMap : public JSObject {

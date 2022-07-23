@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "js_api_vector.h"
+#include "ecmascript/js_api_vector.h"
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"

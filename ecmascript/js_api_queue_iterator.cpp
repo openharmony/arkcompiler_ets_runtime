@@ -12,11 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "js_api_queue_iterator.h"
-#include "builtins/builtins_errors.h"
-#include "global_env.h"
-#include "js_api_queue.h"
-#include "object_factory.h"
+#include "ecmascript/js_api_queue_iterator.h"
+
+#include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_api_queue.h"
+#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

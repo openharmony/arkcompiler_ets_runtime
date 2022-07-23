@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_object.h"
+
 #include "ecmascript/builtins/builtins_map.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"

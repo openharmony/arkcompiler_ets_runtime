@@ -20,8 +20,6 @@
 
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/interpreter/frame_handler.h"
 
 #include "os/mutex.h"
 

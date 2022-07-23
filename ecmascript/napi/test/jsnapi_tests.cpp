@@ -16,6 +16,7 @@
 #include "ecmascript/tests/test_helper.h"
 
 #include <cstddef>
+
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"

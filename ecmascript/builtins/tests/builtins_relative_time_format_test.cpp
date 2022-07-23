@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_relative_time_format.h"
+
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_relative_time_format.h"
 #include "ecmascript/tests/test_helper.h"

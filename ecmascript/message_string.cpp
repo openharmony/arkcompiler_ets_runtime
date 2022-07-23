@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#include "message_string.h"
+#include "ecmascript/message_string.h"
+
 #include <array>
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {

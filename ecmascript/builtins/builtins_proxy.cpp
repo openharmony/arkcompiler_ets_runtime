@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_proxy.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"

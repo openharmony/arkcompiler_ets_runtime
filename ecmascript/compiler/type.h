@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_TYPE_H
 
 #include <cstdint>
+
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
 namespace panda::ecmascript::kungfu {

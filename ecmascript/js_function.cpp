@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "js_function.h"
+#include "ecmascript/js_function.h"
 
 #include "ecmascript/base/error_type.h"
 #include "ecmascript/ecma_macros.h"

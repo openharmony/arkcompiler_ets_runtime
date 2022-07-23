@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_typed_array.h"
+
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"

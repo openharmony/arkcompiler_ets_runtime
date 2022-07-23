@@ -16,11 +16,11 @@
 #ifndef ECMASCRIPT_MEM_MARK_STACK_H
 #define ECMASCRIPT_MEM_MARK_STACK_H
 
-#include "ecmascript/mem/ecma_list.h"
-#include "ecmascript/mem/space.h"
-#include "ecmascript/mem/area.h"
-#include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/mem/area.h"
+#include "ecmascript/mem/ecma_list.h"
+#include "ecmascript/mem/native_area_allocator.h"
+#include "ecmascript/mem/space.h"
 
 namespace panda {
 namespace ecmascript {

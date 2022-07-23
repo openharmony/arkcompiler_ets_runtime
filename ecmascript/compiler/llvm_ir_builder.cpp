@@ -15,9 +15,9 @@
 
 #include "ecmascript/compiler/llvm_ir_builder.h"
 
+#include <cstring>
 #include <iostream>
 #include <set>
-#include <string>
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bc_call_signature.h"

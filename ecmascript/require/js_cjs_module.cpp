@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "js_cjs_module.h"
+
+#include "ecmascript/require/js_cjs_module.h"
+
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/require/js_cjs_module_cache.h"

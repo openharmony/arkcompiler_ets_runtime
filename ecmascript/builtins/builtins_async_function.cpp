@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_async_function.h"
+
 #include "ecmascript/ecma_macros.h"
 
 namespace panda::ecmascript::builtins {

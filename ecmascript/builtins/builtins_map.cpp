@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "builtins_map.h"
+#include "ecmascript/builtins/builtins_map.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"

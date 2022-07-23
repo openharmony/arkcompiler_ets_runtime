@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_map.h"
+
 #include "ecmascript/js_tagged_value.h"
-#include "js_map.h"
-#include "linked_hash_table.h"
-#include "object_factory.h"
+#include "ecmascript/linked_hash_table.h"
+#include "ecmascript/object_factory.h"
 #include "utils/bit_utils.h"
 
 namespace panda::ecmascript {

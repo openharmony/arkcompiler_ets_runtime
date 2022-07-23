@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "js_relative_time_format.h"
+#include "ecmascript/js_relative_time_format.h"
 
 #include "unicode/decimfmt.h"
 #include "unicode/numfmt.h"

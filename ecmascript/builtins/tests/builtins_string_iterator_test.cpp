@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_string_iterator.h"
+
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_string_iterator.h"
 #include "ecmascript/tests/test_helper.h"

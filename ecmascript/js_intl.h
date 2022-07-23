@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_JSINTL_H
 #define ECMASCRIPT_JSINTL_H
 
-#include "js_object.h"
+#include "ecmascript/js_object.h"
 
 namespace panda::ecmascript {
 class JSIntl : public JSObject {

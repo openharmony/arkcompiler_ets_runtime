@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "builtins_number_format.h"
+#include "ecmascript/builtins/builtins_number_format.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"

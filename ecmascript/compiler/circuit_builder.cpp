@@ -14,11 +14,13 @@
  */
 
 #include "ecmascript/compiler/circuit_builder.h"
+
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/js_thread.h"
+#include "ecmascript/js_function.h"
+
 #include "utils/bit_utils.h"
 
 namespace panda::ecmascript::kungfu {

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_finalization_registry.h"
+
 #include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"

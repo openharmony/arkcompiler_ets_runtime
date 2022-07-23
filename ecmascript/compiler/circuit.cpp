@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/circuit.h"
+
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 
 namespace panda::ecmascript::kungfu {

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "containers_arraylist.h"
+#include "ecmascript/containers/containers_arraylist.h"
+
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/ecma_vm.h"

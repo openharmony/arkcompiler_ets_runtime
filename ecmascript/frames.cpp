@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "ecmascript/frames.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/file_loader.h"
 #include "ecmascript/js_thread.h"

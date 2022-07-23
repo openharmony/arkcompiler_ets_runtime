@@ -16,9 +16,9 @@
 #ifndef ECMASCRIPT_JS_API_LIST_H
 #define ECMASCRIPT_JS_API_LIST_H
 
-#include "js_object.h"
-#include "js_tagged_value-inl.h"
-#include "tagged_list.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/tagged_list.h"
 
 namespace panda::ecmascript {
 class JSAPIList : public JSObject {

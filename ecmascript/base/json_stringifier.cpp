@@ -14,9 +14,11 @@
  */
 
 #include "ecmascript/base/json_stringifier.h"
+
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
+
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/builtins/builtins_errors.h"

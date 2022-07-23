@@ -18,7 +18,7 @@
 
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/ecma_runtime_call_info.h"
-#include "js_object.h"
+#include "ecmascript/js_object.h"
 
 namespace panda::ecmascript {
 class JSProxy final : public ECMAObject {

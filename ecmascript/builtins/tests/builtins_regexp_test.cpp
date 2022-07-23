@@ -26,9 +26,9 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
-
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+
 #include "utils/bit_utils.h"
 
 using namespace panda::ecmascript;
