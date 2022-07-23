@@ -1612,7 +1612,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithNameDyn(JSThread *thread, ui
     return newEnv.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGetAotUnmapedArgs(JSThread *thread, uint32_t actualNumArgs)
+JSTaggedValue RuntimeStubs::RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t actualNumArgs)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> argumentsList = factory->NewTaggedArray(actualNumArgs - FIXED_NUM_ARGS);
@@ -1628,7 +1628,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetAotUnmapedArgs(JSThread *thread, uint32_t 
     return RuntimeGetUnmapedJSArgumentObj(thread, argumentsList);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGetAotUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs)
+JSTaggedValue RuntimeStubs::RuntimeOptGetUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> argumentsList = factory->NewTaggedArray(actualNumArgs - FIXED_NUM_ARGS);
@@ -1685,7 +1685,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
     return obj.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewAotLexicalEnvDyn(JSThread *thread, uint16_t numVars,
+JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvDyn(JSThread *thread, uint16_t numVars,
                                                        JSHandle<JSTaggedValue> &currentLexEnv)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1694,11 +1694,11 @@ JSTaggedValue RuntimeStubs::RuntimeNewAotLexicalEnvDyn(JSThread *thread, uint16_
     newEnv->SetScopeInfo(thread, JSTaggedValue::Hole());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue taggedEnv = newEnv.GetTaggedValue();
-    RuntimeSetAotLexEnv(thread, taggedEnv);
+    RuntimeOptSetLexEnv(thread, taggedEnv);
     return taggedEnv;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewAotLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId,
+JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId,
                                                                JSHandle<JSTaggedValue> &currentLexEnv,
                                                                JSHandle<JSTaggedValue> &func)
 {
@@ -1706,15 +1706,15 @@ JSTaggedValue RuntimeStubs::RuntimeNewAotLexicalEnvWithNameDyn(JSThread *thread,
     JSHandle<LexicalEnv> newEnv = factory->NewLexicalEnv(numVars);
 
     newEnv->SetParentEnv(thread, currentLexEnv.GetTaggedValue());
-    JSTaggedValue scopeInfo = RuntimeGenerateAotScopeInfo(thread, scopeId, func.GetTaggedValue());
+    JSTaggedValue scopeInfo = RuntimeOptGenerateScopeInfo(thread, scopeId, func.GetTaggedValue());
     newEnv->SetScopeInfo(thread, scopeInfo);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue taggedEnv = newEnv.GetTaggedValue();
-    RuntimeSetAotLexEnv(thread, taggedEnv);
+    RuntimeOptSetLexEnv(thread, taggedEnv);
     return taggedEnv;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeCopyAotRestArgs(JSThread *thread, uint32_t actualArgc, uint32_t restIndex)
+JSTaggedValue RuntimeStubs::RuntimeOptCopyRestArgs(JSThread *thread, uint32_t actualArgc, uint32_t restIndex)
 {
     uint32_t actualRestNum = actualArgc - FIXED_NUM_ARGS - restIndex;
     JSHandle<JSTaggedValue> restArray = JSArray::ArrayCreate(thread, JSTaggedNumber(actualRestNum));
@@ -1733,7 +1733,7 @@ JSTaggedValue RuntimeStubs::RuntimeCopyAotRestArgs(JSThread *thread, uint32_t ac
     return restArray.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeSuspendAotGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
+JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                        const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
@@ -1749,7 +1749,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendAotGenerator(JSThread *thread, const J
     return generatorObjectHandle.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewAotObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc)
+JSTaggedValue RuntimeStubs::RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
     JSTaggedType *args = reinterpret_cast<JSTaggedType *>(argv);
     JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
@@ -1775,7 +1775,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewAotObjDynRange(JSThread *thread, uintptr_t
     return object;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeAotNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc)
+JSTaggedValue RuntimeStubs::RuntimeOptNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
     CVector<JSTaggedType> hclassTable = thread->GetEcmaVM()->GetTSLoader()->GetStaticHClassTable();
 
@@ -1808,20 +1808,20 @@ JSTaggedValue RuntimeStubs::RuntimeAotNewObjWithIHClass(JSThread *thread, uintpt
     return object;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGetAotLexEnv(JSThread *thread)
+JSTaggedValue RuntimeStubs::RuntimeOptGetLexEnv(JSThread *thread)
 {
     [[maybe_unused]] DisallowGarbageCollection noGc;
     auto optimizedJSFunctionFrame = GetOptimizedJSFunctionFrame(thread);
     return optimizedJSFunctionFrame->GetEnv();
 }
 
-void RuntimeStubs::RuntimeSetAotLexEnv(JSThread *thread, JSTaggedValue lexEnv)
+void RuntimeStubs::RuntimeOptSetLexEnv(JSThread *thread, JSTaggedValue lexEnv)
 {
     auto optimizedJSFunctionFrame = GetOptimizedJSFunctionFrame(thread);
     optimizedJSFunctionFrame->SetEnv(lexEnv);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGenerateAotScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func)
+JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
