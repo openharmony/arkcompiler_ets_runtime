@@ -841,11 +841,13 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
     // get all users of phi except self
     std::vector<GateRef> outs;
     auto uses = acc.Uses(phi);
-    for (auto use = uses.begin(); use != uses.end(); use++) {
+    for (auto use = uses.begin(); use != uses.end();) {
         GateRef u = *use;
         if (u != phi) {
             outs.push_back(u);
-            acc.ReplaceIn(use, same);
+            use = acc.ReplaceIn(use, same);
+        } else {
+            use++;
         }
     }
     acc.DeleteGate(phi);

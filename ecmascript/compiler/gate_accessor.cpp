@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
-#include "gate_accessor.h"
+#include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {
+using UseIterator = GateAccessor::UseIterator;
+
 size_t GateAccessor::GetNumIns(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -154,7 +156,7 @@ size_t GateAccessor::GetImmediateId(GateRef gate) const
     return imm;
 }
 
-bool GateAccessor::IsDependIn(const UsesIterator &useIt) const
+bool GateAccessor::IsDependIn(const UseIterator &useIt) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(*useIt);
     size_t dependStartIndex = gatePtr->GetStateCount();
@@ -171,12 +173,14 @@ void GateAccessor::SetDep(GateRef gate, GateRef depGate, size_t idx)
     gatePtr->ModifyIn(dependIndex + idx, circuit_->LoadGatePtr(depGate));
 }
 
-void GateAccessor::ReplaceIn(UsesIterator &useIt, GateRef replaceGate)
+UseIterator GateAccessor::ReplaceIn(const UseIterator &useIt, GateRef replaceGate)
 {
+    UseIterator next = useIt;
+    next++;
     Gate *curGatePtr = circuit_->LoadGatePtr(*useIt);
     Gate *replaceGatePtr = circuit_->LoadGatePtr(replaceGate);
     curGatePtr->ModifyIn(useIt.GetIndex(), replaceGatePtr);
-    useIt.SetChanged();
+    return next;
 }
 
 GateType GateAccessor::GetGateType(GateRef gate) const
@@ -189,8 +193,10 @@ void GateAccessor::SetGateType(GateRef gate, GateType gt)
     circuit_->LoadGatePtr(gate)->SetGateType(gt);
 }
 
-void GateAccessor::DeleteExceptionDep(UsesIterator &useIt)
+UseIterator GateAccessor::DeleteExceptionDep(const UseIterator &useIt)
 {
+    auto next = useIt;
+    next++;
     ASSERT(GetOpCode(*useIt) == OpCode::RETURN || GetOpCode(*useIt) == OpCode::DEPEND_SELECTOR);
     if (GetOpCode(*useIt) == OpCode::RETURN) {
         // 0 : the index of CONSTANT
@@ -208,27 +214,21 @@ void GateAccessor::DeleteExceptionDep(UsesIterator &useIt)
         }
         DecreaseIn(useIt);
     }
+    return next;
 }
 
-void GateAccessor::DeleteIn(UsesIterator &useIt)
+UseIterator GateAccessor::DeleteGate(const UseIterator &useIt)
 {
-    size_t idx = useIt.GetIndex();
-    Gate *curGatePtr = circuit_->LoadGatePtr(*useIt);
-    curGatePtr->DeleteIn(idx);
-    useIt.SetChanged();
-}
-
-void GateAccessor::DeleteGate(UsesIterator &useIt)
-{
+    auto next = useIt;
+    next++;
     circuit_->DeleteGate(*useIt);
-    useIt.SetChanged();
+    return next;
 }
 
-void GateAccessor::DecreaseIn(UsesIterator &useIt)
+void GateAccessor::DecreaseIn(const UseIterator &useIt)
 {
     size_t idx = useIt.GetIndex();
     circuit_->DecreaseIn(*useIt, idx);
-    useIt.SetChanged();
 }
 
 void GateAccessor::NewIn(GateRef gate, size_t idx, GateRef in)
