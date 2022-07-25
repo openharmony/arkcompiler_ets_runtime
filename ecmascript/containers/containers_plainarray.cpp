@@ -15,7 +15,7 @@
  
 #include "containers_plainarray.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"

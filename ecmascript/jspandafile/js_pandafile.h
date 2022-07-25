@@ -94,7 +94,7 @@ public:
         return pf_->GetClasses();
     }
 
-    bool IsModule() const;
+    bool PUBLIC_API IsModule() const;
 
     bool IsCjs() const;
 

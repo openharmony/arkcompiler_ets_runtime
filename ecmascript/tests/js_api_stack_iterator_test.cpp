@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_api_stack.h"
+#include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;

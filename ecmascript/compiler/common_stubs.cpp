@@ -380,7 +380,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit(const CompilationConfig *cf
             PtrMul(IntPtr(static_cast<int64_t>(ConstantIndex::APPLY_STRING_INDEX)),
             IntPtr(sizeof(JSTaggedValue))));
         GateRef key = Load(VariableType::JS_ANY(), glue, keyOffset);
-        GateRef method = CallNGCRuntime(glue, RTSTUB_ID(JSObjectGetMethod), {glue, handler, key});
+        GateRef method = CallRuntime(glue, RTSTUB_ID(JSObjectGetMethod), {handler, key});
         ReturnExceptionIfAbruptCompletion(glue);
 
         Branch(TaggedIsUndefined(method), &isUndefined, &isNotUndefined);

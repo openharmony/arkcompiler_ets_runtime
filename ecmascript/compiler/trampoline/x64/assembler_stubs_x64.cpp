@@ -547,7 +547,9 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
         __ Pushq(envReg);
         __ Movq(rdi, rax);
         __ Callq(&jsCall); // call JSCall
-        __ Leaq(Operand(r10, Scale::Times8, 8), rcx); // 8: offset
+        __ Addq(FRAME_SLOT_SIZE, rsp); // skip env
+        __ Pop(r10);
+        __ Leaq(Operand(r10, Scale::Times8, 0), rcx); // 8: offset
         __ Addq(rcx, rsp);
         __ Testb(1, r10);  // stack 16bytes align check
         __ Je(&lPopFrame2);
@@ -556,7 +558,6 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
 
     __ Bind(&lPopFrame2);
     {
-        __ Addq(FRAME_SLOT_SIZE, rsp); // skip r9
         __ Pop(r10);
         __ Addq(8, rsp); // 8: sp + 8
         __ Pop(rbp);
@@ -564,9 +565,9 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
     }
     __ Bind(&lJSProxy);
     __ Movq(rsp, rcx);
-    __ Addq(8, rcx); // 8: sp + 8
-    __ Mov(Operand(rcx, 0), rsi); // get origin argc
     __ Movq(jsFuncReg, rdx);
+    __ Addq(DOUBLE_SLOT_SIZE, rcx); // skip returnAddr
+    __ Mov(Operand(rcx, 0), rsi); // get origin argc
     __ Addq(8, rcx); // 8: sp + 8 argv
     __ Movq(kungfu::CommonStubCSigns::JsProxyCallInternal, r9);
     __ Movq(Operand(rdi, r9, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), r8);
@@ -815,7 +816,9 @@ void AssemblerStubsX64::JSCall(ExtendedAssembler *assembler)
         __ Pushq(envReg);
         __ Movq(rdi, rax);
         __ Callq(&jsCall); // call JSCall
-        __ Leaq(Operand(r10, Scale::Times8, 8), rcx); // 8: disp
+        __ Addq(8, rsp); // 8: sp + 8
+        __ Pop(r10);
+        __ Leaq(Operand(r10, Scale::Times8, 0), rcx); // 8: disp
         __ Addq(rcx, rsp);
         __ Testb(1, r10);  // stack 16bytes align check
         __ Je(&lPopFrame2);
@@ -824,7 +827,6 @@ void AssemblerStubsX64::JSCall(ExtendedAssembler *assembler)
 
     __ Bind(&lPopFrame2);
     {
-        __ Addq(8, rsp); // 8: sp + 8
         __ Pop(r10);
         __ Addq(8, rsp); // 8: sp + 8
         __ Pop(rbp);

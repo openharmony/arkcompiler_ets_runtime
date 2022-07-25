@@ -78,6 +78,7 @@ if (defined(ark_standalone_build)) {
         "//arkcompiler/ets_runtime/ecmascript/tooling/test:unittest",
         "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
       ]
+      deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
     }
   }
 
@@ -115,11 +116,6 @@ if (defined(ark_standalone_build)) {
         deps += [ "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test" ]
         deps +=
             [ "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test" ]
-      }
-
-      # fuzz test
-      if (is_standard_system) {
-        deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
       }
     }
   }
@@ -424,34 +420,34 @@ ecma_source = [
   "ecmascript/jspandafile/panda_file_translator.cpp",
   "ecmascript/jspandafile/js_pandafile_executor.cpp",
   "ecmascript/jspandafile/scope_info_extractor.cpp",
-  "ecmascript/js_api_arraylist.cpp",
-  "ecmascript/js_api_arraylist_iterator.cpp",
-  "ecmascript/js_api_deque.cpp",
-  "ecmascript/js_api_deque_iterator.cpp",
-  "ecmascript/js_api_hashmap.cpp",
-  "ecmascript/js_api_hashmap_iterator.cpp",
-  "ecmascript/js_api_hashset.cpp",
-  "ecmascript/js_api_hashset_iterator.cpp",
-  "ecmascript/js_api_lightweightmap.cpp",
-  "ecmascript/js_api_lightweightmap_iterator.cpp",
-  "ecmascript/js_api_lightweightset.cpp",
-  "ecmascript/js_api_lightweightset_iterator.cpp",
-  "ecmascript/js_api_linked_list.cpp",
-  "ecmascript/js_api_linked_list_iterator.cpp",
-  "ecmascript/js_api_list.cpp",
-  "ecmascript/js_api_list_iterator.cpp",
-  "ecmascript/js_api_plain_array.cpp",
-  "ecmascript/js_api_plain_array_iterator.cpp",
-  "ecmascript/js_api_queue.cpp",
-  "ecmascript/js_api_queue_iterator.cpp",
-  "ecmascript/js_api_stack.cpp",
-  "ecmascript/js_api_stack_iterator.cpp",
-  "ecmascript/js_api_tree_map.cpp",
-  "ecmascript/js_api_tree_map_iterator.cpp",
-  "ecmascript/js_api_tree_set.cpp",
-  "ecmascript/js_api_tree_set_iterator.cpp",
-  "ecmascript/js_api_vector.cpp",
-  "ecmascript/js_api_vector_iterator.cpp",
+  "ecmascript/js_api/js_api_arraylist.cpp",
+  "ecmascript/js_api/js_api_arraylist_iterator.cpp",
+  "ecmascript/js_api/js_api_deque.cpp",
+  "ecmascript/js_api/js_api_deque_iterator.cpp",
+  "ecmascript/js_api/js_api_hashmap.cpp",
+  "ecmascript/js_api/js_api_hashmap_iterator.cpp",
+  "ecmascript/js_api/js_api_hashset.cpp",
+  "ecmascript/js_api/js_api_hashset_iterator.cpp",
+  "ecmascript/js_api/js_api_lightweightmap.cpp",
+  "ecmascript/js_api/js_api_lightweightmap_iterator.cpp",
+  "ecmascript/js_api/js_api_lightweightset.cpp",
+  "ecmascript/js_api/js_api_lightweightset_iterator.cpp",
+  "ecmascript/js_api/js_api_linked_list.cpp",
+  "ecmascript/js_api/js_api_linked_list_iterator.cpp",
+  "ecmascript/js_api/js_api_list.cpp",
+  "ecmascript/js_api/js_api_list_iterator.cpp",
+  "ecmascript/js_api/js_api_plain_array.cpp",
+  "ecmascript/js_api/js_api_plain_array_iterator.cpp",
+  "ecmascript/js_api/js_api_queue.cpp",
+  "ecmascript/js_api/js_api_queue_iterator.cpp",
+  "ecmascript/js_api/js_api_stack.cpp",
+  "ecmascript/js_api/js_api_stack_iterator.cpp",
+  "ecmascript/js_api/js_api_tree_map.cpp",
+  "ecmascript/js_api/js_api_tree_map_iterator.cpp",
+  "ecmascript/js_api/js_api_tree_set.cpp",
+  "ecmascript/js_api/js_api_tree_set_iterator.cpp",
+  "ecmascript/js_api/js_api_vector.cpp",
+  "ecmascript/js_api/js_api_vector_iterator.cpp",
   "ecmascript/js_arguments.cpp",
   "ecmascript/js_array.cpp",
   "ecmascript/js_array_iterator.cpp",

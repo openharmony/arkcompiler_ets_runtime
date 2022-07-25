@@ -91,6 +91,11 @@ bool PassManager::CollectInfoOfPandaFile(const std::string &fileName, std::strin
         LOG_COMPILER(INFO) << fileName << " has no type info";
     }
 
+    if (jsPandaFile->IsModule()) {
+        ModuleManager *moduleManager = vm_->GetModuleManager();
+        moduleManager->HostResolveImportedModule(fileName.c_str());
+    }
+
     auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile);
     JSHandle<JSFunction> mainFunc(vm_->GetJSThread(), program->GetMainFunction());
     JSHandle<JSTaggedValue> constPool(vm_->GetJSThread(), mainFunc->GetConstantPool());

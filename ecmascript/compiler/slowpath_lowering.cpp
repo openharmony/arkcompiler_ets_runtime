@@ -16,6 +16,8 @@
 #include "ecmascript/compiler/slowpath_lowering.h"
 
 namespace panda::ecmascript::kungfu {
+using UseIterator = GateAccessor::UseIterator;
+
 #define CREATE_DOUBLE_EXIT(SuccessLabel, FailLabel)               \
     std::vector<GateRef> successControl;                          \
     std::vector<GateRef> failControl;                             \
@@ -57,14 +59,15 @@ int32_t SlowPathLowering::ComputeCallArgc(GateRef gate, EcmaOpcode op)
     return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 2; // 2: calltarget and bcoffset
 }
 
-void SlowPathLowering::ReplaceHirControlGate(GateAccessor::UsesIterator &useIt, GateRef newGate, bool noThrow)
+UseIterator SlowPathLowering::ReplaceHirControlGate(const UseIterator &useIt, GateRef newGate, bool noThrow)
 {
     ASSERT(acc_.GetOpCode(*useIt) == OpCode::IF_SUCCESS || acc_.GetOpCode(*useIt) == OpCode::IF_EXCEPTION);
     if (!noThrow) {
         auto firstUse = acc_.Uses(*useIt).begin();
         acc_.ReplaceIn(*firstUse, firstUse.GetIndex(), newGate);
     }
-    acc_.DeleteGate(useIt);
+    auto next = acc_.DeleteGate(useIt);
+    return next;
 }
 
 // depends on the construction of JSgates in BytecodeCircuitBuilder
@@ -80,40 +83,43 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
         }
     }
     auto uses = acc_.Uses(hir);
-    for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        const OpCode op = acc_.GetOpCode(*useIt);
         // replace HIR:IF_SUCCESS/IF_EXCEPTION with control flow in Label successExit/failExit of MIR Circuit
-        if (acc_.GetOpCode(*useIt) == OpCode::IF_SUCCESS) {
-            ReplaceHirControlGate(useIt, successControl[0]);
-        } else if (acc_.GetOpCode(*useIt) == OpCode::IF_EXCEPTION) {
-            ReplaceHirControlGate(useIt, exceptionControl[0], noThrow);
+        if (op == OpCode::IF_SUCCESS) {
+            useIt = ReplaceHirControlGate(useIt, successControl[0]);
+        } else if (op == OpCode::IF_EXCEPTION) {
+            useIt = ReplaceHirControlGate(useIt, exceptionControl[0], noThrow);
         // change depend flow in catch block from HIR:JS_BYTECODE to depend flow in MIR Circuit
-        } else if (acc_.GetOpCode(*useIt) == OpCode::DEPEND_SELECTOR) {
+        } else if (op == OpCode::DEPEND_SELECTOR) {
             if (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*useIt, 0), useIt.GetIndex() - 1)) == OpCode::IF_EXCEPTION) {
-                noThrow ? acc_.DeleteExceptionDep(useIt) : acc_.ReplaceIn(useIt, exceptionControl[1]);
+                useIt = noThrow ? acc_.DeleteExceptionDep(useIt)
+                                : acc_.ReplaceIn(useIt, exceptionControl[1]);
             } else {
-                acc_.ReplaceIn(useIt, successControl[1]);
+                useIt = acc_.ReplaceIn(useIt, successControl[1]);
             }
-        } else if (acc_.GetOpCode(*useIt) == OpCode::DEPEND_RELAY) {
+        } else if (op == OpCode::DEPEND_RELAY) {
             if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION) {
-                acc_.ReplaceIn(useIt, exceptionControl[1]);
+                useIt = acc_.ReplaceIn(useIt, exceptionControl[1]);
             } else {
-                acc_.ReplaceIn(useIt, successControl[1]);
+                useIt = acc_.ReplaceIn(useIt, successControl[1]);
             }
         // replace normal depend
-        } else if ((acc_.GetOpCode(*useIt) == OpCode::JS_BYTECODE) && useIt.GetIndex() == 1) {
-            acc_.ReplaceIn(useIt, successControl[1]);
-        } else if ((acc_.GetOpCode(*useIt) == OpCode::RUNTIME_CALL) && useIt.GetIndex() == 0) {
-            acc_.ReplaceIn(useIt, successControl[1]);
+        } else if (op == OpCode::JS_BYTECODE && useIt.GetIndex() == 1) {
+            useIt = acc_.ReplaceIn(useIt, successControl[1]);
+        } else if (op == OpCode::RUNTIME_CALL && useIt.GetIndex() == 0) {
+            useIt = acc_.ReplaceIn(useIt, successControl[1]);
         // if no catch block, just throw exception(RETURN)
-        } else if ((acc_.GetOpCode(*useIt) == OpCode::RETURN) &&
-                    acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION) {
-            noThrow ? acc_.DeleteExceptionDep(useIt) : acc_.ReplaceIn(useIt, exceptionControl[1]);
+        } else if (op == OpCode::RETURN &&
+                   acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION) {
+            useIt = noThrow ? acc_.DeleteExceptionDep(useIt)
+                            : acc_.ReplaceIn(useIt, exceptionControl[1]);
         // if hir isThrow
-        } else if (acc_.GetOpCode(*useIt) != OpCode::VALUE_SELECTOR && useIt.GetIndex() == 1) {
-            acc_.ReplaceIn(useIt, successControl[1]);
+        } else if (op != OpCode::VALUE_SELECTOR && useIt.GetIndex() == 1) {
+            useIt = acc_.ReplaceIn(useIt, successControl[1]);
         // replace data flow with data output in label successExit(incluing JSgates and phigates)
         } else {
-            acc_.ReplaceIn(useIt, outir);
+            useIt = acc_.ReplaceIn(useIt, outir);
         }
     }
     acc_.DeleteGate(hir);
@@ -133,16 +139,16 @@ void SlowPathLowering::ReplaceHirToJSCall(GateRef hirGate, GateRef callGate, Gat
     GateRef ifBranch = builder_.Branch(stateInGate, equal);
 
     auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
             acc_.SetOpCode(*it, OpCode::IF_FALSE);
-            acc_.ReplaceIn(it, ifBranch);
+            it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
                 acc_.SetOpCode(*it, OpCode::IF_TRUE);
-                acc_.ReplaceIn(it, ifBranch);
+                it = acc_.ReplaceIn(it, ifBranch);
             } else {
-                acc_.ReplaceIn(it, callGate);
+                it = acc_.ReplaceIn(it, callGate);
             }
         }
     }
@@ -183,16 +189,16 @@ void SlowPathLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool 
     }
 
     auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
             acc_.SetOpCode(*it, OpCode::IF_FALSE);
-            acc_.ReplaceIn(it, ifBranch);
+            it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
                 acc_.SetOpCode(*it, OpCode::IF_TRUE);
-                acc_.ReplaceIn(it, ifBranch);
+                it = acc_.ReplaceIn(it, ifBranch);
             } else {
-                acc_.ReplaceIn(it, callGate);
+                it = acc_.ReplaceIn(it, callGate);
             }
         }
     }
@@ -215,16 +221,16 @@ void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate)
 
     GateRef ifBranch = builder_.Branch(stateInGate, builder_.Boolean(true));
     auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
             acc_.SetOpCode(*it, OpCode::IF_FALSE);
-            acc_.ReplaceIn(it, ifBranch);
+            it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
                 acc_.SetOpCode(*it, OpCode::IF_TRUE);
-                acc_.ReplaceIn(it, ifBranch);
+                it = acc_.ReplaceIn(it, ifBranch);
             } else {
-                acc_.ReplaceIn(it, callGate);
+                it = acc_.ReplaceIn(it, callGate);
             }
         }
     }
@@ -486,7 +492,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerCreateArrayWithBuffer(gate, glue, jsFunc);
             break;
         case STMODULEVAR_PREF_ID32:
-            LowerStModuleVar(gate, glue);
+            LowerStModuleVar(gate, glue, jsFunc);
             break;
         case GETTEMPLATEOBJECT_PREF_V8:
             LowerGetTemplateObject(gate, glue);
@@ -501,10 +507,10 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerToNumeric(gate, glue);
             break;
         case LDMODULEVAR_PREF_ID32_IMM8:
-            LowerLdModuleVar(gate, glue);
+            LowerLdModuleVar(gate, glue, jsFunc);
             break;
         case GETMODULENAMESPACE_PREF_ID32:
-            LowerGetModuleNamespace(gate, glue);
+            LowerGetModuleNamespace(gate, glue, jsFunc);
             break;
         case NEWOBJDYNRANGE_PREF_IMM16_V8:
             LowerNewObjDynRange(gate, glue);
@@ -738,7 +744,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
     builder_.Store(VariableType::JS_ANY(), glue, context, generatorObjectOffset, genObj);
 
     // set lexical env
-    const int id = RTSTUB_ID(GetAotLexicalEnv);
+    const int id = RTSTUB_ID(OptGetLexicalEnv);
     GateRef lexicalEnvGate = LowerCallRuntime(glue, id, {jsFunc});
     GateRef lexicalEnvOffset = builder_.IntPtr(GeneratorContext::GENERATOR_LEXICALENV_OFFSET);
     builder_.Store(VariableType::JS_ANY(), glue, context, lexicalEnvOffset, lexicalEnvGate);
@@ -767,7 +773,7 @@ void SlowPathLowering::LowerSuspendGenerator(GateRef gate, GateRef glue, [[maybe
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     SaveFrameToContext(gate, glue, jsFunc);
     acc_.SetDep(gate, builder_.GetDepend());
-    const int id = RTSTUB_ID(SuspendAotGenerator);
+    const int id = RTSTUB_ID(OptSuspendGenerator);
     GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2)});
     ReplaceHirToCall(gate, newGate);
 }
@@ -809,7 +815,7 @@ void SlowPathLowering::LowerLoadStr(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLexicalEnv(GateRef gate, GateRef glue)
 {
-    const int id = RTSTUB_ID(GetAotLexicalEnv);
+    const int id = RTSTUB_ID(OptGetLexicalEnv);
     GateRef newGate = LowerCallRuntime(glue, id, {});
     ReplaceHirToCall(gate, newGate, true);
 }
@@ -1143,11 +1149,11 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
     GateRef clearException = circuit_->NewGate(OpCode(OpCode::STORE), 0,
         { loadException, holeCst, val }, VariableType::INT64().GetGateType());
     auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) != OpCode::VALUE_SELECTOR && acc_.IsDependIn(it)) {
-            acc_.ReplaceIn(it, clearException);
+            it = acc_.ReplaceIn(it, clearException);
         } else {
-            acc_.ReplaceIn(it, loadException);
+            it = acc_.ReplaceIn(it, loadException);
         }
     }
     acc_.DeleteGate(hirGate);
@@ -1493,15 +1499,16 @@ void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, G
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
-void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef prop = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable),
-        { builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0))) }, true);
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(StModuleVar), { prop, acc_.GetValueIn(gate, 1) }, true);
+    GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
+    GateRef prop = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), { stringId }, true);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(StModuleVarOnJSFunc),
+        { prop, acc_.GetValueIn(gate, 1), jsFunc }, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
@@ -1533,19 +1540,17 @@ void SlowPathLowering::LowerSetObjectWithProto(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdBigInt(GateRef gate, GateRef glue)
 {
-    std::vector<GateRef> successControl;
-    std::vector<GateRef> failControl;
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
     GateRef numberBigInt = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), { stringId }, true);
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdBigInt), {numberBigInt}, true);
-    successControl.emplace_back(builder_.GetState());
-    successControl.emplace_back(builder_.GetDepend());
-    failControl.emplace_back(Circuit::NullGate());
-    failControl.emplace_back(Circuit::NullGate());
-    // StModuleVar will not be inValue to other hir gates, result will not be used to replace hirgate
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
@@ -1557,38 +1562,36 @@ void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
     ReplaceHirToCall(gate, newGate);
 }
 
-void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef key = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable),
-        { builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0))) }, true);
+    GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
+    GateRef key = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), { stringId }, true);
     GateRef inner = builder_.TaggedTypeNGC(acc_.GetValueIn(gate, 1));
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdModuleVar), {key, inner}, true);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdModuleVarOnJSFunc), {key, inner, jsFunc}, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
     failControl.emplace_back(Circuit::NullGate());
-    // StModuleVar will not be inValue to other hir gates, result will not be used to replace hirgate
     ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
 }
 
-void SlowPathLowering::LowerGetModuleNamespace(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    auto args = { builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0))) };
-    GateRef localName = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), args, true);
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespace), {localName}, true);
+    GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
+    GateRef localName = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), { stringId }, true);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespaceOnJSFunc), { localName, jsFunc }, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
     failControl.emplace_back(Circuit::NullGate());
-    // StModuleVar will not be inValue to other hir gates, result will not be used to replace hirgate
     ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
 }
 
@@ -1662,7 +1665,7 @@ void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag)
 
 void SlowPathLowering::LowerNewObjDynRange(GateRef gate, GateRef glue)
 {
-    const int id = RTSTUB_ID(NewAotObjDynRange);
+    const int id = RTSTUB_ID(OptNewObjDynRange);
     size_t range = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args(range);
     for (size_t i = 0; i < range; ++i) {
@@ -1714,17 +1717,17 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 
     GateRef mergeTrueState = builder_.Merge(trueState.data(), trueState.size());
     auto uses = acc_.Uses(gate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_TRUE) {
             acc_.SetOpCode(*it, OpCode::ORDINARY_BLOCK);
-            acc_.ReplaceIn(it, mergeTrueState);
+            it = acc_.ReplaceIn(it, mergeTrueState);
         } else if (acc_.GetOpCode(*it) == OpCode::IF_FALSE) {
             acc_.SetOpCode(*it, OpCode::ORDINARY_BLOCK);
-            acc_.ReplaceIn(it, mergeFalseState);
+            it = acc_.ReplaceIn(it, mergeFalseState);
         } else if (((acc_.GetOpCode(*it) == OpCode::DEPEND_SELECTOR) ||
                     (acc_.GetOpCode(*it) == OpCode::DEPEND_RELAY)) &&
                     (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*it, 0), it.GetIndex() - 1)) != OpCode::IF_EXCEPTION)) {
-            acc_.ReplaceIn(it, acc_.GetDep(gate));
+            it = acc_.ReplaceIn(it, acc_.GetDep(gate));
         } else {
             UNREACHABLE();
         }
@@ -2003,8 +2006,8 @@ void SlowPathLowering::LowerNewLexicalEnvDyn(GateRef gate, GateRef glue)
     std::vector<GateRef> failControl;
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef lexEnv = LowerCallRuntime(glue, RTSTUB_ID(GetAotLexicalEnv), {}, true);
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(NewAotLexicalEnvDyn),
+    GateRef lexEnv = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(OptNewLexicalEnvDyn),
         {builder_.TaggedTypeNGC(acc_.GetValueIn(gate, 0)), lexEnv}, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
@@ -2019,11 +2022,11 @@ void SlowPathLowering::LowerNewLexicalEnvWithNameDyn(GateRef gate, GateRef glue,
     std::vector<GateRef> failControl;
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef lexEnv = LowerCallRuntime(glue, RTSTUB_ID(GetAotLexicalEnv), {}, true);
+    GateRef lexEnv = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
     auto args = { builder_.TaggedTypeNGC(acc_.GetValueIn(gate, 0)),
                   builder_.TaggedTypeNGC(acc_.GetValueIn(gate, 1)),
                   lexEnv, jsFunc};
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(NewAotLexicalEnvWithNameDyn), args, true);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(OptNewLexicalEnvWithNameDyn), args, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
@@ -2035,7 +2038,7 @@ void SlowPathLowering::LowerPopLexicalEnv(GateRef gate, GateRef glue)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    LowerCallRuntime(glue, RTSTUB_ID(PopAotLexicalEnv), {}, true);
+    LowerCallRuntime(glue, RTSTUB_ID(OptPopLexicalEnv), {}, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
@@ -2620,7 +2623,7 @@ void SlowPathLowering::LowerLdLexVarDyn(GateRef gate, GateRef glue)
     GateRef level = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef slot = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 1));
     DEFVAlUE(currentEnv, (&builder_), VariableType::JS_ANY(),
-        LowerCallRuntime(glue, RTSTUB_ID(GetAotLexicalEnv), {}, true));
+        LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true));
     DEFVAlUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
     std::vector<GateRef> successControl;
     std::vector<GateRef> exceptionControl;
@@ -2654,7 +2657,7 @@ void SlowPathLowering::LowerStLexVarDyn(GateRef gate, GateRef glue)
     GateRef slot = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 1));
     GateRef value = acc_.GetValueIn(gate, 2);
     DEFVAlUE(currentEnv, (&builder_), VariableType::JS_ANY(),
-             LowerCallRuntime(glue, RTSTUB_ID(GetAotLexicalEnv), {}, true));
+             LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true));
     DEFVAlUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
     std::vector<GateRef> successControl;
     std::vector<GateRef> exceptionControl;
@@ -2996,11 +2999,13 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
         auto indexOffset = builder_.Int32(index);
         GateRef value = GetValueFromTaggedArray(arrayGate, indexOffset);
         auto uses = acc_.Uses(item);
-        for (auto use = uses.begin(); use != uses.end(); use++) {
+        for (auto use = uses.begin(); use != uses.end();) {
             size_t valueStartIndex = acc_.GetStateCount(*use) + acc_.GetDependCount(*use);
             size_t valueEndIndex = valueStartIndex + acc_.GetInValueCount(*use);
             if (use.GetIndex() >= valueStartIndex && use.GetIndex() < valueEndIndex) {
-                acc_.ReplaceIn(use, value);
+                use = acc_.ReplaceIn(use, value);
+            } else {
+                use++;
             }
         }
         acc_.DeleteGate(item);
@@ -3146,7 +3151,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
 void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate, GateRef glue, GateRef actualArgc)
 {
     GateRef taggedArgc = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(actualArgc));
-    const int id = RTSTUB_ID(GetAotUnmapedArgs);
+    const int id = RTSTUB_ID(OptGetUnmapedArgs);
     GateRef newGate = LowerCallRuntime(glue, id, {taggedArgc});
     ReplaceHirToCall(gate, newGate);
 }
@@ -3157,7 +3162,7 @@ void SlowPathLowering::LowerCopyRestArgs(GateRef gate, GateRef glue, GateRef act
     GateRef restIdx = acc_.GetValueIn(gate, 0);
     GateRef taggedRestIdx = builder_.TaggedTypeNGC(restIdx);
 
-    const int id = RTSTUB_ID(CopyAotRestArgs);
+    const int id = RTSTUB_ID(OptCopyRestArgs);
     GateRef newGate = LowerCallRuntime(glue, id, {taggedArgc, taggedRestIdx});
     ReplaceHirToCall(gate, newGate);
 }

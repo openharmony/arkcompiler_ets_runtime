@@ -83,12 +83,12 @@ public:
     bool VerifyFilePath([[maybe_unused]] const std::string &filePath, [[maybe_unused]] bool toGenerate = false) const;
 
     struct FuncEntryDes {
-        uint64_t codeAddr_;
-        CallSignature::TargetKind kind_;
-        uint32_t indexInKind_;
-        uint32_t moduleIndex_;
-        int fpDeltaPrevFramSp_;
-        uint32_t funcSize_;
+        uint64_t codeAddr_ {0};
+        CallSignature::TargetKind kind_ {CallSignature::TargetKind::COMMON_STUB};
+        uint32_t indexInKind_ {0};
+        uint32_t moduleIndex_ {0};
+        int fpDeltaPrevFramSp_ {0};
+        uint32_t funcSize_ {0};
         bool IsStub() const
         {
             return CallSignature::TargetKind::STUB_BEGIN <= kind_ && kind_ < CallSignature::TargetKind::STUB_END;
@@ -163,6 +163,10 @@ public:
                       uint32_t moduleIndex, int delta, uint32_t size)
     {
         FuncEntryDes des;
+        if (memset_s(&des, sizeof(des), 0, sizeof(des)) != EOK) {
+            LOG_FULL(FATAL) << "memset failed";
+            return;
+        }
         des.kind_ = kind;
         des.indexInKind_ = static_cast<uint32_t>(indexInKind);
         des.codeAddr_ = offset;

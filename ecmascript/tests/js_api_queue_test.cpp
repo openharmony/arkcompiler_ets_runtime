@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_api_queue.h"
+#include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/tests/test_helper.h"

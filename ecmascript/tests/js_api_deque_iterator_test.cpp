@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_api_deque_iterator.h"
-#include "ecmascript/js_api_deque.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/tests/test_helper.h"
 
