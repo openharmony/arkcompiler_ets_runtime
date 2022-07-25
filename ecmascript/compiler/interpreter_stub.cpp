@@ -33,9 +33,8 @@
 namespace panda::ecmascript::kungfu {
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
 #define DECLARE_ASM_HANDLER(name)                                                         \
-void name##StubBuilder::GenerateCircuit(const CompilationConfig *cfg)                     \
+void name##StubBuilder::GenerateCircuit()                                                 \
 {                                                                                         \
-    StubBuilder::GenerateCircuit(cfg);                                                    \
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));      \
     GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));          \
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));          \
@@ -54,9 +53,8 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
                                      GateRef acc, GateRef hotnessCounter)
 #else
 #define DECLARE_ASM_HANDLER(name)                                                         \
-void name##StubBuilder::GenerateCircuit(const CompilationConfig *cfg)                     \
+void name##StubBuilder::GenerateCircuit()                                                 \
 {                                                                                         \
-    StubBuilder::GenerateCircuit(cfg);                                                    \
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));      \
     GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));          \
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));          \

@@ -63,6 +63,7 @@ source_set("libark_jsoptimizer_set") {
     "llvm_ir_builder.cpp",
     "rt_call_signature.cpp",
     "scheduler.cpp",
+    "stub.cpp",
     "stub_builder.cpp",
     "test_stubs.cpp",
     "test_stubs_signature.cpp",

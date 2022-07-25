@@ -104,14 +104,14 @@ GateRef InterpreterStubBuilder::ReadInst4_3(GateRef pc)
 GateRef InterpreterStubBuilder::ReadInstSigned8_0(GateRef pc)
 {
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
-    return GetEnvironment()->GetBulder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    return GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
 }
 
 GateRef InterpreterStubBuilder::ReadInstSigned16_0(GateRef pc)
 {
     /* 2 : skip 8 bits of opcode and 8 bits of low bits */
     GateRef currentInst = Load(VariableType::INT8(), pc, IntPtr(2));
-    GateRef currentInst1 = GetEnvironment()->GetBulder()->UnaryArithmetic(
+    GateRef currentInst1 = GetEnvironment()->GetBuilder()->UnaryArithmetic(
         OpCode(OpCode::SEXT_TO_INT32), currentInst);
     GateRef currentInst2 = Int32LSL(currentInst1, Int32(8));  // 8 : set as high 8 bits
     return Int32Add(currentInst2, ZExtInt8ToInt32(ReadInst8_0(pc)));
@@ -121,7 +121,7 @@ GateRef InterpreterStubBuilder::ReadInstSigned32_0(GateRef pc)
 {
     /* 4 : skip 8 bits of opcode and 24 bits of low bits */
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(4));
-    GateRef currentInst = GetEnvironment()->GetBulder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    GateRef currentInst = GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
     GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_2(pc)));
     GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));  // 8 : set as high 8 bits
@@ -467,7 +467,7 @@ GateRef InterpreterStubBuilder::ReadInst64_0(GateRef pc)
 template<typename... Args>
 void InterpreterStubBuilder::DispatchBase(GateRef target, GateRef glue, Args... args)
 {
-    GetEnvironment()->GetBulder()->CallBCHandler(glue, target, {glue, args...});
+    GetEnvironment()->GetBuilder()->CallBCHandler(glue, target, {glue, args...});
 }
 
 void InterpreterStubBuilder::Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool, GateRef profileTypeInfo,
@@ -494,7 +494,7 @@ void InterpreterStubBuilder::DispatchDebugger(GateRef glue, GateRef sp, GateRef 
     GateRef opcode = Load(VariableType::INT8(), pc);
     GateRef target = PtrMul(ChangeInt32ToIntPtr(ZExtInt8ToInt32(opcode)), IntPtrSize());
     auto args = { glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter };
-    GetEnvironment()->GetBulder()->CallBCDebugger(glue, target, args);
+    GetEnvironment()->GetBuilder()->CallBCDebugger(glue, target, args);
     Return();
 }
 
@@ -503,7 +503,7 @@ void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, Gate
 {
     GateRef target = PtrMul(IntPtr(BytecodeStubCSigns::ID_ExceptionHandler), IntPtrSize());
     auto args = { glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter };
-    GetEnvironment()->GetBulder()->CallBCDebugger(glue, target, args);
+    GetEnvironment()->GetBuilder()->CallBCDebugger(glue, target, args);
     Return();
 }
 
@@ -528,13 +528,13 @@ GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
     auto env = GetEnvironment();
     GateRef x = Load(VariableType::INT16(), method,
                      IntPtr(JSMethod::GetHotnessCounterOffset(env->IsArch32Bit())));
-    return GetEnvironment()->GetBulder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    return GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
 }
 
 void InterpreterStubBuilder::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
 {
     auto env = GetEnvironment();
-    GateRef newValue = env->GetBulder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT16), value);
+    GateRef newValue = env->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT16), value);
     Store(VariableType::INT16(), glue, method,
           IntPtr(JSMethod::GetHotnessCounterOffset(env->IsArch32Bit())), newValue);
 }

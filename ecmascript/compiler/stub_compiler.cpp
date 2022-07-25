@@ -26,6 +26,7 @@
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/compiler/scheduler.h"
+#include "ecmascript/compiler/stub.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -37,8 +38,8 @@
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
 public:
-    explicit StubPassData(StubBuilder *stubBuilder, LLVMModule *module)
-        : PassData(nullptr), module_(module), stubBuilder_(stubBuilder) {}
+    explicit StubPassData(Stub *stub, LLVMModule *module)
+        : PassData(nullptr), module_(module), stub_(stub) {}
     ~StubPassData() = default;
 
     const CompilationConfig *GetCompilationConfig() const
@@ -48,7 +49,7 @@ public:
 
     Circuit *GetCircuit() const
     {
-        return stubBuilder_->GetEnvironment()->GetCircuit();
+        return stub_->GetEnvironment()->GetCircuit();
     }
 
     LLVMModule *GetStubModule() const
@@ -56,21 +57,21 @@ public:
         return module_;
     }
 
-    StubBuilder *GetStubBuilder() const
+    Stub *GetStub() const
     {
-        return stubBuilder_;
+        return stub_;
     }
 
 private:
     LLVMModule *module_;
-    StubBuilder *stubBuilder_;
+    Stub *stub_;
 };
 
 class StubBuildCircuitPass {
 public:
     bool Run(StubPassData *data, [[maybe_unused]] bool enableLog)
     {
-        auto stub = data->GetStubBuilder();
+        auto stub = data->GetStub();
         LOG_COMPILER(INFO) << "Stub Name: " << stub->GetMethodName();
         stub->GenerateCircuit(data->GetCompilationConfig());
         return true;
@@ -103,14 +104,17 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
 
     for (size_t i = 0; i < callSigns.size(); i++) {
         Circuit circuit;
+        Stub stub(callSigns[i], &circuit);
         ASSERT(callSigns[i]->HasConstructor());
-        StubBuilder* stubBuilder = static_cast<StubBuilder*>(callSigns[i]->GetConstructor()(reinterpret_cast<void*>(&circuit)));
+        StubBuilder* stubBuilder = static_cast<StubBuilder*>(
+            callSigns[i]->GetConstructor()(reinterpret_cast<void*>(stub.GetEnvironment())));
+        stub.SetStubBuilder(stubBuilder);
 
         if (!log->IsAlwaysEnabled() && !log->IsAlwaysDisabled()) {  // neither "all" nor "none"
-            enableLog = log->IncludesMethod(stubBuilder->GetMethodName());
+            enableLog = log->IncludesMethod(stub.GetMethodName());
         }
 
-        StubPassData data(stubBuilder, module);
+        StubPassData data(&stub, module);
         PassRunner<StubPassData> pipeline(&data, enableLog);
         pipeline.RunPass<StubBuildCircuitPass>();
         pipeline.RunPass<VerifierPass>();
