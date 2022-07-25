@@ -16,9 +16,11 @@
 #ifndef ECMASCRIPT_TOOLING_AGENT_RUNTIME_IMPL_H
 #define ECMASCRIPT_TOOLING_AGENT_RUNTIME_IMPL_H
 
-#include "libpandabase/macros.h"
+
 #include "ecmascript/tooling/base/pt_params.h"
 #include "ecmascript/tooling/dispatcher.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::tooling {
 class RuntimeImpl final {

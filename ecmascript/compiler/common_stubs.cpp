@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-#include "common_stubs.h"
+#include "ecmascript/compiler/common_stubs.h"
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
-#include "stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;

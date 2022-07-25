@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_atomics.h"
+
+#include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_typedarray.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"

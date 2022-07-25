@@ -13,16 +13,12 @@
  * limitations under the License.
  */
 
-#include "stub_compiler.h"
-
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <unistd.h>
+#include "ecmascript/compiler/stub_compiler.h"
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/compiler/scheduler.h"
@@ -30,8 +26,8 @@
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/napi/include/jsnapi.h"
+
 #include "generated/base_options.h"
-#include "interpreter_stub-inl.h"
 #include "libpandabase/utils/pandargs.h"
 #include "libpandabase/utils/span.h"
 

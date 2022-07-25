@@ -14,7 +14,9 @@
  */
 
 #include "ecmascript/builtins/builtins_typedarray.h"
+
 #include <cmath>
+
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_array.h"

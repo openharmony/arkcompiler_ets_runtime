@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_bigint.h"
+
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_primitive_ref.h"

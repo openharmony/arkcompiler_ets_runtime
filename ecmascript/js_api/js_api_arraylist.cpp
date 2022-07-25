@@ -16,6 +16,8 @@
 #include "ecmascript/js_api/js_api_arraylist.h"
 
 #include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/js_iterator.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_iterator.h"

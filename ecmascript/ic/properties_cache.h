@@ -19,7 +19,7 @@
 #include <array>
 
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/ecma_macros.h"
 
 namespace panda::ecmascript {

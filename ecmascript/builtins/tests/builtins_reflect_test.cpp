@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_reflect.h"
+
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
@@ -23,7 +24,6 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/tagged_array-inl.h"
-
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
 

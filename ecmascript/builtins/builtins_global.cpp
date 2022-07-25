@@ -14,10 +14,12 @@
  */
 
 #include "ecmascript/builtins/builtins_global.h"
+
 #include <random>
 #include <sstream>
 #include <string>
 #include <vector>
+
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_macros.h"

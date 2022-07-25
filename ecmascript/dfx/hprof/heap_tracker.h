@@ -20,9 +20,10 @@
 #include <cstdint>
 #include <thread>
 
-#include "libpandabase/macros.h"
 #include "ecmascript/tooling/interface/stream.h"
 #include "ecmascript/mem/tagged_object.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class HeapSnapshot;

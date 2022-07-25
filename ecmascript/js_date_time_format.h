@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_JS_DATE_TIME_FORMAT_H
 #define ECMASCRIPT_JS_DATE_TIME_FORMAT_H
 
-#include "js_locale.h"
+#include "ecmascript/js_locale.h"
 
 namespace panda::ecmascript {
 enum class CalendarOption : uint8_t { UNDEFINED = 0x01 };

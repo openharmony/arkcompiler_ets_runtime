@@ -16,12 +16,12 @@
 #ifndef ECMASCRIPT_JS_NUMBER_FORMAT_H
 #define ECMASCRIPT_JS_NUMBER_FORMAT_H
 
-#include "global_env.h"
-#include "js_array.h"
-#include "js_hclass.h"
-#include "js_intl.h"
-#include "js_locale.h"
-#include "js_object.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_intl.h"
+#include "ecmascript/js_locale.h"
+#include "ecmascript/js_object.h"
 
 namespace panda::ecmascript {
 enum class StyleOption : uint8_t { DECIMAL = 0x01, CURRENCY, PERCENT, UNIT, EXCEPTION };

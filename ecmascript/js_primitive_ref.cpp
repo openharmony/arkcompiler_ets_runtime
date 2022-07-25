@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "js_primitive_ref.h"
+#include "ecmascript/js_primitive_ref.h"
+
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"

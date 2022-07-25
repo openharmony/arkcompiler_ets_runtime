@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
+#include "ecmascript/builtins/builtins_string.h"
+
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/builtins/builtins_regexp.h"
-#include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_regexp.h"

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "interpreter_stub-inl.h"
+#include "ecmascript/compiler/interpreter_stub-inl.h"
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/bc_call_signature.h"
@@ -28,6 +28,7 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
+
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {

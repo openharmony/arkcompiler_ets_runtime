@@ -15,15 +15,9 @@
 
 #include "ecmascript/mem/heap-inl.h"
 
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-#include <sys/sysinfo.h>
-#endif
-
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
-#endif
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
+#include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -41,7 +35,14 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
-#include "ecmascript/js_finalization_registry.h"
+
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#include <sys/sysinfo.h>
+#endif
+
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#endif
 
 namespace panda::ecmascript {
 Heap::Heap(EcmaVM *ecmaVm) : ecmaVm_(ecmaVm), thread_(ecmaVm->GetJSThread()),

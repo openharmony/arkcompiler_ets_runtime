@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_plural_rules.h"
+
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_plural_rules.h"
 #include "ecmascript/tests/test_helper.h"

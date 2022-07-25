@@ -24,6 +24,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
+
 #include "libpandabase/macros.h"
 #include "libpandabase/mem/mem.h"
 

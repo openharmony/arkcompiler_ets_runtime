@@ -16,11 +16,12 @@
 #ifndef ECMASCRIPT_BASE_TYPED_ARRAY_HELPER_H
 #define ECMASCRIPT_BASE_TYPED_ARRAY_HELPER_H
 
+#include <limits>
+#include <string>
+
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_typed_array.h"
-#include <limits>
-#include <string>
 
 namespace panda::ecmascript::base {
 enum ElementSize : uint8_t { ONE = 1, TWO = 2, FOUR = 4, EIGHT = 8 };

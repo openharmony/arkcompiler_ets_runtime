@@ -15,9 +15,9 @@
 
 #include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
 
+#include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
-#include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_lightweightmap.h"
 #include "ecmascript/js_array.h"

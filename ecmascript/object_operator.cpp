@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
-#include "object_operator.h"
-#include "ecma_vm.h"
+#include "ecmascript/object_operator.h"
+
 #include "ecmascript/accessor_data.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/global_dictionary.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
@@ -28,7 +30,6 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
-#include "global_dictionary.h"
 
 namespace panda::ecmascript {
 void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)

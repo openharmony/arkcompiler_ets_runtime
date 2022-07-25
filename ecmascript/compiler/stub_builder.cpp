@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/stub_builder-inl.h"
+
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_object.h"

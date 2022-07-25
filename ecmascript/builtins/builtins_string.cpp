@@ -40,6 +40,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_array.h"
+
 #include "unicode/normalizer2.h"
 #include "unicode/normlzr.h"
 #include "unicode/unistr.h"

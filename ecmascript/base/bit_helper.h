@@ -15,8 +15,10 @@
 
 #ifndef ECMASCRIPT_BASE_BIT_HELPER_H
 #define ECMASCRIPT_BASE_BIT_HELPER_H
-#include <stdint.h>
+
+#include <cstdint>
 #include <type_traits>
+
 namespace panda::ecmascript::base {
 template <typename T>
 inline constexpr uint32_t CountLeadingZeros(T value)

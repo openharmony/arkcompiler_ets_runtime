@@ -17,7 +17,8 @@
 #define ECMASCRIPT_COMPILER_BINARY_SECTION_H
 
 #include <map>
-#include <string>
+#include <cstring>
+
 #include "ecmascript/common.h"
 
 namespace panda::ecmascript {

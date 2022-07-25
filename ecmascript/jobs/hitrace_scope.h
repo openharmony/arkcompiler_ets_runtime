@@ -18,6 +18,7 @@
 
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_handle.h"
+
 #if defined(ENABLE_HITRACE)
 #include "hitrace/hitraceid.h"
 #endif

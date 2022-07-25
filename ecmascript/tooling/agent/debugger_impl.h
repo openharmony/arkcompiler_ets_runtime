@@ -16,13 +16,14 @@
 #ifndef ECMASCRIPT_TOOLING_AGENT_DEBUGGER_IMPL_H
 #define ECMASCRIPT_TOOLING_AGENT_DEBUGGER_IMPL_H
 
-#include "libpandabase/macros.h"
 #include "ecmascript/tooling/agent/runtime_impl.h"
 #include "ecmascript/tooling/backend/js_pt_hooks.h"
 #include "ecmascript/tooling/base/pt_params.h"
 #include "ecmascript/tooling/backend/js_pt_extractor.h"
 #include "ecmascript/tooling/dispatcher.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::tooling {
 namespace test {

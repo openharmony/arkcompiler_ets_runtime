@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_boolean.h"
+
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"

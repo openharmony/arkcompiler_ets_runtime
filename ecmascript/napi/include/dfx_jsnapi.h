@@ -23,8 +23,9 @@
 #include <vector>
 
 #include "ecmascript/common.h"
-#include "libpandabase/macros.h"
 #include "ecmascript/tooling/interface/stream.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda {
 namespace ecmascript {
