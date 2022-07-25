@@ -36,7 +36,6 @@ public:
 
     static inline JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
     static inline JSTaggedValue ExecuteNative(EcmaRuntimeCallInfo *info);
-    static inline JSTaggedValue ExecuteAotJSFunction(EcmaRuntimeCallInfo *info);
     static EcmaRuntimeCallInfo* NewRuntimeCallInfo(
         JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
         JSHandle<JSTaggedValue> newTarget, int32_t numArgs, bool needCheckStack = true);

@@ -42,6 +42,8 @@ void SlowPathLowering::CallRuntimeLowering()
         if (op == OpCode::JS_BYTECODE) {
             Lower(gate);
         } else if (op == OpCode::GET_EXCEPTION) {
+            // initialize label manager
+            Environment env(gate, circuit_, &builder_);
             LowerExceptionHandler(gate);
         }
     }
@@ -1166,10 +1168,10 @@ void SlowPathLowering::LowerThrowDeleteSuperProperty(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
 {
     GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+    DebugPrintAot(hirGate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(ExceptionHandler)));
     GateRef depend = acc_.GetDep(hirGate);
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue, exceptionOffset);
-    DebugPrintAot(hirGate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(ExceptionHandler)));
     GateRef loadException = circuit_->NewGate(OpCode(OpCode::LOAD), VariableType::JS_ANY().GetMachineType(),
         0, { depend, val }, VariableType::JS_ANY().GetGateType());
     acc_.SetDep(loadException, depend);
@@ -3293,10 +3295,8 @@ void SlowPathLowering::DebugPrintAot(GateRef gate, GateRef glue, GateRef index)
 {
     if (enableLog_) {
         GateRef constIndex = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(index));
-        const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
-        GateRef target = builder_.IntPtr(RTSTUB_ID(DebugAOTPrint));
-        GateRef result = builder_.Call(cs, glue, target, acc_.GetDep(gate), {constIndex});
-        acc_.SetDep(gate, result);
+        [[maybe_unused]]GateRef debugGate = builder_.CallRuntime(glue,  RTSTUB_ID(DebugAOTPrint), acc_.GetDep(gate), {constIndex});
+        acc_.SetDep(gate, debugGate);
     }
 }
 }  // namespace panda::ecmascript

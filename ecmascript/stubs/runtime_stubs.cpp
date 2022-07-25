@@ -1738,15 +1738,6 @@ JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue
     return arrHandle.GetTaggedValue().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(JSObjectGetMethod)
-{
-    RUNTIME_STUBS_HEADER(JSObjectGetMethod);
-    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    JSHandle<JSTaggedValue> result = JSObject::GetMethod(thread, obj, value);
-    return result->GetRawData();
-}
-
 int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hClass,
                                            JSTaggedType key, int32_t num)
 {
