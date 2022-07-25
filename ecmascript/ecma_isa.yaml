@@ -333,7 +333,7 @@ groups:
         prefix: ecma
         format: [pref_op_v1_8_v2_8]
       - sig: ecma.setobjectwithproto v1:in:top, v2:in:top
-        acc: none
+        acc: out:top
         prefix: ecma
         format: [pref_op_v1_8_v2_8]
       - sig: ecma.ldobjbyvalue v1:in:top, v2:in:top
