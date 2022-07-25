@@ -3295,7 +3295,8 @@ void SlowPathLowering::DebugPrintBC(GateRef gate, GateRef glue, GateRef index)
 {
     if (enableLog_) {
         GateRef constIndex = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(index));
-        [[maybe_unused]]GateRef debugGate = builder_.CallRuntime(glue,  RTSTUB_ID(DebugAOTPrint), acc_.GetDep(gate), {constIndex});
+        [[maybe_unused]]GateRef debugGate = builder_.CallRuntime(glue,  RTSTUB_ID(DebugAOTPrint),
+                                                                 acc_.GetDep(gate), {constIndex});
         acc_.SetDep(gate, debugGate);
     }
 }
