@@ -127,7 +127,8 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModule(JSThread 
         std::string requestPath = std::string(moduleFilename);
         std::string callbackModuleName = resolvePathCallback(dirPath, requestPath);
         if (callbackModuleName == "") {
-            LOG_ECMA(ERROR) << "moduleRequest callbackModuleName is hole failed";
+            LOG_ECMA(ERROR) << "dirPath: " << dirPath << "\n" << " requestPath: " << requestPath << "\n"
+                            << " moduleRequest callbackModuleName is hole failed";
             UNREACHABLE();
         }
         moduleFullname = callbackModuleName.c_str();
@@ -423,23 +424,23 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
         }
     }
 
+    JSHandle<JSTaggedValue> importEntriesTv(thread, module->GetImportEntries());
+    if (importEntriesTv->IsUndefined()) {
+        return;
+    }
+
     // 2. Assert: All named exports from module are resolvable.
     // 3. Let realm be module.[[Realm]].
     // 4. Assert: realm is not undefined.
     // 5. Let env be NewModuleEnvironment(realm.[[GlobalEnv]]).
-    JSHandle<LinkedHashMap> map = LinkedHashMap::Create(thread);
+    JSHandle<NameDictionary> map(NameDictionary::Create(thread, DEFAULT_DICTIONART_CAPACITY));
     // 6. Set module.[[Environment]] to env.
     module->SetEnvironment(thread, map);
     // 7. Let envRec be env's EnvironmentRecord.
     JSMutableHandle<JSTaggedValue> envRec(thread, module->GetEnvironment());
     ASSERT(!envRec->IsUndefined());
     // 8. For each ImportEntry Record in in module.[[ImportEntries]], do
-    JSTaggedValue importEntriesTv = module->GetImportEntries();
-    if (importEntriesTv.IsUndefined()) {
-        module->SetEnvironment(thread, envRec);
-        return;
-    }
-    JSHandle<TaggedArray> importEntries(thread, importEntriesTv);
+    JSHandle<TaggedArray> importEntries(importEntriesTv);
     size_t importEntriesLen = importEntries->GetLength();
     JSMutableHandle<ImportEntry> in(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
@@ -459,9 +460,10 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
             JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, importedModule);
             // ii. Perform ! envRec.CreateImmutableBinding(in.[[LocalName]], true).
             // iii. Call envRec.InitializeBinding(in.[[LocalName]], namespace).
-            JSHandle<LinkedHashMap> mapHandle = JSHandle<LinkedHashMap>::Cast(envRec);
+            JSHandle<NameDictionary> mapHandle = JSHandle<NameDictionary>::Cast(envRec);
             localName.Update(in->GetLocalName());
-            JSHandle<LinkedHashMap> newMap = LinkedHashMap::Set(thread, mapHandle, localName, moduleNamespace);
+            JSHandle<NameDictionary> newMap = NameDictionary::Put(thread, mapHandle, localName, moduleNamespace,
+                                                                  PropertyAttributes::Default());
             envRec.Update(newMap);
         } else {
             // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
@@ -474,9 +476,10 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
             }
             // iii. Call envRec.CreateImportBinding(
             //    in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
-            JSHandle<LinkedHashMap> mapHandle = JSHandle<LinkedHashMap>::Cast(envRec);
+            JSHandle<NameDictionary> mapHandle = JSHandle<NameDictionary>::Cast(envRec);
             localName.Update(in->GetLocalName());
-            JSHandle<LinkedHashMap> newMap = LinkedHashMap::Set(thread, mapHandle, localName, resolution);
+            JSHandle<NameDictionary> newMap = NameDictionary::Put(thread, mapHandle, localName, resolution,
+                                                                  PropertyAttributes::Default());
             envRec.Update(newMap);
         }
     }
@@ -805,7 +808,7 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTagge
     JSHandle<SourceTextModule> module(thread, this);
     JSMutableHandle<JSTaggedValue> data(thread, module->GetNameDictionary());
     if (data->IsUndefined()) {
-        data.Update(NameDictionary::Create(thread, DEAULT_DICTIONART_CAPACITY));
+        data.Update(NameDictionary::Create(thread, DEFAULT_DICTIONART_CAPACITY));
     }
 
     JSMutableHandle<NameDictionary> dataDict(data);
