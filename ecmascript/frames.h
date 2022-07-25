@@ -276,7 +276,7 @@ enum class FrameType: uintptr_t {
     ASM_INTERPRETER_ENTRY_FRAME = 15,
     ASM_INTERPRETER_BRIDGE_FRAME = 16,
     OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME = 17,
-    OPTIMIZED_JS_FUNCTION_BRIDGE_FRAME = 18,
+    OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME = 18,
 
     FRAME_TYPE_BEGIN = OPTIMIZED_FRAME,
     FRAME_TYPE_END = OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME,
@@ -349,11 +349,11 @@ private:
 STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, OptimizedFrame::SizeArch64);
 
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-struct OptimizedJSFunctionBridgeFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
-                                                   base::AlignedPointer,
-                                                   base::AlignedPointer,
-                                                   base::AlignedPointer,
-                                                   base::AlignedPointer> {
+struct OptimizedJSFunctionUnfoldArgVFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer> {
 private:
     enum class Index : size_t {
         CallSiteSpIndex = 0,
@@ -364,10 +364,10 @@ private:
     };
     static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
 
-    static OptimizedJSFunctionBridgeFrame* GetFrameFromSp(const JSTaggedType *sp)
+    static OptimizedJSFunctionUnfoldArgVFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
-        return reinterpret_cast<OptimizedJSFunctionBridgeFrame *>(reinterpret_cast<uintptr_t>(sp)
-            - MEMBER_OFFSET(OptimizedJSFunctionBridgeFrame, prevFp));
+        return reinterpret_cast<OptimizedJSFunctionUnfoldArgVFrame *>(reinterpret_cast<uintptr_t>(sp)
+            - MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, prevFp));
     }
     inline JSTaggedType* GetPrevFrameFp() const
     {

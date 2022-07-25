@@ -1314,11 +1314,11 @@ HWTEST_F_L0(StubTest, JSCallTest)
 
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
-    EXPECT_EQ(result, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(3.0));
 
     auto result1 = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 6, argV, fooEntry);
-    EXPECT_EQ(result1, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result1, JSTaggedValue(3.0));
 }
 
 HWTEST_F_L0(StubTest, JSCallTest1)
@@ -1339,7 +1339,7 @@ HWTEST_F_L0(StubTest, JSCallTest1)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, foo2Entry);
-    EXPECT_EQ(result, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(3.0)));
 }
 
 HWTEST_F_L0(StubTest, JSCallTest2)
@@ -1361,7 +1361,7 @@ HWTEST_F_L0(StubTest, JSCallTest2)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, foo1Entry);
-    EXPECT_EQ(result, 0x7ff9000000000000UL);
+    EXPECT_EQ(result, JSTaggedValue(0x7ff9000000000000UL));
 }
 
 HWTEST_F_L0(StubTest, JSCallNativeTest)
@@ -1382,7 +1382,7 @@ HWTEST_F_L0(StubTest, JSCallNativeTest)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
-    EXPECT_EQ(result, JSTaggedValue::Undefined().GetRawData());
+    EXPECT_EQ(result, JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(StubTest, JSCallBoundTest)
@@ -1404,7 +1404,7 @@ HWTEST_F_L0(StubTest, JSCallBoundTest)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
-    EXPECT_EQ(result, JSTaggedValue(38.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(38.0));
 }
 
 // test for proxy method is undefined
@@ -1429,7 +1429,7 @@ HWTEST_F_L0(StubTest, JSCallTest3)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 6, 6, argV, fooProxyEntry);
-    EXPECT_EQ(result, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(3.0));
 }
 
 // test for proxy method isn't undefined

@@ -2173,16 +2173,16 @@ void AssemblerStubsX64::PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Re
     __ Movq(prevFp, Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 }
 
-void AssemblerStubsX64::PushOptimizedFrame(ExtendedAssembler *assembler, Register callSiteSp)
+void AssemblerStubsX64::PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp)
 {
     __ Pushq(rbp);
     __ Movq(rsp, rbp);
     // construct frame
-    __ Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_BRIDGE_FRAME));
+    __ Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME));
     __ Pushq(callSiteSp);
 }
 
-void AssemblerStubsX64::PopOptimizedFrame(ExtendedAssembler *assembler)
+void AssemblerStubsX64::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 {
     Register sp(rsp);
     // 16 : 16 means pop call site sp and type
@@ -2206,7 +2206,7 @@ void AssemblerStubsX64::JSCallWithArgV(ExtendedAssembler *assembler)
 
     __ Movq(sp, callsiteSp);
     __ Addq(Immediate(8), callsiteSp);   // 8 : 8 means skip pc to get last callsitesp
-    PushOptimizedFrame(assembler, callsiteSp);
+    PushOptimizedUnfoldArgVFrame(assembler, callsiteSp);
     __ Testb(1, actualNumArgs);
     __ Jne(&align16Bytes);
     __ PushAlignBytes();
@@ -2226,7 +2226,7 @@ void AssemblerStubsX64::JSCallWithArgV(ExtendedAssembler *assembler)
     __ Addq(FRAME_SLOT_SIZE, rsp);
     __ Mov(Operand(sp, 0), actualNumArgs);
     PopJSFunctionArgs(assembler, actualNumArgs);
-    PopOptimizedFrame(assembler);
+    PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
 }
 
