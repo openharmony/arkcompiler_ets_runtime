@@ -1339,7 +1339,7 @@ HWTEST_F_L0(StubTest, JSCallTest1)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, foo2Entry);
-    EXPECT_EQ(result, JSTaggedValue(3.0)));
+    EXPECT_EQ(result, JSTaggedValue(3.0));
 }
 
 HWTEST_F_L0(StubTest, JSCallTest2)
