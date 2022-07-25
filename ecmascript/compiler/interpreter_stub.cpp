@@ -2451,7 +2451,6 @@ DECLARE_ASM_HANDLER(HandleSetObjectWithProtoPrefV8V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    varAcc = result;
     DISPATCH_WITH_ACC(PREF_V8_V8);
 }
 
