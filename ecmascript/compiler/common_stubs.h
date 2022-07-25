@@ -51,12 +51,12 @@ namespace panda::ecmascript::kungfu {
 #define DECLARE_STUB_CLASS(name)                                                   \
     class name##StubBuilder : public StubBuilder {                                 \
     public:                                                                        \
-        explicit name##StubBuilder(CallSignature *callSignature, Circuit *circuit) \
-            : StubBuilder(callSignature, circuit) {}                               \
+        explicit name##StubBuilder(CallSignature *callSignature, Environment *env) \
+            : StubBuilder(callSignature, env) {}                                   \
         ~name##StubBuilder() = default;                                            \
         NO_MOVE_SEMANTIC(name##StubBuilder);                                       \
         NO_COPY_SEMANTIC(name##StubBuilder);                                       \
-        void GenerateCircuit(const CompilationConfig *cfg) override;               \
+        void GenerateCircuit() override;                                           \
     };
     COMMON_STUB_LIST(DECLARE_STUB_CLASS)
 #undef DECLARE_STUB_CLASS
