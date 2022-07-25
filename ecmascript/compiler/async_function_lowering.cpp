@@ -132,9 +132,11 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
             // Find the node with LOOP_BEGIN as State input and modify its
             // state input to the newly created IF_FALSE node.
             auto uses = accessor_.Uses(stateInGate);
-            for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+            for (auto useIt = uses.begin(); useIt != uses.end();) {
                 if (accessor_.GetOpCode(*useIt).IsState() && *useIt != ifBranch) {
-                    accessor_.ReplaceIn(useIt, ifFalse);
+                    useIt = accessor_.ReplaceIn(useIt, ifFalse);
+                } else {
+                    useIt++;
                 }
             }
 

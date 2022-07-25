@@ -3276,29 +3276,21 @@ void InterpreterAssembly::HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8(
     JSTaggedValue acc, int32_t hotnessCounter)
 {
     uint16_t methodId = READ_INST_16_1();
-    uint16_t imm = READ_INST_16_3();
     uint16_t length = READ_INST_16_5();
     uint16_t v0 = READ_INST_8_7();
     uint16_t v1 = READ_INST_8_8();
     LOG_INST() << "intrinsics::defineclasswithbuffer"
-                << " method id:" << methodId << " literal id:" << imm << " lexenv: v" << v0 << " parent: v" << v1;
+                << " method id:" << methodId << " lexenv: v" << v0 << " parent: v" << v1;
     JSFunction *classTemplate = JSFunction::Cast(
         ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(methodId).GetTaggedObject());
     ASSERT(classTemplate != nullptr);
 
-    TaggedArray *literalBuffer = TaggedArray::Cast(
-        ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(imm).GetTaggedObject());
     JSTaggedValue lexenv = GET_VREG_VALUE(v0);
     JSTaggedValue proto = GET_VREG_VALUE(v1);
 
-    JSTaggedValue res;
-    if (LIKELY(!classTemplate->GetResolved())) {
-        res = SlowRuntimeStub::ResolveClass(thread, JSTaggedValue(classTemplate), literalBuffer,
-                                            proto, lexenv, ConstantPool::Cast(constpool.GetTaggedObject()));
-    } else {
-        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate),
-                                                      proto, lexenv, ConstantPool::Cast(constpool.GetTaggedObject()));
-    }
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate),
+        proto, lexenv, ConstantPool::Cast(constpool.GetTaggedObject()));
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
     ASSERT(res.IsClassConstructor());

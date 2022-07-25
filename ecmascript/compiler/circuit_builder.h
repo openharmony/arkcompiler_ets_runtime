@@ -536,7 +536,7 @@ public:
     {
         currentLabel_ = label;
     }
-    CircuitBuilder *GetBulder() const
+    CircuitBuilder *GetBuilder() const
     {
         return circuitBuilder_;
     }

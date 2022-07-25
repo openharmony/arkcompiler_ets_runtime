@@ -15,6 +15,8 @@
 
 #include "ecmascript/builtins/builtins_math.h"
 
+#include <random>
+
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_number.h"
 

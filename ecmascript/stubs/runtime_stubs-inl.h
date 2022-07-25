@@ -626,10 +626,6 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     JSHandle<JSObject> clsPrototype(thread, ctor->GetFunctionPrototype());
 
     bool canShareHClass = false;
-    if (ctor->GetClass()->GetProto() == base.GetTaggedValue()) {
-        canShareHClass = true;
-    }
-
     JSHandle<JSFunction> cloneClass = factory->CloneClassCtor(ctor, lexenv, canShareHClass);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> cloneClassPrototype = factory->CloneObjectLiteral(JSHandle<JSObject>(clsPrototype), lexenv,

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 
 #include "ecmascript/builtins/builtins_errors.h"
@@ -21,7 +20,6 @@
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
-
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {

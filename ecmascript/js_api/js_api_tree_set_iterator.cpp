@@ -21,7 +21,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_tree.h"
 
-
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
 JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)

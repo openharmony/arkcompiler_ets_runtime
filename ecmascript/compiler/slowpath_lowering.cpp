@@ -16,6 +16,8 @@
 #include "ecmascript/compiler/slowpath_lowering.h"
 
 namespace panda::ecmascript::kungfu {
+using UseIterator = GateAccessor::UseIterator;
+
 #define CREATE_DOUBLE_EXIT(SuccessLabel, FailLabel)               \
     std::vector<GateRef> successControl;                          \
     std::vector<GateRef> failControl;                             \
@@ -57,14 +59,15 @@ int32_t SlowPathLowering::ComputeCallArgc(GateRef gate, EcmaOpcode op)
     return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 2; // 2: calltarget and bcoffset
 }
 
-void SlowPathLowering::ReplaceHirControlGate(GateAccessor::UsesIterator &useIt, GateRef newGate, bool noThrow)
+UseIterator SlowPathLowering::ReplaceHirControlGate(const UseIterator &useIt, GateRef newGate, bool noThrow)
 {
     ASSERT(acc_.GetOpCode(*useIt) == OpCode::IF_SUCCESS || acc_.GetOpCode(*useIt) == OpCode::IF_EXCEPTION);
     if (!noThrow) {
         auto firstUse = acc_.Uses(*useIt).begin();
         acc_.ReplaceIn(*firstUse, firstUse.GetIndex(), newGate);
     }
-    acc_.DeleteGate(useIt);
+    auto next = acc_.DeleteGate(useIt);
+    return next;
 }
 
 // depends on the construction of JSgates in BytecodeCircuitBuilder
@@ -80,40 +83,43 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
         }
     }
     auto uses = acc_.Uses(hir);
-    for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        const OpCode op = acc_.GetOpCode(*useIt);
         // replace HIR:IF_SUCCESS/IF_EXCEPTION with control flow in Label successExit/failExit of MIR Circuit
-        if (acc_.GetOpCode(*useIt) == OpCode::IF_SUCCESS) {
-            ReplaceHirControlGate(useIt, successControl[0]);
-        } else if (acc_.GetOpCode(*useIt) == OpCode::IF_EXCEPTION) {
-            ReplaceHirControlGate(useIt, exceptionControl[0], noThrow);
+        if (op == OpCode::IF_SUCCESS) {
+            useIt = ReplaceHirControlGate(useIt, successControl[0]);
+        } else if (op == OpCode::IF_EXCEPTION) {
+            useIt = ReplaceHirControlGate(useIt, exceptionControl[0], noThrow);
         // change depend flow in catch block from HIR:JS_BYTECODE to depend flow in MIR Circuit
-        } else if (acc_.GetOpCode(*useIt) == OpCode::DEPEND_SELECTOR) {
+        } else if (op == OpCode::DEPEND_SELECTOR) {
             if (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*useIt, 0), useIt.GetIndex() - 1)) == OpCode::IF_EXCEPTION) {
-                noThrow ? acc_.DeleteExceptionDep(useIt) : acc_.ReplaceIn(useIt, exceptionControl[1]);
+                useIt = noThrow ? acc_.DeleteExceptionDep(useIt)
+                                : acc_.ReplaceIn(useIt, exceptionControl[1]);
             } else {
-                acc_.ReplaceIn(useIt, successControl[1]);
+                useIt = acc_.ReplaceIn(useIt, successControl[1]);
             }
-        } else if (acc_.GetOpCode(*useIt) == OpCode::DEPEND_RELAY) {
+        } else if (op == OpCode::DEPEND_RELAY) {
             if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION) {
-                acc_.ReplaceIn(useIt, exceptionControl[1]);
+                useIt = acc_.ReplaceIn(useIt, exceptionControl[1]);
             } else {
-                acc_.ReplaceIn(useIt, successControl[1]);
+                useIt = acc_.ReplaceIn(useIt, successControl[1]);
             }
         // replace normal depend
-        } else if ((acc_.GetOpCode(*useIt) == OpCode::JS_BYTECODE) && useIt.GetIndex() == 1) {
-            acc_.ReplaceIn(useIt, successControl[1]);
-        } else if ((acc_.GetOpCode(*useIt) == OpCode::RUNTIME_CALL) && useIt.GetIndex() == 0) {
-            acc_.ReplaceIn(useIt, successControl[1]);
+        } else if (op == OpCode::JS_BYTECODE && useIt.GetIndex() == 1) {
+            useIt = acc_.ReplaceIn(useIt, successControl[1]);
+        } else if (op == OpCode::RUNTIME_CALL && useIt.GetIndex() == 0) {
+            useIt = acc_.ReplaceIn(useIt, successControl[1]);
         // if no catch block, just throw exception(RETURN)
-        } else if ((acc_.GetOpCode(*useIt) == OpCode::RETURN) &&
-                    acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION) {
-            noThrow ? acc_.DeleteExceptionDep(useIt) : acc_.ReplaceIn(useIt, exceptionControl[1]);
+        } else if (op == OpCode::RETURN &&
+                   acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION) {
+            useIt = noThrow ? acc_.DeleteExceptionDep(useIt)
+                            : acc_.ReplaceIn(useIt, exceptionControl[1]);
         // if hir isThrow
-        } else if (acc_.GetOpCode(*useIt) != OpCode::VALUE_SELECTOR && useIt.GetIndex() == 1) {
-            acc_.ReplaceIn(useIt, successControl[1]);
+        } else if (op != OpCode::VALUE_SELECTOR && useIt.GetIndex() == 1) {
+            useIt = acc_.ReplaceIn(useIt, successControl[1]);
         // replace data flow with data output in label successExit(incluing JSgates and phigates)
         } else {
-            acc_.ReplaceIn(useIt, outir);
+            useIt = acc_.ReplaceIn(useIt, outir);
         }
     }
     acc_.DeleteGate(hir);
@@ -133,16 +139,16 @@ void SlowPathLowering::ReplaceHirToJSCall(GateRef hirGate, GateRef callGate, Gat
     GateRef ifBranch = builder_.Branch(stateInGate, equal);
 
     auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
             acc_.SetOpCode(*it, OpCode::IF_FALSE);
-            acc_.ReplaceIn(it, ifBranch);
+            it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
                 acc_.SetOpCode(*it, OpCode::IF_TRUE);
-                acc_.ReplaceIn(it, ifBranch);
+                it = acc_.ReplaceIn(it, ifBranch);
             } else {
-                acc_.ReplaceIn(it, callGate);
+                it = acc_.ReplaceIn(it, callGate);
             }
         }
     }
@@ -183,16 +189,16 @@ void SlowPathLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool 
     }
 
     auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
             acc_.SetOpCode(*it, OpCode::IF_FALSE);
-            acc_.ReplaceIn(it, ifBranch);
+            it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
                 acc_.SetOpCode(*it, OpCode::IF_TRUE);
-                acc_.ReplaceIn(it, ifBranch);
+                it = acc_.ReplaceIn(it, ifBranch);
             } else {
-                acc_.ReplaceIn(it, callGate);
+                it = acc_.ReplaceIn(it, callGate);
             }
         }
     }
@@ -215,16 +221,16 @@ void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate)
 
     GateRef ifBranch = builder_.Branch(stateInGate, builder_.Boolean(true));
     auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
             acc_.SetOpCode(*it, OpCode::IF_FALSE);
-            acc_.ReplaceIn(it, ifBranch);
+            it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
                 acc_.SetOpCode(*it, OpCode::IF_TRUE);
-                acc_.ReplaceIn(it, ifBranch);
+                it = acc_.ReplaceIn(it, ifBranch);
             } else {
-                acc_.ReplaceIn(it, callGate);
+                it = acc_.ReplaceIn(it, callGate);
             }
         }
     }
@@ -1143,11 +1149,11 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
     GateRef clearException = circuit_->NewGate(OpCode(OpCode::STORE), 0,
         { loadException, holeCst, val }, VariableType::INT64().GetGateType());
     auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) != OpCode::VALUE_SELECTOR && acc_.IsDependIn(it)) {
-            acc_.ReplaceIn(it, clearException);
+            it = acc_.ReplaceIn(it, clearException);
         } else {
-            acc_.ReplaceIn(it, loadException);
+            it = acc_.ReplaceIn(it, loadException);
         }
     }
     acc_.DeleteGate(hirGate);
@@ -1711,17 +1717,17 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 
     GateRef mergeTrueState = builder_.Merge(trueState.data(), trueState.size());
     auto uses = acc_.Uses(gate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_TRUE) {
             acc_.SetOpCode(*it, OpCode::ORDINARY_BLOCK);
-            acc_.ReplaceIn(it, mergeTrueState);
+            it = acc_.ReplaceIn(it, mergeTrueState);
         } else if (acc_.GetOpCode(*it) == OpCode::IF_FALSE) {
             acc_.SetOpCode(*it, OpCode::ORDINARY_BLOCK);
-            acc_.ReplaceIn(it, mergeFalseState);
+            it = acc_.ReplaceIn(it, mergeFalseState);
         } else if (((acc_.GetOpCode(*it) == OpCode::DEPEND_SELECTOR) ||
                     (acc_.GetOpCode(*it) == OpCode::DEPEND_RELAY)) &&
                     (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*it, 0), it.GetIndex() - 1)) != OpCode::IF_EXCEPTION)) {
-            acc_.ReplaceIn(it, acc_.GetDep(gate));
+            it = acc_.ReplaceIn(it, acc_.GetDep(gate));
         } else {
             UNREACHABLE();
         }
@@ -2993,11 +2999,13 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
         auto indexOffset = builder_.Int32(index);
         GateRef value = GetValueFromTaggedArray(arrayGate, indexOffset);
         auto uses = acc_.Uses(item);
-        for (auto use = uses.begin(); use != uses.end(); use++) {
+        for (auto use = uses.begin(); use != uses.end();) {
             size_t valueStartIndex = acc_.GetStateCount(*use) + acc_.GetDependCount(*use);
             size_t valueEndIndex = valueStartIndex + acc_.GetInValueCount(*use);
             if (use.GetIndex() >= valueStartIndex && use.GetIndex() < valueEndIndex) {
-                acc_.ReplaceIn(use, value);
+                use = acc_.ReplaceIn(use, value);
+            } else {
+                use++;
             }
         }
         acc_.DeleteGate(item);

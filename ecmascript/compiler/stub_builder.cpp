@@ -13,11 +13,10 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/stub_builder.h"
+#include "ecmascript/compiler/stub_builder-inl.h"
 
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_object.h"
@@ -29,99 +28,77 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
-StubBuilder::StubBuilder(CallSignature *callSignature, Circuit *circuit)
-    : callSignature_(callSignature), builder_(circuit),
-      acc_(circuit), env_(callSignature->GetParametersCount(), &builder_)
-{
-}
-
-void StubBuilder::InitializeArguments()
-{
-    auto argLength = callSignature_->GetParametersCount();
-    auto paramsType = callSignature_->GetParametersType();
-    for (size_t i = 0; i < argLength; i++) {
-        GateRef argument = Argument(i);
-        if (paramsType[i] == VariableType::NATIVE_POINTER()) {
-            auto type = env_.IsArch64Bit() ? MachineType::I64 : MachineType::I32;
-            acc_.SetMachineType(argument, type);
-        } else {
-            acc_.SetMachineType(argument, paramsType[i].GetMachineType());
-        }
-        acc_.SetGateType(argument, paramsType[i].GetGateType());
-    }
-}
-
 void StubBuilder::Jump(Label *label)
 {
     ASSERT(label);
-    auto currentLabel = env_.GetCurrentLabel();
+    auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    auto jump = env_.GetBulder()->Goto(currentControl);
+    auto jump = env_->GetBuilder()->Goto(currentControl);
     currentLabel->SetControl(jump);
     label->AppendPredecessor(currentLabel);
     label->MergeControl(currentLabel->GetControl());
-    env_.SetCurrentLabel(nullptr);
+    env_->SetCurrentLabel(nullptr);
 }
 
 void StubBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel)
 {
-    auto currentLabel = env_.GetCurrentLabel();
+    auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    GateRef ifBranch = env_.GetBulder()->Branch(currentControl, condition);
+    GateRef ifBranch = env_->GetBuilder()->Branch(currentControl, condition);
     currentLabel->SetControl(ifBranch);
-    GateRef ifTrue = env_.GetBulder()->IfTrue(ifBranch);
-    trueLabel->AppendPredecessor(env_.GetCurrentLabel());
+    GateRef ifTrue = env_->GetBuilder()->IfTrue(ifBranch);
+    trueLabel->AppendPredecessor(env_->GetCurrentLabel());
     trueLabel->MergeControl(ifTrue);
-    GateRef ifFalse = env_.GetBulder()->IfFalse(ifBranch);
-    falseLabel->AppendPredecessor(env_.GetCurrentLabel());
+    GateRef ifFalse = env_->GetBuilder()->IfFalse(ifBranch);
+    falseLabel->AppendPredecessor(env_->GetCurrentLabel());
     falseLabel->MergeControl(ifFalse);
-    env_.SetCurrentLabel(nullptr);
+    env_->SetCurrentLabel(nullptr);
 }
 
 void StubBuilder::Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys)
 {
-    auto currentLabel = env_.GetCurrentLabel();
+    auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    GateRef switchBranch = env_.GetBulder()->SwitchBranch(currentControl, index, numberOfKeys);
+    GateRef switchBranch = env_->GetBuilder()->SwitchBranch(currentControl, index, numberOfKeys);
     currentLabel->SetControl(switchBranch);
     for (int i = 0; i < numberOfKeys; i++) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        GateRef switchCase = env_.GetBulder()->SwitchCase(switchBranch, keysValue[i]);
+        GateRef switchCase = env_->GetBuilder()->SwitchCase(switchBranch, keysValue[i]);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         keysLabel[i].AppendPredecessor(currentLabel);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         keysLabel[i].MergeControl(switchCase);
     }
 
-    GateRef defaultCase = env_.GetBulder()->DefaultCase(switchBranch);
+    GateRef defaultCase = env_->GetBuilder()->DefaultCase(switchBranch);
     defaultLabel->AppendPredecessor(currentLabel);
     defaultLabel->MergeControl(defaultCase);
-    env_.SetCurrentLabel(nullptr);
+    env_->SetCurrentLabel(nullptr);
 }
 
 void StubBuilder::LoopBegin(Label *loopHead)
 {
     ASSERT(loopHead);
-    auto loopControl = env_.GetBulder()->LoopBegin(loopHead->GetControl());
+    auto loopControl = env_->GetBuilder()->LoopBegin(loopHead->GetControl());
     loopHead->SetControl(loopControl);
     loopHead->SetPreControl(loopControl);
     loopHead->Bind();
-    env_.SetCurrentLabel(loopHead);
+    env_->SetCurrentLabel(loopHead);
 }
 
 void StubBuilder::LoopEnd(Label *loopHead)
 {
     ASSERT(loopHead);
-    auto currentLabel = env_.GetCurrentLabel();
+    auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    auto loopend = env_.GetBulder()->LoopEnd(currentControl);
+    auto loopend = env_->GetBuilder()->LoopEnd(currentControl);
     currentLabel->SetControl(loopend);
     loopHead->AppendPredecessor(currentLabel);
     loopHead->MergeControl(loopend);
     loopHead->Seal();
     loopHead->MergeAllControl();
     loopHead->MergeAllDepend();
-    env_.SetCurrentLabel(nullptr);
+    env_->SetCurrentLabel(nullptr);
 }
 
 // FindElementWithCache in ecmascript/layout_info-inl.h
@@ -745,7 +722,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
 GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key)
 {
     GateRef gConstOffset = PtrAdd(glue,
-                                  IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_.Is32Bit())));
+                                  IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
     GateRef gCtorStr = Load(VariableType::JS_ANY(),
         gConstOffset,
         Int64Mul(Int64(sizeof(JSTaggedValue)),
@@ -931,22 +908,22 @@ GateRef StubBuilder::TaggedToRepresentation(GateRef value)
 
 void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
 {
-    auto depend = env_.GetCurrentLabel()->GetDepend();
+    auto depend = env_->GetCurrentLabel()->GetDepend();
     GateRef result;
-    if (env_.IsArch64Bit()) {
+    if (env_->IsArch64Bit()) {
         GateRef ptr = Int64Add(base, offset);
         if (type == VariableType::NATIVE_POINTER()) {
             type = VariableType::INT64();
         }
-        result = env_.GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
-        env_.GetCurrentLabel()->SetDepend(result);
-    } else if (env_.IsArch32Bit()) {
+        result = env_->GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
+        env_->GetCurrentLabel()->SetDepend(result);
+    } else if (env_->IsArch32Bit()) {
         if (type == VariableType::NATIVE_POINTER()) {
             type = VariableType::INT32();
         }
         GateRef ptr = Int32Add(base, offset);
-        result = env_.GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
-        env_.GetCurrentLabel()->SetDepend(result);
+        result = env_->GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
+        env_->GetCurrentLabel()->SetDepend(result);
     } else {
         UNREACHABLE();
     }
@@ -977,7 +954,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
         Branch(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);
         Bind(&isVailedIndex);
         {
-            GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_.Is32Bit()));
+            GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_->Is32Bit()));
             auto oldToNewSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
             Label isNullPtr(env);
             Label notNullPtr(env);
@@ -4092,7 +4069,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         {
             GateRef newTarget = Undefined();
             GateRef thisValue = Undefined();
-            GateRef lexEnv = builder_.GetLexicalEnv(func);
+            GateRef lexEnv = env_->GetBuilder()->GetLexicalEnv(func);
             GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
             switch (mode) {
                 case JSCallMode::CALL_ARG0:

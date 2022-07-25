@@ -125,7 +125,8 @@ public:
     }
 
 private:
-    void ReplaceHirControlGate(GateAccessor::UsesIterator &useIt, GateRef newGate, bool noThrow = false);
+    GateAccessor::UseIterator ReplaceHirControlGate(const GateAccessor::UseIterator &useIt, GateRef newGate,
+                                                    bool noThrow = false);
     void ReplaceHirToSubCfg(GateRef hir, GateRef outir,
                        const std::vector<GateRef> &successControl,
                        const std::vector<GateRef> &exceptionControl,
