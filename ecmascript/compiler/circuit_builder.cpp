@@ -175,7 +175,7 @@ GateRef CircuitBuilder::IntPtr(int64_t val)
 GateRef CircuitBuilder::RelocatableData(uint64_t val)
 {
     auto constantList = Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST));
-    return GetCircuit()->NewGate(OpCode(OpCode::RELOCATABLE_DATA), val, {constantList}, GateType::Empty());
+    return GetCircuit()->NewGate(OpCode(OpCode::RELOCATABLE_DATA), val, {constantList}, GateType::TaggedValue());
 }
 
 GateRef CircuitBuilder::Boolean(bool val)
