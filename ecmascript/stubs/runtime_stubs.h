@@ -32,6 +32,8 @@ class GlobalEnv;
 class JSThread;
 class JSFunction;
 class ObjectFactory;
+class JSBoundFunction;
+class JSProxy;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
                                          uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
@@ -528,7 +530,19 @@ private:
     static inline JSTaggedValue RuntimeOptSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                            const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc);
-
+    static inline JSTaggedValue RuntimeOptConstruct(JSThread *thread, JSHandle<JSTaggedValue> ctor,
+                                                    JSHandle<JSTaggedValue> newTarget, JSHandle<JSTaggedValue> preArgs,
+                                                    JSHandle<TaggedArray> args);
+    static inline JSTaggedValue RuntimeOptConstructProxy(JSThread *thread, JSHandle<JSProxy> ctor,
+                                                         JSHandle<JSTaggedValue> newTgt,
+                                                         JSHandle<JSTaggedValue> preArgs, JSHandle<TaggedArray> args);
+    static inline JSTaggedValue RuntimeOptConstructBoundFunction(JSThread *thread, JSHandle<JSBoundFunction> ctor,
+                                                                 JSHandle<JSTaggedValue> newTgt,
+                                                                 JSHandle<JSTaggedValue> preArgs,
+                                                                 JSHandle<TaggedArray> args);
+    static inline JSTaggedValue RuntimeOptConstructGeneric(JSThread *thread, JSHandle<JSFunction> ctor,
+                                                           JSHandle<JSTaggedValue> newTgt,
+                                                           JSHandle<JSTaggedValue> preArgs, JSHandle<TaggedArray> args);
     static inline JSTaggedValue RuntimeOptNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc);
     static inline JSTaggedValue RuntimeOptGetLexEnv(JSThread *thread);
     static inline void RuntimeOptSetLexEnv(JSThread *thread, JSTaggedValue lexEnv);

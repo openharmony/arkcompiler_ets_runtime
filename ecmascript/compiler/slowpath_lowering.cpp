@@ -3177,8 +3177,6 @@ void SlowPathLowering::LowerDefineNCFuncDyn(GateRef gate, GateRef glue, GateRef 
     GateRef result;
     DEFVAlUE(method, (&builder_), VariableType::JS_POINTER(),
              GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(methodId)));
-    GateRef codeEntry =
-        builder_.Load(VariableType::NATIVE_POINTER(), *method, builder_.IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET));
     Label isResolved(&builder_);
     Label notResolved(&builder_);
     Label defaultLabel(&builder_);
@@ -3193,7 +3191,6 @@ void SlowPathLowering::LowerDefineNCFuncDyn(GateRef gate, GateRef glue, GateRef 
             &exceptionExit, &notException);
         builder_.Bind(&notException);
         {
-            builder_.SetCodeEntryToFunction(glue, *method, codeEntry);
             builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
             builder_.Jump(&defaultLabel);
         }

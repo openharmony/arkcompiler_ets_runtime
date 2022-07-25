@@ -28,9 +28,6 @@ public:
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
 
     static void SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContext> context);
-
-    static JSTaggedValue Construct(JSThread *thread, JSHandle<JSTaggedValue> ctor, JSHandle<JSTaggedValue> newTarget,
-                                   JSHandle<JSTaggedValue> preArgs, uint32_t argsCount, uint32_t baseArgLocation);
 };
 }  // namespace panda::ecmascript
 
