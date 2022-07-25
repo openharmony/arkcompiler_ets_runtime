@@ -126,7 +126,7 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
 
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetNonMovableSpace()->GetFirstRegion();
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetFirstRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
               constpool1->GetClass()->SizeFromJSHClass(constpool1));
@@ -171,7 +171,7 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
 
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetNonMovableSpace()->GetFirstRegion();
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetFirstRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
               constpool1->GetClass()->SizeFromJSHClass(constpool1));
@@ -186,8 +186,6 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     auto obj3 = constpool1->Get(200).GetTaggedObject();
     auto region = Region::ObjectAddressToRange(obj3);
     EXPECT_TRUE(region->InMachineCodeSpace());
-    auto region1 = Region::ObjectAddressToRange(constpool1);
-    EXPECT_TRUE(region1->InNonMovableSpace());
 
     std::remove(fileName.c_str());
 }
@@ -229,7 +227,7 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName1);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName2);
 
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetNonMovableSpace()->GetFirstRegion();
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetFirstRegion();
     auto constpool = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_TRUE(constpool->Get(0).IsTaggedArray());
     EXPECT_TRUE(constpool->Get(100).IsTaggedArray());
@@ -241,8 +239,6 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
     auto obj3 = constpool->Get(200).GetTaggedObject();
     auto region = Region::ObjectAddressToRange(obj3);
     EXPECT_TRUE(region->InMachineCodeSpace());
-    auto region1 = Region::ObjectAddressToRange(constpool);
-    EXPECT_TRUE(region1->InNonMovableSpace());
 
     std::remove(fileName1.c_str());
     std::remove(fileName2.c_str());

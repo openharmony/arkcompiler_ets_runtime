@@ -41,12 +41,13 @@ public:
         JSHandle<JSTaggedValue> newTarget, int32_t numArgs, bool needCheckStack = true);
     static inline JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
-    static inline void RunInternal(JSThread *thread, ConstantPool *constpool, const uint8_t *pc, JSTaggedType *sp);
+    static inline void RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp);
     static inline void InitStackFrame(JSThread *thread);
     static inline uint32_t FindCatchBlock(JSMethod *caller, uint32_t pc);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
 
     static inline JSTaggedValue GetRuntimeProfileTypeInfo(JSTaggedType *sp);
+    static inline JSTaggedValue GetConstantPool(JSTaggedType *sp);
     static inline bool UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset);
     static inline void NotifyBytecodePcChanged(JSThread *thread);
     static inline const JSPandaFile *GetNativeCallPandafile(JSThread *thread);
