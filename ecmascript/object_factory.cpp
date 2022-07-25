@@ -3633,4 +3633,17 @@ JSHandle<TaggedArray> ObjectFactory::NewOldSpaceTaggedArray(uint32_t length, JST
 {
     return NewTaggedArray(length, initVal, MemSpaceType::OLD_SPACE);
 }
+
+JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<TaggedArray> &elements)
+{
+    JSHandle<JSHClass> cls(thread_,
+                           JSHandle<JSFunction>::Cast(vm_->GetGlobalEnv()->GetArrayFunction())->GetProtoOrDynClass());
+    JSHandle<JSArray> array = JSHandle<JSArray>::Cast(NewJSObject(cls));
+    array->SetElements(thread_, elements);
+
+    array->SetLength(thread_, JSTaggedValue(elements->GetLength()));
+    auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
+    array->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
+    return array;
+}
 }  // namespace panda::ecmascript
