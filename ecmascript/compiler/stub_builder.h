@@ -19,7 +19,6 @@
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
-//#include "ecmascript/global_env_constants.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
