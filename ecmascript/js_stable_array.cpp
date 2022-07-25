@@ -271,6 +271,41 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     return JSTaggedValue(newString);
 }
 
+JSTaggedValue JSStableArray::HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                                     JSHandle<JSTaggedValue> callbackFnHandle,
+                                                     JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k)
+{
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    double len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
+    JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(false);
+    const int32_t argsLength = 3; // 3: ?kValue, k, O?
+    JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    while (k < len) {
+        JSTaggedValue kValue = array->Get(k);
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(kValue, JSTaggedValue(k), thisObjVal.GetTaggedValue());
+        callResult = JSFunction::Call(info);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, callResult);
+        if (callResult.ToBoolean()) {
+            return callResult;
+        }
+        if (array->GetLength() < len) {
+            len = array->GetLength();
+        }
+        if (base::ArrayHelper::GetArrayLength(thread, thisObjVal) > len) {
+            array = JSHandle<TaggedArray>(thread, thisObjHandle->GetElements());
+        }
+        k++;
+        if (!thisObjVal->IsStableJSArray(thread)) {
+            return callResult;
+        }
+    }
+    return callResult;
+}
+
 JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                  JSHandle<JSTaggedValue> callbackFnHandle,
                                                  JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k)

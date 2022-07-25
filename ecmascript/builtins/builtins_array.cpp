@@ -770,18 +770,13 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 5. Let relativeStart be ToInteger(start).
-    double start;
     JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 1);
     JSTaggedNumber argStartTemp = JSTaggedValue::ToInteger(thread, msg1);
     // 6. ReturnIfAbrupt(relativeStart).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double argStart = argStartTemp.GetNumber();
     // 7. If relativeStart < 0, let k be max((len + relativeStart),0); else let k be min(relativeStart, len).
-    if (argStart < 0) {
-        start = argStart + len > 0 ? argStart + len : 0;
-    } else {
-        start = argStart < len ? argStart : len;
-    }
+    double start = argStart < 0 ? std::max(argStart + len, 0.0) : std::min(argStart, len);
 
     // 8. If end is undefined, let relativeEnd be len; else let relativeEnd be ToInteger(end).
     double argEnd = len;
@@ -794,19 +789,30 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     }
 
     // 10. If relativeEnd < 0, let final be max((len + relativeEnd),0); else let final be min(relativeEnd, len).
-    double end;
-    if (argEnd < 0) {
-        end = argEnd + len > 0 ? argEnd + len : 0;
-    } else {
-        end = argEnd < len ? argEnd : len;
-    }
-
+    double end = argEnd < 0 ? std::max(argEnd + len, 0.0) : std::min(argEnd, len);
     // 11. Repeat, while k < final
     //   a. Let Pk be ToString(k).
     //   b. Let setStatus be Set(O, Pk, value, true).
     //   c. ReturnIfAbrupt(setStatus).
     //   d. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    if (thisHandle->IsStableJSArray(thread)) {
+        TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+        uint32_t length = srcElements->GetLength();
+        if (length >= end) {
+            for (uint32_t idx = start; idx < end; idx++) {
+                srcElements->Set(thread, idx, value);
+            }
+            return thisObjHandle.GetTaggedValue();
+        } else {
+            JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len);
+            for (uint32_t idx = start; idx < end; idx++) {
+                newElements->Set(thread, idx, value);
+            }
+            thisObjHandle->SetElements(thread, newElements);
+            return thisObjHandle.GetTaggedValue();
+        }
+    }
     double k = start;
     while (k < end) {
         key.Update(JSTaggedValue(k));
@@ -1005,22 +1011,27 @@ JSTaggedValue BuiltinsArray::FindIndex(EcmaRuntimeCallInfo *argv)
     //   e. ReturnIfAbrupt(testResult).
     //   f. If testResult is true, return k.
     //   g. Increase k by 1.
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     uint32_t k = 0;
+    JSTaggedValue callResult = GetTaggedBoolean(true);
+    if (thisObjVal->IsStableJSArray(thread)) {
+        callResult = JSStableArray::HandleFindIndexOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
+        if (callResult.ToBoolean()) {
+            return GetTaggedDouble(k);
+        }
+    }
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    const int32_t argsLength = 3; // 3: «kValue, k, O»
     while (k < len) {
         JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         key.Update(JSTaggedValue(k));
-        const int32_t argsLength = 3; // 3: «kValue, k, O»
-        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
-        JSTaggedValue callResult = JSFunction::Call(info);
-        bool boolResult = callResult.ToBoolean();
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (boolResult) {
+        callResult = JSFunction::Call(info);
+        if (callResult.ToBoolean()) {
             return GetTaggedDouble(k);
         }
         k++;
@@ -1977,13 +1988,9 @@ JSTaggedValue BuiltinsArray::Slice(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double argStart = argStartTemp.GetNumber();
 
-    double k;
     // 7. If relativeStart < 0, let k be max((len + relativeStart),0); else let k be min(relativeStart, len).
-    if (argStart < 0) {
-        k = argStart + len > 0 ? argStart + len : 0;
-    } else {
-        k = argStart < len ? argStart : len;
-    }
+    double k = argStart < 0 ? std::max((len + argStart), 0.0) : std::min(argStart, len);
+
     // 8. If end is undefined, let relativeEnd be len; else let relativeEnd be ToInteger(end).
     // 9. ReturnIfAbrupt(relativeEnd).
     // 10. If relativeEnd < 0, let final be max((len + relativeEnd),0); else let final be min(relativeEnd, len).
@@ -1994,12 +2001,7 @@ JSTaggedValue BuiltinsArray::Slice(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         argEnd = argEndTemp.GetNumber();
     }
-    double final;
-    if (argEnd < 0) {
-        final = argEnd + len > 0 ? argEnd + len : 0;
-    } else {
-        final = argEnd < len ? argEnd : len;
-    }
+    double final = argEnd < 0 ? std::max((len + argEnd), 0.0) : std::min(argEnd, len);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 11. Let count be max(final – k, 0).
