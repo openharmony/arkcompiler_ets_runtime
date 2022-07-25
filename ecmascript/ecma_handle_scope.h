@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
+
 namespace panda::ecmascript {
 /*
  * Handles are only valid within a HandleScope. When a handle is created for an object a cell is allocated in the

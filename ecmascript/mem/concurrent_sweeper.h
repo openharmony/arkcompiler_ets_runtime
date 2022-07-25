@@ -22,7 +22,7 @@
 #include "ecmascript/mem/space.h"
 #include "ecmascript/taskpool/task.h"
 
-#include "os/mutex.h"
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 // CONFIG_DISABLE means concurrent sweeper is disabled by options or macros and cannot be changed.

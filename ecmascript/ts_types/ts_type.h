@@ -23,7 +23,7 @@
 #include "ecmascript/ts_types/ts_loader.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
-#include "utils/bit_field.h"
+#include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
 class TSType : public TaggedObject {

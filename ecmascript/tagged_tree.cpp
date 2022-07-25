@@ -17,6 +17,7 @@
 
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/object_factory.h"
+
 #include "libpandabase/utils/bit_utils.h"
 
 namespace panda::ecmascript {

@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_SYMBOL_TABLE_H
 #define ECMASCRIPT_SYMBOL_TABLE_H
 
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"

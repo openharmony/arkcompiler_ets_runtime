@@ -26,7 +26,8 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/tagged_object.h"
-#include "macros.h"
+
+#include "libpandabase/macros.h"
 #include "securec.h"
 
 namespace panda {

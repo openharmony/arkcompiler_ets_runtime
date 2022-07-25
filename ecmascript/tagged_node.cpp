@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "tagged_node.h"
+
+#include "ecmascript/tagged_node.h"
+
 #include "ecmascript/tagged_hash_array.h"
 #include "ecmascript/tagged_queue.h"
 

@@ -29,7 +29,7 @@
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/runtime_call_id.h"
 
-#include "os/mutex.h"
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 ConcurrentMarker::ConcurrentMarker(Heap *heap, EnableConcurrentMarkType type)

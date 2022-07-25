@@ -18,6 +18,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
+
 #include "libpandabase/utils/bit_utils.h"
 
 namespace panda::ecmascript {

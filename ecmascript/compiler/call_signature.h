@@ -21,11 +21,10 @@
 #include <memory>
 
 #include "ecmascript/compiler/variable_type.h"
+#include "ecmascript/compiler/test_stubs_signature.h"
 
 #include "libpandabase/macros.h"
 #include "libpandabase/utils/bit_field.h"
-
-#include "test_stubs_signature.h"
 
 namespace panda::ecmascript::kungfu {
 class Circuit;

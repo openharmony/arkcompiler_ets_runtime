@@ -26,6 +26,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/mem/visitor.h"
+
 #include "libpandabase/os/thread.h"
 
 namespace panda::ecmascript {

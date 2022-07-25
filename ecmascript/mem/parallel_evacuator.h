@@ -28,7 +28,7 @@
 #include "ecmascript/mem/tlab_allocator.h"
 #include "ecmascript/taskpool/task.h"
 
-#include "os/mutex.h"
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 class ParallelEvacuator {

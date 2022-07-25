@@ -16,10 +16,10 @@
 #ifndef ECMASCRIPT_TRANSITIONS_DICTIONARY_H
 #define ECMASCRIPT_TRANSITIONS_DICTIONARY_H
 
-#include "ecmascript/tagged_hash_table.h"
-#include "ecmascript/js_symbol.h"
 #include "ecmascript/accessor_data.h"
+#include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_number.h"
+#include "ecmascript/tagged_hash_table.h"
 
 namespace panda::ecmascript {
 class TransitionsDictionary : public TaggedHashTable<TransitionsDictionary> {

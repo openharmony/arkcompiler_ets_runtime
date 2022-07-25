@@ -31,6 +31,7 @@
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_tagged_value-inl.h"
@@ -38,8 +39,7 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/tagged_array.h"
-#include "js_object-inl.h"
-#include "object_factory.h"
+#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 JSHandle<EcmaString> GetTypeString(JSThread *thread, PreferredPrimitiveType type)

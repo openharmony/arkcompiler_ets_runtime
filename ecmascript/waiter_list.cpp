@@ -16,7 +16,8 @@
 #include "ecmascript/waiter_list.h"
 
 #include "ecmascript/base/number_helper.h"
-#include "os/time.h"
+
+#include "libpandabase/os/time.h"
 
 namespace panda::ecmascript {
 // --------------------------WaiterList------------------------------

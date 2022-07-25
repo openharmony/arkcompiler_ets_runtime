@@ -16,9 +16,9 @@
 #ifndef ECMASCRIPT_LAYOUT_INFO_H
 #define ECMASCRIPT_LAYOUT_INFO_H
 
-#include "ecmascript/tagged_array.h"
-#include "ecmascript/property_attributes.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/property_attributes.h"
+#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
 struct Properties {

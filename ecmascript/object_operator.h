@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_handle.h"
 #include "ecmascript/property_attributes.h"
+
 #include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {

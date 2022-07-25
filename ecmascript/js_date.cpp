@@ -17,14 +17,13 @@
 
 #include <ctime>
 #include <regex>
-
-#include "ecmascript/base/builtins_base.h"
-
 #include <sys/time.h>
 
 #ifdef PANDA_TARGET_WINDOWS
 #include <timezoneapi.h>
 #endif
+
+#include "ecmascript/base/builtins_base.h"
 
 namespace panda::ecmascript {
 using NumberHelper = base::NumberHelper;
