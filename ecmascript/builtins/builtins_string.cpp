@@ -1237,7 +1237,6 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
         }
         int continueFromIndex = -1;
         uint16_t peek = replacement->At(peekIndex);
-        int32_t p = 0;
         switch (peek) {
             case '$':  // $$
                 stringBuilder += '$';
@@ -1352,7 +1351,6 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                 JSHandle<JSTaggedValue> capture = JSObject::GetProperty(thread, namedCaptures, names).GetValue();
                 if (capture->IsUndefined()) {
                     continueFromIndex = pos + 1;
-                    p = pos;
                     break;
                 }
                 JSHandle<EcmaString> captureName(capture);
@@ -1365,7 +1363,6 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                     stringBuilder += base::StringHelper::Utf8ToU16String(data, captureName->GetLength());
                 }
                 continueFromIndex = pos + 1;
-                p = pos;
                 break;
             }
             default:
