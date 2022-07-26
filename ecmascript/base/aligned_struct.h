@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_BASE_ALIGNED_STRUCT_H
 #define ECMASCRIPT_BASE_ALIGNED_STRUCT_H
 
-#include "libpandabase/utils/bit_utils.h"
+#include "ecmascript/base/bit_helper.h"
 
 namespace panda::ecmascript::base {
 template<typename...>

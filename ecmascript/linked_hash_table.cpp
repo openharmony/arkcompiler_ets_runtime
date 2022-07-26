@@ -18,8 +18,6 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/object_factory.h"
 
-#include "libpandabase/utils/bit_utils.h"
-
 namespace panda::ecmascript {
 template<typename Derived, typename HashObject>
 JSHandle<Derived> LinkedHashTable<Derived, HashObject>::Create(const JSThread *thread, int numberOfElements)
