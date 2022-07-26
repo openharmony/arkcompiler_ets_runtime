@@ -466,6 +466,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case LDBIGINT_PREF_ID32:
             LowerLdBigInt(gate, glue);
             break;
+        case TONUMERIC_PREF_V8:
+            LowerToNumeric(gate, glue);
+            break;
         case LDMODULEVAR_PREF_ID32_IMM8:
             LowerLdModuleVar(gate, glue);
             break;
@@ -1516,6 +1519,14 @@ void SlowPathLowering::LowerLdBigInt(GateRef gate, GateRef glue)
     ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
 }
 
+void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
+{
+    const int id = RTSTUB_ID(ToNumeric);
+    // 1: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0)});
+    ReplaceHirToCall(gate, newGate);
+}
 void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue)
 {
     std::vector<GateRef> successControl;
