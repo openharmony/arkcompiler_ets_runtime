@@ -528,7 +528,7 @@ Environment::Environment(GateRef hir, Circuit *circuit, CircuitBuilder *builder)
     entry_ = Label(NewLabel(this, acc.GetIn(hir, 0)));
     currentLabel_ = &entry_;
     currentLabel_->Seal();
-    auto dependEntry = acc.GetIn(hir, 1);
+    auto dependEntry = acc.GetDep(hir);
     currentLabel_->SetDepend(dependEntry);
     for (size_t i = 2; i < acc.GetNumIns(hir); i++) {
         inputList_.emplace_back(acc.GetIn(hir, i));

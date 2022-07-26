@@ -455,6 +455,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     if (thread->IsAsmInterpreter()) {
         return InterpreterAssembly::Execute(info);
     }
+
     JSHandle<JSTaggedValue> func = info->GetFunction();
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(func.GetTaggedValue().GetTaggedObject());
     ASSERT(callTarget != nullptr);

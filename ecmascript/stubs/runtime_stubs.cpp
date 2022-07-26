@@ -1667,6 +1667,15 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
     return JSTypedArray::FastSetPropertyByIndex(thread, obj, idx.GetInt(), value, JSType(jsType.GetInt())).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DebugAOTPrint)
+{
+    RUNTIME_STUBS_HEADER(DebugAOTPrint);
+    JSTaggedValue fmtMessageId = GetArg(argv, argc, 0);
+    std::string result = MessageString::GetMessageString(fmtMessageId.GetInt());
+    std::cerr << "aot " << result << std::endl;
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(OptNewObjWithIHClass)
 {
     RUNTIME_STUBS_HEADER(OptNewObjWithIHClass);
@@ -1704,6 +1713,15 @@ DEF_RUNTIME_STUBS(OptStLexVarDyn)
     return JSTaggedValue::VALUE_HOLE;
 }
 
+DEF_RUNTIME_STUBS(JSObjectGetMethod)
+{
+    RUNTIME_STUBS_HEADER(JSObjectGetMethod);
+    JSHandle<JSTaggedValue> obj(thread, GetArg(argv, argc, 0));
+    JSHandle<JSTaggedValue> key(thread, GetArg(argv, argc, 1));
+    JSHandle<JSTaggedValue> result = JSObject::GetMethod(thread, obj, key);
+    return result->GetRawData();
+}
+
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
@@ -1714,15 +1732,6 @@ JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue
     }
     JSHandle<JSArray> arrHandle = JSArray::CreateArrayFromList(thread, taggedArray);
     return arrHandle.GetTaggedValue().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(JSObjectGetMethod)
-{
-    RUNTIME_STUBS_HEADER(JSObjectGetMethod);
-    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    JSHandle<JSTaggedValue> result = JSObject::GetMethod(thread, obj, value);
-    return result->GetRawData();
 }
 
 int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hClass,

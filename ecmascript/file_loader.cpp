@@ -418,12 +418,13 @@ void FileLoader::InitializeStubEntries(const std::vector<AOTModulePackInfo::Func
             thread->SetBCStubEntry(des.indexInKind_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
             std::cout << "bytecode: " << GetEcmaOpcodeStr(static_cast<EcmaOpcode>(des.indexInKind_))
-                << " addr:" << des.codeAddr_ << std::endl;
+                << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
 #endif
         } else {
             thread->RegisterRTInterface(des.indexInKind_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
-                std::cout << "runtime index: " << des.indexInKind_ << " addr:" << des.codeAddr_ << std::endl;
+                std::cout << "runtime index: " << std::dec << des.indexInKind_
+                    << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
 #endif
         }
     }

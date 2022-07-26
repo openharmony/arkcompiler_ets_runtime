@@ -33,7 +33,7 @@ class JSThread;
 class JSFunction;
 class ObjectFactory;
 
-using JSFunctionEntryType = uint64_t (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
+using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
                                          uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
 
 #define RUNTIME_ASM_STUB_LIST(V)             \
@@ -233,7 +233,8 @@ using JSFunctionEntryType = uint64_t (*)(uintptr_t glue, uintptr_t prevFp, uint3
     V(OptPopLexicalEnv)                   \
     V(OptLdLexVarDyn)                     \
     V(OptStLexVarDyn)                     \
-    V(JSObjectGetMethod)
+    V(JSObjectGetMethod)                  \
+    V(DebugAOTPrint)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

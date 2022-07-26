@@ -63,6 +63,13 @@ void FrameIterator::Advance()
             current_ = frame->GetPrevFrameFp();
             break;
         }
+        case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
+            auto frame = GetFrame<OptimizedJSFunctionUnfoldArgVFrame>();
+            optimizedCallSiteSp_ = frame->GetPrevFrameSp();
+            optimizedReturnAddr_ = frame->GetReturnAddr();
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionFrame>();
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
@@ -198,6 +205,10 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp(uintptr_t curPc) const
             ASSERT(thread_ != nullptr);
             auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + stackmapParser_->GetFuncFpDelta(curPc);
             return callSiteSp;
+        }
+        case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
+            auto frame = GetFrame<OptimizedJSFunctionUnfoldArgVFrame>();
+            return frame->GetPrevFrameSp();
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME : {
             auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + sizeof(uintptr_t);

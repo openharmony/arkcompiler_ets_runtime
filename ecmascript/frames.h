@@ -276,6 +276,7 @@ enum class FrameType: uintptr_t {
     ASM_INTERPRETER_ENTRY_FRAME = 15,
     ASM_INTERPRETER_BRIDGE_FRAME = 16,
     OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME = 17,
+    OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME = 18,
 
     FRAME_TYPE_BEGIN = OPTIMIZED_FRAME,
     FRAME_TYPE_END = OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME,
@@ -340,6 +341,47 @@ private:
     {
         return returnAddr;
     }
+    [[maybe_unused]] alignas(EAS) FrameType type {0};
+    alignas(EAS) JSTaggedType *prevFp {nullptr};
+    alignas(EAS) uintptr_t returnAddr {0};
+    friend class FrameIterator;
+};
+STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, OptimizedFrame::SizeArch64);
+
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+struct OptimizedJSFunctionUnfoldArgVFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer> {
+private:
+    enum class Index : size_t {
+        CallSiteSpIndex = 0,
+        TypeIndex,
+        PrevFpIndex,
+        ReturnAddrIndex,
+        NumOfMembers
+    };
+    static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
+
+    static OptimizedJSFunctionUnfoldArgVFrame* GetFrameFromSp(const JSTaggedType *sp)
+    {
+        return reinterpret_cast<OptimizedJSFunctionUnfoldArgVFrame *>(reinterpret_cast<uintptr_t>(sp)
+            - MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, prevFp));
+    }
+    inline JSTaggedType* GetPrevFrameFp() const
+    {
+        return prevFp;
+    }
+    uintptr_t GetReturnAddr() const
+    {
+        return returnAddr;
+    }
+    uintptr_t GetPrevFrameSp() const
+    {
+        return callSiteSp;
+    }
+    [[maybe_unused]] alignas(EAS) uintptr_t callSiteSp {0};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
