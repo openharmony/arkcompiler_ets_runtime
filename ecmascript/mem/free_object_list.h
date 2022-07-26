@@ -19,8 +19,8 @@
 #include <cstddef>
 
 #include "ecmascript/mem/free_object_set.h"
+#include "ecmascript/mem/mem_common.h"
 
-#include "libpandabase/mem/mem.h"
 #include "libpandabase/utils/span.h"
 
 namespace panda::ecmascript {

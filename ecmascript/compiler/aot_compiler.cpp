@@ -26,7 +26,6 @@
 #include "ecmascript/napi/include/jsnapi.h"
 
 #include "generated/base_options.h"
-#include "libpandabase/os/native_stack.h"
 #include "libpandabase/utils/pandargs.h"
 #include "libpandabase/utils/span.h"
 #include "libpandafile/file.h"
@@ -45,10 +44,6 @@ void BlockSignals()
     if (rc < 0) {
         LOG_COMPILER(ERROR) << "sigaddset failed";
         return;
-    }
-
-    if (panda::os::native_stack::g_PandaThreadSigmask(SIG_BLOCK, &set, nullptr) != 0) {
-        LOG_COMPILER(ERROR) << "g_PandaThreadSigmask failed";
     }
 #endif  // PANDA_TARGET_UNIX
 }

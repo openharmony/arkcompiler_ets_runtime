@@ -19,7 +19,6 @@
 #include <cstdint>
 #include <atomic>
 
-#include "libpandabase/mem/mem.h"
 #include "libpandabase/utils/bit_field.h"
 
 namespace panda {

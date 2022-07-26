@@ -16,6 +16,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/mem/mem_common.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/object_factory.h"

@@ -19,6 +19,7 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_thread.h"
 
+#include "ecmascript/mem/mem_common.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/object_factory.h"

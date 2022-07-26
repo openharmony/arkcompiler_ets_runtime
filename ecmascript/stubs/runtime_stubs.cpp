@@ -16,6 +16,7 @@
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/ecma_macros.h"
@@ -40,7 +41,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/ts_types/ts_loader.h"
-#include "libpandabase/utils/string_helpers.h"
 
 namespace panda::ecmascript {
 #if defined(__clang__)
@@ -337,7 +337,7 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     std::string format = MessageString::GetMessageString(fmtMessageId);
     va_list args;
     va_start(args, fmtMessageId);
-    std::string result = panda::helpers::string::Vformat(format.c_str(), args);
+    std::string result = base::StringHelper::Vformat(format.c_str(), args);
     std::cerr << result << std::endl;
     va_end(args);
 }
@@ -347,7 +347,7 @@ void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
     std::string format = MessageString::GetMessageString(fmtMessageId);
     va_list args;
     va_start(args, fmtMessageId);
-    std::string result = panda::helpers::string::Vformat(format.c_str(), args);
+    std::string result = base::StringHelper::Vformat(format.c_str(), args);
     std::cerr << result << std::endl;
     va_end(args);
     UNREACHABLE();

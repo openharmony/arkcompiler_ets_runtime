@@ -17,6 +17,9 @@
 #define ECMASCRIPT_JS_TAGGED_VALUE_H
 
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/mem/mem_common.h"
+
+#include "libpandabase/utils/bit_utils.h"
 
 namespace panda::ecmascript {
 class JSObject;

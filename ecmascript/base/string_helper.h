@@ -315,6 +315,33 @@ public:
         ASSERT(start <= end);
         return (value >= static_cast<uint8_t>(start)) && (value <= static_cast<uint8_t>(end));
     }
+
+    static inline std::string Vformat(const char *fmt, va_list args)
+    {
+        static constexpr size_t SIZE = 1024;
+
+        std::string result;
+        result.resize(SIZE);
+
+        bool is_truncated = true;
+        while (is_truncated) {
+            va_list copy_args;
+            va_copy(copy_args, args);
+            int r = vsnprintf_truncated_s(result.data(), result.size() + 1, fmt, copy_args);
+            va_end(copy_args);
+
+            if (r < 0) {
+                return "";
+            }
+
+            is_truncated = static_cast<size_t>(r) == result.size();
+            result.resize(result.size() * 2U);
+        }
+
+        result.erase(std::find(result.begin(), result.end(), '\0'), result.end());
+
+        return result;
+    }
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_STRING_HELP_H
