@@ -35,6 +35,7 @@
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
@@ -88,6 +89,8 @@ using ecmascript::JSMap;
 using ecmascript::JSMethod;
 using ecmascript::JSNativePointer;
 using ecmascript::JSObject;
+using ecmascript::JSPandaFile;
+using ecmascript::JSPandaFileManager;
 using ecmascript::JSPrimitiveRef;
 using ecmascript::JSPromise;
 using ecmascript::JSRegExp;
@@ -1173,6 +1176,31 @@ Local<StringRef> FunctionRef::GetName(const EcmaVM *vm)
     JSHandle<JSTaggedValue> name = JSFunctionBase::GetFunctionName(thread, func);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Exception(vm));
     return JSNApiHelper::ToLocal<StringRef>(name);
+}
+
+Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
+{
+    [[maybe_unused]] LocalScope scope(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
+    JSMethod *method = func->GetMethod();
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    ecmascript::tooling::JSPtExtractor *debugExtractor =
+                                        JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    const std::string &allSourceCode = debugExtractor->GetSourceCode(panda_file::File::EntityId(
+        jsPandaFile->GetMainMethodIndex()));
+    std::string sourceCode = StringHelper::GetSpecifiedLine(allSourceCode, lineNumber);
+    uint32_t codeLen = sourceCode.length();
+    if (codeLen == 0 || sourceCode == "ANDA") {
+        sourceCode = "";
+        JSHandle<JSTaggedValue> sourceCodeHandle(thread, BuiltinsBase::GetTaggedString(thread, sourceCode.c_str()));
+        return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
+    }
+    if (sourceCode[codeLen - 1] == '\r') {
+        sourceCode = sourceCode.substr(0, codeLen - 1);
+    }
+    JSHandle<JSTaggedValue> sourceCodeHandle(thread, BuiltinsBase::GetTaggedString(thread, sourceCode.c_str()));
+    return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
 }
 
 bool FunctionRef::IsNative(const EcmaVM *vm)

@@ -16,7 +16,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
 #include "ecmascript/dfx/hprof/heap_profiler.h"
-#include "ecmascript/base/error_helper.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/heap-inl.h"
@@ -78,7 +78,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 
 bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 {
-    stackTraceStr = ecmascript::base::ErrorHelper::BuildJsStackTrace(vm->GetAssociatedJSThread(), true);
+    stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(vm->GetAssociatedJSThread(), true);
     if (stackTraceStr.empty()) {
         return false;
     }
@@ -87,7 +87,7 @@ bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackT
 
 bool DFXJSNApi::BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 {
-    stackTraceStr = ecmascript::base::ErrorHelper::BuildJsStackTrace(vm->GetAssociatedJSThread(), false);
+    stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(vm->GetAssociatedJSThread(), false);
     if (stackTraceStr.empty()) {
         return false;
     }
