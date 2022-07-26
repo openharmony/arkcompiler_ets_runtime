@@ -604,7 +604,7 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> obj, Fun
 
     JSTaggedValue length = obj->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
-    cloneFunc->SetModule(obj->GetModule());
+    cloneFunc->SetModule(thread_, obj->GetModule());
     cloneFunc->SetCodeEntry(obj->GetCodeEntry());
     return cloneFunc;
 }
@@ -685,8 +685,8 @@ JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTag
 
     JSHandle<JSForInIterator> it = JSHandle<JSForInIterator>::Cast(NewJSObject(dynclass));
     it->SetObject(thread_, obj);
-    it->SetVisitedKeys(thread_->GlobalConstants()->GetEmptyTaggedQueue());
-    it->SetRemainingKeys(thread_->GlobalConstants()->GetEmptyTaggedQueue());
+    it->SetVisitedKeys(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
+    it->SetRemainingKeys(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
     it->ClearBitField();
     return it;
 }
@@ -1167,7 +1167,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_ASYNC_FUNC_OBJECT:
             JSAsyncFuncObject::Cast(*obj)->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
             JSAsyncFuncObject::Cast(*obj)->SetResumeResult(thread_, JSTaggedValue::Undefined());
-            JSAsyncFuncObject::Cast(*obj)->SetPromise(JSTaggedValue::Undefined());
+            JSAsyncFuncObject::Cast(*obj)->SetPromise(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_FUNCTION:
         case JSType::JS_GENERATOR_FUNCTION:
@@ -1175,60 +1175,60 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         case JSType::JS_PROXY_REVOC_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
-            JSProxyRevocFunction::Cast(*obj)->SetRevocableProxy(JSTaggedValue::Undefined());
+            JSProxyRevocFunction::Cast(*obj)->SetRevocableProxy(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_REACTIONS_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
-            JSPromiseReactionsFunction::Cast(*obj)->SetPromise(JSTaggedValue::Undefined());
-            JSPromiseReactionsFunction::Cast(*obj)->SetAlreadyResolved(JSTaggedValue::Undefined());
+            JSPromiseReactionsFunction::Cast(*obj)->SetPromise(thread_, JSTaggedValue::Undefined());
+            JSPromiseReactionsFunction::Cast(*obj)->SetAlreadyResolved(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
-            JSPromiseExecutorFunction::Cast(*obj)->SetCapability(JSTaggedValue::Undefined());
+            JSPromiseExecutorFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetIndex(JSTaggedValue::Undefined());
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetValues(JSTaggedValue::Undefined());
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetCapabilities(JSTaggedValue::Undefined());
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetRemainingElements(JSTaggedValue::Undefined());
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetAlreadyCalled(JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->SetIndex(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->SetCapabilities(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->SetRemainingElements(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
             JSPromiseAnyRejectElementFunction::Cast(*obj)->SetIndex(0);
-            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetErrors(JSTaggedValue::Undefined());
-            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetCapability(JSTaggedValue::Undefined());
-            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetRemainingElements(JSTaggedValue::Undefined());
-            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetAlreadyCalled(JSTaggedValue::Undefined());
+            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetErrors(thread_, JSTaggedValue::Undefined());
+            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
+            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetRemainingElements(thread_, JSTaggedValue::Undefined());
+            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
             JSPromiseAllSettledElementFunction::Cast(*obj)->SetIndex(0);
-            JSPromiseAllSettledElementFunction::Cast(*obj)->SetValues(JSTaggedValue::Undefined());
-            JSPromiseAllSettledElementFunction::Cast(*obj)->SetCapability(JSTaggedValue::Undefined());
-            JSPromiseAllSettledElementFunction::Cast(*obj)->SetRemainingElements(JSTaggedValue::Undefined());
-            JSPromiseAllSettledElementFunction::Cast(*obj)->SetAlreadyCalled(JSTaggedValue::Undefined());
+            JSPromiseAllSettledElementFunction::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllSettledElementFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllSettledElementFunction::Cast(*obj)->SetRemainingElements(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllSettledElementFunction::Cast(*obj)->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_FINALLY_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
-            JSPromiseFinallyFunction::Cast(*obj)->SetOnFinally(JSTaggedValue::Undefined());
-            JSPromiseFinallyFunction::Cast(*obj)->SetConstructor(JSTaggedValue::Undefined());
+            JSPromiseFinallyFunction::Cast(*obj)->SetOnFinally(thread_, JSTaggedValue::Undefined());
+            JSPromiseFinallyFunction::Cast(*obj)->SetConstructor(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
-            JSPromiseValueThunkOrThrowerFunction::Cast(*obj)->SetResult(JSTaggedValue::Undefined());
+            JSPromiseValueThunkOrThrowerFunction::Cast(*obj)->SetResult(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_INTL_BOUND_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
-            JSIntlBoundFunction::Cast(*obj)->SetNumberFormat(JSTaggedValue::Undefined());
-            JSIntlBoundFunction::Cast(*obj)->SetDateTimeFormat(JSTaggedValue::Undefined());
-            JSIntlBoundFunction::Cast(*obj)->SetCollator(JSTaggedValue::Undefined());
+            JSIntlBoundFunction::Cast(*obj)->SetNumberFormat(thread_, JSTaggedValue::Undefined());
+            JSIntlBoundFunction::Cast(*obj)->SetDateTimeFormat(thread_, JSTaggedValue::Undefined());
+            JSIntlBoundFunction::Cast(*obj)->SetCollator(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_BOUND_FUNCTION:
-            JSBoundFunction::Cast(*obj)->SetBoundTarget(JSTaggedValue::Undefined());
-            JSBoundFunction::Cast(*obj)->SetBoundThis(JSTaggedValue::Undefined());
-            JSBoundFunction::Cast(*obj)->SetBoundArguments(JSTaggedValue::Undefined());
+            JSBoundFunction::Cast(*obj)->SetBoundTarget(thread_, JSTaggedValue::Undefined());
+            JSBoundFunction::Cast(*obj)->SetBoundThis(thread_, JSTaggedValue::Undefined());
+            JSBoundFunction::Cast(*obj)->SetBoundArguments(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_ARGUMENTS:
             break;
@@ -1505,9 +1505,9 @@ JSHandle<JSIntlBoundFunction> ObjectFactory::NewJSIntlBoundFunction(MethodIndex 
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetJSIntlBoundFunctionClass());
 
     JSHandle<JSIntlBoundFunction> intlBoundFunc = JSHandle<JSIntlBoundFunction>::Cast(NewJSObject(dynclass));
-    intlBoundFunc->SetNumberFormat(JSTaggedValue::Undefined());
-    intlBoundFunc->SetDateTimeFormat(JSTaggedValue::Undefined());
-    intlBoundFunc->SetCollator(JSTaggedValue::Undefined());
+    intlBoundFunc->SetNumberFormat(thread_, JSTaggedValue::Undefined());
+    intlBoundFunc->SetDateTimeFormat(thread_, JSTaggedValue::Undefined());
+    intlBoundFunc->SetCollator(thread_, JSTaggedValue::Undefined());
     intlBoundFunc->SetMethod(GetMethodByIndex(idx));
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(intlBoundFunc);
     JSFunction::InitializeJSFunction(thread_, function, FunctionKind::NORMAL_FUNCTION);
@@ -1527,7 +1527,7 @@ JSHandle<JSProxyRevocFunction> ObjectFactory::NewJSProxyRevocFunction(const JSHa
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetProxyRevocFunctionClass());
 
     JSHandle<JSProxyRevocFunction> revocFunction = JSHandle<JSProxyRevocFunction>::Cast(NewJSObject(dynclass));
-    revocFunction->SetRevocableProxy(JSTaggedValue::Undefined());
+    revocFunction->SetRevocableProxy(thread_, JSTaggedValue::Undefined());
     revocFunction->SetRevocableProxy(thread_, proxy);
     revocFunction->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_PROXY_INVALIDATE_PROXY_FUNCTION));
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(revocFunction);
@@ -1547,7 +1547,7 @@ JSHandle<JSAsyncAwaitStatusFunction> ObjectFactory::NewJSAsyncAwaitStatusFunctio
 
     JSHandle<JSAsyncAwaitStatusFunction> awaitFunction =
         JSHandle<JSAsyncAwaitStatusFunction>::Cast(NewJSObject(dynclass));
-    awaitFunction->SetAsyncContext(JSTaggedValue::Undefined());
+    awaitFunction->SetAsyncContext(thread_, JSTaggedValue::Undefined());
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(awaitFunction));
     awaitFunction->SetMethod(GetMethodByIndex(idx));
     return awaitFunction;
@@ -1573,8 +1573,8 @@ JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTagge
     }
     JSHandle<JSHClass> dynclass = NewEcmaDynClass(JSGeneratorObject::SIZE, JSType::JS_GENERATOR_OBJECT, proto);
     JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObject(dynclass));
-    generatorObject->SetGeneratorContext(JSTaggedValue::Undefined());
-    generatorObject->SetResumeResult(JSTaggedValue::Undefined());
+    generatorObject->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
+    generatorObject->SetResumeResult(thread_, JSTaggedValue::Undefined());
     return generatorObject;
 }
 
@@ -1940,7 +1940,7 @@ JSHandle<JSRealm> ObjectFactory::NewJSRealm()
     JSHandle<JSHClass> dynHandle = NewEcmaDynClass(JSRealm::SIZE, JSType::JS_REALM, protoValue);
     JSHandle<JSRealm> realm(NewJSObject(dynHandle));
     realm->SetGlobalEnv(thread_, realmEnvHandle.GetTaggedValue());
-    realm->SetValue(JSTaggedValue::Undefined());
+    realm->SetValue(thread_, JSTaggedValue::Undefined());
 
     JSHandle<JSTaggedValue> realmObj = realmEnvHandle->GetJSGlobalObject();
     JSHandle<JSTaggedValue> realmkey(thread_->GlobalConstants()->GetHandledGlobalString());
@@ -2479,11 +2479,11 @@ JSHandle<JSPromiseAllResolveElementFunction> ObjectFactory::NewJSPromiseAllResol
         JSHandle<JSPromiseAllResolveElementFunction>::Cast(NewJSObject(dynclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_RESOLVE_ELEMENT_FUNCTION));
-    function->SetIndex(JSTaggedValue::Undefined());
-    function->SetValues(JSTaggedValue::Undefined());
-    function->SetCapabilities(JSTaggedValue::Undefined());
-    function->SetRemainingElements(JSTaggedValue::Undefined());
-    function->SetAlreadyCalled(JSTaggedValue::Undefined());
+    function->SetIndex(thread_, JSTaggedValue::Undefined());
+    function->SetValues(thread_, JSTaggedValue::Undefined());
+    function->SetCapabilities(thread_, JSTaggedValue::Undefined());
+    function->SetRemainingElements(thread_, JSTaggedValue::Undefined());
+    function->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -2497,10 +2497,10 @@ JSHandle<JSPromiseAnyRejectElementFunction> ObjectFactory::NewJSPromiseAnyReject
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ANY_REJECT_ELEMENT_FUNCTION));
     function->SetIndex(0);
-    function->SetErrors(JSTaggedValue::Undefined());
-    function->SetCapability(JSTaggedValue::Undefined());
-    function->SetRemainingElements(JSTaggedValue::Undefined());
-    function->SetAlreadyCalled(JSTaggedValue::Undefined());
+    function->SetErrors(thread_, JSTaggedValue::Undefined());
+    function->SetCapability(thread_, JSTaggedValue::Undefined());
+    function->SetRemainingElements(thread_, JSTaggedValue::Undefined());
+    function->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -2514,10 +2514,10 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_RESOLVE_ELEMENT_FUNCTION));
     function->SetIndex(0);
-    function->SetValues(JSTaggedValue::Undefined());
-    function->SetCapability(JSTaggedValue::Undefined());
-    function->SetRemainingElements(JSTaggedValue::Undefined());
-    function->SetAlreadyCalled(JSTaggedValue::Undefined());
+    function->SetValues(thread_, JSTaggedValue::Undefined());
+    function->SetCapability(thread_, JSTaggedValue::Undefined());
+    function->SetRemainingElements(thread_, JSTaggedValue::Undefined());
+    function->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -2531,10 +2531,10 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_REJECT_ELEMENT_FUNCTION));
     function->SetIndex(0);
-    function->SetValues(JSTaggedValue::Undefined());
-    function->SetCapability(JSTaggedValue::Undefined());
-    function->SetRemainingElements(JSTaggedValue::Undefined());
-    function->SetAlreadyCalled(JSTaggedValue::Undefined());
+    function->SetValues(thread_, JSTaggedValue::Undefined());
+    function->SetCapability(thread_, JSTaggedValue::Undefined());
+    function->SetRemainingElements(thread_, JSTaggedValue::Undefined());
+    function->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -2547,8 +2547,8 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseThenFinallyFunctio
         JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(dynclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THEN_FINALLY_FUNCTION));
-    function->SetConstructor(JSTaggedValue::Undefined());
-    function->SetOnFinally(JSTaggedValue::Undefined());
+    function->SetConstructor(thread_, JSTaggedValue::Undefined());
+    function->SetOnFinally(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -2561,8 +2561,8 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseCatchFinallyFuncti
         JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(dynclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION));
-    function->SetConstructor(JSTaggedValue::Undefined());
-    function->SetOnFinally(JSTaggedValue::Undefined());
+    function->SetConstructor(thread_, JSTaggedValue::Undefined());
+    function->SetOnFinally(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -2575,7 +2575,7 @@ JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseValueT
         JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(dynclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION));
-    function->SetResult(JSTaggedValue::Undefined());
+    function->SetResult(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(0));
     return function;
 }
@@ -2588,7 +2588,7 @@ JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseThrowe
         JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(dynclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION));
-    function->SetResult(JSTaggedValue::Undefined());
+    function->SetResult(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(0));
     return function;
 }
@@ -2610,8 +2610,8 @@ JSHandle<TransitionHandler> ObjectFactory::NewTransitionHandler()
     TransitionHandler *handler =
         TransitionHandler::Cast(heap_->AllocateYoungOrHugeObject(
             JSHClass::Cast(thread_->GlobalConstants()->GetTransitionHandlerClass().GetTaggedObject())));
-    handler->SetHandlerInfo(JSTaggedValue::Undefined());
-    handler->SetTransitionHClass(JSTaggedValue::Undefined());
+    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
+    handler->SetTransitionHClass(thread_, JSTaggedValue::Undefined());
     return JSHandle<TransitionHandler>(thread_, handler);
 }
 
@@ -3268,7 +3268,7 @@ JSHandle<JSAPITreeMapIterator> ObjectFactory::NewJSAPITreeMapIterator(const JSHa
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedMap(thread_, map);
     iter->SetNextIndex(0);
-    iter->SetEntries(JSTaggedValue::Undefined());
+    iter->SetEntries(thread_, JSTaggedValue::Undefined());
     iter->SetIterationKind(kind);
     JSHandle<TaggedTreeMap> tmap(thread_, map->GetTreeMap());
     JSHandle<TaggedArray> entries = TaggedTreeMap::GetArrayFromMap(thread_, tmap);
@@ -3288,7 +3288,7 @@ JSHandle<JSAPITreeSetIterator> ObjectFactory::NewJSAPITreeSetIterator(const JSHa
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedSet(thread_, set);
     iter->SetNextIndex(0);
-    iter->SetEntries(JSTaggedValue::Undefined());
+    iter->SetEntries(thread_, JSTaggedValue::Undefined());
     iter->SetIterationKind(kind);
     JSHandle<TaggedTreeSet> tset(thread_, set->GetTreeSet());
     JSHandle<TaggedArray> entries = TaggedTreeSet::GetArrayFromSet(thread_, tset);

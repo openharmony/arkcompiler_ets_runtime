@@ -42,7 +42,7 @@ public:
     {
         JSTaggedValue weakObj = JSTaggedValue(value.CreateAndGetWeakRef());
         ASSERT(weakObj.IsWeak());
-        SetWeakRefTarget(weakObj);
+        Barriers::SetDynPrimitive<JSTaggedType>(this, WEAKREF_TARGET_OFFSET, weakObj.GetRawData());
     }
 
     JSTaggedValue GetFromWeakRefTarget() const

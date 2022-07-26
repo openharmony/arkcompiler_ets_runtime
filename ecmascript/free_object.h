@@ -49,7 +49,7 @@ public:
     inline void SetAvailable(uint32_t size)
     {
         if (size >= SIZE) {
-            SetSize(JSTaggedValue(size));
+            Barriers::SetDynPrimitive<JSTaggedType>(this, SIZE_OFFSET, JSTaggedValue(size).GetRawData());
         }
     }
 
