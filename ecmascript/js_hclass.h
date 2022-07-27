@@ -251,7 +251,10 @@ class ProtoChangeDetails;
         JS_TYPED_ARRAY_LAST = JS_BIGUINT64_ARRAY, /* ///////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
         MODULE_RECORD_FIRST = MODULE_RECORD, /* ///////////////////////////////////////////////////////////-PADDING */ \
-        MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD /* //////////////////////////////////////////////////-PADDING */
+        MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
+        TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        TS_TYPE_LAST = TS_INTERFACE_TYPE /* ///////////////////////////////////////////////////////////////-PADDING */
 
 
 enum class JSType : uint8_t {
@@ -275,7 +278,7 @@ public:
     using ClassConstructorBit = IsLiteralBit::NextFlag;                                    // 21
     using ClassPrototypeBit = ClassConstructorBit::NextFlag;                               // 22
     using GlobalConstOrBuiltinsObjectBit = ClassPrototypeBit::NextFlag;                    // 23
-    using IsTSTypeBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                          // 24
+    using IsAOTBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                             // 24
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
     static constexpr int MAX_CAPACITY_OF_OUT_OBJECTS =
@@ -403,9 +406,9 @@ public:
         IsDictionaryBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
-    inline void SetTSType(bool flag) const
+    inline void SetAOT(bool flag) const
     {
-        IsTSTypeBit::Set<uint32_t>(flag, GetBitFieldAddr());
+        IsAOTBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline bool IsJSObject() const
@@ -1036,10 +1039,11 @@ public:
         return IsDictionaryBit::Decode(bits);
     }
 
-    inline bool IsTSType() const
+    // created from AOT
+    inline bool IsAOT() const
     {
         uint32_t bits = GetBitField();
-        return IsTSTypeBit::Decode(bits);
+        return IsAOTBit::Decode(bits);
     }
 
     inline bool IsGeneratorFunction() const
@@ -1166,6 +1170,12 @@ public:
     inline bool IsMachineCodeObject() const
     {
         return GetObjectType() == JSType::MACHINE_CODE_OBJECT;
+    }
+
+    inline bool IsTSType() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType >= JSType::TS_TYPE_FIRST && jsType <= JSType::TS_TYPE_LAST;
     }
 
     inline bool IsTSObjectType() const

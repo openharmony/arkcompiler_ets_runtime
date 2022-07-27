@@ -29,7 +29,8 @@ enum class TSTypeKind : int {
     ARRAY,
     OBJECT,
     IMPORT,
-    INTERFACE_KIND
+    INTERFACE_KIND,
+    UNKNOWN
 };
 
 enum class TSPrimitiveType : int {

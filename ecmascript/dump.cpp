@@ -485,7 +485,7 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     os << "| ElementRepresentation :" << static_cast<int>(jshclass->GetElementRepresentation());
     os << "| NumberOfProps :" << std::dec << jshclass->NumberOfProps();
     os << "| InlinedProperties :" << std::dec << jshclass->GetInlinedProperties();
-    os << "| IsTSType :" << std::boolalpha << jshclass->IsTSType();
+    os << "| IsAOT :" << std::boolalpha << jshclass->IsAOT();
     os << "\n";
 }
 
@@ -3099,8 +3099,31 @@ void TSFunctionType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
+    os << " - TSFunctionType Name: ";
+    JSTaggedValue name = GetName();
+    if (name.IsString()) {
+        os << ConvertToString(EcmaString::Cast(name.GetTaggedObject()));
+    }
     os << " - TSFunctionType ParameterTypeIds: " << "\n";
     DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), os);
+    os << " - TSFunctionType ReturnType: " << GetReturnGT().GetType() << "\n";
+    os << " - TSFunctionType ThisType: " << GetThisGT().GetType() << "\n";
+    TSFunctionType::Visibility visibility = GetVisibility();
+    switch (visibility) {
+        case TSFunctionType::Visibility::PUBLIC:
+            os << " - Visibility: public";
+            break;
+        case TSFunctionType::Visibility::PRIVATE:
+            os << " - Visibility: private";
+            break;
+        case TSFunctionType::Visibility::PROTECTED:
+            os << " - Visibility: protected";
+            break;
+    }
+    os << " | Static: " << std::boolalpha << GetStatic();
+    os << " | Async: " << std::boolalpha << GetAsync();
+    os << " | Generator: " << std::boolalpha << GetGenerator();
+    os << "\n";
 }
 
 void TSArrayType::Dump(std::ostream &os) const
@@ -4798,7 +4821,11 @@ void TSUnionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>>
 
 void TSFunctionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
+    vec.push_back(std::make_pair(CString("Name"), GetName()));
     vec.push_back(std::make_pair(CString("ParameterTypes"), GetParameterTypes()));
+    vec.push_back(std::make_pair(CString("ReturnGT"), JSTaggedValue(GetReturnGT().GetType())));
+    vec.push_back(std::make_pair(CString("ThisGT"), JSTaggedValue(GetThisGT().GetType())));
+    vec.push_back(std::make_pair(CString("BitFiled"), JSTaggedValue(GetBitField())));
 }
 
 void TSArrayType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

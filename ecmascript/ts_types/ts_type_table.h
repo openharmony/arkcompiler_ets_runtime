@@ -28,6 +28,7 @@ public:
     static constexpr size_t RESERVE_TABLE_LENGTH = 2; // for reserve length and exportTable
     static constexpr size_t NUMBER_OF_TYPES_INDEX = 0;
     static constexpr size_t INCREASE_CAPACITY_RATE = 2;
+    static constexpr const char* PRIMITIVE_TABLE_NAME = "primitiveTypes";
     static constexpr const char* BUILTINS_TABLE_NAME = "ohos.lib.d.ts";
     static constexpr const char* INFER_TABLE_NAME = "inferTypes";
     static constexpr const char* DECLARED_SYMBOLS = "declaredSymbols";
@@ -44,11 +45,8 @@ public:
     static void Initialize(JSThread *thread, const JSPandaFile *jsPandaFile,
                            CVector<JSHandle<EcmaString>> &recordImportModules);
 
-    static JSHandle<TSTypeTable> GenerateTypeTable(JSThread *thread, const JSPandaFile *jsPandaFile,
+    static JSHandle<TSTypeTable> GenerateTypeTable(JSThread *thread, const JSPandaFile *jsPandaFile, uint32_t moduleId,
                                                    CVector<JSHandle<EcmaString>> &recordImportModules);
-
-    static GlobalTSTypeRef GetPropertyTypeGT(JSThread *thread, JSHandle<TSTypeTable> &table, TSTypeKind typeKind,
-                                           uint32_t index, JSHandle<EcmaString> propName);
 
     static JSHandle<TaggedArray> GetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> typeTable);
 

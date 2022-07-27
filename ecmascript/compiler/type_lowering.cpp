@@ -105,7 +105,10 @@ void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
 {
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
-    ASSERT(ctorType.IsTSType());
+    if (!ctorType.IsTSType()) {
+        return;
+    }
+
     if (!tsManager_->IsClassTypeKind(ctorType)) {
         return;
     }

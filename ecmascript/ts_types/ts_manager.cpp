@@ -130,14 +130,24 @@ int TSManager::GetTypeIndexFromExportTable(JSHandle<EcmaString> target, JSHandle
 
 GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> propertyName) const
 {
-    JSHandle<TSModuleTable> table = GetTSModuleTable();
-    uint32_t moduleId = gt.GetModuleId();
-    uint32_t localId = gt.GetLocalId();
-    TSTypeKind typeKind = GetTypeKind(gt);
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<JSTaggedValue> type = GetTSType(gt);
+    ASSERT(type->IsTSType());
 
-    JSHandle<TSTypeTable> typeTable = table->GetTSTypeTable(thread_, moduleId);
-    GlobalTSTypeRef propTypeRef = TSTypeTable::GetPropertyTypeGT(thread_, typeTable, typeKind, localId, propertyName);
-    return propTypeRef;
+    if (type->IsTSClassType()) {
+        JSHandle<TSClassType> classType(type);
+        return TSClassType::GetPropTypeGT(thread, classType, propertyName);
+    } else if (type->IsTSClassInstanceType()) {
+        JSHandle<TSClassInstanceType> classInstanceType(type);
+        return TSClassInstanceType::GetPropTypeGT(thread, classInstanceType, propertyName);
+    } else if (type->IsTSObjectType()) {
+        JSHandle<TSObjectType> objectType(type);
+        return TSObjectType::GetPropTypeGT(objectType, propertyName);
+    } else {
+        LOG_COMPILER(ERROR) << "unsupport TSType GetPropType: "
+                            << static_cast<uint8_t>(type->GetTaggedObject()->GetClass()->GetObjectType());
+        return GlobalTSTypeRef::Default();
+    }
 }
 
 GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, const uint64_t key) const
@@ -171,27 +181,32 @@ TSTypeKind TSManager::GetTypeKind(const GlobalTSTypeRef &gt) const
 {
     uint32_t moduleId = gt.GetModuleId();
     if (static_cast<MTableIdx>(moduleId) != MTableIdx::PRIMITIVE) {
-        JSHandle<TSType> tsType(GetTSType(gt));
-        JSType hClassType = tsType->GetClass()->GetObjectType();
-        switch (hClassType) {
-            case JSType::TS_CLASS_TYPE:
-                return TSTypeKind::CLASS;
-            case JSType::TS_CLASS_INSTANCE_TYPE:
-                return TSTypeKind::CLASS_INSTANCE;
-            case JSType::TS_FUNCTION_TYPE:
-                return TSTypeKind::FUNCTION;
-            case JSType::TS_UNION_TYPE:
-                return TSTypeKind::UNION;
-            case JSType::TS_ARRAY_TYPE:
-                return TSTypeKind::ARRAY;
-            case JSType::TS_OBJECT_TYPE:
-                return TSTypeKind::OBJECT;
-            case JSType::TS_IMPORT_TYPE:
-                return TSTypeKind::IMPORT;
-            case JSType::TS_INTERFACE_TYPE:
-                return TSTypeKind::INTERFACE_KIND;
-            default:
-                UNREACHABLE();
+        JSHandle<JSTaggedValue> type = GetTSType(gt);
+        if (type->IsTSType()) {
+            JSHandle<TSType> tsType(type);
+            JSType hClassType = tsType->GetClass()->GetObjectType();
+            switch (hClassType) {
+                case JSType::TS_CLASS_TYPE:
+                    return TSTypeKind::CLASS;
+                case JSType::TS_CLASS_INSTANCE_TYPE:
+                    return TSTypeKind::CLASS_INSTANCE;
+                case JSType::TS_FUNCTION_TYPE:
+                    return TSTypeKind::FUNCTION;
+                case JSType::TS_UNION_TYPE:
+                    return TSTypeKind::UNION;
+                case JSType::TS_ARRAY_TYPE:
+                    return TSTypeKind::ARRAY;
+                case JSType::TS_OBJECT_TYPE:
+                    return TSTypeKind::OBJECT;
+                case JSType::TS_IMPORT_TYPE:
+                    return TSTypeKind::IMPORT;
+                case JSType::TS_INTERFACE_TYPE:
+                    return TSTypeKind::INTERFACE_KIND;
+                default:
+                    UNREACHABLE();
+            }
+        } else {
+            return TSTypeKind::UNKNOWN;
         }
     }
     return TSTypeKind::PRIMITIVE;
@@ -356,13 +371,13 @@ void TSManager::SetInferTypeTable(JSHandle<TSTypeTable> inferTable)
     mTable->Set(thread_, inferTableOffset, inferTable);
 }
 
-int TSManager::GetFuncParametersNum(GlobalTSTypeRef gt) const
+int TSManager::GetFunctionTypLength(GlobalTSTypeRef gt) const
 {
     ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
-    return functionType->GetParametersNum();
+    return functionType->GetLength();
 }
 
 GlobalTSTypeRef TSManager::GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const
@@ -380,7 +395,7 @@ GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
-    return functionType->GetReturnValueTypeGT();
+    return functionType->GetReturnGT();
 }
 
 GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
@@ -444,6 +459,10 @@ JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
     uint32_t moduleId = gt.GetModuleId();
     uint32_t localId = gt.GetLocalId();
 
+    if (moduleId == TSModuleTable::BUILTINS_TABLE_ID && !IsBuiltinsDTSEnabled()) {
+        return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
+    }
+
     JSHandle<TSModuleTable> mTable = GetTSModuleTable();
     JSHandle<TSTypeTable> typeTable = mTable->GetTSTypeTable(thread_, moduleId);
     JSHandle<JSTaggedValue> tsType(thread_, typeTable->Get(localId));
@@ -474,6 +493,8 @@ std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
             return "import";
         case TSTypeKind::INTERFACE_KIND:
             return "interface";
+        case TSTypeKind::UNKNOWN:
+            return "unknown";
         default:
             UNREACHABLE();
     }
@@ -513,6 +534,13 @@ void TSModuleTable::Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
     mTable->SetNumberOfTSTypeTables(thread, DEFAULT_NUMBER_OF_TABLES);
+
+    // set primitive type table
+    JSHandle<EcmaString> primitiveTableName = factory->NewFromASCII(TSTypeTable::PRIMITIVE_TABLE_NAME);
+    mTable->Set(thread, GetAmiPathOffset(PRIMITIVE_TABLE_ID), primitiveTableName);
+    mTable->Set(thread, GetSortIdOffset(PRIMITIVE_TABLE_ID), JSTaggedValue(PRIMITIVE_TABLE_ID));
+    JSHandle<TSTypeTable> primitiveTable = factory->NewTSTypeTable(0);
+    mTable->Set(thread, GetTSTypeTableOffset(PRIMITIVE_TABLE_ID), primitiveTable);
 
     // set builtins type table
     JSHandle<EcmaString> builtinsTableName = factory->NewFromASCII(TSTypeTable::BUILTINS_TABLE_NAME);
@@ -586,7 +614,8 @@ JSHandle<TSTypeTable> TSModuleTable::GenerateBuiltinsTypeTable(JSThread *thread)
     }
 
     CVector<JSHandle<EcmaString>> vec;
-    JSHandle<TSTypeTable> builtinsTypeTable = TSTypeTable::GenerateTypeTable(thread, jsPandaFile, vec);
+    JSHandle<TSTypeTable> builtinsTypeTable = TSTypeTable::GenerateTypeTable(thread, jsPandaFile, BUILTINS_TABLE_ID,
+                                                                             vec);
     return builtinsTypeTable;
 }
 } // namespace panda::ecmascript

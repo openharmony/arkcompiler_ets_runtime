@@ -1371,8 +1371,7 @@ void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &dynclass
 {
     ASSERT(inobjPropCount * JSTaggedValue::TaggedTypeSize() < dynclass->GetObjectSize());
     auto paddr = reinterpret_cast<uintptr_t>(obj) + dynclass->GetObjectSize();
-    JSTaggedType initVal = dynclass->IsTSType() ? JSTaggedValue::VALUE_HOLE
-                                                : JSTaggedValue::VALUE_UNDEFINED;
+    JSTaggedType initVal = dynclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
     for (int i = 0; i < inobjPropCount; ++i) {
         paddr -= JSTaggedValue::TaggedTypeSize();
         *reinterpret_cast<JSTaggedType *>(paddr) = initVal;
@@ -3093,11 +3092,15 @@ JSHandle<TSFunctionType> ObjectFactory::NewTSFunctionType(uint32_t length)
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetTSFunctionTypeClass().GetTaggedObject()));
     JSHandle<TSFunctionType> functionType(thread_, header);
-    functionType->SetParameterTypes(thread_, JSTaggedValue::Undefined());
 
-    JSHandle<TaggedArray> parameterTypes = NewTaggedArray(length + TSFunctionType::DEFAULT_LENGTH,
-                                                          JSTaggedValue::Undefined());
     functionType->SetGT(GlobalTSTypeRef::Default());
+    functionType->SetName(thread_, JSTaggedValue::Undefined());
+    functionType->SetParameterTypes(thread_, JSTaggedValue::Undefined());
+    functionType->SetReturnGT(GlobalTSTypeRef::Default());
+    functionType->SetThisGT(GlobalTSTypeRef::Default());
+    functionType->ClearBitField();
+
+    JSHandle<TaggedArray> parameterTypes = NewTaggedArray(length, JSTaggedValue::Undefined());
     functionType->SetParameterTypes(thread_, parameterTypes);
 
     return functionType;

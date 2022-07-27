@@ -973,7 +973,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::TS_FUNCTION_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSFunctionType::SIZE, 2U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSFunctionType::SIZE, 5U);
                 JSHandle<TSFunctionType> functionType = factory->NewTSFunctionType(1);
                 DUMP_FOR_HANDLE(functionType)
                 break;

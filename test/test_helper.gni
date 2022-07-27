@@ -392,6 +392,25 @@ template("host_typeinfer_test_action") {
 
   _script_args_ = rebase_path(_test_abc_path_)
 
+  _builtins_dts_path_ =
+      "//arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d.ts"
+  _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
+
+  ts2abc_gen_abc("gen_builtins_d_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+
+    # extra_dependencies = _deps_
+    src_js = rebase_path(_builtins_dts_path_)
+    dst_file = rebase_path(_builtins_d_abc_path_)
+    extra_args = [
+      "--q",
+      "--b",
+    ]
+
+    in_puts = [ _builtins_dts_path_ ]
+    out_puts = [ _builtins_d_abc_path_ ]
+  }
+
   action("${_target_name_}AotTypeInferAction") {
     testonly = true
 
@@ -406,6 +425,13 @@ template("host_typeinfer_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ = " --typeinfer-verify=true"
+
+    if (defined(invoker.is_enable_builtins_dts) &&
+        invoker.is_enable_builtins_dts) {
+      deps += [ ":gen_builtins_d_abc" ]
+      _aot_compile_options_ +=
+          " --builtins-dts=" + rebase_path(_builtins_d_abc_path_)
+    }
 
     args = [
       "--script-file",
