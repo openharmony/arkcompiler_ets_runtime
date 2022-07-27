@@ -102,7 +102,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
     DestoryModule();
 }
 
-void AOTFileGenerator::GenerateSnapshotFile()
+void AOTFileGenerator::SaveSnapshotFile()
 {
     TSLoader *tsLoader = vm_->GetTSLoader();
     Snapshot snapshot(vm_);

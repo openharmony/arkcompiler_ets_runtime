@@ -206,7 +206,7 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
         LoadAOTFiles();
     }
-    InitializeFinish();
+    initialized_ = true;
     return true;
 }
 
@@ -259,16 +259,10 @@ void EcmaVM::SetRuntimeStatEnable(bool flag)
     runtimeStat_->SetRuntimeStatEnabled(flag);
 }
 
-bool EcmaVM::InitializeFinish()
-{
-    vmInitialized_ = true;
-    return true;
-}
-
 EcmaVM::~EcmaVM()
 {
     LOG_ECMA(INFO) << "Destruct ecma_vm, vm address is: " << this;
-    vmInitialized_ = false;
+    initialized_ = false;
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy();
 
@@ -293,8 +287,10 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
-    delete regExpParserCache_;
-    regExpParserCache_ = nullptr;
+    if (regExpParserCache_ != nullptr) {
+        delete regExpParserCache_;
+        regExpParserCache_ = nullptr;
+    }
 
     if (debuggerManager_ != nullptr) {
         chunk_.Delete(debuggerManager_);
@@ -706,11 +702,6 @@ void EcmaVM::LoadAOTFiles()
     std::string file = options_.GetAOTOutputFile();
     LOG_ECMA(INFO) << "Try to load aot file" << file.c_str();
     fileLoader_->LoadAOTFile(file);
-    fileLoader_->TryLoadSnapshotFile();
-}
-
-void EcmaVM::SaveAOTFuncEntry(uint32_t hash, uint32_t methodId, uint64_t funcEntry)
-{
-    fileLoader_->SaveAOTFuncEntry(hash, methodId, funcEntry);
+    fileLoader_->LoadSnapshotFile();
 }
 }  // namespace panda::ecmascript

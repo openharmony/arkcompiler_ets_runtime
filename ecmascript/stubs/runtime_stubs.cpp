@@ -1064,8 +1064,8 @@ DEF_RUNTIME_STUBS(TryLdGlobalByName)
     JSHandle<JSTaggedValue> prop = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
-    JSTaggedValue globalObj = globalEnv->GetGlobalObject();
-    return RuntimeTryLdGlobalByName(thread, globalObj, prop).GetRawData();
+    JSHandle<JSTaggedValue> globalObj(thread, globalEnv->GetGlobalObject());
+    return RuntimeTryLdGlobalByName(thread, globalObj, prop).GetRawData(); // After checking not on global obj.
 }
 
 DEF_RUNTIME_STUBS(LoadMiss)
@@ -1111,9 +1111,9 @@ DEF_RUNTIME_STUBS(ThrowReferenceError)
 DEF_RUNTIME_STUBS(LdGlobalVar)
 {
     RUNTIME_STUBS_HEADER(LdGlobalVar);
-    JSTaggedValue global = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> global = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> prop = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeLdGlobalVar(thread, global, prop).GetRawData();
+    return RuntimeLdGlobalVarFromProto(thread, global, prop).GetRawData(); // After checked global itself.
 }
 
 DEF_RUNTIME_STUBS(StGlobalVar)

@@ -18,7 +18,6 @@
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <vector>
 
-#include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
@@ -26,39 +25,14 @@
 #include "ecmascript/napi/include/jsnapi.h"
 
 #include "generated/base_options.h"
-#include "libpandabase/os/native_stack.h"
 #include "libpandabase/utils/pandargs.h"
-#include "libpandabase/utils/span.h"
-#include "libpandafile/file.h"
 
 namespace panda::ecmascript::kungfu {
-void BlockSignals()
-{
-#if defined(PANDA_TARGET_UNIX)
-    sigset_t set;
-    if (sigemptyset(&set) == -1) {
-        LOG_COMPILER(ERROR) << "sigemptyset failed";
-        return;
-    }
-    int rc = 0;
-
-    if (rc < 0) {
-        LOG_COMPILER(ERROR) << "sigaddset failed";
-        return;
-    }
-
-    if (panda::os::native_stack::g_PandaThreadSigmask(SIG_BLOCK, &set, nullptr) != 0) {
-        LOG_COMPILER(ERROR) << "g_PandaThreadSigmask failed";
-    }
-#endif  // PANDA_TARGET_UNIX
-}
-
 int Main(const int argc, const char **argv)
 {
     auto startTime =
             std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch())
                     .count();
-    BlockSignals();
     Span<const char *> sp(argv, argc);
     JSRuntimeOptions runtimeOptions;
     base_options::Options baseOptions(sp[0]);
@@ -136,7 +110,7 @@ int Main(const int argc, const char **argv)
             }
         }
         generator.SaveAOTFile(outputFileName);
-        generator.GenerateSnapshotFile();
+        generator.SaveSnapshotFile();
     }
 
     JSNApi::DestroyJSVM(vm);
