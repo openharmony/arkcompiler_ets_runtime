@@ -1246,8 +1246,8 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
         }
         case SnapshotType::TS_LOADER: {
             if (JSType(objType) == JSType::HCLASS) {
-                TSLoader *tsLoader = vm_->GetTSLoader();
-                tsLoader->AddStaticHClassInRuntimePhase(JSTaggedValue(rootObjectAddr));
+                TSManager *tsManager = vm_->GetTSManager();
+                tsManager->AddStaticHClassInRuntimePhase(JSTaggedValue(rootObjectAddr));
             }
             break;
         }

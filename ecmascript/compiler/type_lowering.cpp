@@ -106,12 +106,12 @@ void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
     ASSERT(ctorType.IsTSType());
-    if (!ctorType.IsClassTypeKind()) {
+    if (!tsManager_->IsClassTypeKind(ctorType)) {
         return;
     }
 
     GlobalTSTypeRef gt = GlobalTSTypeRef(ctorType.GetType());
-    std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap = tsLoader_->GetGtHClassIndexMap();
+    std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap = tsManager_->GetGtHClassIndexMap();
     int64_t index = gtHClassIndexMap[gt];
     GateRef ihcIndex = builder_.TaggedTypeNGC(builder_.Int64(index));
 

@@ -20,14 +20,14 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class TypeInfer {
 public:
-    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, TSLoader *tsLoader, bool enableLog)
+    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, TSManager *tsManager, bool enableLog)
         : builder_(builder), circuit_(circuit), gateAccessor_(circuit),
-          tsLoader_(tsLoader), enableLog_(enableLog) {}
+          tsManager_(tsManager), enableLog_(enableLog) {}
     ~TypeInfer() = default;
     NO_COPY_SEMANTIC(TypeInfer);
     NO_MOVE_SEMANTIC(TypeInfer);
@@ -69,6 +69,25 @@ private:
     bool InferNewObjSpread(GateRef gate);
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
+
+    inline GlobalTSTypeRef GetPropType(const GateType &type, const JSHandle<EcmaString> propertyName) const
+    {
+        return tsManager_->GetPropType(type, propertyName);
+    }
+
+    inline GlobalTSTypeRef GetPropType(const GateType &type, const uint64_t key) const
+    {
+        return tsManager_->GetPropType(type, key);
+    }
+
+    inline bool IsObjectOrClass(const GateType &type) const
+    {
+        auto flag = tsManager_->IsObjectTypeKind(type) ||
+                    tsManager_->IsClassTypeKind(type) ||
+                    tsManager_->IsClassInstanceTypeKind(type);
+        return flag;
+    }
+
     void Verify() const;
     void TypeCheck(GateRef gate) const;
     void PrintType(GateRef gate) const;
@@ -76,7 +95,7 @@ private:
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor gateAccessor_;
-    TSLoader *tsLoader_ {nullptr};
+    TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     std::map<uint32_t, GateType> stringIdToGateType_;
 };

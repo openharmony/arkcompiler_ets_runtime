@@ -16,12 +16,12 @@
 #include "ecmascript/compiler/type_recorder.h"
 
 namespace panda::ecmascript::kungfu {
-TypeRecorder::TypeRecorder(const JSMethod *method, TSLoader *tsLoader)
+TypeRecorder::TypeRecorder(const JSMethod *method, TSManager *tsManager)
 {
-    LoadTypes(method, tsLoader);
+    LoadTypes(method, tsManager);
 }
 
-void TypeRecorder::LoadTypes(const JSMethod *method, TSLoader *tsLoader)
+void TypeRecorder::LoadTypes(const JSMethod *method, TSManager *tsManager)
 {
     const panda_file::File *pf = method->GetJSPandaFile()->GetPandaFile();
     panda_file::File::EntityId fieldId = method->GetMethodId();
@@ -42,16 +42,11 @@ void TypeRecorder::LoadTypes(const JSMethod *method, TSLoader *tsLoader)
             if (::strcmp("_TypeOfInstruction", elemName) != 0) {
                 continue;
             }
-            for (uint32_t j = 0; j < elemCount; j = j + 2) { // + 2 means localId index
-                auto bcOffset = adae.GetArrayValue().Get<int32_t>(j);
-                uint32_t localId = adae.GetArrayValue().Get<uint32_t>(j + 1);
-                if (!localId) {
-                    continue;
-                }
-                if (GlobalTSTypeRef(localId).IsBuiltinType()) {
-                    bcOffsetGtMap_.emplace(bcOffset, GateType(localId));
-                } else {
-                    auto type = tsLoader->GetGTByLocalID(*pf, localId);
+            for (uint32_t j = 0; j < elemCount; j = j + 2) { // + 2 means typeId index
+                int32_t bcOffset = adae.GetArrayValue().Get<int32_t>(j);
+                uint32_t typeId = adae.GetArrayValue().Get<uint32_t>(j + 1);
+                auto type = GateType(tsManager->CreateGT(*pf, typeId));
+                if (!type.IsAnyType()) {
                     bcOffsetGtMap_.emplace(bcOffset, GateType(type));
                 }
             }
