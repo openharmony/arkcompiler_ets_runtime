@@ -76,7 +76,7 @@ void JSFinalizationRegistry::Register(JSThread *thread, JSHandle<JSTaggedValue> 
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<CellRecord> cellRecord = factory->NewCellRecord();
-    cellRecord->SetToWeakRefTarget(target.GetTaggedValue());
+    cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
     cellRecord->SetHeldValue(thread, heldValue);
     JSHandle<JSTaggedValue> cell(cellRecord);
     // If unregisterToken is undefined, we use vector to store
