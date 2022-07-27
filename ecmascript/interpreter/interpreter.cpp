@@ -58,7 +58,9 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
         return nullptr;
     }
 
-    newSp -= numArgs;
+    for (auto i = 0; i < numArgs; i++) {
+        *(--newSp) = JSTaggedValue::VALUE_UNDEFINED;
+    }
     *(--newSp) = thisObj.GetTaggedType();
     *(--newSp) = newTarget.GetTaggedType();
     *(--newSp) = func.GetTaggedType();
