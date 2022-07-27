@@ -127,14 +127,15 @@ public:
         return assembler_->GetSectionAddr(sec);
     }
 
-    void RunAssembler()
+    void RunAssembler(const CompilerLog &log)
     {
-        assembler_->Run();
+        assembler_->Run(log);
     }
 
-    void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, const CompilerLog &log)
+    void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name,
+        const CompilerLog &log, const MethodLogList &logList)
     {
-        assembler_->Disassemble(addr2name, log);
+        assembler_->Disassemble(addr2name, log, logList);
     }
 
     void DestoryModule()
@@ -155,7 +156,7 @@ private:
 
 class FileGenerator {
 public:
-    explicit FileGenerator(const CompilerLog *log) : log_(log) {};
+    FileGenerator(const CompilerLog *log, const MethodLogList *logList) : log_(log), logList_(logList) {};
     virtual ~FileGenerator() = default;
 
     const CompilerLog GetLog() const
@@ -165,18 +166,19 @@ public:
 protected:
     std::vector<Module> modulePackage_ {};
     const CompilerLog *log_ {nullptr};
+    const MethodLogList *logList_ {nullptr};
 
     void RunLLVMAssembler()
     {
         for (auto m : modulePackage_) {
-            m.RunAssembler();
+            m.RunAssembler(*(log_));
         }
     }
 
     void DisassembleEachFunc(std::map<uintptr_t, std::string> &addr2name)
     {
         for (auto m : modulePackage_) {
-            m.DisassemblerFunc(addr2name, *(log_));
+            m.DisassemblerFunc(addr2name, *(log_), *(logList_));
         }
     }
 
@@ -190,7 +192,8 @@ protected:
 
 class AOTFileGenerator : public FileGenerator {
 public:
-    explicit AOTFileGenerator(const CompilerLog *log, EcmaVM* vm) : FileGenerator(log), vm_(vm) {};
+    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList,
+        EcmaVM* vm) : FileGenerator(log, logList), vm_(vm) {};
     ~AOTFileGenerator() override = default;
 
     void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, const JSPandaFile *jsPandaFile)
@@ -214,7 +217,8 @@ private:
 
 class StubFileGenerator : public FileGenerator {
 public:
-    StubFileGenerator(const CompilerLog *log, const std::string &triple) : FileGenerator(log), cfg_(triple) {};
+    StubFileGenerator(const CompilerLog *log, const MethodLogList *logList,
+        const std::string &triple) : FileGenerator(log, logList), cfg_(triple) {};
     ~StubFileGenerator() override = default;
     void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler)
     {

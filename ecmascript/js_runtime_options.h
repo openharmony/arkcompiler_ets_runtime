@@ -60,7 +60,8 @@ public:
         parser->Add(&targetTriple_);
         parser->Add(&asmOptLevel_);
         parser->Add(&relocationMode_);
-        parser->Add(&logCompiledMethods_);
+        parser->Add(&methodsListForLog_);
+        parser->Add(&compilerLogOpt_);
         parser->Add(&serializerBufferSizeLimit_);
         parser->Add(&heapSizeLimit_);
         parser->Add(&enableIC_);
@@ -331,19 +332,36 @@ public:
         return asmInterParsedOption_;
     }
 
-    std::string GetlogCompiledMethods() const
+    std::string GetCompilerLogOption() const
     {
-        return logCompiledMethods_.GetValue();
+        return compilerLogOpt_.GetValue();
     }
 
-    void SetlogCompiledMethods_(std::string value)
+    void SetCompilerLogOption(std::string value)
     {
-        logCompiledMethods_.SetValue(std::move(value));
+        compilerLogOpt_.SetValue(std::move(value));
     }
 
-    bool WasSetlogCompiledMethods() const
+    bool WasSetCompilerLogOption() const
     {
-        return logCompiledMethods_.WasSet() && GetlogCompiledMethods().compare("none") != 0;
+        return compilerLogOpt_.WasSet() && GetCompilerLogOption().find("none") == std::string::npos;
+    }
+
+    std::string GetMethodsListForLog() const
+    {
+        return methodsListForLog_.GetValue();
+    }
+
+    void SetMethodsListForLog(std::string value)
+    {
+        methodsListForLog_.SetValue(std::move(value));
+    }
+
+    bool WasSetMethodsListForLog() const
+    {
+        return methodsListForLog_.WasSet() &&
+            GetCompilerLogOption().find("none") == std::string::npos &&
+            GetCompilerLogOption().find("all") == std::string::npos;
     }
 
     uint64_t GetSerializerBufferSizeLimit() const
@@ -542,10 +560,17 @@ private:
     PandArg<std::string> icuDataPath_ {"icu-data-path", R"(default)",
         R"(Path to generated icu data file. Default: "default")"};
     PandArg<bool> startupTime_ {"startup-time", false, R"(Print the start time of command execution. Default: false)"};
-    PandArg<std::string> logCompiledMethods_ {"log-compiled-methods",
+    PandArg<std::string> compilerLogOpt_ {"compiler-log",
         R"(none)",
-        R"(print stub or aot logs in units of method, "none": no log, "all": every method,"
-        "asm": log all disassemble code)"};
+        R"(log Option For aot compiler and stub compiler,
+        "none": no log, "allllircirasm": print llIR file, CIR log and asm log for all methods,
+        "allasm" : print asm log for all methods,
+        "cerllircirasm": print llIR file, CIR log and asm log for certain method defined in log-method-list,
+        "cerasm": print asm log for certain method defined in log-method-list,
+        Default: "none")"};
+    PandArg<std::string> methodsListForLog_ {"mlist-for-log",
+        R"(none)",
+        R"(specific method list for compiler log output, only used when compiler-log)"};
     PandArg<std::string> snapshotOutputFile_ {"snapshot-output-file",
         R"(snapshot)",
         R"(Path to snapshot output file. Default: "snapshot")"};

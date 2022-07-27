@@ -54,8 +54,7 @@ private:
 template<typename T1>
 class PassRunner {
 public:
-    explicit PassRunner(T1* data, bool enableLog = false)
-        : data_(data), enableLog_(enableLog) {}
+    explicit PassRunner(T1* data, bool log = false) : data_(data), enableLog_(log) {}
     virtual ~PassRunner() = default;
     template<typename T2, typename... Args>
     bool RunPass(Args... args)
@@ -66,7 +65,7 @@ public:
 
 private:
     T1* data_;
-    bool enableLog_ {false};
+    bool enableLog_;
 };
 
 class TypeInferPass {
