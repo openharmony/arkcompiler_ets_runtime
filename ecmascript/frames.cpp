@@ -208,12 +208,13 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp(uintptr_t curPc) const
         case FrameType::INTERPRETER_FRAME:
         case FrameType::INTERPRETER_FAST_NEW_FRAME:
         case FrameType::OPTIMIZED_ENTRY_FRAME:
+        case FrameType::INTERPRETER_BUILTIN_FRAME:
         case FrameType::INTERPRETER_ENTRY_FRAME:
         case FrameType::ASM_INTERPRETER_ENTRY_FRAME: {
             return 0;
         }
         default: {
-            UNREACHABLE();
+            LOG_ECMA(FATAL) << "frame type error!";
         }
     }
 }
@@ -241,7 +242,6 @@ uintptr_t FrameIterator::GetPrevFrame() const
         }
         default: {
             LOG_ECMA(FATAL) << "frame type error!";
-            UNREACHABLE();
         }
     }
     return end;
