@@ -552,6 +552,9 @@ public:
     TaggedObject *NewOldSpaceDynObject(const JSHandle<JSHClass> &dynclass);
     JSHandle<TaggedArray> NewOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
 
+    // ---------------------------------New objects used internally--------------------------------------
+    JSHandle<JSArray> NewJSStableArrayWithElements(const JSHandle<TaggedArray> &elements);
+
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
