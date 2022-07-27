@@ -209,10 +209,8 @@ JSTaggedValue JSAPIArrayList::RemoveByRange(JSThread *thread, const JSHandle<JSA
     }
 
     int32_t toIndex;
-    if (endIndex > length) {
+    if (endIndex >= length) {
         toIndex = length;
-    } else if (endIndex == length) {
-        toIndex = length - 1;
     } else {
         toIndex = endIndex;
     }
