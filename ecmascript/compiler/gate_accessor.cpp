@@ -34,6 +34,31 @@ void GateAccessor::SetMark(GateRef gate, MarkCode mark)
     circuit_->SetMark(gate, mark);
 }
 
+bool GateAccessor::IsFinished(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::FINISHED;
+}
+
+bool GateAccessor::IsVisited(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::VISITED;
+}
+
+bool GateAccessor::IsNotMarked(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::NO_MARK;
+}
+
+void GateAccessor::SetFinished(GateRef gate)
+{
+    SetMark(gate, MarkCode::FINISHED);
+}
+
+void GateAccessor::SetVisited(GateRef gate)
+{
+    SetMark(gate, MarkCode::VISITED);
+}
+
 OpCode GateAccessor::GetOpCode(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -136,6 +161,21 @@ bool GateAccessor::IsControlCase(GateRef gate) const
 bool GateAccessor::IsLoopHead(GateRef gate) const
 {
     return circuit_->IsLoopHead(gate);
+}
+
+bool GateAccessor::IsLoopBack(GateRef gate) const
+{
+    return GetOpCode(gate) == OpCode::LOOP_BACK;
+}
+
+bool GateAccessor::IsState(GateRef gate) const
+{
+    return GetOpCode(gate).IsState();
+}
+
+bool GateAccessor::IsSchedulable(GateRef gate) const
+{
+    return GetOpCode(gate).IsSchedulable();
 }
 
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
