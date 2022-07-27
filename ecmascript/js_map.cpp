@@ -19,8 +19,6 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
 
-#include "libpandabase/utils/bit_utils.h"
-
 namespace panda::ecmascript {
 void JSMap::Set(JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JSTaggedValue> &key,
                 const JSHandle<JSTaggedValue> &value)

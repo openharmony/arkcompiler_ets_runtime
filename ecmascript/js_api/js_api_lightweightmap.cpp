@@ -23,9 +23,6 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 
-#include "libpandabase/utils/bit_utils.h"
-#include "utils/bit_utils.h"
-
 namespace panda::ecmascript {
 JSTaggedValue JSAPILightWeightMap::IncreaseCapacityTo(JSThread *thread,
                                                       const JSHandle<JSAPILightWeightMap> &lightWeightMap,

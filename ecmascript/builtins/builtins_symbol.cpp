@@ -24,8 +24,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/symbol_table.h"
 
-#include "utils/bit_utils.h"
-
 namespace panda::ecmascript::builtins {
 // prototype
 // 19.4.3.1
