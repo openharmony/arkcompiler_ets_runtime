@@ -35,7 +35,7 @@ public:
     // Get chunk's size
     int GetSize() override
     {
-        const static int fileChunkSize = 10_KB;
+        const static int fileChunkSize = static_cast<int>(10_KB);
         return fileChunkSize;
     }
 
@@ -66,7 +66,7 @@ public:
     // Get chunk's size
     int GetSize() override
     {
-        const static int fileChunkSize = 10_KB;
+        const static int fileChunkSize = static_cast<int>(10_KB);
         return fileChunkSize;
     }
 

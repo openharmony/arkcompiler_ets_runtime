@@ -96,10 +96,10 @@ size_t ArgumentAccessor::GetFunctionArgIndex(const size_t currentVreg, const boo
 void ArgumentAccessor::FillArgsGateType(const TypeRecorder *typeRecorder)
 {
     ASSERT(method_ != nullptr);
-    const int32_t numOfArgs = method_->GetNumArgs();
-    const int32_t offsetArgs = method_->GetNumVregs();
+    const uint32_t numOfArgs = method_->GetNumArgs();
+    const uint32_t offsetArgs = method_->GetNumVregs();
     GateAccessor gateAcc(circuit_);
-    for (int32_t argIndex = 0; argIndex < numOfArgs; argIndex++) {
+    for (uint32_t argIndex = 0; argIndex < numOfArgs; argIndex++) {
         auto argType = typeRecorder->GetArgType(argIndex);
         if (!argType.IsAnyType()) {
             auto gate = GetArgGate(offsetArgs + argIndex);

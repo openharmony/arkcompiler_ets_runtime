@@ -66,7 +66,8 @@ public:
             int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
             if (hash == 0) {
                 uint64_t keyValue = key.GetRawData();
-                hash = GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
+                hash = static_cast<int32_t>(GetHash32(reinterpret_cast<uint8_t *>(&keyValue),
+                    sizeof(keyValue) / sizeof(uint8_t)));
                 ECMAObject::Cast(key.GetTaggedObject())->SetHash(hash);
             }
             return hash;

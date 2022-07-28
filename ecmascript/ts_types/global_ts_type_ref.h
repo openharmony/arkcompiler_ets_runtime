@@ -59,8 +59,8 @@ public:
     explicit GlobalTSTypeRef(int moduleId, int localId, TSTypeKind typeKind) : type_(0)
     {
         SetKind(static_cast<int>(typeKind));
-        SetLocalId(localId);
-        SetModuleId(moduleId);
+        SetLocalId(static_cast<uint8_t>(localId));
+        SetModuleId(static_cast<uint8_t>(moduleId));
     }
 
     ~GlobalTSTypeRef() = default;
