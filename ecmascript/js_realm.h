@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_JSREALM_H
 #define ECMASCRIPT_JSREALM_H
 
-#include "js_global_object.h"
+#include "ecmascript/js_global_object.h"
 
 namespace panda::ecmascript {
 class JSRealm : public JSObject {

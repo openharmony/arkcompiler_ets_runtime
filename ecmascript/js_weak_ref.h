@@ -42,11 +42,11 @@ public:
         return target.GetTaggedValue();
     }
 
-    void SetToWeak(JSTaggedValue value)
+    void SetToWeak(JSThread *thread, JSTaggedValue value)
     {
         JSTaggedValue weakObj = JSTaggedValue(value.CreateAndGetWeakRef());
         ASSERT(weakObj.IsWeak());
-        SetWeakObject(weakObj);
+        SetWeakObject(thread, weakObj);
     }
 
     JSTaggedValue GetFromWeak() const

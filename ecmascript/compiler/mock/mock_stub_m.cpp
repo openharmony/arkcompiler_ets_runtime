@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <cstdint>
 extern const uint8_t _binary_stub_m_start[1] = {0x0};
 extern const uint32_t _binary_stub_m_length = 1;

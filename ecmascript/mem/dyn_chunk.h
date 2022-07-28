@@ -17,6 +17,7 @@
 #define ECMASCRIPT_REGEXP_DYN_BUFFER_H
 
 #include <cstring>
+
 #include "ecmascript/common.h"
 #include "ecmascript/mem/chunk.h"
 

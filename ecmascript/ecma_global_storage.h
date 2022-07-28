@@ -20,6 +20,7 @@
 
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/chunk.h"
+#include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {
 class EcmaGlobalStorage {
@@ -104,9 +105,9 @@ public:
             index_ = index;
         }
 
-        void SetUsing(bool free)
+        void SetUsing(bool isUsing)
         {
-            isUsing_ = free;
+            isUsing_ = isUsing;
         }
 
         void SetWeak(bool isWeak)
@@ -129,6 +130,49 @@ public:
             return reinterpret_cast<uintptr_t>(&obj_);
         }
 
+        // If isUsing is true, it means that the node is being used, otherwise it means that node is be freed
+        void Reset(Node *next, JSTaggedType value, bool isUsing)
+        {
+            SetPrev(nullptr);
+            SetNext(next);
+            SetObject(value);
+            SetUsing(isUsing);
+#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+            ResetMarkCount();
+            if (isUsing) {
+                IncGlobalNumber();
+            }
+#endif
+        }
+
+#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+        int32_t GetMarkCount() const
+        {
+            return markCount_;
+        }
+
+        void MarkCount()
+        {
+            markCount_++;
+        }
+
+        void ResetMarkCount()
+        {
+            markCount_ = 0;
+        }
+
+        void IncGlobalNumber()
+        {
+            static int numberCount = 0;
+            globalNumber_ = numberCount++;
+        }
+
+        int32_t GetGlobalNumber()
+        {
+            return globalNumber_;
+        }
+#endif
+
     private:
         JSTaggedType obj_;
         Node *next_ {nullptr};
@@ -136,6 +180,11 @@ public:
         int32_t index_ {-1};
         bool isUsing_ {false};
         bool isWeak_ {false};
+#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+        int32_t markCount_ {0};
+        // A number generated in the order of distribution.It Used to help locate global memory leaks.
+        int32_t globalNumber_ {0};
+#endif
     };
 
     class WeakNode : public Node {
@@ -186,10 +235,7 @@ public:
                 return nullptr;
             }
             T *node = &nodeList_[index_++];
-            node->SetPrev(nullptr);
-            node->SetNext(usedList_);
-            node->SetObject(value);
-            node->SetUsing(true);
+            node->Reset(usedList_, value, true);
             if (usedList_ != nullptr) {
                 usedList_->SetPrev(node);
             }
@@ -202,11 +248,7 @@ public:
             T *node = freeList_;
             if (node != nullptr) {
                 freeList_ = reinterpret_cast<T *>(node->GetNext());
-
-                node->SetPrev(nullptr);
-                node->SetNext(usedList_);
-                node->SetObject(value);
-                node->SetUsing(true);
+                node->Reset(usedList_, value, true);
                 if (usedList_ != nullptr) {
                     usedList_->SetPrev(node);
                 }
@@ -226,10 +268,7 @@ public:
             if (node == usedList_) {
                 usedList_ = reinterpret_cast<T *>(node->GetNext());
             }
-            node->SetPrev(nullptr);
-            node->SetNext(freeList_);
-            node->SetObject(JSTaggedValue::Undefined().GetRawData());
-            node->SetUsing(false);
+            node->Reset(freeList_, JSTaggedValue::Undefined().GetRawData(), false);
             if (node->IsWeak()) {
                 reinterpret_cast<WeakNode *>(node)->SetReference(nullptr);
                 reinterpret_cast<WeakNode *>(node)->SetCallback(nullptr);
@@ -446,9 +485,9 @@ private:
     template<typename T>
     inline uintptr_t NewGlobalHandleImplement(NodeList<T> **storage, NodeList<T> **freeList, JSTaggedType value)
     {
-    #if ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK
+#if ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK
         thread_->CheckJSTaggedType(value);
-    #endif
+#endif
         if (!(*storage)->IsFull()) {
             // alloc new block
             T *node = (*storage)->NewNode(value);

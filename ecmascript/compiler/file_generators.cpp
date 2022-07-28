@@ -12,10 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "file_generators.h"
+
+#include "ecmascript/compiler/file_generators.h"
+
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/ts_types/ts_loader.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "llvm_ir_builder.h"
 
 namespace panda::ecmascript::kungfu {
@@ -99,16 +101,16 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
     DestoryModule();
 }
 
-void AOTFileGenerator::GenerateSnapshotFile()
+void AOTFileGenerator::SaveSnapshotFile()
 {
-    TSLoader *tsLoader = vm_->GetTSLoader();
+    TSManager *tsManager = vm_->GetTSManager();
     Snapshot snapshot(vm_);
-    CVector<JSTaggedType> constStringTable = tsLoader->GetConstStringTable();
-    CVector<JSTaggedType> staticHClassTable = tsLoader->GetStaticHClassTable();
-    CVector<JSTaggedType> tsLoaderSerializeTable(constStringTable);
-    tsLoaderSerializeTable.insert(tsLoaderSerializeTable.end(), staticHClassTable.begin(), staticHClassTable.end());
+    CVector<JSTaggedType> constStringTable = tsManager->GetConstStringTable();
+    CVector<JSTaggedType> staticHClassTable = tsManager->GetStaticHClassTable();
+    CVector<JSTaggedType> tsManagerSerializeTable(constStringTable);
+    tsManagerSerializeTable.insert(tsManagerSerializeTable.end(), staticHClassTable.begin(), staticHClassTable.end());
     const CString snapshotPath(vm_->GetJSOptions().GetSnapshotOutputFile().c_str());
-    snapshot.Serialize(reinterpret_cast<uintptr_t>(tsLoaderSerializeTable.data()), tsLoaderSerializeTable.size(),
+    snapshot.Serialize(reinterpret_cast<uintptr_t>(tsManagerSerializeTable.data()), tsManagerSerializeTable.size(),
                        snapshotPath);
 }
 }  // namespace panda::ecmascript::kungfu

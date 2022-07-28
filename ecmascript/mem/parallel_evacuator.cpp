@@ -51,6 +51,7 @@ void ParallelEvacuator::Evacuate()
     Initialize();
     EvacuateSpace();
     UpdateReference();
+    heap_->UpdateDerivedObjectInStack();
     Finalize();
     heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticConcurrentEvacuate(clockScope.GetPauseTime());
 }
@@ -324,13 +325,17 @@ void ParallelEvacuator::UpdateNewRegionReference(Region *region)
     size_t objSize = 0;
     while (curPtr < endPtr) {
         auto freeObject = FreeObject::Cast(curPtr);
+        // If curPtr is freeObject, It must to mark unpoison first.
+        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(freeObject), TaggedObject::TaggedObjectSize());
         if (!freeObject->IsFreeObject()) {
             auto obj = reinterpret_cast<TaggedObject *>(curPtr);
             auto klass = obj->GetClass();
             UpdateNewObjectField(obj, klass);
             objSize = klass->SizeFromJSHClass(obj);
         } else {
+            freeObject->AsanUnPoisonFreeObject();
             objSize = freeObject->Available();
+            freeObject->AsanPoisonFreeObject();
         }
         curPtr += objSize;
         CHECK_OBJECT_SIZE(objSize);

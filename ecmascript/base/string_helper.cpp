@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/base/string_helper.h"
+
 #include "ecmascript/ecma_string-inl.h"
 
 namespace panda::ecmascript::base {

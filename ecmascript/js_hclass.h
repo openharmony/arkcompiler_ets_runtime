@@ -17,13 +17,14 @@
 #define ECMASCRIPT_JS_HCLASS_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/property_attributes.h"
+#include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
-#include "utils/bit_field.h"
+#include "ecmascript/property_attributes.h"
+
+#include "libpandabase/utils/bit_field.h"
 
 /*
  *                         JS Object and JS HClass Layout
@@ -177,6 +178,7 @@ class ProtoChangeDetails;
         STRING,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         BIGINT,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        LEXICAL_ENV,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_DICTIONARY, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LINKED_NODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         RB_TREENODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -448,7 +450,7 @@ public:
     inline bool IsTaggedArray() const
     {
         JSType jsType = GetObjectType();
-        return jsType == JSType::TAGGED_ARRAY || jsType == JSType::TAGGED_DICTIONARY;
+        return jsType == JSType::TAGGED_ARRAY || jsType == JSType::TAGGED_DICTIONARY || jsType == JSType::LEXICAL_ENV;
     }
 
     inline bool IsDictionary() const

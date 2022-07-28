@@ -246,9 +246,9 @@
 // get foo's Frame by bar's Frame prev field
 
 #include "ecmascript/base/aligned_struct.h"
-
 #include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/visitor.h"
+
 namespace panda::ecmascript {
 class JSThread;
 class EcmaVM;
@@ -276,6 +276,7 @@ enum class FrameType: uintptr_t {
     ASM_INTERPRETER_ENTRY_FRAME = 15,
     ASM_INTERPRETER_BRIDGE_FRAME = 16,
     OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME = 17,
+    OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME = 18,
 
     FRAME_TYPE_BEGIN = OPTIMIZED_FRAME,
     FRAME_TYPE_END = OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME,
@@ -340,6 +341,47 @@ private:
     {
         return returnAddr;
     }
+    [[maybe_unused]] alignas(EAS) FrameType type {0};
+    alignas(EAS) JSTaggedType *prevFp {nullptr};
+    alignas(EAS) uintptr_t returnAddr {0};
+    friend class FrameIterator;
+};
+STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, OptimizedFrame::SizeArch64);
+
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+struct OptimizedJSFunctionUnfoldArgVFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer> {
+private:
+    enum class Index : size_t {
+        CallSiteSpIndex = 0,
+        TypeIndex,
+        PrevFpIndex,
+        ReturnAddrIndex,
+        NumOfMembers
+    };
+    static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
+
+    static OptimizedJSFunctionUnfoldArgVFrame* GetFrameFromSp(const JSTaggedType *sp)
+    {
+        return reinterpret_cast<OptimizedJSFunctionUnfoldArgVFrame *>(reinterpret_cast<uintptr_t>(sp)
+            - MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, prevFp));
+    }
+    inline JSTaggedType* GetPrevFrameFp() const
+    {
+        return prevFp;
+    }
+    uintptr_t GetReturnAddr() const
+    {
+        return returnAddr;
+    }
+    uintptr_t GetPrevFrameSp() const
+    {
+        return callSiteSp;
+    }
+    [[maybe_unused]] alignas(EAS) uintptr_t callSiteSp {0};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
@@ -810,9 +852,7 @@ struct OptimizedLeaveFrame {
     FrameType type;
     uintptr_t callsiteFp; // thread sp set here
     uintptr_t returnAddr;
-#ifndef PANDA_TARGET_32
     uint64_t argRuntimeId;
-#endif
     uint64_t argc;
     // argv[0]...argv[argc-1] dynamic according to agc
     static OptimizedLeaveFrame* GetFrameFromSp(const JSTaggedType *sp)
@@ -822,11 +862,7 @@ struct OptimizedLeaveFrame {
     }
     uintptr_t GetCallSiteSp() const
     {
-#ifndef PANDA_TARGET_32
         return ToUintPtr(this) + MEMBER_OFFSET(OptimizedLeaveFrame, argRuntimeId);
-#else
-        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedLeaveFrame, argc) + argc * sizeof(JSTaggedType);
-#endif
     }
     inline JSTaggedType* GetPrevFrameFp() const
     {
@@ -848,11 +884,8 @@ struct OptimizedWithArgvLeaveFrame {
     FrameType type;
     uintptr_t callsiteFp; // thread sp set here
     uintptr_t returnAddr;
-#ifndef PANDA_TARGET_32
     uint64_t argRuntimeId;
-#endif
     uint64_t argc;
-    // uintptr_t argv[]
     static OptimizedWithArgvLeaveFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
         return reinterpret_cast<OptimizedWithArgvLeaveFrame *>(reinterpret_cast<uintptr_t>(sp) -
@@ -860,11 +893,7 @@ struct OptimizedWithArgvLeaveFrame {
     }
     uintptr_t GetCallSiteSp() const
     {
-#ifndef PANDA_TARGET_32
         return ToUintPtr(this) + MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, argRuntimeId);
-#else
-        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, argc) + argc * sizeof(JSTaggedType);
-#endif
     }
     inline JSTaggedType* GetPrevFrameFp()
     {

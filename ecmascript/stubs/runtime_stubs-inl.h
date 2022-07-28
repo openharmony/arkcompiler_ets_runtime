@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 #define ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 
-#include "runtime_stubs.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_string_table.h"
@@ -35,7 +35,7 @@
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/template_string.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 
@@ -187,7 +187,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCallSpread(JSThread *thread, const JSHan
     JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
     ASSERT(superFunc->IsJSFunction());
 
-    JSHandle<TaggedArray> argv(thread, RuntimeGetCallSpreadArgs(thread, array.GetTaggedValue()));
+    JSHandle<TaggedArray> argv(thread, RuntimeGetCallSpreadArgs(thread, array));
     const int32_t argsLength = static_cast<int32_t>(argv->GetLength());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
@@ -496,6 +496,30 @@ JSTaggedValue RuntimeStubs::RuntimeLdObjByIndex(JSThread *thread, const JSHandle
     return res;
 }
 
+JSTaggedValue RuntimeStubs::RuntimeLdObjByName(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop,
+                                               bool callGetter, JSTaggedValue receiver)
+{
+    JSHandle<JSTaggedValue> objHandle(thread, obj);
+    JSTaggedValue res;
+    if (callGetter) {
+        res = JSObject::CallGetter(thread, AccessorData::Cast(receiver.GetTaggedObject()), objHandle);
+    } else {
+        JSHandle<JSTaggedValue> propHandle(thread, prop);
+        res = JSTaggedValue::GetProperty(thread, objHandle, propHandle).GetValue().GetTaggedValue();
+    }
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return res;
+}
+
+JSTaggedValue RuntimeStubs::RuntimeStObjByName(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                               const JSHandle<JSTaggedValue> &prop,
+                                               const JSHandle<JSTaggedValue> &value)
+{
+    JSTaggedValue::SetProperty(thread, obj, prop, value, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return JSTaggedValue::True();
+}
+
 JSTaggedValue RuntimeStubs::RuntimeStObjByIndex(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                 uint32_t idx, const JSHandle<JSTaggedValue> &value)
 {
@@ -626,10 +650,6 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     JSHandle<JSObject> clsPrototype(thread, ctor->GetFunctionPrototype());
 
     bool canShareHClass = false;
-    if (ctor->GetClass()->GetProto() == base.GetTaggedValue()) {
-        canShareHClass = true;
-    }
-
     JSHandle<JSFunction> cloneClass = factory->CloneClassCtor(ctor, lexenv, canShareHClass);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> cloneClassPrototype = factory->CloneObjectLiteral(JSHandle<JSObject>(clsPrototype), lexenv,
@@ -792,6 +812,27 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByName(JSThread *thread, const JSHandle<
     return JSTaggedValue::True();
 }
 
+JSTaggedValue RuntimeStubs::RuntimeStOwnByNameWithNameSet(JSThread *thread,
+                                                          const JSHandle<JSTaggedValue> &objHandle,
+                                                          const JSHandle<JSTaggedValue> &propHandle,
+                                                          const JSHandle<JSTaggedValue> &valueHandle)
+{
+    ASSERT(propHandle->IsStringOrSymbol());
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, propHandle);
+
+    // property in class is non-enumerable
+    bool enumerable = !(objHandle->IsClassPrototype() || objHandle->IsClassConstructor());
+
+    PropertyDescriptor desc(thread, valueHandle, true, enumerable, true);
+    bool ret = JSTaggedValue::DefineOwnProperty(thread, objHandle, propHandle, desc);
+    if (!ret) {
+        return RuntimeThrowTypeError(thread, "SetOwnByNameWithNameSet failed");
+    }
+    JSFunctionBase::SetFunctionName(thread, JSHandle<JSFunctionBase>::Cast(valueHandle), propKey,
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    return JSTaggedValue::True();
+}
+
 JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                     const JSHandle<JSTaggedValue> &value)
 {
@@ -815,9 +856,21 @@ JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTagged
     return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName);
 }
 
+JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName,
+                                                      JSTaggedValue jsFunc)
+{
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName, jsFunc);
+}
+
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
     thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value);
+}
+
+void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value,
+                                      JSTaggedValue jsFunc)
+{
+    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner)
@@ -828,6 +881,17 @@ JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue k
     }
 
     return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(key);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner,
+                                               JSTaggedValue jsFunc)
+{
+    if (inner) {
+        JSTaggedValue moduleValue = thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(key, jsFunc);
+        return moduleValue;
+    }
+
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(key, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetPropIterator(JSThread *thread, const JSHandle<JSTaggedValue> &value)
@@ -939,10 +1003,9 @@ JSTaggedValue RuntimeStubs::RuntimeLdGlobalRecord(JSThread *thread, JSTaggedValu
     return JSTaggedValue::Undefined();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeTryLdGlobalByName(JSThread *thread, JSTaggedValue global,
+JSTaggedValue RuntimeStubs::RuntimeTryLdGlobalByName(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                      const JSHandle<JSTaggedValue> &prop)
 {
-    JSHandle<JSTaggedValue> obj(thread, global);
     OperationResult res = JSTaggedValue::GetProperty(thread, obj, prop);
     if (!res.GetPropertyMetaData().IsFound()) {
         return RuntimeThrowReferenceError(thread, prop, " is not defined");
@@ -982,11 +1045,13 @@ JSTaggedValue RuntimeStubs::RuntimeThrowReferenceError(JSThread *thread, const J
                                      JSTaggedValue::Exception());
 }
 
-JSTaggedValue RuntimeStubs::RuntimeLdGlobalVar(JSThread *thread, JSTaggedValue global,
-                                               const JSHandle<JSTaggedValue> &prop)
+JSTaggedValue RuntimeStubs::RuntimeLdGlobalVarFromProto(JSThread *thread, const JSHandle<JSTaggedValue> &globalObj,
+                                                        const JSHandle<JSTaggedValue> &prop)
 {
-    JSHandle<JSTaggedValue> objHandle(thread, global.GetTaggedObject()->GetClass()->GetPrototype());
-    OperationResult res = JSTaggedValue::GetProperty(thread, objHandle, prop);
+    ASSERT(globalObj->IsJSGlobalObject());
+    JSHandle<JSObject> global(globalObj);
+    JSHandle<JSTaggedValue> obj(thread, JSObject::GetPrototype(global));
+    OperationResult res = JSTaggedValue::GetProperty(thread, obj, prop);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return res.GetValue().GetTaggedValue();
 }
@@ -1100,6 +1165,62 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2Dyn(JSThread *thread, const JSHandle<JSTa
     return JSTaggedValue(doubleA0 + doubleA1);
 }
 
+JSTaggedValue RuntimeStubs::RuntimeShl2Dyn(JSThread *thread,
+                                           const JSHandle<JSTaggedValue> &left,
+                                           const JSHandle<JSTaggedValue> &right)
+{
+    JSHandle<JSTaggedValue> leftValue = JSTaggedValue::ToNumeric(thread, left);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> rightValue = JSTaggedValue::ToNumeric(thread, right);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (leftValue->IsBigInt() || rightValue->IsBigInt()) {
+        if (leftValue->IsBigInt() && rightValue->IsBigInt()) {
+            JSHandle<BigInt> leftBigint(leftValue);
+            JSHandle<BigInt> rightBigint(rightValue);
+            return BigInt::LeftShift(thread, leftBigint, rightBigint).GetTaggedValue();
+        }
+        return RuntimeThrowTypeError(thread, "Cannot mix BigInt and other types, use explicit conversions");
+    }
+    JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithInt32(thread, leftValue);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithUint32(thread, rightValue);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int32_t opNumber0 = taggedNumber0.GetInt();
+    int32_t opNumber1 = taggedNumber1.GetInt();
+    uint32_t shift =
+            static_cast<uint32_t>(opNumber1) & 0x1f;  // NOLINT(hicpp-signed-bitwise, readability-magic-numbers)
+    using unsigned_type = std::make_unsigned_t<int32_t>;
+    auto ret =
+            static_cast<int32_t>(static_cast<unsigned_type>(opNumber0) << shift);  // NOLINT(hicpp-signed-bitwise)
+    return JSTaggedValue(ret);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeShr2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                           const JSHandle<JSTaggedValue> &right)
+{
+    JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> valRight = JSTaggedValue::ToNumeric(thread, right);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (valLeft->IsBigInt() || valRight->IsBigInt()) {
+        if (valLeft->IsBigInt() && valRight->IsBigInt()) {
+            return BigInt::UnsignedRightShift(thread);
+        }
+        return RuntimeThrowTypeError(thread, "Cannot mix BigInt and other types, use explicit conversions");
+    }
+    JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithUint32(thread, valLeft);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithUint32(thread, valRight);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int32_t opNumber0 = taggedNumber0.GetInt();
+    int32_t opNumber1 = taggedNumber1.GetInt();
+    uint32_t shift = static_cast<uint32_t>(opNumber1) & 0x1f; // NOLINT(hicpp-signed-bitwise, readability-magic-numbers)
+    using unsigned_type = std::make_unsigned_t<uint32_t>;
+    auto ret =
+            static_cast<uint32_t>(static_cast<unsigned_type>(opNumber0) >> shift); // NOLINT(hicpp-signed-bitwise)
+    return JSTaggedValue(ret);
+}
+
 JSTaggedValue RuntimeStubs::RuntimeSub2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
@@ -1197,6 +1318,126 @@ JSTaggedValue RuntimeStubs::RuntimeMod2Dyn(JSThread *thread, const JSHandle<JSTa
         return JSTaggedValue(dLeft);
     }
     return JSTaggedValue(std::fmod(dLeft, dRight));
+}
+
+JSTaggedValue RuntimeStubs::RuntimeAshr2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                            const JSHandle<JSTaggedValue> &right)
+{
+    JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> valRight = JSTaggedValue::ToNumeric(thread, right);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (valLeft->IsBigInt() || valRight->IsBigInt()) {
+        if (valLeft->IsBigInt() && valRight->IsBigInt()) {
+            JSHandle<BigInt> bigLeft(valLeft);
+            JSHandle<BigInt> bigRight(valRight);
+            return BigInt::SignedRightShift(thread, bigLeft, bigRight).GetTaggedValue();
+        }
+        return RuntimeThrowTypeError(thread, "Cannot mix BigInt and other types, use explicit conversions");
+    }
+    JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithInt32(thread, valLeft);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithUint32(thread, valRight);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int32_t opNumber0 = taggedNumber0.GetInt();
+    int32_t opNumber1 = taggedNumber1.GetInt();
+    uint32_t shift = static_cast<uint32_t>(opNumber1) & 0x1f; // NOLINT(hicpp-signed-bitwise, readability-magic-numbers)
+    auto ret = static_cast<int32_t>(opNumber0 >> shift); // NOLINT(hicpp-signed-bitwise)
+    return JSTaggedValue(ret);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeAnd2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                           const JSHandle<JSTaggedValue> &right)
+{
+    JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> valRight = JSTaggedValue::ToNumeric(thread, right);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (valLeft->IsBigInt() || valRight->IsBigInt()) {
+        if (valLeft->IsBigInt() && valRight->IsBigInt()) {
+            JSHandle<BigInt> leftBigint(valLeft);
+            JSHandle<BigInt> rightBigint(valRight);
+            return BigInt::BitwiseAND(thread, leftBigint, rightBigint).GetTaggedValue();
+        }
+        return RuntimeThrowTypeError(thread, "Cannot mix BigInt and other types, use explicit conversions");
+    }
+    JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithInt32(thread, valLeft);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithInt32(thread, valRight);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int32_t opNumber0 = taggedNumber0.GetInt();
+    int32_t opNumber1 = taggedNumber1.GetInt();
+    // NOLINT(hicpp-signed-bitwise)
+    auto ret = static_cast<uint32_t>(opNumber0) & static_cast<uint32_t>(opNumber1);
+    return JSTaggedValue(static_cast<int32_t>(ret));
+}
+
+JSTaggedValue RuntimeStubs::RuntimeOr2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                          const JSHandle<JSTaggedValue> &right)
+{
+    JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> valRight = JSTaggedValue::ToNumeric(thread, right);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (valLeft->IsBigInt() || valRight->IsBigInt()) {
+        if (valLeft->IsBigInt() && valRight->IsBigInt()) {
+            JSHandle<BigInt> leftBigint(valLeft);
+            JSHandle<BigInt> rightBigint(valRight);
+            return BigInt::BitwiseOR(thread, leftBigint, rightBigint).GetTaggedValue();
+        }
+        return RuntimeThrowTypeError(thread, "Cannot mix BigInt and other types, use explicit conversions");
+    }
+    JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithInt32(thread, valLeft);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithInt32(thread, valRight);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int32_t opNumber0 = taggedNumber0.GetInt();
+    int32_t opNumber1 = taggedNumber1.GetInt();
+    // NOLINT(hicpp-signed-bitwise)
+    auto ret = static_cast<uint32_t>(opNumber0) | static_cast<uint32_t>(opNumber1);
+    return JSTaggedValue(static_cast<int32_t>(ret));
+}
+
+JSTaggedValue RuntimeStubs::RuntimeXor2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                           const JSHandle<JSTaggedValue> &right)
+{
+    JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> valRight = JSTaggedValue::ToNumeric(thread, right);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (valLeft->IsBigInt() || valRight->IsBigInt()) {
+        if (valLeft->IsBigInt() && valRight->IsBigInt()) {
+            JSHandle<BigInt> leftBigint(valLeft);
+            JSHandle<BigInt> rightBigint(valRight);
+            return BigInt::BitwiseXOR(thread, leftBigint, rightBigint).GetTaggedValue();
+        }
+        return RuntimeThrowTypeError(thread, "Cannot mix BigInt and other types, use explicit conversions");
+    }
+    JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithInt32(thread, valLeft);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithInt32(thread, valRight);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int32_t opNumber0 = taggedNumber0.GetInt();
+    int32_t opNumber1 = taggedNumber1.GetInt();
+    // NOLINT(hicpp-signed-bitwise)
+    auto ret = static_cast<uint32_t>(opNumber0) ^ static_cast<uint32_t>(opNumber1);
+    return JSTaggedValue(static_cast<int32_t>(ret));
+}
+
+JSTaggedValue RuntimeStubs::RuntimeToJSTaggedValueWithInt32(JSThread *thread,
+                                                            const JSHandle<JSTaggedValue> &value)
+{
+    int32_t res = JSTaggedValue::ToInt32(thread, value);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return JSTaggedValue(res);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeToJSTaggedValueWithUint32(JSThread *thread,
+                                                             const JSHandle<JSTaggedValue> &value)
+{
+    int32_t res = JSTaggedValue::ToUint32(thread, value);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return JSTaggedValue(res);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreateEmptyObject([[maybe_unused]] JSThread *thread, ObjectFactory *factory,
@@ -1439,7 +1680,8 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, JSFunction *fu
     return jsFunc.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeCallSpreadDyn(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+JSTaggedValue RuntimeStubs::RuntimeCallSpreadDyn(JSThread *thread,
+                                                 const JSHandle<JSTaggedValue> &func,
                                                  const JSHandle<JSTaggedValue> &obj,
                                                  const JSHandle<JSTaggedValue> &array)
 {
@@ -1447,7 +1689,7 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpreadDyn(JSThread *thread, const JSHandl
         THROW_TYPE_ERROR_AND_RETURN(thread, "cannot Callspread", JSTaggedValue::Exception());
     }
 
-    JSHandle<TaggedArray> coretypesArray(thread, RuntimeGetCallSpreadArgs(thread, array.GetTaggedValue()));
+    JSHandle<TaggedArray> coretypesArray(thread, RuntimeGetCallSpreadArgs(thread, array));
     uint32_t length = coretypesArray->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, obj, undefined, length);
@@ -1538,9 +1780,8 @@ JSTaggedValue RuntimeStubs::RuntimeThrowTypeError(JSThread *thread, const char *
     THROW_TYPE_ERROR_AND_RETURN(thread, message, JSTaggedValue::Exception());
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGetCallSpreadArgs(JSThread *thread, JSTaggedValue array)
+JSTaggedValue RuntimeStubs::RuntimeGetCallSpreadArgs(JSThread *thread, const JSHandle<JSTaggedValue> &jsArray)
 {
-    JSHandle<JSTaggedValue> jsArray(thread, array);
     uint32_t argvMayMaxLength = JSHandle<JSArray>::Cast(jsArray)->GetArrayLength();
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1589,7 +1830,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithNameDyn(JSThread *thread, ui
     return newEnv.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGetAotUnmapedArgs(JSThread *thread, uint32_t actualNumArgs)
+JSTaggedValue RuntimeStubs::RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t actualNumArgs)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> argumentsList = factory->NewTaggedArray(actualNumArgs - FIXED_NUM_ARGS);
@@ -1605,7 +1846,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetAotUnmapedArgs(JSThread *thread, uint32_t 
     return RuntimeGetUnmapedJSArgumentObj(thread, argumentsList);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGetAotUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs)
+JSTaggedValue RuntimeStubs::RuntimeOptGetUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> argumentsList = factory->NewTaggedArray(actualNumArgs - FIXED_NUM_ARGS);
@@ -1662,7 +1903,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
     return obj.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewAotLexicalEnvDyn(JSThread *thread, uint16_t numVars,
+JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvDyn(JSThread *thread, uint16_t numVars,
                                                        JSHandle<JSTaggedValue> &currentLexEnv)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1671,11 +1912,11 @@ JSTaggedValue RuntimeStubs::RuntimeNewAotLexicalEnvDyn(JSThread *thread, uint16_
     newEnv->SetScopeInfo(thread, JSTaggedValue::Hole());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue taggedEnv = newEnv.GetTaggedValue();
-    RuntimeSetAotLexEnv(thread, taggedEnv);
+    RuntimeOptSetLexEnv(thread, taggedEnv);
     return taggedEnv;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewAotLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId,
+JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId,
                                                                JSHandle<JSTaggedValue> &currentLexEnv,
                                                                JSHandle<JSTaggedValue> &func)
 {
@@ -1683,15 +1924,15 @@ JSTaggedValue RuntimeStubs::RuntimeNewAotLexicalEnvWithNameDyn(JSThread *thread,
     JSHandle<LexicalEnv> newEnv = factory->NewLexicalEnv(numVars);
 
     newEnv->SetParentEnv(thread, currentLexEnv.GetTaggedValue());
-    JSTaggedValue scopeInfo = RuntimeGenerateAotScopeInfo(thread, scopeId, func.GetTaggedValue());
+    JSTaggedValue scopeInfo = RuntimeOptGenerateScopeInfo(thread, scopeId, func.GetTaggedValue());
     newEnv->SetScopeInfo(thread, scopeInfo);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue taggedEnv = newEnv.GetTaggedValue();
-    RuntimeSetAotLexEnv(thread, taggedEnv);
+    RuntimeOptSetLexEnv(thread, taggedEnv);
     return taggedEnv;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeCopyAotRestArgs(JSThread *thread, uint32_t actualArgc, uint32_t restIndex)
+JSTaggedValue RuntimeStubs::RuntimeOptCopyRestArgs(JSThread *thread, uint32_t actualArgc, uint32_t restIndex)
 {
     uint32_t actualRestNum = actualArgc - FIXED_NUM_ARGS - restIndex;
     JSHandle<JSTaggedValue> restArray = JSArray::ArrayCreate(thread, JSTaggedNumber(actualRestNum));
@@ -1710,7 +1951,7 @@ JSTaggedValue RuntimeStubs::RuntimeCopyAotRestArgs(JSThread *thread, uint32_t ac
     return restArray.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeSuspendAotGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
+JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                        const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
@@ -1726,7 +1967,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendAotGenerator(JSThread *thread, const J
     return generatorObjectHandle.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewAotObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc)
+JSTaggedValue RuntimeStubs::RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
     JSTaggedType *args = reinterpret_cast<JSTaggedType *>(argv);
     JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
@@ -1742,13 +1983,19 @@ JSTaggedValue RuntimeStubs::RuntimeNewAotObjDynRange(JSThread *thread, uintptr_t
     }
 
     JSTaggedValue object = JSFunction::Construct(info);
+    if (!object.IsUndefined() && !object.IsECMAObject() && !JSHandle<JSFunction>(ctor)->IsBase()) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
+                                                       "Derived constructor must return object or undefined");
+        thread->SetException(error.GetTaggedValue());
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return object;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeAotNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc)
+JSTaggedValue RuntimeStubs::RuntimeOptNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
-    CVector<JSTaggedType> hclassTable = thread->GetEcmaVM()->GetTSLoader()->GetStaticHClassTable();
+    CVector<JSTaggedType> hclassTable = thread->GetEcmaVM()->GetTSManager()->GetStaticHClassTable();
 
     int32_t ihcIndex = GetArg(argv, argc, argc - 1).GetInt();  // last element
     JSHandle<JSHClass> ihc(thread, JSTaggedValue(hclassTable[ihcIndex]));
@@ -1779,20 +2026,20 @@ JSTaggedValue RuntimeStubs::RuntimeAotNewObjWithIHClass(JSThread *thread, uintpt
     return object;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGetAotLexEnv(JSThread *thread)
+JSTaggedValue RuntimeStubs::RuntimeOptGetLexEnv(JSThread *thread)
 {
     [[maybe_unused]] DisallowGarbageCollection noGc;
     auto optimizedJSFunctionFrame = GetOptimizedJSFunctionFrame(thread);
     return optimizedJSFunctionFrame->GetEnv();
 }
 
-void RuntimeStubs::RuntimeSetAotLexEnv(JSThread *thread, JSTaggedValue lexEnv)
+void RuntimeStubs::RuntimeOptSetLexEnv(JSThread *thread, JSTaggedValue lexEnv)
 {
     auto optimizedJSFunctionFrame = GetOptimizedJSFunctionFrame(thread);
     optimizedJSFunctionFrame->SetEnv(lexEnv);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGenerateAotScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func)
+JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();

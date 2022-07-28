@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_weak_set.h"
+
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -24,11 +25,9 @@
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
-
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
-#include "utils/bit_utils.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;

@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-#include "containers_arraylist.h"
+#include "ecmascript/containers/containers_arraylist.h"
+
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_api_arraylist.h"
-#include "ecmascript/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_iterator.h"

@@ -70,16 +70,16 @@ void TypeLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noTh
     }
 
     auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
+    for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
             acc_.SetOpCode(*it, OpCode::IF_FALSE);
-            acc_.ReplaceIn(it, ifBranch);
+            it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
                 acc_.SetOpCode(*it, OpCode::IF_TRUE);
-                acc_.ReplaceIn(it, ifBranch);
+                it = acc_.ReplaceIn(it, ifBranch);
             } else {
-                acc_.ReplaceIn(it, callGate);
+                it = acc_.ReplaceIn(it, callGate);
             }
         }
     }
@@ -106,12 +106,12 @@ void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
     ASSERT(ctorType.IsTSType());
-    if (!ctorType.IsClassTypeKind()) {
+    if (!tsManager_->IsClassTypeKind(ctorType)) {
         return;
     }
 
     GlobalTSTypeRef gt = GlobalTSTypeRef(ctorType.GetType());
-    std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap = tsLoader_->GetGtHClassIndexMap();
+    std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap = tsManager_->GetGtHClassIndexMap();
     int64_t index = gtHClassIndexMap[gt];
     GateRef ihcIndex = builder_.TaggedTypeNGC(builder_.Int64(index));
 
@@ -123,7 +123,7 @@ void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
     }
     args[range] = ihcIndex;
 
-    const int id = RTSTUB_ID(AotNewObjWithIHClass);
+    const int id = RTSTUB_ID(OptNewObjWithIHClass);
     GateRef newGate = LowerCallRuntime(glue, id, args);
     ReplaceHirToCall(gate, newGate);
 }

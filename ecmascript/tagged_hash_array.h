@@ -16,11 +16,11 @@
 #ifndef ECMASCRIPT_TAGGED_HASH_ARRAY_H
 #define ECMASCRIPT_TAGGED_HASH_ARRAY_H
 
+#include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_object-inl.h"
-#include "js_api_hashmap.h"
-#include "js_object.h"
-#include "js_tagged_value-inl.h"
-#include "tagged_node.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/tagged_node.h"
 
 namespace panda::ecmascript {
 class TaggedHashArray : public TaggedArray {

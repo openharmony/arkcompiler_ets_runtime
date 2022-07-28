@@ -134,7 +134,7 @@ public:
     JSTaggedValue FindExportName(JSThread *thread, const JSHandle<JSTaggedValue> &localName);
     void StoreModuleValue(JSThread *thread, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
-    static constexpr size_t DEAULT_DICTIONART_CAPACITY = 4;
+    static constexpr size_t DEFAULT_DICTIONART_CAPACITY = 2;
 };
 
 class ResolvedBinding final : public Record {

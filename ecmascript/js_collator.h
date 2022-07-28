@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_JS_COLLATOR_H
 #define ECMASCRIPT_JS_COLLATOR_H
 
-#include "js_locale.h"
+#include "ecmascript/js_locale.h"
 
 #include "unicode/udata.h"
 

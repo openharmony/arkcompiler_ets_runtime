@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_symbol.h"
+
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
@@ -22,7 +23,6 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/symbol_table.h"
-#include "utils/bit_utils.h"
 
 namespace panda::ecmascript::builtins {
 // prototype

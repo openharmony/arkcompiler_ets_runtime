@@ -20,11 +20,12 @@
 #include <fstream>
 #include <sstream>
 
-#include "libpandabase/macros.h"
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/js_method.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/object_xray.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class EcmaVM;

@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-#include "containers_stack.h"
+#include "ecmascript/containers/containers_stack.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_api_stack.h"
-#include "ecmascript/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/object_factory.h"

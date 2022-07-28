@@ -16,6 +16,7 @@
 #include "ecmascript/js_method.h"
 
 #include "ecmascript/jspandafile/js_pandafile.h"
+
 #include "libpandafile/code_data_accessor-inl.h"
 #include "libpandafile/method_data_accessor-inl.h"
 

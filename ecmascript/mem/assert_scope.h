@@ -19,7 +19,7 @@
 #include <optional>
 
 #include "libpandabase/macros.h"
-#include "utils/bit_field.h"
+#include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
 static thread_local size_t currentAssertData(~0);

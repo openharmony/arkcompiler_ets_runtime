@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_object.h"
+
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
@@ -26,7 +27,6 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
-#include "utils/bit_utils.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;

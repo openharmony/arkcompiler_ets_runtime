@@ -15,31 +15,24 @@
 
 #include "execute_fuzzer.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "unistd.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
-bool createstatus = true;
 namespace OHOS {
     // staic constexpr auto PANDA_MAIN_PATH = "pandastdlib/pandastdlib.bin";
     static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 
-    bool ExecuteFuzzTest(const uint8_t* data, size_t size)
+    void ExecuteFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        if (createstatus) {
-            JSNApi::CreateJSVM(option);
-            createstatus = false;
-        }
-
         option.SetGcType(RuntimeOption::GC_TYPE::GEN_GC);
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        auto jsvm = JSNApi::CreateJSVM(option);
-        Local<StringRef> entry = StringRef::NewFromUtf8(jsvm, PANDA_MAIN_FUNCTION);
+        auto vm = JSNApi::CreateJSVM(option);
+        [[maybe_unused]] LocalScope scope(vm);
+        Local<StringRef> entry = StringRef::NewFromUtf8(vm, PANDA_MAIN_FUNCTION);
         std::string a = entry->StringRef::ToString();
-        JSNApi::Execute(jsvm, data, size, a);
-        JSNApi::DestroyJSVM(jsvm);
-        return true;
+        JSNApi::Execute(vm, data, size, a);
+        JSNApi::DestroyJSVM(vm);
     }
 }
 

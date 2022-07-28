@@ -20,7 +20,8 @@
 #include <map>
 
 #include "ecmascript/mem/mem.h"
-#include "os/mutex.h"
+
+#include "libpandabase/os/mutex.h"
 
 #if !(defined PANDA_TARGET_MACOS || defined PANDA_TARGET_WINDOWS)
 #include <sys/prctl.h>
@@ -118,7 +119,7 @@ public:
         memMapCache_.emplace_back(mem, size);
     }
 
-    MemMap SplitMemToCache(MemMap memMap)
+    MemMap SplitMemFromCache(MemMap memMap)
     {
         os::memory::LockHolder lock(lock_);
         auto remainderMem = reinterpret_cast<uintptr_t>(memMap.GetMem()) + REGULAR_MMAP_SIZE;
@@ -154,6 +155,7 @@ public:
     {
         memMap_ = memMap;
         freeList_.insert(std::pair<size_t, MemMap>(memMap.GetSize(), memMap));
+        capacity_ = memMap.GetSize();
     }
 
     void Finalize()
@@ -171,9 +173,14 @@ public:
 
     MemMap GetMemFromList(size_t size)
     {
+        if (freeListPoolSize_ + size > capacity_) {
+            LOG_GC(ERROR) << "Freelist pool oom: overflow(" << freeListPoolSize_ << ")";
+            return MemMap();
+        }
         os::memory::LockHolder lock(lock_);
         auto iterate = freeList_.lower_bound(size);
         if (iterate == freeList_.end()) {
+            LOG_GC(ERROR) << "Freelist pool oom: memory fragment(" << freeListPoolSize_ << ")";
             return MemMap();
         }
         MemMap memMap = iterate->second;
@@ -183,12 +190,14 @@ public:
             auto next = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(memMap.GetMem()) + size);
             freeList_.insert(std::pair<size_t, MemMap>(remainderSize, MemMap(next, remainderSize)));
         }
+        freeListPoolSize_ += size;
         return MemMap(memMap.GetMem(), size);
     }
 
     void AddMemToList(MemMap memMap)
     {
         os::memory::LockHolder lock(lock_);
+        freeListPoolSize_ -= memMap.GetSize();
         freeList_.insert(std::pair<size_t, MemMap>(memMap.GetSize(), memMap));
     }
 
@@ -196,6 +205,8 @@ private:
     os::memory::Mutex lock_;
     MemMap memMap_;
     std::multimap<size_t, MemMap> freeList_;
+    std::atomic_size_t freeListPoolSize_ {0};
+    size_t capacity_ {0};
 };
 
 class MemMapAllocator {

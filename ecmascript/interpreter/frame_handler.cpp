@@ -410,6 +410,7 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &v0,
                 frame->GCIterate(it, v0, v1);
                 break;
             }
+            case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
             case FrameType::OPTIMIZED_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
@@ -436,7 +437,6 @@ void FrameHandler::CollectBCOffsetInfo()
     thread_->GetEcmaVM()->ClearExceptionBCList();
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
     FrameIterator it(current, thread_);
-    ASSERT(it.GetFrameType() == FrameType::BUILTIN_CALL_LEAVE_FRAME);
     auto leaveFrame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
     auto returnAddr = leaveFrame->GetReturnAddr();
     // skip native function, need to fixit later.
@@ -469,6 +469,7 @@ void FrameHandler::CollectBCOffsetInfo()
             case FrameType::INTERPRETER_FRAME:
             case FrameType::INTERPRETER_FAST_NEW_FRAME:
             case FrameType::OPTIMIZED_FRAME:
+            case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME:
             case FrameType::LEAVE_FRAME_WITH_ARGV:
             case FrameType::BUILTIN_FRAME_WITH_ARGV:
             case FrameType::BUILTIN_ENTRY_FRAME:

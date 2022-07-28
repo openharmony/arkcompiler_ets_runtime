@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "js_proxy.h"
+#include "ecmascript/js_proxy.h"
+
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -963,7 +964,7 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
     // 10.ReturnIfAbrupt(newObj).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11.If Type(newObj) is not Object, throw a TypeError exception.
-    if (!newObj.IsHeapObject()) {
+    if (!newObj.IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "new object is not object", JSTaggedValue::Exception());
     }
     // 12.Return newObj.

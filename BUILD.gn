@@ -78,6 +78,7 @@ if (defined(ark_standalone_build)) {
         "//arkcompiler/ets_runtime/ecmascript/tooling/test:unittest",
         "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
       ]
+      deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
     }
   }
 
@@ -115,11 +116,6 @@ if (defined(ark_standalone_build)) {
         deps += [ "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test" ]
         deps +=
             [ "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test" ]
-      }
-
-      # fuzz test
-      if (is_standard_system) {
-        deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
       }
     }
   }
@@ -251,17 +247,27 @@ config("ark_jsruntime_common_config") {
       "-O0",
       "-ggdb3",
     ]
-    if (is_linux && (current_cpu == "x86" || current_cpu == "x64") &&
-        run_with_asan) {
-      cflags_cc += [
-        "-fsanitize=address",
-        "-fno-omit-frame-pointer",
-      ]
-      ldflags += [ "-L" + rebase_path("${root_out_dir}/ark/ark_js_runtime") ]
-      libs = [ "clang_rt.asan-x86_64" ]
-    }
   } else {
     defines += [ "NDEBUG" ]
+  }
+
+  if (run_with_asan && is_linux &&
+      (current_cpu == "x86" || current_cpu == "x64")) {
+    cflags_cc += [
+      "-fno-inline-functions",
+      "-fno-inline",
+      "-O1",
+      "-fsanitize=address",
+      "-fsanitize-address-use-after-scope",
+      "-fno-omit-frame-pointer",
+      "-fsanitize=leak",
+    ]
+
+    if (!use_musl) {
+      libs = [ "$clang_base_path/lib64/clang/$clang_version/lib/linux/libclang_rt.asan-x86_64.a" ]
+    } else {
+      libs = [ "$clang_base_path/lib/clang/$clang_version/lib/x86_64-linux-ohos/libclang_rt.asan.a" ]
+    }
   }
 
   if (current_cpu == "arm") {
@@ -414,34 +420,34 @@ ecma_source = [
   "ecmascript/jspandafile/panda_file_translator.cpp",
   "ecmascript/jspandafile/js_pandafile_executor.cpp",
   "ecmascript/jspandafile/scope_info_extractor.cpp",
-  "ecmascript/js_api_arraylist.cpp",
-  "ecmascript/js_api_arraylist_iterator.cpp",
-  "ecmascript/js_api_deque.cpp",
-  "ecmascript/js_api_deque_iterator.cpp",
-  "ecmascript/js_api_hashmap.cpp",
-  "ecmascript/js_api_hashmap_iterator.cpp",
-  "ecmascript/js_api_hashset.cpp",
-  "ecmascript/js_api_hashset_iterator.cpp",
-  "ecmascript/js_api_lightweightmap.cpp",
-  "ecmascript/js_api_lightweightmap_iterator.cpp",
-  "ecmascript/js_api_lightweightset.cpp",
-  "ecmascript/js_api_lightweightset_iterator.cpp",
-  "ecmascript/js_api_linked_list.cpp",
-  "ecmascript/js_api_linked_list_iterator.cpp",
-  "ecmascript/js_api_list.cpp",
-  "ecmascript/js_api_list_iterator.cpp",
-  "ecmascript/js_api_plain_array.cpp",
-  "ecmascript/js_api_plain_array_iterator.cpp",
-  "ecmascript/js_api_queue.cpp",
-  "ecmascript/js_api_queue_iterator.cpp",
-  "ecmascript/js_api_stack.cpp",
-  "ecmascript/js_api_stack_iterator.cpp",
-  "ecmascript/js_api_tree_map.cpp",
-  "ecmascript/js_api_tree_map_iterator.cpp",
-  "ecmascript/js_api_tree_set.cpp",
-  "ecmascript/js_api_tree_set_iterator.cpp",
-  "ecmascript/js_api_vector.cpp",
-  "ecmascript/js_api_vector_iterator.cpp",
+  "ecmascript/js_api/js_api_arraylist.cpp",
+  "ecmascript/js_api/js_api_arraylist_iterator.cpp",
+  "ecmascript/js_api/js_api_deque.cpp",
+  "ecmascript/js_api/js_api_deque_iterator.cpp",
+  "ecmascript/js_api/js_api_hashmap.cpp",
+  "ecmascript/js_api/js_api_hashmap_iterator.cpp",
+  "ecmascript/js_api/js_api_hashset.cpp",
+  "ecmascript/js_api/js_api_hashset_iterator.cpp",
+  "ecmascript/js_api/js_api_lightweightmap.cpp",
+  "ecmascript/js_api/js_api_lightweightmap_iterator.cpp",
+  "ecmascript/js_api/js_api_lightweightset.cpp",
+  "ecmascript/js_api/js_api_lightweightset_iterator.cpp",
+  "ecmascript/js_api/js_api_linked_list.cpp",
+  "ecmascript/js_api/js_api_linked_list_iterator.cpp",
+  "ecmascript/js_api/js_api_list.cpp",
+  "ecmascript/js_api/js_api_list_iterator.cpp",
+  "ecmascript/js_api/js_api_plain_array.cpp",
+  "ecmascript/js_api/js_api_plain_array_iterator.cpp",
+  "ecmascript/js_api/js_api_queue.cpp",
+  "ecmascript/js_api/js_api_queue_iterator.cpp",
+  "ecmascript/js_api/js_api_stack.cpp",
+  "ecmascript/js_api/js_api_stack_iterator.cpp",
+  "ecmascript/js_api/js_api_tree_map.cpp",
+  "ecmascript/js_api/js_api_tree_map_iterator.cpp",
+  "ecmascript/js_api/js_api_tree_set.cpp",
+  "ecmascript/js_api/js_api_tree_set_iterator.cpp",
+  "ecmascript/js_api/js_api_vector.cpp",
+  "ecmascript/js_api/js_api_vector_iterator.cpp",
   "ecmascript/js_arguments.cpp",
   "ecmascript/js_array.cpp",
   "ecmascript/js_array_iterator.cpp",
@@ -526,8 +532,9 @@ ecma_source = [
   "ecmascript/stubs/runtime_stubs.cpp",
   "ecmascript/ts_types/ts_type.cpp",
   "ecmascript/ts_types/ts_type_table.cpp",
-  "ecmascript/ts_types/ts_loader.cpp",
+  "ecmascript/ts_types/ts_manager.cpp",
   "ecmascript/ts_types/ts_obj_layout_info.cpp",
+  "ecmascript/ts_types/ts_type_parser.cpp",
   "ecmascript/stubs/test_runtime_stubs.cpp",
   "ecmascript/builtins/builtins_cjs_module.cpp",
   "ecmascript/builtins/builtins_cjs_require.cpp",
@@ -601,11 +608,6 @@ source_set("libark_jsruntime_set") {
     sdk_libc_secshared_dep,
   ]
 
-  if (is_debug && is_linux && (current_cpu == "x86" || current_cpu == "x64") &&
-      run_with_asan) {
-    deps += [ ":copy_asan_runtime" ]
-  }
-
   if (is_ohos && is_standard_system) {
     defines = []
     include_dirs = []
@@ -670,11 +672,6 @@ source_set("libark_jsruntime_test_set") {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
   }
 
-  if (is_debug && is_linux && (current_cpu == "x86" || current_cpu == "x64") &&
-      run_with_asan) {
-    deps += [ ":copy_asan_runtime" ]
-  }
-
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
@@ -736,13 +733,5 @@ if (!defined(ark_standalone_build)) {
       output_extension = "so"
     }
     subsystem_name = "test"
-  }
-
-  if (is_debug && is_linux && (current_cpu == "x86" || current_cpu == "x64") &&
-      run_with_asan) {
-    ohos_copy("copy_asan_runtime") {
-      sources = [ "${asan_lib_path}/libclang_rt.asan-x86_64.a" ]
-      outputs = [ "${root_out_dir}/ark/ark_js_runtime/{{source_file_part}}" ]
-    }
   }
 }

@@ -26,12 +26,12 @@ pushd arkcompiler/ets_frontend
     pushd ../../
     if [ -d out/rk3568 ];then
         pushd arkcompiler/ets_frontend
-        python3 test262/run_test262.py --es2021 all --threads=16 --libs-dir ../../out/rk3568/clang_x64/ark/ark:../../out/rk3568/clang_x64/ark/ark_js_runtime:../../out/rk3568/clang_x64/thirdparty/icu:../../prebuilts/clang/ohos/linux-x86_64/llvm/lib --ark-tool=../../out/rk3568/clang_x64/ark/ark_js_runtime/ark_js_vm --ark-frontend-tool=../../out/rk3568/clang_x64/ark/ark/build/src/index.js
+        python3 test262/run_test262.py --es2021 all --threads=16 --libs-dir ../../out/rk3568/clang_x64/ark/ark:../../out/rk3568/clang_x64/ark/ark_js_runtime:../../out/rk3568/clang_x64/thirdparty/icu:../../prebuilts/clang/ohos/linux-x86_64/llvm/lib --ark-tool=../../out/rk3568/clang_x64/ark/ark_js_runtime/ark_js_vm --ark-frontend-binary=../../out/rk3568/clang_x64/ark/ark/build/src/index.js
         popd
     fi
     if [ -d out/hispark_taurus ];then
         pushd arkcompiler/ets_frontend
-        python3 test262/run_test262.py --es2021 all --threads=16 --libs-dir ../../out/hispark_taurus/clang_x64/ark/ark:../../out/hispark_taurus/clang_x64/ark/ark_js_runtime:../../out/hispark_taurus/clang_x64/thirdparty/icu:../../prebuilts/clang/ohos/linux-x86_64/llvm/lib --ark-tool=../../out/hispark_taurus/clang_x64/ark/ark_js_runtime/ark_js_vm --ark-frontend-tool=../../out/hispark_taurus/clang_x64/ark/ark/build/src/index.js
+        python3 test262/run_test262.py --es2021 all --threads=16 --libs-dir ../../out/hispark_taurus/clang_x64/ark/ark:../../out/hispark_taurus/clang_x64/ark/ark_js_runtime:../../out/hispark_taurus/clang_x64/thirdparty/icu:../../prebuilts/clang/ohos/linux-x86_64/llvm/lib --ark-tool=../../out/hispark_taurus/clang_x64/ark/ark_js_runtime/ark_js_vm --ark-frontend-binary=../../out/hispark_taurus/clang_x64/ark/ark/build/src/index.js
         popd
     fi
     popd

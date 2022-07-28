@@ -19,17 +19,17 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/stub.h"
+#include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
-class InterpreterStub : public Stub {
+class InterpreterStubBuilder : public StubBuilder {
 public:
-    InterpreterStub(const char* name, int argCount, Circuit *circuit)
-        : Stub(name, argCount, circuit) {}
-    ~InterpreterStub() = default;
-    NO_MOVE_SEMANTIC(InterpreterStub);
-    NO_COPY_SEMANTIC(InterpreterStub);
-    virtual void GenerateCircuit(const CompilationConfig *cfg) = 0;
+    InterpreterStubBuilder(CallSignature *callSignature, Environment *env)
+        : StubBuilder(callSignature, env) {}
+    ~InterpreterStubBuilder() = default;
+    NO_MOVE_SEMANTIC(InterpreterStubBuilder);
+    NO_COPY_SEMANTIC(InterpreterStubBuilder);
+    virtual void GenerateCircuit() = 0;
 
     inline void SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val);
     inline GateRef GetVregValue(GateRef sp, GateRef idx);
@@ -114,17 +114,17 @@ private:
 };
 
 #define DECLARE_HANDLE_STUB_CLASS(name)                                                         \
-    class name##Stub : public InterpreterStub {                                                 \
+    class name##StubBuilder : public InterpreterStubBuilder {                                   \
     public:                                                                                     \
-        explicit name##Stub(Circuit *circuit) : InterpreterStub(#name,                          \
-            static_cast<int>(InterpreterHandlerInputs::NUM_OF_INPUTS), circuit)                 \
+        explicit name##StubBuilder(CallSignature *callSignature, Environment *env)              \
+            : InterpreterStubBuilder(callSignature, env)                                        \
         {                                                                                       \
-            circuit->SetFrameType(FrameType::INTERPRETER_FRAME);                                \
+            env->GetCircuit()->SetFrameType(FrameType::INTERPRETER_FRAME);                      \
         }                                                                                       \
-        ~name##Stub() = default;                                                                \
-        NO_MOVE_SEMANTIC(name##Stub);                                                           \
-        NO_COPY_SEMANTIC(name##Stub);                                                           \
-        void GenerateCircuit(const CompilationConfig *cfg) override;                            \
+        ~name##StubBuilder() = default;                                                         \
+        NO_MOVE_SEMANTIC(name##StubBuilder);                                                    \
+        NO_COPY_SEMANTIC(name##StubBuilder);                                                    \
+        void GenerateCircuit() override;                                                        \
                                                                                                 \
     private:                                                                                    \
         void GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,       \

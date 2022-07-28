@@ -32,6 +32,7 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/shared_mm/shared_mm.h"
+
 #include "libpandabase/mem/mem.h"
 #include "securec.h"
 
@@ -144,7 +145,7 @@ bool JSSerializer::AllocateBuffer(size_t bytes)
 {
     // Get internal heap size
     if (sizeLimit_ == 0) {
-        uint64_t heapSize = thread_->GetEcmaVM()->GetJSOptions().GetInternalMemorySizeLimit();
+        uint64_t heapSize = thread_->GetEcmaVM()->GetJSOptions().GetSerializerBufferSizeLimit();
         sizeLimit_ = heapSize;
     }
     size_t oldSize = bufferSize_;

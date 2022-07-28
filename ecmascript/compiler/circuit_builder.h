@@ -18,12 +18,12 @@
 
 #include <stack>
 
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/variable_type.h"
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/base/number_helper.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
@@ -536,7 +536,7 @@ public:
     {
         currentLabel_ = label;
     }
-    CircuitBuilder *GetBulder() const
+    CircuitBuilder *GetBuilder() const
     {
         return circuitBuilder_;
     }

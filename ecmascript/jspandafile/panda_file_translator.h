@@ -19,10 +19,11 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/constpool_value.h"
+
+#include "libpandabase/utils/bit_field.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 #include "libpandafile/code_data_accessor-inl.h"
 #include "libpandafile/file-inl.h"
-#include "utils/bit_field.h"
 
 namespace panda::ecmascript {
 struct MethodPcInfo {

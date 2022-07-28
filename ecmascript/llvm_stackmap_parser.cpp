@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/llvm_stackmap_parser.h"
+
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/mem/slots.h"
@@ -113,12 +114,17 @@ void LLVMStackMapParser::CollectBaseAndDerivedPointers(const CallSiteInfo* infos
         const DwarfRegAndOffsetType& derivedInfo = infos->at(j + 1);
         uintptr_t base = GetStackSlotAddress(baseInfo, callSiteSp, callsiteFp);
         uintptr_t derived = GetStackSlotAddress(derivedInfo, callSiteSp, callsiteFp);
-        baseSet.emplace(base);
+        if (*reinterpret_cast<uintptr_t *>(base) == 0) {
+            base = derived;
+        }
+        if (*reinterpret_cast<uintptr_t *>(base) != 0) {
+            baseSet.emplace(base);
+        }
         if (base != derived) {
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
                 if (!isVerifying) {
 #endif
-                    data->emplace(std::make_pair(base, derived),  *reinterpret_cast<uintptr_t *>(base));
+                    (*data)[std::make_pair(base, derived)] = *reinterpret_cast<uintptr_t *>(base);
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
                 }
 #endif

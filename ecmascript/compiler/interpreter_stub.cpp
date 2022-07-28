@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#include "interpreter_stub-inl.h"
+#include "ecmascript/compiler/interpreter_stub-inl.h"
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
-#include "ecmascript/compiler/stub-inl.h"
+#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -28,14 +28,14 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
+
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
 #define DECLARE_ASM_HANDLER(name)                                                         \
-void name##Stub::GenerateCircuit(const CompilationConfig *cfg)                            \
+void name##StubBuilder::GenerateCircuit()                                                 \
 {                                                                                         \
-    Stub::GenerateCircuit(cfg);                                                           \
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));      \
     GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));          \
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));          \
@@ -49,14 +49,13 @@ void name##Stub::GenerateCircuit(const CompilationConfig *cfg)                  
     DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(name)) });                             \
     GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);   \
 }                                                                                         \
-void name##Stub::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,                \
+void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,         \
                                      GateRef constpool, GateRef profileTypeInfo,          \
                                      GateRef acc, GateRef hotnessCounter)
 #else
 #define DECLARE_ASM_HANDLER(name)                                                         \
-void name##Stub::GenerateCircuit(const CompilationConfig *cfg)                            \
+void name##StubBuilder::GenerateCircuit()                                                 \
 {                                                                                         \
-    Stub::GenerateCircuit(cfg);                                                           \
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));      \
     GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));          \
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));          \
@@ -69,18 +68,44 @@ void name##Stub::GenerateCircuit(const CompilationConfig *cfg)                  
         static_cast<size_t>(InterpreterHandlerInputs::HOTNESS_COUNTER));                  \
     GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);   \
 }                                                                                         \
-void name##Stub::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,                \
+void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,         \
                                      GateRef constpool, GateRef profileTypeInfo,          \
                                      GateRef acc, GateRef hotnessCounter)
 #endif
 
-#define DISPATCH(format)                                                                  \
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,               \
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::format)))
+// TYPE:{OFFSET, ACC_RES, ACC_VARACC, JUMP, SSD}
+#define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
 
-#define DISPATCH_WITH_ACC(format)                                                         \
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter,           \
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::format)))
+// Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, offset)
+#define DISPATCH_OFFSET(offset)                                                           \
+    DISPATCH_BASE(profileTypeInfo, acc, hotnessCounter, offset)
+
+// Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, offset)
+#define DISPATCH_ACC_RES(offset) DISPATCH_ACC(res, offset)
+
+// Dispatch(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter, offset)
+#define DISPATCH_ACC_VARACC(offset) DISPATCH_ACC(*varAcc, offset)
+
+// Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, offset)
+#define DISPATCH_JUMP(offset)                                                             \
+    DISPATCH_BASE(*varProfileTypeInfo, acc, *varHotnessCounter, offset)
+
+#define DISPATCH_SSD(offset)                                                              \
+    Dispatch(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc,           \
+             *varHotnessCounter, offset)
+
+#define INT_PTR(format)                                                                   \
+    IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::format))
+
+#define DISPATCH_BASE(...)                                                                \
+    Dispatch(glue, sp, pc, constpool, __VA_ARGS__)
+
+#define DISPATCH_ACC(acc, offset)                                                         \
+    DISPATCH_BASE(profileTypeInfo, acc, hotnessCounter, offset)
+
+#define DISPATCH_WITH_ACC(format) DISPATCH_BAK(ACC_VARACC, INT_PTR(format))
+
+#define DISPATCH(format) DISPATCH_BAK(OFFSET, INT_PTR(format))
 
 #define DISPATCH_LAST()                                                                   \
     DispatchLast(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter)           \
@@ -1579,8 +1604,7 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
     DispatchLast(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc,
                  *varHotnessCounter);
     Bind(&notException);
-    Dispatch(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc,
-             *varHotnessCounter, IntPtr(0));
+    DISPATCH_BAK(SSD, IntPtr(0));
 }
 
 DECLARE_ASM_HANDLER(BCDebuggerEntry)
@@ -1608,7 +1632,7 @@ DECLARE_ASM_HANDLER(BCDebuggerExceptionEntry)
 DECLARE_ASM_HANDLER(HandleOverflow)
 {
     FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(OPCODE_OVERFLOW)) });
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, IntPtr(0));
+    DISPATCH_BAK(OFFSET, IntPtr(0));
 }
 
 DECLARE_ASM_HANDLER(HandleLdaDynV8)
@@ -1637,7 +1661,7 @@ DECLARE_ASM_HANDLER(HandleJmpImm8)
     Label slowPath(env);
 
     UPDATE_HOTNESS(sp);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+    DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
 
 DECLARE_ASM_HANDLER(HandleJmpImm16)
@@ -1651,7 +1675,7 @@ DECLARE_ASM_HANDLER(HandleJmpImm16)
     Label slowPath(env);
 
     UPDATE_HOTNESS(sp);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+    DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
 
 DECLARE_ASM_HANDLER(HandleJmpImm32)
@@ -1664,7 +1688,7 @@ DECLARE_ASM_HANDLER(HandleJmpImm32)
     Label dispatch(env);
     Label slowPath(env);
     UPDATE_HOTNESS(sp);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+    DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
 
 DECLARE_ASM_HANDLER(HandleLdLexVarDynPrefImm4Imm4)
@@ -2427,7 +2451,6 @@ DECLARE_ASM_HANDLER(HandleSetObjectWithProtoPrefV8V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    varAcc = result;
     DISPATCH_WITH_ACC(PREF_V8_V8);
 }
 
@@ -3614,46 +3637,30 @@ DECLARE_ASM_HANDLER(HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef methodId = ReadInst16_1(pc);
-    GateRef literalId = ReadInst16_3(pc);
     GateRef length = ReadInst16_5(pc);
     GateRef v0 = ReadInst8_7(pc);
     GateRef v1 = ReadInst8_8(pc);
 
     GateRef classTemplate = GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId));
-    GateRef literalBuffer = GetObjectFromConstPool(constpool, ZExtInt16ToInt32(literalId));
     GateRef lexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v1));
 
-    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), { classTemplate, proto, lexicalEnv, constpool });
 
-    Label isResolved(env);
-    Label isNotResolved(env);
-    Label afterCheckResolved(env);
-    Branch(FunctionIsResolved(classTemplate), &isResolved, &isNotResolved);
-    Bind(&isResolved);
-    {
-        res = CallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), { classTemplate, proto, lexicalEnv, constpool });
-        Jump(&afterCheckResolved);
-    }
-    Bind(&isNotResolved);
-    {
-        res = CallRuntime(glue, RTSTUB_ID(ResolveClass),
-                          { classTemplate, literalBuffer, proto, lexicalEnv, constpool });
-        Jump(&afterCheckResolved);
-    }
-    Bind(&afterCheckResolved);
     Label isException(env);
     Label isNotException(env);
-    Branch(TaggedIsException(*res), &isException, &isNotException);
+    Branch(TaggedIsException(res), &isException, &isNotException);
     Bind(&isException);
     {
         DISPATCH_LAST_WITH_ACC();
     }
     Bind(&isNotException);
     GateRef newLexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));  // slow runtime may gc
-    SetLexicalEnvToFunction(glue, *res, newLexicalEnv);
-    CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { *res, Int16ToTaggedTypeNGC(length) });
-    varAcc = *res;
+    SetLexicalEnvToFunction(glue, res, newLexicalEnv);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
+    CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedTypeNGC(length) });
+    varAcc = res;
     DISPATCH_WITH_ACC(PREF_ID16_IMM16_IMM16_V8_V8);
 }
 
@@ -4076,11 +4083,10 @@ DECLARE_ASM_HANDLER(HandleJeqzImm8)
         Label dispatch(env);
         Label slowPath(env);
         UPDATE_HOTNESS(sp);
-        Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+        DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter,
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_NONE)));
+    DISPATCH_BAK(JUMP, INT_PTR(PREF_NONE));
 }
 
 DECLARE_ASM_HANDLER(HandleJeqzImm16)
@@ -4119,11 +4125,10 @@ DECLARE_ASM_HANDLER(HandleJeqzImm16)
         Label dispatch(env);
         Label slowPath(env);
         UPDATE_HOTNESS(sp);
-        Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+        DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter,
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16)));
+    DISPATCH_BAK(JUMP, INT_PTR(IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleJnezImm8)
@@ -4162,11 +4167,10 @@ DECLARE_ASM_HANDLER(HandleJnezImm8)
         Label dispatch(env);
         Label slowPath(env);
         UPDATE_HOTNESS(sp);
-        Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+        DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter,
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_NONE)));
+    DISPATCH_BAK(JUMP, INT_PTR(PREF_NONE));
 }
 
 DECLARE_ASM_HANDLER(HandleJnezImm16)
@@ -4205,11 +4209,10 @@ DECLARE_ASM_HANDLER(HandleJnezImm16)
         Label dispatch(env);
         Label slowPath(env);
         UPDATE_HOTNESS(sp);
-        Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, SExtInt32ToPtr(offset));
+        DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
-    Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter,
-             IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16)));
+    DISPATCH_BAK(JUMP, INT_PTR(IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleReturnDyn)
@@ -4952,7 +4955,7 @@ DECLARE_ASM_HANDLER(HandleCallArg0DynPrefV8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallArg1DynPrefV8V8)
@@ -4973,7 +4976,7 @@ DECLARE_ASM_HANDLER(HandleCallArg1DynPrefV8V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallArgs2DynPrefV8V8V8)
@@ -4997,7 +5000,7 @@ DECLARE_ASM_HANDLER(HandleCallArgs2DynPrefV8V8V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallArgs3DynPrefV8V8V8V8)
@@ -5023,7 +5026,7 @@ DECLARE_ASM_HANDLER(HandleCallArgs3DynPrefV8V8V8V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallIRangeDynPrefImm16V8)
@@ -5046,7 +5049,7 @@ DECLARE_ASM_HANDLER(HandleCallIRangeDynPrefImm16V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallIThisRangeDynPrefImm16V8)
@@ -5071,7 +5074,7 @@ DECLARE_ASM_HANDLER(HandleCallIThisRangeDynPrefImm16V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
-    Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, jumpSize);
+    DISPATCH_BAK(ACC_RES, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleLdBigIntPrefId32)

@@ -12,5 +12,5 @@
 # limitations under the License.
 
 SyntaxError: Unexpected Array in JSON
-Exception at function foo: 9
+Exception at function foo: 11
 Exception at function func_main_0: 11

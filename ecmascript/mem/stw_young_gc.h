@@ -29,7 +29,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/work_manager.h"
 
-#include "os/mutex.h"
+#include "libpandabase/os/mutex.h"
 
 namespace panda {
 namespace ecmascript {

@@ -20,6 +20,7 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/visitor.h"
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {

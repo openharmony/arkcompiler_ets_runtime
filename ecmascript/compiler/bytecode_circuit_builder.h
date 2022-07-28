@@ -206,6 +206,19 @@ struct BytecodeRegion {
             });
         }
     }
+    void UpdateTryCatchInfo()
+    {
+        for (auto catchBlock : catchs) {
+            auto tryBlock = std::find(catchBlock->trys.begin(), catchBlock->trys.end(), this);
+            if (tryBlock != catchBlock->trys.end()) {
+                catchBlock->trys.erase(tryBlock);
+            }
+            if (catchBlock->trys.size() == 0) {
+                catchBlock->isDead = true;
+            }
+        }
+        catchs.clear();
+    }
 };
 
 using BytecodeGraph = std::vector<BytecodeRegion>;
@@ -405,13 +418,13 @@ enum BytecodeOffset {
 class BytecodeCircuitBuilder {
 public:
     explicit BytecodeCircuitBuilder(const BytecodeTranslationInfo &translationInfo, size_t index,
-                                    TSLoader *tsLoader, bool enableLog)
-        : tsLoader_(tsLoader), file_(translationInfo.jsPandaFile), pf_(translationInfo.jsPandaFile->GetPandaFile()),
+                                    TSManager *tsManager, bool enableLog)
+        : tsManager_(tsManager), file_(translationInfo.jsPandaFile), pf_(translationInfo.jsPandaFile->GetPandaFile()),
           method_(translationInfo.methodPcInfos[index].method),
           pcArray_(translationInfo.methodPcInfos[index].pcArray),
           constantPool_(translationInfo.constantPool),
           gateAcc_(&circuit_), argAcc_(&circuit_, method_),
-          typeRecorder_(method_, tsLoader), hasTypes_(file_->HasTSTypes()),
+          typeRecorder_(method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog)
     {
     }
@@ -470,6 +483,25 @@ public:
         return suspendAndResumeGates_;
     }
 
+    inline bool HasTypes() const
+    {
+        return hasTypes_;
+    }
+
+    template <class Callback>
+    void EnumerateBlock(BytecodeRegion &bb, const Callback &cb)
+    {
+        auto pc = bb.start;
+        while (pc <= bb.end) {
+            auto bytecodeInfo = GetBytecodeInfo(pc);
+            bool ret = cb(pc, bytecodeInfo);
+            if (!ret) {
+                break;
+            }
+            pc += bytecodeInfo.offset;
+        }
+    }
+
 private:
     void PUBLIC_API CollectBytecodeBlockInfo(uint8_t* pc, std::vector<CfgInfo> &bytecodeBlockInfos);
 
@@ -489,6 +521,7 @@ private:
     void InsertPhi();
     void InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo);
     void UpdateCFG();
+    bool ShouldBeDead(BytecodeRegion &curBlock);
     // build circuit
     void BuildCircuitArgs();
     void CollectPredsInfo();
@@ -522,7 +555,7 @@ private:
     std::map<kungfu::GateRef, std::pair<size_t, const uint8_t *>> jsgateToBytecode_;
     std::map<const uint8_t *, kungfu::GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
-    TSLoader *tsLoader_ {nullptr};
+    TSManager *tsManager_ {nullptr};
     const JSPandaFile *file_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     const JSMethod *method_ {nullptr};

@@ -17,20 +17,20 @@
 #define ECMASCRIPT_COMPILER_TYPE_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
+#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class TypeLowering {
 public:
-    TypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg, TSLoader *tsLoader,
+    TypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
                  bool enableLog)
         : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsLoader_(tsLoader),
+          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
           enableLog_(enableLog) {}
     ~TypeLowering() = default;
 
@@ -55,7 +55,7 @@ private:
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_;
-    TSLoader *tsLoader_ {nullptr};
+    TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
 };
 }  // panda::ecmascript::kungfu

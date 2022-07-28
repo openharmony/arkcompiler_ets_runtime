@@ -125,12 +125,14 @@ public:
     }
 
 private:
-    void ReplaceHirControlGate(GateAccessor::UsesIterator &useIt, GateRef newGate, bool noThrow = false);
+    GateAccessor::UseIterator ReplaceHirControlGate(const GateAccessor::UseIterator &useIt, GateRef newGate,
+                                                    bool noThrow = false);
     void ReplaceHirToSubCfg(GateRef hir, GateRef outir,
                        const std::vector<GateRef> &successControl,
                        const std::vector<GateRef> &exceptionControl,
                        bool noThrow = false);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
+    void ReplaceHirToJSCall(GateRef hirGate, GateRef callGate, GateRef glue);
     void ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate);
     void LowerExceptionHandler(GateRef hirGate);
     // environment must be initialized
@@ -206,13 +208,13 @@ private:
     void LowerCreateEmptyObject(GateRef gate, GateRef glue);
     void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerStModuleVar(GateRef gate, GateRef glue);
+    void LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetTemplateObject(GateRef gate, GateRef glue);
     void LowerSetObjectWithProto(GateRef gate, GateRef glue);
     void LowerLdBigInt(GateRef gate, GateRef glue);
     void LowerToNumeric(GateRef gate, GateRef glue);
-    void LowerLdModuleVar(GateRef gate, GateRef glue);
-    void LowerGetModuleNamespace(GateRef gate, GateRef glue);
+    void LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIteratorNext(GateRef gate, GateRef glue);
     void LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget);
     void LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef newTarget);
@@ -268,6 +270,7 @@ private:
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
     int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
+    void DebugPrintBC(GateRef gate, GateRef glue, GateRef index);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

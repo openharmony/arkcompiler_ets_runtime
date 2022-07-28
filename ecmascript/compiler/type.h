@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_TYPE_H
 
 #include <cstdint>
+
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
 namespace panda::ecmascript::kungfu {
@@ -181,69 +182,6 @@ public:
         return type_ == static_cast<uint32_t>(TSPrimitiveType::BIG_INT);
     }
 
-    bool inline IsPrimitiveTypeKind() const
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        ASSERT(gt.GetFlag() == 0);
-        return static_cast<TSTypeKind>(gt.GetKind()) == TSTypeKind::PRIMITIVE;
-    }
-
-    bool inline IsClassTypeKind() const
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        ASSERT(gt.GetFlag() == 0);
-        return static_cast<TSTypeKind>(gt.GetKind()) == TSTypeKind::CLASS;
-    }
-
-    bool inline IsClassInstanceTypeKind() const
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        ASSERT(gt.GetFlag() == 0);
-        return static_cast<TSTypeKind>(gt.GetKind()) == TSTypeKind::CLASS_INSTANCE;
-    }
-
-    bool inline IsFunctionTypeKind() const
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        ASSERT(gt.GetFlag() == 0);
-        return static_cast<TSTypeKind>(gt.GetKind()) == TSTypeKind::FUNCTION;
-    }
-
-    bool inline IsUnionTypeKind() const
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        ASSERT(gt.GetFlag() == 0);
-        return static_cast<TSTypeKind>(gt.GetKind()) == TSTypeKind::UNION;
-    }
-
-    bool inline IsArrayTypeKind() const
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        ASSERT(gt.GetFlag() == 0);
-        return static_cast<TSTypeKind>(gt.GetKind()) == TSTypeKind::ARRAY;
-    }
-
-    bool inline IsObjectTypeKind() const
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        ASSERT(gt.GetFlag() == 0);
-        return static_cast<TSTypeKind>(gt.GetKind()) == TSTypeKind::OBJECT;
-    }
-
-    bool inline IsImportTypeKind() const
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        ASSERT(gt.GetFlag() == 0);
-        return static_cast<TSTypeKind>(gt.GetKind()) == TSTypeKind::IMPORT;
-    }
-
-    bool inline IsInterfaceTypeKind() const
-    {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        ASSERT(gt.GetFlag() == 0);
-        return static_cast<TSTypeKind>(gt.GetKind()) == TSTypeKind::INTERFACE_KIND;
-    }
-
     bool operator ==(const GateType &other) const
     {
         return type_ == other.type_;
@@ -273,10 +211,6 @@ public:
     {
         return type_ >= other.type_;
     }
-
-    std::string GetTypeStr() const;
-
-    std::string GetPrimitiveStr(const GlobalTSTypeRef gt) const;
 
 private:
     uint32_t type_ {0};

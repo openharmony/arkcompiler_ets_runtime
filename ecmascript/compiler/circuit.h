@@ -24,14 +24,12 @@
 
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/frames.h"
+
 #include "libpandabase/macros.h"
+
 #include "securec.h"
 
 namespace panda::ecmascript::kungfu {
-const size_t INITIAL_SPACE = 1U << 0U;  // this should be tuned
-const size_t MAX_SPACE = 1U << 24U;     // this should be tuned
-const size_t SCALE_RATE = 1U << 1U;     // this should be tuned
-
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
 public:
     Circuit();
@@ -54,14 +52,20 @@ public:
     void GetAllGates(std::vector<GateRef>& gates) const;
     static GateRef GetCircuitRoot(OpCode opcode);
     static GateRef NullGate();
-    void Print(GateRef gate) const;
     bool Verify(GateRef gate) const;
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
     GateRef GetConstantGate(MachineType bitValue, BitField bitfield, GateType type);
     size_t GetGateCount() const;
+    TimeStamp GetTime() const;
+    void AdvanceTime() const;
 
 private:
+    static const size_t INITIAL_SPACE = 1U << 0U;  // this should be tuned
+    static const size_t MAX_SPACE = 1U << 24U;     // this should be tuned
+    static const size_t SCALE_RATE = 1U << 1U;     // this should be tuned
+
+    void Print(GateRef gate) const;
     GateType GetGateType(GateRef gate) const;
     GateRef GetGateRef(const Gate *gate) const;
     MachineType GetMachineType(GateRef gate) const;
@@ -74,7 +78,7 @@ private:
     void SetBitField(GateRef gate, BitField bitfield);
     void DeleteGate(GateRef gate);
     void DecreaseIn(GateRef gate, size_t idx);
-    TimeStamp GetTime() const;
+
     MarkCode GetMark(GateRef gate) const;
     BitField GetBitField(GateRef gate) const;
     void DeleteIn(GateRef gate, size_t idx);
@@ -88,7 +92,6 @@ private:
     bool IsSelector(GateRef gate) const;
     bool IsControlCase(GateRef gate) const;
     bool IsLoopHead(GateRef gate) const;
-    void AdvanceTime() const;
     void ResetAllGateTimeStamps() const;
     void SetSpaceDataSize(size_t sz);
     uint8_t *AllocateSpace(size_t gateSize);
@@ -113,7 +116,6 @@ private:
 
     friend class GateAccessor;
     friend class Verifier;
-    friend class Scheduler;
 };
 }  // namespace panda::ecmascript::kungfu
 

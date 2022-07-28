@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "assembler_stubs_x64.h"
+#include "ecmascript/compiler/trampoline/x64/assembler_stubs_x64.h"
 
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/common_stubs.h"
@@ -23,10 +23,11 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_method.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/runtime_call_id.h"
+
 #include "libpandafile/bytecode_instruction-inl.h"
-#include "ecmascript/js_generator_object.h"
 
 namespace panda::ecmascript::x64 {
 #define __ assembler->
@@ -428,6 +429,8 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
     Register jsMethod = rdx;
     Register argV = r9;
     {
+        __ Movq(Operand(jsFuncReg, JSFunction::LEXICAL_ENV_OFFSET), rdx);
+        __ Movq(rdx, Operand(rsp, FRAME_SLOT_SIZE));
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // get method
         __ Movl(Operand(rsp, DOUBLE_SLOT_SIZE), argc); // sp + 16 actual argc
         __ Mov(Operand(jsMethod, JSMethod::GetCallFieldOffset(false)), methodCallField); // get call field
@@ -451,7 +454,7 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
         __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
         __ Movq(rsp, r8);
         Register envReg = r9;
-        __ Movq(Operand(r8, DOUBLE_SLOT_SIZE), envReg); // get env
+        __ Movq(Operand(r8, FRAME_SLOT_SIZE), envReg); // get env
         argvReg = r8;
         __ Addq(TRIPLE_SLOT_SIZE, argvReg); // get argv
         __ Cmpl(expectedNumArgsReg, rdx); // expectedNumArgs <= actualNumArgs
@@ -545,7 +548,9 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
         __ Pushq(envReg);
         __ Movq(rdi, rax);
         __ Callq(&jsCall); // call JSCall
-        __ Leaq(Operand(r10, Scale::Times8, 8), rcx); // 8: offset
+        __ Addq(FRAME_SLOT_SIZE, rsp); // skip env
+        __ Pop(r10);
+        __ Leaq(Operand(r10, Scale::Times8, 0), rcx); // 8: offset
         __ Addq(rcx, rsp);
         __ Testb(1, r10);  // stack 16bytes align check
         __ Je(&lPopFrame2);
@@ -554,7 +559,6 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
 
     __ Bind(&lPopFrame2);
     {
-        __ Addq(FRAME_SLOT_SIZE, rsp); // skip r9
         __ Pop(r10);
         __ Addq(8, rsp); // 8: sp + 8
         __ Pop(rbp);
@@ -562,9 +566,9 @@ void AssemblerStubsX64::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler
     }
     __ Bind(&lJSProxy);
     __ Movq(rsp, rcx);
-    __ Addq(8, rcx); // 8: sp + 8
-    __ Mov(Operand(rcx, 0), rsi); // get origin argc
     __ Movq(jsFuncReg, rdx);
+    __ Addq(DOUBLE_SLOT_SIZE, rcx); // skip returnAddr
+    __ Mov(Operand(rcx, 0), rsi); // get origin argc
     __ Addq(8, rcx); // 8: sp + 8 argv
     __ Movq(kungfu::CommonStubCSigns::JsProxyCallInternal, r9);
     __ Movq(Operand(rdi, r9, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), r8);
@@ -694,6 +698,8 @@ void AssemblerStubsX64::JSCall(ExtendedAssembler *assembler)
     Register jsMethod = rdx;
     Register argV = r9;
     {
+        __ Movq(Operand(jsFuncReg, JSFunction::LEXICAL_ENV_OFFSET), rdx);
+        __ Movq(rdx, Operand(rsp, FRAME_SLOT_SIZE));
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // get method
         __ Movl(Operand(rsp, DOUBLE_SLOT_SIZE), argc); // sp + 16 actual argc
         __ Mov(Operand(jsMethod, JSMethod::GetCallFieldOffset(false)), methodCallField); // get call field
@@ -811,7 +817,9 @@ void AssemblerStubsX64::JSCall(ExtendedAssembler *assembler)
         __ Pushq(envReg);
         __ Movq(rdi, rax);
         __ Callq(&jsCall); // call JSCall
-        __ Leaq(Operand(r10, Scale::Times8, 8), rcx); // 8: disp
+        __ Addq(8, rsp); // 8: sp + 8
+        __ Pop(r10);
+        __ Leaq(Operand(r10, Scale::Times8, 0), rcx); // 8: disp
         __ Addq(rcx, rsp);
         __ Testb(1, r10);  // stack 16bytes align check
         __ Je(&lPopFrame2);
@@ -820,7 +828,6 @@ void AssemblerStubsX64::JSCall(ExtendedAssembler *assembler)
 
     __ Bind(&lPopFrame2);
     {
-        __ Addq(8, rsp); // 8: sp + 8
         __ Pop(r10);
         __ Addq(8, rsp); // 8: sp + 8
         __ Pop(rbp);
@@ -2166,16 +2173,16 @@ void AssemblerStubsX64::PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Re
     __ Movq(prevFp, Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 }
 
-void AssemblerStubsX64::PushOptimizedFrame(ExtendedAssembler *assembler, Register callSiteSp)
+void AssemblerStubsX64::PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp)
 {
     __ Pushq(rbp);
     __ Movq(rsp, rbp);
     // construct frame
-    __ Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_FRAME));
+    __ Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME));
     __ Pushq(callSiteSp);
 }
 
-void AssemblerStubsX64::PopOptimizedFrame(ExtendedAssembler *assembler)
+void AssemblerStubsX64::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 {
     Register sp(rsp);
     // 16 : 16 means pop call site sp and type
@@ -2199,7 +2206,7 @@ void AssemblerStubsX64::JSCallWithArgV(ExtendedAssembler *assembler)
 
     __ Movq(sp, callsiteSp);
     __ Addq(Immediate(8), callsiteSp);   // 8 : 8 means skip pc to get last callsitesp
-    PushOptimizedFrame(assembler, callsiteSp);
+    PushOptimizedUnfoldArgVFrame(assembler, callsiteSp);
     __ Testb(1, actualNumArgs);
     __ Jne(&align16Bytes);
     __ PushAlignBytes();
@@ -2219,7 +2226,7 @@ void AssemblerStubsX64::JSCallWithArgV(ExtendedAssembler *assembler)
     __ Addq(FRAME_SLOT_SIZE, rsp);
     __ Mov(Operand(sp, 0), actualNumArgs);
     PopJSFunctionArgs(assembler, actualNumArgs);
-    PopOptimizedFrame(assembler);
+    PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
 }
 

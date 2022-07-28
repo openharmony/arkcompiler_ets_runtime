@@ -49,7 +49,7 @@ public:
     inline void SetAvailable(uint32_t size)
     {
         if (size >= SIZE) {
-            SetSize(JSTaggedValue(size));
+            Barriers::SetDynPrimitive<JSTaggedType>(this, SIZE_OFFSET, JSTaggedValue(size).GetRawData());
         }
     }
 
@@ -66,6 +66,33 @@ public:
     inline bool IsFreeObject() const
     {
         return GetClass()->IsFreeObject();
+    }
+
+    // Before operating any freeobject, need to mark unpoison when is_asan is true.
+    inline void AsanUnPoisonFreeObject() const
+    {
+#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+        ASAN_UNPOISON_MEMORY_REGION(this, NEXT_OFFSET);
+        if (GetClass()->IsFreeObjectWithOneField()) {
+            ASAN_UNPOISON_MEMORY_REGION(this, SIZE_OFFSET);
+        } else if (GetClass()->IsFreeObjectWithTwoField()) {
+            ASAN_UNPOISON_MEMORY_REGION(this, SIZE);
+        }
+#endif
+    }
+
+    // After operating any freeobject, need to marked poison again when is_asan is true
+    inline void AsanPoisonFreeObject() const
+    {
+#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+        if (GetClass()->IsFreeObjectWithNoneField()) {
+            ASAN_POISON_MEMORY_REGION(this, NEXT_OFFSET);
+        } else if (GetClass()->IsFreeObjectWithOneField()) {
+            ASAN_POISON_MEMORY_REGION(this, SIZE_OFFSET);
+        } else if (GetClass()->IsFreeObjectWithTwoField()) {
+            ASAN_POISON_MEMORY_REGION(this, SIZE);
+        }
+#endif
     }
 
     static constexpr size_t NEXT_OFFSET = TaggedObjectSize();

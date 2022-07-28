@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "js_require_manager.h"
+
+#include "ecmascript/require/js_require_manager.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"

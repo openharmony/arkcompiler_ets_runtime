@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-#include "js_date_time_format.h"
+#include "ecmascript/js_date_time_format.h"
 
-#include "ecma_macros.h"
-#include "global_env.h"
-#include "js_array.h"
-#include "js_date.h"
-#include "js_intl.h"
-#include "js_locale.h"
-#include "js_object-inl.h"
-#include "object_factory.h"
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_date.h"
+#include "ecmascript/js_intl.h"
+#include "ecmascript/js_locale.h"
+#include "ecmascript/js_object-inl.h"
+#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 struct CommonDateFormatPart {
@@ -321,9 +321,11 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     ASSERT_PRINT(U_SUCCESS(status), "constructGenerator failed");
     HourCycleOption hcDefault = OptionToHourCycle(generator->getDefaultHourCycle(status));
     // b. Let hc be dateTimeFormat.[[HourCycle]].
-    HourCycleOption hc = HourCycleOption::UNDEFINED;
-    hc = (hourCycle == HourCycleOption::UNDEFINED) ? OptionToHourCycle(resolvedLocale.extensions.find("hc")->second) :
-                                                   hourCycle;
+    HourCycleOption hc = hourCycle;
+    if (hourCycle == HourCycleOption::UNDEFINED
+        && resolvedLocale.extensions.find("hc") != resolvedLocale.extensions.end()) {
+        hc = OptionToHourCycle(resolvedLocale.extensions.find("hc")->second);
+    }
     // c. If hc is null, then
     //    i. Set hc to hcDefault.
     if (hc == HourCycleOption::UNDEFINED) {

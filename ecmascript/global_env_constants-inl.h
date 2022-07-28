@@ -17,7 +17,9 @@
 #define RUNTIME_ECMASCRIPT_GLOBAL_ENV_CONSTANTS_INL_H
 
 #include "ecmascript/global_env_constants.h"
+
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/js_handle.h"
 
 namespace panda::ecmascript {
 inline const JSTaggedValue *GlobalEnvConstants::BeginSlot() const

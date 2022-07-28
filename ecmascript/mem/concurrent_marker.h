@@ -23,7 +23,8 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/taskpool/task.h"
-#include "os/mutex.h"
+
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 class EcmaVM;

@@ -12,10 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 #define ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 
 #include <tuple>
+
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/llvm_codegen.h"
@@ -200,7 +202,7 @@ public:
 
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename);
-    void GenerateSnapshotFile();
+    void SaveSnapshotFile();
 private:
     AOTModulePackInfo aotInfo_;
     std::vector<uint32_t> aotfileHashs_ {};

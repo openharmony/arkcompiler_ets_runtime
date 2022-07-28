@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "js_cjs_module_cache.h"
+#include "ecmascript/require/js_cjs_module_cache.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_hash_table.h"

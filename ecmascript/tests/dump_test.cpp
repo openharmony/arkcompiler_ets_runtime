@@ -29,30 +29,30 @@
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_api_arraylist.h"
-#include "ecmascript/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api_deque.h"
-#include "ecmascript/js_api_deque_iterator.h"
-#include "ecmascript/js_api_lightweightmap.h"
-#include "ecmascript/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api_lightweightset.h"
-#include "ecmascript/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api_linked_list.h"
-#include "ecmascript/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api_list.h"
-#include "ecmascript/js_api_list_iterator.h"
-#include "ecmascript/js_api_plain_array.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api_queue.h"
-#include "ecmascript/js_api_queue_iterator.h"
-#include "ecmascript/js_api_stack.h"
-#include "ecmascript/js_api_stack_iterator.h"
-#include "ecmascript/js_api_tree_map.h"
-#include "ecmascript/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api_tree_set.h"
-#include "ecmascript/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api_vector.h"
-#include "ecmascript/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_deque.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightmap.h"
+#include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_lightweightset_iterator.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
+#include "ecmascript/js_api/js_api_linked_list_iterator.h"
+#include "ecmascript/js_api/js_api_list.h"
+#include "ecmascript/js_api/js_api_list_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_queue.h"
+#include "ecmascript/js_api/js_api_queue_iterator.h"
+#include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_tree_map_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
@@ -69,10 +69,10 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_global_object.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_api_hashmap.h"
-#include "ecmascript/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api_hashset.h"
-#include "ecmascript/js_api_hashset_iterator.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
+#include "ecmascript/js_api/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_api/js_api_hashset_iterator.h"
 #include "ecmascript/js_intl.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_map.h"
@@ -771,7 +771,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(globalEnv->GetBigIntFunction())
                 break;
             }
-            case JSType::TAGGED_ARRAY: {
+            case JSType::TAGGED_ARRAY:
+            case JSType::LEXICAL_ENV: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray)
                 break;
@@ -891,8 +892,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 JSHandle<JSHClass> pendingClass(thread,
                     JSHClass::Cast(globalConst->GetPendingJobClass().GetTaggedObject()));
                 JSHandle<TaggedObject> pendingJob(thread, factory->NewDynObject(pendingClass));
-                ecmascript::job::PendingJob::Cast(*pendingJob)->SetJob(JSTaggedValue::Undefined());
-                ecmascript::job::PendingJob::Cast(*pendingJob)->SetArguments(JSTaggedValue::Undefined());
+                ecmascript::job::PendingJob::Cast(*pendingJob)->SetJob(thread, JSTaggedValue::Undefined());
+                ecmascript::job::PendingJob::Cast(*pendingJob)->SetArguments(thread, JSTaggedValue::Undefined());
                 DUMP_FOR_HANDLE(pendingJob)
                 break;
             }

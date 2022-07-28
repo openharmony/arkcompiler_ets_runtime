@@ -13,12 +13,13 @@
  * limitations under the License.
  */
  
-#include "ecmascript/js_api_plain_array.h"
-#include "ecmascript/containers/containers_private.h"
 #include "ecmascript/containers/containers_plainarray.h"
+
+#include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"

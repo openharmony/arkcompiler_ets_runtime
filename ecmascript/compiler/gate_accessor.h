@@ -17,14 +17,13 @@
 #define ECMASCRIPT_COMPILER_GATE_ACCESSOR_H
 
 #include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/gate.h"
 
 namespace panda::ecmascript::kungfu {
 class GateAccessor {
 public:
     // do not create new gate or modify self during iteration
-    struct ConstUsesIterator {
-        explicit ConstUsesIterator(const Circuit* circuit, const Out* out) : circuit_(circuit), out_(out)
+    struct ConstUseIterator {
+        explicit ConstUseIterator(const Circuit* circuit, const Out* out) : circuit_(circuit), out_(out)
         {
         }
 
@@ -33,7 +32,7 @@ public:
             return circuit_->GetGateRef(out_->GetGateConst());
         }
 
-        const ConstUsesIterator operator++()
+        const ConstUseIterator operator++()
         {
             if (!out_->IsNextOutNull()) {
                 out_ = out_->GetNextOutConst();
@@ -42,9 +41,9 @@ public:
             out_ = nullptr;
             return *this;
         }
-        const ConstUsesIterator operator++(int)
+        const ConstUseIterator operator++(int)
         {
-            ConstUsesIterator tmp = *this;
+            ConstUseIterator tmp = *this;
             ++(*this);
             return tmp;
         }
@@ -61,11 +60,11 @@ public:
             return out_->GetGateConst()->GetOpCode();
         }
 
-        friend bool operator== (const ConstUsesIterator& a, const ConstUsesIterator& b)
+        friend bool operator== (const ConstUseIterator& a, const ConstUseIterator& b)
         {
             return a.out_ == b.out_;
         };
-        friend bool operator!= (const ConstUsesIterator& a, const ConstUsesIterator& b)
+        friend bool operator!= (const ConstUseIterator& a, const ConstUseIterator& b)
         {
             return a.out_ != b.out_;
         };
@@ -76,14 +75,9 @@ public:
     };
 
     // do not create new gate or modify self during iteration
-    struct UsesIterator {
-        explicit UsesIterator(Circuit* circuit, Out* out, GateRef gate) : circuit_(circuit), out_(out), gate_(gate)
+    struct UseIterator {
+        explicit UseIterator(Circuit* circuit, Out* out) : circuit_(circuit), out_(out)
         {
-        }
-
-        void SetChanged()
-        {
-            changed_ = true;
         }
 
         GateRef operator*() const
@@ -91,29 +85,16 @@ public:
             return circuit_->GetGateRef(out_->GetGate());
         }
 
-        const UsesIterator& operator++()
+        const UseIterator& operator++()
         {
-            if (changed_) {
-                if (circuit_->LoadGatePtrConst(gate_)->IsFirstOutNull()) {
-                    out_ = nullptr;
-                    gate_ = 0;
-                } else {
-                    out_ = circuit_->LoadGatePtr(gate_)->GetFirstOut();
-                }
-                changed_ = false;
-                return *this;
-            }
-            if (out_->IsNextOutNull()) {
-                out_ = nullptr;
-                return *this;
-            }
-            out_ = out_->GetNextOut();
+            out_ = out_->IsNextOutNull() ? nullptr
+                                         : out_->GetNextOut();
             return *this;
         }
 
-        UsesIterator operator++(int)
+        UseIterator operator++(int)
         {
-            UsesIterator tmp = *this;
+            UseIterator tmp = *this;
             ++(*this);
             return tmp;
         }
@@ -130,11 +111,11 @@ public:
             return out_->GetGateConst()->GetOpCode();
         }
 
-        friend bool operator== (const UsesIterator& a, const UsesIterator& b)
+        friend bool operator== (const UseIterator& a, const UseIterator& b)
         {
             return a.out_ == b.out_;
         };
-        friend bool operator!= (const UsesIterator& a, const UsesIterator& b)
+        friend bool operator!= (const UseIterator& a, const UseIterator& b)
         {
             return a.out_ != b.out_;
         };
@@ -142,8 +123,6 @@ public:
     private:
         Circuit* circuit_;
         Out* out_;
-        GateRef gate_;
-        bool changed_ {false};
     };
 
     struct ConstInsIterator {
@@ -282,22 +261,22 @@ public:
         }
     };
 
-    [[nodiscard]] ConstInWrapper ConstIns(GateRef gate)
+    ConstInWrapper ConstIns(GateRef gate)
     {
         return { circuit_, gate };
     }
 
-    [[nodiscard]] InWrapper Ins(GateRef gate)
+    InWrapper Ins(GateRef gate)
     {
         return { circuit_, gate };
     }
 
-    [[nodiscard]] ConstUseWrapper ConstUses(GateRef gate)
+    ConstUseWrapper ConstUses(GateRef gate)
     {
         return { circuit_, gate };
     }
 
-    [[nodiscard]] UseWrapper Uses(GateRef gate)
+    UseWrapper Uses(GateRef gate)
     {
         return { circuit_, gate };
     }
@@ -328,17 +307,16 @@ public:
     GateRef GetState(GateRef gate, size_t idx = 0) const;
     GateRef GetDep(GateRef gate, size_t idx = 0) const;
     size_t GetImmediateId(GateRef gate) const;
-    bool IsDependIn(const UsesIterator &useIt) const;
+    bool IsDependIn(const UseIterator &useIt) const;
     void SetDep(GateRef gate, GateRef depGate, size_t idx = 0);
-    void ReplaceIn(UsesIterator &useIt, GateRef replaceGate);
+    UseIterator ReplaceIn(const UseIterator &useIt, GateRef replaceGate);
     // Add for lowering
     GateType GetGateType(GateRef gate) const;
     void SetGateType(GateRef gate, GateType gt);
-    void DeleteExceptionDep(UsesIterator &useIt);
-    void DeleteIn(UsesIterator &useIt);
+    UseIterator DeleteExceptionDep(const UseIterator &useIt);
     void DeleteIn(GateRef gate, size_t idx);
-    void DeleteGate(UsesIterator &useIt);
-    void DecreaseIn(UsesIterator &useIt);
+    UseIterator DeleteGate(const UseIterator &useIt);
+    void DecreaseIn(const UseIterator &useIt);
     void NewIn(GateRef gate, size_t idx, GateRef in);
     size_t GetStateCount(GateRef gate) const;
     size_t GetDependCount(GateRef gate) const;
@@ -356,34 +334,36 @@ public:
     bool IsSelector(GateRef g) const;
     bool IsControlCase(GateRef gate) const;
     bool IsLoopHead(GateRef gate) const;
+    MarkCode GetMark(GateRef gate) const;
+    void SetMark(GateRef gate, MarkCode mark);
 
 private:
-    ConstUsesIterator ConstUseBegin(GateRef gate) const
+    ConstUseIterator ConstUseBegin(GateRef gate) const
     {
         if (circuit_->LoadGatePtrConst(gate)->IsFirstOutNull()) {
-            return ConstUsesIterator(circuit_, nullptr);
+            return ConstUseIterator(circuit_, nullptr);
         }
         auto use = circuit_->LoadGatePtrConst(gate)->GetFirstOutConst();
-        return ConstUsesIterator(circuit_, use);
+        return ConstUseIterator(circuit_, use);
     }
 
-    ConstUsesIterator ConstUseEnd() const
+    ConstUseIterator ConstUseEnd() const
     {
-        return ConstUsesIterator(circuit_, nullptr);
+        return ConstUseIterator(circuit_, nullptr);
     }
 
-    UsesIterator UseBegin(GateRef gate) const
+    UseIterator UseBegin(GateRef gate) const
     {
         if (circuit_->LoadGatePtrConst(gate)->IsFirstOutNull()) {
-            return UsesIterator(circuit_, nullptr, 0);
+            return UseIterator(circuit_, nullptr);
         }
         auto use = circuit_->LoadGatePtr(gate)->GetFirstOut();
-        return UsesIterator(circuit_, use, gate);
+        return UseIterator(circuit_, use);
     }
 
-    UsesIterator UseEnd() const
+    UseIterator UseEnd() const
     {
-        return UsesIterator(circuit_, nullptr, 0);
+        return UseIterator(circuit_, nullptr);
     }
 
     ConstInsIterator ConstInBegin(GateRef gate) const

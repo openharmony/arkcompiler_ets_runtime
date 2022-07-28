@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/mem/concurrent_marker.h"
+
 #include "ecmascript/mem/allocator-inl.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/heap-inl.h"
@@ -27,7 +28,8 @@
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/runtime_call_id.h"
-#include "os/mutex.h"
+
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 ConcurrentMarker::ConcurrentMarker(Heap *heap, EnableConcurrentMarkType type)

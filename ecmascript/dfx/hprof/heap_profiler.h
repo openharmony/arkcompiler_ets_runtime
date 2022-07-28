@@ -25,6 +25,7 @@
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/tooling/interface/file_stream.h"
 #include "ecmascript/tooling/interface/progress.h"
+
 #include "os/mem.h"
 
 namespace panda::ecmascript {

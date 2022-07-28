@@ -31,7 +31,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/tests/test_helper.h"
-#include "utils/bit_utils.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
@@ -868,7 +867,7 @@ HWTEST_F_L0(BuiltinsArrayTest, IndexOf)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result = Array::IndexOf(ecmaRuntimeCallInfo1);
     TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(2)).GetRawData());
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue(2).GetRawData());
 
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
     ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
@@ -879,7 +878,7 @@ HWTEST_F_L0(BuiltinsArrayTest, IndexOf)
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
     result = Array::IndexOf(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(4)).GetRawData());
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue(4).GetRawData());
 
     auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
     ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
@@ -900,7 +899,7 @@ HWTEST_F_L0(BuiltinsArrayTest, IndexOf)
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo4);
     result = Array::IndexOf(ecmaRuntimeCallInfo4);
     TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(2)).GetRawData());
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue(2).GetRawData());
 }
 
 // 22.1.3.14 new Array(1,2,3,4,3).LastIndexOf(searchElement [ , fromIndex ])

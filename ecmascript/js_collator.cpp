@@ -15,11 +15,11 @@
 
 #include "ecmascript/js_collator.h"
 
-#include "unicode/udata.h"
-
 #include "ecmascript/global_env.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/barriers-inl.h"
+
+#include "unicode/udata.h"
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE (readability-identifier-naming, fuchsia-statically-constructed-objects)

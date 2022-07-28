@@ -132,8 +132,8 @@ private:
     static void PopJSFunctionArgs(ExtendedAssembler *assembler, Register expectedNumArgs);
     static void PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Register prevFp);
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
-    static void PushOptimizedFrame(ExtendedAssembler *assembler, Register callSiteSp);
-    static void PopOptimizedFrame(ExtendedAssembler *assembler);
+    static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
+    static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
 };
 }  // namespace panda::ecmascript::x64
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_MODULE_X64_H

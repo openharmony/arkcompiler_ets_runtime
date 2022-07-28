@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 let str : string = 'str';
 var ans = str;
-typeof(ans);
+AssertType(ans, "string");

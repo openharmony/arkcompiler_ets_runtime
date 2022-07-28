@@ -13,12 +13,14 @@
  * limitations under the License.
  */
 
+#include "ecmascript/builtins/builtins_number.h"
+
 #include <cmath>
 #include <iostream>
 #include <limits>
+
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"

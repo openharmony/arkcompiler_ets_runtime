@@ -17,6 +17,7 @@
 
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/js_iterator.h"
+
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript {

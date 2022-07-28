@@ -14,11 +14,13 @@
  */
 
 #include "ecmascript/compiler/circuit_builder.h"
+
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/js_thread.h"
+#include "ecmascript/js_function.h"
+
 #include "utils/bit_utils.h"
 
 namespace panda::ecmascript::kungfu {
@@ -173,7 +175,7 @@ GateRef CircuitBuilder::IntPtr(int64_t val)
 GateRef CircuitBuilder::RelocatableData(uint64_t val)
 {
     auto constantList = Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST));
-    return GetCircuit()->NewGate(OpCode(OpCode::RELOCATABLE_DATA), val, {constantList}, GateType::Empty());
+    return GetCircuit()->NewGate(OpCode(OpCode::RELOCATABLE_DATA), val, {constantList}, GateType::TaggedValue());
 }
 
 GateRef CircuitBuilder::Boolean(bool val)
@@ -526,7 +528,7 @@ Environment::Environment(GateRef hir, Circuit *circuit, CircuitBuilder *builder)
     entry_ = Label(NewLabel(this, acc.GetIn(hir, 0)));
     currentLabel_ = &entry_;
     currentLabel_->Seal();
-    auto dependEntry = acc.GetIn(hir, 1);
+    auto dependEntry = acc.GetDep(hir);
     currentLabel_->SetDepend(dependEntry);
     for (size_t i = 2; i < acc.GetNumIns(hir); i++) {
         inputList_.emplace_back(acc.GetIn(hir, i));
@@ -671,10 +673,10 @@ GateRef Label::LabelImpl::ReadVariableRecursive(Variable *var)
         // only loopheader gate will be not sealed
         int valueCounts = static_cast<int>(this->predecessors_.size()) + 1;
         if (MachineType == MachineType::NOVALUE) {
-            val = env_->GetBulder()->Selector(OpCode(OpCode::DEPEND_SELECTOR),
+            val = env_->GetBuilder()->Selector(OpCode(OpCode::DEPEND_SELECTOR),
                 predeControl_, {}, valueCounts, var->Type());
         } else {
-            val = env_->GetBulder()->Selector(OpCode(OpCode::VALUE_SELECTOR),
+            val = env_->GetBuilder()->Selector(OpCode(OpCode::VALUE_SELECTOR),
                 MachineType, predeControl_, {}, valueCounts, var->Type());
         }
         env_->AddSelectorToLabel(val, Label(this));
@@ -683,10 +685,10 @@ GateRef Label::LabelImpl::ReadVariableRecursive(Variable *var)
         val = predecessors_[0]->ReadVariable(var);
     } else {
         if (MachineType == MachineType::NOVALUE) {
-            val = env_->GetBulder()->Selector(OpCode(OpCode::DEPEND_SELECTOR),
+            val = env_->GetBuilder()->Selector(OpCode(OpCode::DEPEND_SELECTOR),
                 predeControl_, {}, this->predecessors_.size(), var->Type());
         } else {
-            val = env_->GetBulder()->Selector(OpCode(OpCode::VALUE_SELECTOR), MachineType,
+            val = env_->GetBuilder()->Selector(OpCode(OpCode::VALUE_SELECTOR), MachineType,
                 predeControl_, {}, this->predecessors_.size(), var->Type());
         }
         env_->AddSelectorToLabel(val, Label(this));
@@ -702,7 +704,7 @@ void Label::LabelImpl::Bind()
     ASSERT(!predecessors_.empty());
     if (IsLoopHead()) {
         // 2 means input number of depend selector gate
-        loopDepend_ = env_->GetBulder()->Selector(OpCode(OpCode::DEPEND_SELECTOR), predeControl_, {}, 2);
+        loopDepend_ = env_->GetBuilder()->Selector(OpCode(OpCode::DEPEND_SELECTOR), predeControl_, {}, 2);
         GateAccessor(env_->GetCircuit()).NewIn(loopDepend_, 1, predecessors_[0]->GetDepend());
         depend_ = loopDepend_;
     }
@@ -736,7 +738,7 @@ void Label::LabelImpl::MergeAllControl()
         inGates[i++] = in;
     }
 
-    GateRef merge = env_->GetBulder()->Merge(inGates.data(), inGates.size());
+    GateRef merge = env_->GetBuilder()->Merge(inGates.data(), inGates.size());
     predeControl_ = merge;
     control_ = merge;
 }
@@ -746,13 +748,13 @@ void Label::LabelImpl::MergeAllDepend()
     if (IsControlCase()) {
         // Add depend_relay to current label
         auto denpendEntry = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
-        dependRelay_ = env_->GetBulder()->DependRelay(predeControl_, denpendEntry);
+        dependRelay_ = env_->GetBuilder()->DependRelay(predeControl_, denpendEntry);
     }
 
     if (predecessors_.size() < 2) {  // 2 : Loop Head only support two predecessors_
         depend_ = predecessors_[0]->GetDepend();
         if (dependRelay_ != -1) {
-            depend_ = env_->GetBulder()->DependAnd({depend_, dependRelay_});
+            depend_ = env_->GetBuilder()->DependAnd({depend_, dependRelay_});
         }
         return;
     }
@@ -770,7 +772,7 @@ void Label::LabelImpl::MergeAllDepend()
     for (auto prede : this->GetPredecessors()) {
         dependsList.push_back(prede->GetDepend());
     }
-    depend_ = env_->GetBulder()->Selector(OpCode(OpCode::DEPEND_SELECTOR),
+    depend_ = env_->GetBuilder()->Selector(OpCode(OpCode::DEPEND_SELECTOR),
         predeControl_, dependsList, dependsList.size());
 }
 
@@ -835,17 +837,19 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
     if (same == Gate::InvalidGateRef) {
         // the phi is unreachable or in the start block
         GateType type = acc.GetGateType(phi);
-        same = env_->GetBulder()->UndefineConstant(type);
+        same = env_->GetBuilder()->UndefineConstant(type);
     }
     // remove the trivial phi
     // get all users of phi except self
     std::vector<GateRef> outs;
     auto uses = acc.Uses(phi);
-    for (auto use = uses.begin(); use != uses.end(); use++) {
+    for (auto use = uses.begin(); use != uses.end();) {
         GateRef u = *use;
         if (u != phi) {
             outs.push_back(u);
-            acc.ReplaceIn(use, same);
+            use = acc.ReplaceIn(use, same);
+        } else {
+            use++;
         }
     }
     acc.DeleteGate(phi);

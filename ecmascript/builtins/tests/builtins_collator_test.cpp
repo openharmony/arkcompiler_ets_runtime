@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_collator.h"
+
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_collator.h"

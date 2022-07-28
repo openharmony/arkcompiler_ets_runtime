@@ -46,12 +46,14 @@ group("ark_js_moduletest") {
     "proxy:proxyAction",
     "regexpcallthrow:regexpcallthrowAction",
     "require:requireAction",
+    "setobjectwithproto:setobjectwithprotoAction",
     "spreadoperator:spreadoperatorAction",
     "stackoverflow:stackoverflowAction",
     "throwdyn:throwdynAction",
     "trycatch:trycatchAction",
     "typearray:typearrayAction",
     "watch:watchAction",
+    "wrapperclassfunc:wrapperclassfuncAction",
     "yieldstar:yieldstarAction",
   ]
   if (!is_debug) {
@@ -93,11 +95,13 @@ group("ark_asm_test") {
     "promise:promiseAsmAction",
     "proxy:proxyAsmAction",
     "regexpcallthrow:regexpcallthrowAsmAction",
+    "setobjectwithproto:setobjectwithprotoAsmAction",
     "spreadoperator:spreadoperatorAsmAction",
     "stackoverflow:stackoverflowAsmAction",
     "throwdyn:throwdynAsmAction",
     "trycatch:trycatchAsmAction",
     "watch:watchAsmAction",
+    "wrapperclassfunc:wrapperclassfuncAsmAction",
     "yieldstar:yieldstarAsmAction",
   ]
   if (!is_debug) {

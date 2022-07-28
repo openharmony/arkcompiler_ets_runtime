@@ -16,9 +16,9 @@
 #ifndef ECMASCRIPT_IC_IC_RUNTIME_STUB_H_
 #define ECMASCRIPT_IC_IC_RUNTIME_STUB_H_
 
+#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/property_attributes.h"
-#include "profile_type_info.h"
 
 namespace panda::ecmascript {
 class ICRuntimeStub {

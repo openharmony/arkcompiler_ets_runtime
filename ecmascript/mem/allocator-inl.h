@@ -37,6 +37,7 @@ void BumpPointerAllocator::Reset(uintptr_t begin, uintptr_t end)
     begin_ = begin;
     top_ = begin;
     end_ = end;
+    ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(top_), (end_ - top_));
 }
 
 void BumpPointerAllocator::Reset(uintptr_t begin, uintptr_t end, uintptr_t top)
@@ -44,6 +45,7 @@ void BumpPointerAllocator::Reset(uintptr_t begin, uintptr_t end, uintptr_t top)
     begin_ = begin;
     top_ = top;
     end_ = end;
+    ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(top_), (end_ - top_));
 }
 
 uintptr_t BumpPointerAllocator::Allocate(size_t size)
@@ -54,7 +56,8 @@ uintptr_t BumpPointerAllocator::Allocate(size_t size)
         return 0;
     }
     uintptr_t result = top_;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    // It need to mark unpoison when object being allocated.
+    ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(result), size);
     top_ += size;
     return result;
 }
@@ -143,13 +146,16 @@ void FreeListAllocator::ResetBumpPointer(uintptr_t begin, uintptr_t end, uintptr
     bpAllocator_.Reset(begin, end, top);
 }
 
+// The object will be marked with poison after being put into the freelist when is_asan is true.
 void FreeListAllocator::Free(uintptr_t begin, size_t size, bool isAdd)
 {
     ASSERT(heap_ != nullptr);
     ASSERT(size >= 0);
     if (size != 0) {
         FreeObject::FillFreeObject(heap_->GetEcmaVM(), begin, size);
+        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);
         freeList_->Free(begin, size, isAdd);
+        ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);
     }
 }
 

@@ -61,7 +61,7 @@ public:
         parser->Add(&asmOptLevel_);
         parser->Add(&relocationMode_);
         parser->Add(&logCompiledMethods_);
-        parser->Add(&internalMemorySizeLimit_);
+        parser->Add(&serializerBufferSizeLimit_);
         parser->Add(&heapSizeLimit_);
         parser->Add(&enableIC_);
         parser->Add(&snapshotFile_);
@@ -70,7 +70,7 @@ public:
         parser->Add(&startupTime_);
         parser->Add(&snapshotOutputFile_);
         parser->Add(&enableRuntimeStat_);
-        parser->Add(&logTypeInfer_);
+        parser->Add(&typeInferVerify_);
         parser->Add(&builtinsDTS_);
     }
 
@@ -345,9 +345,9 @@ public:
         return logCompiledMethods_.WasSet() && GetlogCompiledMethods().compare("none") != 0;
     }
 
-    uint64_t GetInternalMemorySizeLimit() const
+    uint64_t GetSerializerBufferSizeLimit() const
     {
-        return internalMemorySizeLimit_.GetValue();
+        return serializerBufferSizeLimit_.GetValue();
     }
 
     uint32_t GetHeapSizeLimit() const
@@ -460,14 +460,14 @@ public:
         snapshotOutputFile_.SetValue(std::move(value));
     }
 
-    bool GetLogTypeInfer() const
+    bool EnableTypeInferVerify() const
     {
-        return logTypeInfer_.GetValue();
+        return typeInferVerify_.GetValue();
     }
 
-    void SetLogTypeInfer(bool value)
+    void SetEnableTypeInferVerify(bool value)
     {
-        logTypeInfer_.SetValue(value);
+        typeInferVerify_.SetValue(value);
     }
 
     bool WasSetBuiltinsDTS() const
@@ -481,10 +481,6 @@ public:
     }
 
 private:
-    static constexpr uint64_t INTERNAL_MEMORY_SIZE_LIMIT_DEFAULT = 2_GB;
-    static constexpr uint64_t COMPILER_MEMORY_SIZE_LIMIT_DEFAULT = 256_MB;
-    static constexpr uint64_t CODE_CACHE_SIZE_LIMIT_DEFAULT = 32_MB;
-
     PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
         R"(Enable cpuprofiler to sample call stack and output to json file. Default: false)"};
@@ -518,10 +514,10 @@ private:
         "",
         R"(Opcode range when asm interpreter is enabled.)"};
     AsmInterParsedOption asmInterParsedOption_;
-    PandArg<uint64_t> internalMemorySizeLimit_ {"internal-memory-size-limit", INTERNAL_MEMORY_SIZE_LIMIT_DEFAULT,
-        R"(Max internal memory used by the VM. Default: 2147483648)"};
+    PandArg<uint64_t> serializerBufferSizeLimit_ {"serializer-buffer-size-limit", 2_GB,
+        R"(Max serializer buffer size used by the VM. Default: 2GB)"};
     PandArg<uint32_t> heapSizeLimit_ {"heap-size-limit", 512_MB,
-        R"(Max heap size. Default: 512M)"};
+        R"(Max heap size. Default: 512MB)"};
     PandArg<bool> enableIC_ {"enable-ic", true, R"(switch of inline cache. Default: true)"};
     PandArg<std::string> snapshotFile_ {"snapshot-file", R"(/system/etc/snapshot)",
         R"(snapshot file. Default: "/system/etc/snapshot")"};
@@ -539,8 +535,8 @@ private:
         R"(Path to snapshot output file. Default: "snapshot")"};
     PandArg<bool> enableRuntimeStat_ {"enable-runtime-stat", false,
         R"(enable statistics of runtime state. Default: false)"};
-    PandArg<bool> logTypeInfer_ {"log-Type-Infer", false,
-        R"(print aot type infer log. Default: false)"};
+    PandArg<bool> typeInferVerify_ {"typeinfer-verify", false,
+        R"(Enable type verify for type inference tests. Default: false)"};
     PandArg<bool> isWorker_ {"IsWorker", false,
         R"(whether is worker vm)"};
     PandArg<std::string> builtinsDTS_ {"builtins-dts",

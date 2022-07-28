@@ -16,30 +16,33 @@
 #include <cstdint>
 #include <unistd.h>
 
-#include "gtest/gtest.h"
-#include "ecmascript/builtins/builtins_promise_handler.h"
+#include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/binary_section.h"
+#include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/compiler/common_stubs.h"
-#include "ecmascript/compiler/llvm_codegen.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
-#include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/llvm_codegen.h"
+#include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/stub.h"
+#include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/file_loader.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/tests/test_helper.h"
+
 #include "llvm/IR/Instructions.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/SourceMgr.h"
-#include "ecmascript/compiler/assembler_module.h"
+
+#include "gtest/gtest.h"
 
 namespace panda::test {
 using namespace panda::ecmascript;
@@ -71,7 +74,7 @@ public:
                 LOG_COMPILER(INFO) << (acc.GetOpCode(cfg[bbIdx].front()).IsCFGMerge() ? "MERGE_" : "BB_")
                                    << bbIdx << ":";
                 for (size_t instIdx = cfg[bbIdx].size(); instIdx > 0; instIdx--) {
-                    netOfGates.Print(cfg[bbIdx][instIdx - 1]);
+                    acc.Print(cfg[bbIdx][instIdx - 1]);
                 }
             }
         }
@@ -102,8 +105,12 @@ HWTEST_F_L0(StubTest, FastAddTest)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Add);
     Circuit netOfGates;
-    AddStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    AddCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    AddStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -139,8 +146,12 @@ HWTEST_F_L0(StubTest, FastSubTest)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Sub);
     Circuit netOfGates;
-    SubStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    SubCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    SubStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -172,8 +183,12 @@ HWTEST_F_L0(StubTest, FastMulTest)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Mul);
     Circuit netOfGates;
-    MulStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    MulCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    MulStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -224,8 +239,12 @@ HWTEST_F_L0(StubTest, FastDivTest)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Div);
     Circuit netOfGates;
-    DivStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    DivCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    DivStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -269,8 +288,12 @@ HWTEST_F_L0(StubTest, FastModTest)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Mod);
     Circuit netOfGates;
-    ModStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    ModCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    ModStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -333,8 +356,12 @@ HWTEST_F_L0(StubTest, TryLoadICByName)
     auto module = stubModule.GetModule();
     auto findFunction = stubModule.GetFunction(CommonStubCSigns::TryLoadICByName);
     Circuit netOfGates;
-    TryLoadICByNameStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    TryLoadICByNameCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    TryLoadICByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -350,8 +377,12 @@ HWTEST_F_L0(StubTest, TryLoadICByValue)
     auto module = stubModule.GetModule();
     auto findFunction = stubModule.GetFunction(CommonStubCSigns::TryLoadICByValue);
     Circuit netOfGates;
-    TryLoadICByValueStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    TryLoadICByValueCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    TryLoadICByValueStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -367,8 +398,12 @@ HWTEST_F_L0(StubTest, TryStoreICByName)
     auto module = stubModule.GetModule();
     auto findFunction = stubModule.GetFunction(CommonStubCSigns::TryStoreICByName);
     Circuit netOfGates;
-    TryStoreICByNameStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    TryStoreICByNameCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    TryStoreICByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -384,8 +419,12 @@ HWTEST_F_L0(StubTest, TryStoreICByValue)
     auto module = stubModule.GetModule();
     auto findFunction = stubModule.GetFunction(CommonStubCSigns::TryStoreICByValue);
     Circuit netOfGates;
-    TryStoreICByValueStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    TryStoreICByValueCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    TryStoreICByValueStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -847,8 +886,12 @@ HWTEST_F_L0(StubTest, GetPropertyByIndexStub)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::GetPropertyByIndex);
     Circuit netOfGates;
-    GetPropertyByIndexStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    GetPropertyByIndexCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    GetPropertyByIndexStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -877,8 +920,12 @@ HWTEST_F_L0(StubTest, SetPropertyByIndexStub)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::SetPropertyByIndex);
     Circuit netOfGates;
-    SetPropertyByIndexStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    SetPropertyByIndexCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    SetPropertyByIndexStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
@@ -911,8 +958,12 @@ HWTEST_F_L0(StubTest, GetPropertyByNameStub)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::GetPropertyByName);
     Circuit netOfGates;
-    GetPropertyByNameStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    GetPropertyByNameCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    GetPropertyByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
@@ -947,8 +998,12 @@ HWTEST_F_L0(StubTest, SetPropertyByNameStub)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::SetPropertyByName);
     Circuit netOfGates;
-    SetPropertyByNameStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    SetPropertyByNameCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    SetPropertyByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -980,8 +1035,12 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     auto module = stubModule.GetModule();
     LLVMValueRef getPropertyByIndexfunction = stubModule.GetFunction(CommonStubCSigns::GetPropertyByIndex);
     Circuit netOfGates2;
-    GetPropertyByIndexStub getPropertyByIndexStub(&netOfGates2);
-    getPropertyByIndexStub.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    GetPropertyByIndexCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates2);
+    GetPropertyByIndexStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates2.PrintAllGates();
     auto cfg2 = Scheduler::Run(&netOfGates2);
     LLVMIRBuilder llvmBuilder2(&cfg2, &netOfGates2, &stubModule, getPropertyByIndexfunction,
@@ -990,8 +1049,12 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
 
     LLVMValueRef getPropertyByNamefunction = stubModule.GetFunction(CommonStubCSigns::GetPropertyByName);
     Circuit netOfGates1;
-    GetPropertyByNameStub getPropertyByNameStub(&netOfGates1);
-    getPropertyByNameStub.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature1;
+    GetPropertyByNameCallSignature::Initialize(&callSignature1);
+    Stub stub1(&callSignature1, &netOfGates1);
+    GetPropertyByNameStubBuilder getPropertyByNameStub(&callSignature, stub1.GetEnvironment());
+    stub1.SetStubBuilder(&getPropertyByNameStub);
+    stub1.GenerateCircuit(stubModule.GetCompilationConfig());
     bool result = Verifier::Run(&netOfGates1);
     ASSERT_TRUE(result);
     auto cfg1 = Scheduler::Run(&netOfGates1);
@@ -1001,8 +1064,12 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
 
     LLVMValueRef function = stubModule.GetFunction(CommonStubCSigns::GetPropertyByValue);
     Circuit netOfGates;
-    GetPropertyByValueStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature2;
+    GetPropertyByValueCallSignature::Initialize(&callSignature2);
+    Stub stub2(&callSignature2, &netOfGates);
+    GetPropertyByValueStubBuilder getPropertyByValueStub(&callSignature, stub2.GetEnvironment());
+    stub2.SetStubBuilder(&getPropertyByValueStub);
+    stub2.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
@@ -1068,8 +1135,12 @@ HWTEST_F_L0(StubTest, FastTypeOfTest)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::TypeOf);
     Circuit netOfGates;
-    TypeOfStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    TypeOfCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    TypeOfStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
     ASSERT_TRUE(verRes);
@@ -1154,8 +1225,12 @@ HWTEST_F_L0(StubTest, FastEqualTest)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Equal);
     Circuit netOfGates;
-    EqualStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    EqualCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    EqualStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -1239,11 +1314,11 @@ HWTEST_F_L0(StubTest, JSCallTest)
 
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
-    EXPECT_EQ(result, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(3.0));
 
     auto result1 = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 6, argV, fooEntry);
-    EXPECT_EQ(result1, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result1, JSTaggedValue(3.0));
 }
 
 HWTEST_F_L0(StubTest, JSCallTest1)
@@ -1264,7 +1339,7 @@ HWTEST_F_L0(StubTest, JSCallTest1)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, foo2Entry);
-    EXPECT_EQ(result, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(3.0));
 }
 
 HWTEST_F_L0(StubTest, JSCallTest2)
@@ -1286,7 +1361,7 @@ HWTEST_F_L0(StubTest, JSCallTest2)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, foo1Entry);
-    EXPECT_EQ(result, 0x7ff9000000000000UL);
+    EXPECT_EQ(result, JSTaggedValue(0x7ff9000000000000UL));
 }
 
 HWTEST_F_L0(StubTest, JSCallNativeTest)
@@ -1307,7 +1382,7 @@ HWTEST_F_L0(StubTest, JSCallNativeTest)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
-    EXPECT_EQ(result, JSTaggedValue::Undefined().GetRawData());
+    EXPECT_EQ(result, JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(StubTest, JSCallBoundTest)
@@ -1329,7 +1404,7 @@ HWTEST_F_L0(StubTest, JSCallBoundTest)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
-    EXPECT_EQ(result, JSTaggedValue(38.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(38.0));
 }
 
 // test for proxy method is undefined
@@ -1354,7 +1429,7 @@ HWTEST_F_L0(StubTest, JSCallTest3)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 6, 6, argV, fooProxyEntry);
-    EXPECT_EQ(result, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(3.0));
 }
 
 // test for proxy method isn't undefined
@@ -1385,8 +1460,12 @@ HWTEST_F_L0(StubTest, RelocateTest)
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::TestAbsoluteAddressRelocation);
     Circuit netOfGates;
-    TestAbsoluteAddressRelocationStub optimizer(&netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    CallSignature callSignature;
+    TestAbsoluteAddressRelocationCallSignature::Initialize(&callSignature);
+    Stub stub(&callSignature, &netOfGates);
+    TestAbsoluteAddressRelocationStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
     ASSERT_TRUE(verRes);

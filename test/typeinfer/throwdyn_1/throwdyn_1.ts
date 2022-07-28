@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     let arr1 :number[] = [1, 2, 3];
+    AssertType(arr1, "array");
     throw arr1;
 }

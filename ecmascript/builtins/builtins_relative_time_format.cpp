@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "builtins_relative_time_format.h"
+#include "ecmascript/builtins/builtins_relative_time_format.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsRelativeTimeFormat::RelativeTimeFormatConstructor(EcmaRuntimeCallInfo *argv)

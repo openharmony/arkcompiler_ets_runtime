@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-#include "containers_treeset.h"
+#include "ecmascript/containers/containers_treeset.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_api_tree_set.h"
-#include "ecmascript/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_tree.h"

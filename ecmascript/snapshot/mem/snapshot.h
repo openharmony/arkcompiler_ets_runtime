@@ -16,13 +16,13 @@
 #ifndef ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_H
 #define ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_H
 
-#include "libpandabase/macros.h"
-#include "libpandafile/file.h"
-
 #include "ecmascript/common.h"
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/snapshot/mem/snapshot_processor.h"
 #include "ecmascript/mem/c_string.h"
+
+#include "libpandabase/macros.h"
+#include "libpandafile/file.h"
 
 namespace panda::ecmascript {
 class Program;

@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     function foo(v1:number, v2:number, v3:number):number[]
     {
         let arr:number[] = [v1, v2, v3];
         return arr;
     }
-    typeof(foo(0, 1, 2));
+    let value = foo(1, 2, 3);
+    AssertType(value, "array");
 }

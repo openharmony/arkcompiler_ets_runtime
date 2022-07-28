@@ -38,11 +38,11 @@ private:
 class CellRecord final : public Record {
 public:
     CAST_CHECK(CellRecord, IsCellRecord);
-    void SetToWeakRefTarget(JSTaggedValue value)
+    void SetToWeakRefTarget(JSThread *thread, JSTaggedValue value)
     {
         JSTaggedValue weakObj = JSTaggedValue(value.CreateAndGetWeakRef());
         ASSERT(weakObj.IsWeak());
-        SetWeakRefTarget(weakObj);
+        SetWeakRefTarget(thread, weakObj);
     }
 
     JSTaggedValue GetFromWeakRefTarget() const

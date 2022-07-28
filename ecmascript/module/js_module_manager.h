@@ -26,11 +26,15 @@ public:
     ~ModuleManager() = default;
 
     JSTaggedValue GetModuleValueInner(JSTaggedValue key);
+    JSTaggedValue GetModuleValueInner(JSTaggedValue key, JSTaggedValue jsFunc);
     JSTaggedValue GetModuleValueOutter(JSTaggedValue key);
+    JSTaggedValue GetModuleValueOutter(JSTaggedValue key, JSTaggedValue jsFunc);
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value);
+    void StoreModuleValue(JSTaggedValue key, JSTaggedValue value, JSTaggedValue jsFunc);
     JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
-    JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
+    JSHandle<SourceTextModule> PUBLIC_API HostResolveImportedModule(const CString &referencingModule);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName);
+    JSTaggedValue GetModuleNamespace(JSTaggedValue localName, JSTaggedValue currentFunc);
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
     void Iterate(const RootVisitor &v);
 
@@ -39,6 +43,10 @@ private:
     NO_MOVE_SEMANTIC(ModuleManager);
 
     JSTaggedValue GetCurrentModule();
+    JSTaggedValue GetModuleValueOutterInternal(JSTaggedValue key, JSTaggedValue currentModule);
+    void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
+                                  JSTaggedValue key, JSTaggedValue value);
+    JSTaggedValue GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 

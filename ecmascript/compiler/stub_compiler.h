@@ -16,13 +16,12 @@
 #ifndef ECMASCRIPT_COMPILER_STUB_COMPILER_H
 #define ECMASCRIPT_COMPILER_STUB_COMPILER_H
 
-#include <string>
+#include <cstring>
 
-#include "compiler_log.h"
-#include "llvm_ir_builder.h"
+#include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/compiler/llvm_ir_builder.h"
 
 namespace panda::ecmascript::kungfu {
-class Stub;
 class StubCompiler {
 public:
     StubCompiler(std::string &triple, std::string &filePath, size_t optLevel, size_t relocMode,

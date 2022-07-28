@@ -13,14 +13,17 @@
  * limitations under the License.
  */
 
-#include "js_date.h"
+#include "ecmascript/js_date.h"
+
 #include <ctime>
 #include <regex>
 #include <sys/time.h>
-#include "base/builtins_base.h"
+
 #ifdef PANDA_TARGET_WINDOWS
 #include <timezoneapi.h>
 #endif
+
+#include "ecmascript/base/builtins_base.h"
 
 namespace panda::ecmascript {
 using NumberHelper = base::NumberHelper;

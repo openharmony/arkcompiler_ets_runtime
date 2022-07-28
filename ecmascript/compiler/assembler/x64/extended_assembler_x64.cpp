@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "extended_assembler_x64.h"
+#include "ecmascript/compiler/assembler/x64/extended_assembler_x64.h"
+
 #include "ecmascript/frames.h"
 
 namespace panda::ecmascript::x64 {

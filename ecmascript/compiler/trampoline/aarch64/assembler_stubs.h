@@ -171,15 +171,15 @@ private:
                                  Register actualNumArgs, Register argV, Label *pushCallThis);
     static void CopyArgumentWithArgV(ExtendedAssembler *assembler, Register argc, Register argV);
     static void PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,
-                                    Register thisObj, Register newTarget);
+                                    Register thisObj, Register newTarget, Register currentSp);
     static void PopJSFunctionArgs(ExtendedAssembler *assembler, Register expectedNumArgs, Register actualNumArgs);
     static void PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Register prevFp);
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
-    static void PushOptimizedFrame(ExtendedAssembler *assembler, Register callSiteSp);
-    static void PopOptimizedFrame(ExtendedAssembler *assembler);
+    static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
+    static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
     static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp);
-    static void PushOptimizedJSFunctionFrame(ExtendedAssembler *assembler);
-    static void PopOptimizedJSFunctionFrame(ExtendedAssembler *assembler);
+    static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
+    static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PushLeaveFrame(ExtendedAssembler *assembler, Register glue, bool isBuiltin);
     static void PopLeaveFrame(ExtendedAssembler *assembler, bool isBuiltin);
 };

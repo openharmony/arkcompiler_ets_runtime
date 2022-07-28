@@ -62,7 +62,7 @@
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/tagged_queue.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
@@ -193,8 +193,8 @@ bool EcmaVM::Initialize()
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     moduleManager_ = new ModuleManager(this);
     debuggerManager_->Initialize();
-    tsLoader_ = new TSLoader(this);
-    tsLoader_->Initialize();
+    tsManager_ = new TSManager(this);
+    tsManager_->Initialize();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Initialize();
@@ -206,7 +206,7 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
         LoadAOTFiles();
     }
-    InitializeFinish();
+    initialized_ = true;
     return true;
 }
 
@@ -259,16 +259,10 @@ void EcmaVM::SetRuntimeStatEnable(bool flag)
     runtimeStat_->SetRuntimeStatEnabled(flag);
 }
 
-bool EcmaVM::InitializeFinish()
-{
-    vmInitialized_ = true;
-    return true;
-}
-
 EcmaVM::~EcmaVM()
 {
     LOG_ECMA(INFO) << "Destruct ecma_vm, vm address is: " << this;
-    vmInitialized_ = false;
+    initialized_ = false;
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy();
 
@@ -293,8 +287,10 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
-    delete regExpParserCache_;
-    regExpParserCache_ = nullptr;
+    if (regExpParserCache_ != nullptr) {
+        delete regExpParserCache_;
+        regExpParserCache_ = nullptr;
+    }
 
     if (debuggerManager_ != nullptr) {
         chunk_.Delete(debuggerManager_);
@@ -321,9 +317,9 @@ EcmaVM::~EcmaVM()
         moduleManager_ = nullptr;
     }
 
-    if (tsLoader_ != nullptr) {
-        delete tsLoader_;
-        tsLoader_ = nullptr;
+    if (tsManager_ != nullptr) {
+        delete tsManager_;
+        tsManager_ = nullptr;
     }
 
     if (snapshotEnv_ != nullptr) {
@@ -672,7 +668,7 @@ void EcmaVM::Iterate(const RootVisitor &v)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&frameworkProgram_)));
     moduleManager_->Iterate(v);
-    tsLoader_->Iterate(v);
+    tsManager_->Iterate(v);
     fileLoader_->Iterate(v);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Iterate(v);
@@ -706,11 +702,6 @@ void EcmaVM::LoadAOTFiles()
     std::string file = options_.GetAOTOutputFile();
     LOG_ECMA(INFO) << "Try to load aot file" << file.c_str();
     fileLoader_->LoadAOTFile(file);
-    fileLoader_->TryLoadSnapshotFile();
-}
-
-void EcmaVM::SaveAOTFuncEntry(uint32_t hash, uint32_t methodId, uint64_t funcEntry)
-{
-    fileLoader_->SaveAOTFuncEntry(hash, methodId, funcEntry);
+    fileLoader_->LoadSnapshotFile();
 }
 }  // namespace panda::ecmascript

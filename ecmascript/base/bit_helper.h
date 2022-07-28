@@ -15,8 +15,12 @@
 
 #ifndef ECMASCRIPT_BASE_BIT_HELPER_H
 #define ECMASCRIPT_BASE_BIT_HELPER_H
-#include <stdint.h>
+
+#include <cstdint>
+#include <cstring>
+#include <limits>
 #include <type_traits>
+
 namespace panda::ecmascript::base {
 template <typename T>
 inline constexpr uint32_t CountLeadingZeros(T value)
@@ -106,6 +110,13 @@ constexpr inline bool IsMask_64(uint64_t Value)
 constexpr inline bool IsShiftedMask_64(uint64_t Value)
 {
     return Value && IsMask_64((Value - 1) | Value);
+}
+
+template <typename T>
+constexpr T RoundUp(T x, size_t n)
+{
+    static_assert(std::is_integral<T>::value, "T must be integral");
+    return (static_cast<size_t>(x) + n - 1U) & (-n);
 }
 }  // panda::ecmascript::base
 #endif

@@ -13,5 +13,6 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 const num:number = 1;
-typeof(num)
+AssertType(num, "number");

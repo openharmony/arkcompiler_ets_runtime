@@ -27,20 +27,20 @@
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
-#include "ecmascript/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api_deque_iterator.h"
-#include "ecmascript/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api_list_iterator.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api_queue_iterator.h"
-#include "ecmascript/js_api_stack_iterator.h"
-#include "ecmascript/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api_hashset_iterator.h"
-#include "ecmascript/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightset_iterator.h"
+#include "ecmascript/js_api/js_api_linked_list_iterator.h"
+#include "ecmascript/js_api/js_api_list_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_queue_iterator.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api/js_api_hashset_iterator.h"
+#include "ecmascript/js_api/js_api_tree_map_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_arguments.h"
@@ -100,7 +100,7 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
     SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
     SetConstant(ConstantIndex::ENV_CLASS_INDEX,
-                factory->NewEcmaReadOnlyDynClass(dynClassClass, 0, JSType::TAGGED_ARRAY));
+                factory->NewEcmaReadOnlyDynClass(dynClassClass, 0, JSType::LEXICAL_ENV));
     SetConstant(ConstantIndex::SYMBOL_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, JSSymbol::SIZE, JSType::SYMBOL));
     SetConstant(ConstantIndex::ACCESSOR_DATA_CLASS_INDEX,

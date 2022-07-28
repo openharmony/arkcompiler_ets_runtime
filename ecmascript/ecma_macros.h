@@ -18,6 +18,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/log_wrapper.h"
+
 #include "libpandabase/trace/trace.h"
 
 #if defined(ENABLE_BYTRACE)
@@ -94,10 +95,6 @@
         } else {                                                                                              \
             Barriers::SetDynPrimitive<JSTaggedType>(this, offset, value.GetRawData());                        \
         }                                                                                                     \
-    }                                                                                                         \
-    void Set##name(JSTaggedValue value)                                                                       \
-    {                                                                                                         \
-        Barriers::SetDynPrimitive<JSTaggedType>(this, offset, value.GetRawData());                            \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

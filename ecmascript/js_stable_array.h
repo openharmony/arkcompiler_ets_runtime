@@ -17,6 +17,7 @@
 #define ECMASCRIPT_JS_STABLE_ARRAY_H
 
 #include <limits>
+
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_tagged_value.h"
 
@@ -30,6 +31,14 @@ public:
                                 double start, double insertCount, double actualDeleteCount);
     static JSTaggedValue Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue HandleEveryOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                             JSHandle<JSTaggedValue> callbackFnHandle,
+                                             JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
+    static JSTaggedValue HandleforEachOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                               JSHandle<JSTaggedValue> callbackFnHandle,
+                                               JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
+    static JSTaggedValue IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
+                                 JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

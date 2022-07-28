@@ -71,10 +71,12 @@ private:
 
 class TypeInferPass {
 public:
-    bool Run(PassData* data, bool enableLog, BytecodeCircuitBuilder *builder, TSLoader *tsLoader)
+    bool Run(PassData* data, bool enableLog, BytecodeCircuitBuilder *builder, TSManager *tsManager)
     {
-        TypeInfer typeInfer(builder, data->GetCircuit(), tsLoader, enableLog);
-        typeInfer.TraverseCircuit();
+        TypeInfer typeInfer(builder, data->GetCircuit(), tsManager, enableLog);
+        if (builder->HasTypes()) {
+            typeInfer.TraverseCircuit();
+        }
         return true;
     }
 };
@@ -82,10 +84,12 @@ public:
 class TypeLoweringPass {
 public:
     bool Run(PassData *data, bool enableLog, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg,
-             TSLoader *tsLoader)
+             TSManager *tsManager)
     {
-        TypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsLoader, enableLog);
-        lowering.RunTypeLowering();
+        TypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog);
+        if (builder->HasTypes()) {
+            lowering.RunTypeLowering();
+        }
         return true;
     }
 };

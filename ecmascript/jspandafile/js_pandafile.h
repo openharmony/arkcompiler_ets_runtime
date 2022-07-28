@@ -21,6 +21,7 @@
 #include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/mem/c_containers.h"
+
 #include "libpandafile/file.h"
 
 namespace panda {
@@ -94,7 +95,7 @@ public:
         return pf_->GetClasses();
     }
 
-    bool IsModule() const;
+    bool PUBLIC_API IsModule() const;
 
     bool IsCjs() const;
 

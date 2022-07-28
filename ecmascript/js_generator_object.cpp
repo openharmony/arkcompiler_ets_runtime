@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "js_generator_object.h"
-#include "generator_helper.h"
-#include "js_iterator.h"
-#include "js_tagged_value-inl.h"
+#include "ecmascript/js_generator_object.h"
+
+#include "ecmascript/generator_helper.h"
+#include "ecmascript/js_iterator.h"
+#include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript {
 JSGeneratorState JSGeneratorObject::GeneratorValidate(JSThread *thread, const JSHandle<JSTaggedValue> &obj)

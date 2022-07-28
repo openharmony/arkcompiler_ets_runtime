@@ -15,9 +15,9 @@
 
 #include "ecmascript/compiler/llvm_ir_builder.h"
 
+#include <cstring>
 #include <iostream>
 #include <set>
-#include <string>
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bc_call_signature.h"
@@ -239,7 +239,7 @@ void LLVMIRBuilder::Build()
             acc_.GetOutVector(gate, outs);
 
             if (IsLogEnabled()) {
-                circuit_->Print(gate);
+                acc_.Print(gate);
             }
 
             auto found = opHandlers_.find(acc_.GetOpCode(gate));
@@ -249,7 +249,7 @@ void LLVMIRBuilder::Build()
             }
             if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
                 LOG_COMPILER(ERROR) << "The gate below need to be translated ";
-                circuit_->Print(gate);
+                acc_.Print(gate);
                 UNREACHABLE();
             }
         }
@@ -1935,7 +1935,7 @@ LLVMTypeRef LLVMModule::GetFuncType(const CallSignature *stubDescriptor)
             }
         }
 
-        for (int i = 1; i < paramCount; i++) {
+        for (size_t i = 1; i < paramCount; i++) {
             paramTys.push_back(ConvertLLVMTypeFromVariableType(paramsType[i]));
         }
     }

@@ -55,35 +55,15 @@ void TypeInfer::TraverseCircuit()
         circuit_->PrintAllGates(*builder_);
     }
 
-    if (tsLoader_->GetTypeInferenceLog()) {
-        TypeInferPrint();
+    if (tsManager_->IsTypeVerifyEnabled()) {
+        Verify();
     }
-}
-
-void TypeInfer::TypeInferPrint() const
-{
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    std::string log("TestInfer:");
-    for (const auto &gate : gateList) {
-        auto type = gateAccessor_.GetGateType(gate);
-        if (ShouldInfer(gate) && type.IsTSType() && !type.IsAnyType()) {
-            auto op = gateAccessor_.GetOpCode(gate);
-            if (op == OpCode::VALUE_SELECTOR) {
-                log += "&" + op.Str() + ":";
-            } else {
-                log += "&" + builder_->GetBytecodeStr(gate) + ":";
-            }
-            log += type.GetTypeStr();
-        }
-    }
-    LOG_COMPILER(INFO) << std::dec << log;
 }
 
 bool TypeInfer::UpdateType(GateRef gate, const GateType type)
 {
     auto preType = gateAccessor_.GetGateType(gate);
-    if (type != preType) {
+    if (type.IsTSType() && type != preType) {
         gateAccessor_.SetGateType(gate, type);
         return true;
     }
@@ -245,7 +225,7 @@ bool TypeInfer::InferPhiGate(GateRef gate)
     auto deduplicateIndex = std::unique(typeList.begin(), typeList.end());
     typeList.erase(deduplicateIndex, typeList.end());
     if (typeList.size() > 1) {
-        auto unionType = tsLoader_->GetOrCreateUnionType(typeList);
+        auto unionType = tsManager_->GetOrCreateUnionType(typeList);
         return UpdateType(gate, unionType);
     }
     auto type = typeList.at(0);
@@ -328,13 +308,12 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
-    if (inValueType.IsArrayTypeKind()) {
-        auto type = tsLoader_->GetArrayParameterTypeGT(inValueType);
+    if (tsManager_->IsArrayTypeKind(inValueType)) {
+        auto type = tsManager_->GetArrayParameterTypeGT(inValueType);
         return UpdateType(gate, type);
     }
     return false;
 }
-
 
 bool TypeInfer::SetStGlobalBcType(GateRef gate)
 {
@@ -384,10 +363,10 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
     if (objType.IsTSType()) {
         // If this object has no gt type, we cannot get its internal property type
-        if (objType.IsClassTypeKind() || objType.IsClassInstanceTypeKind() || objType.IsObjectTypeKind()) {
+        if (IsObjectOrClass(objType)) {
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
-            auto name = tsLoader_->GetStringById(index);
-            auto type = tsLoader_->GetPropType(objType, name);
+            auto name = tsManager_->GetStringById(index);
+            auto type = GetPropType(objType, name);
             return UpdateType(gate, type);
         }
     }
@@ -416,8 +395,8 @@ bool TypeInfer::InferCallFunction(GateRef gate)
 {
     // 0 : the index of function
     auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
-    if (funcType.IsFunctionTypeKind()) {
-        auto returnType = tsLoader_->GetFuncReturnValueTypeGT(funcType);
+    if (funcType.IsTSType() && tsManager_->IsFunctionTypeKind(funcType)) {
+        auto returnType = tsManager_->GetFuncReturnValueTypeGT(funcType);
         return UpdateType(gate, returnType);
     }
     return false;
@@ -426,18 +405,20 @@ bool TypeInfer::InferCallFunction(GateRef gate)
 bool TypeInfer::InferLdObjByValue(GateRef gate)
 {
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
-    // handle array
-    if (objType.IsArrayTypeKind()) {
-        auto elementType = tsLoader_->GetArrayParameterTypeGT(objType);
-        return UpdateType(gate, elementType);
-    }
-    // handle object
-    if (objType.IsClassTypeKind() || objType.IsClassInstanceTypeKind() || objType.IsObjectTypeKind()) {
-        auto valueGate = gateAccessor_.GetValueIn(gate, 1);
-        if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
-            auto value = gateAccessor_.GetBitField(valueGate);
-            auto type = tsLoader_->GetPropType(objType, value);
-            return UpdateType(gate, type);
+    if (objType.IsTSType()) {
+        // handle array
+        if (tsManager_->IsArrayTypeKind(objType)) {
+            auto elementType = tsManager_->GetArrayParameterTypeGT(objType);
+            return UpdateType(gate, elementType);
+        }
+        // handle object
+        if (IsObjectOrClass(objType)) {
+            auto valueGate = gateAccessor_.GetValueIn(gate, 1);
+            if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
+                auto value = gateAccessor_.GetBitField(valueGate);
+                auto type = GetPropType(objType, value);
+                return UpdateType(gate, type);
+            }
         }
     }
     return false;
@@ -488,5 +469,71 @@ bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
         return UpdateType(gate, iter->second);
     }
     return false;
+}
+
+void TypeInfer::Verify() const
+{
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+    for (const auto &gate : gateList) {
+        auto type = gateAccessor_.GetGateType(gate);
+        if (ShouldInfer(gate) && type.IsTSType() && !type.IsAnyType()) {
+            PrintType(gate);
+        }
+        auto op = gateAccessor_.GetOpCode(gate);
+        if (op == OpCode::JS_BYTECODE) {
+            TypeCheck(gate);
+        }
+    }
+}
+
+/*
+ * Let v be a variable in one ts-file and t be a type. To check whether the type of v is t after
+ * type inferenece, one should declare a function named "AssertType(value:any, type:string):void"
+ * in ts-file and call it with arguments v and t, where t is the expected type string.
+ * The following interface performs such a check at compile time.
+ */
+void TypeInfer::TypeCheck(GateRef gate) const
+{
+    auto info = builder_->GetByteCodeInfo(gate);
+    if (!info.IsBc(EcmaOpcode::CALLARGS2DYN_PREF_V8_V8_V8)) {
+        return;
+    }
+    auto func = gateAccessor_.GetValueIn(gate, 0);
+    auto funcInfo = builder_->GetByteCodeInfo(func);
+    if (!funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_PREF_ID32)) {
+        return;
+    }
+    auto funcName = gateAccessor_.GetValueIn(func, 0);
+    if (tsManager_->GetStdStringById(gateAccessor_.GetBitField(funcName)) ==  "AssertType") {
+        GateRef expectedGate = gateAccessor_.GetValueIn(gateAccessor_.GetValueIn(gate, 2), 0);
+        auto expectedTypeStr = tsManager_->GetStdStringById(gateAccessor_.GetBitField(expectedGate));
+        GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
+        auto type = gateAccessor_.GetGateType(valueGate);
+        if (expectedTypeStr != tsManager_->GetTypeStr(type)) {
+            PrintType(valueGate);
+            std::string log("[TypeInfer][Error] ");
+            log += "gate id: "+ std::to_string(gateAccessor_.GetId(valueGate)) + ", ";
+            log += "expected type: " + expectedTypeStr;
+            LOG_COMPILER(FATAL) << log;
+        }
+    }
+}
+
+void TypeInfer::PrintType(GateRef gate) const
+{
+    std::string log("[TypeInfer] ");
+    log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
+    auto op = gateAccessor_.GetOpCode(gate);
+    log += "opcode: " + op.Str() + ", ";
+    if (op != OpCode::VALUE_SELECTOR) {
+        log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
+    }
+    auto type = gateAccessor_.GetGateType(gate);
+    log += "type: " + tsManager_->GetTypeStr(type) + ", ";
+    auto typeRef = GlobalTSTypeRef(type.GetType());
+    log += "moduleid: " + std::to_string(typeRef.GetModuleId()) + ", ";
+    log += "localid: " + std::to_string(typeRef.GetLocalId());
+    LOG_COMPILER(INFO) << log;
 }
 }  // namespace panda::ecmascript

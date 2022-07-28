@@ -17,7 +17,7 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 void BytecodeCircuitBuilder::BytecodeToCircuit()
@@ -368,7 +368,7 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
                 }
             }
         }
-        BytecodeRegion bb = graph_[i];
+        BytecodeRegion &bb = graph_[i];
         bb.SortCatches();
     }
 
@@ -1775,20 +1775,19 @@ void BytecodeCircuitBuilder::InsertPhi()
         if (bb.isDead) {
             continue;
         }
-        auto pc = bb.start;
-        while (pc <= bb.end) {
-            auto bytecodeInfo = GetBytecodeInfo(pc);
+        EnumerateBlock(bb, [this, &defsitesInfo, &bb]
+        ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR_PREF_V8)) {
                 auto numVRegs = method_->GetNumVregs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     bytecodeInfo.vregOut.emplace_back(i);
                 }
             }
-            pc = pc + bytecodeInfo.offset; // next inst start pc
             for (const auto &vreg: bytecodeInfo.vregOut) {
                 defsitesInfo[vreg].insert(bb.id);
             }
-        }
+            return true;
+        });
     }
 
     // handle phi generated from multiple control flow in the same source block
@@ -1833,14 +1832,13 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size
             continue;
         }
         std::set<size_t> vregs;
-        auto pc = bb.start;
-        while (pc <= bb.end) {
-            auto bytecodeInfo = GetBytecodeInfo(pc);
-            pc = pc + bytecodeInfo.offset; // next inst start pc
+        EnumerateBlock(bb, [&vregs]
+        ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             for (const auto &vreg: bytecodeInfo.vregOut) {
                 vregs.insert(vreg);
             }
-        }
+            return true;
+        });
 
         for (auto &vreg : vregs) {
             defsitesInfo[vreg].insert(bb.catchs.at(0)->id);
@@ -1898,6 +1896,24 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     }
 }
 
+bool BytecodeCircuitBuilder::ShouldBeDead(BytecodeRegion &curBlock)
+{
+    auto isDead = false;
+    for (auto bbPred : curBlock.preds) {
+        if (!bbPred->isDead) {
+            return false;
+        }
+        isDead = true;
+    }
+    for (auto bbTry : curBlock.trys) {
+        if (!bbTry->isDead) {
+            return false;
+        }
+        isDead = true;
+    }
+    return isDead;
+}
+
 void BytecodeCircuitBuilder::CollectPredsInfo()
 {
     for (auto &bb: graph_) {
@@ -1912,15 +1928,28 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
         if (bb.isDead) {
             continue;
         }
-        auto pc = bb.start;
-        while (pc <= bb.end) {
-            auto bytecodeInfo = GetBytecodeInfo(pc);
-            pc = pc + bytecodeInfo.offset; // next inst start pc
+        if (ShouldBeDead(bb)) {
+            bb.UpdateTryCatchInfo();
+            bb.isDead = true;
+            continue;
+        }
+        auto GeneralNums = 0;
+        EnumerateBlock(bb, [&GeneralNums, &bb]
+        ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsGeneral()) {
+                GeneralNums++;
                 if (!bb.catchs.empty()) {
                     bb.catchs.at(0)->numOfStatePreds++;
                 }
             }
+            if (bytecodeInfo.IsCondJump() && bb.succs.size() == 1) {
+                ASSERT(bb.succs[0]->id == bb.id + 1);
+                bb.succs[0]->numOfStatePreds++;
+            }
+            return true;
+        });
+        if (GeneralNums == 0 && !bb.catchs.empty()) {
+            bb.UpdateTryCatchInfo();
         }
         for (auto &succ: bb.succs) {
             succ->numOfStatePreds++;
@@ -1930,8 +1959,11 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
     std::vector<VisitState> visitState(graph_.size(), VisitState::UNVISITED);
     std::function<void(size_t)> dfs = [&](size_t bbId) -> void {
         visitState[bbId] = VisitState::PENDING;
-        auto it = this->graph_[bbId].succs.crbegin();
-        while (it != this->graph_[bbId].succs.crend()) {
+        std::vector<BytecodeRegion *> merge;
+        merge.insert(merge.end(), this->graph_[bbId].succs.begin(), this->graph_[bbId].succs.end());
+        merge.insert(merge.end(), this->graph_[bbId].catchs.begin(), this->graph_[bbId].catchs.end());
+        auto it = merge.crbegin();
+        while (it != merge.crend()) {
             auto succBlock = *it;
             it++;
             if (visitState[succBlock->id] == VisitState::UNVISITED) {
@@ -2010,7 +2042,7 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<StringId>(input)) {
-            size_t index = tsLoader_->GetStringIdx(constantPool_, std::get<StringId>(input).GetId());
+            size_t index = tsManager_->GetStringIdx(constantPool_, std::get<StringId>(input).GetId());
             inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32, index,
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
@@ -2056,13 +2088,13 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
     GateRef gate = 0;
     switch (opcode) {
         case EcmaOpcode::LDNAN_PREF:
-            gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::F64,
+            gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                     base::NumberHelper::GetNaN(),
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
         case EcmaOpcode::LDINFINITY_PREF:
-            gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::F64,
+            gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                     base::NumberHelper::GetPositiveInfinity(),
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
@@ -2190,26 +2222,37 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
         gateAcc_.NewIn(gate, 1, depend);
         auto ifTrue = circuit_.NewGate(OpCode(OpCode::IF_TRUE), 0, {gate}, GateType::Empty());
         auto ifFalse = circuit_.NewGate(OpCode(OpCode::IF_FALSE), 0, {gate}, GateType::Empty());
-        ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
-        uint32_t bitSet = 0;
-        for (auto &bbNext: bb.succs) {
-            if (bbNext->id == bb.id + 1) {
-                auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
-                SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
-                bbNext->expandedPreds.push_back(
-                    {bb.id, pc, false}
-                );
-                bitSet |= 1;
-            } else {
-                auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
-                SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
-                bbNext->expandedPreds.push_back(
-                    {bb.id, pc, false}
-                );
-                bitSet |= 2; // 2:verify
+        if (bb.succs.size() == 1) {
+            auto &bbNext = bb.succs[0];
+            ASSERT(bbNext->id == bb.id + 1);
+            auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
+            SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
+            SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
+            bbNext->expandedPreds.push_back(
+                {bb.id, pc, false}
+            );
+        } else {
+            ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
+            uint32_t bitSet = 0;
+            for (auto &bbNext: bb.succs) {
+                if (bbNext->id == bb.id + 1) {
+                    auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
+                    SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
+                    bbNext->expandedPreds.push_back(
+                        {bb.id, pc, false}
+                    );
+                    bitSet |= 1;
+                } else {
+                    auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
+                    SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
+                    bbNext->expandedPreds.push_back(
+                        {bb.id, pc, false}
+                    );
+                    bitSet |= 2; // 2:verify
+                }
             }
+            ASSERT(bitSet == 3); // 3:Verify the number of successor blocks
         }
-        ASSERT(bitSet == 3); // 3:Verify the number of successor blocks
         jsgateToBytecode_[gate] = {bb.id, pc};
     } else {
         ASSERT(bb.succs.size() == 1);
@@ -2255,6 +2298,14 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb, const uint8_t *pc, 
         // handle bytecode command to get constants
         GateRef gate = NewConst(bytecodeInfo);
         jsgateToBytecode_[gate] = {bb.id, pc};
+        if (pc == bb.end) {
+            auto &bbNext = graph_[bb.id + 1];
+            auto isLoopBack = bbNext.loopbackBlocks.count(bb.id);
+            SetBlockPred(bbNext, state, depend, isLoopBack);
+            bbNext.expandedPreds.push_back(
+                {bb.id, pc, false}
+            );
+        }
     } else if (bytecodeInfo.IsGeneral()) {
         // handle general ecma.* bytecodes
         NewJSGate(bb, pc, state, depend);
@@ -2294,16 +2345,14 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         if (!bb.trys.empty()) {
             dependCur = circuit_.NewGate(OpCode(OpCode::GET_EXCEPTION), 0, {dependCur}, GateType::Empty());
         }
-        auto pc = bb.start;
-        while (pc <= bb.end) {
-            auto pcPrev = pc;
-            auto bytecodeInfo = GetBytecodeInfo(pc);
-            pc = pc + bytecodeInfo.offset; // next inst start pc
-            NewByteCode(bb, pcPrev, stateCur, dependCur);
+        EnumerateBlock(bb, [this, &stateCur, &dependCur, &bb]
+        (uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+            NewByteCode(bb, pc, stateCur, dependCur);
             if (bytecodeInfo.IsJump() || bytecodeInfo.IsThrow()) {
-                break;
+                return false;
             }
-        }
+            return true;
+        });
     }
 }
 
@@ -2630,31 +2679,29 @@ void BytecodeCircuitBuilder::PrintBytecodeInfo()
         if (bb.isDead) {
             continue;
         }
-        auto pc = bb.start;
         LOG_COMPILER(INFO) << "BB_" << bb.id << ": ";
-        while (pc <= bb.end) {
+        EnumerateBlock(bb, [](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             std::string log;
-            auto curInfo = GetBytecodeInfo(pc);
             log += "Inst_" + GetEcmaOpcodeStr(static_cast<EcmaOpcode>(*pc)) + ": " + "In=[";
-            if (curInfo.accIn) {
+            if (bytecodeInfo.accIn) {
                 log += "acc,";
             }
-            for (const auto &in: curInfo.inputs) {
+            for (const auto &in: bytecodeInfo.inputs) {
                 if (std::holds_alternative<VirtualRegister>(in)) {
                     log += std::to_string(std::get<VirtualRegister>(in).GetId()) + ",";
                 }
             }
             log += "] Out=[";
-            if (curInfo.accOut) {
+            if (bytecodeInfo.accOut) {
                 log += "acc,";
             }
-            for (const auto &out: curInfo.vregOut) {
+            for (const auto &out: bytecodeInfo.vregOut) {
                 log +=  std::to_string(out) + ",";
             }
             log += "]";
             LOG_COMPILER(INFO) << log;
-            pc += curInfo.offset;
-        }
+            return true;
+        });
     }
 }
 

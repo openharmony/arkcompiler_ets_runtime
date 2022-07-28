@@ -14,6 +14,7 @@
  */
  
 #include "ecmascript/js_list_format.h"
+
 #include <cstring>
 #include <vector>
 
@@ -23,6 +24,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_iterator.h"
+
 #include "unicode/fieldpos.h"
 #include "unicode/fpositer.h"
 #include "unicode/formattedvalue.h"

@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 let variable = true;
-typeof(variable)
+AssertType(variable, "boolean");
 
 variable = false;
 typeof(variable);
+AssertType(variable, "boolean");

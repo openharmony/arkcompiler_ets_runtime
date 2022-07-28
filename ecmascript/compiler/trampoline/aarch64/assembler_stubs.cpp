@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "assembler_stubs.h"
+#include "ecmascript/compiler/trampoline/aarch64/assembler_stubs.h"
 
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/argument_accessor.h"
@@ -24,9 +24,10 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_method.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/runtime_call_id.h"
-#include "ecmascript/js_generator_object.h"
+
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::aarch64 {
@@ -142,7 +143,7 @@ void AssemblerStubs::IncreaseStackForArguments(ExtendedAssembler *assembler, Reg
 //        +--------------------------+
 void AssemblerStubs::JSFunctionEntry(ExtendedAssembler *assembler)
 {
-    Register glue(X20);
+    Register glue(X0);
     Register prevFp(X1);
     Register expectedNumArgs(X2);
     Register actualNumArgs(X3);
@@ -184,6 +185,7 @@ void AssemblerStubs::JSFunctionEntry(ExtendedAssembler *assembler)
         TempRegister1Scope scope1(assembler);
         Register env = __ TempRegister1();
         __ Mov(Register(X19), expectedNumArgs);
+        __ Mov(Register(X20), glue);
         __ Ldr(env, MemoryOperand(argV, actualNumArgs, UXTW, SHIFT_OF_FRAMESLOT));
         __ Str(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
         // 0 : 0 restore size
@@ -196,8 +198,9 @@ void AssemblerStubs::JSFunctionEntry(ExtendedAssembler *assembler)
     __ Ldr(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
     PopJSFunctionArgs(assembler, Register(X19), actualNumArgs);
 
+    __ Mov(Register(X2), Register(X20));
     // pop prevLeaveFrameFp to restore thread->currentFrame_
-    PopJSFunctionEntryFrame(assembler, glue);
+    PopJSFunctionEntryFrame(assembler, Register(X2));
     __ Ret();
 }
 
@@ -226,7 +229,7 @@ void AssemblerStubs::OptimizedCallOptimized(ExtendedAssembler *assembler)
     __ BindAssemblerStub(RTSTUB_ID(OptimizedCallOptimized));
     Register glue(X0);
     Register expectedNumArgs(X1);
-    Register actualNumArgs(X2, W);
+    Register actualNumArgs(X2);
     Register codeAddr(X3);
     Register argV(X4);
     Register env(X5);
@@ -236,7 +239,7 @@ void AssemblerStubs::OptimizedCallOptimized(ExtendedAssembler *assembler)
     Label invokeCompiledJSFunction;
 
     // construct frame
-    PushOptimizedJSFunctionFrame(assembler);
+    PushOptimizedArgsConfigFrame(assembler);
     Register argC(X7);
     __ Cmp(expectedNumArgs, actualNumArgs);
     __ CMov(argC, expectedNumArgs, actualNumArgs, Condition::HI);
@@ -273,7 +276,7 @@ void AssemblerStubs::OptimizedCallOptimized(ExtendedAssembler *assembler)
     __ Ldr(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
     PopJSFunctionArgs(assembler, Register(X19), actualNumArgs);
     // pop prevLeaveFrameFp to restore thread->currentFrame_
-    PopOptimizedJSFunctionFrame(assembler);
+    PopOptimizedArgsConfigFrame(assembler);
     __ Ret();
 }
 
@@ -459,6 +462,8 @@ void AssemblerStubs::JSCallBody(ExtendedAssembler *assembler, Register jsfunc)
     Register actualArgC(X4);
     Label callNativeMethod;
     Label callOptimizedMethod;
+    __ Ldr(Register(X5), MemoryOperand(jsfunc, JSFunction::LEXICAL_ENV_OFFSET));
+    __ Str(Register(X5), MemoryOperand(sp, 0));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(actualArgC, MemoryOperand(sp, FRAME_SLOT_SIZE));
     __ Ldr(callField, MemoryOperand(method, JSMethod::GetCallFieldOffset(false)));
@@ -520,7 +525,7 @@ void AssemblerStubs::JSCallBody(ExtendedAssembler *assembler, Register jsfunc)
     __ Bind(&jsBoundFunction);
     {
         // construct frame
-        PushOptimizedJSFunctionFrame(assembler);
+        PushOptimizedArgsConfigFrame(assembler);
         Register basefp(X29);
         Register fp = __ AvailableRegister1();
         Register env(X5);
@@ -581,7 +586,7 @@ void AssemblerStubs::JSCallBody(ExtendedAssembler *assembler, Register jsfunc)
         __ CallAssemblerStub(RTSTUB_ID(JSCall), false);
 
         PopJSFunctionArgs(assembler, Register(X19), Register(X19));
-        PopOptimizedJSFunctionFrame(assembler);
+        PopOptimizedArgsConfigFrame(assembler);
         __ Ret();
     }
     __ Bind(&jsProxy);
@@ -612,9 +617,9 @@ void AssemblerStubs::JSCallBody(ExtendedAssembler *assembler, Register jsfunc)
         Register argC(X5);
         Register runtimeId(X6);
         __ Mov(argC, Immediate(1));
-        __ Mov(runtimeId, RTSTUB_ID(ThrowTypeError));
+        __ Mov(runtimeId, Immediate(RTSTUB_ID(ThrowTypeError)));
         // 2 : 2 means pair
-        __ Stp(argC, runtimeId, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Stp(runtimeId, argC, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
         __ Mov(Register(X0), Immediate(JSTaggedValue::VALUE_EXCEPTION));
         // 4 : 4 means stack slot
@@ -1950,12 +1955,11 @@ void AssemblerStubs::CopyArgumentWithArgV(ExtendedAssembler *assembler, Register
 }
 
 void AssemblerStubs::PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,
-                                         Register thisObj, Register newTarget)
+                                         Register thisObj, Register newTarget, Register currentSp)
 {
-    Register sp(SP);
-    __ Str(thisObj, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Str(newTarget, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Str(jsfunc, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(thisObj, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(newTarget, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(jsfunc, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
 }
 
 void AssemblerStubs::PopJSFunctionArgs(ExtendedAssembler *assembler, Register expectedNumArgs, Register actualNumArgs)
@@ -2012,7 +2016,7 @@ void AssemblerStubs::PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Regis
     __ RestoreFpAndLr();
 }
 
-void AssemblerStubs::PushOptimizedJSFunctionFrame(ExtendedAssembler *assembler)
+void AssemblerStubs::PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler)
 {
     Register sp(SP);
     TempRegister2Scope temp2Scope(assembler);
@@ -2024,7 +2028,7 @@ void AssemblerStubs::PushOptimizedJSFunctionFrame(ExtendedAssembler *assembler)
     __ Stp(Register(X19), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
 }
 
-void AssemblerStubs::PopOptimizedJSFunctionFrame(ExtendedAssembler *assembler)
+void AssemblerStubs::PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler)
 {
     TempRegister2Scope temp2Scope(assembler);
     Register sp(SP);
@@ -2034,19 +2038,19 @@ void AssemblerStubs::PopOptimizedJSFunctionFrame(ExtendedAssembler *assembler)
     __ RestoreFpAndLr();
 }
 
-void AssemblerStubs::PushOptimizedFrame(ExtendedAssembler *assembler, Register callSiteSp)
+void AssemblerStubs::PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp)
 {
     Register sp(SP);
     TempRegister2Scope temp2Scope(assembler);
     Register frameType = __ TempRegister2();
     __ SaveFpAndLr();
     // construct frame
-    __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_FRAME)));
+    __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME)));
     // 2 : 2 means pairs
     __ Stp(callSiteSp, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
 }
 
-void AssemblerStubs::PopOptimizedFrame(ExtendedAssembler *assembler)
+void AssemblerStubs::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 {
     Register sp(SP);
     // 2 : 2 means pop call site sp and type
@@ -2065,30 +2069,35 @@ void AssemblerStubs::JSCallWithArgV(ExtendedAssembler *assembler)
     Register thisObj(X4);
     Register argV(X5);
     Register env(X6);
+    Register currentSp = __ AvailableRegister1();
     Register callsiteSp = __ AvailableRegister2();
     Label pushCallThis;
 
     __ Mov(callsiteSp, sp);
-    PushOptimizedFrame(assembler, callsiteSp);
-    __ Cbz(actualNumArgs, &pushCallThis);
+    PushOptimizedUnfoldArgVFrame(assembler, callsiteSp);
+    Register argC(X7);
+    __ Add(actualNumArgs, actualNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+    __ Mov(argC, actualNumArgs);
+    IncreaseStackForArguments(assembler, argC, currentSp);
     {
         TempRegister1Scope scope1(assembler);
+        TempRegister2Scope scope2(assembler);
         Register tmp = __ TempRegister1();
-        __ Mov(tmp, actualNumArgs);
-        CopyArgumentWithArgV(assembler, tmp, argV);
+        Register op = __ TempRegister2();
+        __ Sub(tmp, actualNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+        PushArgsWithArgv(assembler, glue, tmp, argV, op, currentSp, &pushCallThis, nullptr);
     }
     __ Bind(&pushCallThis);
-    PushMandatoryJSArgs(assembler, jsfunc, thisObj, newTarget);
-    __ Add(actualNumArgs, actualNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
-    __ Str(actualNumArgs, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    PushMandatoryJSArgs(assembler, jsfunc, thisObj, newTarget, currentSp);
+    __ Str(actualNumArgs, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Ldr(env, MemoryOperand(jsfunc, JSFunction::LEXICAL_ENV_OFFSET));
-    __ Str(env, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(env, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
 
     __ CallAssemblerStub(RTSTUB_ID(JSCall), false);
-    __ Add(sp, sp, Immediate(FRAME_SLOT_SIZE));
-    __ Ldr(actualNumArgs, MemoryOperand(sp, 0));
+
+    __ Ldr(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
     PopJSFunctionArgs(assembler, actualNumArgs, actualNumArgs);
-    PopOptimizedFrame(assembler);
+    PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
 }
 }  // panda::ecmascript::aarch64

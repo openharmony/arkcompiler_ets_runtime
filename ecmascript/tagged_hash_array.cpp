@@ -12,11 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "tagged_hash_array.h"
+
+#include "ecmascript/tagged_hash_array.h"
+
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_queue.h"
-#include "object_factory.h"
-#include "js_handle.h"
 
 namespace panda::ecmascript {
 JSTaggedValue TaggedHashArray::Create(const JSThread *thread, uint32_t numberOfElements)

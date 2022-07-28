@@ -50,14 +50,6 @@ public:
     static GlobalTSTypeRef GetPropertyTypeGT(JSThread *thread, JSHandle<TSTypeTable> &table, TSTypeKind typeKind,
                                            uint32_t index, JSHandle<EcmaString> propName);
 
-    static JSHandle<JSTaggedValue> ParseType(JSThread *thread, JSHandle<TSTypeTable> &table,
-                                             JSHandle<TaggedArray> &literal, const JSPandaFile *jsPandaFile,
-                                             CVector<JSHandle<EcmaString>> &recordImportModules);
-
-    static JSHandle<TSImportType> ParseImportType(JSThread *thread, const JSHandle<TaggedArray> &literal,
-                                                  JSHandle<EcmaString> fileName,
-                                                  CVector<JSHandle<EcmaString>> &recordImportModules);
-
     static JSHandle<TaggedArray> GetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> typeTable);
 
     inline int GetNumberOfTypes() const
@@ -70,40 +62,22 @@ public:
         TaggedArray::Set(thread, NUMBER_OF_TYPES_INDEX, JSTaggedValue(num));
     }
 
-    static int GetUserdefinedTypeId(int localId)
-    {
-        return localId - GlobalTSTypeRef::TS_TYPE_RESERVED_COUNT;
-    }
-
     void SetExportValueTable(JSThread *thread, const panda_file::File &pf);
 
     static JSHandle<TSTypeTable> PushBackTypeToInferTable(JSThread *thread, JSHandle<TSTypeTable> &table,
                                                           const JSHandle<TSType> &type);
+
+    static JSHandle<EcmaString> GenerateVarNameAndPath(JSThread *thread, JSHandle<EcmaString> importPath,
+                                                       JSHandle<EcmaString> fileName,
+                                                       CVector<JSHandle<EcmaString>> &recordImportModules);
 
 private:
     static JSHandle<TaggedArray> GetExportTableFromPandFile(JSThread *thread, const panda_file::File &pf);
 
     static panda_file::File::EntityId GetFileId(const panda_file::File &pf);
 
-    static JSHandle<TSClassType> ParseClassType(JSThread *thread, const JSHandle<TaggedArray> &literal);
-
-    static JSHandle<TSInterfaceType> ParseInterfaceType(JSThread *thread, const JSHandle<TaggedArray> &literal);
-
-    static JSHandle<TSUnionType> ParseUnionType(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                const JSHandle<TaggedArray> &literal);
-
-    static void CheckModule(JSThread *thread, const TSLoader* tsLoader, const JSHandle<EcmaString> target,
+    static void CheckModule(JSThread *thread, const TSManager* tsManager, const JSHandle<EcmaString> target,
                             CVector<JSHandle<EcmaString>> &recordImportModules);
-
-    static JSHandle<EcmaString> GenerateVarNameAndPath(JSThread *thread, JSHandle<EcmaString> importPath,
-                                                       JSHandle<EcmaString> fileName,
-                                                       CVector<JSHandle<EcmaString>> &recordImportModules);
-
-    static JSHandle<TSFunctionType> ParseFunctionType(JSThread *thread, const JSHandle<TaggedArray> &literal);
-
-    static JSHandle<TSArrayType> ParseArrayType(JSThread *thread, const JSHandle<TaggedArray> &literal);
-
-    static JSHandle<TSObjectType> ParseObjectType(JSThread *thread, const JSHandle<TaggedArray> &literal);
 
     static int GetTypeKindFromFileByLocalId(JSThread *thread, const JSPandaFile *jsPandaFile, int localId);
 

@@ -17,6 +17,7 @@
 #define ECMASCRIPT_INTERPRETER_FAST_RUNTIME_STUB_H
 
 #include <memory>
+
 #include "ecmascript/frames.h"
 #include "ecmascript/js_tagged_value.h"
 

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/layout_info-inl.h"
+
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_symbol.h"

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/template_string.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"

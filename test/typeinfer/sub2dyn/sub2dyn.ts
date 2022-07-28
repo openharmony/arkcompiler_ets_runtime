@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
+declare function AssertType(value:any, type:string):void;
 {
     let num1 : number = 1;
     let num2 : number = 2;
     let ans = num1 - num2;
-    typeof(ans);
+    AssertType(ans, "number");
 }

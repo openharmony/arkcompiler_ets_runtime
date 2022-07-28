@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_api_tree_map_iterator.h"
+#include "ecmascript/js_api/js_api_tree_map_iterator.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/tests/test_helper.h"
