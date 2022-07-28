@@ -254,9 +254,20 @@ int LinkedHash::Hash(JSTaggedValue key)
         }
         return hash;
     }
-
     // Int, Double, Special and HeapObject(except symbol and string)
-    uint64_t keyValue = key.GetRawData();
+    uint64_t keyValue;
+    if (key.IsInt()) {
+        keyValue = key.GetInt();
+    } else if (key.IsDouble()) {
+        double v = key.GetDouble();
+        if (UNLIKELY(static_cast<int32_t>(v) != v)) {
+            keyValue = key.GetRawData();
+        }
+        keyValue = static_cast<uint64_t>(v);
+    } else {
+        keyValue = key.GetRawData();
+    }
+
     return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
 }
 }  // namespace panda::ecmascript

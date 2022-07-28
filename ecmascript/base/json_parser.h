@@ -132,7 +132,11 @@ private:
             if (isFast) {
                 std::string strNum(current_, end_ + 1);
                 current_ = end_;
-                return JSTaggedValue(std::stod(strNum));
+                double v = std::stod(strNum);
+                if (UNLIKELY(static_cast<int32_t>(v) != v)) {
+                    return JSTaggedValue(v);
+                }
+                return JSTaggedValue(static_cast<int32_t>(v));
             }
         }
 
@@ -157,7 +161,11 @@ private:
 
         std::string strNum(current, end_ + 1);
         current_ = end_;
-        return JSTaggedValue(std::stod(strNum));
+        double v = std::stod(strNum);
+        if (UNLIKELY(static_cast<int32_t>(v) != v)) {
+            return JSTaggedValue(v);
+        }
+        return JSTaggedValue(static_cast<int32_t>(v));
     }
 
     bool ReadJsonStringRange(bool &isFastString, bool &isAscii)
