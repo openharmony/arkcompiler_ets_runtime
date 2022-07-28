@@ -192,7 +192,7 @@ bool EcmaVM::Initialize()
     factory_->GenerateInternalNativeMethods();
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     moduleManager_ = new ModuleManager(this);
-    debuggerManager_->Initialize();
+    debuggerManager_->Initialize(this);
     tsManager_ = new TSManager(this);
     tsManager_->Initialize();
     snapshotEnv_ = new SnapshotEnv(this);
