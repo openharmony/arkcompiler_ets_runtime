@@ -233,89 +233,85 @@ ohos_shared_library("libark_jsoptimizer") {
   subsystem_name = "ark"
 }
 
-if (!defined(ark_standalone_build)) {
-  ohos_shared_library("libark_jsoptimizer_test") {
-    deps = [
-      ":libark_jsoptimizer_set",
-      "$js_root:libark_jsruntime_test_set",
-    ]
-    ldflags = [ "-Wl,--lto-O0" ]
-    install_enable = false
+ohos_shared_library("libark_jsoptimizer_test") {
+  deps = [
+    ":libark_jsoptimizer_set",
+    "$js_root:libark_jsruntime_test_set",
+  ]
+  ldflags = [ "-Wl,--lto-O0" ]
+  install_enable = false
 
-    output_extension = "so"
-    subsystem_name = "test"
+  output_extension = "so"
+  subsystem_name = "test"
+}
+
+ohos_executable("ark_stub_compiler") {
+  deps = [ ":ark_stub_compiler_set" ]
+  ldflags = [ "-Wl,--lto-O0" ]
+  install_enable = false
+
+  part_name = "ark_js_runtime"
+  subsystem_name = "ark"
+}
+
+ohos_executable("ark_aot_compiler") {
+  deps = [ ":ark_aot_compiler_set" ]
+
+  install_enable = false
+
+  part_name = "ark_js_runtime"
+  subsystem_name = "ark"
+}
+
+action("gen_stub_file") {
+  script = "$js_root/script/run_ark_executable.py"
+
+  deps = [ "$js_root/ecmascript/compiler:ark_stub_compiler(${host_toolchain})" ]
+
+  stub_file_gen_dir = "$root_gen_dir/arkcompiler/ets_runtime"
+  root_out_dir_with_host_toolchain =
+      get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
+
+  if (current_toolchain == host_toolchain) {
+    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.m"
+  } else {
+    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.m" +
+                  " --target-triple=aarch64-unknown-linux-gnu"
   }
 
-  ohos_executable("ark_stub_compiler") {
-    deps = [ ":ark_stub_compiler_set" ]
-    ldflags = [ "-Wl,--lto-O0" ]
-    install_enable = false
+  args = [
+    "--script-file",
+    rebase_path(root_out_dir_with_host_toolchain) +
+        "/ark/ark_js_runtime/ark_stub_compiler",
+    "--script-options",
+    stub_option,
+    "--expect-output",
+    "0",
+    "--timeout-limit",
+    "300",
+    "--env-path",
+    rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark:" +
+        rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark_js_runtime:" +
+        rebase_path(root_out_dir_with_host_toolchain) + "/thirdparty/icu:" +
+        rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+  ]
 
-    part_name = "ark_js_runtime"
-    subsystem_name = "ark"
-  }
+  outputs = [ "$stub_file_gen_dir/stub.m" ]
+}
 
-  ohos_executable("ark_aot_compiler") {
-    deps = [ ":ark_aot_compiler_set" ]
+action("build_stub_to_cpp") {
+  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub.m" ]
 
-    install_enable = false
+  script = "$js_root/script/build_resource_to_cpp.py"
 
-    part_name = "ark_js_runtime"
-    subsystem_name = "ark"
-  }
+  deps = [ ":gen_stub_file" ]
 
-  action("gen_stub_file") {
-    script = "$js_root/script/run_ark_executable.py"
+  args = [
+    "--input",
+    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.m"),
+    "--output",
+    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp"),
+  ]
 
-    deps =
-        [ "$js_root/ecmascript/compiler:ark_stub_compiler(${host_toolchain})" ]
-
-    stub_file_gen_dir = "$root_gen_dir/arkcompiler/ets_runtime"
-    root_out_dir_with_host_toolchain =
-        get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
-
-    if (current_toolchain == host_toolchain) {
-      stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.m"
-    } else {
-      stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
-                    "/stub.m" + " --target-triple=aarch64-unknown-linux-gnu"
-    }
-
-    args = [
-      "--script-file",
-      rebase_path(root_out_dir_with_host_toolchain) +
-          "/ark/ark_js_runtime/ark_stub_compiler",
-      "--script-options",
-      stub_option,
-      "--expect-output",
-      "0",
-      "--timeout-limit",
-      "300",
-      "--env-path",
-      rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark:" +
-          rebase_path(root_out_dir_with_host_toolchain) +
-          "/ark/ark_js_runtime:" +
-          rebase_path(root_out_dir_with_host_toolchain) + "/thirdparty/icu:" +
-          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
-    ]
-
-    outputs = [ "$stub_file_gen_dir/stub.m" ]
-  }
-
-  action("build_stub_to_cpp") {
-    sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub.m" ]
-
-    script = "$js_root/script/build_resource_to_cpp.py"
-
-    deps = [ ":gen_stub_file" ]
-
-    args = [
-      "--input",
-      rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.m"),
-      "--output",
-      rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp"),
-    ]
-
-    outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp" ]
-  }
+  outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp" ]
 }
