@@ -134,6 +134,17 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModule(JSThread 
         moduleFullname = callbackModuleName.c_str();
         return thread->GetEcmaVM()->GetModuleManager()->HostResolveImportedModule(moduleFullname);
     }
+#if defined(PANDA_TARGET_WINDOWS)
+    if (moduleFilename[1] == ':') { // absoluteFilePath
+        moduleFullname = moduleFilename.substr(0, suffixEnd) + ".abc";
+    } else {
+        int pos = static_cast<int>(baseFilename.find_last_of('\\'));
+        if (pos == -1) {
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(SourceTextModule, thread);
+        }
+        moduleFullname = baseFilename.substr(0, pos + 1) + moduleFilename.substr(0, suffixEnd) + ".abc";
+    }
+#else
     if (moduleFilename[0] == '/') { // absoluteFilePath
         moduleFullname = moduleFilename.substr(0, suffixEnd) + ".abc";
     } else {
@@ -143,6 +154,7 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModule(JSThread 
         }
         moduleFullname = baseFilename.substr(0, pos + 1) + moduleFilename.substr(0, suffixEnd) + ".abc";
     }
+#endif
     return thread->GetEcmaVM()->GetModuleManager()->HostResolveImportedModule(moduleFullname);
 }
 
