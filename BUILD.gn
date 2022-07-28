@@ -724,14 +724,12 @@ ohos_shared_library("libark_jsruntime") {
   subsystem_name = "ark"
 }
 
-if (!defined(ark_standalone_build)) {
-  ohos_shared_library("libark_jsruntime_test") {
-    deps = [ ":libark_jsruntime_test_set" ]
-    ldflags = [ "-Wl,--lto-O0" ]
-    install_enable = false
-    if (!is_mingw && !is_mac) {
-      output_extension = "so"
-    }
-    subsystem_name = "test"
+ohos_shared_library("libark_jsruntime_test") {
+  deps = [ ":libark_jsruntime_test_set" ]
+  ldflags = [ "-Wl,--lto-O0" ]
+  install_enable = false
+  if (!is_mingw && !is_mac) {
+    output_extension = "so"
   }
+  subsystem_name = "test"
 }

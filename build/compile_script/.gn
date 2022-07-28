@@ -12,10 +12,10 @@
 # limitations under the License.
 
 # The location of the build configuration file.
-buildconfig = "//js_runtime/build/config/BUILDCONFIG.gn"
+buildconfig = "//ets_runtime/build/config/BUILDCONFIG.gn"
 
 # The source root location.
-root = "//js_runtime/build/core/gn"
+root = "//ets_runtime/build/core/gn"
 
 # The executable used to execute scripts in action and exec_script.
 script_executable = "/usr/bin/env"

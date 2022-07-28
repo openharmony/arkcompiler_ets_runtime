@@ -14,7 +14,7 @@
 declare_args() {
   another_path = true
   ark_standalone_build = true
-  build_root = "//js_runtime/build"
+  build_root = "//ets_runtime/build"
 }
 
 if (target_os == "") {
@@ -23,7 +23,7 @@ if (target_os == "") {
 
 if (target_cpu == "") {
   if (target_os == "ohos") {
-    target_cpu = "arm"
+    target_cpu = "x64"
   } else {
     target_cpu = host_cpu
   }
