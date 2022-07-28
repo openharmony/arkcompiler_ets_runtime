@@ -63,6 +63,13 @@ void FrameIterator::Advance()
             current_ = frame->GetPrevFrameFp();
             break;
         }
+        case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
+            auto frame = GetFrame<OptimizedJSFunctionUnfoldArgVFrame>();
+            optimizedCallSiteSp_ = frame->GetPrevFrameSp();
+            optimizedReturnAddr_ = frame->GetReturnAddr();
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionFrame>();
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
@@ -199,6 +206,10 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp(uintptr_t curPc) const
             auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + stackmapParser_->GetFuncFpDelta(curPc);
             return callSiteSp;
         }
+        case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
+            auto frame = GetFrame<OptimizedJSFunctionUnfoldArgVFrame>();
+            return frame->GetPrevFrameSp();
+        }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME : {
             auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + sizeof(uintptr_t);
             return callSiteSp;
@@ -209,12 +220,13 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp(uintptr_t curPc) const
         case FrameType::INTERPRETER_FRAME:
         case FrameType::INTERPRETER_FAST_NEW_FRAME:
         case FrameType::OPTIMIZED_ENTRY_FRAME:
+        case FrameType::INTERPRETER_BUILTIN_FRAME:
         case FrameType::INTERPRETER_ENTRY_FRAME:
         case FrameType::ASM_INTERPRETER_ENTRY_FRAME: {
             return 0;
         }
         default: {
-            UNREACHABLE();
+            LOG_ECMA(FATAL) << "frame type error!";
         }
     }
 }
@@ -242,7 +254,6 @@ uintptr_t FrameIterator::GetPrevFrame() const
         }
         default: {
             LOG_ECMA(FATAL) << "frame type error!";
-            UNREACHABLE();
         }
     }
     return end;

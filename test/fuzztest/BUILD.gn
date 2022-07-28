@@ -18,6 +18,7 @@ group("fuzztest") {
   deps += [
     "biginttoint64_fuzzer:fuzztest",
     "biginttouint64_fuzzer:fuzztest",
+    "booleanrefnewbool_fuzzer:fuzztest",
     "createbigwords_fuzzer:fuzztest",
     "dispatchprotocolmessage_fuzzer:fuzztest",
     "execute_fuzzer:fuzztest",
@@ -25,5 +26,8 @@ group("fuzztest") {
     "initializedebugger_fuzzer:fuzztest",
     "newbigintbyint64_fuzzer:fuzztest",
     "newbigintbyuint64_fuzzer:fuzztest",
+    "numberrefnewint32_fuzzer:fuzztest",
+    "numberrefnewint64_fuzzer:fuzztest",
+    "numberrefnewuint32_fuzzer:fuzztest",
   ]
 }

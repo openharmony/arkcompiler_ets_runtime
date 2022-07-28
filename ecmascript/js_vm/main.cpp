@@ -62,7 +62,11 @@ int Main(const int argc, const char **argv)
     panda::PandArg<bool> help("help", false, "Print this message and exit");
     panda::PandArg<bool> options("options", false, "Print compiler and runtime options");
     // tail arguments
+#if defined(PANDA_TARGET_WINDOWS)
+    panda::PandArg<arg_list_t> files("files", {""}, "path to pandafiles", ";");
+#else
     panda::PandArg<arg_list_t> files("files", {""}, "path to pandafiles", ":");
+#endif
     panda::PandArg<std::string> entrypoint("entrypoint", "_GLOBAL::func_main_0",
                                            "full name of entrypoint function or method");
     panda::PandArgParser paParser;

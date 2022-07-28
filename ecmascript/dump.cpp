@@ -2839,7 +2839,7 @@ void ClassInfoExtractor::Dump(std::ostream &os) const
 void TSObjectType::Dump(std::ostream &os) const
 {
     os << " - TSObjectType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -2851,10 +2851,6 @@ void TSObjectType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSObjectType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
     os << "  - ObjLayoutInfo: ";
     DumpArrayClass(TaggedArray::Cast(GetObjLayoutInfo().GetTaggedObject()), os);
     os << "  - HClass: ";
@@ -2865,7 +2861,7 @@ void TSClassType::Dump(std::ostream &os) const
 {
     os << " - Dump TSClassType - " << "\n";
     os << " - TSClassType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -2876,10 +2872,6 @@ void TSClassType::Dump(std::ostream &os) const
     os << " - TSClassType localTypeId: ";
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
-    os << "\n";
-    os << " - TSClassType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
     os << "\n";
     os << " - ExtensionTypeGT: ";
     GlobalTSTypeRef extensionGT = GetExtensionGT();
@@ -2919,7 +2911,7 @@ void TSInterfaceType::Dump(std::ostream &os) const
 {
     os << " - Dump Interface Type - " << "\n";
     os << " - TSInterfaceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -2930,10 +2922,6 @@ void TSInterfaceType::Dump(std::ostream &os) const
     os << " - TSInterfaceType localTypeId: ";
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
-    os << "\n";
-    os << " - TSInterfaceType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
     os << "\n";
     os << " - Extends TypeId: " << "\n";
     if (TaggedArray::Cast(GetExtends().GetTaggedObject())->GetLength() == 0) {
@@ -2953,7 +2941,7 @@ void TSImportType::Dump(std::ostream &os) const
 {
     os << " - Dump Import Type - " << "\n";
     os << " - TSImportType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -2965,13 +2953,9 @@ void TSImportType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSImportType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
     os << " -------------------------------------------- ";
     os << " - Target Type: ";
-    GlobalTSTypeRef targetGT = GetTargetRefGT();
+    GlobalTSTypeRef targetGT = GetTargetGT();
     uint64_t targetGTValue = targetGT.GetType();
     os << " - TargetTypeGT: ";
     os << targetGTValue;
@@ -2984,43 +2968,6 @@ void TSImportType::Dump(std::ostream &os) const
     uint32_t targetLocalTypeId = targetGT.GetLocalId();
     os << targetLocalTypeId;
     os << "\n";
-    os << " - Target Type typeKind: ";
-    uint32_t targetTypeKind = targetGT.GetKind();
-    os << targetTypeKind;
-    os << "\n";
-    TSTypeKind flag = static_cast<TSTypeKind>(targetTypeKind);
-    switch (flag) {
-        case TSTypeKind::CLASS: {
-            os << " - Target Type typeKind is classType ";
-            break;
-        }
-        case TSTypeKind::CLASS_INSTANCE: {
-            os << " - Target Type typeKind is classInstanceType ";
-            break;
-        }
-        case TSTypeKind::INTERFACE_KIND: {
-            os << " - Target Type typeKind is interfaceType";
-            break;
-        }
-        case TSTypeKind::IMPORT: {
-            os << " - Target Type typeKind is importType";
-            break;
-        }
-        case TSTypeKind::UNION: {
-            os << " - Target Type typeKind is UnionType";
-            break;
-        }
-        case TSTypeKind::FUNCTION: {
-            os << " - Target Type typeKind is funtionType";
-            break;
-        }
-        case TSTypeKind::OBJECT: {
-            os << " - Target Type typeKind is objectType";
-            break;
-        }
-        default:
-            os << " - unknown type";
-    }
     os << " -------------------------------------------- ";
     os << " - Taget Type Path: ";
     JSTaggedValue importPath = GetImportPath();
@@ -3032,7 +2979,7 @@ void TSClassInstanceType::Dump(std::ostream &os) const
 {
     os << " - Dump ClassInstance Type - " << "\n";
     os << " - TSClassInstanceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -3044,14 +2991,10 @@ void TSClassInstanceType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSClassInstanceType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
 
     os << " -------------------------------------------- ";
     os << " - createClassType GT: ";
-    GlobalTSTypeRef createClassTypeGT = GetClassRefGT();
+    GlobalTSTypeRef createClassTypeGT = GetClassGT();
     os << createClassTypeGT.GetType();
     os << "\n";
 }
@@ -3060,7 +3003,7 @@ void TSUnionType::Dump(std::ostream &os) const
 {
     os << " - Dump UnionType Type - " << "\n";
     os << " - TSUnionType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -3072,10 +3015,6 @@ void TSUnionType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSUnionType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
     os << " - TSUnionType TypeId: " << "\n";
     DumpArrayClass(TaggedArray::Cast(GetComponents().GetTaggedObject()), os);
 }
@@ -3084,7 +3023,7 @@ void TSFunctionType::Dump(std::ostream &os) const
 {
     os << " - Dump TSFunctionType - " << "\n";
     os << " - TSFunctionType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -3096,10 +3035,6 @@ void TSFunctionType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSFunctionType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
     os << " - TSFunctionType ParameterTypeIds: " << "\n";
     DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), os);
 }
@@ -3108,7 +3043,7 @@ void TSArrayType::Dump(std::ostream &os) const
 {
     os << " - Dump TSArrayType - " << "\n";
     os << " - TSArrayType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -3119,14 +3054,6 @@ void TSArrayType::Dump(std::ostream &os) const
     os << " - TSArrayType localTypeId: ";
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
-    os << "\n";
-    os << " - TSArrayType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
-    os << " - TSArrayType parameterTypeRef: " << "\n";
-    uint64_t parameterTypeRef = GetElementTypeRef();
-    os << parameterTypeRef;
     os << "\n";
 }
 
@@ -4738,7 +4665,7 @@ void TSClassType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>>
     vec.push_back(std::make_pair(CString("InstanceType"), GetInstanceType()));
     vec.push_back(std::make_pair(CString("ConstructorType"), GetConstructorType()));
     vec.push_back(std::make_pair(CString("PrototypeType"), GetPrototypeType()));
-    vec.push_back(std::make_pair(CString("ExtensionGTRawData"), JSTaggedValue(GetExtensionGTRawData())));
+    vec.push_back(std::make_pair(CString("ExtensionGTRawData"), JSTaggedValue(GetExtensionGT().GetType())));
     vec.push_back(std::make_pair(CString("HasLinked"), JSTaggedValue(GetHasLinked())));
 }
 
@@ -4750,7 +4677,7 @@ void TSInterfaceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 
 void TSClassInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("classTypeIndex"), JSTaggedValue(GetClassRefGT().GetType())));
+    vec.push_back(std::make_pair(CString("classTypeIndex"), JSTaggedValue(GetClassGT().GetType())));
 }
 
 void TSImportType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4770,7 +4697,7 @@ void TSFunctionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValu
 
 void TSArrayType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ParameterTypeRef"), JSTaggedValue(GetElementTypeRef())));
+    vec.push_back(std::make_pair(CString("ParameterTypeRef"), JSTaggedValue(GetElementGT().GetType())));
 }
 
 void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

@@ -22,8 +22,6 @@
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/tagged_array-inl.h"
 
-#include "libpandabase/utils/bit_utils.h"
-
 namespace panda::ecmascript {
 class LinkedHash {
 public:

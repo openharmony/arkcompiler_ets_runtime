@@ -54,8 +54,7 @@ source_set("libark_ecma_debugger_set") {
   public_configs = [ ":ark_ecma_debugger_config" ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:libarkfile_static",
     "//third_party/cJSON:cjson_static",
   ]
 
@@ -108,8 +107,7 @@ source_set("libark_ecma_debugger_test_set") {
   }
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:libarkfile_static",
     "//third_party/cJSON:cjson_static",
   ]
 }

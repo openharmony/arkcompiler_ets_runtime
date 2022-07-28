@@ -17,6 +17,7 @@
 #define ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUGGER_MANAGER_H
 
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/tooling/interface/notification_manager.h"
 
@@ -39,9 +40,10 @@ public:
     NO_COPY_SEMANTIC(JsDebuggerManager);
     NO_MOVE_SEMANTIC(JsDebuggerManager);
 
-    void Initialize()
+    void Initialize(const EcmaVM *vm)
     {
         notificationManager_ = new NotificationManager();
+        jsThread_ = vm->GetJSThread();
     }
 
     NotificationManager *GetNotificationManager() const
@@ -51,7 +53,14 @@ public:
 
     void SetDebugMode(bool isDebugMode)
     {
+        if (isDebugMode_ == isDebugMode) {
+            return;
+        }
+
         isDebugMode_ = isDebugMode;
+        if (jsThread_ != nullptr && jsThread_->IsAsmInterpreter()) {
+            jsThread_->CheckSwitchDebuggerBCStub();
+        }
     }
 
     bool IsDebugMode() const
@@ -107,7 +116,7 @@ private:
     LibraryHandle debuggerLibraryHandle_ {nullptr};
     NotificationManager *notificationManager_ {nullptr};
     ObjectUpdaterFunc *updaterFunc_ {nullptr};
-
+    JSThread *jsThread_ {nullptr};
     std::shared_ptr<FrameHandler> frameHandler_;
 };
 }  // panda::ecmascript::tooling

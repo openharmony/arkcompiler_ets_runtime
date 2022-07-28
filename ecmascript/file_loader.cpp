@@ -273,7 +273,7 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
         entries_[i].codeAddr_ += des.GetSecAddr(ElfSecName::TEXT);
         auto curFileHash = aotFileHashs_[entries_[i].moduleIndex_];
         auto curMethodId = entries_[i].indexInKind_;
-        vm->SaveAOTFuncEntry(curFileHash, curMethodId, entries_[i].codeAddr_);
+        vm->GetFileLoader()->SaveAOTFuncEntry(curFileHash, curMethodId, entries_[i].codeAddr_);
     }
     file.close();
     LOG_COMPILER(INFO) << "Load aot file success";
@@ -325,7 +325,7 @@ void FileLoader::LoadAOTFile(const std::string &fileName)
     AddAOTPackInfo(aotPackInfo_);
 }
 
-void FileLoader::TryLoadSnapshotFile()
+void FileLoader::LoadSnapshotFile()
 {
     const CString snapshotPath(vm_->GetJSOptions().GetSnapshotOutputFile().c_str());
     Snapshot snapshot(vm_);
@@ -337,7 +337,7 @@ void FileLoader::TryLoadSnapshotFile()
 bool FileLoader::hasLoaded(const JSPandaFile *jsPandaFile)
 {
     auto fileHash = jsPandaFile->GetFileUniqId();
-    return !(hashToEntryMap_.find(fileHash) == hashToEntryMap_.end());
+    return hashToEntryMap_.find(fileHash) != hashToEntryMap_.end();
 }
 
 void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile)
@@ -418,12 +418,13 @@ void FileLoader::InitializeStubEntries(const std::vector<AOTModulePackInfo::Func
             thread->SetBCStubEntry(des.indexInKind_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
             std::cout << "bytecode: " << GetEcmaOpcodeStr(static_cast<EcmaOpcode>(des.indexInKind_))
-                << " addr:" << des.codeAddr_ << std::endl;
+                << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
 #endif
         } else {
             thread->RegisterRTInterface(des.indexInKind_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
-                std::cout << "runtime index: " << des.indexInKind_ << " addr:" << des.codeAddr_ << std::endl;
+                std::cout << "runtime index: " << std::dec << des.indexInKind_
+                    << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
 #endif
         }
     }

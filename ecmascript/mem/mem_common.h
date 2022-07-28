@@ -17,9 +17,6 @@
 #define ECMASCRIPT_MEM_MEM_COMMON_H
 
 #include <cstdint>
-#ifndef PANDA_TARGET_WINDOWS
-#include <sys/mman.h>
-#endif
 
 namespace panda::ecmascript {
 template <class T>

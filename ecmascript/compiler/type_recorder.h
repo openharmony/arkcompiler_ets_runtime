@@ -16,17 +16,17 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_RECORDER_H
 #define ECMASCRIPT_COMPILER_TYPE_RECORDER_H
 
+#include "ecmascript/compiler/type.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/js_method.h"
-#include "ecmascript/compiler/type.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/file-inl.h"
 #include "libpandafile/method_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
 class TypeRecorder {
 public:
-    explicit TypeRecorder(const JSMethod *method, TSLoader *tsLoader);
+    explicit TypeRecorder(const JSMethod *method, TSManager *tsManager);
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
@@ -34,7 +34,7 @@ public:
     GateType UpdateType(const int32_t offset, const GateType &type) const;
 
 private:
-    void LoadTypes(const JSMethod *method, TSLoader *tsLoader);
+    void LoadTypes(const JSMethod *method, TSManager *tsManager);
     
     inline int32_t GetArgOffset(const int32_t argIndex) const
     {

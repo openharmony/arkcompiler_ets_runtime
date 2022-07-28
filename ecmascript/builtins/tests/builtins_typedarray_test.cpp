@@ -36,8 +36,6 @@
 #include "ecmascript/object_operator.h"
 #include "ecmascript/tests/test_helper.h"
 
-#include "utils/bit_utils.h"
-
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 using namespace panda::ecmascript::base;

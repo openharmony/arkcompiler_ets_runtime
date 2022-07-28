@@ -1347,15 +1347,14 @@ JSHandle<TaggedArray> JSObject::EnumerableOwnNames(JSThread *thread, const JSHan
 {
     ASSERT_PRINT(obj->IsECMAObject(), "obj is not object");
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> keys;
     JSHandle<JSTaggedValue> tagObj(obj);
     // fast mode
     if (tagObj->IsJSObject() && !tagObj->IsTypedArray() && !tagObj->IsModuleNamespace()) {
-        keys = GetOwnEnumerableNamesInFastMode(thread, obj);
+        return GetOwnEnumerableNamesInFastMode(thread, obj);
     }
 
     uint32_t copyLength = 0;
-    keys = JSTaggedValue::GetOwnPropertyKeys(thread, tagObj);
+    JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, tagObj);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
     uint32_t length = keys->GetLength();
 

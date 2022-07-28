@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MEM_NATIVE_AREA_ALLOCATOR_H
 
 #include <atomic>
+#include <cstddef>
 
 #include "ecmascript/common.h"
 #include "ecmascript/log_wrapper.h"

@@ -111,6 +111,7 @@ host_unittest_action("EcmaVm_002_Test") {
     "js_tagged_queue_test.cpp",
     "js_typed_array_test.cpp",
     "js_verification_test.cpp",
+    "layout_info_test.cpp",
     "lexical_env_test.cpp",
     "linked_hash_table_test.cpp",
     "linked_node_test.cpp",

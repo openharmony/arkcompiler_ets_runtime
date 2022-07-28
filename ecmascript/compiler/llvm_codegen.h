@@ -66,46 +66,55 @@ struct CodeInfo {
     using sectionInfo = std::pair<uint8_t *, size_t>;
     CodeInfo()
     {
-        continuousSectionsMem_ = static_cast<uint8_t *>(mmap(nullptr, MAX_MACHINE_CODE_SIZE, protRWX, flags, -1, 0));
-        if (continuousSectionsMem_ == reinterpret_cast<uint8_t *>(-1)) {
-            continuousSectionsMem_ = nullptr;
+        reqSecs_ = static_cast<uint8_t *>(mmap(nullptr, REQUIRED_SECS_LIMIT, protRWX, flags, -1, 0));
+        if (reqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
+            reqSecs_ = nullptr;
         }
-        if (continuousSectionsMem_ != nullptr) {
-            ASAN_UNPOISON_MEMORY_REGION(continuousSectionsMem_, MAX_MACHINE_CODE_SIZE);
+        if (reqSecs_ != nullptr) {
+            ASAN_UNPOISON_MEMORY_REGION(reqSecs_, REQUIRED_SECS_LIMIT);
         }
         // align machineCode for aarch64
-        continuousSectionsMem_ += MachineCode::DATA_OFFSET +
+        reqSecs_ += MachineCode::DATA_OFFSET +
             AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        unreqSecs_ = static_cast<uint8_t *>(mmap(nullptr, UNREQUIRED_SECS_LIMIT, protRWX, flags, -1, 0));
+        if (unreqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
+            unreqSecs_ = nullptr;
+        }
+        if (unreqSecs_ != nullptr) {
+            ASAN_UNPOISON_MEMORY_REGION(unreqSecs_, UNREQUIRED_SECS_LIMIT);
+        }
         secInfos_.fill(std::make_pair(nullptr, 0));
     }
     ~CodeInfo()
     {
         Reset();
-        if (continuousSectionsMem_ != nullptr) {
-            ASAN_POISON_MEMORY_REGION(continuousSectionsMem_, MAX_MACHINE_CODE_SIZE);
-            munmap(continuousSectionsMem_, MAX_MACHINE_CODE_SIZE);
+        if (reqSecs_ != nullptr) {
+            reqSecs_ -= MachineCode::DATA_OFFSET +
+                AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+            ASAN_POISON_MEMORY_REGION(reqSecs_, REQUIRED_SECS_LIMIT);
+            munmap(reqSecs_, REQUIRED_SECS_LIMIT);
         }
-        continuousSectionsMem_ = nullptr;
+        reqSecs_ = nullptr;
+        if (unreqSecs_ != nullptr) {
+            ASAN_POISON_MEMORY_REGION(unreqSecs_, UNREQUIRED_SECS_LIMIT);
+            munmap(unreqSecs_, UNREQUIRED_SECS_LIMIT);
+        }
+        unreqSecs_ = nullptr;
     }
 
-    uint8_t *Alloca(uintptr_t size)
+    uint8_t *AllocaInReqSecBuffer(uintptr_t size)
     {
-        // align up for rodata section
-        size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        uint8_t *addr = nullptr;
-        if (bufferPos_ + size > MAX_MACHINE_CODE_SIZE) {
-            LOG_COMPILER(ERROR) << std::hex << "Alloca Section failed. Current bufferPos_:" << bufferPos_
-                      << " plus size:" << size << "exceed MAX_MACHINE_CODE_SIZE:" << MAX_MACHINE_CODE_SIZE;
-            return nullptr;
-        }
-        addr = continuousSectionsMem_ + bufferPos_;
-        bufferPos_ += size;
-        return addr;
+        return Alloca(size, reqSecs_, reqBufPos_);
+    }
+
+    uint8_t *AllocaInNotReqSecBuffer(uintptr_t size)
+    {
+        return Alloca(size, unreqSecs_, unreqBufPos_);
     }
 
     uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName)
     {
-        uint8_t *addr = Alloca(size);
+        uint8_t *addr = AllocaInReqSecBuffer(size);
         auto curSec = ElfSection(sectionName);
         codeInfo_.push_back({addr, size});
         if (curSec.isValidAOTSec()) {
@@ -118,14 +127,7 @@ struct CodeInfo {
     {
         uint8_t *addr = nullptr;
         auto curSec = ElfSection(sectionName);
-        if (curSec.isSequentialAOTSec()) {
-            addr = Alloca(size);
-        } else { // the assumption here is llvm backend wouldn't emit a section with duplicated name
-            discreteSectionsAllocator_.insert(make_pair(sectionName, std::vector<uint8_t>()));
-            ASSERT(discreteSectionsAllocator_.find(sectionName) != discreteSectionsAllocator_.end());
-            discreteSectionsAllocator_[sectionName].resize(size);
-            addr = static_cast<uint8_t *>(discreteSectionsAllocator_[sectionName].data());
-        }
+        addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size) : AllocaInNotReqSecBuffer(size);
         if (curSec.isValidAOTSec()) {
             secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);
         }
@@ -135,9 +137,8 @@ struct CodeInfo {
     void Reset()
     {
         codeInfo_.clear();
-        discreteSectionsAllocator_.clear();
-        continuousSectionsMem_ = nullptr;
-        bufferPos_ = 0;
+        reqBufPos_ = 0;
+        unreqBufPos_ = 0;
     }
 
     uint8_t *GetSectionAddr(ElfSecName sec) const
@@ -171,14 +172,35 @@ struct CodeInfo {
     }
 
 private:
-    static constexpr size_t MAX_MACHINE_CODE_SIZE = (1 << 20);  // 1M
+    static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 20);  // 1M
+    static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 19);  // 512K
     static constexpr int protRWX = PROT_READ | PROT_WRITE | PROT_EXEC;  // NOLINT(hicpp-signed-bitwise)
+    static constexpr int protRW = PROT_READ | PROT_WRITE;               // NOLINT(hicpp-signed-bitwise)
     static constexpr int flags = MAP_ANONYMOUS | MAP_SHARED;            // NOLINT(hicpp-signed-bitwise)
-    uint8_t *continuousSectionsMem_ {nullptr};
-    size_t bufferPos_ {0};
+    // start point of the buffer reserved for sections required in executing phase
+    uint8_t *reqSecs_ {nullptr};
+    size_t reqBufPos_ {0};
+    // start point of the buffer reserved for sections not required in executing phase
+    uint8_t *unreqSecs_ {nullptr};
+    size_t unreqBufPos_ {0};
     std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
-    std::map<std::string, std::vector<uint8_t>> discreteSectionsAllocator_;
     std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
+
+    uint8_t *Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos)
+    {
+        // align up for rodata section
+        size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        uint8_t *addr = nullptr;
+        size_t limit = (bufBegin == reqSecs_) ? REQUIRED_SECS_LIMIT : UNREQUIRED_SECS_LIMIT;
+        if (curPos + size > limit) {
+            LOG_COMPILER(ERROR) << std::hex << "Alloca Section failed. Current curPos:" << curPos
+                      << " plus size:" << size << "exceed limit:" << limit;
+            return nullptr;
+        }
+        addr = bufBegin + curPos;
+        curPos += size;
+        return addr;
+    }
 };
 
 struct LOptions {

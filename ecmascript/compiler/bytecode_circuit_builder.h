@@ -418,13 +418,13 @@ enum BytecodeOffset {
 class BytecodeCircuitBuilder {
 public:
     explicit BytecodeCircuitBuilder(const BytecodeTranslationInfo &translationInfo, size_t index,
-                                    TSLoader *tsLoader, bool enableLog)
-        : tsLoader_(tsLoader), file_(translationInfo.jsPandaFile), pf_(translationInfo.jsPandaFile->GetPandaFile()),
+                                    TSManager *tsManager, bool enableLog)
+        : tsManager_(tsManager), file_(translationInfo.jsPandaFile), pf_(translationInfo.jsPandaFile->GetPandaFile()),
           method_(translationInfo.methodPcInfos[index].method),
           pcArray_(translationInfo.methodPcInfos[index].pcArray),
           constantPool_(translationInfo.constantPool),
           gateAcc_(&circuit_), argAcc_(&circuit_, method_),
-          typeRecorder_(method_, tsLoader), hasTypes_(file_->HasTSTypes()),
+          typeRecorder_(method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog)
     {
     }
@@ -555,7 +555,7 @@ private:
     std::map<kungfu::GateRef, std::pair<size_t, const uint8_t *>> jsgateToBytecode_;
     std::map<const uint8_t *, kungfu::GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
-    TSLoader *tsLoader_ {nullptr};
+    TSManager *tsManager_ {nullptr};
     const JSPandaFile *file_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     const JSMethod *method_ {nullptr};

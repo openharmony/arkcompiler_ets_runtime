@@ -12,10 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cmath>
 
-#include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
+#include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
 using DominatorTreeInfo = std::tuple<std::vector<GateRef>, std::unordered_map<GateRef, size_t>,

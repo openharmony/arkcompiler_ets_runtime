@@ -21,7 +21,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator)
@@ -37,7 +37,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
         LOptions(optLevel_, true, relocMode_));
     CompilationConfig cmpCfg(triple_);
-    TSLoader *tsLoader = vm_->GetTSLoader();
+    TSManager *tsManager = vm_->GetTSManager();
 
     bool enableLog = log_->IsAlwaysEnabled();
 
@@ -53,13 +53,13 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
                                << methodName << "] log:" << "\033[0m";
         }
 
-        BytecodeCircuitBuilder builder(translationInfo, i, tsLoader, enableLog);
+        BytecodeCircuitBuilder builder(translationInfo, i, tsManager, enableLog);
         builder.BytecodeToCircuit();
         PassData data(builder.GetCircuit());
         PassRunner<PassData> pipeline(&data, enableLog);
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
-        pipeline.RunPass<TypeInferPass>(&builder, tsLoader);
-        pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsLoader);
+        pipeline.RunPass<TypeInferPass>(&builder, tsManager);
+        pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
         pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg);
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<SchedulingPass>();
@@ -85,8 +85,8 @@ bool PassManager::CollectInfoOfPandaFile(const std::string &fileName, std::strin
     translateInfo->jsPandaFile = jsPandaFile;
 
     if (jsPandaFile->HasTSTypes()) {
-        TSLoader *tsLoader = vm_->GetTSLoader();
-        tsLoader->DecodeTSTypes(jsPandaFile);
+        TSManager *tsManager = vm_->GetTSManager();
+        tsManager->DecodeTSTypes(jsPandaFile);
     } else {
         LOG_COMPILER(INFO) << fileName << " has no type info";
     }

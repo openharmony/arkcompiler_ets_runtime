@@ -46,7 +46,7 @@ JSTaggedValue BuiltinsWeakRef::WeakRefConstructor(EcmaRuntimeCallInfo *argv)
     // 5. Set weakRef.[[WeakRefTarget]] to target.
     // 6. Return weakRef.
     JSHandle<JSWeakRef> weakRef = JSHandle<JSWeakRef>::Cast(obj);
-    weakRef->SetToWeak(target.GetTaggedValue());
+    weakRef->SetToWeak(thread, target.GetTaggedValue());
     return weakRef.GetTaggedValue();
 }
 

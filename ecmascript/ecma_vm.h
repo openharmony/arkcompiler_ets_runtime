@@ -65,7 +65,7 @@ class JSHandle;
 class JSArrayBuffer;
 class JSFunction;
 class Program;
-class TSLoader;
+class TSManager;
 class FileLoader;
 class ModuleManager;
 class CjsModule;
@@ -99,7 +99,7 @@ public:
 
     bool IsInitialized() const
     {
-        return vmInitialized_;
+        return initialized_;
     }
 
     bool IsGlobalConstInitialized() const
@@ -113,7 +113,6 @@ public:
     }
 
     bool Initialize();
-    bool InitializeFinish();
 
     GCStats *GetEcmaGCStats() const
     {
@@ -234,9 +233,9 @@ public:
         return moduleManager_;
     }
 
-    TSLoader *GetTSLoader() const
+    TSManager *GetTSManager() const
     {
-        return tsLoader_;
+        return tsManager_;
     }
 
     FileLoader *GetFileLoader() const
@@ -329,7 +328,6 @@ public:
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile);
 
-    void SaveAOTFuncEntry(uint32_t hash, uint32_t methodId, uint64_t funcEntry);
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {
         exceptionBCList_.emplace_back(std::pair<std::string, int32_t>(methodName, bcOffset));
@@ -388,7 +386,7 @@ private:
     // VM startup states.
     JSRuntimeOptions options_;
     bool icEnabled_ {true};
-    bool vmInitialized_ {false};
+    bool initialized_ {false};
     bool globalConstInitialized_ {false};
     GCStats *gcStats_ {nullptr};
     bool isUncaughtExceptionRegistered_ {false};
@@ -419,7 +417,7 @@ private:
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
-    TSLoader *tsLoader_ {nullptr};
+    TSManager *tsManager_ {nullptr};
     SnapshotEnv *snapshotEnv_ {nullptr};
     bool optionalLogEnabled_ {false};
     FileLoader *fileLoader_ {nullptr};

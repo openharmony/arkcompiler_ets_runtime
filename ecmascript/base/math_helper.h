@@ -12,23 +12,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef ECMASCRIPT_BASE_MATH_HELPER_H
 #define ECMASCRIPT_BASE_MATH_HELPER_H
 
-#include "libpandabase/utils/bit_utils.h"
+#include <cstdint>
+
+#define panda_bit_utils_ctz __builtin_ctz      // NOLINT(cppcoreguidelines-macro-usage)
+#define panda_bit_utils_ctzll __builtin_ctzll  // NOLINT(cppcoreguidelines-macro-usage)
 
 namespace panda::ecmascript::base::math {
-constexpr uint32_t GetIntLog2(const uint32_t X)
+static constexpr uint32_t GetIntLog2(const uint32_t X)
 {
-    ASSERT((X > 0) && !(X & (X - 1U)));
     return static_cast<uint32_t>(panda_bit_utils_ctz(X));
 }
 
-constexpr uint64_t GetIntLog2(const uint64_t X)
+static constexpr uint64_t GetIntLog2(const uint64_t X)
 {
-    ASSERT((X > 0) && !(X & (X - 1U)));
     return static_cast<uint64_t>(panda_bit_utils_ctzll(X));
 }
 }  // panda::ecmascript::base
 
-#endif  // PANDA_LIBBASE_UTILS_MATH_HELPERS_H_
+#endif  // ECMASCRIPT_BASE_MATH_HELPER_H

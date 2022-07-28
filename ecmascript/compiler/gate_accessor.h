@@ -17,7 +17,6 @@
 #define ECMASCRIPT_COMPILER_GATE_ACCESSOR_H
 
 #include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/gate.h"
 
 namespace panda::ecmascript::kungfu {
 class GateAccessor {

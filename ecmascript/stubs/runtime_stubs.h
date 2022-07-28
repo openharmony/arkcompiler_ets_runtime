@@ -33,7 +33,7 @@ class JSThread;
 class JSFunction;
 class ObjectFactory;
 
-using JSFunctionEntryType = uint64_t (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
+using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
                                          uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
 
 #define RUNTIME_ASM_STUB_LIST(V)             \
@@ -233,7 +233,8 @@ using JSFunctionEntryType = uint64_t (*)(uintptr_t glue, uintptr_t prevFp, uint3
     V(OptPopLexicalEnv)                   \
     V(OptLdLexVarDyn)                     \
     V(OptStLexVarDyn)                     \
-    V(JSObjectGetMethod)
+    V(JSObjectGetMethod)                  \
+    V(DebugAOTPrint)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -398,19 +399,21 @@ private:
     static inline void RuntimeThrowIfNotObject(JSThread *thread);
     static inline void RuntimeThrowConstAssignment(JSThread *thread, const JSHandle<EcmaString> &value);
     static inline JSTaggedValue RuntimeLdGlobalRecord(JSThread *thread, JSTaggedValue key);
-    static inline JSTaggedValue RuntimeTryLdGlobalByName(JSThread *thread, JSTaggedValue global,
+    static inline JSTaggedValue RuntimeTryLdGlobalByName(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                          const JSHandle<JSTaggedValue> &prop);
     static inline JSTaggedValue RuntimeTryUpdateGlobalRecord(JSThread *thread, JSTaggedValue prop, JSTaggedValue value);
     static inline JSTaggedValue RuntimeThrowReferenceError(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
                                                            const char *desc);
-    static inline JSTaggedValue RuntimeLdGlobalVar(JSThread *thread, JSTaggedValue global,
-                                                   const JSHandle<JSTaggedValue> &prop);
+    static inline JSTaggedValue RuntimeLdGlobalVarFromProto(JSThread *thread, const JSHandle<JSTaggedValue> &globalObj,
+                                                            const JSHandle<JSTaggedValue> &prop);
     static inline JSTaggedValue RuntimeStGlobalVar(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
                                                    const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeToNumeric(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeEqDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                              const JSHandle<JSTaggedValue> &right);
+    static inline JSTaggedValue RuntimeLdObjByName(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop,
+                                                   bool callGetter, JSTaggedValue receiver);
     static inline JSTaggedValue RuntimeNotEqDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                                 const JSHandle<JSTaggedValue> &right);
     static inline JSTaggedValue RuntimeLessDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
@@ -423,6 +426,10 @@ private:
                                                     const JSHandle<JSTaggedValue> &right);
     static inline JSTaggedValue RuntimeAdd2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                                const JSHandle<JSTaggedValue> &right);
+    static inline JSTaggedValue RuntimeShl2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                               const JSHandle<JSTaggedValue> &right);
+    static inline JSTaggedValue RuntimeShr2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                               const JSHandle<JSTaggedValue> &right);
     static inline JSTaggedValue RuntimeSub2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                                const JSHandle<JSTaggedValue> &right);
     static inline JSTaggedValue RuntimeMul2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
@@ -431,6 +438,25 @@ private:
                                                const JSHandle<JSTaggedValue> &right);
     static inline JSTaggedValue RuntimeMod2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                                const JSHandle<JSTaggedValue> &right);
+    static inline JSTaggedValue RuntimeAshr2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                                const JSHandle<JSTaggedValue> &right);
+    static inline JSTaggedValue RuntimeAnd2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                               const JSHandle<JSTaggedValue> &right);
+    static inline JSTaggedValue RuntimeOr2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                              const JSHandle<JSTaggedValue> &right);
+    static inline JSTaggedValue RuntimeXor2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+                                               const JSHandle<JSTaggedValue> &right);
+    static inline JSTaggedValue RuntimeStOwnByNameWithNameSet(JSThread *thread,
+                                                              const JSHandle<JSTaggedValue> &obj,
+                                                              const JSHandle<JSTaggedValue> &prop,
+                                                              const JSHandle<JSTaggedValue> &value);
+    static inline JSTaggedValue RuntimeStObjByName(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                                   const JSHandle<JSTaggedValue> &prop,
+                                                   const JSHandle<JSTaggedValue> &value);
+    static inline JSTaggedValue RuntimeToJSTaggedValueWithInt32(JSThread *thread,
+                                                                const JSHandle<JSTaggedValue> &value);
+    static inline JSTaggedValue RuntimeToJSTaggedValueWithUint32(JSThread *thread,
+                                                                 const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeCreateEmptyObject(JSThread *thread, ObjectFactory *factory,
                                                          JSHandle<GlobalEnv> globalEnv);
     static inline JSTaggedValue RuntimeCreateEmptyArray(JSThread *thread, ObjectFactory *factory,
@@ -475,7 +501,7 @@ private:
                                                  const JSHandle<JSTaggedValue> &newTarget, uint16_t firstVRegIdx,
                                                  uint16_t length);
     static inline JSTaggedValue RuntimeThrowTypeError(JSThread *thread, const char *message);
-    static inline JSTaggedValue RuntimeGetCallSpreadArgs(JSThread *thread, JSTaggedValue array);
+    static inline JSTaggedValue RuntimeGetCallSpreadArgs(JSThread *thread, const JSHandle<JSTaggedValue> &array);
     static inline JSTaggedValue RuntimeThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);
     static inline JSTaggedValue RuntimeThrowSyntaxError(JSThread *thread, const char *message);
     static inline JSTaggedValue RuntimeLdBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &numberBigInt);
@@ -500,6 +526,8 @@ private:
     static inline JSTaggedValue RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func);
     static inline JSTaggedType *GetActualArgv(JSThread *thread);
     static inline OptimizedJSFunctionFrame *GetOptimizedJSFunctionFrame(JSThread *thread);
+
+    friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript
 #endif

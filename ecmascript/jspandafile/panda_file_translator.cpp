@@ -27,9 +27,8 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/ts_types/ts_type_table.h"
-#include "ecmascript/ts_types/ts_loader.h"
-
 #include "libpandabase/utils/utf.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 #include "libpandafile/class_data_accessor-inl.h"

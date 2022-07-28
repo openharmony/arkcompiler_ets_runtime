@@ -40,7 +40,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
 #if defined(__clang__)
@@ -1064,8 +1064,8 @@ DEF_RUNTIME_STUBS(TryLdGlobalByName)
     JSHandle<JSTaggedValue> prop = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
-    JSTaggedValue globalObj = globalEnv->GetGlobalObject();
-    return RuntimeTryLdGlobalByName(thread, globalObj, prop).GetRawData();
+    JSHandle<JSTaggedValue> globalObj(thread, globalEnv->GetGlobalObject());
+    return RuntimeTryLdGlobalByName(thread, globalObj, prop).GetRawData(); // After checking not on global obj.
 }
 
 DEF_RUNTIME_STUBS(LoadMiss)
@@ -1111,9 +1111,9 @@ DEF_RUNTIME_STUBS(ThrowReferenceError)
 DEF_RUNTIME_STUBS(LdGlobalVar)
 {
     RUNTIME_STUBS_HEADER(LdGlobalVar);
-    JSTaggedValue global = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> global = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> prop = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeLdGlobalVar(thread, global, prop).GetRawData();
+    return RuntimeLdGlobalVarFromProto(thread, global, prop).GetRawData(); // After checked global itself.
 }
 
 DEF_RUNTIME_STUBS(StGlobalVar)
@@ -1232,8 +1232,8 @@ DEF_RUNTIME_STUBS(LoadValueFromConstantStringTable)
 {
     RUNTIME_STUBS_HEADER(LoadValueFromConstantStringTable);
     JSTaggedValue id = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    auto tsLoader = thread->GetEcmaVM()->GetTSLoader();
-    return tsLoader->GetStringById(id.GetInt()).GetTaggedValue().GetRawData();
+    auto tsManager = thread->GetEcmaVM()->GetTSManager();
+    return tsManager->GetStringById(id.GetInt()).GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(JumpToCInterpreter)
@@ -1667,6 +1667,15 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
     return JSTypedArray::FastSetPropertyByIndex(thread, obj, idx.GetInt(), value, JSType(jsType.GetInt())).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DebugAOTPrint)
+{
+    RUNTIME_STUBS_HEADER(DebugAOTPrint);
+    JSTaggedValue fmtMessageId = GetArg(argv, argc, 0);
+    std::string result = MessageString::GetMessageString(fmtMessageId.GetInt());
+    std::cerr << "aot " << result << std::endl;
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(OptNewObjWithIHClass)
 {
     RUNTIME_STUBS_HEADER(OptNewObjWithIHClass);
@@ -1704,6 +1713,15 @@ DEF_RUNTIME_STUBS(OptStLexVarDyn)
     return JSTaggedValue::VALUE_HOLE;
 }
 
+DEF_RUNTIME_STUBS(JSObjectGetMethod)
+{
+    RUNTIME_STUBS_HEADER(JSObjectGetMethod);
+    JSHandle<JSTaggedValue> obj(thread, GetArg(argv, argc, 0));
+    JSHandle<JSTaggedValue> key(thread, GetArg(argv, argc, 1));
+    JSHandle<JSTaggedValue> result = JSObject::GetMethod(thread, obj, key);
+    return result->GetRawData();
+}
+
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
@@ -1714,15 +1732,6 @@ JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue
     }
     JSHandle<JSArray> arrHandle = JSArray::CreateArrayFromList(thread, taggedArray);
     return arrHandle.GetTaggedValue().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(JSObjectGetMethod)
-{
-    RUNTIME_STUBS_HEADER(JSObjectGetMethod);
-    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    JSHandle<JSTaggedValue> result = JSObject::GetMethod(thread, obj, value);
-    return result->GetRawData();
 }
 
 int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hClass,

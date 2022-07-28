@@ -270,6 +270,7 @@ private:
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
     int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
+    void DebugPrintBC(GateRef gate, GateRef glue, GateRef index);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

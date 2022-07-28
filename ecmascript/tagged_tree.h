@@ -22,8 +22,6 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/tagged_array.h"
 
-#include "libpandabase/utils/bit_utils.h"
-
 namespace panda::ecmascript {
 enum TreeColor : uint8_t { BLACK = 0, RED };
 /**

@@ -30,8 +30,6 @@
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/tests/test_helper.h"
 
-#include "utils/bit_utils.h"
-
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 

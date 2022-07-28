@@ -113,7 +113,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_001)
 
     // If unregisterToken is undefined, use vector to store
     JSHandle<CellRecord> cellRecord = factory->NewCellRecord();
-    cellRecord->SetToWeakRefTarget(target.GetTaggedValue());
+    cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
     cellRecord->SetHeldValue(thread, heldValue);
     JSHandle<JSTaggedValue> cell(cellRecord);
     JSHandle<CellRecordVector> expectNoUnregister(thread, finaRegObj->GetNoUnregister());
@@ -147,7 +147,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_002)
 
     // If unregisterToken is not undefined, use hash map to store to facilitate subsequent delete operations
     JSHandle<CellRecord> cellRecord = factory->NewCellRecord();
-    cellRecord->SetToWeakRefTarget(target.GetTaggedValue());
+    cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
     cellRecord->SetHeldValue(thread, heldValue);
     JSHandle<JSTaggedValue> cell(cellRecord);
     JSHandle<CellRecordVector> array = JSHandle<CellRecordVector>(CellRecordVector::Create(thread));
@@ -451,7 +451,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, AddFinRegLists)
         JSHandle<JSFinalizationRegistry> finaRegObj(thread, constructor.GetTaggedValue());
 
         JSHandle<CellRecord> cellRecord = factory->NewCellRecord();
-        cellRecord->SetToWeakRefTarget(target.GetTaggedValue());
+        cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
         cellRecord->SetHeldValue(thread, heldValue);
         JSHandle<JSTaggedValue> cell(cellRecord);
         JSHandle<CellRecordVector> noUnregister(thread, finaRegObj->GetNoUnregister());

@@ -202,7 +202,7 @@ public:
 
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename);
-    void GenerateSnapshotFile();
+    void SaveSnapshotFile();
 private:
     AOTModulePackInfo aotInfo_;
     std::vector<uint32_t> aotfileHashs_ {};

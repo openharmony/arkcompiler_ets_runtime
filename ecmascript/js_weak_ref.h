@@ -42,11 +42,11 @@ public:
         return target.GetTaggedValue();
     }
 
-    void SetToWeak(JSTaggedValue value)
+    void SetToWeak(JSThread *thread, JSTaggedValue value)
     {
         JSTaggedValue weakObj = JSTaggedValue(value.CreateAndGetWeakRef());
         ASSERT(weakObj.IsWeak());
-        Barriers::SetDynPrimitive<JSTaggedType>(this, WEAK_OBJECT_OFFSET, weakObj.GetRawData());
+        SetWeakObject(thread, weakObj);
     }
 
     JSTaggedValue GetFromWeak() const

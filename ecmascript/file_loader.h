@@ -326,7 +326,7 @@ public:
     bool hasLoaded(const JSPandaFile *jsPandaFile);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);
-    void TryLoadSnapshotFile();
+    void LoadSnapshotFile();
     kungfu::LLVMStackMapParser* GetStackMapParser() const;
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
