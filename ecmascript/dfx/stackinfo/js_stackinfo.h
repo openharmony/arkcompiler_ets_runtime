@@ -19,9 +19,16 @@
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {
+struct JsFrameInfo {
+    std::string functionname;
+    std::string filename;
+    std::string lines;
+    std::string nativepointer;
+};
 class JsStackInfo {
 public:
     static std::string BuildJsStackTrace(JSThread *thread, bool needNative);
+    static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
