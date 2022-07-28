@@ -15,10 +15,10 @@
 <configuration ver="2.0">
     <target name="DebuggerEntryTest">
         <preparer>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/Sample.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/exception.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/ArrowFunc.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/AsyncFunc.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/ark/js_runtime/ecmascript/tooling/test/Sample.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/ark/js_runtime/ecmascript/tooling/test/exception.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/ark/js_runtime/ecmascript/tooling/test/ArrowFunc.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/ark/js_runtime/ecmascript/tooling/test/AsyncFunc.abc -> /data/test" src="out"/>
             <option name="push" value="test/test/libjsdebugtest.so -> /data/test" src="out"/>
             <option name="push" value="test/test/libdebugger_entry.so -> /data/test" src="out"/>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
