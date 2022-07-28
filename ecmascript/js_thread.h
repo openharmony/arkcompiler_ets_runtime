@@ -382,7 +382,7 @@ public:
         return glueData_.bcStubEntries_.GetAddr();
     }
 
-    void CheckSwitchDebuggerBCStub();
+    void PUBLIC_API CheckSwitchDebuggerBCStub();
 
     ThreadId GetThreadId() const
     {
