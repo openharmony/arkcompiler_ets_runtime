@@ -46,6 +46,15 @@ public:
     {
         return name_.c_str();
     }
+    CString GetHeaderOfName() const
+    {
+        CString::size_type index = name_.find_first_of("::");
+        if (index == CString::npos) {
+            return CString("");
+        }
+        CString header = name_.substr(0, index);
+        return header;
+    }
     uint64_t TotalCount() const
     {
         return totalCount_;
