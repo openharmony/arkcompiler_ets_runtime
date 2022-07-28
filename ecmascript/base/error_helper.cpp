@@ -17,6 +17,7 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/error_type.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -165,6 +166,15 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         ASSERT_PRINT(status == true, "return result exception!");
     }
 
+    JSHandle<JSTaggedValue> errorFunc = GetErrorJSFunction(thread);
+    if (!errorFunc->IsUndefined()) {
+        JSHandle<JSTaggedValue> errorFunckey = globalConst->GetHandledErrorFuncString();
+        PropertyDescriptor errorFuncDesc(thread, errorFunc, true, false, true);
+        [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread,
+                                                                   nativeInstanceObj, errorFunckey, errorFuncDesc);
+        ASSERT_PRINT(status == true, "return result exception!");
+    }
+
     JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread);
     JSHandle<JSTaggedValue> stackkey = globalConst->GetHandledStackString();
     PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStack), true, false, true);
@@ -183,91 +193,30 @@ std::string ErrorHelper::DecodeFunctionName(const std::string &name)
     return name;
 }
 
-JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread)
+JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
 {
-    std::string data = BuildJsStackTrace(thread, false);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    LOG_ECMA(DEBUG) << data;
-    return factory->NewFromStdString(data);
-}
-
-std::string ErrorHelper::BuildJsStackTrace(JSThread *thread, bool needNative)
-{
-    std::string data;
-    std::string fristLineSrcCode;
-    bool isFirstLine = true;
     FrameHandler frameHandler(thread);
     for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
         if (!frameHandler.IsInterpretedFrame()) {
             continue;
         }
-        auto method = frameHandler.CheckAndGetMethod();
-        if (method == nullptr) {
-            continue;
-        }
-        if (!method->IsNativeWithCallField()) {
-            data.append("    at ");
-            data += DecodeFunctionName(method->ParseFunctionName().c_str());
-            data.append(" (");
-            // source file
-            tooling::JSPtExtractor *debugExtractor =
-                JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
-            const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
-            if (sourceFile.empty()) {
-                data.push_back('?');
-            } else {
-                data += sourceFile;
+
+        auto function = frameHandler.GetFunction();
+        if (function.IsJSFunctionBase() || function.IsJSProxy()) {
+            JSMethod *method = ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
+            if (!method->IsNativeWithCallField()) {
+                return JSHandle<JSTaggedValue>(thread, function);
             }
-            data.push_back(':');
-            // line number and column number
-            int lineNumber = 0;
-            auto callbackLineFunc = [&data, &lineNumber](int32_t line) -> bool {
-                lineNumber = line + 1;
-                data += std::to_string(lineNumber);
-                data.push_back(':');
-                return true;
-            };
-            auto callbackColumnFunc = [&data](int32_t column) -> bool {
-                data += std::to_string(column + 1);
-                return true;
-            };
-            panda_file::File::EntityId methodId = method->GetMethodId();
-            uint32_t offset = frameHandler.GetBytecodeOffset();
-            if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
-                !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-                data.push_back('?');
-            }
-            data.push_back(')');
-            data.push_back('\n');
-            if (isFirstLine) {
-                const std::string &sourceCode = debugExtractor->GetSourceCode(
-                    panda_file::File::EntityId(method->GetJSPandaFile()->GetMainMethodIndex()));
-                fristLineSrcCode = StringHelper::GetSpecifiedLine(sourceCode, lineNumber);
-                isFirstLine = false;
-            }
-        } else if (needNative) {
-            data.append("    at native method");
-            data.append(" (");
-            auto addr = method->GetNativePointer();
-            std::stringstream strm;
-            strm << addr;
-            data.append(strm.str());
-            data.push_back(')');
-            data.push_back('\n');
         }
     }
-    if (!fristLineSrcCode.empty()) {
-        uint32_t codeLen = fristLineSrcCode.length();
-        if (fristLineSrcCode[codeLen - 1] == '\r') {
-            fristLineSrcCode = fristLineSrcCode.substr(0, codeLen - 1);
-        }
-        if (fristLineSrcCode != "ANDA") {
-            fristLineSrcCode = "SourceCode (" + fristLineSrcCode;
-            fristLineSrcCode.push_back(')');
-            fristLineSrcCode.push_back('\n');
-            data = fristLineSrcCode + data;
-        }
-    }
-    return data;
+    return thread->GlobalConstants()->GetHandledUndefined();
+}
+
+JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread)
+{
+    std::string data = JsStackInfo::BuildJsStackTrace(thread, false);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    LOG_ECMA(DEBUG) << data;
+    return factory->NewFromStdString(data);
 }
 }  // namespace panda::ecmascript::base
