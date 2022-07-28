@@ -32,7 +32,7 @@ public:
     bool CollectInfoOfPandaFile(const std::string &filename, std::string_view entryPoint,
                                 BytecodeTranslationInfo *translateInfo);
     bool Compile(const std::string &fileName, AOTFileGenerator &generator);
-    void GenerateSnapshotFile();
+    void SaveSnapshotFile();
 
 private:
     EcmaVM* vm_ {nullptr};

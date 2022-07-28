@@ -101,7 +101,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
     DestoryModule();
 }
 
-void AOTFileGenerator::GenerateSnapshotFile()
+void AOTFileGenerator::SaveSnapshotFile()
 {
     TSManager *tsManager = vm_->GetTSManager();
     Snapshot snapshot(vm_);

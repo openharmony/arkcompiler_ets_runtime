@@ -99,7 +99,7 @@ public:
 
     bool IsInitialized() const
     {
-        return vmInitialized_;
+        return initialized_;
     }
 
     bool IsGlobalConstInitialized() const
@@ -113,7 +113,6 @@ public:
     }
 
     bool Initialize();
-    bool InitializeFinish();
 
     GCStats *GetEcmaGCStats() const
     {
@@ -329,7 +328,6 @@ public:
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile);
 
-    void SaveAOTFuncEntry(uint32_t hash, uint32_t methodId, uint64_t funcEntry);
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {
         exceptionBCList_.emplace_back(std::pair<std::string, int32_t>(methodName, bcOffset));
@@ -388,7 +386,7 @@ private:
     // VM startup states.
     JSRuntimeOptions options_;
     bool icEnabled_ {true};
-    bool vmInitialized_ {false};
+    bool initialized_ {false};
     bool globalConstInitialized_ {false};
     GCStats *gcStats_ {nullptr};
     bool isUncaughtExceptionRegistered_ {false};
