@@ -604,8 +604,7 @@ source_set("libark_jsruntime_set") {
   }
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:libarkfile_static",
     sdk_libc_secshared_dep,
   ]
 
@@ -643,8 +642,7 @@ source_set("libark_js_intl_set") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:libarkfile_static",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,
@@ -658,8 +656,7 @@ source_set("libark_jsruntime_test_set") {
   sources += ecma_debugger_source
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:libarkfile_static",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,

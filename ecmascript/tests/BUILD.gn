@@ -67,7 +67,6 @@ host_unittest_action("EcmaVm_001_Test") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
@@ -135,7 +134,6 @@ host_unittest_action("EcmaVm_002_Test") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",

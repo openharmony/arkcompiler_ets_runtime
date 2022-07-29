@@ -34,7 +34,6 @@ host_unittest_action("BuiltinsInternational_001_Test") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
@@ -59,7 +58,6 @@ host_unittest_action("BuiltinsInternational_002_Test") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
@@ -103,7 +101,6 @@ host_unittest_action("BuiltinsNaturalTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]

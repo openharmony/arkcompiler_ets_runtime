@@ -53,11 +53,7 @@ source_set("libark_ecma_debugger_set") {
 
   public_configs = [ ":ark_ecma_debugger_config" ]
 
-  deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
-    "//third_party/cJSON:cjson_static",
-  ]
+  deps = [ "//third_party/cJSON:cjson_static" ]
 
   if (is_ohos && is_standard_system) {
     if (enable_hilog) {
@@ -107,11 +103,7 @@ source_set("libark_ecma_debugger_test_set") {
     }
   }
 
-  deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
-    "//third_party/cJSON:cjson_static",
-  ]
+  deps = [ "//third_party/cJSON:cjson_static" ]
 }
 
 ohos_shared_library("libark_ecma_debugger_test") {

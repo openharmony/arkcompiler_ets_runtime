@@ -27,10 +27,7 @@ source_set("ark_js_vm_set") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
-  deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$js_root:libark_jsruntime",
-  ]
+  deps = [ "$js_root:libark_jsruntime" ]
 }
 
 ohos_executable("ark_js_vm") {
