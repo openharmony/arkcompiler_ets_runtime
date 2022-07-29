@@ -64,7 +64,8 @@ public:
     using TailCallBit = VariadicArgsBit::NextField<bool, 1>;
     using GCLeafFunctionBit = TailCallBit::NextField<bool, 1>;
 
-    explicit CallSignature(std::string name, int flags, size_t paramCounter, ArgumentsOrder order, VariableType returnType)
+    explicit CallSignature(std::string name, int flags, size_t paramCounter, ArgumentsOrder order,
+                           VariableType returnType)
         : name_(name), paramCounter_(paramCounter), order_(order), returnType_(returnType)
     {
         SetTargetKind(TargetKind::COMMON_STUB);
