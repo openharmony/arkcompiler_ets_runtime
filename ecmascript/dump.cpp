@@ -62,6 +62,7 @@
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_function.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
@@ -249,6 +250,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "PromiseRecord";
         case JSType::RESOLVING_FUNCTIONS_RECORD:
             return "ResolvingFunctionsRecord";
+        case JSType::ASYNC_GENERATOR_REQUEST:
+            return "AsyncGeneratorRequest";
         case JSType::JS_PROMISE:
             return "Promise";
         case JSType::JS_PROMISE_REACTIONS_FUNCTION:
@@ -265,6 +268,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "PromiseFinallyFunction";
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             return "PromiseValueThunkOrThrowerFunction";
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            return "AsyncGeneratorResumeNextReturnProcessorRstFtn";
         case JSType::MICRO_JOB_QUEUE:
             return "MicroJobQueue";
         case JSType::PENDING_JOB:
@@ -311,6 +316,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "JSListFormat";
         case JSType::JS_GENERATOR_OBJECT:
             return "JSGeneratorObject";
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            return "JSAsyncGeneratorObject";
         case JSType::JS_GENERATOR_CONTEXT:
             return "JSGeneratorContext";
         case JSType::PROTO_CHANGE_MARKER:
@@ -655,6 +662,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSPromiseExecutorFunction::Cast(obj)->Dump(os);
             break;
+        case JSType::ASYNC_GENERATOR_REQUEST:
+            AsyncGeneratorRequest::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSPromiseAllResolveElementFunction::Cast(obj)->Dump(os);
             break;
@@ -690,6 +700,12 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_GENERATOR_FUNCTION:
             JSGeneratorFunction::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            JSAsyncGeneratorFunction::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            JSAsyncGeneratorResNextRetProRstFtn::Cast(obj)->Dump(os);
             break;
         case JSType::JS_INTL_BOUND_FUNCTION:
             JSIntlBoundFunction::Cast(obj)->Dump(os);
@@ -755,6 +771,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_GENERATOR_OBJECT:
             JSGeneratorObject::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            JSAsyncGeneratorObject::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ASYNC_FUNC_OBJECT:
             JSAsyncFuncObject::Cast(obj)->Dump(os);
@@ -2346,6 +2365,14 @@ void ResolvingFunctionsRecord::Dump(std::ostream &os) const
     GetRejectFunction().Dump(os);
 }
 
+void AsyncGeneratorRequest::Dump(std::ostream &os) const
+{
+    os << " - completion: ";
+    GetCompletion().Dump(os);
+    os << " - capability: ";
+    GetCapability().Dump(os);
+}
+
 void JSPromise::Dump(std::ostream &os) const
 {
     os << " - promise-state: " << static_cast<int>(GetPromiseState());
@@ -2436,6 +2463,13 @@ void JSPromiseValueThunkOrThrowerFunction::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void JSAsyncGeneratorResNextRetProRstFtn::Dump(std::ostream &os) const
+{
+    os << " - AsyncGeneratorObject";
+    GetAsyncGeneratorObject().Dump(os);
+    JSObject::Dump(os);
+}
+
 void MicroJobQueue::Dump(std::ostream &os) const
 {
     os << " - promise-job-queue: ";
@@ -2493,6 +2527,11 @@ void JSAsyncAwaitStatusFunction::Dump(std::ostream &os) const
 }
 
 void JSGeneratorFunction::Dump(std::ostream &os) const
+{
+    JSFunction::Dump(os);
+}
+
+void JSAsyncGeneratorFunction::Dump(std::ostream &os) const
 {
     JSFunction::Dump(os);
 }
@@ -2752,6 +2791,27 @@ void JSGeneratorObject::Dump(std::ostream &os) const
     GetResumeResult().Dump(os);
     os << "\n";
     os << " - GeneratorState: " << static_cast<uint8_t>(GetGeneratorState());
+    os << "\n";
+    os << " - ResumeMode: " << static_cast<uint8_t>(GetResumeMode());
+    os << "\n";
+    JSObject::Dump(os);
+}
+
+void JSAsyncGeneratorObject::Dump(std::ostream &os) const
+{
+    os << " - GeneratorContext: ";
+    GetGeneratorContext().Dump(os);
+    os << "\n";
+    os << " - AsyncGeneratorQueue: ";
+    GetAsyncGeneratorQueue().Dump(os);
+    os << "\n";
+    os << " - GeneratorBrand: ";
+    GetGeneratorBrand().Dump(os);
+    os << "\n";
+    os << " - ResumeResult: ";
+    GetResumeResult().Dump(os);
+    os << "\n";
+    os << " - AsyncGeneratorState: " << static_cast<uint8_t>(GetAsyncGeneratorState());
     os << "\n";
     os << " - ResumeMode: " << static_cast<uint8_t>(GetResumeMode());
     os << "\n";
@@ -3366,6 +3426,9 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSPromiseExecutorFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::ASYNC_GENERATOR_REQUEST:
+            AsyncGeneratorRequest::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSPromiseAllResolveElementFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -3380,6 +3443,9 @@ static void DumpObject(TaggedObject *obj,
             return;
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             JSPromiseValueThunkOrThrowerFunction::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            JSAsyncGeneratorResNextRetProRstFtn::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::MICRO_JOB_QUEUE:
             MicroJobQueue::Cast(obj)->DumpForSnapshot(vec);
@@ -3414,6 +3480,9 @@ static void DumpObject(TaggedObject *obj,
             return;
         case JSType::JS_GENERATOR_FUNCTION:
             JSGeneratorFunction::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            JSAsyncGeneratorFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_INTL_BOUND_FUNCTION:
             JSIntlBoundFunction::Cast(obj)->DumpForSnapshot(vec);
@@ -3459,6 +3528,9 @@ static void DumpObject(TaggedObject *obj,
             return;
         case JSType::JS_GENERATOR_OBJECT:
             JSGeneratorObject::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            JSAsyncGeneratorObject::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_ASYNC_FUNC_OBJECT:
             JSAsyncFuncObject::Cast(obj)->DumpForSnapshot(vec);
@@ -4353,6 +4425,12 @@ void ResolvingFunctionsRecord::DumpForSnapshot(std::vector<std::pair<CString, JS
     vec.push_back(std::make_pair(CString("reject-function"), GetRejectFunction()));
 }
 
+void AsyncGeneratorRequest::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("completion"), GetCompletion()));
+    vec.push_back(std::make_pair(CString("capability"), GetCapability()));
+}
+
 void JSPromise::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("promise-state"), JSTaggedValue(static_cast<int>(GetPromiseState()))));
@@ -4367,6 +4445,13 @@ void JSPromiseReactionsFunction::DumpForSnapshot(std::vector<std::pair<CString, 
 {
     vec.push_back(std::make_pair(CString("promise"), GetPromise()));
     vec.push_back(std::make_pair(CString("already-resolved"), GetAlreadyResolved()));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSAsyncGeneratorResNextRetProRstFtn::DumpForSnapshot(std::vector<std::pair<CString,
+                                                          JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("async-generator-object"), GetAsyncGeneratorObject()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4453,6 +4538,11 @@ void JSAsyncAwaitStatusFunction::DumpForSnapshot(std::vector<std::pair<CString, 
 }
 
 void JSGeneratorFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    JSFunction::DumpForSnapshot(vec);
+}
+
+void JSAsyncGeneratorFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     JSFunction::DumpForSnapshot(vec);
 }
@@ -4606,6 +4696,18 @@ void JSGeneratorObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedV
     vec.push_back(std::make_pair(CString("GeneratorContext"), GetGeneratorContext()));
     vec.push_back(std::make_pair(CString("ResumeResult"), GetResumeResult()));
     vec.push_back(std::make_pair(CString("GeneratorState"), JSTaggedValue(static_cast<int>(GetGeneratorState()))));
+    vec.push_back(std::make_pair(CString("ResumeMode"), JSTaggedValue(static_cast<int>(GetResumeMode()))));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSAsyncGeneratorObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("GeneratorContext"), GetGeneratorContext()));
+    vec.push_back(std::make_pair(CString("AsyncGeneratorQueue"), GetAsyncGeneratorQueue()));
+    vec.push_back(std::make_pair(CString("GeneratorBrand"), GetGeneratorBrand()));
+    vec.push_back(std::make_pair(CString("ResumeResult"), GetResumeResult()));
+    vec.push_back(std::make_pair(CString("AsyncGeneratorState"),
+                                 JSTaggedValue(static_cast<int>(GetAsyncGeneratorState()))));
     vec.push_back(std::make_pair(CString("ResumeMode"), JSTaggedValue(static_cast<int>(GetResumeMode()))));
     JSObject::DumpForSnapshot(vec);
 }

@@ -565,6 +565,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
             LowerDefineGeneratorFunc(gate, glue, jsFunc);
             break;
+        case DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
+            LowerDefineAsyncGeneratorFunc(gate, glue, jsFunc);
+            break;
         case DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
             LowerDefineAsyncFunc(gate, glue, jsFunc);
             break;
@@ -633,6 +636,12 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case CREATEGENERATOROBJ_PREF_V8:
             LowerCreateGeneratorObj(gate, glue);
+            break;
+        case CREATEASYNCGENERATOROBJ_PREF_V8:
+            LowerCreateAsyncGeneratorObj(gate, glue);
+            break;
+        case ASYNCGENERATORRESOLVE_PREF_V8_V8_V8:
+            LowerAsyncGeneratorResolve(gate, glue);
             break;
         case STARRAYSPREAD_PREF_V8_V8:
             LowerStArraySpread(gate, glue);
@@ -2042,6 +2051,54 @@ void SlowPathLowering::LowerDefineGeneratorFunc(GateRef gate, GateRef glue, Gate
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
+void SlowPathLowering::LowerDefineAsyncGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc)
+{
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef methodId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef firstMethod = GetObjectFromConstPool(jsFunc, methodId);
+    DEFVAlUE(method, (&builder_), VariableType::JS_POINTER(), firstMethod);
+    GateRef length = acc_.GetValueIn(gate, 1);
+    // 2: number of value inputs
+    GateRef lexEnv = acc_.GetValueIn(gate, 2);
+    GateRef result;
+    Label isResolved(&builder_);
+    Label notResolved(&builder_);
+    Label defaultLabel(&builder_);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    builder_.Branch(builder_.FunctionIsResolved(*method), &isResolved, &notResolved);
+    builder_.Bind(&isResolved);
+    {
+        method = LowerCallRuntime(glue, RTSTUB_ID(DefineAsyncGeneratorFunc), { *method });
+        Label notException(&builder_);
+        builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
+            &exceptionExit, &notException);
+        builder_.Bind(&notException);
+        {
+            builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
+            builder_.Jump(&defaultLabel);
+        }
+    }
+    builder_.Bind(&notResolved);
+    {
+        builder_.SetResolvedToFunction(glue, *method, builder_.Boolean(true));
+        builder_.Jump(&defaultLabel);
+    }
+    builder_.Bind(&defaultLabel);
+    {
+        GateRef hclass = builder_.LoadHClass(*method);
+        builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
+            builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+        builder_.SetLexicalEnvToFunction(glue, *method, lexEnv);
+        builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
+        result = *method;
+        builder_.Jump(&successExit);
+    }
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
+}
+
 void SlowPathLowering::LowerDefineAsyncFunc(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineAsyncFuncPrefId16Imm16V8)));
@@ -2715,6 +2772,29 @@ void SlowPathLowering::LowerCreateGeneratorObj(GateRef gate, GateRef glue)
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0)});
+    ReplaceHirToCall(gate, newGate);
+}
+
+void SlowPathLowering::LowerCreateAsyncGeneratorObj(GateRef gate, GateRef glue)
+{
+    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateAsyncGeneratorObjPrefV8)));
+    int id = RTSTUB_ID(CreateAsyncGeneratorObj);
+    // 1: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0)});
+    ReplaceHirToCall(gate, newGate);
+}
+
+void SlowPathLowering::LowerAsyncGeneratorResolve(GateRef gate, GateRef glue)
+{
+    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncGeneratorResolvePrefV8V8V8)));
+    int id = RTSTUB_ID(AsyncGeneratorResolve);
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef asyncGen = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    GateRef flag = acc_.GetValueIn(gate, 2);
+    GateRef newGate = LowerCallRuntime(glue, id, {asyncGen, value, flag});
     ReplaceHirToCall(gate, newGate);
 }
 

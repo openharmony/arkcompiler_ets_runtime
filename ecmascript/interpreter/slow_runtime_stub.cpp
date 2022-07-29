@@ -28,6 +28,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_async_function.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
@@ -422,14 +423,76 @@ JSTaggedValue SlowRuntimeStub::CreateGeneratorObj(JSThread *thread, JSTaggedValu
     return RuntimeStubs::RuntimeCreateGeneratorObj(thread, generatorFunction);
 }
 
+JSTaggedValue SlowRuntimeStub::CreateAsyncGeneratorObj(JSThread *thread, JSTaggedValue genFunc)
+{
+    INTERPRETER_TRACE(thread, CreateAsyncGeneratorObj);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> asyncGeneratorFunction(thread, genFunc);
+    JSHandle<JSAsyncGeneratorObject> obj = factory->NewJSAsyncGeneratorObject(asyncGeneratorFunction);
+    JSHandle<GeneratorContext> context = factory->NewGeneratorContext();
+    context->SetGeneratorObject(thread, obj.GetTaggedValue());
+    // change state to SUSPENDED_START
+    obj->SetAsyncGeneratorState(JSAsyncGeneratorState::SUSPENDED_START);
+    obj->SetGeneratorContext(thread, context);
+    return obj.GetTaggedValue();
+}
+
 JSTaggedValue SlowRuntimeStub::SuspendGenerator(JSThread *thread, JSTaggedValue genObj, JSTaggedValue value)
 {
     INTERPRETER_TRACE(thread, SuspendGenerator);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    JSHandle<JSTaggedValue> generatorObjectHandle(thread, genObj);
+    JSHandle<JSTaggedValue> genObjHandle(thread, genObj);
+    if (genObjHandle->IsGeneratorObject()) {
+        JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, genObjHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSGeneratorObject> generatorObjectHandle = JSHandle<JSGeneratorObject>::Cast(obj);
+        JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
+        return SuspendGeneratorHelper(thread, generatorObjectHandle, genContextHandle, value);
+    }
+    if (genObjHandle->IsAsyncGeneratorObject()) {
+        JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, genObjHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSAsyncGeneratorObject> generatorObjectHandle = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
+        JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
+        return SuspendAsyncGeneratorHelper(thread, generatorObjectHandle, genContextHandle, value);
+    }
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue SlowRuntimeStub::SuspendGeneratorHelper(JSThread *thread,
+                                                      JSHandle<JSGeneratorObject> generatorObjectHandle,
+                                                      JSHandle<GeneratorContext> genContextHandle, JSTaggedValue value)
+{
     JSHandle<JSTaggedValue> valueHandle(thread, value);
-    return RuntimeStubs::RuntimeSuspendGenerator(thread, generatorObjectHandle, valueHandle);
+    // save stack, should copy cur_frame, function execute over will free cur_frame
+    SlowRuntimeHelper::SaveFrameToContext(thread, genContextHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // change state to SuspendedYield
+    if (generatorObjectHandle->IsExecuting()) {
+        generatorObjectHandle->SetGeneratorState(JSGeneratorState::SUSPENDED_YIELD);
+        return valueHandle.GetTaggedValue();
+    }
+    return generatorObjectHandle.GetTaggedValue();
+}
+
+JSTaggedValue SlowRuntimeStub::SuspendAsyncGeneratorHelper(JSThread *thread,
+                                                           JSHandle<JSAsyncGeneratorObject> generatorObjectHandle,
+                                                           JSHandle<GeneratorContext> genContextHandle,
+                                                           JSTaggedValue value)
+{
+    JSHandle<JSTaggedValue> valueHandle(thread, value);
+    // save stack, should copy cur_frame, function execute over will free cur_frame
+    SlowRuntimeHelper::SaveFrameToContext(thread, genContextHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // change state to SuspendedYield
+    if (generatorObjectHandle->IsExecuting()) {
+        generatorObjectHandle->SetAsyncGeneratorState(JSAsyncGeneratorState::SUSPENDED_YIELD);
+        return valueHandle.GetTaggedValue();
+    }
+    return generatorObjectHandle.GetTaggedValue();
 }
 
 JSTaggedValue SlowRuntimeStub::AsyncFunctionAwaitUncaught(JSThread *thread, JSTaggedValue asyncFuncObj,
@@ -437,10 +500,27 @@ JSTaggedValue SlowRuntimeStub::AsyncFunctionAwaitUncaught(JSThread *thread, JSTa
 {
     INTERPRETER_TRACE(thread, AsyncFunctionAwaitUncaught);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
     JSHandle<JSTaggedValue> asyncFuncObjHandle(thread, asyncFuncObj);
     JSHandle<JSTaggedValue> valueHandle(thread, value);
-    return RuntimeStubs::RuntimeAsyncFunctionAwaitUncaught(thread, asyncFuncObjHandle, valueHandle);
+
+    JSAsyncFunction::AsyncFunctionAwait(thread, asyncFuncObjHandle, valueHandle);
+    if (asyncFuncObjHandle->IsAsyncGeneratorObject()) {
+        JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObjHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSAsyncGeneratorObject> generator = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
+        JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue());
+        if (queue->Empty()) {
+            return JSTaggedValue::Undefined();
+        }
+        JSHandle<AsyncGeneratorRequest> next(thread, queue->Front());
+        JSHandle<PromiseCapability> completion(thread, next->GetCapability());
+        JSHandle<JSPromise> promise(thread, completion->GetPromise());
+        return promise.GetTaggedValue();
+    }
+    JSHandle<JSAsyncFuncObject> asyncFunc(asyncFuncObjHandle);
+    JSHandle<JSPromise> promise(thread, asyncFunc->GetPromise());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return promise.GetTaggedValue();
 }
 
 JSTaggedValue SlowRuntimeStub::AsyncFunctionResolveOrReject(JSThread *thread, JSTaggedValue asyncFuncObj,
@@ -1071,5 +1151,40 @@ JSTaggedValue SlowRuntimeStub::LdBigInt(JSThread *thread, JSTaggedValue numberBi
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> bigint(thread, numberBigInt);
     return RuntimeStubs::RuntimeLdBigInt(thread, bigint);
+}
+JSTaggedValue SlowRuntimeStub::AsyncGeneratorResolve(JSThread *thread, JSTaggedValue asyncFuncObj,
+                                                     const JSTaggedValue value, JSTaggedValue flag)
+{
+    INTERPRETER_TRACE(thread, AsyncGeneratorResolve);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSAsyncGeneratorObject> asyncFuncObjHandle(thread, asyncFuncObj);
+    JSHandle<JSTaggedValue> valueHandle(thread, value);
+    ASSERT(flag.IsBoolean());
+    bool done = flag.IsTrue();
+    return JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, asyncFuncObjHandle, valueHandle, done);
+}
+
+JSTaggedValue SlowRuntimeStub::DefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func)
+{
+    INTERPRETER_TRACE(thread, DefineAsyncGeneratorFunc);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    auto method = func->GetCallTarget();
+
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> jsFunc = factory->NewJSAsyncGeneratorFunction(method);
+    ASSERT_NO_ABRUPT_COMPLETION(thread);
+    // 26.3.4.3 prototype
+    // Whenever a GeneratorFunction instance is created another ordinary object is also created and
+    // is the initial value of the generator function's "prototype" property.
+    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+    JSHandle<JSObject> initialAsyncGeneratorFuncPrototype =
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(objFun), objFun);
+    JSObject::SetPrototype(thread, initialAsyncGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
+    ASSERT_NO_ABRUPT_COMPLETION(thread);
+    jsFunc->SetProtoOrDynClass(thread, initialAsyncGeneratorFuncPrototype);
+
+    return jsFunc.GetTaggedValue();
 }
 }  // namespace panda::ecmascript

@@ -538,6 +538,11 @@ inline bool JSTaggedValue::IsJSPromiseAllResolveElementFunction() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSPromiseAllResolveElementFunction();
 }
 
+inline bool JSTaggedValue::IsJSAsyncGeneratorResNextRetProRstFtn() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncGeneratorResNextRetProRstFtn();
+}
+
 inline bool JSTaggedValue::IsCompletionRecord() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCompletionRecord();
@@ -1071,6 +1076,11 @@ inline bool JSTaggedValue::IsGeneratorFunction() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorFunction();
 }
 
+inline bool JSTaggedValue::IsAsyncGeneratorFunction() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsAsyncGeneratorFunction();
+}
+
 inline bool JSTaggedValue::IsGeneratorObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorObject();
@@ -1079,6 +1089,16 @@ inline bool JSTaggedValue::IsGeneratorObject() const
 inline bool JSTaggedValue::IsGeneratorContext() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorContext();
+}
+
+inline bool JSTaggedValue::IsAsyncGeneratorRequest() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsAsyncGeneratorRequest();
+}
+
+inline bool JSTaggedValue::IsAsyncGeneratorObject() const
+{
+    return IsHeapObject() &&  GetTaggedObject()->GetClass()->IsAsyncGeneratorObject();
 }
 
 inline bool JSTaggedValue::IsAsyncFuncObject() const

@@ -90,8 +90,12 @@ class JSThread;
     V(JSTaggedValue, ProxyFunction, PROXY_FUNCTION_INDEX)                                           \
     V(JSTaggedValue, GeneratorFunctionFunction, GENERATOR_FUNCTION_OFFSET)                          \
     V(JSTaggedValue, GeneratorFunctionPrototype, GENERATOR_FUNCTION_PROTOTYPE_OFFSET)               \
+    V(JSTaggedValue, AsyncGeneratorFunctionFunction, ASYNC_GENERATOR_FUNCTION_OFFSET)               \
+    V(JSTaggedValue, AsyncGeneratorFunctionPrototype, ASYNC_GENERATOR_FUNCTION_PROTOTYPE_OFFSET)    \
     V(JSTaggedValue, InitialGenerator, INITIAL_GENERATOR_OFFSET)                                    \
+    V(JSTaggedValue, InitialAsyncGenerator, INITIAL_ASYNC_GENERATOR_OFFSET)                         \
     V(JSTaggedValue, GeneratorPrototype, GENERATOR_PROTOTYPE_OFFSET)                                \
+    V(JSTaggedValue, AsyncGeneratorPrototype, ASYNC_GENERATOR_PROTOTYPE_OFFSET)                     \
     V(JSTaggedValue, ReflectFunction, REFLECT_FUNCTION_INDEX)                                       \
     V(JSTaggedValue, AsyncFunction, ASYNC_FUNCTION_INDEX)                                           \
     V(JSTaggedValue, AsyncFunctionPrototype, ASYNC_FUNCTION_PROTOTYPE_INDEX)                        \
@@ -137,11 +141,14 @@ class JSThread;
     V(JSTaggedValue, PromiseReactionFunctionClass, PROMISE_REACTION_FUNCTION_CLASS)                 \
     V(JSTaggedValue, PromiseExecutorFunctionClass, PROMISE_EXECUTOR_FUNCTION_CLASS)                 \
     V(JSTaggedValue, GeneratorFunctionClass, GENERATOR_FUNCTION_CLASS)                              \
+    V(JSTaggedValue, AsyncGeneratorFunctionClass, ASYNC_GENERATOR_FUNCTION_CLASS)                   \
     V(JSTaggedValue, PromiseAllResolveElementFunctionClass, PROMISE_ALL_RESOLVE_ELEMENT_FUNC_CLASS) \
     V(JSTaggedValue, PromiseAnyRejectElementFunctionClass, PROMISE_ANY_REJECT_ELEMENT_FUNC_CLASS)   \
     V(JSTaggedValue, PromiseAllSettledElementFunctionClass, PROMISE_ALL_SETTLED_ELEMENT_FUNC_CLASS) \
     V(JSTaggedValue, PromiseFinallyFunctionClass, PROMISE_FINALLY_FUNC_CLASS)                       \
     V(JSTaggedValue, PromiseValueThunkOrThrowerFunctionClass, PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION_CLASS) \
+    V(JSTaggedValue, AsyncGeneratorResNextRetProRstFtnClass,                                        \
+      ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN_CLASS)                                   \
     V(JSTaggedValue, ProxyRevocFunctionClass, PROXY_REVOC_FUNCTION_CLASS)                           \
     V(JSTaggedValue, NativeErrorFunctionClass, NATIVE_ERROR_FUNCTION_CLASS)                         \
     V(JSTaggedValue, SpecificTypedArrayFunctionClass, SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \

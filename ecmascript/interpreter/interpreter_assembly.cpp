@@ -2470,6 +2470,37 @@ void InterpreterAssembly::HandleDefineGeneratorFuncPrefId16Imm16V8(
     DISPATCH(BytecodeInstruction::Format::PREF_ID16_IMM16_V8);
 }
 
+void InterpreterAssembly::HandleDefineAsyncGeneratorFuncPrefId16Imm16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int32_t hotnessCounter)
+{
+    uint16_t methodId = READ_INST_16_1();
+    uint16_t length = READ_INST_16_3();
+    uint16_t v0 = READ_INST_8_5();
+    LOG_INST() << "define async gengerator function length: " << length
+               << " v" << v0;
+    JSFunction *result = JSFunction::Cast(
+        ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(methodId).GetTaggedObject());
+    ASSERT(result != nullptr);
+    if (result->GetResolved()) {
+        auto res = SlowRuntimeStub::DefineAsyncGeneratorFunc(thread, result);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
+        result->SetConstantPool(thread, JSTaggedValue(constpool));
+    } else {
+        result->SetResolved(thread);
+    }
+
+    result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    JSTaggedValue env = GET_VREG_VALUE(v0);
+    result->SetLexicalEnv(thread, env);
+
+    JSFunction *currentFunc = JSFunction::Cast((GET_ASM_FRAME(sp)->function).GetTaggedObject());
+    result->SetModule(thread, currentFunc->GetModule());
+    SET_ACC(JSTaggedValue(result))
+    DISPATCH(BytecodeInstruction::Format::PREF_ID16_IMM16_V8);
+}
+
 void InterpreterAssembly::HandleDefineAsyncFuncPrefId16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int32_t hotnessCounter)
@@ -3236,6 +3267,38 @@ void InterpreterAssembly::HandleCreateGeneratorObjPrefV8(
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
+}
+
+void InterpreterAssembly::HandleCreateAsyncGeneratorObjPrefV8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int32_t hotnessCounter)
+{
+    uint16_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::"
+               << " v" << v0;
+    JSTaggedValue genFunc = GET_VREG_VALUE(v0);
+    JSTaggedValue res = SlowRuntimeStub::CreateAsyncGeneratorObj(thread, genFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(BytecodeInstruction::Format::PREF_V8);
+}
+
+void InterpreterAssembly::HandleAsyncGeneratorResolvePrefV8V8V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int32_t hotnessCounter)
+{
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    uint16_t v2 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::LowerAsyncGeneratorResolve"
+               << " v" << v0;
+    JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
+    JSTaggedValue value = GET_VREG_VALUE(v1);
+    JSTaggedValue flag = GET_VREG_VALUE(v2);
+    JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorResolve(thread, asyncGenerator, value, flag);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(BytecodeInstruction::Format::PREF_V8_V8_V8);
 }
 
 void InterpreterAssembly::HandleStArraySpreadPrefV8V8(

@@ -1452,6 +1452,17 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
+        case EcmaOpcode::DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8: {
+            uint16_t methodId = READ_INST_16_1();
+            uint16_t length = READ_INST_16_3();
+            uint16_t v0 = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(MethodId(methodId));
+            info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
         case EcmaOpcode::DEFINEASYNCFUNC_PREF_ID16_IMM16_V8: {
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_16_3();
@@ -1646,6 +1657,24 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.accOut = true;
             info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaOpcode::CREATEASYNCGENERATOROBJ_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaOpcode::ASYNCGENERATORRESOLVE_PREF_V8_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            uint16_t v2 = READ_INST_8_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v1));
+            info.inputs.emplace_back(VirtualRegister(v2));
             break;
         }
         case EcmaOpcode::STARRAYSPREAD_PREF_V8_V8: {

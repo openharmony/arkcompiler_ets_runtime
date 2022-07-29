@@ -155,6 +155,7 @@ public:
     GateRef ObjectAddressToRange(GateRef x);
     GateRef InYoungGeneration(GateRef x);
     GateRef TaggedIsGeneratorObject(GateRef x);
+    GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     GateRef TaggedIsPropertyBox(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
     GateRef TaggedIsPrototypeHandler(GateRef x);

@@ -333,6 +333,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("PromiseReaction");
         case JSType::PROMISE_CAPABILITY:
             return GetString("PromiseCapability");
+        case JSType::ASYNC_GENERATOR_REQUEST:
+            return GetString("AsyncGeneratorRequest");
         case JSType::PROMISE_ITERATOR_RECORD:
             return GetString("PromiseIteratorRecord");
         case JSType::PROMISE_RECORD:
@@ -355,8 +357,12 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("PromiseFinallyFunction");
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             return GetString("PromiseValueThunkOrThrowerFunction");
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            return GetString("AsyncGeneratorResumeNextReturnProcessorRstFtn");
         case JSType::JS_GENERATOR_FUNCTION:
             return GetString("JSGeneratorFunction");
+        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            return GetString("JSAsyncGeneratorFunction");
         case JSType::SYMBOL:
             return GetString("Symbol");
         case JSType::JS_ASYNC_FUNCTION:
@@ -391,6 +397,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("JSListFormat");
         case JSType::JS_GENERATOR_OBJECT:
             return GetString("JSGeneratorObject");
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            return GetString("JSAsyncGeneratorObject");
         case JSType::JS_GENERATOR_CONTEXT:
             return GetString("JSGeneratorContext");
         case JSType::ACCESSOR_DATA:

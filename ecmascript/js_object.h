@@ -532,6 +532,7 @@ public:
     bool IsJSGlobalEnv() const;
     bool IsJSProxy() const;
     bool IsGeneratorObject() const;
+    bool IsAsyncGeneratorObject() const;
     bool IsForinIterator() const;
     bool IsJSSetIterator() const;
     bool IsJSRegExpIterator() const;

@@ -171,7 +171,7 @@ public:
 
     inline static bool HasPrototype(FunctionKind kind)
     {
-        return (kind >= FunctionKind::BASE_CONSTRUCTOR) && (kind <= FunctionKind::GENERATOR_FUNCTION)
+        return (kind >= FunctionKind::BASE_CONSTRUCTOR) && (kind <= FunctionKind::ASYNC_GENERATOR_FUNCTION)
             && (kind != FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
     }
 
@@ -397,6 +397,14 @@ public:
     ACCESSORS(Collator, COLLATOR_OFFSET, SIZE);
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, NUMBER_FORMAT_OFFSET, SIZE)
+    DECL_DUMP()
+};
+
+class JSAsyncGeneratorFunction : public JSFunction {
+public:
+    CAST_CHECK(JSAsyncGeneratorFunction, IsAsyncGeneratorFunction);
+    static constexpr size_t  SIZE = JSFunction::SIZE;
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, SIZE, SIZE)
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

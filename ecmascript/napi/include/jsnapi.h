@@ -470,6 +470,8 @@ public:
     bool IsArgumentsObject();
     bool IsGeneratorFunction();
     bool IsAsyncFunction();
+    bool IsAsyncGeneratorFunction();
+    bool IsAsyncGeneratorObject();
 
     bool IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value);
     Local<StringRef> Typeof(const EcmaVM *vm);

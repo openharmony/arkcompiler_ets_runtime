@@ -457,6 +457,13 @@ DEF_RUNTIME_STUBS(CreateGeneratorObj)
     return RuntimeCreateGeneratorObj(thread, genFunc).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CreateAsyncGeneratorObj)
+{
+    RUNTIME_STUBS_HEADER(CreateAsyncGeneratorObj);
+    JSHandle<JSTaggedValue> genFunc = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeCreateAsyncGeneratorObj(thread, genFunc).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(GetTemplateObject)
 {
     RUNTIME_STUBS_HEADER(GetTemplateObject);
@@ -540,6 +547,15 @@ DEF_RUNTIME_STUBS(AsyncFunctionResolveOrReject)
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     JSTaggedValue is_resolve = GetArg(argv, argc, 2);  // 2: means the second parameter
     return RuntimeAsyncFunctionResolveOrReject(thread, asyncFuncObj, value, is_resolve.IsTrue()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(AsyncGeneratorResolve)
+{
+    RUNTIME_STUBS_HEADER(AsyncGeneratorResolve);
+    JSHandle<JSTaggedValue> asyncGenerator = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the first parameter
+    JSTaggedValue flag = GetArg(argv, argc, 2); // 2: means the second parameter
+    return RuntimeAsyncGeneratorResolve(thread, asyncGenerator, value, flag).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CopyDataProperties)
@@ -1424,6 +1440,13 @@ DEF_RUNTIME_STUBS(DefineGeneratorFunc)
     RUNTIME_STUBS_HEADER(DefineGeneratorFunc);
     JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeDefineGeneratorFunc(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(DefineAsyncGeneratorFunc)
+{
+    RUNTIME_STUBS_HEADER(DefineAsyncGeneratorFunc);
+    JSTaggedType func = GetTArg(argv, argc, 0); // 0: means the zeroth parameter
+    return RuntimeDefineAsyncGeneratorFunc(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineAsyncFunc)

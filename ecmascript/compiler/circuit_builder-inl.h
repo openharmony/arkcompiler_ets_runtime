@@ -156,6 +156,15 @@ GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef x)
     return TruncInt32ToInt1(Int32And(isHeapObj, isGeneratorObj));
 }
 
+GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
+{
+    GateRef isHeapObj = SExtInt1ToInt32(TaggedIsHeapObject(x));
+    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef isAsyncGeneratorObj = SExtInt1ToInt32(Equal(objType,
+        Int32(static_cast<int32_t>(JSType::JS_ASYNC_GENERATOR_OBJECT))));
+    return TruncInt32ToInt1(Int32And(isHeapObj, isAsyncGeneratorObj));
+}
+
 GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef x)
 {
     return TruncInt32ToInt1(Int32And(SExtInt1ToInt32(TaggedIsHeapObject(x)),

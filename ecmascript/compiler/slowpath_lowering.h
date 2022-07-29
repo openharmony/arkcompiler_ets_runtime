@@ -230,6 +230,7 @@ private:
     void LowerStOwnByName(GateRef gate, GateRef glue);
     void LowerDefineFuncDyn(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerDefineAsyncGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineAsyncFunc(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerNewLexicalEnvDyn(GateRef gate, GateRef glue);
     void LowerNewLexicalEnvWithNameDyn(GateRef gate, GateRef glue, GateRef jsFunc);
@@ -269,6 +270,8 @@ private:
     void LowerCopyRestArgs(GateRef gate, GateRef glue, GateRef actualArgc);
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
     int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
+    void LowerCreateAsyncGeneratorObj(GateRef gate, GateRef glue);
+    void LowerAsyncGeneratorResolve(GateRef gate, GateRef glue);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
     void DebugPrintBC(GateRef gate, GateRef glue, GateRef index);
 

@@ -41,6 +41,7 @@
 #include "ecmascript/js_api/js_api_tree_map_iterator.h"
 #include "ecmascript/js_api/js_api_tree_set_iterator.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_arguments.h"
@@ -113,6 +114,9 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, CompletionRecord::SIZE, JSType::COMPLETION_RECORD));
     SetConstant(ConstantIndex::GENERATOR_CONTEST_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, GeneratorContext::SIZE, JSType::JS_GENERATOR_CONTEXT));
+    SetConstant(ConstantIndex::ASYNC_GENERATOR_REQUEST_CLASS_INDEX,
+                factory->NewEcmaReadOnlyDynClass(dynClassClass, AsyncGeneratorRequest::SIZE,
+                                                 JSType::ASYNC_GENERATOR_REQUEST));
     SetConstant(ConstantIndex::CAPABILITY_RECORD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, PromiseCapability::SIZE, JSType::PROMISE_CAPABILITY));
     SetConstant(ConstantIndex::REACTIONS_RECORD_CLASS_INDEX,
