@@ -678,6 +678,7 @@ namespace panda::ecmascript {
     V(HashSet, GetLength)                     \
     V(HashSet, Values)                        \
     V(HashSet, Entries)                       \
+    V(HashSet, ForEach)                       \
     V(TreeMap, Constructor)                   \
     V(TreeMap, HasKey)                        \
     V(TreeMap, HasValue)                      \
