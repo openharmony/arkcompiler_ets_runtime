@@ -384,6 +384,7 @@ ecma_source = [
   "ecmascript/containers/containers_treemap.cpp",
   "ecmascript/containers/containers_treeset.cpp",
   "ecmascript/containers/containers_vector.cpp",
+  "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
   "ecmascript/dfx/vmstat/runtime_stat.cpp",
   "ecmascript/dfx/vm_thread_control.cpp",
@@ -603,8 +604,7 @@ source_set("libark_jsruntime_set") {
   }
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:libarkfile_static",
     sdk_libc_secshared_dep,
   ]
 
@@ -642,8 +642,7 @@ source_set("libark_js_intl_set") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:libarkfile_static",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,
@@ -657,8 +656,7 @@ source_set("libark_jsruntime_test_set") {
   sources += ecma_debugger_source
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:libarkfile_static",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,
@@ -724,14 +722,12 @@ ohos_shared_library("libark_jsruntime") {
   subsystem_name = "ark"
 }
 
-if (!defined(ark_standalone_build)) {
-  ohos_shared_library("libark_jsruntime_test") {
-    deps = [ ":libark_jsruntime_test_set" ]
-    ldflags = [ "-Wl,--lto-O0" ]
-    install_enable = false
-    if (!is_mingw && !is_mac) {
-      output_extension = "so"
-    }
-    subsystem_name = "test"
+ohos_shared_library("libark_jsruntime_test") {
+  deps = [ ":libark_jsruntime_test_set" ]
+  ldflags = [ "-Wl,--lto-O0" ]
+  install_enable = false
+  if (!is_mingw && !is_mac) {
+    output_extension = "so"
   }
+  subsystem_name = "test"
 }

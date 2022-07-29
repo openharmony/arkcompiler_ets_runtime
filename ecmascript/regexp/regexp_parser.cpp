@@ -20,8 +20,8 @@
 #include "ecmascript/regexp/regexp_opcode.h"
 #include "libpandabase/utils/utils.h"
 #include "securec.h"
+#include "unicode/uchar.h"
 #include "unicode/uniset.h"
-#include "third_party/icu/icu4c/source/common/unicode/uchar.h"
 #define _NO_DEBUG_
 
 namespace panda::ecmascript {

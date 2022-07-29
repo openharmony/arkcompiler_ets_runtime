@@ -26,6 +26,12 @@ config("executable_ldconfig") {
     ldflags = [
       "-Wl,-rpath=\$ORIGIN/",
       "-Wl,-rpath-link=",
+      "-fPIE",
+      "-ldl",
+      "-lpthread",
+      "-lrt",
+      "-lc++",
+      "-latomic",
     ]
   }
 }

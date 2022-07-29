@@ -721,6 +721,7 @@ public:
     bool Inherit(const EcmaVM *vm, Local<FunctionRef> parent);
     void SetName(const EcmaVM *vm, Local<StringRef> name);
     Local<StringRef> GetName(const EcmaVM *vm);
+    Local<StringRef> GetSourceCode(const EcmaVM *vm, int lineNumber);
     bool IsNative(const EcmaVM *vm);
 };
 

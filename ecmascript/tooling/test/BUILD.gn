@@ -151,8 +151,6 @@ source_set("debugger_entry_set") {
     ":ark_syntaxException_abc",
     ":ark_throwException_abc",
     ":jsdebugtest",
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
   ]
 }
 
@@ -196,8 +194,6 @@ source_set("jsdebugtest_set") {
   }
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger_test",
   ]
@@ -235,8 +231,6 @@ host_unittest_action("DebuggerEntryTest") {
   deps = [
     ":debugger_entry_resource",
     ":jsdebugtest",
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger_test",
   ]
@@ -261,7 +255,6 @@ host_unittest_action("DebuggerTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger_test",
     sdk_libc_secshared_dep,

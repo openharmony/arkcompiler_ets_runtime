@@ -19,3 +19,38 @@ ark_clang_toolchain("ark_clang_arm") {
     current_os = "ohos"
   }
 }
+
+ark_clang_toolchain("ark_clang_x64") {
+  toolchain_args = {
+    current_cpu = "x64"
+    current_os = "ohos"
+  }
+}
+
+ark_clang_toolchain("ark_clang_android_arm") {
+  toolchain_args = {
+    current_cpu = "arm"
+    current_os = "android"
+  }
+}
+
+ark_clang_toolchain("ark_clang_android_arm64") {
+  toolchain_args = {
+    current_cpu = "arm64"
+    current_os = "android"
+  }
+}
+
+ark_clang_toolchain("ark_clang_ios_arm") {
+  toolchain_args = {
+    current_cpu = "arm64"
+    current_os = "ios"
+  }
+}
+
+ark_clang_toolchain("ark_clang_arm64") {
+  toolchain_args = {
+    current_cpu = "arm64"
+    current_os = "ohos"
+  }
+}
