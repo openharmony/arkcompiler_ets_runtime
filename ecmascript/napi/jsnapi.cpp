@@ -595,6 +595,9 @@ EscapeLocalScope::EscapeLocalScope(const EcmaVM *vm) : LocalScope(vm, JSTaggedVa
 Local<NumberRef> NumberRef::New(const EcmaVM *vm, double input)
 {
     JSThread *thread = vm->GetJSThread();
+    if (std::isnan(input)) {
+        input = ecmascript::base::NAN_VALUE;
+    }
     JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }

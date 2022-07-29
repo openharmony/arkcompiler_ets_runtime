@@ -28,7 +28,6 @@ host_unittest_action("HeapTrackerTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
@@ -45,7 +44,6 @@ host_unittest_action("HprofTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
