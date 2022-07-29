@@ -36,7 +36,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto aotModule = new LLVMModule("aot_" + fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
         LOptions(optLevel_, true, relocMode_));
-    CompilationConfig cmpCfg(triple_);
+    CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
     TSManager *tsManager = vm_->GetTSManager();
 
     bool enableLog = log_->IsAlwaysEnabled();

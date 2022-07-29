@@ -72,6 +72,7 @@ public:
         parser->Add(&enableRuntimeStat_);
         parser->Add(&typeInferVerify_);
         parser->Add(&builtinsDTS_);
+        parser->Add(&enablebcTrace_);
     }
 
     bool EnableArkTools() const
@@ -480,6 +481,21 @@ public:
         return builtinsDTS_.GetValue();
     }
 
+    void SetEnableByteCodeTrace(bool value)
+    {
+        enablebcTrace_.SetValue(value);
+    }
+
+    bool IsEnableByteCodeTrace() const
+    {
+        return enablebcTrace_.GetValue();
+    }
+
+    bool WasSetEnableByteCodeTrace() const
+    {
+        return enablebcTrace_.WasSet();
+    }
+
 private:
     PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
@@ -542,6 +558,8 @@ private:
     PandArg<std::string> builtinsDTS_ {"builtins-dts",
         "",
         R"(builtins.d.abc file path for AOT.)"};
+    PandArg<bool> enablebcTrace_ {"enable-bytecode-trace", false,
+        R"(enable tracing bytecode for aot runtime. Default: false)"};
 };
 }  // namespace panda::ecmascript
 
