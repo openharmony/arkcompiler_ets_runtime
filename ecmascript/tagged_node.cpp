@@ -215,7 +215,7 @@ JSHandle<RBTreeNode> RBTreeNode::Set(JSThread *thread, JSHandle<RBTreeNode> tree
     }
 
     // 1 : root count
-    int count = Count(treeNode->GetLeft()) + Count(treeNode->GetRight()) + 1;
+    uint32_t count = Count(treeNode->GetLeft()) + Count(treeNode->GetRight()) + 1;
     treeNode->SetCount(count);
 
     return treeNode;
@@ -286,7 +286,7 @@ JSTaggedValue RBTreeNode::Balance(JSThread *thread, RBTreeNode *treeNode)
         treeNode->FlipColors(thread);
     }
     // 1 : root count
-    int count = Count(treeNode->GetLeft()) + Count(treeNode->GetRight()) + 1;
+    uint32_t count = Count(treeNode->GetLeft()) + Count(treeNode->GetRight()) + 1;
     treeNode->SetCount(count);
 
     return JSTaggedValue(treeNode);

@@ -51,8 +51,8 @@ public:
     explicit GlobalTSTypeRef(uint32_t type = 0) : type_(type) {}
     explicit GlobalTSTypeRef(int moduleId, int localId) : type_(0)
     {
-        SetLocalId(localId);
-        SetModuleId(moduleId);
+        SetLocalId(static_cast<uint16_t>(localId));
+        SetModuleId(static_cast<uint16_t>(moduleId));
     }
 
     ~GlobalTSTypeRef() = default;

@@ -83,7 +83,7 @@ private:
     std::string fileName_ = "";
     SamplesRecord *generator_ = nullptr;
     pthread_t tid_ = 0;
-    EcmaVM *vm_;
+    EcmaVM *vm_ = nullptr;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_CPU_PROFILE_H
