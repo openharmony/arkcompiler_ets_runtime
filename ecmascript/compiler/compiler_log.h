@@ -60,7 +60,8 @@ public:
     static const char fileSplitSign = ':';
     static const char methodSplitSign = ',';
 
-    explicit AotLog(const std::string &logMehtods) : CompilerLog(logMehtods)
+    explicit AotLog(const std::string &logMehtods, bool isEnableBcTrace)
+        : CompilerLog(logMehtods), isEnalbeBcTrace_(isEnableBcTrace)
     {
         ParseFileMethodsName(logMehtods);
     }
@@ -74,6 +75,11 @@ public:
         std::vector mehtodVector = fileMethods_.at(fileName);
         auto it = find(mehtodVector.begin(), mehtodVector.end(), methodName);
         return (it != mehtodVector.end());
+    }
+
+    bool IsEnableByteCodeTrace() const
+    {
+        return isEnalbeBcTrace_;
     }
 
 private:
@@ -104,6 +110,7 @@ private:
     }
 
     std::map<std::string, std::vector<std::string>> fileMethods_ {};
+    bool isEnalbeBcTrace_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LOG_H

@@ -99,7 +99,8 @@ int Main(const int argc, const char **argv)
         RuntimeStubCSigns::Initialize();
 
         std::string logMethods = runtimeOptions.GetlogCompiledMethods();
-        AotLog log(logMethods);
+        bool isEnableBcTrace = runtimeOptions.IsEnableByteCodeTrace();
+        AotLog log(logMethods, isEnableBcTrace);
         AOTFileGenerator generator(&log, vm);
         PassManager passManager(vm, entry, triple, optLevel, relocMode, &log);
         for (const auto &fileName : pandaFileNames) {

@@ -37,7 +37,10 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
                                          uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
 
 #define RUNTIME_ASM_STUB_LIST(V)             \
-    V(CallRuntime)                           \
+    JS_CALL_TRAMPOLINE_LIST(V)               \
+    ASM_INTERPRETER_TRAMPOLINE_LIST(V)
+
+#define ASM_INTERPRETER_TRAMPOLINE_LIST(V)   \
     V(AsmInterpreterEntry)                   \
     V(GeneratorReEnterAsmInterp)             \
     V(PushCallArgsAndDispatchNative)         \
@@ -50,18 +53,22 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(PushCallNewAndDispatchNative)          \
     V(PushCallIRangeAndDispatchNative)       \
     V(PushCallIThisRangeAndDispatch)         \
-    V(JSCallWithArgV)                        \
     V(ResumeRspAndDispatch)                  \
     V(ResumeRspAndReturn)                    \
     V(ResumeCaughtFrameAndDispatch)          \
     V(ResumeUncaughtFrameAndReturn)          \
     V(CallSetter)                            \
-    V(CallGetter)                            \
+    V(CallGetter)
+
+#define JS_CALL_TRAMPOLINE_LIST(V)           \
+    V(CallRuntime)                           \
     V(CallRuntimeWithArgv)                   \
-    V(JSCall)                                \
-    V(JSProxyCallInternalWithArgV)           \
     V(JSFunctionEntry)                       \
+    V(JSCall)                                \
+    V(JSCallWithArgV)                        \
+    V(JSProxyCallInternalWithArgV)           \
     V(OptimizedCallOptimized)
+
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(DebugPrint)                              \
