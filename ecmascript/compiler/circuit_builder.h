@@ -647,6 +647,15 @@ public:
     {
         return env_->GetCurrentLabel()->ReadVariable(this);
     }
+    GateRef ReadVariable()
+    {
+        return env_->GetCurrentLabel()->ReadVariable(this);
+    }
+    void WriteVariable(GateRef value)
+    {
+        env_->GetCurrentLabel()->WriteVariable(this, value);
+        Bind(value);
+    }
     GateRef AddPhiOperand(GateRef val);
     GateRef AddOperandToSelector(GateRef val, size_t idx, GateRef in);
     GateRef TryRemoveTrivialPhi(GateRef phi);

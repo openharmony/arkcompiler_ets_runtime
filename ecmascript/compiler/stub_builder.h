@@ -27,6 +27,8 @@ using namespace panda::ecmascript;
 
 class StubBuilder {
 public:
+    explicit StubBuilder(StubBuilder *parent)
+        : callSignature_(parent->GetCallSignature()), env_(parent->GetEnvironment()) {}
     explicit StubBuilder(CallSignature *callSignature, Environment *env)
         : callSignature_(callSignature), env_(env) {}
     virtual ~StubBuilder() = default;

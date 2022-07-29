@@ -58,6 +58,7 @@ source_set("libark_jsoptimizer_set") {
     "file_generators.cpp",
     "gate.cpp",
     "gate_accessor.cpp",
+    "ic_stub_builder.cpp",
     "interpreter_stub.cpp",
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
