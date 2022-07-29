@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#ifndef ECMASCRIPT_COMPILER_IC_STUB_BUILDER_H
+#define ECMASCRIPT_COMPILER_IC_STUB_BUILDER_H
+#include "ecmascript/compiler/stub_builder.h"
+
+namespace panda::ecmascript::kungfu {
+class ICStubBuilder : public StubBuilder {
+public:
+    explicit ICStubBuilder(StubBuilder *parent)
+        : StubBuilder(parent) {}
+    ~ICStubBuilder() = default;
+    NO_MOVE_SEMANTIC(ICStubBuilder);
+    NO_COPY_SEMANTIC(ICStubBuilder);
+    void GenerateCircuit() override {}
+
+    void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo,
+        GateRef value, GateRef slotId)
+    {
+        glue_ = glue;
+        receiver_ = receiver;
+        profileTypeInfo_ = profileTypeInfo;
+        value_ = value;
+        slotId_ = slotId;
+    }
+
+    void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo,
+        GateRef value, GateRef slotId, GateRef propKey)
+    {
+        SetParameters(glue, receiver, profileTypeInfo, value, slotId);
+        propKey_ = propKey;
+    }
+
+    void LoadICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
+    void StoreICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
+    void LoadICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
+    void StoreICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
+private:
+    void NamedICAccessor(Variable* cachedHandler, Label *tryICHandler);
+    void ValuedICAccessor(Variable* cachedHandler, Label *tryICHandler, Label* tryElementIC);
+    void SetLabels(Label* tryFastPath, Label *slowPath, Label *success)
+    {
+        tryFastPath_ = tryFastPath;
+        slowPath_ = slowPath;
+        success_ = success;
+    }
+
+    GateRef glue_ {0};
+    GateRef receiver_ {0};
+    GateRef profileTypeInfo_ {0};
+    GateRef value_ {0};
+    GateRef slotId_ {0};
+    GateRef propKey_ {0};
+
+    Label *tryFastPath_ {nullptr};
+    Label *slowPath_ {nullptr};
+    Label *success_ {nullptr};
+};
+}  // namespace panda::ecmascript::kungfu
+#endif  // ECMASCRIPT_COMPILER_IC_STUB_BUILDER_H

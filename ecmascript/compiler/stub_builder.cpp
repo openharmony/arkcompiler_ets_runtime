@@ -3356,8 +3356,8 @@ GateRef StubBuilder::FastDiv(GateRef left, GateRef right)
 }
 
 GateRef StubBuilder::FastBinaryOp(GateRef left, GateRef right,
-                           const BinaryOperation& intOp,
-                           const BinaryOperation& floatOp)
+                                  const BinaryOperation& intOp,
+                                  const BinaryOperation& floatOp)
 {
     auto env = GetEnvironment();
     Label entry(env);
