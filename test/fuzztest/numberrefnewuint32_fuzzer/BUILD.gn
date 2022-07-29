@@ -30,7 +30,6 @@ ohos_fuzztest("NumberRefNewUint32FuzzTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime:libark_jsruntime",
     "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger_set",
     "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog",
