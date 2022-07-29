@@ -20,6 +20,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/mem/mem_common.h"
 
 #include "securec.h"
 

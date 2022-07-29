@@ -32,7 +32,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 #include "ecmascript/ts_types/ts_manager.h"
-#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 void Snapshot::Serialize(TaggedObject *objectHeader, const panda_file::File *pf, const CString &fileName)

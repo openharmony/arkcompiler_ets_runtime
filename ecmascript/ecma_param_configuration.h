@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_ECMA_PARAM_CONFIGURATION_H
 #define ECMASCRIPT_ECMA_PARAM_CONFIGURATION_H
 
-#include "libpandabase/mem/mem.h"
+#include "ecmascript/mem/mem_common.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 static constexpr size_t DEFAULT_HEAP_SIZE = 256_MB;                 // Recommended range: 128-256MB

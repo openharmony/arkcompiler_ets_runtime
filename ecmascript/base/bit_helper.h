@@ -118,5 +118,21 @@ constexpr T RoundUp(T x, size_t n)
     static_assert(std::is_integral<T>::value, "T must be integral");
     return (static_cast<size_t>(x) + n - 1U) & (-n);
 }
+
+template <class To, class From>
+inline To bit_cast(const From &src) noexcept  // NOLINT(readability-identifier-naming)
+{
+    static_assert(sizeof(To) == sizeof(From), "size of the types must be equal");
+    To dst;
+    memcpy(&dst, &src, sizeof(To));
+    return dst;
+}
+
+template <typename T>
+inline constexpr uint32_t BitNumbers()
+{
+    constexpr int BIT_NUMBER_OF_CHAR = 8;
+    return sizeof(T) * BIT_NUMBER_OF_CHAR;
+}
 }  // panda::ecmascript::base
 #endif

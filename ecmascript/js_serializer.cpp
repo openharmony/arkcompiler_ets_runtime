@@ -33,7 +33,6 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/shared_mm/shared_mm.h"
 
-#include "libpandabase/mem/mem.h"
 #include "securec.h"
 
 namespace panda::ecmascript {

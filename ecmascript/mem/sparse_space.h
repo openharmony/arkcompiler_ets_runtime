@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MEM_SPARSE_SPACE_H
 
 #include "ecmascript/mem/space-inl.h"
+#include "ecmascript/mem/mem_common.h"
 
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size) \
     if (object != 0) {                      \

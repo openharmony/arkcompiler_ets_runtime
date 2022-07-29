@@ -22,7 +22,7 @@
 #include <utility>
 
 #include "ecmascript/tooling/interface/stream.h"
-#include "libpandabase/mem/mem.h"
+#include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
 class FileStream : public Stream {

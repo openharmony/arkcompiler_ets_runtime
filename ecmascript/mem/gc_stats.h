@@ -21,7 +21,7 @@
 #include <time.h>
 
 #include "libpandabase/macros.h"
-#include "libpandabase/mem/mem.h"
+#include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
 class Heap;

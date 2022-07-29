@@ -24,9 +24,9 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
+#include "ecmascript/mem/mem_common.h"
 
 #include "libpandabase/macros.h"
-#include "libpandabase/mem/mem.h"
 
 namespace panda {
 class JSNApiHelper;
@@ -55,6 +55,7 @@ class EcmaVM;
 class JSRuntimeOptions;
 class JSThread;
 struct EcmaRuntimeCallInfo;
+static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
 }  // namespace ecmascript
 
 using Deleter = void (*)(void *nativePointer, void *data);
@@ -63,7 +64,6 @@ using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 
-static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
 static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
 
@@ -1071,7 +1071,7 @@ private:
 
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
     LOG_LEVEL logLevel_ = LOG_LEVEL::DEBUG;
-    uint32_t gcPoolSize_ = DEFAULT_GC_POOL_SIZE;
+    uint32_t gcPoolSize_ = ecmascript::DEFAULT_GC_POOL_SIZE;
     LOG_PRINT logBufPrint_ {nullptr};
     std::string debuggerLibraryPath_ {};
     bool enableArkTools_ {false};
