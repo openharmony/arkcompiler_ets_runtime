@@ -4922,18 +4922,29 @@ DECLARE_ASM_HANDLER(HandleToNumericPrefV8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef v0 = ReadInst8_1(pc);
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumeric), { value });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
+    Label valueIsNumeric(env);
+    Label valueNotNumeric(env);
+    Branch(TaggedIsNumeric(value), &valueIsNumeric, &valueNotNumeric);
+    Bind(&valueIsNumeric);
     {
-        DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&notException);
-    {
-        varAcc = res;
+        varAcc = value;
         DISPATCH_WITH_ACC(PREF_V8);
+    }
+    Bind(&valueNotNumeric);
+    {
+        GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumeric), { value });
+        Label isException(env);
+        Label notException(env);
+        Branch(TaggedIsException(res), &isException, &notException);
+        Bind(&isException);
+        {
+            DISPATCH_LAST_WITH_ACC();
+        }
+        Bind(&notException);
+        {
+            varAcc = res;
+            DISPATCH_WITH_ACC(PREF_V8);
+        }
     }
 }
 

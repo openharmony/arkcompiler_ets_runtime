@@ -148,6 +148,7 @@ public:
     GateRef TaggedIsDouble(GateRef x);
     GateRef TaggedIsObject(GateRef x);
     GateRef TaggedIsNumber(GateRef x);
+    GateRef TaggedIsNumeric(GateRef x);
     GateRef TaggedIsHole(GateRef x);
     GateRef TaggedIsNotHole(GateRef x);
     GateRef TaggedIsUndefined(GateRef x);
@@ -238,7 +239,7 @@ public:
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
     GateRef TaggedIsBigInt(GateRef obj);
-    GateRef IsBigInt(GateRef obj);
+    GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
     GateRef IsJSFunctionBase(GateRef obj);
     GateRef IsConstructor(GateRef object);

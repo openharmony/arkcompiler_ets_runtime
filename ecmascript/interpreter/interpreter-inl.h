@@ -3492,14 +3492,19 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(HANDLE_TONUMERIC_PREF_V8) {
         uint16_t v0 = READ_INST_8_1();
-
         LOG_INST() << "intrinsics::tonumeric"
                    << " v" << v0;
         JSTaggedValue value = GET_VREG_VALUE(v0);
-        SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::ToNumeric(thread, value);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        SET_ACC(res);
+        if (value.IsNumber() || value.IsBigInt()) {
+            // fast path
+            SET_ACC(value);
+        } else {
+            // slow path
+            SAVE_PC();
+            JSTaggedValue res = SlowRuntimeStub::ToNumeric(thread, value);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+        }
         DISPATCH(BytecodeInstruction::Format::PREF_V8);
     }
     HANDLE_OPCODE(HANDLE_SUPERCALL_PREF_IMM16_V8) {

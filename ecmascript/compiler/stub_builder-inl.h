@@ -534,6 +534,11 @@ inline GateRef StubBuilder::TaggedIsNumber(GateRef x)
     return BoolNot(TaggedIsObject(x));
 }
 
+inline GateRef StubBuilder::TaggedIsNumeric(GateRef x)
+{
+    return BoolOr(TaggedIsNumber(x), TaggedIsBigInt(x));
+}
+
 inline GateRef StubBuilder::TaggedIsHole(GateRef x)
 {
     return Int64Equal(x, Int64(JSTaggedValue::VALUE_HOLE));
@@ -1080,7 +1085,7 @@ inline GateRef StubBuilder::IsString(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::STRING)));
 }
 
-inline GateRef StubBuilder::IsBigInt(GateRef obj)
+inline GateRef StubBuilder::TaggedObjectIsBigInt(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::BIGINT)));
