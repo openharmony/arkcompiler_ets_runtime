@@ -32,10 +32,8 @@ group("ark_aot_test") {
     "createarraywithbuffer:createarraywithbufferAotAction",
     "createemptyarray:createemptyarrayAotAction",
     "createemptyobject:createemptyobjectAotAction",
-
-    #creategeneratorobj:creategeneratorobjAotAction",
-    #"createiterresultobj:createiterresultobjAotAction",
-
+    "creategeneratorobj:creategeneratorobjAotAction",
+    "createiterresultobj:createiterresultobjAotAction",
     "createobjecthavingmethod:createobjecthavingmethodAotAction",
     "createobjectwithbuffer:createobjectwithbufferAotAction",
     "createregexpwithliteral:createregexpwithliteralAotAction",
@@ -46,8 +44,8 @@ group("ark_aot_test") {
     "defineclasswithbuffer:defineclasswithbufferAotAction",
     "definefunc:definefuncAotAction",
     "definefunc_variable_args:definefunc_variable_argsAotAction",
+    "definegeneratorfunc:definegeneratorfuncAotAction",
 
-    #"definegeneratorfunc:definegeneratorfuncAotAction",
     #"definegettersetterbyvalue:definegettersetterbyvalueAotAction",
     "definemethod:definemethodAotAction",
     "definencfunc:definencfuncAotAction",
@@ -58,13 +56,15 @@ group("ark_aot_test") {
     "duplicatefunctions:duplicatefunctionsAotAction",
     "exceptionhandler:exceptionhandlerAotAction",
     "exp:expAotAction",
+
+    #"generatorcontinuefinally:generatorcontinuefinallyAotAction",
     "getiterator:getiteratorAotAction",
 
     #"getiteratornext:getiteratornextAotAction",
     "getnextpropname:getnextpropnameAotAction",
     "getpropiterator:getpropiteratorAotAction",
+    "getresumemode:getresumemodeAotAction",
 
-    #"getresumemode:getresumemodeAotAction",
     #"gettemplateobject:gettemplateobjectAotAction",
     #"getunmappedargs:getunmappedargsAotAction",
     "helloaot:helloaotAotAction",
@@ -80,8 +80,7 @@ group("ark_aot_test") {
     "ldglobalvar:ldglobalvarAotAction",
     "ldobjbyname:ldobjbynameAotAction",
     "ldstlexvar:ldstlexvarAotAction",
-
-    #"ldsuperbyname:ldsuperbynameAotAction",
+    "ldsuperbyname:ldsuperbynameAotAction",
     "logic_op:logic_opAotAction",
     "loops:loopsAotAction",
     "mod:modAotAction",
@@ -93,8 +92,7 @@ group("ark_aot_test") {
     "not:notAotAction",
     "or:orAotAction",
     "poplexenv:poplexenvAotAction",
-
-    #"resumegenerator:resumegeneratorAotAction",
+    "resumegenerator:resumegeneratorAotAction",
     "setobjectwithproto:setobjectwithprotoAotAction",
     "shl:shlAotAction",
     "shr:shrAotAction",
@@ -115,8 +113,7 @@ group("ark_aot_test") {
     "stownbyvaluewithnameset:stownbyvaluewithnamesetAotAction",
     "strictequal:strictequalAotAction",
     "strictnotequal:strictnotequalAotAction",
-
-    #stsuperbyname:stsuperbynameAotAction",
+    "stsuperbyname:stsuperbynameAotAction",
     "sub:subAotAction",
 
     #"supercall:supercallAotAction",

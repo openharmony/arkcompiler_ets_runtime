@@ -368,7 +368,10 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
                 }
             }
         }
-        BytecodeRegion &bb = graph_[i];
+
+        // When there are multiple catch blocks in the current block, the set of catch blocks
+        // needs to be sorted to satisfy the order of execution of catch blocks.
+        BytecodeRegion& bb = graph_[i];
         bb.SortCatches();
     }
 

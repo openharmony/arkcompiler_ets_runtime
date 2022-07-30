@@ -344,6 +344,7 @@ public:
     bool IsNotMarked(GateRef gate) const;
     void SetFinished(GateRef gate);
     void SetVisited(GateRef gate);
+    bool IsValueIn(GateRef gate, size_t index) const;
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const

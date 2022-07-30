@@ -666,6 +666,7 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     cloneClass->SetHomeObject(thread, cloneClassPrototype);
+    cloneClass->SetCodeEntry(ctor->GetCodeEntry());
 
     if (!canShareHClass) {
         RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cloneClass), base);
@@ -1649,6 +1650,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, JSFunct
     JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
+    jsFunc->SetCodeEntry(func->GetCodeEntry());
 
     return jsFunc.GetTaggedValue();
 }
@@ -1983,6 +1985,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t
     }
 
     JSTaggedValue object = JSFunction::Construct(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!object.IsUndefined() && !object.IsECMAObject() && !JSHandle<JSFunction>(ctor)->IsBase()) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,

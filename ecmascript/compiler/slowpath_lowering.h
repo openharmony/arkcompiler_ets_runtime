@@ -253,8 +253,8 @@ private:
     void LowerLdGlobalVar(GateRef gate, GateRef glue);
     void LowerLdObjByName(GateRef gate, GateRef glue);
     void LowerStObjByName(GateRef gate, GateRef glue);
-    void LowerLdSuperByName(GateRef gate, GateRef glue);
-    void LowerStSuperByName(GateRef gate, GateRef glue);
+    void LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGetterSetterByValue(GateRef gate, GateRef glue);
     void LowerLdObjByIndex(GateRef gate, GateRef glue);
     void LowerStObjByIndex(GateRef gate, GateRef glue);
