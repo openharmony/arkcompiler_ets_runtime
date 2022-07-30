@@ -114,7 +114,6 @@ void Heap::Initialize()
     stwYoungGC_ = new STWYoungGC(this, parallelGC_);
     fullGC_ = new FullGC(this);
 
-    derivedPointers_ = new ChunkMap<DerivedDataKey, uintptr_t>(ecmaVm_->GetChunk());
     partialGC_ = new PartialGC(this);
     sweeper_ = new ConcurrentSweeper(this, ecmaVm_->GetJSOptions().EnableConcurrentSweep() ?
         EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
@@ -202,10 +201,6 @@ void Heap::Destroy()
     if (sweeper_ != nullptr) {
         delete sweeper_;
         sweeper_ = nullptr;
-    }
-    if (derivedPointers_ != nullptr) {
-        delete derivedPointers_;
-        derivedPointers_ = nullptr;
     }
     if (concurrentMarker_ != nullptr) {
         delete concurrentMarker_;
@@ -327,7 +322,6 @@ void Heap::CollectGarbage(TriggerGCType gcType)
     size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
     memController_->StartCalculationBeforeGC();
     StatisticHeapObject(gcType);
-    GetDerivedPointers()->clear();
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:
             // Use partial GC for young generation.
@@ -623,33 +617,6 @@ void Heap::TriggerConcurrentMarking()
     if (concurrentMarker_->IsEnabled() && !fullGCRequested_) {
         concurrentMarker_->Mark();
     }
-}
-
-void Heap::UpdateDerivedObjectInStack()
-{
-    if (derivedPointers_->empty()) {
-        return;
-    }
-    for (auto derived : *derivedPointers_) {
-        auto baseAddr = reinterpret_cast<JSTaggedValue *>(derived.first.first);
-        JSTaggedValue base = *baseAddr;
-        if (base.IsHeapObject()) {
-            uintptr_t baseOldObject = derived.second;
-            uintptr_t *derivedAddr = reinterpret_cast<uintptr_t *>(derived.first.second);
-#ifndef NDEBUG
-            LOG_GC(DEBUG) << std::hex << "fix base before:" << baseAddr << " base old Value: " << baseOldObject <<
-                " derived:" << derivedAddr << " old Value: " << *derivedAddr << std::endl;
-#endif
-            // derived is always bigger than base
-            *derivedAddr = reinterpret_cast<uintptr_t>(base.GetTaggedObject()) + (*derivedAddr - baseOldObject);
-#ifndef NDEBUG
-            LOG_GC(DEBUG) << std::hex << "fix base after:" << baseAddr <<
-                " base New Value: " << base.GetTaggedObject() <<
-                " derived:" << derivedAddr << " New Value: " << *derivedAddr << std::endl;
-#endif
-        }
-    }
-    derivedPointers_->clear();
 }
 
 void Heap::WaitRunningTaskFinished()

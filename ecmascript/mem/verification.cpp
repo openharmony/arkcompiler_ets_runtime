@@ -54,7 +54,8 @@ void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
                       << slot.GetTaggedType();
         return;
     }
-    TaggedObject *object = value.GetTaggedObject();
+
+    TaggedObject *object = value.GetRawTaggedObject();
     auto region = Region::ObjectAddressToRange(object);
     if (!region->InYoungSpace()) {
         LOG_GC(ERROR) << "Heap object(" << slot.GetTaggedType() << ") old to new rset fail: value("
@@ -68,25 +69,19 @@ void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
 size_t Verification::VerifyRoot() const
 {
     size_t failCount = 0;
-    RootVisitor visit1 = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot slot) {
-        JSTaggedValue value(slot.GetTaggedType());
-        if (value.IsWeak()) {
-            VerifyObjectVisitor(heap_, &failCount)(value.GetTaggedWeakRef());
-        } else if (value.IsHeapObject()) {
-            VerifyObjectVisitor(heap_, &failCount)(value.GetTaggedObject());
-        }
+    RootVisitor visitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot slot) {
+        VerifyObjectSlot(slot, &failCount);
     };
-    RootRangeVisitor visit2 = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) {
+    RootRangeVisitor rangeVisitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) {
         for (ObjectSlot slot = start; slot < end; slot++) {
-            JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsWeak()) {
-                VerifyObjectVisitor(heap_, &failCount)(value.GetTaggedWeakRef());
-            } else if (value.IsHeapObject()) {
-                VerifyObjectVisitor(heap_, &failCount)(value.GetTaggedObject());
-            }
+            VerifyObjectSlot(slot, &failCount);
         }
     };
-    objXRay_.VisitVMRoots(visit1, visit2);
+    RootBaseAndDerivedVisitor derivedVisitor =
+        []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
+           [[maybe_unused]] uintptr_t baseOldObject) {
+    };
+    objXRay_.VisitVMRoots(visitor, rangeVisitor, derivedVisitor);
     if (failCount > 0) {
         LOG_GC(ERROR) << "VerifyRoot detects deadObject count is " << failCount;
     }
@@ -110,5 +105,15 @@ size_t Verification::VerifyOldToNewRSet() const
         LOG_GC(ERROR) << "VerifyOldToNewRSet detects non new space count is " << failCount;
     }
     return failCount;
+}
+
+void Verification::VerifyObjectSlot(const ObjectSlot &slot, size_t *failCount) const
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsWeak()) {
+        VerifyObjectVisitor(heap_, failCount)(value.GetTaggedWeakRef());
+    } else if (value.IsHeapObject()) {
+        VerifyObjectVisitor(heap_, failCount)(value.GetTaggedObject());
+    }
 }
 }  // namespace panda::ecmascript

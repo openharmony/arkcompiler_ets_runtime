@@ -71,6 +71,8 @@ public:
     size_t VerifyHeap() const;
     size_t VerifyOldToNewRSet() const;
 private:
+    void VerifyObjectSlot(const ObjectSlot &slot, size_t *failCount) const;
+
     NO_COPY_SEMANTIC(Verification);
     NO_MOVE_SEMANTIC(Verification);
 

@@ -259,30 +259,22 @@ uintptr_t FrameIterator::GetPrevFrame() const
     return end;
 }
 
-bool FrameIterator::CollectGCSlots(std::set<uintptr_t> &baseSet, ChunkMap<DerivedDataKey, uintptr_t> *data,
-                                   [[maybe_unused]] bool isVerifying) const
+bool FrameIterator::CollectGCSlots(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
-    return stackmapParser_->CollectGCSlots(optimizedReturnAddr_, reinterpret_cast<uintptr_t>(current_),
-                                           baseSet, data, isVerifying, optimizedCallSiteSp_);
+    return stackmapParser_->CollectGCSlots(visitor, derivedVisitor, optimizedReturnAddr_,
+        reinterpret_cast<uintptr_t>(current_), optimizedCallSiteSp_);
 }
 
 ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
-    const RootVisitor &v0,
-    [[maybe_unused]] const RootRangeVisitor &v1,
-    ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-    bool isVerifying) const
+    [[maybe_unused]] const RootVisitor &visitor,
+    [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
+    const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
-    std::set<uintptr_t> slotAddrs;
-    bool ret = it.CollectGCSlots(slotAddrs, derivedPointers, isVerifying);
+    bool ret = it.CollectGCSlots(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG
         LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
 #endif
-        return;
-    }
-
-    for (const auto &slot : slotAddrs) {
-        v0(Root::ROOT_FRAME, ObjectSlot(slot));
     }
 }
 
@@ -302,15 +294,14 @@ ARK_INLINE uintptr_t* OptimizedJSFunctionFrame::ComputePrevFrameSp(const FrameIt
 }
 
 ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
-    const RootVisitor &v0,
-    const RootRangeVisitor &v1,
-    ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-    bool isVerifying) const
+    const RootVisitor &visitor,
+    const RootRangeVisitor &rangeVisitor,
+    const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     OptimizedJSFunctionFrame *frame = OptimizedJSFunctionFrame::GetFrameFromSp(it.GetSp());
     uintptr_t *envPtr = reinterpret_cast<uintptr_t *>(frame);
     uintptr_t envslot = ToUintPtr(envPtr);
-    v0(Root::ROOT_FRAME, ObjectSlot(envslot));
+    visitor(Root::ROOT_FRAME, ObjectSlot(envslot));
 
     uintptr_t *preFrameSp = frame->ComputePrevFrameSp(it);
 
@@ -319,55 +310,44 @@ ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
     if (argc > 0) {
         uintptr_t start = ToUintPtr(argv); // argv
         uintptr_t end = ToUintPtr(argv + argc);
-        v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+        rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
     }
 
-    std::set<uintptr_t> slotAddrs;
-    bool ret = it.CollectGCSlots(slotAddrs, derivedPointers, isVerifying);
+    bool ret = it.CollectGCSlots(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG
         LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
 #endif
-        return;
-    }
-
-    for (const auto &slot : slotAddrs) {
-        v0(Root::ROOT_FRAME, ObjectSlot(slot));
     }
 }
 
 ARK_INLINE void AsmInterpretedFrame::GCIterate(const FrameIterator &it,
-    const RootVisitor &v0,
-    const RootRangeVisitor &v1,
-    ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-    bool isVerifying) const
+    const RootVisitor &visitor,
+    const RootRangeVisitor &rangeVisitor,
+    const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     AsmInterpretedFrame *frame = AsmInterpretedFrame::GetFrameFromSp(it.GetSp());
     uintptr_t start = ToUintPtr(it.GetSp());
     uintptr_t end = ToUintPtr(frame->GetCurrentFramePointer());
-    v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
-    v0(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->function)));
+    rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+    visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->function)));
     if (frame->pc != nullptr) {
-        v0(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->acc)));
-        v0(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->env)));
+        visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->acc)));
+        visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->env)));
     }
 
     std::set<uintptr_t> slotAddrs;
-    bool ret = it.CollectGCSlots(slotAddrs, derivedPointers, isVerifying);
+    bool ret = it.CollectGCSlots(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG
         LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
 #endif
-        return;
-    }
-    for (auto slot : slotAddrs) {
-        v0(Root::ROOT_FRAME, ObjectSlot(slot));
     }
 }
 
 ARK_INLINE void InterpretedFrame::GCIterate(const FrameIterator &it,
-                                            const RootVisitor &v0,
-                                            const RootRangeVisitor &v1) const
+                                            const RootVisitor &visitor,
+                                            const RootRangeVisitor &rangeVisitor) const
 {
     auto sp = it.GetSp();
     InterpretedFrame *frame = InterpretedFrame::GetFrameFromSp(sp);
@@ -381,21 +361,21 @@ ARK_INLINE void InterpretedFrame::GCIterate(const FrameIterator &it,
     FrameIterator prevIt(prevSp, thread);
     uintptr_t end = prevIt.GetPrevFrame();
 
-    v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
-    v0(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->function)));
+    rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+    visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->function)));
 
     // pc == nullptr, init InterpretedFrame & native InterpretedFrame.
     if (frame->pc != nullptr) {
-        v0(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->acc)));
-        v0(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->constpool)));
-        v0(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->env)));
-        v0(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->profileTypeInfo)));
+        visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->acc)));
+        visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->constpool)));
+        visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->env)));
+        visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->profileTypeInfo)));
     }
 }
 
 ARK_INLINE void InterpretedBuiltinFrame::GCIterate(const FrameIterator &it,
-                                                   const RootVisitor &v0,
-                                                   const RootRangeVisitor &v1) const
+                                                   const RootVisitor &visitor,
+                                                   const RootRangeVisitor &rangeVisitor) const
 {
     auto sp = it.GetSp();
     InterpretedBuiltinFrame *frame = InterpretedBuiltinFrame::GetFrameFromSp(sp);
@@ -405,15 +385,13 @@ ARK_INLINE void InterpretedBuiltinFrame::GCIterate(const FrameIterator &it,
 
     uintptr_t start = ToUintPtr(sp + 2); // 2: numArgs & thread.
     uintptr_t end = prevIt.GetPrevFrame();
-    v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
-    v0(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->function)));
+    rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+    visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->function)));
 }
 
 ARK_INLINE void OptimizedLeaveFrame::GCIterate(const FrameIterator &it,
-    [[maybe_unused]] const RootVisitor &v0,
-    const RootRangeVisitor &v1,
-    [[maybe_unused]] ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-    [[maybe_unused]] bool isVerifying) const
+    [[maybe_unused]] const RootVisitor &visitor,
+    const RootRangeVisitor &rangeVisitor) const
 {
     const JSTaggedType *sp = it.GetSp();
     OptimizedLeaveFrame *frame = OptimizedLeaveFrame::GetFrameFromSp(sp);
@@ -421,15 +399,13 @@ ARK_INLINE void OptimizedLeaveFrame::GCIterate(const FrameIterator &it,
         JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(&frame->argc + 1);
         uintptr_t start = ToUintPtr(argv); // argv
         uintptr_t end = ToUintPtr(argv + frame->argc);
-        v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+        rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
     }
 }
 
 ARK_INLINE void OptimizedWithArgvLeaveFrame::GCIterate(const FrameIterator &it,
-    [[maybe_unused]] const RootVisitor &v0,
-    const RootRangeVisitor &v1,
-    [[maybe_unused]] ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-    [[maybe_unused]] bool isVerifying) const
+    [[maybe_unused]] const RootVisitor &visitor,
+    const RootRangeVisitor &rangeVisitor) const
 {
     const JSTaggedType *sp = it.GetSp();
     OptimizedWithArgvLeaveFrame *frame = OptimizedWithArgvLeaveFrame::GetFrameFromSp(sp);
@@ -438,15 +414,13 @@ ARK_INLINE void OptimizedWithArgvLeaveFrame::GCIterate(const FrameIterator &it,
         JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(*argvPtr);
         uintptr_t start = ToUintPtr(argv); // argv
         uintptr_t end = ToUintPtr(argv + frame->argc);
-        v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+        rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
     }
 }
 
 ARK_INLINE void OptimizedBuiltinLeaveFrame::GCIterate(const FrameIterator &it,
-    [[maybe_unused]] const RootVisitor &v0,
-    const RootRangeVisitor &v1,
-    [[maybe_unused]] ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-    [[maybe_unused]] bool isVerifying) const
+    [[maybe_unused]] const RootVisitor &visitor,
+    const RootRangeVisitor &rangeVisitor) const
 {
     const JSTaggedType *sp = it.GetSp();
     OptimizedBuiltinLeaveFrame *frame = OptimizedBuiltinLeaveFrame::GetFrameFromSp(sp);
@@ -454,15 +428,13 @@ ARK_INLINE void OptimizedBuiltinLeaveFrame::GCIterate(const FrameIterator &it,
         JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(&frame->argc + 1);
         uintptr_t start = ToUintPtr(argv); // argv
         uintptr_t end = ToUintPtr(argv + frame->argc);
-        v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+        rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
     }
 }
 
 ARK_INLINE void BuiltinWithArgvFrame::GCIterate(const FrameIterator &it,
-    [[maybe_unused]] const RootVisitor &v0,
-    const RootRangeVisitor &v1,
-    [[maybe_unused]] ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-    [[maybe_unused]] bool isVerifying) const
+    [[maybe_unused]] const RootVisitor &visitor,
+    const RootRangeVisitor &rangeVisitor) const
 {
     const JSTaggedType *sp = it.GetSp();
     auto frame = BuiltinWithArgvFrame::GetFrameFromSp(sp);
@@ -470,33 +442,31 @@ ARK_INLINE void BuiltinWithArgvFrame::GCIterate(const FrameIterator &it,
     JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(frame->GetStackArgsAddress());
     uintptr_t start = ToUintPtr(argv);
     uintptr_t end = ToUintPtr(argv + argc);
-    v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+    rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
 }
 
 ARK_INLINE void BuiltinFrame::GCIterate(const FrameIterator &it,
-    const RootVisitor &v0,
-    const RootRangeVisitor &v1,
-    [[maybe_unused]] ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-    [[maybe_unused]] bool isVerifying) const
+    const RootVisitor &visitor,
+    const RootRangeVisitor &rangeVisitor) const
 {
     const JSTaggedType *sp = it.GetSp();
     auto frame = BuiltinFrame::GetFrameFromSp(sp);
     // no need to visit stack map for entry frame
     if (frame->type == FrameType::BUILTIN_ENTRY_FRAME) {
         // only visit function
-        v0(Root::ROOT_FRAME, ObjectSlot(frame->GetStackArgsAddress()));
+        visitor(Root::ROOT_FRAME, ObjectSlot(frame->GetStackArgsAddress()));
         return;
     }
     JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(frame->GetStackArgsAddress());
     auto argc = frame->GetNumArgs();
     uintptr_t start = ToUintPtr(argv);
     uintptr_t end = ToUintPtr(argv + argc);
-    v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+    rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
 }
 
 ARK_INLINE void InterpretedEntryFrame::GCIterate(const FrameIterator &it,
-    [[maybe_unused]] const RootVisitor &v0,
-    const RootRangeVisitor &v1) const
+    [[maybe_unused]] const RootVisitor &visitor,
+    const RootRangeVisitor &rangeVisitor) const
 {
     const JSTaggedType* sp = it.GetSp();
     InterpretedEntryFrame *frame = InterpretedEntryFrame::GetFrameFromSp(sp);
@@ -509,6 +479,6 @@ ARK_INLINE void InterpretedEntryFrame::GCIterate(const FrameIterator &it,
     FrameIterator prevIt(prevSp, thread);
     uintptr_t start = ToUintPtr(sp + 2); // 2: numArgs & thread.
     uintptr_t end = prevIt.GetPrevFrame();
-    v1(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+    rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
 }
 }  // namespace panda::ecmascript

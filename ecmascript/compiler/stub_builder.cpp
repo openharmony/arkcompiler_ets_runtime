@@ -3763,6 +3763,10 @@ GateRef StubBuilder::AllocateInYoung(GateRef glue, GateRef size)
     Label success(env);
     Label callRuntime(env);
 
+#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Jump(&callRuntime);
+#else
     auto topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(env->Is32Bit());
     auto endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(env->Is32Bit());
     auto topAddress = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(topOffset));
@@ -3781,6 +3785,7 @@ GateRef StubBuilder::AllocateInYoung(GateRef glue, GateRef size)
         result = top;
         Jump(&exit);
     }
+#endif
     Bind(&callRuntime);
     {
         result = CallRuntime(glue, RTSTUB_ID(AllocateInYoung), {

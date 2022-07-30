@@ -144,7 +144,6 @@ void FullGC::Sweep()
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
 
-    heap_->UpdateDerivedObjectInStack();
     heap_->GetSweeper()->Sweep(true);
 }
 

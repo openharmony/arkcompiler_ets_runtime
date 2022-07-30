@@ -240,10 +240,11 @@ public:
         glueData_.newSpaceAllocationEndAddress_ = end;
     }
 
-    void Iterate(const RootVisitor &v0, const RootRangeVisitor &v1);
+    void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor);
 
 #if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    void IterateHandleWithCheck(const RootVisitor &v0, const RootRangeVisitor &v1);
+    void IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
 #endif
 
     uintptr_t* PUBLIC_API ExpandHandleStorage();

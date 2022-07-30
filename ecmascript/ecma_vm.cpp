@@ -554,12 +554,12 @@ void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo)
     LOG_ECMA(ERROR) << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
 }
 
-void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &v0)
+void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
     auto iter = nativePointerList_.begin();
     while (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
-        auto fwd = v0(reinterpret_cast<TaggedObject *>(object));
+        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
         if (fwd == nullptr) {
             object->Destroy();
             iter = nativePointerList_.erase(iter);
@@ -568,7 +568,7 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &v0)
         }
     }
 }
-void EcmaVM::ProcessReferences(const WeakRootVisitor &v0)
+void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
     if (regExpParserCache_ != nullptr) {
         regExpParserCache_->Clear();
@@ -577,7 +577,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &v0)
     // array buffer
     for (auto iter = nativePointerList_.begin(); iter != nativePointerList_.end();) {
         JSNativePointer *object = *iter;
-        auto fwd = v0(reinterpret_cast<TaggedObject *>(object));
+        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
         if (fwd == nullptr) {
             object->Destroy();
             iter = nativePointerList_.erase(iter);
@@ -594,7 +594,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &v0)
         auto object = iter->second;
         if (object.IsHeapObject()) {
             TaggedObject *obj = object.GetTaggedObject();
-            auto fwd = v0(obj);
+            auto fwd = visitor(obj);
             if (fwd == nullptr) {
                 iter = cachedConstpools_.erase(iter);
                 continue;

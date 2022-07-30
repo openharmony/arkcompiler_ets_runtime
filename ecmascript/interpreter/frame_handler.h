@@ -163,10 +163,13 @@ public:
     }
 
     // for Frame GC.
-    void Iterate(const RootVisitor &v0, const RootRangeVisitor &v1);
-    void IterateFrameChain(JSTaggedType *start, const RootVisitor &v0, const RootRangeVisitor &v1) const;
-    void IterateAssembleStack(const RootVisitor &v0, const RootRangeVisitor &v1);
-    void IterateEcmaRuntimeCallInfo(const RootVisitor &v0, const RootRangeVisitor &v1);
+    void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor);
+    void IterateFrameChain(JSTaggedType *start, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    void IterateAssembleStack(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor);
+    void IterateEcmaRuntimeCallInfo(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
 
     // for collecting bc offset in aot
     void CollectBCOffsetInfo();

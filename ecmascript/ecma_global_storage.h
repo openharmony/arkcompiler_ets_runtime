@@ -16,8 +16,9 @@
 #ifndef ECMASCRIPT_ECMA_GLOBAL_STORAGE_H
 #define ECMASCRIPT_ECMA_GLOBAL_STORAGE_H
 
-#include "ecmascript/js_tagged_value.h"
-
+#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#include "ecmascript/dfx/native_dfx/backtrace.h"
+#endif
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/js_thread.h"
@@ -141,6 +142,14 @@ public:
             ResetMarkCount();
             if (isUsing) {
                 IncGlobalNumber();
+                // This value needs to be adjusted according to the specific scene.
+                static const int START_GLOBAL_NUMBER = 110000;
+                static const int GLOBAL_NUMBER_COUNT = 10000;
+                if (globalNumber_ > START_GLOBAL_NUMBER && globalNumber_ < START_GLOBAL_NUMBER + GLOBAL_NUMBER_COUNT
+                    && JSTaggedValue(value).IsHeapObject()) {
+                    LOG_ECMA(ERROR) << "---------------Global Number:" << globalNumber_ << "-------------------";
+                    PrintBacktrace(value);
+                }
             }
 #endif
         }

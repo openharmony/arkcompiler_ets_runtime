@@ -225,8 +225,8 @@ public:
     {
         return const_cast<Chunk *>(&chunk_);
     }
-    void ProcessNativeDelete(const WeakRootVisitor &v0);
-    void ProcessReferences(const WeakRootVisitor &v0);
+    void ProcessNativeDelete(const WeakRootVisitor &visitor);
+    void ProcessReferences(const WeakRootVisitor &visitor);
 
     ModuleManager *GetModuleManager() const
     {
