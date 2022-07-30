@@ -1519,7 +1519,14 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjDynRange(JSThread *thread, const JSHand
     const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx, uint16_t length)
 {
     JSHandle<JSTaggedValue> preArgs(thread, JSTaggedValue::Undefined());
-    auto tagged = SlowRuntimeHelper::Construct(thread, func, newTarget, preArgs, length, firstArgIdx);
+    JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length);
+    FrameHandler frameHandler(thread);
+    for (uint16_t i = 0; i < length; ++i) {
+        JSTaggedValue value = frameHandler.GetVRegValue(firstArgIdx + i);
+        args->Set(thread, i, value);
+    }
+
+    auto tagged = RuntimeOptConstruct(thread, func, newTarget, preArgs, args);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return tagged;
 }
@@ -1629,6 +1636,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineNCFuncDyn(JSThread *thread, JSFunction 
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
     JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::ARROW_FUNCTION);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
+    jsFunc->SetCodeEntry(func->GetCodeEntry());
     return jsFunc.GetTaggedValue();
 }
 
@@ -1651,7 +1659,6 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, JSFunct
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
     jsFunc->SetCodeEntry(func->GetCodeEntry());
-
     return jsFunc.GetTaggedValue();
 }
 
@@ -1664,6 +1671,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineAsyncFunc(JSThread *thread, JSFunction 
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
     JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::ASYNC_FUNCTION);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
+    jsFunc->SetCodeEntry(func->GetCodeEntry());
     return jsFunc.GetTaggedValue();
 }
 
@@ -1679,6 +1687,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, JSFunction *fu
     JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::NORMAL_FUNCTION);
     jsFunc->SetHomeObject(thread, homeObject);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
+    jsFunc->SetCodeEntry(func->GetCodeEntry());
     return jsFunc.GetTaggedValue();
 }
 
@@ -1969,30 +1978,193 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
     return generatorObjectHandle.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc)
+JSTaggedValue RuntimeStubs::RuntimeOptConstruct(JSThread *thread, JSHandle<JSTaggedValue> ctor,
+                                                JSHandle<JSTaggedValue> newTarget, JSHandle<JSTaggedValue> preArgs,
+                                                JSHandle<TaggedArray> args)
 {
-    JSTaggedType *args = reinterpret_cast<JSTaggedType *>(argv);
-    JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
-    JSHandle<JSTaggedValue> newTgt = GetHArg<JSTaggedValue>(argv, argc, 1);
-    JSHandle<JSTaggedValue> thisObj = thread->GlobalConstants()->GetHandledUndefined();
-    const size_t numCtorAndNewTgt = 2;
-    STACK_ASSERT_SCOPE(thread);
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, ctor, thisObj, newTgt, argc - numCtorAndNewTgt);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    for (size_t i = 0; i < argc - numCtorAndNewTgt; ++i) {
-        info->SetCallArg(i, JSTaggedValue(args[i + numCtorAndNewTgt]));
+    if (newTarget->IsUndefined()) {
+        newTarget = ctor;
     }
 
-    JSTaggedValue object = JSFunction::Construct(info);
+    if (!(newTarget->IsConstructor() && ctor->IsConstructor())) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
+    }
+
+    if (ctor->IsJSFunction()) {
+        return RuntimeOptConstructGeneric(thread, JSHandle<JSFunction>::Cast(ctor), newTarget, preArgs, args);
+    }
+    if (ctor->IsBoundFunction()) {
+        return RuntimeOptConstructBoundFunction(
+            thread, JSHandle<JSBoundFunction>::Cast(ctor), newTarget, preArgs, args);
+    }
+    if (ctor->IsJSProxy()) {
+        return RuntimeOptConstructProxy(thread, JSHandle<JSProxy>::Cast(ctor), newTarget, preArgs, args);
+    }
+    THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor NonConstructor", JSTaggedValue::Exception());
+}
+
+JSTaggedValue RuntimeStubs::RuntimeOptConstructProxy(JSThread *thread, JSHandle<JSProxy> ctor,
+                                                     JSHandle<JSTaggedValue> newTgt, JSHandle<JSTaggedValue> preArgs,
+                                                     JSHandle<TaggedArray> args)
+{
+    // step 1 ~ 4 get ProxyHandler and ProxyTarget
+    JSHandle<JSTaggedValue> handler(thread, ctor->GetHandler());
+    if (handler->IsNull()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor: handler is null", JSTaggedValue::Exception());
+    }
+    ASSERT(handler->IsJSObject());
+    JSHandle<JSTaggedValue> target(thread, ctor->GetTarget());
+
+    // 5.Let trap be GetMethod(handler, "construct").
+    JSHandle<JSTaggedValue> key(thread->GlobalConstants()->GetHandledProxyConstructString());
+    JSHandle<JSTaggedValue> method = JSObject::GetMethod(thread, handler, key);
+
+    // 6.ReturnIfAbrupt(trap).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 7.If trap is undefined, then
+    //   a.Assert: target has a [[Construct]] internal method.
+    //   b.Return Construct(target, argumentsList, newTarget).
+    if (method->IsUndefined()) {
+        ASSERT(target->IsConstructor());
+        return RuntimeOptConstruct(thread, target, newTgt, preArgs, args);
+    }
+
+    // 8.Let argArray be CreateArrayFromList(argumentsList).
+    uint32_t preArgsSize = preArgs->IsUndefined() ? 0 : JSHandle<TaggedArray>::Cast(preArgs)->GetLength();
+    const uint32_t argsCount = args->GetLength();
+    const uint32_t size = preArgsSize + argsCount;
+    JSHandle<TaggedArray> arr = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(size);
+    if (preArgsSize > 0) {
+        JSHandle<TaggedArray> tgaPreArgs = JSHandle<TaggedArray>::Cast(preArgs);
+        for (uint32_t i = 0; i < preArgsSize; ++i) {
+            JSTaggedValue value = tgaPreArgs->Get(i);
+            arr->Set(thread, i, value);
+        }
+    }
+
+    for (uint32_t i = 0; i < argsCount; ++i) {
+        JSTaggedValue value = args->Get(i);
+        arr->Set(thread, i + preArgsSize, value);
+    }
+
+    // step 8 ~ 9 Call(trap, handler, «target, argArray, newTarget »).
+    const int32_t argsLength = 3;  // 3: «target, argArray, newTarget »
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, method, handler, undefined, argsLength);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    info->SetCallArg(target.GetTaggedValue(), arr.GetTaggedValue(), newTgt.GetTaggedValue());
+    JSTaggedValue newObjValue = JSFunction::Call(info);
+    // 10.ReturnIfAbrupt(newObj).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 11.If Type(newObj) is not Object, throw a TypeError exception.
+    if (!newObjValue.IsECMAObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "new object is not object", JSTaggedValue::Exception());
+    }
+    // 12.Return newObj.
+    return newObjValue;
+}
+
+JSTaggedValue RuntimeStubs::RuntimeOptConstructBoundFunction(JSThread *thread, JSHandle<JSBoundFunction> ctor,
+                                                             JSHandle<JSTaggedValue> newTgt,
+                                                             JSHandle<JSTaggedValue> preArgs,
+                                                             JSHandle<TaggedArray> args)
+{
+    JSHandle<JSTaggedValue> target(thread, ctor->GetBoundTarget());
+    ASSERT(target->IsConstructor());
+
+    JSHandle<TaggedArray> boundArgs(thread, ctor->GetBoundArguments());
+    JSMutableHandle<JSTaggedValue> newPreArgs(thread, preArgs.GetTaggedValue());
+    if (newPreArgs->IsUndefined()) {
+        newPreArgs.Update(boundArgs.GetTaggedValue());
+    } else {
+        newPreArgs.Update(
+            TaggedArray::Append(thread, boundArgs, JSHandle<TaggedArray>::Cast(preArgs)).GetTaggedValue());
+    }
+    JSMutableHandle<JSTaggedValue> newTargetMutable(thread, newTgt.GetTaggedValue());
+    if (JSTaggedValue::SameValue(ctor.GetTaggedValue(), newTgt.GetTaggedValue())) {
+        newTargetMutable.Update(target.GetTaggedValue());
+    }
+    return RuntimeOptConstruct(thread, target, newTargetMutable, newPreArgs, args);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandle<JSFunction> ctor,
+                                                       JSHandle<JSTaggedValue> newTgt,
+                                                       JSHandle<JSTaggedValue> preArgs, JSHandle<TaggedArray> args)
+{
+    if (!ctor->IsConstructor()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
+    }
+
+    JSHandle<JSTaggedValue> obj(thread, JSTaggedValue::Undefined());
+    if (ctor->IsBase()) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        obj = JSHandle<JSTaggedValue>(factory->NewJSObjectByConstructor(ctor, newTgt));
+    }
+
+    uint32_t preArgsSize = preArgs->IsUndefined() ? 0 : JSHandle<TaggedArray>::Cast(preArgs)->GetLength();
+    const uint32_t argsCount = args->GetLength();
+    const uint32_t size = preArgsSize + argsCount;
+    CVector<JSTaggedType> values;
+    values.reserve(size);
+
+        JSMethod *method = ctor->GetCallTarget();
+    if (method == nullptr) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Undefined target", JSTaggedValue::Exception());
+    }
+
+    if (preArgsSize > 0) {
+        JSHandle<TaggedArray> tgaPreArgs = JSHandle<TaggedArray>::Cast(preArgs);
+        for (uint32_t i = 0; i < preArgsSize; ++i) {
+            JSTaggedValue value = tgaPreArgs->Get(i);
+            values.emplace_back(value.GetRawData());
+        }
+        for (uint32_t i = 0; i < argsCount; ++i) {
+            values.emplace_back(args->Get(i).GetRawData());
+        }
+    } else {
+        for (uint32_t i = 0; i < argsCount; ++i) {
+            values.emplace_back(args->Get(i).GetRawData());
+        }
+    }
+    EcmaRuntimeCallInfo *info =
+        EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    info->SetCallArg(size, values.data());
+    JSTaggedValue resultValue = EcmaInterpreter::Execute(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 9.3.2 [[Construct]] (argumentsList, newTarget)
+    if (resultValue.IsECMAObject()) {
+        return resultValue;
+    }
+
+    if (ctor->IsBase()) {
+        return obj.GetTaggedValue();
+    }
+    if (!resultValue.IsUndefined()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "function is non-constructor", JSTaggedValue::Exception());
+    }
+    return obj.GetTaggedValue();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc)
+{
+    JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> newTgt = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    const size_t numCtorAndNewTgt = 2;
+    STACK_ASSERT_SCOPE(thread);
+    size_t arrLength = argc - numCtorAndNewTgt;
+    JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(arrLength);
+    for (size_t i = 0; i < arrLength; ++i) {
+        args->Set(thread, i, GetArg(argv, argc, i + numCtorAndNewTgt));
+    }
+
+    JSTaggedValue object = RuntimeOptConstruct(thread, ctor, newTgt, undefined, args);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!object.IsUndefined() && !object.IsECMAObject() && !JSHandle<JSFunction>(ctor)->IsBase()) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
-                                                       "Derived constructor must return object or undefined");
-        thread->SetException(error.GetTaggedValue());
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Derived constructor must return object or undefined",
+                                    JSTaggedValue::Exception());
     }
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return object;
 }
 

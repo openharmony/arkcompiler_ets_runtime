@@ -462,7 +462,7 @@ void CircuitBuilder::SetResolvedToFunction(GateRef glue, GateRef function, GateR
 void CircuitBuilder::SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::CONSTANT_POOL_OFFSET);
-    Store(VariableType::INT64(), glue, function, offset, value);
+    Store(VariableType::JS_ANY(), glue, function, offset, value);
 }
 
 void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value)
@@ -503,7 +503,7 @@ void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef 
 void CircuitBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
-    Store(VariableType::INT64(), glue, function, offset, value);
+    Store(VariableType::JS_ANY(), glue, function, offset, value);
 }
 
 Environment::Environment(size_t arguments, CircuitBuilder *builder)

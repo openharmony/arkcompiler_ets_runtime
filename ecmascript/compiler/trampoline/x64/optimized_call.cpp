@@ -513,15 +513,14 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Pushq(rcx);
         __ Addq(-1, rax);
         __ Jne(&lCopyArgument2);
-
+    }
+    __ Bind(&lCopyBoundArgument);
+    {
         // get bound target
         __ Mov(Operand(jsFuncReg, JSBoundFunction::BOUND_ARGUMENTS_OFFSET), rdx);
         // get bound length
         __ Mov(Operand(rdx, TaggedArray::LENGTH_OFFSET), rax);
         __ Addq(TaggedArray::DATA_OFFSET, rdx);
-    }
-    __ Bind(&lCopyBoundArgument);
-    {
         __ Cmp(0, rax);
         __ Je(&lPushCallTarget);
     }
@@ -782,15 +781,15 @@ void OptimizedCall::JSCall(ExtendedAssembler *assembler)
         __ Pushq(rcx);
         __ Addq(-1, rax);
         __ Jne(&lCopyArgument2);
+    }
 
+    __ Bind(&lCopyBoundArgument);
+    {
         // get bound target
         __ Mov(Operand(jsFuncReg, JSBoundFunction::BOUND_ARGUMENTS_OFFSET), rdx);
         // get bound length
         __ Mov(Operand(rdx, TaggedArray::LENGTH_OFFSET), rax);
         __ Addq(TaggedArray::DATA_OFFSET, rdx);
-    }
-    __ Bind(&lCopyBoundArgument);
-    {
         __ Cmp(0, rax);
         __ Je(&lPushCallTarget);
     }

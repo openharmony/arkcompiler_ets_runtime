@@ -327,7 +327,7 @@ void Heap::CollectGarbage(TriggerGCType gcType)
     size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
     memController_->StartCalculationBeforeGC();
     StatisticHeapObject(gcType);
-
+    GetDerivedPointers()->clear();
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:
             // Use partial GC for young generation.
