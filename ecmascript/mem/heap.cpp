@@ -441,6 +441,16 @@ size_t Heap::VerifyHeapObjects() const
     return failCount;
 }
 
+size_t Heap::VerifyOldToNewRSet() const
+{
+    size_t failCount = 0;
+    VerifyObjectVisitor verifier(this, &failCount);
+    oldSpace_->IterateOldToNewOverObjects(verifier);
+    nonMovableSpace_->IterateOldToNewOverObjects(verifier);
+    machineCodeSpace_->IterateOldToNewOverObjects(verifier);
+    return failCount;
+}
+
 void Heap::AdjustOldSpaceLimit()
 {
     if (oldSpaceLimitAdjusted_) {

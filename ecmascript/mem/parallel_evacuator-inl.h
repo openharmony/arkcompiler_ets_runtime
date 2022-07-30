@@ -43,8 +43,8 @@ bool ParallelEvacuator::UpdateObjectSlot(ObjectSlot &slot)
         if (markWord.IsForwardingAddress()) {
             TaggedObject *dst = markWord.ToForwardingAddress();
             slot.Update(dst);
-            return true;
         }
+        return true;
     }
     return false;
 }
@@ -56,6 +56,8 @@ bool ParallelEvacuator::UpdateWeakObjectSlot(TaggedObject *value, ObjectSlot &sl
         if (objectRegion->InNewToNewSet()) {
             if (!objectRegion->Test(value)) {
                 slot.Update(static_cast<JSTaggedType>(JSTaggedValue::Undefined().GetRawData()));
+            } else {
+                return true;
             }
         } else {
             MarkWord markWord(value);

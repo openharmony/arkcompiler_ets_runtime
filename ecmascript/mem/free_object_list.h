@@ -37,6 +37,8 @@ public:
 
     void Rebuild();
 
+    bool MatchFreeObjectInSet(FreeObjectSet *set, size_t size);
+
     bool AddSet(FreeObjectSet *set);
 
     void RemoveSet(FreeObjectSet *set);

@@ -200,6 +200,7 @@ public:
     void DeleteCrossRegionRSet();
     // Old to new remembered set
     void InsertOldToNewRSet(uintptr_t addr);
+    void ClearOldToNewRSet(uintptr_t addr);
     template <typename Visitor>
     void IterateAllOldToNewBits(Visitor visitor);
     void ClearOldToNewRSet();
@@ -207,9 +208,12 @@ public:
     void DeleteOldToNewRSet();
 
     void AtomicClearSweepingRSetInRange(uintptr_t start, uintptr_t end);
+    void ClearSweepingRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteSweepingRSet();
     template <typename Visitor>
     void AtomicIterateAllSweepingRSetBits(Visitor visitor);
+    template <typename Visitor>
+    void IterateAllSweepingRSetBits(Visitor visitor);
 
     static Region *ObjectAddressToRange(TaggedObject *obj)
     {
@@ -402,6 +406,18 @@ public:
     {
         for (auto set : freeObjectSets_) {
             cb(set);
+        }
+    }
+
+    template<class Callback>
+    void REnumerateFreeObjectSets(Callback cb)
+    {
+        auto last = freeObjectSets_.crbegin();
+        auto first = freeObjectSets_.crend();
+        for (; last != first; last++) {
+            if (!cb(*last)) {
+                break;
+            }
         }
     }
 

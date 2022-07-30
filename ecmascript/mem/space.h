@@ -201,8 +201,7 @@ public:
     NO_COPY_SEMANTIC(HugeObjectSpace);
     NO_MOVE_SEMANTIC(HugeObjectSpace);
     uintptr_t Allocate(size_t objectSize, JSThread *thread);
-    void Sweep(bool isConcurrentSweep);
-    void FinishConcurrentSweep();
+    void Sweep();
     size_t GetHeapObjectSize() const;
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
 

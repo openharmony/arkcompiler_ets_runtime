@@ -389,6 +389,7 @@ public:
     bool ContainObject(TaggedObject *object) const;
 
     size_t VerifyHeapObjects() const;
+    size_t VerifyOldToNewRSet() const;
     void StatisticHeapObject(TriggerGCType gcType) const;
 
     bool OldSpaceExceedCapacity(size_t size) const

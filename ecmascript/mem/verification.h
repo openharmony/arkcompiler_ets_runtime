@@ -18,6 +18,7 @@
 
 #include <cstdint>
 
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/mem.h"
@@ -38,6 +39,8 @@ public:
     {
         VisitAllObjects(obj);
     }
+
+    void operator()(TaggedObject *obj, JSTaggedValue value);
 
     size_t GetFailedCount() const
     {
@@ -66,6 +69,7 @@ public:
 
     size_t VerifyRoot() const;
     size_t VerifyHeap() const;
+    size_t VerifyOldToNewRSet() const;
 private:
     NO_COPY_SEMANTIC(Verification);
     NO_MOVE_SEMANTIC(Verification);
