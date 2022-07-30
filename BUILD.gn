@@ -604,7 +604,7 @@ source_set("libark_jsruntime_set") {
   }
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
+    "$ark_root/libpandafile:arkfile_header_deps",
     sdk_libc_secshared_dep,
   ]
 
@@ -642,7 +642,7 @@ source_set("libark_js_intl_set") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
+    "$ark_root/libpandafile:arkfile_header_deps",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,
@@ -656,7 +656,7 @@ source_set("libark_jsruntime_test_set") {
   sources += ecma_debugger_source
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
+    "$ark_root/libpandafile:arkfile_header_deps",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,
@@ -681,6 +681,7 @@ ohos_shared_library("libark_jsruntime") {
   deps = [
     ":libark_js_intl_set",
     ":libark_jsruntime_set",
+    "$ark_root/libpandafile:libarkfile_static",
   ]
 
   if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
@@ -724,7 +725,7 @@ ohos_shared_library("libark_jsruntime") {
 
 ohos_shared_library("libark_jsruntime_test") {
   deps = [ ":libark_jsruntime_test_set" ]
-  public_deps = [ "$ark_root/libpandabase:libarkbase_static" ]
+  public_deps = [ "$ark_root/libpandafile:libarkfile_static" ]
 
   ldflags = [ "-Wl,--lto-O0" ]
 

@@ -155,7 +155,7 @@ source_set("libark_jsoptimizer_set") {
     "LLVMBitWriter",
   ]
 
-  deps = [ "$ark_root/libpandafile:libarkfile_static" ]
+  deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
 
   if (compile_llvm_online) {
     deps += [ ":build_llvm_libs" ]
@@ -236,6 +236,7 @@ ohos_shared_library("libark_jsoptimizer") {
 ohos_shared_library("libark_jsoptimizer_test") {
   deps = [
     ":libark_jsoptimizer_set",
+    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
   ]
   ldflags = [ "-Wl,--lto-O0" ]
@@ -246,7 +247,11 @@ ohos_shared_library("libark_jsoptimizer_test") {
 }
 
 ohos_executable("ark_stub_compiler") {
-  deps = [ ":ark_stub_compiler_set" ]
+  deps = [
+    ":ark_stub_compiler_set",
+    "$ark_root/libpandafile:libarkfile_static",
+  ]
+
   ldflags = [ "-Wl,--lto-O0" ]
   install_enable = false
 
