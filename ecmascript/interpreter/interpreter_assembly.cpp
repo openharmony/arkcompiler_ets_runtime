@@ -3358,9 +3358,15 @@ void InterpreterAssembly::HandleToNumericPrefV8(
     LOG_INST() << "intrinsics::tonumeric"
                 << " v" << v0;
     JSTaggedValue value = GET_VREG_VALUE(v0);
-    JSTaggedValue res = SlowRuntimeStub::ToNumeric(thread, value);
-    INTERPRETER_RETURN_IF_ABRUPT(res);
-    SET_ACC(res);
+    if (value.IsNumber() || value.IsBigInt()) {
+        // fast path
+        SET_ACC(value);
+    } else {
+        // slow path
+        JSTaggedValue res = SlowRuntimeStub::ToNumeric(thread, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+    }
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
 }
 

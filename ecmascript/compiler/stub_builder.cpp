@@ -2904,7 +2904,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                     {
                         Label objIsBigInt(env);
                         Label objNotBigInt(env);
-                        Branch(IsBigInt(obj), &objIsBigInt, &objNotBigInt);
+                        Branch(TaggedObjectIsBigInt(obj), &objIsBigInt, &objNotBigInt);
                         Bind(&objIsBigInt);
                         {
                             result = Load(VariableType::JS_POINTER(), gConstAddr,
@@ -3203,7 +3203,7 @@ GateRef StubBuilder::FastToBoolean(GateRef value)
                 Branch(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
             }
             Bind(&notString);
-            Branch(IsBigInt(value), &isBigint, &returnTrue);
+            Branch(TaggedObjectIsBigInt(value), &isBigint, &returnTrue);
             Bind(&isBigint);
             {
                 auto len = Load(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));

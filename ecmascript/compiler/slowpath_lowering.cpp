@@ -1626,6 +1626,7 @@ void SlowPathLowering::LowerLdBigInt(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
 {
+    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleToNumericPrefV8)));
     const int id = RTSTUB_ID(ToNumeric);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
