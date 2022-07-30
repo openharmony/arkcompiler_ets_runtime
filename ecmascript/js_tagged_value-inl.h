@@ -1363,5 +1363,13 @@ inline bool JSTaggedValue::StringCompare(EcmaString *xStr, EcmaString *yStr)
     }
     return EcmaString::StringsAreEqual(xStr, yStr);
 }
+
+inline JSTaggedValue JSTaggedValue::TryCastDoubleToInt32(double d)
+{
+    if (UNLIKELY(static_cast<int32_t>(d) != d)) {
+        return JSTaggedValue(d);
+    }
+    return JSTaggedValue(static_cast<int32_t>(d));
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_VALUE_INL_H
