@@ -76,7 +76,7 @@ test_dir=$(root_dir)/arkcompiler/ets_runtime/test/aottest
 ts2abc=$(product_dir)/clang_x64/obj/arkcompiler/ets_frontend/ts2panda/build/src/index.js
 out_dir=$(product_dir)/clang_x64/aottest
 case_dir=$(out_dir)/$(test_name)
-com_stub_args=--asm-interpreter=true --stub-file=$(out_dir)/stub.m
+com_stub_args=--asm-interpreter=true --stub-file=$(out_dir)/stub.aot
 
 abc:
 	mkdir -p $(case_dir)
@@ -84,24 +84,24 @@ abc:
 
 stub:
 	mkdir -p $(out_dir)
-	$(stub_compiler) $(compiler_args) $(args) --stub-file=$(out_dir)/stub.m
-	
+	$(stub_compiler) $(compiler_args) $(args) --stub-file=$(out_dir)/stub.aot
+
 aot:
-	$(compiler) $(compiler_args) $(args) --aot-file=$(case_dir)/aot_file.m $(subst $(space),:,$(wildcard $(test_dir)/$(test_name)/*.abc))
+	$(compiler) $(compiler_args) $(args) --aot-file=$(case_dir)/aot_file.aot $(subst $(space),:,$(wildcard $(test_dir)/$(test_name)/*.abc))
 
 aotd:
-	gdb --args $(compiler) $(compiler_args) $(args) --aot-file=$(case_dir)/aot_file.m $(subst $(space),:,$(wildcard $(test_dir)/$(test_name)/*.abc))
+	gdb --args $(compiler) $(compiler_args) $(args) --aot-file=$(case_dir)/aot_file.aot $(subst $(space),:,$(wildcard $(test_dir)/$(test_name)/*.abc))
 
 run:
-	$(qemu) $(jsvm) $(args) --aot-file=$(case_dir)/aot_file.m $(com_stub_args) $(test_dir)/$(test_name)/$(test_name).abc
+	$(qemu) $(jsvm) $(args) --aot-file=$(case_dir)/aot_file.aot $(com_stub_args) $(test_dir)/$(test_name)/$(test_name).abc
 
 rund:
 ifeq ($(arm), no)
-	gdb --args $(jsvm) $(args) --aot-file=$(case_dir)/aot_file.m $(com_stub_args) $(test_dir)/$(test_name)/$(test_name).abc
+	gdb --args $(jsvm) $(args) --aot-file=$(case_dir)/aot_file.aot $(com_stub_args) $(test_dir)/$(test_name)/$(test_name).abc
 else
 	@echo "gdb-client start:   gdb-multiarch $(jsvm)"
 	@echo "gdb-server connect: target remote:123456"
-	$(qemu) -cpu max,sve=off -g 123456 $(jsvm) $(args) --aot-file=$(case_dir)/aot_file.m $(com_stub_args) $(test_dir)/$(test_name)/$(test_name).abc
+	$(qemu) -cpu max,sve=off -g 123456 $(jsvm) $(args) --aot-file=$(case_dir)/aot_file.aot $(com_stub_args) $(test_dir)/$(test_name)/$(test_name).abc
 endif
 
 int:
