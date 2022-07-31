@@ -1069,7 +1069,7 @@ FrontType NodeTypeConverter::Convert(NodeType type)
         fType = FrontType::STRING;
     } else if (type == NodeType::JS_OBJECT) {
         fType = FrontType::OBJECT;
-    } else if (type >= NodeType::JS_FUNCTION_BEGIN && type <= NodeType::JS_FUNCTION_END) {
+    } else if (type >= NodeType::JS_FUNCTION_FIRST && type <= NodeType::JS_FUNCTION_LAST) {
         fType = FrontType::CLOSURE;
     } else if (type == NodeType::JS_BOUND_FUNCTION) {
         fType = FrontType::CLOSURE;

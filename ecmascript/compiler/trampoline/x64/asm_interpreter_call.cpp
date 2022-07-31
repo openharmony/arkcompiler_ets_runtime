@@ -134,9 +134,9 @@ void AsmInterpreterCall::JSCallDispatch(ExtendedAssembler *assembler)
     Register tempRegister = r11;  // can not be used to store any variable
     __ Movq(Operand(callTargetRegister, 0), tempRegister);  // hclass
     __ Movq(Operand(tempRegister, JSHClass::BIT_FIELD_OFFSET), bitFieldRegister);
-    __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_BEGIN), bitFieldRegister);
+    __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST), bitFieldRegister);
     __ Jb(&notJSFunction);
-    __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_END), bitFieldRegister);
+    __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_LAST), bitFieldRegister);
     __ Jbe(&callJSFunctionEntry);
     __ Bind(&notJSFunction);
     {
@@ -966,9 +966,9 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         // acc is heap object
         __ Movq(Operand(ret, 0), temp);  // hclass
         __ Movl(Operand(temp, JSHClass::BIT_FIELD_OFFSET), temp);
-        __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_END), temp);
+        __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST), temp);
         __ Ja(&notEcmaObject);
-        __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_BEGIN), temp);
+        __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST), temp);
         __ Jb(&notEcmaObject);
         // acc is ecma object
         __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetBaseOffset(false)), spRegister);  // update sp

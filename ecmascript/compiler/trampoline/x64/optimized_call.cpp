@@ -383,9 +383,9 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Btl(JSHClass::CallableBit::START_BIT, rax); // IsCallable
         __ Jnb(&lNonCallable);
 
-        __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_BEGIN), rax);
+        __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST), rax);
         __ Jb(&lNotJSFunction);
-        __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_END), rax);
+        __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_LAST), rax);
         __ Jbe(&lJSFunctionCall);
     }
 
@@ -651,9 +651,9 @@ void OptimizedCall::JSCall(ExtendedAssembler *assembler)
         __ Btl(JSHClass::CallableBit::START_BIT, rax); // IsCallable
         __ Jnb(&lNonCallable);
 
-        __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_BEGIN), rax);
+        __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST), rax);
         __ Jb(&lNotJSFunction);
-        __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_END), rax);
+        __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_LAST), rax);
         __ Jbe(&lJSFunctionCall); // objecttype in (0x04 ~ 0x0c)
     }
 
