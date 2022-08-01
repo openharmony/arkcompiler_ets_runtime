@@ -1548,7 +1548,7 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
     }
     // If S.length = 0, then
     if (thisLength == 0) {
-        if (SplitMatch(thisString, 0, seperatorString) != -1) {
+        if (thisString->IndexOf(*seperatorString, 0) != -1) {
             return resultArray.GetTaggedValue();
         }
         JSObject::CreateDataProperty(thread, resultArray, 0, JSHandle<JSTaggedValue>(thisString));
@@ -1556,52 +1556,39 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
         return resultArray.GetTaggedValue();
     }
 
-    // Let q = p.
-    // Repeat, while q ≠ s
-    int32_t p = 0;
-    int32_t q = p;
-    while (q != thisLength) {
-        int32_t matchedIndex = SplitMatch(thisString, q, seperatorString);
-        if (matchedIndex == -1) {
-            q = q + 1;
-        } else {
-            if (matchedIndex == p) {
-                q = q + 1;
-            } else {
-                EcmaString *elementString = EcmaString::FastSubString(thisString, p, q - p, ecmaVm);
-                JSHandle<JSTaggedValue> elementTag(thread, elementString);
-                JSObject::CreateDataProperty(thread, resultArray, arrayLength, elementTag);
-                ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
-                ++arrayLength;
-                if (arrayLength == lim) {
-                    return resultArray.GetTaggedValue();
-                }
-                p = matchedIndex;
-                q = p;
+    int32_t seperatorLength = static_cast<int32_t>(seperatorString->GetLength());
+    if (seperatorLength == 0) {
+        for (int32_t i = 0; i < thisLength; ++i) {
+            EcmaString *elementString = EcmaString::FastSubString(thisString, i, 1, ecmaVm);
+            JSHandle<JSTaggedValue> elementTag(thread, elementString);
+            JSObject::CreateDataProperty(thread, resultArray, arrayLength, elementTag);
+            ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
+            ++arrayLength;
+            if (arrayLength == lim) {
+                return resultArray.GetTaggedValue();
             }
         }
+        return resultArray.GetTaggedValue();
     }
-    EcmaString *elementString = EcmaString::FastSubString(thisString, p, thisLength - p, ecmaVm);
+    int32_t index = 0;
+    int32_t pos = thisString->IndexOf(*seperatorString);
+    while (pos != -1) {
+        EcmaString *elementString = EcmaString::FastSubString(thisString, index, pos - index, ecmaVm);
+        JSHandle<JSTaggedValue> elementTag(thread, elementString);
+        JSObject::CreateDataProperty(thread, resultArray, arrayLength, elementTag);
+        ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
+        ++arrayLength;
+        if (arrayLength == lim) {
+            return resultArray.GetTaggedValue();
+        }
+        index = pos + seperatorLength;
+        pos = thisString->IndexOf(*seperatorString, index);
+    }
+    EcmaString *elementString = EcmaString::FastSubString(thisString, index, thisLength - index, ecmaVm);
     JSHandle<JSTaggedValue> elementTag(thread, elementString);
     JSObject::CreateDataProperty(thread, resultArray, arrayLength, elementTag);
     ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
     return resultArray.GetTaggedValue();
-}
-
-int32_t BuiltinsString::SplitMatch(const JSHandle<EcmaString> &str, int32_t q, const JSHandle<EcmaString> &reg)
-{
-    int32_t s = static_cast<int32_t>(str->GetLength());
-    int32_t r = static_cast<int32_t>(reg->GetLength());
-    if (q + r > s) {
-        return -1;
-    }
-    int32_t i = 0;
-    for (i = 0; i < r; i++) {
-        if (str->At<false>(q + i) != reg->At<false>(i)) {
-            return -1;
-        }
-    }
-    return q + r;
 }
 
 // 21.1.3.18
