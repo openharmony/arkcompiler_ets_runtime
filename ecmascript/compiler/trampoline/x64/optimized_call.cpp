@@ -266,14 +266,13 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
 
 // uint64_t CallBuiltinTrampoline(uintptr_t glue, uintptr_t codeAddress, uint32_t argc, ...)
 // webkit_jscc calling convention call runtime_id's runtion function(c-abi)
-// Input:   %rax - glue
-//          stack layout:
-//          sp + N*8 argvN
-//          ........
-//          sp + 24: argv0
-//          sp + 16: actualArgc
-//          sp + 8:  env
-//          sp:      codeAddress
+// Input:        %rax - glue
+// stack layout: sp + N*8 argvN
+//               ........
+//               sp + 24: argv0
+//               sp + 16: actualArgc
+//               sp + 8:  env
+//               sp:      codeAddress
 // construct Native Leave Frame
 //          +--------------------------+
 //          |       argv0              | calltarget , newTarget, this, ....

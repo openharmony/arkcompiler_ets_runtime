@@ -145,6 +145,5 @@ private:
         Label *fastPathEntry, Label *pushCallThis, Label *stackOverflow);
     friend class OptimizedCall;
 };
-
 }  // namespace panda::ecmascript::x64
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_MODULE_X64_H

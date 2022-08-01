@@ -1277,7 +1277,8 @@ std::string JSDateTimeFormat::ConstructFormattedTimeZoneID(const std::string &in
     if (result.find("SYSTEMV/") == 0) {
         result.replace(0, STRING_LENGTH_8, "SystemV/");
     } else if (result.find("US/") == 0) {
-        result = (result.length() == STRING_LENGTH_3) ? result : "US/" + ToTitleCaseTimezonePosition(input.substr(3));
+        result = (result.length() == STRING_LENGTH_3) ? result : "US/" + ToTitleCaseTimezonePosition(
+            input.substr(STRING_LENGTH_3));
     } else if (result.find("ETC/GMT") == 0 && result.length() > STRING_LENGTH_7) {
         result = ConstructGMTTimeZoneID(input);
     } else if (count(tzStyleEntry.begin(), tzStyleEntry.end(), result)) {

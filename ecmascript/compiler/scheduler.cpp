@@ -81,7 +81,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         for (size_t idx = bbGatesList.size() - 1; idx >= 1; idx --) {
             std::vector<GateRef> preGates;
             acc.GetInVector(bbGatesList[idx], preGates);
-            for (const auto & predGate : preGates) {
+            for (const auto &predGate : preGates) {
                 if (bbGatesAddrToIdx.count(predGate) > 0) {
                     if (bbGatesAddrToIdx[predGate] < idx) {
                         semiDom[idx] = std::min(semiDom[idx], bbGatesAddrToIdx[predGate]);
@@ -91,7 +91,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
                     }
                 }
             }
-            for (const auto & succDomIdx : semiDomTree[idx]) {
+            for (const auto &succDomIdx : semiDomTree[idx]) {
                 unionFind(succDomIdx);
                 if (idx == semiDom[minIdx[succDomIdx]]) {
                     immDom[succDomIdx] = idx;

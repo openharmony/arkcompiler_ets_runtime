@@ -1184,7 +1184,7 @@ JSTaggedValue RuntimeStubs::RuntimeShl2Dyn(JSThread *thread,
     }
     JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithInt32(thread, leftValue);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithUint32(thread, rightValue);
+    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithInt32(thread, rightValue);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int32_t opNumber0 = taggedNumber0.GetInt();
     int32_t opNumber1 = taggedNumber1.GetInt();
@@ -1209,9 +1209,9 @@ JSTaggedValue RuntimeStubs::RuntimeShr2Dyn(JSThread *thread, const JSHandle<JSTa
         }
         return RuntimeThrowTypeError(thread, "Cannot mix BigInt and other types, use explicit conversions");
     }
-    JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithUint32(thread, valLeft);
+    JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithInt32(thread, valLeft);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithUint32(thread, valRight);
+    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithInt32(thread, valRight);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int32_t opNumber0 = taggedNumber0.GetInt();
     int32_t opNumber1 = taggedNumber1.GetInt();
@@ -1338,7 +1338,7 @@ JSTaggedValue RuntimeStubs::RuntimeAshr2Dyn(JSThread *thread, const JSHandle<JST
     }
     JSTaggedValue taggedNumber0 = RuntimeToJSTaggedValueWithInt32(thread, valLeft);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithUint32(thread, valRight);
+    JSTaggedValue taggedNumber1 = RuntimeToJSTaggedValueWithInt32(thread, valRight);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int32_t opNumber0 = taggedNumber0.GetInt();
     int32_t opNumber1 = taggedNumber1.GetInt();
@@ -1433,10 +1433,9 @@ JSTaggedValue RuntimeStubs::RuntimeToJSTaggedValueWithInt32(JSThread *thread,
     return JSTaggedValue(res);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeToJSTaggedValueWithUint32(JSThread *thread,
-                                                             const JSHandle<JSTaggedValue> &value)
+JSTaggedValue RuntimeStubs::RuntimeToJSTaggedValueWithUint32(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
-    int32_t res = JSTaggedValue::ToUint32(thread, value);
+    uint32_t res = JSTaggedValue::ToUint32(thread, value);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue(res);
 }

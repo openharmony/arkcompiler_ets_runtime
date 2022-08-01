@@ -16,7 +16,6 @@
 #include "ecmascript/compiler/stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
-
 void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler)
 {
     auto env = GetEnvironment();
@@ -180,5 +179,4 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }
 }
-
 }  // namespace panda::ecmascript::kungfu
