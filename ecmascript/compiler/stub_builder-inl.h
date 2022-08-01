@@ -22,6 +22,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/global_dictionary.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -1953,12 +1954,19 @@ inline GateRef StubBuilder::ComputeTaggedArraySize(GateRef length)
     return PtrAdd(IntPtr(TaggedArray::DATA_OFFSET),
         PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), length));
 }
+
 inline GateRef StubBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
 {
     GateRef gConstAddr = PtrAdd(glue,
         IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
     auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
     return Load(type, gConstAddr, constantIndex);
+}
+
+inline GateRef StubBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t index)
+{
+    auto valueIndex = IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
+    return Load(type, env, valueIndex);
 }
 
 inline GateRef StubBuilder::HasPendingException(GateRef glue)

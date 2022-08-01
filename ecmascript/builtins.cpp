@@ -317,6 +317,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     env->SetGeneratorFunctionClass(thread_, generatorFuncClass);
     env->SetObjectFunctionPrototypeClass(thread_, JSTaggedValue(objFuncPrototype->GetClass()));
     thread_->ResetGuardians();
+    thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(env.GetTaggedType()));
 }
 void Builtins::InitializeForSnapshot(JSThread *thread)
 {
