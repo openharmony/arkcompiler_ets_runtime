@@ -484,7 +484,7 @@ private:
     static inline JSTaggedValue RuntimeNewObjDynRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                       const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx,
                                                       uint16_t length);
-    static inline JSTaggedValue RuntimeDefinefuncDyn(JSThread *thread, JSFunction *func);
+    static inline JSTaggedValue RuntimeDefinefuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
     static inline JSTaggedValue RuntimeCreateRegExpWithLiteral(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
                                                                uint8_t flags);
     static inline JSTaggedValue RuntimeThrowIfSuperNotCorrectCall(JSThread *thread, uint16_t index,
@@ -496,10 +496,10 @@ private:
     static inline JSTaggedValue RuntimeCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
                                                                     const JSHandle<JSTaggedValue> &objVal,
                                                                     uint16_t firstArgRegIdx);
-    static inline JSTaggedValue RuntimeDefineNCFuncDyn(JSThread *thread, JSFunction *func);
-    static inline JSTaggedValue RuntimeDefineGeneratorFunc(JSThread *thread, JSFunction *func);
-    static inline JSTaggedValue RuntimeDefineAsyncFunc(JSThread *thread, JSFunction *func);
-    static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, JSFunction *func,
+    static inline JSTaggedValue RuntimeDefineNCFuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
+    static inline JSTaggedValue RuntimeDefineGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
+    static inline JSTaggedValue RuntimeDefineAsyncFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
+    static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, const JSHandle<JSFunction> &funcHandle,
                                                     const JSHandle<JSTaggedValue> &homeObject);
     static inline JSTaggedValue RuntimeCallSpreadDyn(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                      const JSHandle<JSTaggedValue> &obj,

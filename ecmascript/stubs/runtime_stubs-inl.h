@@ -1531,13 +1531,12 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjDynRange(JSThread *thread, const JSHand
     return tagged;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefinefuncDyn(JSThread *thread, JSFunction *func)
+JSTaggedValue RuntimeStubs::RuntimeDefinefuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    auto method = func->GetCallTarget();
+    auto method = funcHandle->GetCallTarget();
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> funcHandle(thread, func);
 
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
     JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::BASE_CONSTRUCTOR);
@@ -1629,27 +1628,25 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
     return restObj.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefineNCFuncDyn(JSThread *thread, JSFunction *func)
+JSTaggedValue RuntimeStubs::RuntimeDefineNCFuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    auto method = func->GetCallTarget();
+    auto method = funcHandle->GetCallTarget();
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> funcHandle(thread, func);
     JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::ARROW_FUNCTION);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
     return jsFunc.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, JSFunction *func)
+JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    auto method = func->GetCallTarget();
+    auto method = funcHandle->GetCallTarget();
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> funcHandle(thread, func);
     JSHandle<JSFunction> jsFunc = factory->NewJSGeneratorFunction(method);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
 
@@ -1666,30 +1663,28 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, JSFunct
     return jsFunc.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefineAsyncFunc(JSThread *thread, JSFunction *func)
+JSTaggedValue RuntimeStubs::RuntimeDefineAsyncFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    auto method = func->GetCallTarget();
+    auto method = funcHandle->GetCallTarget();
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-    JSHandle<JSFunction> funcHandle(thread, func);
     JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::ASYNC_FUNCTION);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
     return jsFunc.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, JSFunction *func,
+JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<JSFunction> &funcHandle,
                                                 const JSHandle<JSTaggedValue> &homeObject)
 {
     ASSERT(homeObject->IsECMAObject());
-    auto method = func->GetCallTarget();
+    auto method = funcHandle->GetCallTarget();
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> funcHandle(thread, func);
     JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::NORMAL_FUNCTION);
     jsFunc->SetHomeObject(thread, homeObject);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
