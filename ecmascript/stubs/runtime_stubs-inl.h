@@ -331,7 +331,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
     if (src->IsJSArrayIterator() || src->IsJSMapIterator() || src->IsJSSetIterator() ||
         src->IsIterator()) {
         iter = src;
-    } else if (src->IsJSArray() || src->IsJSMap() || src->IsTypedArray() || src->IsJSSet()) {
+    } else if (src->IsJSArray()) {
         JSHandle<JSTaggedValue> valuesStr = globalConst->GetHandledValuesString();
         JSHandle<JSTaggedValue> valuesMethod = JSObject::GetMethod(thread, src, valuesStr);
         iter = JSIterator::GetIterator(thread, src, valuesMethod);
