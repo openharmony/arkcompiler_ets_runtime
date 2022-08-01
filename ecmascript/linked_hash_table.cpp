@@ -233,9 +233,6 @@ JSHandle<LinkedHashSet> LinkedHashSet::Shrink(const JSThread *thread, const JSHa
 
 int LinkedHash::Hash(JSTaggedValue key)
 {
-    if (key.IsDouble() && key.GetDouble() == 0.0) {
-        key = JSTaggedValue(0);
-    }
     if (key.IsSymbol()) {
         auto symbolString = JSSymbol::Cast(key.GetTaggedObject());
         return symbolString->GetHashField();
@@ -254,20 +251,12 @@ int LinkedHash::Hash(JSTaggedValue key)
         }
         return hash;
     }
-    // Int, Double, Special and HeapObject(except symbol and string)
-    uint64_t keyValue;
-    if (key.IsInt()) {
-        keyValue = key.GetInt();
-    } else if (key.IsDouble()) {
-        double v = key.GetDouble();
-        if (UNLIKELY(static_cast<int32_t>(v) != v)) {
-            keyValue = key.GetRawData();
-        }
-        keyValue = static_cast<uint64_t>(v);
-    } else {
-        keyValue = key.GetRawData();
-    }
 
+    // Int, Double, Special and HeapObject(except symbol and string)
+    if (key.IsDouble()) {
+        key = JSTaggedValue::TryCastDoubleToInt32(key.GetDouble());
+    }
+    uint64_t keyValue = key.GetRawData();
     return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
 }
 }  // namespace panda::ecmascript

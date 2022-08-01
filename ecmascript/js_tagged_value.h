@@ -634,6 +634,7 @@ public:
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     inline uint32_t GetKeyHashCode() const;
     static JSTaggedValue GetSuperBase(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static JSTaggedValue TryCastDoubleToInt32(double d);
 
     void DumpTaggedValue(std::ostream &os) const DUMP_API_ATTR;
     void Dump(std::ostream &os) const DUMP_API_ATTR;
