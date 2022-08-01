@@ -87,6 +87,7 @@ GateRef InterpreterStub::ReadInst4_1(GateRef pc)
 
 GateRef InterpreterStub::ReadInst4_2(GateRef pc)
 {
+    // 2 : skip 1 byte of bytecode
     return Int8And(Load(StubMachineType::UINT8, pc, GetIntPtrConstant(2)), GetInt8Constant(0xf));
 }
 

@@ -173,9 +173,7 @@ CString *HeapSnapShot::GenerateNodeName(JSThread *thread, TaggedObject *entry)
         case JSType::FREE_OBJECT_WITH_NONE_FIELD:
         case JSType::FREE_OBJECT_WITH_TWO_FIELD:
         case JSType::JS_NATIVE_POINTER:
-        {
             break;
-        }
         case JSType::JS_FUNCTION_BASE:
             return GetString("JSFunctionBase");
         case JSType::JS_FUNCTION:

@@ -998,6 +998,7 @@ JSHandle<JSArray> JSDateTimeFormat::ConstructFDateIntervalToJSArray(JSThread *th
     int32_t preEndPos = 0;
     // 2: number of elements
     std::array<int32_t, 2> begin {};
+    // 2: number of elements
     std::array<int32_t, 2> end {};
     begin[0] = begin[1] = end[0] = end[1] = 0;
     std::vector<CommonDateFormatPart> parts;
@@ -1280,6 +1281,7 @@ std::string JSDateTimeFormat::ConstructFormattedTimeZoneID(const std::string &in
     if (result.find("SYSTEMV/") == 0) {
         result.replace(0, STRING_LENGTH_8, "SystemV/");
     } else if (result.find("US/") == 0) {
+        // 3: start position specified by string
         result = (result.length() == STRING_LENGTH_3) ? result : "US/" + ToTitleCaseTimezonePosition(input.substr(3));
     } else if (result.find("ETC/GMT") == 0 && result.length() > STRING_LENGTH_7) {
         result = ConstructGMTTimeZoneID(input);
@@ -1342,10 +1344,9 @@ std::string JSDateTimeFormat::ConstructGMTTimeZoneID(const std::string &input)
         return "";
     }
     std::string ret = "Etc/GMT";
-    // 7 : start position specified by string
-    if (regex_match(input.substr(7), std::regex("[+-][1][0-4]")) || (regex_match(input.substr(7),
-        std::regex("[+-][0-9]")) || input.substr(7) == "0")) {
-        return ret + input.substr(7);
+    if (regex_match(input.substr(STRING_LENGTH_7), std::regex("[+-][1][0-4]")) ||
+        (regex_match(input.substr(STRING_LENGTH_7), std::regex("[+-][0-9]")) || input.substr(STRING_LENGTH_7) == "0")) {
+        return ret + input.substr(STRING_LENGTH_7);
     }
     return "";
 }
