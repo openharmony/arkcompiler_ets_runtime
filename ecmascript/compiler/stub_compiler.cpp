@@ -96,8 +96,9 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
 {
     auto callSigns = module->GetCSigns();
     const CompilerLog *log = GetLog();
-    bool enableLog = log->IsAlwaysEnabled();
+    auto logList = GetLogList();
 
+    bool enableLog = !log->NoneMethod();
     for (size_t i = 0; i < callSigns.size(); i++) {
         Circuit circuit;
         Stub stub(callSigns[i], &circuit);
@@ -106,12 +107,12 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
             callSigns[i]->GetConstructor()(reinterpret_cast<void*>(stub.GetEnvironment())));
         stub.SetStubBuilder(stubBuilder);
 
-        if (!log->IsAlwaysEnabled() && !log->IsAlwaysDisabled()) {  // neither "all" nor "none"
-            enableLog = log->IncludesMethod(stub.GetMethodName());
+        if (log->CertainMethod()) {
+            enableLog = logList->IncludesMethod(stub.GetMethodName());
         }
 
         StubPassData data(&stub, module);
-        PassRunner<StubPassData> pipeline(&data, enableLog);
+        PassRunner<StubPassData> pipeline(&data, enableLog && log->OutputCIR());
         pipeline.RunPass<StubBuildCircuitPass>();
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<SchedulingPass>();
@@ -127,7 +128,8 @@ bool StubCompiler::BuildStubModuleAndSave() const
     RuntimeStubCSigns::Initialize();
     size_t res = 0;
     const CompilerLog *log = GetLog();
-    StubFileGenerator generator(log, triple_);
+    const MethodLogList *logList = GetLogList();
+    StubFileGenerator generator(log, logList, triple_);
     if (!filePath_.empty()) {
         LOG_COMPILER(INFO) << "compiling bytecode handler stubs";
         LLVMModule bcStubModule("bc_stub", triple_);
@@ -183,9 +185,11 @@ int main(const int argc, const char **argv)
     std::string stubFile = runtimeOptions.GetStubFile();
     size_t optLevel = runtimeOptions.GetOptLevel();
     size_t relocMode = runtimeOptions.GetRelocMode();
-    std::string logMethods = runtimeOptions.GetlogCompiledMethods();
-    panda::ecmascript::kungfu::CompilerLog log(logMethods);
-    panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, optLevel, relocMode, &log);
+    std::string logOption = runtimeOptions.GetCompilerLogOption();
+    std::string methodsList = runtimeOptions.GetMethodsListForLog();
+    panda::ecmascript::kungfu::CompilerLog logOpt(logOption);
+    panda::ecmascript::kungfu::MethodLogList logList(methodsList);
+    panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, optLevel, relocMode, &logOpt, &logList);
 
     bool res = compiler.BuildStubModuleAndSave();
     LOG_COMPILER(INFO) << "stub compiler run finish, result condition(T/F):" << std::boolalpha << res;

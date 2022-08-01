@@ -57,18 +57,23 @@ public:
         BytecodeStubCSigns::Initialize();
         CommonStubCSigns::Initialize();
         RuntimeStubCSigns::Initialize();
+        auto logOpt = thread->GetEcmaVM()->GetJSOptions().GetCompilerLogOption();
+        log = new CompilerLog(logOpt);
         stubModule.SetUpForCommonStubs();
     }
 
     void TearDown() override
     {
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
+        if (log != nullptr) {
+            delete log;
+        }
     }
 
     void PrintCircuitByBasicBlock([[maybe_unused]] const std::vector<std::vector<GateRef>> &cfg,
                                   [[maybe_unused]] const Circuit &netOfGates) const
     {
-        if (thread->GetEcmaVM()->GetJSOptions().WasSetlogCompiledMethods()) {
+        if (thread->GetEcmaVM()->GetJSOptions().WasSetCompilerLogOption()) {
             GateAccessor acc(const_cast<Circuit*>(&netOfGates));
             for (size_t bbIdx = 0; bbIdx < cfg.size(); bbIdx++) {
                 LOG_COMPILER(INFO) << (acc.GetOpCode(cfg[bbIdx].front()).IsCFGMerge() ? "MERGE_" : "BB_")
@@ -97,6 +102,7 @@ public:
     EcmaVM *instance {nullptr};
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
+    CompilerLog *log {nullptr};
     LLVMModule stubModule {"stub_tests", "x86_64-unknown-linux-gnu"};
 };
 
@@ -118,7 +124,7 @@ HWTEST_F_L0(StubTest, FastAddTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     // Testcase build and run
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
@@ -159,7 +165,7 @@ HWTEST_F_L0(StubTest, FastSubTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     // Testcase build and run
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
@@ -196,7 +202,7 @@ HWTEST_F_L0(StubTest, FastMulTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     // Testcase build and run
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
@@ -252,7 +258,7 @@ HWTEST_F_L0(StubTest, FastDivTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
     // test normal Division operation
@@ -301,7 +307,7 @@ HWTEST_F_L0(StubTest, FastModTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
     // test left, right are all integer
@@ -369,7 +375,7 @@ HWTEST_F_L0(StubTest, TryLoadICByName)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
 }
 
 HWTEST_F_L0(StubTest, TryLoadICByValue)
@@ -390,7 +396,7 @@ HWTEST_F_L0(StubTest, TryLoadICByValue)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
 }
 
 HWTEST_F_L0(StubTest, TryStoreICByName)
@@ -411,7 +417,7 @@ HWTEST_F_L0(StubTest, TryStoreICByName)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
 }
 
 HWTEST_F_L0(StubTest, TryStoreICByValue)
@@ -432,7 +438,7 @@ HWTEST_F_L0(StubTest, TryStoreICByValue)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
 }
 
 struct ThreadTy {
@@ -691,7 +697,7 @@ HWTEST_F_L0(StubTest, JSEntryTest)
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
 
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto engine = assembler.GetEngine();
     uint64_t stub1Code = LLVMGetFunctionAddress(engine, "stub1");
     uint64_t stub2Code = LLVMGetFunctionAddress(engine, "stub2");
@@ -759,7 +765,7 @@ HWTEST_F_L0(StubTest, Prologue)
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
 
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto engine = assembler.GetEngine();
     uint64_t mainCode = LLVMGetFunctionAddress(engine, "main");
     auto mainFunc = reinterpret_cast<int64_t (*)(int64_t, int64_t)>(mainCode);
@@ -831,7 +837,7 @@ HWTEST_F_L0(StubTest, CEntryFp)
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
 
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto engine = assembler.GetEngine();
     uint64_t nativeCode = LLVMGetFunctionAddress(engine, "main");
     LOG_COMPILER(INFO) << " nativeCode : " << nativeCode;
@@ -868,7 +874,7 @@ HWTEST_F_L0(StubTest, LoadGCIRTest)
     }
     LLVMModuleRef module = LLVMCloneModule(wrap(rawModule.get()));
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto engine = assembler.GetEngine();
     LLVMValueRef function = LLVMGetNamedFunction(module, "main");
 
@@ -899,7 +905,7 @@ HWTEST_F_L0(StubTest, GetPropertyByIndexStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *getpropertyByIndex = reinterpret_cast<JSTaggedValue (*)(uintptr_t, JSTaggedValue, uint32_t)>(
         reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
     auto *factory = thread->GetEcmaVM()->GetFactory();
@@ -935,7 +941,7 @@ HWTEST_F_L0(StubTest, SetPropertyByIndexStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *setpropertyByIndex = reinterpret_cast<JSTaggedValue (*)(uintptr_t, JSTaggedValue, uint32_t, JSTaggedValue)>(
         reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
     auto *factory = thread->GetEcmaVM()->GetFactory();
@@ -973,7 +979,7 @@ HWTEST_F_L0(StubTest, GetPropertyByNameStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *getPropertyByNamePtr = reinterpret_cast<JSTaggedValue (*)(uintptr_t, uint64_t, uint64_t)>(
         reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
     auto *factory = thread->GetEcmaVM()->GetFactory();
@@ -1011,7 +1017,7 @@ HWTEST_F_L0(StubTest, SetPropertyByNameStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *setPropertyByName = reinterpret_cast<JSTaggedValue (*)(uintptr_t, JSTaggedValue,
         JSTaggedValue, JSTaggedValue, bool)>
         (reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
@@ -1080,7 +1086,7 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *getPropertyByValuePtr = reinterpret_cast<JSTaggedValue (*)(uintptr_t, uint64_t, uint64_t)>(
         reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
     auto *getPropertyByNamePtr = reinterpret_cast<JSTaggedValue (*)(uintptr_t, uint64_t, uint64_t)>(
@@ -1152,7 +1158,7 @@ HWTEST_F_L0(StubTest, FastTypeOfTest)
     char *error = nullptr;
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *typeOfPtr =
         reinterpret_cast<JSTaggedValue (*)(uintptr_t, uint64_t)>(assembler.GetFuncPtrFromCompiledModule(function));
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -1238,7 +1244,7 @@ HWTEST_F_L0(StubTest, FastEqualTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
     // test for 1 == 1
@@ -1477,7 +1483,7 @@ HWTEST_F_L0(StubTest, RelocateTest)
     char *error = nullptr;
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     uint64_t input = 0x111;
     auto *ptr =
         reinterpret_cast<JSTaggedValue (*)(uint64_t)>(assembler.GetFuncPtrFromCompiledModule(function));

@@ -26,46 +26,91 @@
 namespace panda::ecmascript::kungfu {
 class CompilerLog {
 public:
-    explicit CompilerLog(const std::string &logMehtods) : methods_(logMehtods) {}
+    CompilerLog(const std::string &logOpt, bool enableBCTrace = false)
+    {
+        outputCIR_ = logOpt.find("cir") != std::string::npos ||
+            logOpt.find("0") != std::string::npos;
+        outputLLIR_ = logOpt.find("llir") != std::string::npos ||
+            logOpt.find("1") != std::string::npos;
+        outputASM_ = logOpt.find("asm") != std::string::npos ||
+            logOpt.find("2") != std::string::npos;
+        allMethod_ = logOpt.find("all") != std::string::npos;
+        cerMethod_ = logOpt.find("all") == std::string::npos &&
+            logOpt.find("cer") != std::string::npos;
+        noneMethod_ = logOpt.find("all") == std::string::npos &&
+            logOpt.find("cer") == std::string::npos;
+        enableBCTrace_ = enableBCTrace;
+    }
     ~CompilerLog() = default;
 
-    bool IsAlwaysEnabled() const
+    bool AllMethod() const
     {
-        return methods_.compare("all") == 0;
+        return allMethod_;
     }
 
-    bool IsDisassembleEnabled() const
+    bool CertainMethod() const
     {
-        return methods_.compare("asm") == 0;
+        return cerMethod_;
     }
 
-    bool IsAlwaysDisabled() const
+    bool NoneMethod() const
     {
-        return methods_.compare("none") == 0;
+        return noneMethod_;
     }
 
+    bool OutputCIR() const
+    {
+        return outputCIR_;
+    }
+
+    bool OutputLLIR() const
+    {
+        return outputLLIR_;
+    }
+
+    bool OutputASM() const
+    {
+        return outputASM_;
+    }
+
+    bool IsEnableByteCodeTrace() const
+    {
+        return enableBCTrace_;
+    }
+private:
+    bool allMethod_ {false};
+    bool cerMethod_ {false};
+    bool noneMethod_ {false};
+    bool outputCIR_ {false};
+    bool outputLLIR_ {false};
+    bool outputASM_ {false};
+    bool enableBCTrace_ {false};
+};
+
+class MethodLogList {
+public:
+    explicit MethodLogList(const std::string &logMethods) : methods_(logMethods) {}
+    ~MethodLogList() = default;
     bool IncludesMethod(const std::string &methodName) const
     {
         bool empty = methodName.empty();
         bool found = methods_.find(methodName) != std::string::npos;
         return !empty && found;
     }
-
 private:
-    std::string methods_ {"none"};
+    std::string methods_ {};
 };
 
-class AotLog : public CompilerLog {
+class AotMethodLogList : public MethodLogList {
 public:
     static const char fileSplitSign = ':';
     static const char methodSplitSign = ',';
 
-    explicit AotLog(const std::string &logMehtods, bool isEnableBcTrace)
-        : CompilerLog(logMehtods), isEnalbeBcTrace_(isEnableBcTrace)
+    explicit AotMethodLogList(const std::string &logMethods) : MethodLogList(logMethods)
     {
-        ParseFileMethodsName(logMehtods);
+        ParseFileMethodsName(logMethods);
     }
-    ~AotLog() = default;
+    ~AotMethodLogList() = default;
 
     bool IncludesMethod(const std::string &fileName, const std::string &methodName) const
     {
@@ -75,11 +120,6 @@ public:
         std::vector mehtodVector = fileMethods_.at(fileName);
         auto it = find(mehtodVector.begin(), mehtodVector.end(), methodName);
         return (it != mehtodVector.end());
-    }
-
-    bool IsEnableByteCodeTrace() const
-    {
-        return isEnalbeBcTrace_;
     }
 
 private:
@@ -94,13 +134,9 @@ private:
         return vec;
     }
 
-    void ParseFileMethodsName(const std::string &logMehtods)
+    void ParseFileMethodsName(const std::string &logMethods)
     {
-        if (IsAlwaysEnabled() || IsAlwaysDisabled()) {
-            return;
-        }
-
-        std::vector<std::string> fileVector = spiltString(logMehtods, fileSplitSign);
+        std::vector<std::string> fileVector = spiltString(logMethods, fileSplitSign);
         std::vector<std::string> itemVector;
         for (size_t index = 0; index < fileVector.size(); ++index) {
             itemVector = spiltString(fileVector[index], methodSplitSign);
@@ -110,7 +146,6 @@ private:
     }
 
     std::map<std::string, std::vector<std::string>> fileMethods_ {};
-    bool isEnalbeBcTrace_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LOG_H

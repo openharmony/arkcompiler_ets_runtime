@@ -463,7 +463,7 @@ FileLoader::~FileLoader()
 
 FileLoader::FileLoader(EcmaVM *vm) : vm_(vm), factory_(vm->GetFactory())
 {
-    bool enableLog = vm->GetJSOptions().WasSetlogCompiledMethods();
+    bool enableLog = vm->GetJSOptions().WasSetCompilerLogOption();
     stackMapParser_ = new kungfu::LLVMStackMapParser(enableLog);
 }
 
