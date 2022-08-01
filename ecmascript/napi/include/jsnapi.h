@@ -709,8 +709,9 @@ using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 class PUBLIC_API FunctionRef : public ObjectRef {
 public:
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
-        void *data = nullptr);
-    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter, void *data);
+        void *data = nullptr, bool callNative = false);
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
+        void *data, bool callNative = false);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
@@ -1145,6 +1146,7 @@ public:
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetHostResolvePathTracker(EcmaVM *vm,
                                           std::function<std::string(std::string dirPath, std::string requestPath)> cb);
+    static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();

@@ -458,6 +458,11 @@ void JSNApi::SetHostResolvePathTracker(EcmaVM *vm,
     vm->SetResolvePathCallback(cb);
 }
 
+void JSNApi::SetNativePtrGetter(EcmaVM *vm, void* cb)
+{
+    vm->SetNativePtrGetter(reinterpret_cast<ecmascript::NativePtrGetter>(cb));
+}
+
 void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb)
 {
     JSHandle<JSFunction> fun = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(cb));
@@ -1035,7 +1040,8 @@ void ObjectRef::SetNativePointerField(int32_t index, void *nativePointer,
 }
 
 // ----------------------------------- FunctionRef --------------------------------------
-Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter, void *data)
+Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNative)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
@@ -1044,10 +1050,12 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc, Del
     JSHandle<JSNativePointer> extraInfo =
         factory->NewJSNativePointer(reinterpret_cast<void *>(nativeFunc), deleter, data);
     current->SetFunctionExtraInfo(thread, extraInfo.GetTaggedValue());
+    current->SetCallNative(callNative);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
-Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter, void *data)
+Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNative)
 {
     EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
@@ -1074,6 +1082,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
     JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(current), parent);
     current->SetHomeObject(thread, clsPrototype);
+    current->SetCallNative(callNative);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     return scope.Escape(result);
 }

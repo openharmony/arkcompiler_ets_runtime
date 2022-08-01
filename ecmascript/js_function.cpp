@@ -53,6 +53,7 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     func->SetStrict(strict);
     func->SetThisMode(thisMode);
     func->SetResolved(false);
+    func->SetCallNative(false);
 
     auto globalConst = thread->GlobalConstants();
     if (HasPrototype(kind)) {

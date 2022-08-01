@@ -83,6 +83,8 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
 
+using NativePtrGetter = void* (*)(void* info);
+
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
 
 class EcmaVM {
@@ -285,6 +287,16 @@ public:
         return promiseRejectCallback_;
     }
 
+    void SetNativePtrGetter(NativePtrGetter cb)
+    {
+        nativePtrGetter_ = cb;
+    }
+
+    NativePtrGetter GetNativePtrGetter() const
+    {
+        return nativePtrGetter_;
+    }
+
     void SetHostPromiseRejectionTracker(HostPromiseRejectionTracker cb)
     {
         hostPromiseRejectionTracker_ = cb;
@@ -428,6 +440,7 @@ private:
     // Registered Callbacks
     PromiseRejectCallback promiseRejectCallback_ {nullptr};
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
+    NativePtrGetter nativePtrGetter_ {nullptr};
     void* data_ {nullptr};
 
     bool isProcessingPendingJob_ = false;
