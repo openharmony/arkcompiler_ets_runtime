@@ -80,4 +80,72 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
     }
     return data;
 }
+
+std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
+{
+    FrameHandler frameHandler(thread);
+    std::vector<struct JsFrameInfo> jsframe;
+    std::string native;
+    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        if (!frameHandler.IsInterpretedFrame()) {
+            continue;
+        }
+        auto method = frameHandler.CheckAndGetMethod();
+        if (method == nullptr) {
+            continue;
+        }
+        struct JsFrameInfo jf;
+        if (!native.empty()) {
+            jf.nativepointer = native;
+            native = "";
+        }
+        if (!method->IsNativeWithCallField()) {
+            std::string name = method->ParseFunctionName();
+            if (name.empty()) {
+                jf.functionname = "anonymous";
+            } else {
+                jf.functionname = name;
+            }
+            // source file
+            tooling::JSPtExtractor *debugExtractor =
+                JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
+            const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
+            if (sourceFile.empty()) {
+                jf.filename = "?";
+            } else {
+                jf.filename = sourceFile;
+            }
+            // line number and column number
+            int lineNumber = 0;
+            auto callbackLineFunc = [&jf, &lineNumber](int32_t line) -> bool {
+                lineNumber = line + 1;
+                jf.lines = std::to_string(lineNumber) + ":";
+                return true;
+            };
+            auto callbackColumnFunc = [&jf](int32_t column) -> bool {
+                jf.lines += std::to_string(column + 1);
+                return true;
+            };
+            panda_file::File::EntityId methodId = method->GetMethodId();
+            uint32_t offset = frameHandler.GetBytecodeOffset();
+            if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
+                !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
+                jf.lines = "?";
+            }
+            jsframe.push_back(jf);
+        } else {
+            std::stringstream stream;
+            JSTaggedValue function = frameHandler.GetFunction();
+            JSHandle<JSTaggedValue> extraInfoValue(
+                thread, JSFunction::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
+            if (extraInfoValue->IsJSNativePointer()) {
+                JSHandle<JSNativePointer> extraInfo(extraInfoValue);
+                auto addr = reinterpret_cast<void *>(extraInfo->GetExternalPointer());
+                stream << addr;
+            }
+            native = stream.str();
+        }
+    }
+    return jsframe;
+}
 } // namespace panda::ecmascript
