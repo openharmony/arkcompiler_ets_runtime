@@ -400,11 +400,11 @@ void OptimizedCall::JSCallBody(ExtendedAssembler *assembler, Register jsfunc)
 
     Register jstype(X3, W);
     __ And(jstype, bitfield, LogicalImmediate::Create(0xFF, RegWSize));
-    // 4 : 4 means JSType::JS_FUNCTION_BEGIN
-    __ Sub(jstype, jstype, Immediate(static_cast<int>(JSType::JS_FUNCTION_BEGIN)));
-    // 9 : 9 means JSType::JS_FUNCTION_END - JSType::JS_FUNCTION_BEGIN + 1
-    __ Cmp(jstype, Immediate(static_cast<int>(JSType::JS_FUNCTION_END)
-         - static_cast<int>(JSType::JS_FUNCTION_BEGIN) + 1));
+    // 4 : 4 means JSType::JS_FUNCTION_FIRST
+    __ Sub(jstype, jstype, Immediate(static_cast<int>(JSType::JS_FUNCTION_FIRST)));
+    // 9 : 9 means JSType::JS_FUNCTION_LAST - JSType::JS_FUNCTION_FIRST + 1
+    __ Cmp(jstype, Immediate(static_cast<int>(JSType::JS_FUNCTION_LAST)
+         - static_cast<int>(JSType::JS_FUNCTION_FIRST) + 1));
     __ B(Condition::HS, &notJSFunction);
 
     Register method(X2);

@@ -80,10 +80,10 @@ void AsmInterpreterCall::JSCallDispatch(ExtendedAssembler *assembler)
     __ Ldr(tempRegister, MemoryOperand(callTargetRegister, 0)); // hclass
     __ Ldr(bitFieldRegister, MemoryOperand(tempRegister, JSHClass::BIT_FIELD_OFFSET));
     __ And(functionTypeRegister, bitFieldRegister.W(), LogicalImmediate::Create(0xFF, RegWSize));
-    __ Mov(tempRegister.W(), Immediate(static_cast<int64_t>(JSType::JS_FUNCTION_BEGIN)));
+    __ Mov(tempRegister.W(), Immediate(static_cast<int64_t>(JSType::JS_FUNCTION_FIRST)));
     __ Cmp(functionTypeRegister, tempRegister.W());
     __ B(Condition::LO, &notJSFunction);
-    __ Mov(tempRegister.W(), Immediate(static_cast<int64_t>(JSType::JS_FUNCTION_END)));
+    __ Mov(tempRegister.W(), Immediate(static_cast<int64_t>(JSType::JS_FUNCTION_LAST)));
     __ Cmp(functionTypeRegister, tempRegister.W());
     __ B(Condition::LS, &callJSFunctionEntry);
     __ Bind(&notJSFunction);
@@ -689,9 +689,9 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Ldr(temp, MemoryOperand(ret, 0)); // hclass
         __ Ldr(temp, MemoryOperand(temp, JSHClass::BIT_FIELD_OFFSET));
         __ And(temp.W(), temp.W(), LogicalImmediate::Create(0xFF, RegWSize));
-        __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_END)));
+        __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST)));
         __ B(Condition::HI, &notEcmaObject);
-        __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_BEGIN)));
+        __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_FIRST)));
         __ B(Condition::LO, &notEcmaObject);
         // acc is ecma object
         __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp

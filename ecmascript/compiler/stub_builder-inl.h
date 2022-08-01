@@ -1005,10 +1005,10 @@ inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
     GateRef objectType = GetObjectType(LoadHClass(obj));
     auto ret = Int32And(
         ZExtInt1ToInt32(
-            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_END)))),
+            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST)))),
         ZExtInt1ToInt32(
             Int32GreaterThanOrEqual(objectType,
-                Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_BEGIN)))));
+                Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST)))));
     return TruncInt32ToInt1(ret);
 }
 
@@ -1026,10 +1026,10 @@ inline GateRef StubBuilder::IsJSObject(GateRef obj)
         GateRef objectType = GetObjectType(LoadHClass(obj));
         auto ret1 = Int32And(
             ZExtInt1ToInt32(
-                Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_END)))),
+                Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST)))),
             ZExtInt1ToInt32(
                 Int32GreaterThanOrEqual(objectType,
-                    Int32(static_cast<int32_t>(JSType::JS_OBJECT_BEGIN)))));
+                    Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST)))));
         result = TruncInt32ToInt1(ret1);
         Jump(&exit);
     }
@@ -1468,7 +1468,7 @@ inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
 {
     return TruncInt32ToInt1(Int32And(
         ZExtInt1ToInt32(
-            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_BEGIN)))),
+            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST)))),
         ZExtInt1ToInt32(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))))));
 }
 
@@ -1887,9 +1887,9 @@ inline GateRef StubBuilder::IsJSFunction(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     GateRef greater = ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_BEGIN))));
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST))));
     GateRef less = ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_END))));
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST))));
     return TruncInt32ToInt1(Int32And(greater, less));
 }
 

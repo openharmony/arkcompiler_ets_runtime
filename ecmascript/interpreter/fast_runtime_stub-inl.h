@@ -935,7 +935,7 @@ bool FastRuntimeStub::TryStringOrSymbolToIndex(JSTaggedValue key, uint32_t *outp
 
 bool FastRuntimeStub::IsFastTypeArray(JSType jsType)
 {
-    return jsType >= JSType::JS_TYPED_ARRAY_BEGIN && jsType <= JSType::JS_FLOAT64_ARRAY;
+    return jsType >= JSType::JS_TYPED_ARRAY_FIRST && jsType <= JSType::JS_FLOAT64_ARRAY;
 }
 
 JSTaggedValue FastRuntimeStub::FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
