@@ -905,30 +905,33 @@ JSTaggedValue SlowRuntimeStub::DefineGeneratorFunc(JSThread *thread, JSFunction 
 {
     INTERPRETER_TRACE(thread, DefineGeneratorFunc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSFunction> funcHandle(thread, func);
 
-    return RuntimeStubs::RuntimeDefineGeneratorFunc(thread, func);
+    return RuntimeStubs::RuntimeDefineGeneratorFunc(thread, funcHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::DefineAsyncFunc(JSThread *thread, JSFunction *func)
 {
     INTERPRETER_TRACE(thread, DefineAsyncFunc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    return RuntimeStubs::RuntimeDefineAsyncFunc(thread, func);
+    JSHandle<JSFunction> funcHandle(thread, func);
+    return RuntimeStubs::RuntimeDefineAsyncFunc(thread, funcHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::DefineNCFuncDyn(JSThread *thread, JSFunction *func)
 {
     INTERPRETER_TRACE(thread, DefineNCFuncDyn);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    return RuntimeStubs::RuntimeDefineNCFuncDyn(thread, func);
+    JSHandle<JSFunction> funcHandle(thread, func);
+    return RuntimeStubs::RuntimeDefineNCFuncDyn(thread, funcHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::DefinefuncDyn(JSThread *thread, JSFunction *func)
 {
     INTERPRETER_TRACE(thread, DefinefuncDyn);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    return RuntimeStubs::RuntimeDefinefuncDyn(thread, func);
+    JSHandle<JSFunction> funcHandle(thread, func);
+    return RuntimeStubs::RuntimeDefinefuncDyn(thread, funcHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::GetSuperConstructor(JSThread *thread, JSTaggedValue ctor)
@@ -968,9 +971,9 @@ JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, JSFunction *func, 
 {
     INTERPRETER_TRACE(thread, DefineMethod);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
+    JSHandle<JSFunction> funcHandle(thread, func);
     JSHandle<JSTaggedValue> homeObjectHandle(thread, homeObject);
-    return RuntimeStubs::RuntimeDefineMethod(thread, func, homeObjectHandle);
+    return RuntimeStubs::RuntimeDefineMethod(thread, funcHandle, homeObjectHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key,

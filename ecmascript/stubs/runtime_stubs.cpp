@@ -1390,8 +1390,8 @@ DEF_RUNTIME_STUBS(NewObjDynRange)
 DEF_RUNTIME_STUBS(DefinefuncDyn)
 {
     RUNTIME_STUBS_HEADER(DefinefuncDyn);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefinefuncDyn(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDefinefuncDyn(thread, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateRegExpWithLiteral)
@@ -1434,30 +1434,30 @@ DEF_RUNTIME_STUBS(CreateObjectWithExcludedKeys)
 DEF_RUNTIME_STUBS(DefineNCFuncDyn)
 {
     RUNTIME_STUBS_HEADER(DefineNCFuncDyn);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefineNCFuncDyn(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDefineNCFuncDyn(thread, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineGeneratorFunc)
 {
     RUNTIME_STUBS_HEADER(DefineGeneratorFunc);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefineGeneratorFunc(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDefineGeneratorFunc(thread, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineAsyncFunc)
 {
     RUNTIME_STUBS_HEADER(DefineAsyncFunc);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefineAsyncFunc(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDefineAsyncFunc(thread, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineMethod)
 {
     RUNTIME_STUBS_HEADER(DefineMethod);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> homeObject = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeDefineMethod(thread, reinterpret_cast<JSFunction*>(func), homeObject).GetRawData();
+    return RuntimeDefineMethod(thread, func, homeObject).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CallSpreadDyn)
