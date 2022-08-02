@@ -41,6 +41,28 @@ private:
 
 struct ModuleSectionDes {
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
+    uint32_t startIndex_ {-1};
+    uint32_t funcCount_ {0};
+
+    void SetStartIndex(uint32_t index)
+    {
+        startIndex_ = index;
+    }
+
+    uint32_t GetStartIndex() const
+    {
+        return startIndex_;
+    }
+
+    void SetFuncCount(uint32_t cnt)
+    {
+        funcCount_ = cnt;
+    }
+
+    uint32_t GetFuncCount() const
+    {
+        return funcCount_;
+    }
 
     ModuleSectionDes() = default;
 
@@ -93,7 +115,7 @@ public:
         CallSignature::TargetKind kind_ {CallSignature::TargetKind::COMMON_STUB};
         uint32_t indexInKind_ {0};
         uint32_t moduleIndex_ {0};
-        int fpDeltaPrevFramSp_ {0};
+        int fpDeltaPrevFrameSp_ {0};
         uint32_t funcSize_ {0};
         bool IsStub() const
         {
@@ -126,6 +148,11 @@ public:
     const FuncEntryDes& GetStubDes(int index) const
     {
         return entries_[index];
+    }
+
+    uint32_t GetEntrySize() const
+    {
+        return entries_.size();
     }
 
     const std::vector<FuncEntryDes>& GetStubs() const
@@ -177,7 +204,7 @@ public:
         des.indexInKind_ = static_cast<uint32_t>(indexInKind);
         des.codeAddr_ = offset;
         des.moduleIndex_ = moduleIndex;
-        des.fpDeltaPrevFramSp_ = delta;
+        des.fpDeltaPrevFrameSp_ = delta;
         des.funcSize_ = size;
         entries_.emplace_back(des);
     }
@@ -338,7 +365,7 @@ public:
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);
     void LoadSnapshotFile();
-    kungfu::LLVMStackMapParser* GetStackMapParser() const;
+    kungfu::ArkStackMapParser* GetStackMapParser() const;
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void RuntimeRelocate();
@@ -348,7 +375,7 @@ private:
     StubModulePackInfo stubPackInfo_ {};
     std::vector<AOTModulePackInfo> aotPackInfos_ {};
     std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint64_t>> hashToEntryMap_ {};
-    kungfu::LLVMStackMapParser *stackMapParser_ {nullptr};
+    kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 
     void InitializeStubEntries(const std::vector<AOTModulePackInfo::FuncEntryDes>& stubs);
     void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<ModulePackInfo::FuncEntryDes> &stubs,

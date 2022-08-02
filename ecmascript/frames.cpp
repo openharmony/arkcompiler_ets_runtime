@@ -15,6 +15,7 @@
 
 #include "ecmascript/frames.h"
 
+#include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/file_loader.h"
 #include "ecmascript/js_thread.h"
@@ -24,12 +25,11 @@
 namespace panda::ecmascript {
 JSTaggedType *OptimizedLeaveFrame::GetJsFuncFrameArgv(JSThread *thread) const
 {
-    uint64_t textStart = 0;
-    uint8_t *stackmapAddr = nullptr;
     int delta = 0;
     auto current = GetPrevFrameFp();
     FrameIterator it(current, thread);
-    std::tie(textStart, stackmapAddr, delta) = it.CalCallSiteInfo(returnAddr);
+    auto callsiteInfo = it.CalCallSiteInfo(returnAddr);
+    delta = std::get<2>(callsiteInfo);
     uintptr_t *preFrameSp = reinterpret_cast<uintptr_t *>(const_cast<JSTaggedType *>(current))
         + delta / sizeof(uintptr_t);
     JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(preFrameSp + sizeof(uint64_t) / sizeof(uintptr_t));
@@ -39,13 +39,13 @@ JSTaggedType *OptimizedLeaveFrame::GetJsFuncFrameArgv(JSThread *thread) const
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
     if (thread != nullptr) {
-        stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+        arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     }
 }
 
 int FrameIterator::ComputeDelta() const
 {
-    return fpDeltaPrevFramSp_;
+    return fpDeltaPrevFrameSp_;
 }
 
 std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
@@ -58,7 +58,7 @@ std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t re
     std::tuple<uint64_t, uint8_t *, int> ret;
 
     auto fn = [&](const std::vector<ModuleSectionDes> &des,
-        const std::vector<AOTModulePackInfo::FuncEntryDes>& funcEntryDes) {
+        const std::vector<ModulePackInfo::FuncEntryDes>& funcEntryDes) {
         for (size_t i = 0; i < des.size(); i++) {
             auto d = des[i];
             uint64_t addr = d.GetSecAddr(ElfSecName::TEXT);
@@ -68,19 +68,24 @@ std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t re
                 continue;
             }
             textStart = addr;
-            for (auto& funcEntry: funcEntryDes) {
-                if (funcEntry.moduleIndex_ != i) {
-                    continue;
-                }
-                if ((retAddr < funcEntry.codeAddr_) || (retAddr >= (funcEntry.codeAddr_ + funcEntry.funcSize_))) {
-                    continue;
-                }
-                delta = funcEntry.fpDeltaPrevFramSp_;
-                LOG_ECMA(DEBUG) << "retAddr: 0x" << retAddr << " delta: 0x" << delta << " codeAddr_:0x"
-                    << funcEntry.codeAddr_ << " funcSize:0x" << funcEntry.funcSize_;
-                ret = std::make_tuple(textStart, stackmapAddr, delta);
-                return true;
-            }
+            auto startIndex = d.GetStartIndex();
+            auto funcCount = d.GetFuncCount();
+            auto s = funcEntryDes.begin() + startIndex;
+            auto t = funcEntryDes.begin() + startIndex + funcCount;
+            ModulePackInfo::FuncEntryDes target;
+            target.codeAddr_ = retAddr;
+            auto it = std::upper_bound(s, t, target,
+                [](const ModulePackInfo::FuncEntryDes &a, const ModulePackInfo::FuncEntryDes &b) {
+                    return a.codeAddr_ < b.codeAddr_;
+            });
+            --it;
+            ASSERT(it != t);
+            ASSERT((it->codeAddr_ <= target.codeAddr_) && (target.codeAddr_ < it->codeAddr_ + it->funcSize_));
+            delta = it->fpDeltaPrevFrameSp_;
+            LOG_ECMA(DEBUG) << "retAddr: 0x" << retAddr << " delta: 0x" << delta << " codeAddr_:0x"
+                << it->codeAddr_ << " funcSize:0x" << it->funcSize_;
+            ret = std::make_tuple(textStart, stackmapAddr, delta);
+            return true;
         }
         return false;
     };
@@ -241,7 +246,7 @@ void FrameIterator::Advance()
         return;
     }
     uint64_t textStart;
-    std::tie(textStart, stackMapAddr_, fpDeltaPrevFramSp_) = CalCallSiteInfo(optimizedReturnAddr_);
+    std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_) = CalCallSiteInfo(optimizedReturnAddr_);
     ASSERT(optimizedReturnAddr_ >= textStart);
     optimizedReturnAddr_ = optimizedReturnAddr_ - textStart;
 }
@@ -279,7 +284,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             ASSERT(thread_ != nullptr);
-            auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + fpDeltaPrevFramSp_;
+            auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + fpDeltaPrevFrameSp_;
             return callSiteSp;
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
@@ -341,14 +346,14 @@ bool FrameIterator::CollectGCSlots(std::set<uintptr_t> &baseSet, ChunkMap<Derive
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     isVerifying = thread_->GetEcmaVM()->GetHeap()->IsVerifying();
 #endif
-    bool ans = stackmapParser_->CollectGCSlots(optimizedReturnAddr_, reinterpret_cast<uintptr_t>(current_),
+    bool ans = arkStackMapParser_->CollectGCSlots(optimizedReturnAddr_, reinterpret_cast<uintptr_t>(current_),
                                                baseSet, data, isVerifying, optimizedCallSiteSp_, stackMapAddr_);
     return ans;
 }
 
 kungfu::ConstInfo FrameIterator::CollectBCOffsetInfo() const
 {
-    auto constInfo = stackmapParser_->GetConstInfo(optimizedReturnAddr_, stackMapAddr_);
+    auto constInfo = arkStackMapParser_->GetConstInfo(optimizedReturnAddr_, stackMapAddr_);
     return constInfo;
 }
 

@@ -255,7 +255,7 @@ class JSThread;
 class EcmaVM;
 class FrameIterator;
 namespace kungfu {
-    class LLVMStackMapParser;
+    class ArkStackMapParser;
 };
 using DerivedDataKey = std::pair<uintptr_t, uintptr_t>;
 enum class FrameType: uintptr_t {
@@ -1132,11 +1132,11 @@ public:
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
-    const kungfu::LLVMStackMapParser *stackmapParser_ {nullptr};
+    const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
     uintptr_t optimizedCallSiteSp_ {0};
     uintptr_t optimizedReturnAddr_ {0};
     uint8_t *stackMapAddr_ {nullptr};
-    int fpDeltaPrevFramSp_ {0};
+    int fpDeltaPrevFrameSp_ {0};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_FRAMES_H

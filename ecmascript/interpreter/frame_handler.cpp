@@ -28,14 +28,14 @@ namespace panda::ecmascript {
 FrameHandler::FrameHandler(const JSThread *thread)
     : sp_(const_cast<JSTaggedType *>(thread->GetCurrentFrame())), thread_(thread)
 {
-    stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+    arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     AdvanceToInterpretedFrame();
 }
 
 FrameHandler::FrameHandler(const JSThread *thread, void *fp)
     : sp_(reinterpret_cast<JSTaggedType *>(fp)), thread_(thread)
 {
-    stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+    arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     AdvanceToInterpretedFrame();
 }
 

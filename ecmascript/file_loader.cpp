@@ -18,6 +18,7 @@
 #include "shlwapi.h"
 #endif
 
+#include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
@@ -47,6 +48,10 @@ void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
         file.write(reinterpret_cast<char *>(&curSecSize), sizeof(curSecSize));
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
     }
+    uint32_t index = GetStartIndex();
+    uint32_t cnt = GetFuncCount();
+    file.write(reinterpret_cast<char *>(&index), sizeof(index));
+    file.write(reinterpret_cast<char *>(&cnt), sizeof(cnt));
 }
 
 void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
@@ -67,6 +72,12 @@ void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
         SetSecAddr(secBegin, secEnumName);
         secBegin += secSize;
     }
+    uint32_t index;
+    uint32_t cnt;
+    parser.ParseBuffer(&index, sizeof(index));
+    parser.ParseBuffer(&cnt, sizeof(cnt));
+    SetStartIndex(index);
+    SetFuncCount(cnt);
 }
 
 void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
@@ -87,6 +98,12 @@ void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
         SetSecAddr(secBegin, secEnumName);
         secBegin += secSize;
     }
+    uint32_t index;
+    uint32_t cnt;
+    file.read(reinterpret_cast<char *>(&index), sizeof(index));
+    file.read(reinterpret_cast<char *>(&cnt), sizeof(cnt));
+    SetStartIndex(index);
+    SetFuncCount(cnt);
 }
 
 void StubModulePackInfo::Save(const std::string &filename)
@@ -309,9 +326,9 @@ void FileLoader::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const
     }
 }
 
-kungfu::LLVMStackMapParser* FileLoader::GetStackMapParser() const
+kungfu::ArkStackMapParser* FileLoader::GetStackMapParser() const
 {
-    return stackMapParser_;
+    return arkStackMapParser_;
 }
 
 void FileLoader::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
@@ -393,16 +410,16 @@ void FileLoader::RuntimeRelocate()
 
 FileLoader::~FileLoader()
 {
-    if (stackMapParser_ != nullptr) {
-        delete stackMapParser_;
-        stackMapParser_ = nullptr;
+    if (arkStackMapParser_ != nullptr) {
+        delete arkStackMapParser_;
+        arkStackMapParser_ = nullptr;
     }
 }
 
 FileLoader::FileLoader(EcmaVM *vm) : vm_(vm), factory_(vm->GetFactory())
 {
     bool enableLog = vm->GetJSOptions().WasSetCompilerLogOption();
-    stackMapParser_ = new kungfu::LLVMStackMapParser(enableLog);
+    arkStackMapParser_ = new kungfu::ArkStackMapParser(enableLog);
 }
 
 bool FileLoader::GetAbsolutePath(const std::string &relativePath, std::string &absPath)

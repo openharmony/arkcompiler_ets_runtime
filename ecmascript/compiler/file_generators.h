@@ -50,6 +50,7 @@ public:
         }
         auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
         const size_t funcCount = llvmModule_->GetFuncCount();
+        funcCount_ = funcCount;
         for (size_t j = 0; j < funcCount; j++) {
             auto cs = callSigns[j];
             LLVMValueRef func = llvmModule_->GetFunction(j);
@@ -61,6 +62,9 @@ public:
                 funcSize = entrys[j + 1] - entrys[j];
             } else {
                 funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - entrys[j];
+            }
+            if (j == 0) {
+                startIndex_ = stubInfo.GetEntrySize();
             }
             stubInfo.AddStubEntry(cs->GetTargetKind(), cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta, funcSize);
             ASSERT(!cs->GetName().empty());
@@ -86,6 +90,7 @@ public:
         });
         auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
         const size_t funcCount = funcInfo.size();
+        funcCount_ = funcCount;
         for (size_t i = 0; i < funcInfo.size(); i++) {
             uint64_t funcEntry;
             size_t idx;
@@ -96,6 +101,9 @@ public:
                 funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
             } else {
                 funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - funcEntry;
+            }
+            if (i == 0) {
+                startIndex_ = aotInfo.GetEntrySize();
             }
             aotInfo.AddStubEntry(CallSignature::TargetKind::JSFUNCTION, idx,
                 funcEntry - codeBuff, moduleIndex, delta, funcSize);
@@ -109,6 +117,8 @@ public:
             auto curSec = ElfSection(i);
             moduleDes.SetSecAddr(reinterpret_cast<uint64_t>(secInfo.first), curSec.GetElfEnumValue());
             moduleDes.SetSecSize(secInfo.second, curSec.GetElfEnumValue());
+            moduleDes.SetStartIndex(startIndex_);
+            moduleDes.SetFuncCount(funcCount_);
         });
     }
 
@@ -152,6 +162,8 @@ public:
 private:
     LLVMModule *llvmModule_ {nullptr};
     LLVMAssembler *assembler_ {nullptr};
+    uint32_t startIndex_ {-1};
+    uint32_t funcCount_ {0};
 };
 
 class FileGenerator {

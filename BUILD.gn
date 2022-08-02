@@ -327,6 +327,7 @@ config("asm_interp_enable_config") {
 }
 
 ecma_source = [
+  "ecmascript/ark_stackmap_builder.cpp",
   "ecmascript/base/array_helper.cpp",
   "ecmascript/base/atomic_helper.cpp",
   "ecmascript/base/builtins_base.cpp",
