@@ -386,6 +386,7 @@ size_t Heap::GetHeapObjectSize() const
 int32_t Heap::GetHeapObjectCount() const
 {
     int32_t count = 0;
+    sweeper_->EnsureAllTaskFinished();
     this->IterateOverObjects([&count]([[maybe_unused]]TaggedObject *obj) {
         ++count;
     });

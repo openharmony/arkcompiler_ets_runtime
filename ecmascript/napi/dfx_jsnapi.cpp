@@ -56,9 +56,10 @@ void DFXJSNApi::DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat,
 void DFXJSNApi::DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress,
                                  bool isVmMode, bool isPrivate)
 {
-    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(vm);
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress, isVmMode, isPrivate);
-    ecmascript::HeapProfilerInterface::Destroy(vm);
+    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
 }
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
@@ -110,7 +111,8 @@ bool DFXJSNApi::BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 bool DFXJSNApi::StartHeapTracking(const EcmaVM *vm, double timeInterval, bool isVmMode,
                                   Stream *stream, bool traceAllocation)
 {
-    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(vm);
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
     return heapProfile->StartHeapTracking(timeInterval, isVmMode, stream, traceAllocation);
 }
 
@@ -123,9 +125,10 @@ bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, const std::string &filePath)
 bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, Stream* stream, Progress *progress)
 {
     bool result = false;
-    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(vm);
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
     result = heapProfile->StopHeapTracking(stream, progress);
-    ecmascript::HeapProfilerInterface::Destroy(vm);
+    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
     return result;
 }
 

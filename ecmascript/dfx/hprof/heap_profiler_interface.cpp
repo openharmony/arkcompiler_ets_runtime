@@ -14,29 +14,16 @@
  */
 
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
-
-#include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/mem/native_area_allocator.h"
 
 namespace panda::ecmascript {
-HeapProfilerInterface *HeapProfilerInterface::heapProfile_ = nullptr;
-HeapProfilerInterface *HeapProfilerInterface::GetInstance(const EcmaVM *vm)
+HeapProfilerInterface *HeapProfilerInterface::GetInstance(EcmaVM *vm)
 {
-    if (heapProfile_ == nullptr) {
-        heapProfile_ = const_cast<NativeAreaAllocator *>(vm->GetNativeAreaAllocator())->New<HeapProfiler>(vm);
-    }
-    ASSERT(heapProfile_ != nullptr);
-    return heapProfile_;
+    return vm->GetOrNewHeapProfile();
 }
 
-void HeapProfilerInterface::Destroy(const EcmaVM *vm)
+void HeapProfilerInterface::Destroy(EcmaVM *vm)
 {
-    if (heapProfile_ == nullptr) {
-        return;
-    }
-
-    const_cast<NativeAreaAllocator *>(vm->GetNativeAreaAllocator())->Delete(heapProfile_);
-    heapProfile_ = nullptr;
+    vm->DeleteHeapProfile();
 }
 }  // namespace panda::ecmascript

@@ -55,9 +55,7 @@ inline void NonMovableMarker::HandleRangeRoots(uint32_t threadId, [[maybe_unused
         JSTaggedValue value(slot.GetTaggedType());
         if (value.IsHeapObject()) {
             if (value.IsWeakForHeapObject()) {
-                Region *objectRegion = Region::ObjectAddressToRange(start.SlotAddress());
-                RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()), objectRegion);
-                continue;
+                LOG_ECMA_MEM(FATAL) << "Weak Reference in NonMovableMarker roots";
             }
             MarkObject(threadId, value.GetTaggedObject());
         }

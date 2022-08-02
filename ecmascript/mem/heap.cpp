@@ -788,6 +788,7 @@ bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 size_t Heap::GetArrayBufferSize() const
 {
     size_t result = 0;
+    sweeper_->EnsureAllTaskFinished();
     this->IterateOverObjects([&result](TaggedObject *obj) {
         JSHClass* jsClass = obj->GetClass();
         result += jsClass->IsArrayBuffer() ? jsClass->GetObjectSize() : 0;
