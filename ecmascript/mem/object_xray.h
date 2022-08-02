@@ -109,10 +109,11 @@ public:
     explicit ObjectXRay(EcmaVM *ecmaVm) : ecmaVm_(ecmaVm) {}
     ~ObjectXRay() = default;
 
-    inline void VisitVMRoots(const RootVisitor &visitor, const RootRangeVisitor &range_visitor) const
+    inline void VisitVMRoots(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const
     {
         ecmaVm_->Iterate(visitor);
-        ecmaVm_->GetJSThread()->Iterate(visitor, range_visitor);
+        ecmaVm_->GetJSThread()->Iterate(visitor, rangeVisitor, derivedVisitor);
     }
     template<VisitType visitType>
     inline void VisitObjectBody(TaggedObject *object, JSHClass *klass, const EcmaObjectRangeVisitor &visitor)

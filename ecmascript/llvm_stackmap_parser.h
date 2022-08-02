@@ -203,10 +203,8 @@ public:
         }
     }
     const CallSiteInfo *GetCallSiteInfoByPc(uintptr_t funcAddr) const;
-    bool CollectGCSlots(uintptr_t callSiteAddr, uintptr_t callsiteFp,
-                            std::set<uintptr_t> &baseSet, ChunkMap<DerivedDataKey, uintptr_t> *data,
-                            [[maybe_unused]] bool isVerifying,
-                            uintptr_t callSiteSp) const;
+    bool CollectGCSlots(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor,
+                        uintptr_t callSiteAddr, uintptr_t callsiteFp, uintptr_t callSiteSp) const;
     bool IsLogEnabled() const
     {
         return enableLog_;
@@ -250,9 +248,8 @@ private:
     int FindFpDelta(uintptr_t funcAddr, uintptr_t callsitePc) const;
     inline uintptr_t GetStackSlotAddress(const DwarfRegAndOffsetType info,
         uintptr_t callSiteSp, uintptr_t callsiteFp) const;
-    void CollectBaseAndDerivedPointers(const CallSiteInfo *infos, std::set<uintptr_t> &baseSet,
-        ChunkMap<DerivedDataKey, uintptr_t> *data, [[maybe_unused]] bool isVerifying,
-        uintptr_t callsiteFp, uintptr_t callSiteSp) const;
+    void CollectBaseAndDerivedPointers(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor,
+                                       const CallSiteInfo *infos, uintptr_t callsiteFp, uintptr_t callSiteSp) const;
     void PrintCallSiteSlotAddr(const CallSiteInfo& callsiteInfo, uintptr_t callSiteSp,
         uintptr_t callsiteFp) const;
 

@@ -961,6 +961,10 @@ void HeapSnapshot::AddSyntheticRoot()
     RootVisitor rootEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type, ObjectSlot slot) {
         ROOT_EDGE_BUILDER_CORE(type, slot);
     };
+    RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
+        ([[maybe_unused]] Root type, [[maybe_unused]]ObjectSlot base, [[maybe_unused]]ObjectSlot derived,
+         [[maybe_unused]]uintptr_t baseOldObject) {
+    };
 
     RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type,
                                                                                ObjectSlot start, ObjectSlot end) {
@@ -969,7 +973,7 @@ void HeapSnapshot::AddSyntheticRoot()
         }
     };
 #undef ROOT_EDGE_BUILDER_CORE
-    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder);
+    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder, rootBaseEdgeBuilder);
 
     int reindex = 0;
     for (Node *node : nodes_) {

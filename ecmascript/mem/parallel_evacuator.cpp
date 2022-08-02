@@ -51,7 +51,6 @@ void ParallelEvacuator::Evacuate()
     Initialize();
     EvacuateSpace();
     UpdateReference();
-    heap_->UpdateDerivedObjectInStack();
     Finalize();
     heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticConcurrentEvacuate(clockScope.GetPauseTime());
 }
@@ -228,8 +227,18 @@ void ParallelEvacuator::UpdateRoot()
             UpdateObjectSlot(slot);
         }
     };
+    RootBaseAndDerivedVisitor gcUpdateDerived =
+        []([[maybe_unused]]Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
+        if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
+            derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
+            LOG_GC(DEBUG) << std::hex << "fix base after:" << base.SlotAddress() << " base Old Value:"
+                          << baseOldObject << " base New Value:" << base.GetTaggedType()
+                          << " derived:" << derived.SlotAddress() << " derived New Value:"
+                          << derived.GetTaggedType();
+        }
+    };
 
-    objXRay_.VisitVMRoots(gcUpdateYoung, gcUpdateRangeYoung);
+    objXRay_.VisitVMRoots(gcUpdateYoung, gcUpdateRangeYoung, gcUpdateDerived);
 }
 
 void ParallelEvacuator::UpdateRecordWeakReference()

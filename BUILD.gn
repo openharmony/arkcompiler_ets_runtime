@@ -247,7 +247,6 @@ config("ark_jsruntime_common_config") {
 
   if (is_debug) {
     cflags_cc += [
-      "-Og",
       "-O0",
       "-ggdb3",
     ]
@@ -260,7 +259,6 @@ config("ark_jsruntime_common_config") {
     cflags_cc += [
       "-fno-inline-functions",
       "-fno-inline",
-      "-O1",
       "-fsanitize=address",
       "-fsanitize-address-use-after-scope",
       "-fno-omit-frame-pointer",

@@ -256,7 +256,6 @@ class FrameIterator;
 namespace kungfu {
     class LLVMStackMapParser;
 };
-using DerivedDataKey = std::pair<uintptr_t, uintptr_t>;
 enum class FrameType: uintptr_t {
     OPTIMIZED_FRAME = 0,
     OPTIMIZED_ENTRY_FRAME,
@@ -314,11 +313,8 @@ struct OptimizedFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                    base::AlignedPointer,
                                                    base::AlignedPointer> {
 public:
-    void GCIterate(const FrameIterator &it,
-        const RootVisitor &v0,
-        [[maybe_unused]] const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-        bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const;
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -456,9 +452,8 @@ public:
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const;
 
     inline JSTaggedValue GetEnv() const
     {
@@ -595,7 +590,7 @@ public:
     {
         return sizeof(InterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
-    void GCIterate(const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 
     alignas(EAS) JSTaggedValue constpool {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
@@ -636,7 +631,7 @@ struct InterpretedBuiltinFrame : public base::AlignedStruct<JSTaggedValue::Tagge
         return sizeof(InterpretedBuiltinFrame) / JSTaggedValue::TaggedTypeSize();
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
     alignas(EAS) const uint8_t *pc {nullptr};
@@ -727,8 +722,8 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
     {
         return sizeof(AsmInterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
-    void GCIterate(const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const;
 
     JSTaggedValue GetEnv() const
     {
@@ -781,8 +776,8 @@ struct InterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::TaggedT
         return sizeof(InterpretedEntryFrame) / JSTaggedValue::TaggedTypeSize();
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &v0,
-        const RootRangeVisitor &v1) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor,
+        const RootRangeVisitor &rangeVisitor) const;
     alignas(EAS) const uint8_t *pc {nullptr};
     alignas(EAS) InterpretedFrameBase base;
 };
@@ -875,9 +870,7 @@ struct OptimizedLeaveFrame {
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
 struct OptimizedWithArgvLeaveFrame {
@@ -903,9 +896,7 @@ struct OptimizedWithArgvLeaveFrame {
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
 struct OptimizedBuiltinLeaveFrame {
@@ -927,9 +918,7 @@ public:
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 
 private:
     [[maybe_unused]] FrameType type;
@@ -1004,9 +993,7 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
     alignas(EAS) FrameType type;
     alignas(EAS) JSTaggedType *prevFp;
     alignas(EAS) uintptr_t returnAddr;
@@ -1064,9 +1051,7 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
     // argv(... this, new.target, function)
     // numargs
     alignas(EAS) FrameType type;
@@ -1125,8 +1110,7 @@ public:
     {
         return thread_;
     }
-    bool CollectGCSlots(std::set<uintptr_t> &baseSet, ChunkMap<DerivedDataKey, uintptr_t> *data,
-                        bool isVerifying) const;
+    bool CollectGCSlots(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};

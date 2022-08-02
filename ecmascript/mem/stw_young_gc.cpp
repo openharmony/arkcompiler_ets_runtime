@@ -135,7 +135,6 @@ void STWYoungGC::Sweep()
     stringTable->SweepWeakReference(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
-    heap_->UpdateDerivedObjectInStack();
 }
 
 void STWYoungGC::Finish()

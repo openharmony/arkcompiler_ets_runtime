@@ -103,12 +103,13 @@ uintptr_t LLVMStackMapParser::GetStackSlotAddress(const DwarfRegAndOffsetType in
     return address;
 }
 
-void LLVMStackMapParser::CollectBaseAndDerivedPointers(const CallSiteInfo* infos, std::set<uintptr_t> &baseSet,
-    ChunkMap<DerivedDataKey, uintptr_t> *data, [[maybe_unused]] bool isVerifying,
-    uintptr_t callsiteFp, uintptr_t callSiteSp) const
+void LLVMStackMapParser::CollectBaseAndDerivedPointers(const RootVisitor &visitor,
+    const RootBaseAndDerivedVisitor &derivedVisitor, const CallSiteInfo* infos, uintptr_t callsiteFp,
+    uintptr_t callSiteSp) const
 {
     bool flag = (infos->size() % 2 != 0);
     size_t j = flag ? 1 : 0; // skip first element when size is odd number
+    std::map<uintptr_t, uintptr_t> baseSet;
     for (; j < infos->size(); j += 2) { // 2: base and derived
         const DwarfRegAndOffsetType& baseInfo = infos->at(j);
         const DwarfRegAndOffsetType& derivedInfo = infos->at(j + 1);
@@ -118,30 +119,29 @@ void LLVMStackMapParser::CollectBaseAndDerivedPointers(const CallSiteInfo* infos
             base = derived;
         }
         if (*reinterpret_cast<uintptr_t *>(base) != 0) {
-            baseSet.emplace(base);
-        }
-        if (base != derived) {
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
-                if (!isVerifying) {
-#endif
-                    (*data)[std::make_pair(base, derived)] = *reinterpret_cast<uintptr_t *>(base);
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
-                }
-#endif
+            // The base address may be marked repeatedly
+            if (baseSet.find(base) == baseSet.end()) {
+                baseSet.emplace(base, *reinterpret_cast<uintptr_t *>(base));
+                visitor(Root::ROOT_FRAME, ObjectSlot(base));
+            }
+
+            if (base != derived) {
+                derivedVisitor(Root::ROOT_FRAME, ObjectSlot(base), ObjectSlot(derived), baseSet[base]);
+            }
         }
     }
+    baseSet.clear();
 }
 
-bool LLVMStackMapParser::CollectGCSlots(uintptr_t callSiteAddr, uintptr_t callsiteFp,
-    std::set<uintptr_t> &baseSet, ChunkMap<DerivedDataKey, uintptr_t> *data, [[maybe_unused]] bool isVerifying,
-    uintptr_t callSiteSp) const
+bool LLVMStackMapParser::CollectGCSlots(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor,
+    uintptr_t callSiteAddr, uintptr_t callsiteFp, uintptr_t callSiteSp) const
 {
     const CallSiteInfo *infos = GetCallSiteInfoByPc(callSiteAddr);
     if (infos == nullptr) {
         return false;
     }
     ASSERT(callsiteFp != callSiteSp);
-    CollectBaseAndDerivedPointers(infos, baseSet, data, isVerifying, callsiteFp, callSiteSp);
+    CollectBaseAndDerivedPointers(visitor, derivedVisitor, infos, callsiteFp, callSiteSp);
 
     if (IsLogEnabled()) {
         PrintCallSiteInfo(infos, callsiteFp, callSiteSp);
