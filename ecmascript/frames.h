@@ -246,6 +246,7 @@
 // get foo's Frame by bar's Frame prev field
 
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/llvm_stackmap_type.h"
 #include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/visitor.h"
 
@@ -317,8 +318,7 @@ public:
     void GCIterate(const FrameIterator &it,
         const RootVisitor &v0,
         [[maybe_unused]] const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-        bool isVerifying) const;
+        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers) const;
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -458,7 +458,8 @@ public:
     }
     void GCIterate(
         const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers) const;
+    kungfu::ConstInfo CollectBCOffsetInfo(const FrameIterator &it) const;
 
     inline JSTaggedValue GetEnv() const
     {
@@ -728,7 +729,7 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
         return sizeof(AsmInterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
     void GCIterate(const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers) const;
 
     JSTaggedValue GetEnv() const
     {
@@ -877,7 +878,7 @@ struct OptimizedLeaveFrame {
     }
     void GCIterate(
         const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers) const;
 };
 
 struct OptimizedWithArgvLeaveFrame {
@@ -905,7 +906,7 @@ struct OptimizedWithArgvLeaveFrame {
     }
     void GCIterate(
         const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers) const;
 };
 
 struct OptimizedBuiltinLeaveFrame {
@@ -929,7 +930,7 @@ public:
     }
     void GCIterate(
         const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers) const;
 
 private:
     [[maybe_unused]] FrameType type;
@@ -1006,7 +1007,7 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
     }
     void GCIterate(
         const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointer) const;
     alignas(EAS) FrameType type;
     alignas(EAS) JSTaggedType *prevFp;
     alignas(EAS) uintptr_t returnAddr;
@@ -1066,7 +1067,7 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
     }
     void GCIterate(
         const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers) const;
     // argv(... this, new.target, function)
     // numargs
     alignas(EAS) FrameType type;
@@ -1111,7 +1112,7 @@ public:
     }
     int ComputeDelta() const;
     void Advance();
-    uintptr_t GetPrevFrameCallSiteSp(uintptr_t curPc = 0) const;
+    uintptr_t GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc = 0) const;
     uintptr_t GetPrevFrame() const;
     uintptr_t GetCallSiteSp() const
     {
@@ -1125,14 +1126,17 @@ public:
     {
         return thread_;
     }
-    bool CollectGCSlots(std::set<uintptr_t> &baseSet, ChunkMap<DerivedDataKey, uintptr_t> *data,
-                        bool isVerifying) const;
+    bool CollectGCSlots(std::set<uintptr_t> &baseSet, ChunkMap<DerivedDataKey, uintptr_t> *data) const;
+    kungfu::ConstInfo CollectBCOffsetInfo() const;
+    std::tuple<uint64_t, uint8_t *, int> CalCallSiteInfo(uintptr_t retAddr) const;
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
     const kungfu::LLVMStackMapParser *stackmapParser_ {nullptr};
     uintptr_t optimizedCallSiteSp_ {0};
     uintptr_t optimizedReturnAddr_ {0};
+    uint8_t *stackMapAddr_ {nullptr};
+    int fpDeltaPrevFramSp_ {0};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_FRAMES_H

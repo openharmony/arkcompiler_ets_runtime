@@ -31,6 +31,7 @@ public:
     BinaryBufferParser(uint8_t *buffer, uint32_t length) : buffer_(buffer), length_(length) {}
     ~BinaryBufferParser() = default;
     void ParseBuffer(void *dst, uint32_t count);
+    void ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src);
 
 private:
     uint8_t *buffer_ {nullptr};
@@ -53,6 +54,11 @@ struct ModuleSectionDes {
         return sectionsInfo_.at(idx).first;
     }
 
+    void EraseSec(ElfSecName idx)
+    {
+        sectionsInfo_.erase(idx);
+    }
+
     void SetSecSize(uint32_t size, ElfSecName idx)
     {
         sectionsInfo_[idx].second = size;
@@ -70,9 +76,9 @@ struct ModuleSectionDes {
 
     void SaveSectionsInfo(std::ofstream &file);
     void LoadSectionsInfo(BinaryBufferParser &parser, uint32_t &curUnitOffset,
-        JSHandle<MachineCode> &code, EcmaVM *vm);
+        JSHandle<MachineCode> &code);
     void LoadSectionsInfo(std::ifstream &file, uint32_t &curUnitOffset,
-        JSHandle<MachineCode> &code, EcmaVM *vm);
+        JSHandle<MachineCode> &code);
 };
 
 class PUBLIC_API ModulePackInfo {
@@ -320,6 +326,11 @@ public:
     const StubModulePackInfo& GetStubPackInfo() const
     {
         return stubPackInfo_;
+    }
+
+    const std::vector<AOTModulePackInfo>& GetPackInfos() const
+    {
+        return aotPackInfos_;
     }
 
     void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile);

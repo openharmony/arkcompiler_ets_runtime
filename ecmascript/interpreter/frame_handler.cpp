@@ -343,29 +343,25 @@ void FrameHandler::Iterate(const RootVisitor &v0, const RootRangeVisitor &v1)
 void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &v0, const RootRangeVisitor &v1) const
 {
     ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers = thread_->GetEcmaVM()->GetHeap()->GetDerivedPointers();
-    bool isVerifying = false;
 
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
-    isVerifying = thread_->GetEcmaVM()->GetHeap()->IsVerifying();
-#endif
     JSTaggedType *current = start;
     for (FrameIterator it(current, thread_); !it.Done(); it.Advance()) {
         FrameType type = it.GetFrameType();
         switch (type) {
             case FrameType::OPTIMIZED_FRAME: {
                 auto frame = it.GetFrame<OptimizedFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, v0, v1, derivedPointers);
                 break;
             }
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, v0, v1, derivedPointers);
                 break;
             }
             case FrameType::ASM_INTERPRETER_FRAME:
             case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
                 auto frame = it.GetFrame<AsmInterpretedFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, v0, v1, derivedPointers);
                 break;
             }
             case FrameType::INTERPRETER_FRAME:
@@ -381,28 +377,28 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &v0,
             }
             case FrameType::LEAVE_FRAME: {
                 auto frame = it.GetFrame<OptimizedLeaveFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, v0, v1, derivedPointers);
                 break;
             }
             case FrameType::LEAVE_FRAME_WITH_ARGV: {
                 auto frame = it.GetFrame<OptimizedWithArgvLeaveFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, v0, v1, derivedPointers);
                 break;
             }
             case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
                 auto frame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, v0, v1, derivedPointers);
                 break;
             }
             case FrameType::BUILTIN_FRAME_WITH_ARGV: {
                 auto frame = it.GetFrame<BuiltinWithArgvFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, v0, v1, derivedPointers);
                 break;
             }
             case FrameType::BUILTIN_ENTRY_FRAME:
             case FrameType::BUILTIN_FRAME: {
                 auto frame = it.GetFrame<BuiltinFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, v0, v1, derivedPointers);
                 break;
             }
             case FrameType::INTERPRETER_ENTRY_FRAME: {
@@ -437,9 +433,6 @@ void FrameHandler::CollectBCOffsetInfo()
     thread_->GetEcmaVM()->ClearExceptionBCList();
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
     FrameIterator it(current, thread_);
-    auto leaveFrame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
-    auto returnAddr = leaveFrame->GetReturnAddr();
-    // skip native function, need to fixit later.
     it.Advance();
 
     for (; !it.Done(); it.Advance()) {
@@ -448,19 +441,14 @@ void FrameHandler::CollectBCOffsetInfo()
             case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
-                auto constInfo = stackmapParser_->GetConstInfo(returnAddr);
+                auto constInfo = frame->CollectBCOffsetInfo(it);
                 if (!constInfo.empty()) {
                     auto name = GetAotExceptionFuncName(frame->GetArgv(it));
                     thread_->GetEcmaVM()->StoreBCOffsetInfo(name, constInfo[0]);
                 }
-                returnAddr = frame->GetReturnAddr();
                 break;
             }
-            case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
-                auto frame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
-                returnAddr = frame->GetReturnAddr();
-                break;
-            }
+            case FrameType::BUILTIN_CALL_LEAVE_FRAME:
             case FrameType::LEAVE_FRAME:
             case FrameType::OPTIMIZED_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
