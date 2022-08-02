@@ -2110,11 +2110,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             if (std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) {
                 SET_ACC(JSTaggedValue(base::NAN_VALUE));
             }
-            if ((doubleBase == 0 &&
-                ((bit_cast<uint64_t>(doubleBase)) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK) &&
-                std::isfinite(doubleExponent) && base::NumberHelper::TruncateDouble(doubleExponent) == doubleExponent &&
-                base::NumberHelper::TruncateDouble(doubleExponent / 2) + base::HALF ==  // 2 : half
-                (doubleExponent / 2)) {  // 2 : half
+            bool baseZero = doubleBase == 0 &&
+                            (bit_cast<uint64_t>(doubleBase) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK;
+            bool isFinite = std::isfinite(doubleExponent);
+            bool truncEqual = base::NumberHelper::TruncateDouble(doubleExponent) == doubleExponent;
+            bool halfTruncEqual = (base::NumberHelper::TruncateDouble(doubleExponent / 2) + base::HALF) ==
+                                  (doubleExponent / 2);
+            if (baseZero && isFinite && truncEqual && halfTruncEqual) {
                 if (doubleExponent > 0) {
                     SET_ACC(JSTaggedValue(-0.0));
                 }
@@ -3021,7 +3023,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             } else {
                 // slow path
                 SAVE_PC();
-                JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByName(thread, globalObj, prop);
+                JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj, prop);
                 INTERPRETER_RETURN_IF_ABRUPT(res);
                 SET_ACC(res);
             }
@@ -3213,7 +3215,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         } else {
             // slow path
             SAVE_PC();
-            JSTaggedValue res = SlowRuntimeStub::LdGlobalVar(thread, globalObj, propKey);
+            JSTaggedValue res = SlowRuntimeStub::LdGlobalVarFromGlobalProto(thread, globalObj, propKey);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
         }

@@ -2807,7 +2807,7 @@ void InterpreterAssembly::HandleTryLdGlobalByNamePrefId32(
             SET_ACC(globalResult);
         } else {
             // slow path
-            JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByName(thread, globalObj, prop);
+            JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj, prop);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
         }
@@ -3021,7 +3021,7 @@ void InterpreterAssembly::HandleLdGlobalVarPrefId32(
         SET_ACC(result);
     } else {
         // slow path
-        JSTaggedValue res = SlowRuntimeStub::LdGlobalVar(thread, globalObj, propKey);
+        JSTaggedValue res = SlowRuntimeStub::LdGlobalVarFromGlobalProto(thread, globalObj, propKey);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
     }

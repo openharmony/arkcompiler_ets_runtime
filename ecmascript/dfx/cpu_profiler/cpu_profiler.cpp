@@ -417,7 +417,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
 bool CpuProfiler::CheckFrameType(JSThread *thread, JSTaggedType *sp)
 {
     FrameType type = FrameHandler::GetFrameType(sp);
-    if (type > FrameType::FRAME_TYPE_END || type < FrameType::FRAME_TYPE_BEGIN) {
+    if (type > FrameType::FRAME_TYPE_LAST || type < FrameType::FRAME_TYPE_FIRST) {
         return false;
     }
 
@@ -428,7 +428,7 @@ bool CpuProfiler::CheckFrameType(JSThread *thread, JSTaggedType *sp)
         return true;
     }
     type = FrameHandler::GetFrameType(preSp);
-    if (type > FrameType::FRAME_TYPE_END || type < FrameType::FRAME_TYPE_BEGIN) {
+    if (type > FrameType::FRAME_TYPE_LAST || type < FrameType::FRAME_TYPE_FIRST) {
         return false;
     }
     return true;

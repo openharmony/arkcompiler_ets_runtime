@@ -260,7 +260,7 @@ Local<JSValueRef> DebuggerApi::GetGlobalValue(const EcmaVM *vm, Local<StringRef>
     if (!globalVar.IsHole()) {
         return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, globalVar));
     } else {
-        result = SlowRuntimeStub::TryLdGlobalByName(thread, globalObj, key);
+        result = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj, key);
         return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, result));
     }
 
