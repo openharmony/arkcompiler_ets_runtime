@@ -500,6 +500,15 @@ DEF_RUNTIME_STUBS(SuperCallSpread)
     return RuntimeSuperCallSpread(thread, func, JSHandle<JSTaggedValue>(thread, function), array).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(OptSuperCallSpread)
+{
+    RUNTIME_STUBS_HEADER(OptSuperCallSpread);
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 2);
+    return RuntimeSuperCallSpread(thread, func, newTarget, array).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(DelObjProp)
 {
     RUNTIME_STUBS_HEADER(DelObjProp);
@@ -1492,6 +1501,12 @@ DEF_RUNTIME_STUBS(SuperCall)
     return RuntimeSuperCall(thread, func, JSHandle<JSTaggedValue>(thread, newTarget),
         static_cast<uint16_t>(firstVRegIdx.GetInt()),
         static_cast<uint16_t>(length.GetInt())).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(OptSuperCall)
+{
+    RUNTIME_STUBS_HEADER(OptSuperCall);
+    return RuntimeOptSuperCall(thread, argv, argc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ThrowNotCallableException)

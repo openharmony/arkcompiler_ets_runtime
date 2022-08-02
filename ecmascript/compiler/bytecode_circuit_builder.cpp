@@ -1702,10 +1702,11 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             uint16_t range = READ_INST_16_1();
             uint16_t v0 = READ_INST_8_3();
             info.accIn = true;
+            for (size_t i = 0; i < range; i++) {
+                info.inputs.emplace_back(VirtualRegister(v0 + i));
+            }
             info.accOut = true;
             info.offset = BytecodeOffset::FIVE;
-            info.inputs.emplace_back(Immediate(range));
-            info.inputs.emplace_back(Immediate(v0));
             break;
         }
         case EcmaOpcode::SUPERCALLSPREAD_PREF_V8: {
@@ -1926,15 +1927,15 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
             continue;
         }
         if (ShouldBeDead(bb)) {
-            bb.UpdateTryCatchInfo();
+            bb.UpdateTryCatchInfoForDeadBlock();
             bb.isDead = true;
             continue;
         }
-        auto GeneralNums = 0;
-        EnumerateBlock(bb, [&GeneralNums, &bb]
+        bool noThrow = true;
+        EnumerateBlock(bb, [&noThrow, &bb]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsGeneral()) {
-                GeneralNums++;
+                noThrow = false;
                 if (!bb.catchs.empty()) {
                     bb.catchs.at(0)->numOfStatePreds++;
                 }
@@ -1945,9 +1946,8 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
             }
             return true;
         });
-        if (GeneralNums == 0 && !bb.catchs.empty()) {
-            bb.UpdateTryCatchInfo();
-        }
+        bb.UpdateRedundantTryCatchInfo(noThrow);
+        bb.UpdateTryCatchInfoIfNoThrow(noThrow);
         for (auto &succ: bb.succs) {
             succ->numOfStatePreds++;
         }

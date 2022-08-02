@@ -1786,6 +1786,27 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCall(JSThread *thread, const JSHandle<JS
     return result;
 }
 
+JSTaggedValue RuntimeStubs::RuntimeOptSuperCall(JSThread *thread, uintptr_t argv, uint32_t argc)
+{
+    size_t fixNums = 2;
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
+    ASSERT(superFunc->IsJSFunction());
+    uint16_t length = argc - 2;
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, superFunc, undefined, newTarget, length);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    for (size_t i = 0; i < length; ++i) {
+        JSTaggedType arg = reinterpret_cast<JSTaggedType *>(argv)[i + fixNums];
+        info->SetCallArg(i, JSTaggedValue(arg));
+    }
+    JSTaggedValue result = JSFunction::Construct(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    return result;
+}
+
 JSTaggedValue RuntimeStubs::RuntimeThrowTypeError(JSThread *thread, const char *message)
 {
     ASSERT_NO_ABRUPT_COMPLETION(thread);
@@ -1946,7 +1967,11 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvWithNameDyn(JSThread *thread,
 
 JSTaggedValue RuntimeStubs::RuntimeOptCopyRestArgs(JSThread *thread, uint32_t actualArgc, uint32_t restIndex)
 {
-    uint32_t actualRestNum = actualArgc - FIXED_NUM_ARGS - restIndex;
+    // when only have three fixed args, restIndex in bytecode maybe not zero, but it actually should be zero.
+    uint32_t actualRestNum = 0;
+    if (actualArgc > FIXED_NUM_ARGS) {
+        actualRestNum = actualArgc - FIXED_NUM_ARGS - restIndex;
+    }
     JSHandle<JSTaggedValue> restArray = JSArray::ArrayCreate(thread, JSTaggedNumber(actualRestNum));
 
     auto argv = GetActualArgv(thread);

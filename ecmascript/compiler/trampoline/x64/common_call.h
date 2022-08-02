@@ -48,11 +48,23 @@ public:
 
     static void JSCall(ExtendedAssembler *assembler);
 
+    static void ConstructorJSCall(ExtendedAssembler *assembler);
+
     static void CallRuntimeWithArgv(ExtendedAssembler *assembler);
 
     static void JSCallWithArgV(ExtendedAssembler *assembler);
 
+    static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
+
 private:
+    static void JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
+                            Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall);
+    static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register glueReg);
+    static void CallOptimziedMethodInternal(ExtendedAssembler *assembler, Register glueReg, Register jsFuncReg,
+                                            Register methodCallField, Register argc, Register codeAddrReg,
+                                            Register expectedNumArgsReg);
+    static void JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Register jsFuncReg, Label *jsCall);
+    static void JSProxyCallInternal(ExtendedAssembler *assembler, Register jsFuncReg);
     static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);
     static void PushArgsWithArgV(ExtendedAssembler *assembler, Register jsfunc,
                                  Register actualNumArgs, Register argV, Label *pushCallThis);
