@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-//test spread Array
+// test spread Array
 var arr1 = [...Array(16).keys()];
 print(arr1.length);
 print(arr1);
@@ -23,7 +23,7 @@ var arr3 = [...arr2];
 print(arr3.length);
 print(arr3);
 
-//test spread Set
+// test spread Set
 const set1 = new Set();
 set1.add(42);
 set1.add(42);
@@ -38,7 +38,7 @@ var arr5 = [...set1];
 print(arr5.length);
 print(arr5);
 
-//test spread map
+// test spread map
 const map1 = new Map();
 map1.set('a', 1);
 map1.set('b', 2);
@@ -51,3 +51,26 @@ print(arr6);
 var arr7 = [...map1.values()];
 print(arr7.length);
 print(arr7);
+
+// test change Symbol.iterator
+let iterFunc = function *() {
+    yield 1;
+    yield 2;
+    yield 3;
+}
+print(...map1);
+Map.prototype[Symbol.iterator] = iterFunc;
+print(...map1);
+
+let set  = new Set()
+set.add('a');
+set.add('b');
+set.add('c');
+print(...set);
+Set.prototype[Symbol.iterator] = iterFunc;
+print(...set);
+
+let uint8 = new Uint8Array(2);
+print(...uint8);
+Uint8Array.prototype[Symbol.iterator] = iterFunc;
+print(...uint8);
