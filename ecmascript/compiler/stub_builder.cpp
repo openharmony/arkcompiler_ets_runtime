@@ -1590,7 +1590,8 @@ GateRef StubBuilder::GetArrayLength(GateRef object)
     return ret;
 }
 
-GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder, GateRef value, GateRef argHandler)
+GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder,
+                                        GateRef value, GateRef argHandler)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1831,7 +1832,8 @@ GateRef StubBuilder::GetKeyFromDictionary(VariableType returnType, GateRef eleme
     return ret;
 }
 
-inline void StubBuilder::UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr)
+inline void StubBuilder::UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index,
+                                                  GateRef value, GateRef attr)
 {
     GateRef arrayIndex =
         Int32Add(Int32(NameDictionary::TABLE_HEADER_SIZE),
@@ -2902,7 +2904,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                     {
                         Label objIsBigInt(env);
                         Label objNotBigInt(env);
-                        Branch(IsBigInt(obj), &objIsBigInt, &objNotBigInt);
+                        Branch(TaggedObjectIsBigInt(obj), &objIsBigInt, &objNotBigInt);
                         Bind(&objIsBigInt);
                         {
                             result = Load(VariableType::JS_POINTER(), gConstAddr,
@@ -3201,7 +3203,7 @@ GateRef StubBuilder::FastToBoolean(GateRef value)
                 Branch(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
             }
             Bind(&notString);
-            Branch(IsBigInt(value), &isBigint, &returnTrue);
+            Branch(TaggedObjectIsBigInt(value), &isBigint, &returnTrue);
             Bind(&isBigint);
             {
                 auto len = Load(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));
@@ -3356,8 +3358,8 @@ GateRef StubBuilder::FastDiv(GateRef left, GateRef right)
 }
 
 GateRef StubBuilder::FastBinaryOp(GateRef left, GateRef right,
-                           const BinaryOperation& intOp,
-                           const BinaryOperation& floatOp)
+                                  const BinaryOperation& intOp,
+                                  const BinaryOperation& floatOp)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4103,7 +4105,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
                         { glue, ZExtInt32ToInt64(actualNumArgs), func, func, data[2], data[1]});
-                    result = ConstructorCheck(glue, func, *result, data[2]);
+                    result = ConstructorCheck(glue, func, *result, data[2]);  // 2: the second index
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_GETTER:
@@ -4286,7 +4288,8 @@ GateRef StubBuilder::TryStringOrSymbelToElementIndex(GateRef key)
     return ret;
 }
 
-GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType)
+GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder,
+                                                GateRef key, GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4338,8 +4341,8 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
     return ret;
 }
 
-GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
-                                         GateRef jsType)
+GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key,
+                                                GateRef value, GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entry(env);

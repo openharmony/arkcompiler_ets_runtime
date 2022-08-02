@@ -386,9 +386,9 @@ GateRef CircuitBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     auto ret = Int32And(ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_END)))),
+        Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST)))),
         ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_BEGIN)))));
+        Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST)))));
     return TruncInt32ToInt1(ret);
 }
 
@@ -404,9 +404,9 @@ GateRef CircuitBuilder::IsJsObject(GateRef obj)
     {
         GateRef objectType = GetObjectType(LoadHClass(obj));
         auto ret1 = Int32And(ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-            Int32(static_cast<int32_t>(JSType::JS_OBJECT_END)))),
+            Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST)))),
             ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-            Int32(static_cast<int32_t>(JSType::JS_OBJECT_BEGIN)))));
+            Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST)))));
         result = TruncInt32ToInt1(ret1);
         Jump(&exit);
     }

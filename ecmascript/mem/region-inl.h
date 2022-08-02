@@ -170,6 +170,12 @@ inline void Region::InsertOldToNewRSet(uintptr_t addr)
     set->Insert(ToUintPtr(this), addr);
 }
 
+inline void Region::ClearOldToNewRSet(uintptr_t addr)
+{
+    auto set = GetOrCreateOldToNewRememberedSet();
+    set->ClearBit(ToUintPtr(this), addr);
+}
+
 template <typename Visitor>
 inline void Region::IterateAllOldToNewBits(Visitor visitor)
 {
@@ -183,6 +189,14 @@ inline void Region::AtomicIterateAllSweepingRSetBits(Visitor visitor)
 {
     if (sweepingRSet_ != nullptr) {
         sweepingRSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
+}
+
+template <typename Visitor>
+inline void Region::IterateAllSweepingRSetBits(Visitor visitor)
+{
+    if (sweepingRSet_ != nullptr) {
+        sweepingRSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
     }
 }
 
@@ -212,6 +226,13 @@ inline void Region::AtomicClearSweepingRSetInRange(uintptr_t start, uintptr_t en
 {
     if (sweepingRSet_ != nullptr) {
         sweepingRSet_->AtomicClearRange(ToUintPtr(this), start, end);
+    }
+}
+
+inline void Region::ClearSweepingRSetInRange(uintptr_t start, uintptr_t end)
+{
+    if (sweepingRSet_ != nullptr) {
+        sweepingRSet_->ClearRange(ToUintPtr(this), start, end);
     }
 }
 

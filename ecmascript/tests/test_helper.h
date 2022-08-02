@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/mem/mem_common.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
 #include "gtest/gtest.h"
@@ -63,7 +64,7 @@ public:
         }
         EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
         *(--newSp) = numActualArgs;
-        *(--newSp) = ToUintPtr(thread);
+        *(--newSp) = panda::ecmascript::ToUintPtr(thread);
         ecmaRuntimeCallInfo->SetNewTarget(newTgt);
         return ecmaRuntimeCallInfo;
     }

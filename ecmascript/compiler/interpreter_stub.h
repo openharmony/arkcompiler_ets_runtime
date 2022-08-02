@@ -95,6 +95,9 @@ public:
     inline GateRef PushArg(GateRef glue, GateRef sp, GateRef value);
     inline GateRef PushUndefined(GateRef glue, GateRef sp, GateRef num);
     inline GateRef PushRange(GateRef glue, GateRef sp, GateRef array, GateRef startIndex, GateRef endIndex);
+    inline GateRef GetStartIdxAndNumArgs(GateRef sp, GateRef restIdx);
+    inline GateRef NewArgumentsList(GateRef glue, GateRef sp, GateRef startIdx, GateRef numArgs);
+    inline GateRef NewArgumentsObj(GateRef glue, GateRef argumentsList, GateRef numArgs);
 
     inline void Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                          GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, GateRef format);

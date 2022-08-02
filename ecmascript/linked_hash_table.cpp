@@ -233,9 +233,6 @@ JSHandle<LinkedHashSet> LinkedHashSet::Shrink(const JSThread *thread, const JSHa
 
 int LinkedHash::Hash(JSTaggedValue key)
 {
-    if (key.IsDouble() && key.GetDouble() == 0.0) {
-        key = JSTaggedValue(0);
-    }
     if (key.IsSymbol()) {
         auto symbolString = JSSymbol::Cast(key.GetTaggedObject());
         return symbolString->GetHashField();
@@ -256,6 +253,9 @@ int LinkedHash::Hash(JSTaggedValue key)
     }
 
     // Int, Double, Special and HeapObject(except symbol and string)
+    if (key.IsDouble()) {
+        key = JSTaggedValue::TryCastDoubleToInt32(key.GetDouble());
+    }
     uint64_t keyValue = key.GetRawData();
     return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
 }

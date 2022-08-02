@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
-#include <cstdint>
-extern const uint8_t _binary_stub_m_start[1] = {0x0};
-extern const uint32_t _binary_stub_m_length = 1;
+#ifndef ARRAYBUFFERREFNEWWITHTWOPARAMETERS_FUZZER_H
+#define ARRAYBUFFERREFNEWWITHTWOPARAMETERS_FUZZER_H
+
+#define FUZZ_PROJECT_NAME "arraybufferrefnewwithtwoparameters_fuzzer"
+
+#endif

@@ -36,16 +36,16 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto aotModule = new LLVMModule("aot_" + fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
         LOptions(optLevel_, true, relocMode_));
-    CompilationConfig cmpCfg(triple_);
+    CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
     TSManager *tsManager = vm_->GetTSManager();
 
-    bool enableLog = log_->IsAlwaysEnabled();
+    bool enableLog = !log_->NoneMethod();
 
     for (size_t i = 0; i < translationInfo.methodPcInfos.size(); i++) {
         const JSMethod *method = translationInfo.methodPcInfos[i].method;
         const std::string methodName(method->GetMethodName());
-        if (!log_->IsAlwaysEnabled() && !log_->IsAlwaysDisabled()) {  // neither "all" nor "none"
-            enableLog = log_->IncludesMethod(fileName, methodName);
+        if (log_->CertainMethod()) {
+            enableLog = logList_->IncludesMethod(fileName, methodName);
         }
 
         if (enableLog) {
@@ -53,10 +53,10 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
                                << methodName << "] log:" << "\033[0m";
         }
 
-        BytecodeCircuitBuilder builder(translationInfo, i, tsManager, enableLog);
+        BytecodeCircuitBuilder builder(translationInfo, i, tsManager, enableLog && log_->OutputCIR());
         builder.BytecodeToCircuit();
         PassData data(builder.GetCircuit());
-        PassRunner<PassData> pipeline(&data, enableLog);
+        PassRunner<PassData> pipeline(&data, enableLog && log_->OutputCIR());
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
         pipeline.RunPass<TypeInferPass>(&builder, tsManager);
         pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);

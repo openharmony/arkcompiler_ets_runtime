@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_SNAPSHOT_MEM_CONSTANTS_H
 #define ECMASCRIPT_SNAPSHOT_MEM_CONSTANTS_H
 
-#include "libpandabase/mem/mem.h"
+#include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
 class Constants final {

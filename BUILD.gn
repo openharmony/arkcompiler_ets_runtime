@@ -78,7 +78,9 @@ if (defined(ark_standalone_build)) {
         "//arkcompiler/ets_runtime/ecmascript/tooling/test:unittest",
         "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
       ]
-      deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
+      if (is_ohos && is_standard_system) {
+        deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
+      }
     }
   }
 
@@ -112,10 +114,12 @@ if (defined(ark_standalone_build)) {
 
       # ts aot test and asm test
       if (is_standard_system) {
-        deps += [ "//arkcompiler/ets_runtime/test/aottest:ark_aot_test" ]
-        deps += [ "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test" ]
-        deps +=
-            [ "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test" ]
+        deps += [
+          "//arkcompiler/ets_runtime/test/aottest:ark_aot_test",
+          "//arkcompiler/ets_runtime/test/moduletest:ark_asm_single_step_test",
+          "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test",
+          "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test",
+        ]
       }
     }
   }
@@ -385,6 +389,7 @@ ecma_source = [
   "ecmascript/containers/containers_treemap.cpp",
   "ecmascript/containers/containers_treeset.cpp",
   "ecmascript/containers/containers_vector.cpp",
+  "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
   "ecmascript/dfx/vmstat/runtime_stat.cpp",
   "ecmascript/dfx/vm_thread_control.cpp",
@@ -606,8 +611,7 @@ source_set("libark_jsruntime_set") {
   }
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:arkfile_header_deps",
     sdk_libc_secshared_dep,
   ]
 
@@ -645,8 +649,7 @@ source_set("libark_js_intl_set") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:arkfile_header_deps",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,
@@ -660,8 +663,7 @@ source_set("libark_jsruntime_test_set") {
   sources += ecma_debugger_source
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
-    "$ark_root/libpandafile:libarkfile",
+    "$ark_root/libpandafile:arkfile_header_deps",
     "$third_party_gn_path/icu/icu4c:shared_icui18n",
     "$third_party_gn_path/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,
@@ -686,6 +688,7 @@ ohos_shared_library("libark_jsruntime") {
   deps = [
     ":libark_js_intl_set",
     ":libark_jsruntime_set",
+    "$ark_root/libpandafile:libarkfile_static",
   ]
 
   if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
@@ -727,14 +730,15 @@ ohos_shared_library("libark_jsruntime") {
   subsystem_name = "ark"
 }
 
-if (!defined(ark_standalone_build)) {
-  ohos_shared_library("libark_jsruntime_test") {
-    deps = [ ":libark_jsruntime_test_set" ]
-    ldflags = [ "-Wl,--lto-O0" ]
-    install_enable = false
-    if (!is_mingw && !is_mac) {
-      output_extension = "so"
-    }
-    subsystem_name = "test"
+ohos_shared_library("libark_jsruntime_test") {
+  deps = [ ":libark_jsruntime_test_set" ]
+  public_deps = [ "$ark_root/libpandafile:libarkfile_static" ]
+
+  ldflags = [ "-Wl,--lto-O0" ]
+
+  install_enable = false
+  if (!is_mingw && !is_mac) {
+    output_extension = "so"
   }
+  subsystem_name = "test"
 }

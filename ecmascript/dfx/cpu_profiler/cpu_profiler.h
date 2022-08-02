@@ -53,6 +53,7 @@ class CpuProfiler {
 public:
     static CpuProfiler *GetInstance();
     void ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler);
+    std::string GetNativeStack(JSThread *thread, FrameHandler &frameHandler);
     void GetFrameStack(FrameHandler &frameHandler);
     void IsNeedAndGetStack(JSThread *thread);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
@@ -83,7 +84,7 @@ private:
     std::string fileName_ = "";
     SamplesRecord *generator_ = nullptr;
     pthread_t tid_ = 0;
-    EcmaVM *vm_;
+    EcmaVM *vm_ = nullptr;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_CPU_PROFILE_H

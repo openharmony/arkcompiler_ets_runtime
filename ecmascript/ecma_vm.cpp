@@ -192,7 +192,7 @@ bool EcmaVM::Initialize()
     factory_->GenerateInternalNativeMethods();
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     moduleManager_ = new ModuleManager(this);
-    debuggerManager_->Initialize();
+    debuggerManager_->Initialize(this);
     tsManager_ = new TSManager(this);
     tsManager_->Initialize();
     snapshotEnv_ = new SnapshotEnv(this);
@@ -699,7 +699,7 @@ void EcmaVM::LoadStubFile()
 
 void EcmaVM::LoadAOTFiles()
 {
-    std::string file = options_.GetAOTOutputFile();
+    std::string file = options_.GetAOTOutputFile() + ".aot";
     LOG_ECMA(INFO) << "Try to load aot file" << file.c_str();
     fileLoader_->LoadAOTFile(file);
     fileLoader_->LoadSnapshotFile();

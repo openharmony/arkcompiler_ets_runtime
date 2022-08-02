@@ -86,32 +86,33 @@ int Main(const int argc, const char **argv)
         return -1;
     }
 
-    {
-        LocalScope scope(vm);
-        std::string entry = entrypoint.GetValue();
-        arg_list_t pandaFileNames = files.GetValue();
-        std::string triple = runtimeOptions.GetTargetTriple();
-        std::string outputFileName = runtimeOptions.GetAOTOutputFile();
-        size_t optLevel = runtimeOptions.GetOptLevel();
-        size_t relocMode = runtimeOptions.GetRelocMode();
-        BytecodeStubCSigns::Initialize();
-        CommonStubCSigns::Initialize();
-        RuntimeStubCSigns::Initialize();
+    LocalScope scope(vm);
+    std::string entry = entrypoint.GetValue();
+    arg_list_t pandaFileNames = files.GetValue();
+    std::string triple = runtimeOptions.GetTargetTriple();
+    std::string outputFileName = runtimeOptions.GetAOTOutputFile();
+    size_t optLevel = runtimeOptions.GetOptLevel();
+    size_t relocMode = runtimeOptions.GetRelocMode();
+    std::string logOption = runtimeOptions.GetCompilerLogOption();
+    std::string logMethodsList = runtimeOptions.GetMethodsListForLog();
+    bool isEnableBcTrace = runtimeOptions.IsEnableByteCodeTrace();
+    BytecodeStubCSigns::Initialize();
+    CommonStubCSigns::Initialize();
+    RuntimeStubCSigns::Initialize();
 
-        std::string logMethods = runtimeOptions.GetlogCompiledMethods();
-        AotLog log(logMethods);
-        AOTFileGenerator generator(&log, vm);
-        PassManager passManager(vm, entry, triple, optLevel, relocMode, &log);
-        for (const auto &fileName : pandaFileNames) {
-            LOG_COMPILER(INFO) << "AOT start to execute ark file: " << fileName;
-            if (passManager.Compile(fileName, generator) == false) {
-                ret = false;
-                break;
-            }
+    CompilerLog log(logOption, isEnableBcTrace);
+    AotMethodLogList logList(logMethodsList);
+    AOTFileGenerator generator(&log, &logList, vm);
+    PassManager passManager(vm, entry, triple, optLevel, relocMode, &log, &logList);
+    for (const auto &fileName : pandaFileNames) {
+        LOG_COMPILER(INFO) << "AOT start to execute ark file: " << fileName;
+        if (passManager.Compile(fileName, generator) == false) {
+            ret = false;
+            break;
         }
-        generator.SaveAOTFile(outputFileName);
-        generator.SaveSnapshotFile();
     }
+    generator.SaveAOTFile(outputFileName + ".aot");
+    generator.SaveSnapshotFile();
 
     JSNApi::DestroyJSVM(vm);
     paParser.DisableTail();

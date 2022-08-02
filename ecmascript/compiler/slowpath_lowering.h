@@ -115,13 +115,21 @@ public:
         : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
-          enableLog_(enableLog) {}
+          enableLog_(enableLog)
+    {
+        enableBcTrace_ = cmpCfg->IsEnableByteCodeTrace();
+    }
     ~SlowPathLowering() = default;
     void CallRuntimeLowering();
 
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    bool IsEnableByteCodeTrace() const
+    {
+        return enableBcTrace_;
     }
 
 private:
@@ -246,8 +254,8 @@ private:
     void LowerLdGlobalVar(GateRef gate, GateRef glue);
     void LowerLdObjByName(GateRef gate, GateRef glue);
     void LowerStObjByName(GateRef gate, GateRef glue);
-    void LowerLdSuperByName(GateRef gate, GateRef glue);
-    void LowerStSuperByName(GateRef gate, GateRef glue);
+    void LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGetterSetterByValue(GateRef gate, GateRef glue);
     void LowerLdObjByIndex(GateRef gate, GateRef glue);
     void LowerStObjByIndex(GateRef gate, GateRef glue);
@@ -282,6 +290,7 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_;
     bool enableLog_ {false};
+    bool enableBcTrace_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_SLOWPATH_LOWERING_H

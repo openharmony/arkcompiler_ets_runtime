@@ -22,7 +22,7 @@
 
 namespace panda::ecmascript::aarch64 {
 using Label = panda::ecmascript::Label;
-class AssemblerStubs {
+class CommonCall {
 public:
     static constexpr int FRAME_SLOT_SIZE = 8;
     static constexpr int DOUBLE_SLOT_SIZE = 16;
@@ -48,7 +48,20 @@ public:
         // 16 : 16 means arguments offset to fp
         return 16 + argId * FRAME_SLOT_SIZE;
     }
+    static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register glue, Register argc, Register temp,
+        Register fp, Label *next, Label *stackOverflow);
+    static void PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, Register argc, Register argv,
+        Register op, Register fp, Label *next, Label *stackOverflow);
+    static void PushAsmInterpBridgeFrame(ExtendedAssembler *assembler);
+    static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);
+    static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register currentSlot, Register numArgs,
+        Register op, Label *stackOverflow);
+    static void PushLeaveFrame(ExtendedAssembler *assembler, Register glue, bool isBuiltin);
+    static void PopLeaveFrame(ExtendedAssembler *assembler, bool isBuiltin);
+};
 
+class OptimizedCall : public CommonCall {
+public:
     static void CallRuntime(ExtendedAssembler *assembler);
 
     static void JSFunctionEntry(ExtendedAssembler *assembler);
@@ -62,7 +75,26 @@ public:
     static void JSCall(ExtendedAssembler *assembler);
 
     static void CallRuntimeWithArgv(ExtendedAssembler *assembler);
+    
+    static void JSCallWithArgV(ExtendedAssembler *assembler);
 
+private:
+    static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);
+    static void PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,
+                                    Register thisObj, Register newTarget, Register currentSp);
+    static void PopJSFunctionArgs(ExtendedAssembler *assembler, Register expectedNumArgs, Register actualNumArgs);
+    static void PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Register prevFp);
+    static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
+    static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
+    static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
+    static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp);
+    static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
+    static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
+    static void JSCallBody(ExtendedAssembler *assembler, Register jsfunc);
+};
+
+class AsmInterpreterCall : public CommonCall {
+public:
     static void AsmInterpreterEntry(ExtendedAssembler *assembler);
 
     static void JSCallDispatch(ExtendedAssembler *assembler);
@@ -105,11 +137,7 @@ public:
 
     static void CallSetter(ExtendedAssembler *assembler);
 
-    static void JSCallWithArgV(ExtendedAssembler *assembler);
-
 private:
-    static void JSCallBody(ExtendedAssembler *assembler, Register jsfunc);
-
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
 
     static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode);
@@ -129,7 +157,7 @@ private:
 
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register currentSlot,
         Register callTarget, Register method, Register pc, Register op);
-
+    
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode);
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *pushCallThis,
         Label *stackOverflow);
@@ -140,21 +168,12 @@ private:
 
     static void GetDeclaredNumArgsFromCallField(ExtendedAssembler *assembler, Register callField,
         Register declaredNumArgs);
-    static void PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, Register argc, Register argv,
-        Register op, Register fp, Label *next, Label *stackOverflow);
-    static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register glue, Register argc, Register temp,
-        Register fp, Label *next, Label *stackOverflow);
-    static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register currentSlot, Register numArgs,
-        Register op, Label *stackOverflow);
+
     static void SaveFpAndJumpSize(ExtendedAssembler *assembler, Immediate jumpSize);
 
     static void PushAsmInterpEntryFrame(ExtendedAssembler *assembler);
 
     static void PopAsmInterpEntryFrame(ExtendedAssembler *assembler);
-
-    static void PushAsmInterpBridgeFrame(ExtendedAssembler *assembler);
-
-    static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);
 
     static void PushGeneratorFrameState(ExtendedAssembler *assembler, Register &prevSpRegister, Register &fpRegister,
         Register &currentSlotRegister, Register &callTargetRegister, Register &methodRegister,
@@ -166,22 +185,7 @@ private:
     static void CallNativeEntry(ExtendedAssembler *assembler);
 
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew);
-    static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);
-    static void PushArgsWithArgV(ExtendedAssembler *assembler, Register glue, Register jsfunc,
-                                 Register actualNumArgs, Register argV, Label *pushCallThis);
-    static void CopyArgumentWithArgV(ExtendedAssembler *assembler, Register argc, Register argV);
-    static void PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,
-                                    Register thisObj, Register newTarget, Register currentSp);
-    static void PopJSFunctionArgs(ExtendedAssembler *assembler, Register expectedNumArgs, Register actualNumArgs);
-    static void PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Register prevFp);
-    static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
-    static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
-    static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
-    static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp);
-    static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
-    static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
-    static void PushLeaveFrame(ExtendedAssembler *assembler, Register glue, bool isBuiltin);
-    static void PopLeaveFrame(ExtendedAssembler *assembler, bool isBuiltin);
+    friend class OptimizedCall;
 };
 }  // namespace panda::ecmascript::x64
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_MODULE_X64_H

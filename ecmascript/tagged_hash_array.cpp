@@ -205,11 +205,11 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
         return JSTaggedValue::True();
     } else if (node->IsRBTreeNode()) {
         JSHandle<RBTreeNode> root = JSHandle<RBTreeNode>::Cast(node);
-        int curCount = root->GetCount();
+        uint32_t curCount = root->GetCount();
         JSHandle<RBTreeNode> changeNode = RBTreeNode::Set(thread, root, hash, key, value);
         changeNode->SetIsRed(thread, JSTaggedValue(false));
         table->Set(thread, index, changeNode);
-        int updateCount = changeNode->GetCount();
+        uint32_t updateCount = changeNode->GetCount();
         if (curCount == updateCount) {
             return JSTaggedValue::Undefined();
         }

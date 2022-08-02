@@ -17,6 +17,8 @@
 #define ECMASCRIPT_COMPILER_INTERPRETER_STUB_INL_H
 
 #include "ecmascript/compiler/interpreter_stub.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_arguments.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
 
@@ -405,6 +407,135 @@ GateRef InterpreterStubBuilder::PushRange(GateRef glue, GateRef sp, GateRef arra
     auto ret = *newSp;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef InterpreterStubBuilder::GetStartIdxAndNumArgs(GateRef sp, GateRef restIdx)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    DEFVARIABLE(numArgs, VariableType::INT32(), Int32(0));
+    GateRef state = PtrSub(sp, IntPtr(AsmInterpretedFrame::GetSize(env->IsArch32Bit())));
+    GateRef function = GetFunctionFromFrame(state);
+    GateRef method = GetMethodFromJSFunction(function);
+    GateRef callField = GetCallFieldFromMethod(method);
+    // ASSERT: callField has "extra" bit.
+    GateRef numVregs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(JSMethod::NumVregsBits::START_BIT)),
+        Int64((1LLU << JSMethod::NumVregsBits::SIZE) - 1)));
+    GateRef haveFunc = Int64NotEqual(Int64And(Int64LSR(callField, Int64(JSMethod::HaveFuncBit::START_BIT)),
+        Int64((1LLU << JSMethod::HaveFuncBit::SIZE) - 1)), Int64(0));
+    GateRef haveNewTarget = Int64NotEqual(Int64And(Int64LSR(callField, Int64(JSMethod::HaveNewTargetBit::START_BIT)),
+        Int64((1LLU << JSMethod::HaveNewTargetBit::SIZE) - 1)), Int64(0));
+    GateRef haveThis = Int64NotEqual(Int64And(Int64LSR(callField, Int64(JSMethod::HaveThisBit::START_BIT)),
+        Int64((1LLU << JSMethod::HaveThisBit::SIZE) - 1)), Int64(0));
+    GateRef copyArgs = Int32Add(Int32Add(ZExtInt1ToInt32(haveFunc), ZExtInt1ToInt32(haveNewTarget)),
+                                ZExtInt1ToInt32(haveThis));
+    numArgs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(JSMethod::NumArgsBits::START_BIT)),
+                                         Int64((1LLU << JSMethod::NumArgsBits::SIZE) - 1)));
+    GateRef fp = Load(VariableType::NATIVE_POINTER(), state,
+                      IntPtr(AsmInterpretedFrame::GetFpOffset(env->IsArch32Bit())));
+    Label actualEqualDeclared(env);
+    Label actualNotEqualDeclared(env);
+    Branch(Int32UnsignedGreaterThan(ChangeIntPtrToInt32(PtrSub(fp, sp)),
+                                    Int32Mul(Int32Add(Int32Add(numVregs, copyArgs), *numArgs),
+                                             Int32(sizeof(JSTaggedType)))),
+           &actualNotEqualDeclared, &actualEqualDeclared);
+    Bind(&actualNotEqualDeclared);
+    {
+        numArgs = TaggedCastToInt32(Load(VariableType::JS_ANY(), fp, IntPtr(-sizeof(JSTaggedType))));
+        Jump(&actualEqualDeclared);
+    }
+    Bind(&actualEqualDeclared);
+    GateRef startIdx = Int32Add(Int32Add(numVregs, copyArgs), restIdx);
+    Label numArgsGreater(env);
+    Label numArgsNotGreater(env);
+    Label exit(env);
+    Branch(Int32UnsignedGreaterThan(*numArgs, restIdx), &numArgsGreater, &numArgsNotGreater);
+    Bind(&numArgsGreater);
+    {
+        numArgs = Int32Sub(*numArgs, restIdx);
+        Jump(&exit);
+    }
+    Bind(&numArgsNotGreater);
+    {
+        numArgs = Int32(0);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    // 32: high 32 bits = startIdx, low 32 bits = numArgs
+    GateRef ret = Int64Or(Int64LSL(ZExtInt32ToInt64(startIdx), Int64(32)), ZExtInt32ToInt64(*numArgs));
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef InterpreterStubBuilder::NewArgumentsList(GateRef glue, GateRef sp, GateRef startIdx, GateRef numArgs)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    Label exit(env);
+    Label setHClass(env);
+    GateRef arraySize = ComputeTaggedArraySize(ChangeInt32ToIntPtr(numArgs));
+    GateRef argumentsList = AllocateInYoung(glue, arraySize);
+    Branch(TaggedIsException(argumentsList), &exit, &setHClass);
+    Bind(&setHClass);
+    GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                ConstantIndex::ARRAY_CLASS_INDEX);
+    StoreHClass(glue, argumentsList, arrayClass);
+    Store(VariableType::INT32(), glue, argumentsList, IntPtr(TaggedArray::LENGTH_OFFSET), numArgs);
+    // skip InitializeTaggedArrayWithSpeicalValue due to immediate setting arguments
+    Label setArgumentsBegin(env);
+    Label setArgumentsAgain(env);
+    Label setArgumentsEnd(env);
+    Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
+    LoopBegin(&setArgumentsBegin);
+    GateRef argument = GetVregValue(sp, ChangeInt32ToIntPtr(Int32Add(startIdx, *i)));
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue, argumentsList, *i, argument);
+    i = Int32Add(*i, Int32(1));
+    Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
+    Bind(&setArgumentsAgain);
+    LoopEnd(&setArgumentsBegin);
+    Bind(&setArgumentsEnd);
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+    return argumentsList;
+}
+
+GateRef InterpreterStubBuilder::NewArgumentsObj(GateRef glue, GateRef argumentsList, GateRef numArgs)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef argumentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                               GlobalEnv::ARGUMENTS_CLASS);
+    GateRef argumentsObj = NewJSObject(glue, argumentsClass);
+    Label exit(env);
+    Label setArgumentsObjProperties(env);
+    Branch(TaggedIsException(argumentsObj), &exit, &setArgumentsObjProperties);
+    Bind(&setArgumentsObjProperties);
+    SetPropertyInlinedProps(glue, argumentsObj, argumentsClass, IntToTaggedNGC(numArgs),
+                            Int32(JSArguments::LENGTH_INLINE_PROPERTY_INDEX));
+    SetElementsArray(VariableType::JS_ANY(), glue, argumentsObj, argumentsList);
+    GateRef arrayProtoValuesFunction = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                         GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
+    SetPropertyInlinedProps(glue, argumentsObj, argumentsClass, arrayProtoValuesFunction,
+                            Int32(JSArguments::ITERATOR_INLINE_PROPERTY_INDEX));
+    GateRef accessorCaller = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                               GlobalEnv::ARGUMENTS_CALLER_ACCESSOR);
+    SetPropertyInlinedProps(glue, argumentsObj, argumentsClass, accessorCaller,
+                            Int32(JSArguments::CALLER_INLINE_PROPERTY_INDEX));
+    GateRef accessorCallee = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                               GlobalEnv::ARGUMENTS_CALLEE_ACCESSOR);
+    SetPropertyInlinedProps(glue, argumentsObj, argumentsClass, accessorCallee,
+                            Int32(JSArguments::CALLEE_INLINE_PROPERTY_INDEX));
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+    return argumentsObj;
 }
 
 GateRef InterpreterStubBuilder::GetCurrentFrame(GateRef glue)

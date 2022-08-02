@@ -334,8 +334,17 @@ public:
     bool IsSelector(GateRef g) const;
     bool IsControlCase(GateRef gate) const;
     bool IsLoopHead(GateRef gate) const;
+    bool IsLoopBack(GateRef gate) const;
+    bool IsState(GateRef gate) const;
+    bool IsSchedulable(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;
     void SetMark(GateRef gate, MarkCode mark);
+    bool IsFinished(GateRef gate) const;
+    bool IsVisited(GateRef gate) const;
+    bool IsNotMarked(GateRef gate) const;
+    void SetFinished(GateRef gate);
+    void SetVisited(GateRef gate);
+    bool IsValueIn(GateRef gate, size_t index) const;
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const

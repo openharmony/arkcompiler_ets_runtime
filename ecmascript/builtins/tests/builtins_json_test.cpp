@@ -582,4 +582,45 @@ HWTEST_F_L0(BuiltinsJsonTest, Stringify6)  // Test for bigint object
     }
     ASSERT_TRUE(hasPendingException);
 }
+
+HWTEST_F_L0(BuiltinsJsonTest, StringifyAndParse)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+    JSHandle<JSTaggedValue> obj = CreateJSObject(thread);
+    JSHandle<JSTaggedValue> ykey(factory->NewFromASCII("y"));
+    JSHandle<JSTaggedValue> yvalue(thread, JSTaggedValue(2.2)); // 2.2: use to test double value
+    JSObject::SetProperty(thread, obj, ykey, yvalue);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, obj.GetTaggedValue());
+    JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Hole());
+    {
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        result.Update(BuiltinsJson::Stringify(ecmaRuntimeCallInfo));
+        TestHelper::TearDownFrame(thread, prev);
+    }
+    {
+        ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetCallArg(0, result.GetTaggedValue());
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        result.Update(BuiltinsJson::Parse(ecmaRuntimeCallInfo));
+        TestHelper::TearDownFrame(thread, prev);
+    }
+    ASSERT_TRUE(result->IsECMAObject());
+
+    JSHandle<JSObject> resultObj(result);
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
+    JSHandle<JSTaggedValue> res = JSObject::GetProperty(thread, resultObj, key).GetValue();
+    ASSERT_TRUE(res->IsInt());
+    ASSERT_EQ(res->GetInt(), 1);
+
+    res = JSObject::GetProperty(thread, resultObj, ykey).GetValue();
+    ASSERT_TRUE(res->IsDouble());
+    ASSERT_EQ(res->GetDouble(), 2.2); // 2.2:use to test double value
+}
 }  // namespace panda::test

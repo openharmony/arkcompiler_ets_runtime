@@ -22,6 +22,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/global_dictionary.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -534,6 +535,11 @@ inline GateRef StubBuilder::TaggedIsNumber(GateRef x)
     return BoolNot(TaggedIsObject(x));
 }
 
+inline GateRef StubBuilder::TaggedIsNumeric(GateRef x)
+{
+    return BoolOr(TaggedIsNumber(x), TaggedIsBigInt(x));
+}
+
 inline GateRef StubBuilder::TaggedIsHole(GateRef x)
 {
     return Int64Equal(x, Int64(JSTaggedValue::VALUE_HOLE));
@@ -1009,10 +1015,10 @@ inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
     GateRef objectType = GetObjectType(LoadHClass(obj));
     auto ret = Int32And(
         ZExtInt1ToInt32(
-            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_END)))),
+            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST)))),
         ZExtInt1ToInt32(
             Int32GreaterThanOrEqual(objectType,
-                Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_BEGIN)))));
+                Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST)))));
     return TruncInt32ToInt1(ret);
 }
 
@@ -1030,10 +1036,10 @@ inline GateRef StubBuilder::IsJSObject(GateRef obj)
         GateRef objectType = GetObjectType(LoadHClass(obj));
         auto ret1 = Int32And(
             ZExtInt1ToInt32(
-                Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_END)))),
+                Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST)))),
             ZExtInt1ToInt32(
                 Int32GreaterThanOrEqual(objectType,
-                    Int32(static_cast<int32_t>(JSType::JS_OBJECT_BEGIN)))));
+                    Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST)))));
         result = TruncInt32ToInt1(ret1);
         Jump(&exit);
     }
@@ -1089,7 +1095,7 @@ inline GateRef StubBuilder::IsString(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::STRING)));
 }
 
-inline GateRef StubBuilder::IsBigInt(GateRef obj)
+inline GateRef StubBuilder::TaggedObjectIsBigInt(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::BIGINT)));
@@ -1472,7 +1478,7 @@ inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
 {
     return TruncInt32ToInt1(Int32And(
         ZExtInt1ToInt32(
-            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_BEGIN)))),
+            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST)))),
         ZExtInt1ToInt32(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))))));
 }
 
@@ -1891,9 +1897,9 @@ inline GateRef StubBuilder::IsJSFunction(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     GateRef greater = ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_BEGIN))));
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST))));
     GateRef less = ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_END))));
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST))));
     return TruncInt32ToInt1(Int32And(greater, less));
 }
 
@@ -1957,12 +1963,19 @@ inline GateRef StubBuilder::ComputeTaggedArraySize(GateRef length)
     return PtrAdd(IntPtr(TaggedArray::DATA_OFFSET),
         PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), length));
 }
+
 inline GateRef StubBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
 {
     GateRef gConstAddr = PtrAdd(glue,
         IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
     auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
     return Load(type, gConstAddr, constantIndex);
+}
+
+inline GateRef StubBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t index)
+{
+    auto valueIndex = IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
+    return Load(type, env, valueIndex);
 }
 
 inline GateRef StubBuilder::HasPendingException(GateRef glue)

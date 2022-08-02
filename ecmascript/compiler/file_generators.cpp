@@ -109,8 +109,8 @@ void AOTFileGenerator::SaveSnapshotFile()
     CVector<JSTaggedType> staticHClassTable = tsManager->GetStaticHClassTable();
     CVector<JSTaggedType> tsManagerSerializeTable(constStringTable);
     tsManagerSerializeTable.insert(tsManagerSerializeTable.end(), staticHClassTable.begin(), staticHClassTable.end());
-    const CString snapshotPath(vm_->GetJSOptions().GetSnapshotOutputFile().c_str());
+    const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
     snapshot.Serialize(reinterpret_cast<uintptr_t>(tsManagerSerializeTable.data()), tsManagerSerializeTable.size(),
-                       snapshotPath);
+                       snapshotPath + ".etso");
 }
 }  // namespace panda::ecmascript::kungfu

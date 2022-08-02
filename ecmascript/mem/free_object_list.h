@@ -19,8 +19,8 @@
 #include <cstddef>
 
 #include "ecmascript/mem/free_object_set.h"
+#include "ecmascript/mem/mem_common.h"
 
-#include "libpandabase/mem/mem.h"
 #include "libpandabase/utils/span.h"
 
 namespace panda::ecmascript {
@@ -36,6 +36,8 @@ public:
     void Free(uintptr_t start, size_t size, bool isAdd = true);
 
     void Rebuild();
+
+    bool MatchFreeObjectInSet(FreeObjectSet *set, size_t size);
 
     bool AddSet(FreeObjectSet *set);
 

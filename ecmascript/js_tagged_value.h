@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_JS_TAGGED_VALUE_H
 #define ECMASCRIPT_JS_TAGGED_VALUE_H
 
+#include "ecmascript/base/bit_helper.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
 class JSObject;
@@ -52,11 +54,11 @@ static const JSTaggedType NULL_POINTER = 0x05ULL;
 
 static inline JSTaggedType ReinterpretDoubleToTaggedType(double value)
 {
-    return bit_cast<JSTaggedType>(value);
+    return base::bit_cast<JSTaggedType>(value);
 }
 static inline double ReinterpretTaggedTypeToDouble(JSTaggedType value)
 {
-    return bit_cast<double>(value);
+    return base::bit_cast<double>(value);
 }
 
 //  Every double with all of its exponent bits set and its highest mantissa bit set is a quiet NaN.
@@ -83,7 +85,7 @@ static inline double ReinterpretTaggedTypeToDouble(JSTaggedType value)
 class JSTaggedValue {
 public:
     static constexpr size_t TAG_BITS_SIZE = 16;  // 16 means bit numbers of 0xFFFF
-    static constexpr size_t TAG_BITS_SHIFT = BitNumbers<JSTaggedType>() - TAG_BITS_SIZE;
+    static constexpr size_t TAG_BITS_SHIFT = base::BitNumbers<JSTaggedType>() - TAG_BITS_SIZE;
     static_assert((TAG_BITS_SHIFT + TAG_BITS_SIZE) == sizeof(JSTaggedType) * CHAR_BIT, "Insufficient bits!");
     static constexpr JSTaggedType TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
     // int tag
@@ -299,7 +301,7 @@ public:
     static inline bool IsImpureNaN(double value)
     {
         // Tests if the double value would break tagged double encoding.
-        return bit_cast<JSTaggedType>(value) >= (TAG_INT - DOUBLE_ENCODE_OFFSET);
+        return base::bit_cast<JSTaggedType>(value) >= (TAG_INT - DOUBLE_ENCODE_OFFSET);
     }
 
     inline bool operator==(const JSTaggedValue &other) const
@@ -636,6 +638,7 @@ public:
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     inline uint32_t GetKeyHashCode() const;
     static JSTaggedValue GetSuperBase(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static JSTaggedValue TryCastDoubleToInt32(double d);
 
     void DumpTaggedValue(std::ostream &os) const DUMP_API_ATTR;
     void Dump(std::ostream &os) const DUMP_API_ATTR;

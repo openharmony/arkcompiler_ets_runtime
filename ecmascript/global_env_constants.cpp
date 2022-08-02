@@ -352,6 +352,7 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::URI_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("URIError"));
     SetConstant(ConstantIndex::SYNTAX_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("SyntaxError"));
     SetConstant(ConstantIndex::EVAL_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("EvalError"));
+    SetConstant(ConstantIndex::ERROR_FUNC_STRING_INDEX, factory->NewFromASCIINonMovable("errorfunc"));
     SetConstant(ConstantIndex::STACK_STRING_INDEX, factory->NewFromASCIINonMovable("stack"));
     SetConstant(ConstantIndex::STACK_EMPTY_STRING_INDEX, factory->NewFromASCIINonMovable("stackisempty"));
     SetConstant(ConstantIndex::OBJ_NOT_COERCIBLE_STRING_INDEX,

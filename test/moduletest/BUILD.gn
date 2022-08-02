@@ -35,6 +35,7 @@ group("ark_js_moduletest") {
     "globalthis:globalthisAction",
     "helloworld:helloworldAction",
     "lexicalenv:lexicalenvAction",
+    "linkedhashtable:linkedhashtableAction",
     "loadicbyvalue:loadicbyvalueAction",
     "module:moduleAction",
     "moduleUseCjs:moduleUseCjsAction",
@@ -86,6 +87,7 @@ group("ark_asm_test") {
     "globalthis:globalthisAsmAction",
     "helloworld:helloworldAsmAction",
     "lexicalenv:lexicalenvAsmAction",
+    "linkedhashtable:linkedhashtableAsmAction",
     "loadicbyvalue:loadicbyvalueAsmAction",
     "module:moduleAsmAction",
     "multiargs:multiargsAsmAction",
@@ -107,6 +109,56 @@ group("ark_asm_test") {
   if (!is_debug) {
     deps += [
       # "weaktransitions:weaktransitionsAsmAction",
+    ]
+  }
+}
+
+group("ark_asm_single_step_test") {
+  testonly = true
+  deps = [
+    "allocatearraybuffer:allocatearraybufferAsmSingleStepAction",
+    "arrayjoin:arrayjoinAsmSingleStepAction",
+    "asmstackoverflow:asmstackoverflowAsmSingleStepAction",
+    "assignproxy:assignproxyAsmSingleStepAction",
+    "async:asyncAsmSingleStepAction",
+    "bindfunction:bindfunctionAsmSingleStepAction",
+    "bitwiseop:bitwiseopAsmSingleStepAction",
+    "callframe:callframeAsmSingleStepAction",
+    "calltype:calltypeAsmSingleStepAction",
+    "class:classAsmSingleStepAction",
+    "compareobjecthclass:compareobjecthclassAsmSingleStepAction",
+    "container:containerAsmSingleStepAction",
+    "dyninstruction:dyninstructionAsmSingleStepAction",
+    "ecmastringtable:ecmastringtableAsmSingleStepAction",
+    "fortest:fortestAsmSingleStepAction",
+    "generator:generatorAsmSingleStepAction",
+    "getunmappedargs:getunmappedargsAsmSingleStepAction",
+    "globalaccessor:globalaccessorAsmSingleStepAction",
+    "globalrecord:globalrecordAsmSingleStepAction",
+    "globalthis:globalthisAsmSingleStepAction",
+    "helloworld:helloworldAsmSingleStepAction",
+    "lexicalenv:lexicalenvAsmSingleStepAction",
+    "loadicbyvalue:loadicbyvalueAsmSingleStepAction",
+    "module:moduleAsmSingleStepAction",
+    "multiargs:multiargsAsmSingleStepAction",
+    "newobjdynrange:newobjdynrangeAsmSingleStepAction",
+    "objectcloneproperties:objectclonepropertiesAsmSingleStepAction",
+    "objoperate:objoperateAsmSingleStepAction",
+    "promise:promiseAsmSingleStepAction",
+    "proxy:proxyAsmSingleStepAction",
+    "regexpcallthrow:regexpcallthrowAsmSingleStepAction",
+    "setobjectwithproto:setobjectwithprotoAsmSingleStepAction",
+    "spreadoperator:spreadoperatorAsmSingleStepAction",
+    "stackoverflow:stackoverflowAsmSingleStepAction",
+    "throwdyn:throwdynAsmSingleStepAction",
+    "trycatch:trycatchAsmSingleStepAction",
+    "watch:watchAsmSingleStepAction",
+    "yieldstar:yieldstarAsmSingleStepAction",
+  ]
+  if (!is_debug) {
+    deps += [
+      # "weaktransitions:weaktransitionsAsmSingleStepAction",
+      "wrapperclassfunc:wrapperclassfuncAsmSingleStepAction",
     ]
   }
 }

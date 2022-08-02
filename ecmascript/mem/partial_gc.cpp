@@ -55,7 +55,7 @@ void PartialGC::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Initialize");
     if (!markingInProgress_) {
-        LOG_GC(INFO) << "No ongoing Concurrent marking. Initializing...";
+        LOG_GC(DEBUG) << "No ongoing Concurrent marking. Initializing...";
         heap_->Prepare();
         if (heap_->IsFullMark()) {
             heap_->GetOldSpace()->SelectCSet();

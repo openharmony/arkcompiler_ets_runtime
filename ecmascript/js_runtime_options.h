@@ -60,7 +60,8 @@ public:
         parser->Add(&targetTriple_);
         parser->Add(&asmOptLevel_);
         parser->Add(&relocationMode_);
-        parser->Add(&logCompiledMethods_);
+        parser->Add(&methodsListForLog_);
+        parser->Add(&compilerLogOpt_);
         parser->Add(&serializerBufferSizeLimit_);
         parser->Add(&heapSizeLimit_);
         parser->Add(&enableIC_);
@@ -68,10 +69,10 @@ public:
         parser->Add(&frameworkAbcFile_);
         parser->Add(&icuDataPath_);
         parser->Add(&startupTime_);
-        parser->Add(&snapshotOutputFile_);
         parser->Add(&enableRuntimeStat_);
         parser->Add(&typeInferVerify_);
         parser->Add(&builtinsDTS_);
+        parser->Add(&enablebcTrace_);
     }
 
     bool EnableArkTools() const
@@ -330,19 +331,36 @@ public:
         return asmInterParsedOption_;
     }
 
-    std::string GetlogCompiledMethods() const
+    std::string GetCompilerLogOption() const
     {
-        return logCompiledMethods_.GetValue();
+        return compilerLogOpt_.GetValue();
     }
 
-    void SetlogCompiledMethods_(std::string value)
+    void SetCompilerLogOption(std::string value)
     {
-        logCompiledMethods_.SetValue(std::move(value));
+        compilerLogOpt_.SetValue(std::move(value));
     }
 
-    bool WasSetlogCompiledMethods() const
+    bool WasSetCompilerLogOption() const
     {
-        return logCompiledMethods_.WasSet() && GetlogCompiledMethods().compare("none") != 0;
+        return compilerLogOpt_.WasSet() && GetCompilerLogOption().find("none") == std::string::npos;
+    }
+
+    std::string GetMethodsListForLog() const
+    {
+        return methodsListForLog_.GetValue();
+    }
+
+    void SetMethodsListForLog(std::string value)
+    {
+        methodsListForLog_.SetValue(std::move(value));
+    }
+
+    bool WasSetMethodsListForLog() const
+    {
+        return methodsListForLog_.WasSet() &&
+            GetCompilerLogOption().find("none") == std::string::npos &&
+            GetCompilerLogOption().find("all") == std::string::npos;
     }
 
     uint64_t GetSerializerBufferSizeLimit() const
@@ -450,16 +468,6 @@ public:
         return startupTime_.WasSet();
     }
 
-    std::string GetSnapshotOutputFile() const
-    {
-        return snapshotOutputFile_.GetValue();
-    }
-
-    void SetSnapshotOutputFile(std::string value)
-    {
-        snapshotOutputFile_.SetValue(std::move(value));
-    }
-
     bool EnableTypeInferVerify() const
     {
         return typeInferVerify_.GetValue();
@@ -480,13 +488,28 @@ public:
         return builtinsDTS_.GetValue();
     }
 
+    void SetEnableByteCodeTrace(bool value)
+    {
+        enablebcTrace_.SetValue(value);
+    }
+
+    bool IsEnableByteCodeTrace() const
+    {
+        return enablebcTrace_.GetValue();
+    }
+
+    bool WasSetEnableByteCodeTrace() const
+    {
+        return enablebcTrace_.WasSet();
+    }
+
 private:
     PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
         R"(Enable cpuprofiler to sample call stack and output to json file. Default: false)"};
     PandArg<std::string> stubFile_ {"stub-file",
-        R"(stub.m)",
-        R"(Path of file includes common stubs module compiled by stub compiler. Default: "stub.m")"};
+        R"(stub.aot)",
+        R"(Path of file includes common stubs module compiled by stub compiler. Default: "stub.aot")"};
     PandArg<bool> enableForceGc_ {"enable-force-gc", true, R"(enable force gc when allocating object)"};
     PandArg<bool> forceFullGc_ {"force-full-gc",
         true,
@@ -495,8 +518,8 @@ private:
     PandArg<uint32_t> gcThreadNum_ {"gcThreadNum", 7, R"(set gcThreadNum. Default: 7)"};
     PandArg<uint32_t> longPauseTime_ {"longPauseTime", 40, R"(set longPauseTime. Default: 40ms)"};
     PandArg<std::string> aotOutputFile_ {"aot-file",
-        R"(aot_file.m)",
-        R"(Path to AOT output file. Default: "aot_file.m")"};
+        R"(aot_file)",
+        R"(Path (file suffix not needed) to AOT output file. Default: "aot_file")"};
     PandArg<std::string> targetTriple_ {"target-triple", R"(x86_64-unknown-linux-gnu)",
         R"(target triple for aot compiler or stub compiler.
         Possible values: ["x86_64-unknown-linux-gnu", "arm-unknown-linux-gnu", "aarch64-unknown-linux-gnu"].
@@ -526,13 +549,21 @@ private:
     PandArg<std::string> icuDataPath_ {"icu-data-path", R"(default)",
         R"(Path to generated icu data file. Default: "default")"};
     PandArg<bool> startupTime_ {"startup-time", false, R"(Print the start time of command execution. Default: false)"};
-    PandArg<std::string> logCompiledMethods_ {"log-compiled-methods",
+    PandArg<std::string> compilerLogOpt_ {"compiler-log",
         R"(none)",
-        R"(print stub or aot logs in units of method, "none": no log, "all": every method,"
-        "asm": log all disassemble code)"};
-    PandArg<std::string> snapshotOutputFile_ {"snapshot-output-file",
-        R"(snapshot)",
-        R"(Path to snapshot output file. Default: "snapshot")"};
+        R"(log Option For aot compiler and stub compiler,
+        "none": no log,
+        "allllircirasm or all012": print llIR file, CIR log and asm log for all methods,
+        "allcir or all0" : print cir info for all methods,
+        "allllir or all1" : print llir info for all methods,
+        "allasm or all2" : print asm log for all methods,
+        "cerllircirasm or cer0112": print llIR file, CIR log and asm log for certain method defined in 'mlist-for-log',
+        "cercir or cer0": print cir info for certain method illustrated in 'mlist-for-log',
+        "cerasm or cer2": print asm log for certain method illustrated in 'mlist-for-log',
+        Default: "none")"};
+    PandArg<std::string> methodsListForLog_ {"mlist-for-log",
+        R"(none)",
+        R"(specific method list for compiler log output, only used when compiler-log)"};
     PandArg<bool> enableRuntimeStat_ {"enable-runtime-stat", false,
         R"(enable statistics of runtime state. Default: false)"};
     PandArg<bool> typeInferVerify_ {"typeinfer-verify", false,
@@ -542,6 +573,8 @@ private:
     PandArg<std::string> builtinsDTS_ {"builtins-dts",
         "",
         R"(builtins.d.abc file path for AOT.)"};
+    PandArg<bool> enablebcTrace_ {"enable-bytecode-trace", false,
+        R"(enable tracing bytecode for aot runtime. Default: false)"};
 };
 }  // namespace panda::ecmascript
 

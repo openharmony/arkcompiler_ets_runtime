@@ -172,8 +172,8 @@ struct CodeInfo {
     }
 
 private:
-    static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 20);  // 1M
-    static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 19);  // 512K
+    static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 24);  // 16M
+    static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 23);  // 8M
     static constexpr int protRWX = PROT_READ | PROT_WRITE | PROT_EXEC;  // NOLINT(hicpp-signed-bitwise)
     static constexpr int protRW = PROT_READ | PROT_WRITE;               // NOLINT(hicpp-signed-bitwise)
     static constexpr int flags = MAP_ANONYMOUS | MAP_SHARED;            // NOLINT(hicpp-signed-bitwise)
@@ -216,12 +216,13 @@ class LLVMAssembler {
 public:
     explicit LLVMAssembler(LLVMModuleRef module, LOptions option = LOptions());
     virtual ~LLVMAssembler();
-    void Run();
+    void Run(const CompilerLog &log);
     const LLVMExecutionEngineRef &GetEngine()
     {
         return engine_;
     }
-    void Disassemble(const std::map<uintptr_t, std::string> &addr2name, const CompilerLog &log) const;
+    void Disassemble(const std::map<uintptr_t, std::string> &addr2name,
+        const CompilerLog &log, const MethodLogList &logList) const;
     static int GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log);
     static void Disassemble(uint8_t *buf, size_t size);
 
@@ -251,6 +252,8 @@ private:
     bool BuildMCJITEngine();
     void BuildAndRunPasses();
     void Initialize(LOptions option);
+    static void PrintInstAndStep(unsigned &pc, uint8_t **byteSp, uintptr_t &numBytes, size_t instSize, char *outString,
+        bool logFlag = true);
 
     LLVMMCJITCompilerOptions options_ {};
     LLVMModuleRef module_;

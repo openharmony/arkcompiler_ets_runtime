@@ -97,6 +97,7 @@ public:
 
     inline void RebuildFreeList();
 
+    inline bool MatchFreeObjectSet(Region *region, size_t size);
     inline void CollectFreeObjectSet(Region *region);
     inline void DetachFreeObjectSet(Region *region);
 

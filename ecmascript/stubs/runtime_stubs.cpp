@@ -16,6 +16,7 @@
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/ecma_macros.h"
@@ -40,7 +41,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/ts_types/ts_manager.h"
-#include "libpandabase/utils/string_helpers.h"
 
 namespace panda::ecmascript {
 #if defined(__clang__)
@@ -337,7 +337,7 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     std::string format = MessageString::GetMessageString(fmtMessageId);
     va_list args;
     va_start(args, fmtMessageId);
-    std::string result = panda::helpers::string::Vformat(format.c_str(), args);
+    std::string result = base::StringHelper::Vformat(format.c_str(), args);
     std::cerr << result << std::endl;
     va_end(args);
 }
@@ -347,7 +347,7 @@ void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
     std::string format = MessageString::GetMessageString(fmtMessageId);
     va_list args;
     va_start(args, fmtMessageId);
-    std::string result = panda::helpers::string::Vformat(format.c_str(), args);
+    std::string result = base::StringHelper::Vformat(format.c_str(), args);
     std::cerr << result << std::endl;
     va_end(args);
     UNREACHABLE();
@@ -643,6 +643,15 @@ DEF_RUNTIME_STUBS(LdSuperByValue)
     return RuntimeLdSuperByValue(thread, obj, key, thisFunc).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(OptLdSuperByValue)
+{
+    RUNTIME_STUBS_HEADER(OptLdSuperByValue);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue thisFunc = GetArg(argv, argc, 2);  // 2: means the second parameter
+    return RuntimeLdSuperByValue(thread, obj, key, thisFunc).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(StSuperByValue)
 {
     RUNTIME_STUBS_HEADER(StSuperByValue);
@@ -651,6 +660,16 @@ DEF_RUNTIME_STUBS(StSuperByValue)
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
     JSTaggedValue thisFunc = InterpreterAssembly::GetThisFunction(sp);
+    return RuntimeStSuperByValue(thread, obj, key, value, thisFunc).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(OptStSuperByValue)
+{
+    RUNTIME_STUBS_HEADER(OptStSuperByValue);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue thisFunc = GetArg(argv, argc, 3);  // 3: means the third parameter
     return RuntimeStSuperByValue(thread, obj, key, value, thisFunc).GetRawData();
 }
 
@@ -1387,8 +1406,8 @@ DEF_RUNTIME_STUBS(NewObjDynRange)
 DEF_RUNTIME_STUBS(DefinefuncDyn)
 {
     RUNTIME_STUBS_HEADER(DefinefuncDyn);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefinefuncDyn(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDefinefuncDyn(thread, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateRegExpWithLiteral)
@@ -1431,37 +1450,37 @@ DEF_RUNTIME_STUBS(CreateObjectWithExcludedKeys)
 DEF_RUNTIME_STUBS(DefineNCFuncDyn)
 {
     RUNTIME_STUBS_HEADER(DefineNCFuncDyn);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefineNCFuncDyn(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDefineNCFuncDyn(thread, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineGeneratorFunc)
 {
     RUNTIME_STUBS_HEADER(DefineGeneratorFunc);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefineGeneratorFunc(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDefineGeneratorFunc(thread, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineAsyncGeneratorFunc)
 {
     RUNTIME_STUBS_HEADER(DefineAsyncGeneratorFunc);
-    JSTaggedType func = GetTArg(argv, argc, 0); // 0: means the zeroth parameter
-    return RuntimeDefineAsyncGeneratorFunc(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
+    return RuntimeDefineAsyncGeneratorFunc(thread, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineAsyncFunc)
 {
     RUNTIME_STUBS_HEADER(DefineAsyncFunc);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefineAsyncFunc(thread, reinterpret_cast<JSFunction*>(func)).GetRawData();
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDefineAsyncFunc(thread, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineMethod)
 {
     RUNTIME_STUBS_HEADER(DefineMethod);
-    JSTaggedType func = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> homeObject = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeDefineMethod(thread, reinterpret_cast<JSFunction*>(func), homeObject).GetRawData();
+    return RuntimeDefineMethod(thread, func, homeObject).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CallSpreadDyn)

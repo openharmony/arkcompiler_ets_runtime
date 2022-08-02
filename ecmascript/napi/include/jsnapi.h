@@ -24,9 +24,9 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
+#include "ecmascript/mem/mem_common.h"
 
 #include "libpandabase/macros.h"
-#include "libpandabase/mem/mem.h"
 
 namespace panda {
 class JSNApiHelper;
@@ -55,6 +55,7 @@ class EcmaVM;
 class JSRuntimeOptions;
 class JSThread;
 struct EcmaRuntimeCallInfo;
+static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
 }  // namespace ecmascript
 
 using Deleter = void (*)(void *nativePointer, void *data);
@@ -63,7 +64,6 @@ using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 
-static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
 static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
 
@@ -711,8 +711,9 @@ using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 class PUBLIC_API FunctionRef : public ObjectRef {
 public:
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
-        void *data = nullptr);
-    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter, void *data);
+        void *data = nullptr, bool callNative = false);
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
+        void *data, bool callNative = false);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
@@ -723,6 +724,7 @@ public:
     bool Inherit(const EcmaVM *vm, Local<FunctionRef> parent);
     void SetName(const EcmaVM *vm, Local<StringRef> name);
     Local<StringRef> GetName(const EcmaVM *vm);
+    Local<StringRef> GetSourceCode(const EcmaVM *vm, int lineNumber);
     bool IsNative(const EcmaVM *vm);
 };
 
@@ -1072,7 +1074,7 @@ private:
 
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
     LOG_LEVEL logLevel_ = LOG_LEVEL::DEBUG;
-    uint32_t gcPoolSize_ = DEFAULT_GC_POOL_SIZE;
+    uint32_t gcPoolSize_ = ecmascript::DEFAULT_GC_POOL_SIZE;
     LOG_PRINT logBufPrint_ {nullptr};
     std::string debuggerLibraryPath_ {};
     bool enableArkTools_ {false};
@@ -1146,6 +1148,7 @@ public:
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetHostResolvePathTracker(EcmaVM *vm,
                                           std::function<std::string(std::string dirPath, std::string requestPath)> cb);
+    static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();

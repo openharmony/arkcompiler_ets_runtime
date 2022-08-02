@@ -18,9 +18,11 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/tooling/backend/js_pt_extractor.h"
 
 namespace panda::ecmascript::builtins {
 // ecma 19.2.1 Function (p1, p2, ... , pn, body)
@@ -256,14 +258,28 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeCall(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *argv)
 {
     BUILTINS_API_TRACE(argv->GetThread(), Function, PrototypeToString);
-    // not implement due to that runtime can not get JS Source Code now.
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
-    if (!thisValue->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "function.toString() target is not callable", JSTaggedValue::Exception());
+    if (thisValue->IsJSObject() && thisValue->IsCallable()) {
+        auto method = ECMAObject::Cast(thisValue->GetTaggedObject())->GetCallTarget();
+        if (method->IsNativeWithCallField()) {
+            JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
+            JSHandle<EcmaString> methodName(JSObject::GetProperty(thread, thisValue, nameKey).GetValue());
+            std::string nameStr = base::StringHelper::ToStdString(*methodName);
+            std::string startStr = "function ";
+            std::string endStr = "() { [native code] }";
+            startStr.append(nameStr).append(endStr);
+            return GetTaggedString(thread, startStr.c_str());
+        }
+        tooling::JSPtExtractor *debugExtractor =
+                JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
+        const std::string &sourceCode = debugExtractor->GetSourceCode(method->GetMethodId());
+        return GetTaggedString(thread, sourceCode.c_str());
     }
-    return GetTaggedString(thread, "Not support function.toString() due to Runtime can not obtain Source Code yet.");
+
+    THROW_TYPE_ERROR_AND_RETURN(thread,
+        "function.toString() target is incompatible object", JSTaggedValue::Exception());
 }
 
 // ecma 19.2.3.6 Function.prototype[@@hasInstance] (V)

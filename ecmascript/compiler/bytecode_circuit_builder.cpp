@@ -18,7 +18,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/ts_types/ts_manager.h"
-
+ 
 namespace panda::ecmascript::kungfu {
 void BytecodeCircuitBuilder::BytecodeToCircuit()
 {
@@ -368,7 +368,10 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
                 }
             }
         }
-        BytecodeRegion &bb = graph_[i];
+
+        // When there are multiple catch blocks in the current block, the set of catch blocks
+        // needs to be sorted to satisfy the order of execution of catch blocks.
+        BytecodeRegion& bb = graph_[i];
         bb.SortCatches();
     }
 
@@ -382,21 +385,31 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
 {
     // Construct graph backward order
     std::map<size_t, size_t> bbIdToDfsTimestamp; // (basicblock id, dfs order)
+    std::unordered_map<size_t, size_t> dfsFatherIdx;
+    std::unordered_map<size_t, size_t> bbDfsTimestampToIdx;
+    std::vector<size_t> basicBlockList;
     size_t timestamp = 0;
     std::deque<size_t> pendingList;
     std::vector<size_t> visited(graph_.size(), 0);
     auto basicBlockId = graph_[0].id;
+    visited[graph_[0].id] = 1;
     pendingList.push_back(basicBlockId);
     while (!pendingList.empty()) {
-        auto &curBlockId = pendingList.back();
+        size_t curBlockId = pendingList.back();
         pendingList.pop_back();
+        basicBlockList.push_back(curBlockId);
         bbIdToDfsTimestamp[curBlockId] = timestamp++;
-        for (auto &succBlock: graph_[curBlockId].succs) {
+        for (const auto &succBlock: graph_[curBlockId].succs) {
             if (visited[succBlock->id] == 0) {
                 visited[succBlock->id] = 1;
                 pendingList.push_back(succBlock->id);
+                dfsFatherIdx[succBlock->id] = bbIdToDfsTimestamp[curBlockId];
             }
         }
+    }
+    
+    for (size_t idx = 0; idx < basicBlockList.size(); idx++) {
+        bbDfsTimestampToIdx[basicBlockList[idx]] = idx;
     }
 
     RemoveDeadRegions(bbIdToDfsTimestamp);
@@ -408,85 +421,69 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
         }
     }
 
-    std::vector<size_t> immDom(graph_.size()); // immediate dominator
-    std::vector<std::vector<size_t>> doms(graph_.size()); // dominators set
-    doms[0] = {0};
-    for (size_t i = 1; i < doms.size(); i++) {
-        doms[i].resize(doms.size());
-        std::iota(doms[i].begin(), doms[i].end(), 0);
-    }
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (size_t i = 1; i < doms.size(); i++) {
-            if (graph_[i].isDead) {
-                continue;
+    std::vector<size_t> immDom(basicBlockList.size()); // immediate dominator with dfs order index
+    std::vector<size_t> semiDom(basicBlockList.size());
+    std::vector<size_t> realImmDom(graph_.size()); // immediate dominator with real index
+    std::vector<std::vector<size_t> > semiDomTree(basicBlockList.size());
+    {
+        std::vector<size_t> parent(basicBlockList.size());
+        std::iota(parent.begin(), parent.end(), 0);
+        std::vector<size_t> minIdx(basicBlockList.size());
+        std::function<size_t(size_t)> unionFind = [&] (size_t idx) -> size_t {
+            if (parent[idx] == idx) return idx;
+            size_t unionFindSetRoot = unionFind(parent[idx]);
+            if (semiDom[minIdx[idx]] > semiDom[minIdx[parent[idx]]]) {
+                minIdx[idx] = minIdx[parent[idx]];
             }
-            auto &curDom = doms[i];
-            size_t curDomSize = curDom.size();
-            curDom.resize(doms.size());
-            std::iota(curDom.begin(), curDom.end(), 0);
-            // traverse the predecessor nodes of the current node, Computing Dominators
-            for (auto &preBlock : graph_[i].preds) {
-                std::vector<size_t> tmp(curDom.size());
-                auto preDom = doms[preBlock->id];
-                auto it = std::set_intersection(curDom.begin(), curDom.end(), preDom.begin(), preDom.end(),
-                                                tmp.begin());
-                tmp.resize(it - tmp.cbegin());
-                curDom = tmp;
+            return parent[idx] = unionFindSetRoot;
+        };
+        auto merge = [&] (size_t fatherIdx, size_t sonIdx) -> void {
+            size_t parentFatherIdx = unionFind(fatherIdx);
+            size_t parentSonIdx = unionFind(sonIdx);
+            parent[parentSonIdx] = parentFatherIdx;
+        };
+        std::iota(semiDom.begin(), semiDom.end(), 0);
+        semiDom[0] = semiDom.size();
+        for (size_t idx = basicBlockList.size() - 1; idx >= 1; idx --) {
+            for (const auto &preBlock : graph_[basicBlockList[idx]].preds) {
+                if (bbDfsTimestampToIdx[preBlock->id] < idx) {
+                    semiDom[idx] = std::min(semiDom[idx], bbDfsTimestampToIdx[preBlock->id]);
+                } else {
+                    unionFind(bbDfsTimestampToIdx[preBlock->id]);
+                    semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[bbDfsTimestampToIdx[preBlock->id]]]);
+                }
             }
-            auto it = std::find(curDom.cbegin(), curDom.cend(), i);
-            if (it == curDom.cend()) {
-                curDom.push_back(i);
-                std::sort(curDom.begin(), curDom.end());
+            for (const auto & succDomIdx : semiDomTree[idx]) {
+                unionFind(succDomIdx);
+                if (idx == semiDom[minIdx[succDomIdx]]) {
+                    immDom[succDomIdx] = idx;
+                } else {
+                    immDom[succDomIdx] = minIdx[succDomIdx];
+                }
             }
-
-            if (doms[i].size() != curDomSize) {
-                changed = true;
-            }
+            minIdx[idx] = idx;
+            merge(dfsFatherIdx[basicBlockList[idx]], idx);
+            semiDomTree[semiDom[idx]].push_back(idx);
         }
-    }
-
-    if (IsLogEnabled()) {
-        // print dominators set
-        for (size_t i = 0; i < doms.size(); i++) {
-            std::string log("block " + std::to_string(i) + " dominator blocks has: ");
-            for (auto j: doms[i]) {
-                log += std::to_string(j) + " , ";
+        for (size_t idx = 1; idx < basicBlockList.size(); idx++) {
+            if (immDom[idx] != semiDom[idx]) {
+                immDom[idx] = immDom[immDom[idx]];
             }
-            LOG_COMPILER(INFO) << log;
+            realImmDom[basicBlockList[idx]] = basicBlockList[immDom[idx]];
         }
-    }
-
-    // compute immediate dominator
-    immDom[0] = static_cast<size_t>(doms[0].front());
-    for (size_t i = 1; i < doms.size(); i++) {
-        if (graph_[i].isDead) {
-            continue;
-        }
-        auto it = std::remove(doms[i].begin(), doms[i].end(), i);
-        doms[i].resize(it - doms[i].cbegin());
-        immDom[i] = static_cast<size_t>(*std::max_element(
-            doms[i].cbegin(),
-            doms[i].cend(),
-            [this, &bbIdToDfsTimestamp](size_t lhs, size_t rhs) -> bool {
-                auto lhsTimestamp = bbIdToDfsTimestamp.at(this->graph_[lhs].id);
-                auto rhsTimestamp = bbIdToDfsTimestamp.at(this->graph_[rhs].id);
-                return lhsTimestamp < rhsTimestamp;
-            }));
+        semiDom[0] = 0;
     }
 
     if (IsLogEnabled()) {
         // print immediate dominator
-        for (size_t i = 0; i < immDom.size(); i++) {
-            LOG_COMPILER(INFO) << i << " immediate dominator: " << immDom[i];
+        for (size_t i = 0; i < realImmDom.size(); i++) {
+            LOG_COMPILER(INFO) << i << " immediate dominator: " << realImmDom[i];
         }
         PrintGraph();
     }
 
-    BuildImmediateDominator(immDom);
+    BuildImmediateDominator(realImmDom);
 }
-
 void BytecodeCircuitBuilder::BuildImmediateDominator(const std::vector<size_t> &immDom)
 {
     graph_[0].iDominator = &graph_[0];

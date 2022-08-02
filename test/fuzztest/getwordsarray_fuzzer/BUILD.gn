@@ -30,7 +30,6 @@ ohos_fuzztest("GetWordsArrayFuzzTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime:libark_jsruntime",
     sdk_libc_secshared_dep,
   ]

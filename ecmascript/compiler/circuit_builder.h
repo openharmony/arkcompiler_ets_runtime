@@ -136,8 +136,8 @@ public:
     // fake parameters for register r1 ~ r3
     static constexpr int FAKE_REGISTER_PARAMTERS_ARM32 = 3;
 
-    explicit CompilationConfig(const std::string &triple)
-        : triple_(GetTripleFromString(triple))
+    explicit CompilationConfig(const std::string &triple, bool isEnableBcTrace = false)
+        : triple_(GetTripleFromString(triple)), isEnableBcTrace_(isEnableBcTrace)
     {
     }
     ~CompilationConfig() = default;
@@ -167,6 +167,11 @@ public:
         return triple_;
     }
 
+    bool IsEnableByteCodeTrace() const
+    {
+        return isEnableBcTrace_;
+    }
+
 private:
     inline Triple GetTripleFromString(const std::string &triple)
     {
@@ -184,6 +189,7 @@ private:
         UNREACHABLE();
     }
     Triple triple_;
+    bool isEnableBcTrace_;
 };
 
 class CircuitBuilder {
@@ -647,6 +653,15 @@ public:
     GateRef operator*()
     {
         return env_->GetCurrentLabel()->ReadVariable(this);
+    }
+    GateRef ReadVariable()
+    {
+        return env_->GetCurrentLabel()->ReadVariable(this);
+    }
+    void WriteVariable(GateRef value)
+    {
+        env_->GetCurrentLabel()->WriteVariable(this, value);
+        Bind(value);
     }
     GateRef AddPhiOperand(GateRef val);
     GateRef AddOperandToSelector(GateRef val, size_t idx, GateRef in);

@@ -327,7 +327,7 @@ void Heap::CollectGarbage(TriggerGCType gcType)
     size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
     memController_->StartCalculationBeforeGC();
     StatisticHeapObject(gcType);
-
+    GetDerivedPointers()->clear();
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:
             // Use partial GC for young generation.
@@ -438,6 +438,16 @@ size_t Heap::VerifyHeapObjects() const
         VerifyObjectVisitor verifier(this, &failCount);
         snapshotSpace_->IterateOverObjects(verifier);
     }
+    return failCount;
+}
+
+size_t Heap::VerifyOldToNewRSet() const
+{
+    size_t failCount = 0;
+    VerifyObjectVisitor verifier(this, &failCount);
+    oldSpace_->IterateOldToNewOverObjects(verifier);
+    nonMovableSpace_->IterateOldToNewOverObjects(verifier);
+    machineCodeSpace_->IterateOldToNewOverObjects(verifier);
     return failCount;
 }
 

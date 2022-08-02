@@ -139,40 +139,47 @@ bool Verifier::RunCFGSoundnessCheck(const Circuit *circuit, const std::vector<Ga
 bool Verifier::RunCFGIsDAGCheck(const Circuit *circuit)
 {
     circuit->AdvanceTime();
-    std::function<bool(GateRef)> dfs = [&](GateRef cur) -> bool {
-        if (circuit->GetOpCode(cur) == OpCode::LOOP_BACK) {
-            return true;
-        }
-        circuit->SetMark(cur, MarkCode::VISITED);
-        GateAccessor gateAcc(const_cast<Circuit *>(circuit));
-        auto uses = gateAcc.ConstUses(cur);
-        for (auto use = uses.begin(); use != uses.end(); ++use) {
-            if (circuit->GetOpCode(*use).IsState() && use.GetIndex() < circuit->GetOpCode(*use).GetStateCount(
-                circuit->LoadGatePtrConst(*use)->GetBitField())) {
-                if (circuit->GetMark(*use) == MarkCode::VISITED) {
-                    LOG_COMPILER(ERROR) <<
-                        "[Verifier][Error] CFG without loop back edges is not a directed acyclic graph";
-                    LOG_COMPILER(ERROR) << "Proof:";
-                    LOG_COMPILER(ERROR) << "(id=" << circuit->GetId(*use) << ") is succ of "
-                              << "(id=" << circuit->GetId(cur) << ")";
-                    LOG_COMPILER(ERROR) << "(id=" << circuit->GetId(cur) << ") is reachable from "
-                              << "(id=" << circuit->GetId(*use) << ") without loop back edges";
-                    return false;
-                }
-                if (circuit->GetMark(*use) == MarkCode::FINISHED) {
-                    continue;
-                }
-                if (!dfs(*use)) {
-                    return false;
-                }
-            }
-        }
-        circuit->SetMark(cur, MarkCode::FINISHED);
-        return true;
+    struct DFSState {
+        GateRef cur;
+        GateAccessor::ConstUseWrapper uses;
+        GateAccessor::ConstUseIterator use;
     };
+    std::stack<DFSState> dfsStack;
     auto root = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    if (!dfs(root)) {
-        return false;
+    GateAccessor gateAcc(const_cast<Circuit *>(circuit));
+    gateAcc.SetVisited(root);
+    auto rootUses = gateAcc.ConstUses(root);
+    dfsStack.push({root, rootUses, rootUses.begin()});
+    while (!dfsStack.empty()) {
+        auto &curState = dfsStack.top();
+        auto &cur = curState.cur;
+        auto &uses = curState.uses;
+        auto &use = curState.use;
+        if (use == uses.end()) {
+            gateAcc.SetFinished(cur);
+            dfsStack.pop();
+            continue;
+        }
+        if (gateAcc.IsState(*use) && use.GetIndex() < gateAcc.GetStateCount(*use)) {
+            if (gateAcc.IsVisited(*use)) {
+                LOG_COMPILER(ERROR) <<
+                    "[Verifier][Error] CFG without loop back edges is not a directed acyclic graph";
+                LOG_COMPILER(ERROR) << "Proof:";
+                LOG_COMPILER(ERROR) << "(id=" << gateAcc.GetId(*use) << ") is succ of "
+                          << "(id=" << gateAcc.GetId(cur) << ")";
+                LOG_COMPILER(ERROR) << "(id=" << gateAcc.GetId(cur) << ") is reachable from "
+                          << "(id=" << gateAcc.GetId(*use) << ") without loop back edges";
+                return false;
+            }
+            if (gateAcc.IsFinished(*use) || gateAcc.IsLoopBack(*use)) {
+                ++use;
+                continue;
+            }
+            gateAcc.SetVisited(*use);
+            auto newUses = gateAcc.ConstUses(*use);
+            dfsStack.push({*use, newUses, newUses.begin()});
+        }
+        ++use;
     }
     return true;
 }
@@ -275,52 +282,66 @@ bool Verifier::RunFlowCyclesFind(const Circuit *circuit, std::vector<GateRef> *s
         }
     }
     circuit->AdvanceTime();
+    GateAccessor gateAcc(const_cast<Circuit *>(circuit));
     std::vector<GateRef> cycleGatesList;
     GateRef meet = -1;
-    std::function<bool(GateRef)> dfs = [&](GateRef cur) -> bool {
-        circuit->SetMark(cur, MarkCode::VISITED);
-        schedulableGatesListPtr->push_back(cur);
-        size_t numIns = circuit->LoadGatePtrConst(cur)->GetNumIns();
-        for (size_t idx = 0; idx < numIns; idx++) {
-            const auto prev = circuit->GetIn(cur, idx);
-            if (circuit->GetOpCode(prev).IsSchedulable()) {
-                if (circuit->GetMark(prev) == MarkCode::VISITED) {
+    struct DFSState {
+        GateRef cur;
+        size_t numIns;
+        size_t idx;
+    };
+    for (const auto &startGate : startGateList) {
+        if (!gateAcc.IsNotMarked(startGate)) {
+            continue;
+        }
+        std::stack<DFSState> dfsStack;
+        size_t startNumIns = gateAcc.GetNumIns(startGate);
+        dfsStack.push({startGate, startNumIns, 0});
+        gateAcc.SetVisited(startGate);
+        schedulableGatesListPtr->push_back(startGate);
+        while (!dfsStack.empty()) {
+            auto &curState = dfsStack.top();
+            auto &cur = curState.cur;
+            auto &numIns = curState.numIns;
+            auto &idx = curState.idx;
+            if (idx == numIns) {
+                gateAcc.SetFinished(cur);
+                dfsStack.pop();
+                continue;
+            }
+            const auto prev = gateAcc.GetIn(cur, idx);
+            if (gateAcc.IsSchedulable(prev)) {
+                if (gateAcc.IsVisited(prev)) {
                     LOG_COMPILER(ERROR) <<
                         "[Verifier][Error] Found a data or depend flow cycle without passing selectors";
                     LOG_COMPILER(ERROR) << "Proof:";
                     LOG_COMPILER(ERROR) << "(id=" << circuit->GetId(prev) << ") is prev of "
-                              << "(id=" << circuit->GetId(cur) << ")";
+                            << "(id=" << circuit->GetId(cur) << ")";
                     LOG_COMPILER(ERROR) << "(id=" << circuit->GetId(prev) << ") is reachable from "
-                              << "(id=" << circuit->GetId(cur) << ") without passing selectors";
+                            << "(id=" << circuit->GetId(cur) << ") without passing selectors";
                     meet = prev;
-                    cycleGatesList.push_back(cur);
-                    return false;
+                    break;
                 }
-                if (circuit->GetMark(prev) != MarkCode::FINISHED) {
-                    if (!dfs(prev)) {
-                        if (meet != -1) {
-                            cycleGatesList.push_back(cur);
-                        }
-                        if (meet == cur) {
-                            meet = -1;
-                        }
-                        return false;
-                    }
+                if (!gateAcc.IsFinished(prev)) {
+                    size_t newNumIns = gateAcc.GetNumIns(prev);
+                    dfsStack.push({prev, newNumIns, 0});
+                    gateAcc.SetVisited(prev);
+                    schedulableGatesListPtr->push_back(prev);
                 }
             }
+            idx++;
         }
-        circuit->SetMark(cur, MarkCode::FINISHED);
-        return true;
-    };
-    for (const auto &startGate : startGateList) {
-        if (circuit->GetMark(startGate) == MarkCode::NO_MARK) {
-            if (!dfs(startGate)) {
-                LOG_COMPILER(ERROR) << "Path:";
-                for (const auto &cycleGate : cycleGatesList) {
-                    circuit->Print(cycleGate);
-                }
-                return false;
+        if (meet != -1) {
+            while (dfsStack.top().cur != meet) {
+                cycleGatesList.push_back(dfsStack.top().cur);
+                dfsStack.pop();
             }
+            cycleGatesList.push_back(meet);
+            LOG_COMPILER(ERROR) << "Path:";
+            for (const auto &cycleGate : cycleGatesList) {
+                gateAcc.Print(cycleGate);
+            }
+            return false;
         }
     }
     return true;
@@ -440,19 +461,40 @@ bool Verifier::Run(const Circuit *circuit, bool enableLog)
     jumpUp.assign(bbGatesList.size(), std::vector<size_t>(sizeLog + 1));
     {
         size_t timestamp = 0;
-        std::function<void(size_t, size_t)> dfs = [&](size_t cur, size_t prev) {
-            timeIn[cur] = timestamp++;
-            jumpUp[cur][0] = prev;
-            for (size_t stepSize = 1; stepSize <= sizeLog; stepSize++) {
-                jumpUp[cur][stepSize] = jumpUp[jumpUp[cur][stepSize - 1]][stepSize - 1];
-            }
-            for (const auto &succ : sonList[cur]) {
-                dfs(succ, cur);
-            }
-            timeOut[cur] = timestamp++;
+        struct DFSState {
+            size_t cur;
+            std::vector<size_t> &succList;
+            size_t idx;
         };
+        std::stack<DFSState> dfsStack;
         size_t root = 0;
-        dfs(root, root);
+        dfsStack.push({root, sonList[root], 0});
+        timeIn[root] = timestamp++;
+        jumpUp[root][0] = root;
+        for (size_t stepSize = 1; stepSize <= sizeLog; stepSize++) {
+            auto jumpUpHalf = jumpUp[root][stepSize - 1];
+            jumpUp[root][stepSize] = jumpUp[jumpUpHalf][stepSize - 1];
+        }
+        while (!dfsStack.empty()) {
+            auto &curState = dfsStack.top();
+            auto &cur = curState.cur;
+            auto &succList = curState.succList;
+            auto &idx = curState.idx;
+            if (idx == succList.size()) {
+                timeOut[cur] = timestamp++;
+                dfsStack.pop();
+                continue;
+            }
+            const auto &succ = succList[idx];
+            dfsStack.push({succ, sonList[succ], 0});
+            timeIn[succ] = timestamp++;
+            jumpUp[succ][0] = cur;
+            for (size_t stepSize = 1; stepSize <= sizeLog; stepSize++) {
+                auto jumpUpHalf = jumpUp[succ][stepSize - 1];
+                jumpUp[succ][stepSize] = jumpUp[jumpUpHalf][stepSize - 1];
+            }
+            idx++;
+        }
     }
     auto isAncestor = [timeIn, timeOut](size_t nodeA, size_t nodeB) -> bool {
         return timeIn[nodeA] <= timeIn[nodeB] && timeOut[nodeA] >= timeOut[nodeB];

@@ -27,6 +27,8 @@ using namespace panda::ecmascript;
 
 class StubBuilder {
 public:
+    explicit StubBuilder(StubBuilder *parent)
+        : callSignature_(parent->GetCallSignature()), env_(parent->GetEnvironment()) {}
     explicit StubBuilder(CallSignature *callSignature, Environment *env)
         : callSignature_(callSignature), env_(env) {}
     virtual ~StubBuilder() = default;
@@ -146,6 +148,7 @@ public:
     GateRef TaggedIsDouble(GateRef x);
     GateRef TaggedIsObject(GateRef x);
     GateRef TaggedIsNumber(GateRef x);
+    GateRef TaggedIsNumeric(GateRef x);
     GateRef TaggedIsHole(GateRef x);
     GateRef TaggedIsNotHole(GateRef x);
     GateRef TaggedIsUndefined(GateRef x);
@@ -237,7 +240,7 @@ public:
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
     GateRef TaggedIsBigInt(GateRef obj);
-    GateRef IsBigInt(GateRef obj);
+    GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
     GateRef IsJSFunctionBase(GateRef obj);
     GateRef IsConstructor(GateRef object);
@@ -445,6 +448,7 @@ public:
     inline GateRef ComputeTaggedArraySize(GateRef length);
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
+    inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     void InitializeTaggedArrayWithSpeicalValue(
         GateRef glue, GateRef array, GateRef value, GateRef start, GateRef length);
     void InitializeWithSpeicalValue(

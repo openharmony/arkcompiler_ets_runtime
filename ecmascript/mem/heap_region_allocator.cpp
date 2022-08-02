@@ -21,6 +21,8 @@
 #include "ecmascript/mem/space-inl.h"
 
 namespace panda::ecmascript {
+constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
+
 Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread)
 {
     if (capacity == 0) {

@@ -34,6 +34,31 @@ void GateAccessor::SetMark(GateRef gate, MarkCode mark)
     circuit_->SetMark(gate, mark);
 }
 
+bool GateAccessor::IsFinished(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::FINISHED;
+}
+
+bool GateAccessor::IsVisited(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::VISITED;
+}
+
+bool GateAccessor::IsNotMarked(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::NO_MARK;
+}
+
+void GateAccessor::SetFinished(GateRef gate)
+{
+    SetMark(gate, MarkCode::FINISHED);
+}
+
+void GateAccessor::SetVisited(GateRef gate)
+{
+    SetMark(gate, MarkCode::VISITED);
+}
+
 OpCode GateAccessor::GetOpCode(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -136,6 +161,21 @@ bool GateAccessor::IsControlCase(GateRef gate) const
 bool GateAccessor::IsLoopHead(GateRef gate) const
 {
     return circuit_->IsLoopHead(gate);
+}
+
+bool GateAccessor::IsLoopBack(GateRef gate) const
+{
+    return GetOpCode(gate) == OpCode::LOOP_BACK;
+}
+
+bool GateAccessor::IsState(GateRef gate) const
+{
+    return GetOpCode(gate).IsState();
+}
+
+bool GateAccessor::IsSchedulable(GateRef gate) const
+{
+    return GetOpCode(gate).IsSchedulable();
 }
 
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
@@ -313,5 +353,11 @@ void GateAccessor::SetMachineType(GateRef gate, MachineType type)
 GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, GateType type) const
 {
     return circuit_->GetConstantGate(bitValue, bitfield, type);
+}
+
+bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
+{
+    size_t valueStartIndex = GetStateCount(gate) + GetDependCount(gate);
+    return (index >= valueStartIndex && index < GetNumIns(gate));
 }
 }  // namespace panda::ecmascript::kungfu

@@ -14,11 +14,12 @@
 if (!defined(ark_standalone_build)) {
   ark_root = "//arkcompiler/runtime_core"
   js_root = "//arkcompiler/ets_runtime"
+  third_party_gn_path = "//third_party"
 } else {
   ark_root = "//runtime_core"
   js_root = "//ets_runtime"
+  third_party_gn_path = "//js_runtime/build/third_party_gn"
 }
-third_party_gn_path = "//third_party"
 compile_llvm_online = false
 run_with_asan = false
 enable_bytrace = true

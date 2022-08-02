@@ -86,7 +86,6 @@ public:
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);
     // 21.1.3.17
     static JSTaggedValue Split(EcmaRuntimeCallInfo *argv);
-    // 21.1.3.17.1 Runtime Semantics: SplitMatch
     // 21.1.3.18
     static JSTaggedValue StartsWith(EcmaRuntimeCallInfo *argv);
     // 21.1.3.19
@@ -129,7 +128,6 @@ public:
 private:
     static int32_t ConvertDoubleToInt(double d);
     // 21.1.3.17.1
-    static int32_t SplitMatch(const JSHandle<EcmaString> &str, int32_t q, const JSHandle<EcmaString> &reg);
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_STRING_H

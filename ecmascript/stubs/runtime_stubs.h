@@ -32,12 +32,17 @@ class GlobalEnv;
 class JSThread;
 class JSFunction;
 class ObjectFactory;
+class JSBoundFunction;
+class JSProxy;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
                                          uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
 
 #define RUNTIME_ASM_STUB_LIST(V)             \
-    V(CallRuntime)                           \
+    JS_CALL_TRAMPOLINE_LIST(V)               \
+    ASM_INTERPRETER_TRAMPOLINE_LIST(V)
+
+#define ASM_INTERPRETER_TRAMPOLINE_LIST(V)   \
     V(AsmInterpreterEntry)                   \
     V(GeneratorReEnterAsmInterp)             \
     V(PushCallArgsAndDispatchNative)         \
@@ -50,18 +55,22 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(PushCallNewAndDispatchNative)          \
     V(PushCallIRangeAndDispatchNative)       \
     V(PushCallIThisRangeAndDispatch)         \
-    V(JSCallWithArgV)                        \
     V(ResumeRspAndDispatch)                  \
     V(ResumeRspAndReturn)                    \
     V(ResumeCaughtFrameAndDispatch)          \
     V(ResumeUncaughtFrameAndReturn)          \
     V(CallSetter)                            \
-    V(CallGetter)                            \
+    V(CallGetter)
+
+#define JS_CALL_TRAMPOLINE_LIST(V)           \
+    V(CallRuntime)                           \
     V(CallRuntimeWithArgv)                   \
-    V(JSCall)                                \
-    V(JSProxyCallInternalWithArgV)           \
     V(JSFunctionEntry)                       \
+    V(JSCall)                                \
+    V(JSCallWithArgV)                        \
+    V(JSProxyCallInternalWithArgV)           \
     V(OptimizedCallOptimized)
+
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(DebugPrint)                              \
@@ -237,7 +246,9 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(OptLdLexVarDyn)                     \
     V(OptStLexVarDyn)                     \
     V(JSObjectGetMethod)                  \
-    V(DebugAOTPrint)
+    V(DebugAOTPrint)                      \
+    V(OptLdSuperByValue)                  \
+    V(OptStSuperByValue)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -482,7 +493,7 @@ private:
     static inline JSTaggedValue RuntimeNewObjDynRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                       const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx,
                                                       uint16_t length);
-    static inline JSTaggedValue RuntimeDefinefuncDyn(JSThread *thread, JSFunction *func);
+    static inline JSTaggedValue RuntimeDefinefuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
     static inline JSTaggedValue RuntimeCreateRegExpWithLiteral(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
                                                                uint8_t flags);
     static inline JSTaggedValue RuntimeThrowIfSuperNotCorrectCall(JSThread *thread, uint16_t index,
@@ -494,11 +505,11 @@ private:
     static inline JSTaggedValue RuntimeCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
                                                                     const JSHandle<JSTaggedValue> &objVal,
                                                                     uint16_t firstArgRegIdx);
-    static inline JSTaggedValue RuntimeDefineNCFuncDyn(JSThread *thread, JSFunction *func);
-    static inline JSTaggedValue RuntimeDefineGeneratorFunc(JSThread *thread, JSFunction *func);
-    static inline JSTaggedValue RuntimeDefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func);
-    static inline JSTaggedValue RuntimeDefineAsyncFunc(JSThread *thread, JSFunction *func);
-    static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, JSFunction *func,
+    static inline JSTaggedValue RuntimeDefineAsyncGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
+    static inline JSTaggedValue RuntimeDefineNCFuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
+    static inline JSTaggedValue RuntimeDefineGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
+    static inline JSTaggedValue RuntimeDefineAsyncFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
+    static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, const JSHandle<JSFunction> &funcHandle,
                                                     const JSHandle<JSTaggedValue> &homeObject);
     static inline JSTaggedValue RuntimeCallSpreadDyn(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                      const JSHandle<JSTaggedValue> &obj,
@@ -529,7 +540,19 @@ private:
     static inline JSTaggedValue RuntimeOptSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                            const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc);
-
+    static inline JSTaggedValue RuntimeOptConstruct(JSThread *thread, JSHandle<JSTaggedValue> ctor,
+                                                    JSHandle<JSTaggedValue> newTarget, JSHandle<JSTaggedValue> preArgs,
+                                                    JSHandle<TaggedArray> args);
+    static inline JSTaggedValue RuntimeOptConstructProxy(JSThread *thread, JSHandle<JSProxy> ctor,
+                                                         JSHandle<JSTaggedValue> newTgt,
+                                                         JSHandle<JSTaggedValue> preArgs, JSHandle<TaggedArray> args);
+    static inline JSTaggedValue RuntimeOptConstructBoundFunction(JSThread *thread, JSHandle<JSBoundFunction> ctor,
+                                                                 JSHandle<JSTaggedValue> newTgt,
+                                                                 JSHandle<JSTaggedValue> preArgs,
+                                                                 JSHandle<TaggedArray> args);
+    static inline JSTaggedValue RuntimeOptConstructGeneric(JSThread *thread, JSHandle<JSFunction> ctor,
+                                                           JSHandle<JSTaggedValue> newTgt,
+                                                           JSHandle<JSTaggedValue> preArgs, JSHandle<TaggedArray> args);
     static inline JSTaggedValue RuntimeOptNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc);
     static inline JSTaggedValue RuntimeOptGetLexEnv(JSThread *thread);
     static inline void RuntimeOptSetLexEnv(JSThread *thread, JSTaggedValue lexEnv);
