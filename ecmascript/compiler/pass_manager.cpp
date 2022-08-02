@@ -16,6 +16,7 @@
 
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/compiler/pass.h"
+#include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -26,9 +27,9 @@
 namespace panda::ecmascript::kungfu {
 bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator)
 {
-    BytecodeTranslationInfo translationInfo;
+    BytecodeInfoCollector::BCInfo bytecodeInfo;
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
-    bool res = CollectInfoOfPandaFile(fileName, entry_, &translationInfo);
+    bool res = CollectBCInfo(fileName, &bytecodeInfo);
     if (!res) {
         LOG_COMPILER(ERROR) << "Cannot execute panda file '" << fileName << "'";
         return false;
@@ -41,19 +42,21 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
     bool enableLog = !log_->NoneMethod();
 
-    for (size_t i = 0; i < translationInfo.methodPcInfos.size(); i++) {
-        const JSMethod *method = translationInfo.methodPcInfos[i].method;
-        const std::string methodName(method->GetMethodName());
+    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableLog, aotModule, &cmpCfg, tsManager]
+        (const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> &constantPool,
+        BytecodeInfoCollector::MethodPcInfo &methodPCInfo) {
+        const std::string methodName(methodPCInfo.method->GetMethodName());
         if (log_->CertainMethod()) {
             enableLog = logList_->IncludesMethod(fileName, methodName);
         }
 
         if (enableLog) {
             LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
-                               << methodName << "] log:" << "\033[0m";
+                            << methodName << "] log:" << "\033[0m";
         }
 
-        BytecodeCircuitBuilder builder(translationInfo, i, tsManager, enableLog && log_->OutputCIR());
+        BytecodeCircuitBuilder builder(jsPandaFile, constantPool, methodPCInfo, tsManager,
+                                       enableLog && log_->OutputCIR());
         builder.BytecodeToCircuit();
         PassData data(builder.GetCircuit());
         PassRunner<PassData> pipeline(&data, enableLog && log_->OutputCIR());
@@ -63,26 +66,25 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg);
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<SchedulingPass>();
-        pipeline.RunPass<LLVMIRGenPass>(aotModule, method);
-    }
+        pipeline.RunPass<LLVMIRGenPass>(aotModule, methodPCInfo.method);
+    });
 
-    generator.AddModule(aotModule, aotModuleAssembler, translationInfo.jsPandaFile);
+    generator.AddModule(aotModule, aotModuleAssembler, bytecodeInfo.jsPandaFile);
     return true;
 }
 
-bool PassManager::CollectInfoOfPandaFile(const std::string &fileName, std::string_view entryPoint,
-                                         BytecodeTranslationInfo *translateInfo)
+bool PassManager::CollectBCInfo(const std::string &fileName, BytecodeInfoCollector::BCInfo *bytecodeInfo)
 {
-    if (translateInfo == nullptr) {
+    if (bytecodeInfo == nullptr) {
         return false;
     }
-    const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadAotInfoFromPf(fileName.c_str(), entryPoint,
-                                                             &(translateInfo->methodPcInfos));
+    const JSPandaFile *jsPandaFile = BytecodeInfoCollector::LoadInfoFromPf(fileName.c_str(), entry_,
+                                                                           bytecodeInfo->methodPcInfos);
+
     if (jsPandaFile == nullptr) {
         return false;
     }
-    translateInfo->jsPandaFile = jsPandaFile;
+    bytecodeInfo->jsPandaFile = jsPandaFile;
 
     if (jsPandaFile->HasTSTypes()) {
         TSManager *tsManager = vm_->GetTSManager();
@@ -99,7 +101,7 @@ bool PassManager::CollectInfoOfPandaFile(const std::string &fileName, std::strin
     auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile);
     JSHandle<JSFunction> mainFunc(vm_->GetJSThread(), program->GetMainFunction());
     JSHandle<JSTaggedValue> constPool(vm_->GetJSThread(), mainFunc->GetConstantPool());
-    translateInfo->constantPool = constPool;
+    bytecodeInfo->constantPool = constPool;
     return true;
 }
 } // namespace panda::ecmascript::kungfu

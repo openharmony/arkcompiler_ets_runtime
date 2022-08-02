@@ -50,6 +50,7 @@ source_set("libark_jsoptimizer_set") {
     "async_function_lowering.cpp",
     "bc_call_signature.cpp",
     "bytecode_circuit_builder.cpp",
+    "bytecode_info_collector.cpp",
     "call_signature.cpp",
     "circuit.cpp",
     "circuit_builder.cpp",

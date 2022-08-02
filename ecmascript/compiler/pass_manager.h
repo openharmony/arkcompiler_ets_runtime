@@ -30,8 +30,7 @@ public:
         relocMode_(relocMode), log_(log), logList_(logList) {};
     PassManager() = default;
     ~PassManager() = default;
-    bool CollectInfoOfPandaFile(const std::string &filename, std::string_view entryPoint,
-                                BytecodeTranslationInfo *translateInfo);
+    bool CollectBCInfo(const std::string &filename, BytecodeInfoCollector::BCInfo *bytecodeInfo);
     bool Compile(const std::string &fileName, AOTFileGenerator &generator);
     void SaveSnapshotFile();
 

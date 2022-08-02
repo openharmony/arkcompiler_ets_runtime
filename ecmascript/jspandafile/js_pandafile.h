@@ -81,7 +81,7 @@ public:
         return constpoolMap_;
     }
 
-    uint32_t GetOrInsertConstantPool(ConstPoolType type, uint32_t offset);
+    uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset);
 
     void UpdateMainMethodIndex(uint32_t mainMethodIndex)
     {
