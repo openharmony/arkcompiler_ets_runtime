@@ -801,7 +801,8 @@ JSTaggedValue SlowRuntimeStub::StObjByValue(JSThread *thread, JSTaggedValue obj,
     return RuntimeStubs::RuntimeStObjByValue(thread, objHandle, propHandle, valueHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::TryLdGlobalByName(JSThread *thread, JSTaggedValue global, JSTaggedValue prop)
+JSTaggedValue SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(JSThread *thread, JSTaggedValue global,
+                                                                JSTaggedValue prop)
 {
     INTERPRETER_TRACE(thread, Trygetobjprop);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -818,7 +819,7 @@ JSTaggedValue SlowRuntimeStub::TryStGlobalByName(JSThread *thread, JSTaggedValue
     return ThrowReferenceError(thread, prop, " is not defined");
 }
 
-JSTaggedValue SlowRuntimeStub::LdGlobalVar(JSThread *thread, JSTaggedValue global, JSTaggedValue prop)
+JSTaggedValue SlowRuntimeStub::LdGlobalVarFromGlobalProto(JSThread *thread, JSTaggedValue global, JSTaggedValue prop)
 {
     INTERPRETER_TRACE(thread, LdGlobalVar);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);

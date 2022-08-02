@@ -69,12 +69,12 @@ public:
     bool IsInterpretedFrame() const
     {
         FrameType type = GetFrameType();
-        return (type >= FrameType::INTERPRETER_BEGIN) && (type <= FrameType::INTERPRETER_END);
+        return (type >= FrameType::INTERPRETER_FIRST) && (type <= FrameType::INTERPRETER_LAST);
     }
 
     bool IsInterpretedFrame(FrameType type) const
     {
-        return (type >= FrameType::INTERPRETER_BEGIN) && (type <= FrameType::INTERPRETER_END);
+        return (type >= FrameType::INTERPRETER_FIRST) && (type <= FrameType::INTERPRETER_LAST);
     }
 
     bool IsAsmInterpretedFrame() const
@@ -93,7 +93,7 @@ public:
     bool IsBuiltinFrame() const
     {
         FrameType type = GetFrameType();
-        return (type >= FrameType::BUILTIN_BEGIN) && (type <= FrameType::BUILTIN_END);
+        return (type >= FrameType::BUILTIN_FIRST) && (type <= FrameType::BUILTIN_LAST);
     }
     bool IsBuiltinEntryFrame() const
     {

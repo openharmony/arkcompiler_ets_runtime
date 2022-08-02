@@ -127,9 +127,9 @@ public:
     static JSTaggedValue LdObjByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop, bool callGetter,
                                       JSTaggedValue receiver);
     static JSTaggedValue StObjByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop, JSTaggedValue value);
-    static JSTaggedValue TryLdGlobalByName(JSThread *thread, JSTaggedValue global, JSTaggedValue prop);
+    static JSTaggedValue TryLdGlobalByNameFromGlobalProto(JSThread *thread, JSTaggedValue global, JSTaggedValue prop);
     static JSTaggedValue TryStGlobalByName(JSThread *thread, JSTaggedValue prop);
-    static JSTaggedValue LdGlobalVar(JSThread *thread, JSTaggedValue global, JSTaggedValue prop);
+    static JSTaggedValue LdGlobalVarFromGlobalProto(JSThread *thread, JSTaggedValue global, JSTaggedValue prop);
     static JSTaggedValue StGlobalVar(JSThread *thread, JSTaggedValue prop, JSTaggedValue value);
     static JSTaggedValue StGlobalRecord(JSThread *thread, JSTaggedValue prop, JSTaggedValue value, bool isConst);
     static JSTaggedValue LdGlobalRecord(JSThread *thread, JSTaggedValue key);
