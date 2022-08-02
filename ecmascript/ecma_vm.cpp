@@ -699,7 +699,7 @@ void EcmaVM::LoadStubFile()
 
 void EcmaVM::LoadAOTFiles()
 {
-    std::string file = options_.GetAOTOutputFile();
+    std::string file = options_.GetAOTOutputFile() + ".aot";
     LOG_ECMA(INFO) << "Try to load aot file" << file.c_str();
     fileLoader_->LoadAOTFile(file);
     fileLoader_->LoadSnapshotFile();

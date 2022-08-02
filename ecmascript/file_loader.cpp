@@ -30,8 +30,8 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 
-extern const uint8_t _binary_stub_m_start[];
-extern const uint32_t _binary_stub_m_length;
+extern const uint8_t _binary_stub_aot_start[];
+extern const uint32_t _binary_stub_aot_length;
 
 namespace panda::ecmascript {
 void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
@@ -155,11 +155,11 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
     // by calling NewMachineCodeObject.
     //  then MachineCode will support movable, code is saved to MachineCode and stackmap is saved
     // to different heap which will be freed when stackmap is parsed by EcmaVM is started.
-    if (_binary_stub_m_length <= 1) {
-        LOG_FULL(FATAL) << "stub.m length <= 1, is default and invalid.";
+    if (_binary_stub_aot_length <= 1) {
+        LOG_FULL(FATAL) << "stub.aot length <= 1, is default and invalid.";
         return false;
     }
-    BinaryBufferParser binBufparser((uint8_t *)_binary_stub_m_start, _binary_stub_m_length);
+    BinaryBufferParser binBufparser((uint8_t *)_binary_stub_aot_start, _binary_stub_aot_length);
     binBufparser.ParseBuffer(&entryNum_, sizeof(entryNum_));
     entries_.resize(entryNum_);
     binBufparser.ParseBuffer(entries_.data(), sizeof(FuncEntryDes) * entryNum_);
@@ -327,7 +327,8 @@ void FileLoader::LoadAOTFile(const std::string &fileName)
 
 void FileLoader::LoadSnapshotFile()
 {
-    const CString snapshotPath(vm_->GetJSOptions().GetSnapshotOutputFile().c_str());
+    CString snapshotArg(vm_->GetJSOptions().GetAOTOutputFile().c_str());
+    CString snapshotPath = snapshotArg + ".etso";
     Snapshot snapshot(vm_);
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     snapshot.Deserialize(SnapshotType::TS_LOADER, snapshotPath);

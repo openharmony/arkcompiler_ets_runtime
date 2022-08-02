@@ -69,7 +69,6 @@ public:
         parser->Add(&frameworkAbcFile_);
         parser->Add(&icuDataPath_);
         parser->Add(&startupTime_);
-        parser->Add(&snapshotOutputFile_);
         parser->Add(&enableRuntimeStat_);
         parser->Add(&typeInferVerify_);
         parser->Add(&builtinsDTS_);
@@ -469,16 +468,6 @@ public:
         return startupTime_.WasSet();
     }
 
-    std::string GetSnapshotOutputFile() const
-    {
-        return snapshotOutputFile_.GetValue();
-    }
-
-    void SetSnapshotOutputFile(std::string value)
-    {
-        snapshotOutputFile_.SetValue(std::move(value));
-    }
-
     bool EnableTypeInferVerify() const
     {
         return typeInferVerify_.GetValue();
@@ -519,8 +508,8 @@ private:
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
         R"(Enable cpuprofiler to sample call stack and output to json file. Default: false)"};
     PandArg<std::string> stubFile_ {"stub-file",
-        R"(stub.m)",
-        R"(Path of file includes common stubs module compiled by stub compiler. Default: "stub.m")"};
+        R"(stub.aot)",
+        R"(Path of file includes common stubs module compiled by stub compiler. Default: "stub.aot")"};
     PandArg<bool> enableForceGc_ {"enable-force-gc", true, R"(enable force gc when allocating object)"};
     PandArg<bool> forceFullGc_ {"force-full-gc",
         true,
@@ -529,8 +518,8 @@ private:
     PandArg<uint32_t> gcThreadNum_ {"gcThreadNum", 7, R"(set gcThreadNum. Default: 7)"};
     PandArg<uint32_t> longPauseTime_ {"longPauseTime", 40, R"(set longPauseTime. Default: 40ms)"};
     PandArg<std::string> aotOutputFile_ {"aot-file",
-        R"(aot_file.m)",
-        R"(Path to AOT output file. Default: "aot_file.m")"};
+        R"(aot_file)",
+        R"(Path (file suffix not needed) to AOT output file. Default: "aot_file")"};
     PandArg<std::string> targetTriple_ {"target-triple", R"(x86_64-unknown-linux-gnu)",
         R"(target triple for aot compiler or stub compiler.
         Possible values: ["x86_64-unknown-linux-gnu", "arm-unknown-linux-gnu", "aarch64-unknown-linux-gnu"].
@@ -563,17 +552,18 @@ private:
     PandArg<std::string> compilerLogOpt_ {"compiler-log",
         R"(none)",
         R"(log Option For aot compiler and stub compiler,
-        "none": no log, "allllircirasm": print llIR file, CIR log and asm log for all methods,
-        "allasm" : print asm log for all methods,
-        "cerllircirasm": print llIR file, CIR log and asm log for certain method defined in log-method-list,
-        "cerasm": print asm log for certain method defined in log-method-list,
+        "none": no log,
+        "allllircirasm or all012": print llIR file, CIR log and asm log for all methods,
+        "allcir or all0" : print cir info for all methods,
+        "allllir or all1" : print llir info for all methods,
+        "allasm or all2" : print asm log for all methods,
+        "cerllircirasm or cer0112": print llIR file, CIR log and asm log for certain method defined in 'mlist-for-log',
+        "cercir or cer0": print cir info for certain method illustrated in 'mlist-for-log',
+        "cerasm or cer2": print asm log for certain method illustrated in 'mlist-for-log',
         Default: "none")"};
     PandArg<std::string> methodsListForLog_ {"mlist-for-log",
         R"(none)",
         R"(specific method list for compiler log output, only used when compiler-log)"};
-    PandArg<std::string> snapshotOutputFile_ {"snapshot-output-file",
-        R"(snapshot)",
-        R"(Path to snapshot output file. Default: "snapshot")"};
     PandArg<bool> enableRuntimeStat_ {"enable-runtime-stat", false,
         R"(enable statistics of runtime state. Default: false)"};
     PandArg<bool> typeInferVerify_ {"typeinfer-verify", false,

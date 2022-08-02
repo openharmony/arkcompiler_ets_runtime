@@ -203,7 +203,7 @@ source_set("ark_aot_compiler_set") {
 source_set("libark_stub_set") {
   deps = [ ":build_stub_to_cpp" ]
 
-  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp" ]
+  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_aot.cpp" ]
 
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
@@ -212,7 +212,7 @@ source_set("libark_stub_set") {
 }
 
 source_set("libark_mock_stub_set") {
-  sources = [ "mock/mock_stub_m.cpp" ]
+  sources = [ "mock/mock_stub_aot.cpp" ]
 
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
@@ -278,10 +278,10 @@ action("gen_stub_file") {
       get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
 
   if (current_toolchain == host_toolchain) {
-    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.m"
+    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.aot"
   } else {
-    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.m" +
-                  " --target-triple=aarch64-unknown-linux-gnu"
+    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
+                  "/stub.aot" + " --target-triple=aarch64-unknown-linux-gnu"
   }
 
   args = [
@@ -301,11 +301,11 @@ action("gen_stub_file") {
         rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
   ]
 
-  outputs = [ "$stub_file_gen_dir/stub.m" ]
+  outputs = [ "$stub_file_gen_dir/stub.aot" ]
 }
 
 action("build_stub_to_cpp") {
-  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub.m" ]
+  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub.aot" ]
 
   script = "$js_root/script/build_resource_to_cpp.py"
 
@@ -313,10 +313,10 @@ action("build_stub_to_cpp") {
 
   args = [
     "--input",
-    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.m"),
+    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.aot"),
     "--output",
-    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp"),
+    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub_aot.cpp"),
   ]
 
-  outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_m.cpp" ]
+  outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_aot.cpp" ]
 }

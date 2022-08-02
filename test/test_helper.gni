@@ -264,8 +264,9 @@ template("host_aot_test_action") {
 
   _test_ts_path_ = "./${_target_name_}.ts"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
-  _test_m_path_ = "$target_out_dir/${_target_name_}.m"
-  _test_snapshot_path_ = "$target_out_dir/snapshot"
+  _test_aot_path_ = "$target_out_dir/${_target_name_}.aot"
+  _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.etso"
+  _test_aot_arg_ = "$target_out_dir/${_target_name_}"
   _test_expect_path_ = "./expect_output.txt"
 
   ts2abc_gen_abc("gen_${_target_name_}_abc") {
@@ -297,9 +298,7 @@ template("host_aot_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    _aot_compile_options_ =
-        " --aot-file=" + rebase_path(_test_m_path_) +
-        " --snapshot-output-file=" + rebase_path(_test_snapshot_path_)
+    _aot_compile_options_ = " --aot-file=" + rebase_path(_test_aot_arg_)
 
     args = [
       "--script-file",
@@ -320,8 +319,8 @@ template("host_aot_test_action") {
     inputs = [ _test_abc_path_ ]
 
     outputs = [
-      _test_m_path_,
-      _test_snapshot_path_,
+      _test_aot_path_,
+      _test_aot_snapshot_path_,
     ]
   }
 
@@ -341,9 +340,7 @@ template("host_aot_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_run_options_ =
-        " --aot-file=" + rebase_path(_test_m_path_) +
-        " --snapshot-output-file=" + rebase_path(_test_snapshot_path_) +
-        " --asm-interpreter=true"
+        " --aot-file=" + rebase_path(_test_aot_arg_) + " --asm-interpreter=true"
 
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
