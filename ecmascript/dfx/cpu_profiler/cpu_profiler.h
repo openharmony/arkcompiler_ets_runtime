@@ -53,6 +53,7 @@ class CpuProfiler {
 public:
     static CpuProfiler *GetInstance();
     void ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler);
+    std::string GetNativeStack(JSThread *thread, FrameHandler &frameHandler);
     void GetFrameStack(FrameHandler &frameHandler);
     void IsNeedAndGetStack(JSThread *thread);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);

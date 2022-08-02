@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/interpreter/frame_handler.h"
 
 namespace panda::ecmascript::base {
 constexpr char DEFAULT_EMPTY_STACK_TRACE[] = "stack is empty";  // NOLINT (modernize-avoid-c-arrays)

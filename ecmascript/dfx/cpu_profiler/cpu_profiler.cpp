@@ -285,12 +285,10 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
 void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler)
 {
     struct FrameInfo codeEntry;
+    JSThread *thread = pThis_->vm_->GetAssociatedJSThread();
     if (method != nullptr && method->IsNativeWithCallField()) {
         codeEntry.codeType = "other";
-        auto addr = method->GetNativePointer();
-        std::stringstream strm;
-        strm << addr;
-        codeEntry.functionName = "native(" + strm.str() + ")";
+        codeEntry.functionName = GetNativeStack(thread, frameHandler);
         generator_->InsertStackInfo(method, codeEntry);
     } else if (method != nullptr) {
         codeEntry.codeType = "JS";
@@ -342,6 +340,25 @@ void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler)
         value[method] = codeEntry;
         generator_->InsertStackInfo(method, codeEntry);
     }
+}
+
+std::string CpuProfiler::GetNativeStack(JSThread *thread, FrameHandler &frameHandler)
+{
+    std::stringstream stream;
+    JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
+    if (function->GetCallNative()) {
+        JSNativePointer *extraInfo = JSNativePointer::Cast(function->GetFunctionExtraInfo().GetTaggedObject());
+        auto cb = thread->GetEcmaVM()->GetNativePtrGetter();
+        if (cb != nullptr) {
+            auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
+            stream << addr;
+            return "napi(" + stream.str() + ")";
+        }
+    }
+    auto method = frameHandler.CheckAndGetMethod();
+    auto addr = method->GetNativePointer();
+    stream << addr;
+    return "other(" + stream.str() + ")";
 }
 
 void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
