@@ -59,6 +59,7 @@
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_function.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_date.h"
@@ -160,6 +161,14 @@ public:
                 }
                 break;
             }
+            case JSType::JS_ASYNC_GENERATOR_FUNCTION: {
+                auto jsGeneratorFunction = JSAsyncGeneratorFunction::Cast(object);
+                jsGeneratorFunction->VisitRangeSlot(visitor);
+                if (visitType == VisitType::SNAPSHOT_VISIT) {
+                    jsGeneratorFunction->VisitRangeSlotForNative(visitor);
+                }
+                break;
+            }
             case JSType::JS_PROXY_REVOC_FUNCTION: {
                 auto jsProxyRevocFunction = JSProxyRevocFunction::Cast(object);
                 jsProxyRevocFunction->VisitRangeSlot(visitor);
@@ -189,6 +198,14 @@ public:
                 jsPromiseAllResolveElementFunction->VisitRangeSlot(visitor);
                 if (visitType == VisitType::SNAPSHOT_VISIT) {
                     jsPromiseAllResolveElementFunction->VisitRangeSlotForNative(visitor);
+                }
+                break;
+            }
+            case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN: {
+                auto jsAsyGeneratorRseNextRtnProRstFtn = JSAsyncGeneratorResNextRetProRstFtn::Cast(object);
+                jsAsyGeneratorRseNextRtnProRstFtn->VisitRangeSlot(visitor);
+                if (visitType == VisitType::SNAPSHOT_VISIT) {
+                    jsAsyGeneratorRseNextRtnProRstFtn->VisitRangeSlotForNative(visitor);
                 }
                 break;
             }
@@ -311,6 +328,9 @@ public:
             case JSType::JS_GENERATOR_OBJECT:
                 JSGeneratorObject::Cast(object)->VisitRangeSlot(visitor);
                 break;
+            case JSType::JS_ASYNC_GENERATOR_OBJECT:
+                JSAsyncGeneratorObject::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::JS_ASYNC_FUNC_OBJECT:
                 JSAsyncFuncObject::Cast(object)->VisitRangeSlot(visitor);
                 break;
@@ -390,6 +410,9 @@ public:
                 break;
             case JSType::PROMISE_CAPABILITY:
                 PromiseCapability::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::ASYNC_GENERATOR_REQUEST:
+                AsyncGeneratorRequest::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::PROMISE_RECORD:
                 PromiseRecord::Cast(object)->VisitRangeSlot(visitor);

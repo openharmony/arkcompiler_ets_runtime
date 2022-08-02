@@ -230,6 +230,9 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(OptSuperCall)                       \
     V(LdBigInt)                           \
     V(ToNumeric)                          \
+    V(CreateAsyncGeneratorObj)            \
+    V(AsyncGeneratorResolve)              \
+    V(DefineAsyncGeneratorFunc)           \
     V(NewLexicalEnvWithNameDyn)           \
     V(OptGetUnmapedArgs)                  \
     V(OptGetUnmapedArgsWithRestArgs)      \
@@ -316,6 +319,12 @@ private:
     static inline JSTaggedValue RuntimeInstanceofDyn(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                      const JSHandle<JSTaggedValue> &target);
     static inline JSTaggedValue RuntimeCreateGeneratorObj(JSThread *thread, const JSHandle<JSTaggedValue> &genFunc);
+
+    static inline JSTaggedValue RuntimeCreateAsyncGeneratorObj(JSThread *thread,
+                                                               const JSHandle<JSTaggedValue> &genFunc);
+                                                               
+    static inline JSTaggedValue RuntimeAsyncGeneratorResolve(JSThread *thread, JSHandle<JSTaggedValue> asyncFuncObj,
+                                                             JSHandle<JSTaggedValue> value, JSTaggedValue flag);
     static inline JSTaggedValue RuntimeGetTemplateObject(JSThread *thread, const JSHandle<JSTaggedValue> &literal);
     static inline JSTaggedValue RuntimeGetNextPropName(JSThread *thread, const JSHandle<JSTaggedValue> &iter);
     static inline JSTaggedValue RuntimeIterNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter);
@@ -500,6 +509,7 @@ private:
     static inline JSTaggedValue RuntimeCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
                                                                     const JSHandle<JSTaggedValue> &objVal,
                                                                     uint16_t firstArgRegIdx);
+    static inline JSTaggedValue RuntimeDefineAsyncGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
     static inline JSTaggedValue RuntimeDefineNCFuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
     static inline JSTaggedValue RuntimeDefineGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
     static inline JSTaggedValue RuntimeDefineAsyncFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);

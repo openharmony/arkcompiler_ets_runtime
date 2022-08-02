@@ -72,11 +72,13 @@ class ProtoChangeDetails;
         JS_PROMISE_REACTIONS_FUNCTION, /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_EXECUTOR_FUNCTION,  /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN, /* ///////////////////////////////////////-PADDING */ \
         JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION,  /* ///////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_FINALLY_FUNCTION,  /* //////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION,  /* ///////////////////////////////////////////////////-PADDING */ \
         JS_GENERATOR_FUNCTION, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_GENERATOR_FUNCTION,  /* //////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_FUNCTION, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_INTL_BOUND_FUNCTION, /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_AWAIT_STATUS_FUNCTION, /* ////////////////////////////////////////////////////////////////-PADDING */ \
@@ -136,6 +138,7 @@ class ProtoChangeDetails;
         JS_DATA_VIEW,    /* /////////////////////////////////////////////////////////////////////////////////////// */ \
         JS_ARGUMENTS, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_GENERATOR_OBJECT,  /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_GENERATOR_OBJECT,  /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_FUNC_OBJECT, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         /* SPECIAL indexed objects begin, DON'T CHANGE HERE ///////////////////////////////////////////////-PADDING */ \
@@ -203,6 +206,7 @@ class ProtoChangeDetails;
         PROMISE_RECORD,     /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVING_FUNCTIONS_RECORD, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         PROMISE_REACTIONS,          /* ////////////////////////////////////////////////////////////////////-PADDING */ \
+        ASYNC_GENERATOR_REQUEST, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         PROMISE_ITERATOR_RECORD,    /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         MICRO_JOB_QUEUE, /* /////////////////////////////////////////////////////////////////////////////-PADDING */   \
         PENDING_JOB,     /* /////////////////////////////////////////////////////////////////////////////-PADDING */   \
@@ -588,6 +592,11 @@ public:
     inline bool IsJSPromiseAllResolveElementFunction() const
     {
         return GetObjectType() == JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION;
+    }
+
+    inline bool IsJSAsyncGeneratorResNextRetProRstFtn() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN;
     }
 
     inline bool IsJSPromiseAnyRejectElementFunction() const
@@ -1037,6 +1046,11 @@ public:
     {
         return GetObjectType() == JSType::JS_GENERATOR_FUNCTION;
     }
+	
+    inline bool IsAsyncGeneratorFunction() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_GENERATOR_FUNCTION;
+    }
 
     inline bool IsGeneratorObject() const
     {
@@ -1044,9 +1058,21 @@ public:
         return jsType == JSType::JS_GENERATOR_OBJECT || jsType == JSType::JS_ASYNC_FUNC_OBJECT;
     }
 
+    inline bool IsAsyncGeneratorObject() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::JS_ASYNC_GENERATOR_OBJECT;
+    }
+
     inline bool IsGeneratorContext() const
     {
         return GetObjectType() == JSType::JS_GENERATOR_CONTEXT;
+    }
+
+    inline bool IsAsyncGeneratorRequest() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::ASYNC_GENERATOR_REQUEST;
     }
 
     inline bool IsAsyncFuncObject() const

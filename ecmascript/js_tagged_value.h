@@ -534,8 +534,11 @@ public:
     bool IsJSArrayIterator() const;
     bool IsIterator() const;
     bool IsGeneratorFunction() const;
+    bool IsAsyncGeneratorFunction() const;
     bool IsGeneratorObject() const;
     bool IsGeneratorContext() const;
+    bool IsAsyncGeneratorRequest() const;
+    bool IsAsyncGeneratorObject() const;
     bool IsAsyncFuncObject() const;
     bool IsJSPromise() const;
     bool IsRecord() const;
@@ -544,6 +547,7 @@ public:
     bool IsJSPromiseReactionFunction() const;
     bool IsJSPromiseExecutorFunction() const;
     bool IsJSPromiseAllResolveElementFunction() const;
+    bool IsJSAsyncGeneratorResNextRetProRstFtn() const;
     bool IsPromiseCapability() const;
     bool IsPromiseIteratorRecord() const;
     bool IsPromiseRecord() const;

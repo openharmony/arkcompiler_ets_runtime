@@ -58,10 +58,20 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     auto globalConst = thread->GlobalConstants();
     if (HasPrototype(kind)) {
         JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
-        if (kind == FunctionKind::BASE_CONSTRUCTOR || kind == FunctionKind::GENERATOR_FUNCTION) {
+        if (kind == FunctionKind::BASE_CONSTRUCTOR || kind == FunctionKind::GENERATOR_FUNCTION ||
+            kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
             func->SetPropertyInlinedProps(thread, PROTOTYPE_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
             accessor = globalConst->GetHandledFunctionNameAccessor();
             func->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+            if (kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
+                JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+                ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+                JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+                JSHandle<JSObject> initialGeneratorFuncPrototype =
+                    factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+                JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
+                func->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
+            }
         } else if (!JSFunction::IsClassConstructor(kind)) {  // class ctor do nothing
             PropertyDescriptor desc(thread, accessor, kind != FunctionKind::BUILTIN_CONSTRUCTOR, false, false);
             [[maybe_unused]] bool success = JSObject::DefineOwnProperty(thread, JSHandle<JSObject>(func),

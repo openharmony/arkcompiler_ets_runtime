@@ -71,6 +71,7 @@ class JSPromise;
 class JSPromiseReactionsFunction;
 class JSPromiseExecutorFunction;
 class JSPromiseAllResolveElementFunction;
+class JSAsyncGeneratorResNextRetProRstFtn;
 class JSPromiseAnyRejectElementFunction;
 class JSPromiseAllSettledElementFunction;
 class JSPromiseFinallyFunction;
@@ -142,6 +143,9 @@ class CjsRequire;
 class CjsExports;
 class ResolvedBinding;
 class BigInt;
+class AsyncGeneratorRequest;
+class JSAsyncGeneratorFunction;
+class JSAsyncGeneratorObject;
 class CellRecord;
 namespace job {
 class MicroJobQueue;
@@ -186,6 +190,8 @@ enum class MethodIndex : uint8_t {
     BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION,
     BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION,
     BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION,
+    BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION,
+    BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION,
     METHOD_END
 };
 
@@ -250,6 +256,7 @@ public:
     JSHandle<JSGeneratorObject> NewJSGeneratorObject(JSHandle<JSTaggedValue> generatorFunction);
 
     JSHandle<JSAsyncFuncObject> NewJSAsyncFuncObject();
+    JSHandle<JSAsyncGeneratorObject> NewJSAsyncGeneratorObject(JSHandle<JSTaggedValue> generatorFunction);
 
     JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(const JSHandle<JSFunction> &function,
                                                const JSHandle<JSTaggedValue> &object);
@@ -291,6 +298,7 @@ public:
     JSHandle<PromiseReaction> NewPromiseReaction();
 
     JSHandle<PromiseRecord> NewPromiseRecord();
+    JSHandle<AsyncGeneratorRequest> NewAsyncGeneratorRequest();
 
     JSHandle<ResolvingFunctionsRecord> NewResolvingFunctionsRecord();
 
@@ -392,6 +400,10 @@ public:
     JSHandle<JSPromiseValueThunkOrThrowerFunction> NewJSPromiseValueThunkFunction();
 
     JSHandle<JSPromiseValueThunkOrThrowerFunction> NewJSPromiseThrowerFunction();
+
+    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> NewJSAsyGenResNextRetProRstFulfilledFtn();
+
+    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> NewJSAsyGenResNextRetProRstRejectedFtn();
 
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object, const JSHandle<JSTaggedValue> &env,
                                           const JSHandle<JSTaggedValue> &constpool, bool canShareHClass = true);
@@ -539,7 +551,7 @@ public:
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &bindingName);
     JSHandle<CellRecord> NewCellRecord();
-
+    JSHandle<JSFunction> NewJSAsyncGeneratorFunction(JSMethod *method);
     // --------------------------------------require--------------------------------------------
     JSHandle<CjsModule> NewCjsModule();
     JSHandle<CjsExports> NewCjsExports();

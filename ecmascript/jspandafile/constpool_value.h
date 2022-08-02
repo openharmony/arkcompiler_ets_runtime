@@ -30,6 +30,7 @@ enum class ConstPoolType : uint8_t {
     ARRAY_LITERAL,
     OBJECT_LITERAL,
     CLASS_LITERAL,
+    ASYNC_GENERATOR_FUNCTION,
 };
 
 class ConstPoolValue {

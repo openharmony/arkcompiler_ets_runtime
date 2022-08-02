@@ -2140,6 +2140,12 @@ bool JSValueRef::IsGeneratorObject()
     return rst;
 }
 
+bool JSValueRef::IsAsyncGeneratorObject()
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    return obj->IsAsyncGeneratorObject();
+}
+
 bool JSValueRef::IsAsyncFunction()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
@@ -2159,6 +2165,12 @@ bool JSValueRef::IsGeneratorFunction()
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     bool rst  = obj->IsGeneratorFunction();
     return rst;
+}
+
+bool JSValueRef::IsAsyncGeneratorFunction()
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    return obj->IsAsyncGeneratorFunction();
 }
 
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------

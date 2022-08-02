@@ -4971,6 +4971,97 @@ DECLARE_ASM_HANDLER(HandleToNumericPrefV8)
     }
 }
 
+DECLARE_ASM_HANDLER(HandleDefineAsyncGeneratorFuncPrefId16Imm16V8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    auto env = GetEnvironment();
+    GateRef methodId = ReadInst16_1(pc);
+    GateRef length = ReadInst16_3(pc);
+    GateRef v0 = ReadInst8_5(pc);
+    DEFVARIABLE(result, VariableType::JS_POINTER(),
+        GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
+    Label isResolved(env);
+    Label notResolved(env);
+    Label defaultLabel(env);
+    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
+    Bind(&isResolved);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(DefineAsyncGeneratorFunc), { *result });
+        Label isException(env);
+        Label notException(env);
+        Branch(TaggedIsException(*result), &isException, &notException);
+        Bind(&isException);
+        {
+            DISPATCH_LAST();
+        }
+        Bind(&notException);
+        {
+            SetConstantPoolToFunction(glue, *result, constpool);
+            Jump(&defaultLabel);
+        }
+    }
+    Bind(&notResolved);
+    {
+        SetResolvedToFunction(glue, *result, Boolean(true));
+        Jump(&defaultLabel);
+    }
+    Bind(&defaultLabel);
+    {
+        GateRef hClass = LoadHClass(*result);
+        SetPropertyInlinedProps(glue, *result, hClass, Int16ToTaggedNGC(length),
+            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+        GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+        SetLexicalEnvToFunction(glue, *result, lexEnv);
+        GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+        varAcc = *result;
+        DISPATCH_WITH_ACC(PREF_ID16_IMM16_V8);
+    }
+}
+
+DECLARE_ASM_HANDLER(HandleCreateAsyncGeneratorObjPrefV8)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef v0 = ReadInst8_1(pc);
+    GateRef genFunc = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef result = CallRuntime(glue, RTSTUB_ID(CreateAsyncGeneratorObj), { genFunc });
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(result), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST();
+    }
+    Bind(&notException);
+    varAcc = result;
+    DISPATCH_WITH_ACC(PREF_V8);
+}
+
+DECLARE_ASM_HANDLER(HandleAsyncGeneratorResolvePrefV8V8V8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    auto env = GetEnvironment();
+    GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
+    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
+    GateRef flag = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorResolve),
+                              { asyncGenerator, value, flag });
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(res), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST();
+    }
+    Bind(&notException);
+    {
+        varAcc = res;
+        DISPATCH_WITH_ACC(PREF_V8_V8_V8);
+    }
+}
+
 DECLARE_ASM_HANDLER(HandleNewLexEnvWithNameDynPrefImm16Imm16)
 {
     auto env = GetEnvironment();

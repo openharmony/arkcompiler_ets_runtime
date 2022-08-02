@@ -74,6 +74,7 @@
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_function.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
@@ -227,7 +228,9 @@ void * ObjectFactory::InternalMethodTable[] = {
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::ThenFinally),
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::CatchFinally),
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::valueThunkFunction),
-    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::throwerFunction)
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::throwerFunction),
+    reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorFulfilledFunc),
+    reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorRejectedFunc)
 };
 
 void ObjectFactory::GenerateInternalNativeMethods()
@@ -1100,6 +1103,14 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSGeneratorObject::Cast(*obj)->SetGeneratorState(JSGeneratorState::UNDEFINED);
             JSGeneratorObject::Cast(*obj)->SetResumeMode(GeneratorResumeMode::UNDEFINED);
             break;
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            JSAsyncGeneratorObject::Cast(*obj)->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
+            JSAsyncGeneratorObject::Cast(*obj)->SetAsyncGeneratorQueue(thread_, GetEmptyTaggedQueue().GetTaggedValue());
+            JSAsyncGeneratorObject::Cast(*obj)->SetGeneratorBrand(thread_, JSTaggedValue::Undefined());
+            JSAsyncGeneratorObject::Cast(*obj)->SetResumeResult(thread_, JSTaggedValue::Undefined());
+            JSAsyncGeneratorObject::Cast(*obj)->SetAsyncGeneratorState(JSAsyncGeneratorState::UNDEFINED);
+            JSAsyncGeneratorObject::Cast(*obj)->SetResumeMode(AsyncGeneratorResumeMode::UNDEFINED);
+            break;
         case JSType::JS_STRING_ITERATOR:
             JSStringIterator::Cast(*obj)->SetStringIteratorNextIndex(0);
             JSStringIterator::Cast(*obj)->SetIteratedString(thread_, JSTaggedValue::Undefined());
@@ -1192,6 +1203,9 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_GENERATOR_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
             break;
+        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            break;
         case JSType::JS_PROXY_REVOC_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
             JSProxyRevocFunction::Cast(*obj)->SetRevocableProxy(thread_, JSTaggedValue::Undefined());
@@ -1204,6 +1218,11 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
             JSPromiseExecutorFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
+            break;
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSAsyncGeneratorResNextRetProRstFtn::Cast(*obj)->SetAsyncGeneratorObject(thread_,
+                                                                                     JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
@@ -1609,6 +1628,20 @@ JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTagge
     JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObject(dynclass));
     generatorObject->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
     generatorObject->SetResumeResult(thread_, JSTaggedValue::Undefined());
+    return generatorObject;
+}
+
+JSHandle<JSAsyncGeneratorObject> ObjectFactory::NewJSAsyncGeneratorObject(JSHandle<JSTaggedValue> generatorFunction)
+{
+    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrDynClass());
+    if (!proto->IsECMAObject()) {
+        JSHandle<GlobalEnv> realmHandle = JSObject::GetFunctionRealm(thread_, generatorFunction);
+        proto = realmHandle->GetAsyncGeneratorPrototype();
+    }
+    JSHandle<JSHClass> dynclass = NewEcmaDynClass(JSAsyncGeneratorObject::SIZE,
+                                                  JSType::JS_ASYNC_GENERATOR_OBJECT, proto);
+    JSHandle<JSAsyncGeneratorObject> generatorObject =
+        JSHandle<JSAsyncGeneratorObject>::Cast(NewJSObjectWithInit(dynclass));
     return generatorObject;
 }
 
@@ -2679,6 +2712,34 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseCatchFinallyFuncti
     return function;
 }
 
+JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextRetProRstFulfilledFtn()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(
+        env->GetAsyncGeneratorResNextRetProRstFtnClass());
+    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> function =
+        JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(dynclass));
+    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION));
+    function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
+    JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
+    return function;
+}
+
+JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextRetProRstRejectedFtn()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(
+        env->GetAsyncGeneratorResNextRetProRstFtnClass());
+    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> function =
+        JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(dynclass));
+    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION));
+    function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
+    JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
+    return function;
+}
+
 JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseValueThunkFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -3645,5 +3706,28 @@ JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<Tag
     auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
     array->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
     return array;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSAsyncGeneratorFunction(JSMethod *method)
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+
+    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
+    JSHandle<JSFunction> asyncGeneratorFunc = JSHandle<JSFunction>::Cast(NewJSObject(dynclass));
+    JSFunction::InitializeJSFunction(thread_, asyncGeneratorFunc, FunctionKind::ASYNC_GENERATOR_FUNCTION);
+    asyncGeneratorFunc->SetMethod(method);
+    return asyncGeneratorFunc;
+}
+
+JSHandle<AsyncGeneratorRequest> ObjectFactory::NewAsyncGeneratorRequest()
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetAsyncGeneratorRequestRecordClass().GetTaggedObject()));
+    JSHandle<AsyncGeneratorRequest> obj(thread_, header);
+    obj->SetCompletion(thread_, JSTaggedValue::Undefined());
+    obj->SetCapability(thread_, JSTaggedValue::Undefined());
+    return obj;
 }
 }  // namespace panda::ecmascript

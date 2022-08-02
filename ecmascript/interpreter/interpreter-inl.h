@@ -27,6 +27,7 @@
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -1306,15 +1307,29 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(HANDLE_RESUMEGENERATOR_PREF_V8) {
         LOG_INST() << "intrinsics::resumegenerator";
         uint16_t vs = READ_INST_8_1();
-        JSGeneratorObject *obj = JSGeneratorObject::Cast(GET_VREG_VALUE(vs).GetTaggedObject());
-        SET_ACC(obj->GetResumeResult());
+        JSTaggedValue objVal = GET_VREG_VALUE(vs);
+
+        if (objVal.IsAsyncGeneratorObject()) {
+            JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
+            SET_ACC(obj->GetResumeResult());
+        } else {
+            JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+            SET_ACC(obj->GetResumeResult());
+        }
         DISPATCH(BytecodeInstruction::Format::PREF_V8);
     }
     HANDLE_OPCODE(HANDLE_GETRESUMEMODE_PREF_V8) {
         LOG_INST() << "intrinsics::getresumemode";
         uint16_t vs = READ_INST_8_1();
-        JSGeneratorObject *obj = JSGeneratorObject::Cast(GET_VREG_VALUE(vs).GetTaggedObject());
-        SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+        JSTaggedValue objVal = GET_VREG_VALUE(vs);
+
+        if (objVal.IsAsyncGeneratorObject()) {
+            JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
+            SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+        } else {
+            JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+            SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+        }
         DISPATCH(BytecodeInstruction::Format::PREF_V8);
     }
     HANDLE_OPCODE(HANDLE_GETITERATOR_PREF) {
@@ -2721,6 +2736,33 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(JSTaggedValue(result))
         DISPATCH(BytecodeInstruction::Format::PREF_ID16_IMM16_V8);
     }
+    HANDLE_OPCODE(HANDLE_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8) {
+        uint16_t methodId = READ_INST_16_1();
+        uint16_t length = READ_INST_16_3();
+        uint16_t v0 = READ_INST_8_5();
+        LOG_INST() << "define async gengerator function length: " << length
+                   << " v" << v0;
+        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
+        ASSERT(result != nullptr);
+        if (result->GetResolved()) {
+            SAVE_PC();
+            auto res = SlowRuntimeStub::DefineAsyncGeneratorFunc(thread, result);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            result = JSFunction::Cast(res.GetTaggedObject());
+            result->SetConstantPool(thread, GetConstantPool(sp));
+        } else {
+            result->SetResolved(true);
+        }
+
+        result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+        JSTaggedValue env = GET_VREG_VALUE(v0);
+        result->SetLexicalEnv(thread, env);
+
+        JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
+        result->SetModule(thread, currentFunc->GetModule());
+        SET_ACC(JSTaggedValue(result))
+        DISPATCH(BytecodeInstruction::Format::PREF_ID16_IMM16_V8);
+    }
     HANDLE_OPCODE(HANDLE_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8) {
         uint16_t methodId = READ_INST_16_1();
         uint16_t length = READ_INST_16_3();
@@ -3509,6 +3551,32 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
         DISPATCH(BytecodeInstruction::Format::PREF_V8);
     }
+    HANDLE_OPCODE(HANDLE_CREATEASYNCGENERATOROBJ_PREF_V8) {
+        uint16_t v0 = READ_INST_8_1();
+        LOG_INST() << "intrinsics::createasyncgeneratorobj"
+                   << " v" << v0;
+        SAVE_PC();
+        JSTaggedValue genFunc = GET_VREG_VALUE(v0);
+        JSTaggedValue res = SlowRuntimeStub::CreateAsyncGeneratorObj(thread, genFunc);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(BytecodeInstruction::Format::PREF_V8);
+    }
+    HANDLE_OPCODE(HANDLE_ASYNCGENERATORRESOLVE_PREF_V8_V8_V8) {
+        uint16_t v0 = READ_INST_8_1();
+        uint16_t v1 = READ_INST_8_2();
+        uint16_t v2 = READ_INST_8_3();
+        LOG_INST() << "intrinsics::asyncgeneratorresolve"
+                   << " v" << v0 << " v" << v1 << " v" << v2;
+        JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
+        JSTaggedValue value = GET_VREG_VALUE(v1);
+        JSTaggedValue flag = GET_VREG_VALUE(v2);
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorResolve(thread, asyncGenerator, value, flag);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(BytecodeInstruction::Format::PREF_V8_V8_V8);
+    }
     HANDLE_OPCODE(HANDLE_SUPERCALL_PREF_IMM16_V8) {
         uint16_t range = READ_INST_16_1();
         uint16_t v0 = READ_INST_8_3();
@@ -4060,6 +4128,7 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {DEFINEFUNCDYN_PREF_ID16_IMM16_V8, "DEFINEFUNCDYN"},
         {DEFINENCFUNCDYN_PREF_ID16_IMM16_V8, "DEFINENCFUNCDYN"},
         {DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8, "DEFINEGENERATORFUNC"},
+        {DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8, "DEFINEASYNCGENERATORFUNC"},
         {DEFINEASYNCFUNC_PREF_ID16_IMM16_V8, "DEFINEASYNCFUNC"},
         {DEFINEMETHOD_PREF_ID16_IMM16_V8, "DEFINEMETHOD"},
         {NEWLEXENVDYN_PREF_IMM16, "NEWLEXENVDYN"},
@@ -4099,6 +4168,8 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {LDFUNCTION_PREF, "LDFUNCTION"},
         {LDBIGINT_PREF_ID32, "LDBIGINT"},
         {TONUMERIC_PREF_V8, "TONUMERIC"},
+        {CREATEASYNCGENERATOROBJ_PREF_V8, "CREATEASYNCGENERATOROBJ"},
+        {ASYNCGENERATORRESOLVE_PREF_V8_V8_V8, "ASYNCGENERATORRESOLVE"},
         {MOV_DYN_V8_V8, "MOV_DYN"},
         {MOV_DYN_V16_V16, "MOV_DYN"},
         {LDA_STR_ID32, "LDA_STR"},

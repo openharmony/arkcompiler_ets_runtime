@@ -581,6 +581,15 @@ inline GateRef StubBuilder::TaggedIsGeneratorObject(GateRef x)
     return TruncInt32ToInt1(Int32And(isHeapObj, isGeneratorObj));
 }
 
+inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
+{
+    GateRef isHeapObj = SExtInt1ToInt32(TaggedIsHeapObject(x));
+    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef isGeneratorObj =
+        SExtInt1ToInt32(Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ASYNC_GENERATOR_OBJECT))));
+    return TruncInt32ToInt1(Int32And(isHeapObj, isGeneratorObj));
+}
+
 inline GateRef StubBuilder::TaggedIsPropertyBox(GateRef x)
 {
     return TruncInt32ToInt1(

@@ -221,7 +221,11 @@ namespace panda::ecmascript {
     V(GreaterEqDynWithIC)           \
     V(LdBigInt)                     \
     V(Tonumeric)                    \
+    V(CreateAsyncGeneratorObj)      \
+    V(AsyncGeneratorResolve)        \
+    V(DefineAsyncGeneratorFunc)     \
     V(DefineGeneratorFuncWithMethodId) \
+    V(DefineAsyncGeneratorFuncWithMethodId) \
     V(GetSuperConstructor)
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define BUILTINS_API_LIST(V)                   \
@@ -397,6 +401,10 @@ namespace panda::ecmascript {
     V(BigInt, ToString)                       \
     V(BigInt, ValueOf)                        \
     V(BigInt, ThisBigIntValue)                \
+    V(AsyncGenerator, Constructor)            \
+    V(AsyncGenerator, PrototypeNext)          \
+    V(AsyncGenerator, PrototypeReturn)        \
+    V(AsyncGenerator, PrototypeThrow)         \
     V(Object, Constructor)                    \
     V(Object, Assign)                         \
     V(Object, Create)                         \

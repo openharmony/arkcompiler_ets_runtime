@@ -20,6 +20,7 @@
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_async_function.h"
+#include "ecmascript/builtins/builtins_async_generator.h"
 #include "ecmascript/builtins/builtins_atomics.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_boolean.h"
@@ -151,6 +152,7 @@ using Proxy = builtins::BuiltinsProxy;
 using Reflect = builtins::BuiltinsReflect;
 using AsyncFunction = builtins::BuiltinsAsyncFunction;
 using GeneratorObject = builtins::BuiltinsGenerator;
+using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 using Promise = builtins::BuiltinsPromise;
 using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
@@ -621,6 +623,10 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(GeneratorObject::GeneratorPrototypeReturn),
     reinterpret_cast<uintptr_t>(GeneratorObject::GeneratorPrototypeThrow),
     reinterpret_cast<uintptr_t>(GeneratorObject::GeneratorFunctionConstructor),
+    reinterpret_cast<uintptr_t>(AsyncGeneratorObject::AsyncGeneratorPrototypeNext),
+    reinterpret_cast<uintptr_t>(AsyncGeneratorObject::AsyncGeneratorPrototypeReturn),
+    reinterpret_cast<uintptr_t>(AsyncGeneratorObject::AsyncGeneratorPrototypeThrow),
+    reinterpret_cast<uintptr_t>(AsyncGeneratorObject::AsyncGeneratorFunctionConstructor),
     reinterpret_cast<uintptr_t>(Promise::PromiseConstructor),
     reinterpret_cast<uintptr_t>(Promise::All),
     reinterpret_cast<uintptr_t>(Promise::Race),

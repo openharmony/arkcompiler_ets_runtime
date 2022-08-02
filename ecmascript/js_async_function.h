@@ -49,6 +49,8 @@ public:
         return static_cast<JSAsyncFunction *>(object);
     }
 
+    static void AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTaggedValue> &asyncFuncObj,
+                                   const JSHandle<JSTaggedValue> &value);
     static void AsyncFunctionAwait(JSThread *thread, const JSHandle<JSAsyncFuncObject> &asyncFuncObj,
                                    const JSHandle<JSTaggedValue> &value);
     static constexpr size_t SIZE = JSFunction::SIZE;
