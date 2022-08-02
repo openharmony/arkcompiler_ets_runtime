@@ -78,7 +78,9 @@ if (defined(ark_standalone_build)) {
         "//arkcompiler/ets_runtime/ecmascript/tooling/test:unittest",
         "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
       ]
-      deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
+      if (is_ohos && is_standard_system) {
+        deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
+      }
     }
   }
 
