@@ -121,7 +121,7 @@ action("npm_run_build") {
       "--platform",
       "linux",
       "--js2abc",
-      rebase_path("${root_out_dir}/ark/ark/js2abc"),
+      rebase_path("${root_out_dir}/js2abc"),
     ]
   } else if (is_mingw) {
     args += [
@@ -160,16 +160,4 @@ action("npm_run_build") {
     print("{root_out_dir}/ark/ark/build == ${root_out_dir}/ark/ark/build")
     outputs += [ "${root_out_dir}/ark/ark/build" ]
   }
-}
-
-ohos_copy("ts2abc_build") {
-  deps = [ ":npm_run_build" ]
-  sources = [ "${root_out_dir}/ark/ark/build" ]
-  outputs = [ "${target_out_dir}/build-tmp" ]
-}
-
-ohos_copy("ts2abc_build_ets") {
-  deps = [ ":npm_run_build" ]
-  sources = [ "${root_out_dir}/ark/ark/build" ]
-  outputs = [ "${root_out_dir}/ark/ark/build-ets" ]
 }

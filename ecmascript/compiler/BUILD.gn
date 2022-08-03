@@ -49,6 +49,8 @@ source_set("libark_jsoptimizer_set") {
     "assembler_module.cpp",
     "async_function_lowering.cpp",
     "bc_call_signature.cpp",
+    "builtins/builtins_call_signature.cpp",
+    "builtins/builtins_stubs.cpp",
     "bytecode_circuit_builder.cpp",
     "call_signature.cpp",
     "circuit.cpp",
@@ -62,6 +64,7 @@ source_set("libark_jsoptimizer_set") {
     "interpreter_stub.cpp",
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
+    "new_object_stub_builder.cpp",
     "rt_call_signature.cpp",
     "scheduler.cpp",
     "stub.cpp",
@@ -226,6 +229,10 @@ ohos_shared_library("libark_jsoptimizer") {
     "$js_root:libark_jsruntime",
   ]
 
+  if (run_with_asan) {
+    defines = [ "RUN_WITH_ASAN" ]
+  }
+
   install_enable = false
 
   output_extension = "so"
@@ -239,7 +246,9 @@ ohos_shared_library("libark_jsoptimizer_test") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
   ]
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!defined(ark_standalone_build)) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
   install_enable = false
 
   output_extension = "so"
@@ -252,8 +261,14 @@ ohos_executable("ark_stub_compiler") {
     "$ark_root/libpandafile:libarkfile_static",
   ]
 
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!defined(ark_standalone_build)) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
   install_enable = false
+
+  if (run_with_asan) {
+    defines = [ "RUN_WITH_ASAN" ]
+  }
 
   part_name = "ark_js_runtime"
   subsystem_name = "ark"
@@ -262,6 +277,9 @@ ohos_executable("ark_stub_compiler") {
 ohos_executable("ark_aot_compiler") {
   deps = [ ":ark_aot_compiler_set" ]
 
+  if (defined(ark_standalone_build)) {
+    ldflags = [ "-shared" ]
+  }
   install_enable = false
 
   part_name = "ark_js_runtime"
@@ -284,10 +302,24 @@ action("gen_stub_file") {
                   "/stub.aot" + " --target-triple=aarch64-unknown-linux-gnu"
   }
 
+  if (defined(ark_standalone_build)) {
+    stub_file =
+        rebase_path(root_out_dir_with_host_toolchain) + "/ark_stub_compiler"
+    stub_env = rebase_path(root_out_dir_with_host_toolchain) + ":" +
+               rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/")
+  } else {
+    stub_file = rebase_path(root_out_dir_with_host_toolchain) +
+                "/ark/ark_js_runtime/ark_stub_compiler"
+    stub_env =
+        rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark:" +
+        rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark_js_runtime:" +
+        rebase_path(root_out_dir_with_host_toolchain) +
+        "/${icu_subsystem_name}/${icu_part_name}:" +
+        rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/")
+  }
   args = [
     "--script-file",
-    rebase_path(root_out_dir_with_host_toolchain) +
-        "/ark/ark_js_runtime/ark_stub_compiler",
+    stub_file,
     "--script-options",
     stub_option,
     "--expect-output",
@@ -295,10 +327,7 @@ action("gen_stub_file") {
     "--timeout-limit",
     "300",
     "--env-path",
-    rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark:" +
-        rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark_js_runtime:" +
-        rebase_path(root_out_dir_with_host_toolchain) + "/thirdparty/icu:" +
-        rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    stub_env,
   ]
 
   outputs = [ "$stub_file_gen_dir/stub.aot" ]

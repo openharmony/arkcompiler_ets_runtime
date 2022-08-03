@@ -732,7 +732,9 @@ ohos_shared_library("libark_jsruntime_test") {
   deps = [ ":libark_jsruntime_test_set" ]
   public_deps = [ "$ark_root/libpandafile:libarkfile_static" ]
 
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!defined(ark_standalone_build)) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
 
   install_enable = false
   if (!is_mingw && !is_mac) {
