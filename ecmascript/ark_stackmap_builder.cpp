@@ -36,7 +36,7 @@ void BinaryBufferWriter::WriteBuffer(const uint8_t *src, uint32_t count, bool fl
     }
 }
 
-std::pair<uint8_t *, uint32_t> ArkStackMapBuilder::Run(std::unique_ptr<uint8_t []> stackMapAddr,
+std::pair<std::shared_ptr<uint8_t[]>, uint32_t> ArkStackMapBuilder::Run(std::unique_ptr<uint8_t []> stackMapAddr,
     uintptr_t hostCodeSectionAddr)
 {
     LLVMStackMapParser parser;
@@ -47,10 +47,9 @@ std::pair<uint8_t *, uint32_t> ArkStackMapBuilder::Run(std::unique_ptr<uint8_t [
     auto pc2stackMaps = parser.GetPc2StackMap();
     auto pc2DeoptVec = parser.GetPc2Deopt();
     ARKCallsitePackInfo packInfo = GenArkCallsitePackInfo(pc2stackMaps, pc2DeoptVec);
-    // ARKCallsitePackInfo packInfo = GenArkCallsitePackInfo();
     uint32_t totalSize = packInfo.secHead.totalSize;
-    uint8_t *ptr = new uint8_t[totalSize];
-    SaveArkCallsitePackInfo(ptr, totalSize, packInfo);
+    std::shared_ptr<uint8_t[]> ptr(new uint8_t[totalSize]());
+    SaveArkCallsitePackInfo(ptr.get(), totalSize, packInfo);
     return std::make_pair(ptr, totalSize);;
 }
 

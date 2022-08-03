@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_ARK_STACKMAP_TYPE_H
-#define ECMASCRIPT_ARK_STACKMAP_TYPE_H
+#ifndef ECMASCRIPT_ARK_STACKMAP_H
+#define ECMASCRIPT_ARK_STACKMAP_H
 #include "ecmascript/llvm_stackmap_type.h"
 
 namespace panda::ecmascript::kungfu {
@@ -83,4 +83,4 @@ enum class SpecVregIndex: int {
     BC_OFFSET_INDEX = -3,
 };
 } // namespace panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_LLVM_STACKMAP_TYPE_H
+#endif  // ECMASCRIPT_ARK_STACKMAP_H

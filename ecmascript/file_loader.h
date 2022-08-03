@@ -43,6 +43,52 @@ struct ModuleSectionDes {
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
     uint32_t startIndex_ {-1};
     uint32_t funcCount_ {0};
+    /* arkStackMapPtr_: generator aot file, stackmap buffer lifecycle is managned by share ptr
+    while arkStackMapRawPtr_ is allocated by machinecode, lifecycle is managned by machinecode.
+    */
+    std::shared_ptr<uint8_t[]> arkStackMapPtr_ {nullptr};
+    uint32_t arkStackMapSize_ {0};
+    uint8_t *arkStackMapRawPtr_ {nullptr};
+
+    ModuleSectionDes(const ModuleSectionDes &other)
+    {
+        sectionsInfo_ = other.sectionsInfo_;
+        startIndex_ = other.startIndex_;
+        funcCount_ = other.funcCount_;
+        arkStackMapPtr_ = other.arkStackMapPtr_;
+        arkStackMapSize_ = other.arkStackMapSize_;
+        arkStackMapRawPtr_ = other.arkStackMapRawPtr_;
+    }
+
+    void SetArkStackMapPtr(std::shared_ptr<uint8_t[]> ptr)
+    {
+        arkStackMapPtr_ = ptr;
+    }
+
+    std::shared_ptr<uint8_t[]> GetArkStackMapSharePtr()
+    {
+        return std::move(arkStackMapPtr_);
+    }
+
+    void SetArkStackMapPtr(uint8_t *ptr)
+    {
+        arkStackMapRawPtr_ = ptr;
+    }
+
+    uint8_t* GetArkStackMapRawPtr()
+    {
+        return arkStackMapRawPtr_;
+    }
+
+    void SetArkStackMapSize(uint32_t size)
+    {
+        arkStackMapSize_ = size;
+    }
+
+    uint32_t GetArkStackMapSize() const
+    {
+        return arkStackMapSize_;
+    }
 
     void SetStartIndex(uint32_t index)
     {
@@ -250,6 +296,7 @@ public:
                 accumulateTotalSize(s.second.second);
             }
         }
+        accumulateTotalSize(moduleDes.GetArkStackMapSize());
         aotFileHashs_.emplace_back(hash);
     }
 private:
@@ -272,6 +319,7 @@ public:
                 accumulateTotalSize(s.second.second);
             }
         }
+        accumulateTotalSize(moduleDes.GetArkStackMapSize());
     }
 
     uint64_t GetAsmStubAddr() const

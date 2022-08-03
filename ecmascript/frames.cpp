@@ -63,10 +63,10 @@ std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t re
             auto d = des[i];
             uint64_t addr = d.GetSecAddr(ElfSecName::TEXT);
             uint32_t size = d.GetSecSize(ElfSecName::TEXT);
-            stackmapAddr = reinterpret_cast<uint8_t *>(d.GetSecAddr(ElfSecName::ARK_STACKMAP));
             if (retAddr < addr || retAddr >= addr + size) {
                 continue;
             }
+            stackmapAddr = d.GetArkStackMapRawPtr();
             textStart = addr;
             auto startIndex = d.GetStartIndex();
             auto funcCount = d.GetFuncCount();

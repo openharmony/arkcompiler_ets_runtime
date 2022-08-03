@@ -49,7 +49,7 @@ class ArkStackMapBuilder {
 public:
     ArkStackMapBuilder() = default;
     ~ArkStackMapBuilder() = default;
-    std::pair<uint8_t *, uint32_t> PUBLIC_API Run(std::unique_ptr<uint8_t []> stackMapAddr, uintptr_t hostCodeSectionAddr);
+    std::pair<std::shared_ptr<uint8_t[]>, uint32_t> PUBLIC_API Run(std::unique_ptr<uint8_t []> stackMapAddr, uintptr_t hostCodeSectionAddr);
 private:
     template <class Vec>
     std::vector<std::pair<uintptr_t, Vec>> SortCallSite(std::vector<std::unordered_map<uintptr_t, Vec>> &infos);

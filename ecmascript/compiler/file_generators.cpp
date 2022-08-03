@@ -58,15 +58,13 @@ void StubFileGenerator::CollectCodeInfo()
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
-        // kungfu::LLVMStackMapParser parser;
-        uint8_t *ptr = nullptr;
+        std::shared_ptr<uint8_t[]> ptr = nullptr;
         uint32_t size = 0;
-        // std::tie(ptr, size) = parser.CalculateStackMap(std::move(stackmapPtr), textAddr);
         ArkStackMapBuilder builder;
         std::tie(ptr, size) =  builder.Run(std::move(stackmapPtr), textAddr);
         des.EraseSec(ElfSecName::LLVM_STACKMAP);
-        des.SetSecSize(size, ElfSecName::ARK_STACKMAP);
-        des.SetSecAddr(reinterpret_cast<uint64_t>(ptr), ElfSecName::ARK_STACKMAP);
+        des.SetArkStackMapPtr(ptr);
+        des.SetArkStackMapSize(size);
         stubInfo_.AddModuleDes(des);
     }
     // idx for bridge module is the one after last module in modulePackage
@@ -89,17 +87,16 @@ void AOTFileGenerator::CollectCodeInfo()
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
-        // kungfu::LLVMStackMapParser parser;
-        uint8_t *ptr = nullptr;
+        std::shared_ptr<uint8_t[]> ptr = nullptr;
         uint32_t size = 0;
         ArkStackMapBuilder builder;
         std::tie(ptr, size) =  builder.Run(std::move(stackmapPtr), textAddr);
-        // std::tie(ptr, size) = parser.CalculateStackMap(std::move(stackmapPtr), textAddr);
         des.EraseSec(ElfSecName::LLVM_STACKMAP);
-        des.SetSecSize(size, ElfSecName::ARK_STACKMAP);
-        des.SetSecAddr(reinterpret_cast<uint64_t>(ptr), ElfSecName::ARK_STACKMAP);
+        des.SetArkStackMapPtr(ptr);
+        des.SetArkStackMapSize(size);
         aotInfo_.AddModuleDes(des, aotfileHashs_[i]);
     }
+
 #ifndef NDEBUG
     DisassembleEachFunc(addr2name);
 #endif

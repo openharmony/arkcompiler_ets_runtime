@@ -48,6 +48,11 @@ void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
         file.write(reinterpret_cast<char *>(&curSecSize), sizeof(curSecSize));
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
     }
+    std::shared_ptr<uint8_t[]> ptr = GetArkStackMapSharePtr();
+    uint32_t size = GetArkStackMapSize();
+    file.write(reinterpret_cast<char *>(&size), sizeof(size));
+    file.write(reinterpret_cast<char *>(ptr.get()), size);
+
     uint32_t index = GetStartIndex();
     uint32_t cnt = GetFuncCount();
     file.write(reinterpret_cast<char *>(&index), sizeof(index));
@@ -72,6 +77,14 @@ void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
         SetSecAddr(secBegin, secEnumName);
         secBegin += secSize;
     }
+
+    uint32_t size;
+    parser.ParseBuffer(&size, sizeof(size));
+    //SetArkStackMapPtr()
+    parser.ParseBuffer(reinterpret_cast<void *>(secBegin), size);
+    SetArkStackMapSize(size);
+    SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secBegin));
+    curUnitOffset += size;
     uint32_t index;
     uint32_t cnt;
     parser.ParseBuffer(&index, sizeof(index));
@@ -98,6 +111,12 @@ void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
         SetSecAddr(secBegin, secEnumName);
         secBegin += secSize;
     }
+    uint32_t size;
+    file.read(reinterpret_cast<char *>(&size), sizeof(size));
+    file.read(reinterpret_cast<char *>(secBegin), size);
+    SetArkStackMapSize(size);
+    SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secBegin));
+    curUnitOffset += size;
     uint32_t index;
     uint32_t cnt;
     file.read(reinterpret_cast<char *>(&index), sizeof(index));

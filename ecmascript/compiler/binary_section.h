@@ -33,7 +33,6 @@ enum class ElfSecName : uint8_t {
     DATA,
     GOT,
     LLVM_STACKMAP,
-    ARK_STACKMAP,
     SIZE
 };
 
@@ -112,7 +111,6 @@ private:
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_NOT_SEQUENTIAL,
-        ElfSecFeature::VALID_AND_SEQUENTIAL,
     };
 };
 }
