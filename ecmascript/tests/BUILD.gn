@@ -102,6 +102,26 @@ host_unittest_action("EcmaVm_002_Test") {
     "js_proxy_test.cpp",
     "js_regexp_iterator_test.cpp",
     "js_relative_time_format_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime:ecma_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [
+    "$third_party_gn_path/icu/icu4c:shared_icui18n",
+    "$third_party_gn_path/icu/icu4c:shared_icuuc",
+    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+}
+
+host_unittest_action("EcmaVm_003_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "js_serializer_test.cpp",
     "js_set_iterator_test.cpp",
     "js_set_test.cpp",
@@ -122,20 +142,16 @@ host_unittest_action("EcmaVm_002_Test") {
     "rb_tree_node_test.cpp",
     "read_only_space_test.cpp",
     "symbol_table_test.cpp",
+    "tagged_array_test.cpp",
     "tagged_tree_test.cpp",
     "tagged_value_test.cpp",
     "weak_ref_old_gc_test.cpp",
     "weak_ref_semi_gc_test.cpp",
   ]
 
-  configs = [
-    "//arkcompiler/ets_runtime:ecma_test_config",
-    "//arkcompiler/ets_runtime:icu_path_test_config",
-  ]
+  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "$third_party_gn_path/icu/icu4c:shared_icui18n",
-    "$third_party_gn_path/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
@@ -148,6 +164,7 @@ group("unittest") {
   deps = [
     ":EcmaVm_001_Test",
     ":EcmaVm_002_Test",
+    ":EcmaVm_003_Test",
   ]
 }
 
@@ -158,5 +175,6 @@ group("host_unittest") {
   deps = [
     ":EcmaVm_001_TestAction",
     ":EcmaVm_002_TestAction",
+    ":EcmaVm_003_TestAction",
   ]
 }
