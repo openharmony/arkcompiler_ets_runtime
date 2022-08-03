@@ -52,6 +52,9 @@ class EcmaStringTable;
 class SnapshotEnv;
 class SnapshotSerialize;
 class SnapshotProcessor;
+#if !WIN_OR_MAC_PLATFORM
+class HeapProfilerInterface;
+#endif
 namespace job {
 class MicroJobQueue;
 }  // namespace job
@@ -355,6 +358,11 @@ public:
         exceptionBCList_.clear();
     }
 
+#if !WIN_OR_MAC_PLATFORM
+    void DeleteHeapProfile();
+    HeapProfilerInterface *GetOrNewHeapProfile();
+#endif
+
     void preFork();
     void postFork();
 protected:
@@ -436,6 +444,10 @@ private:
 
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
+
+#if !WIN_OR_MAC_PLATFORM
+    HeapProfilerInterface *heapProfile_ {nullptr};
+#endif
 
     // Registered Callbacks
     PromiseRejectCallback promiseRejectCallback_ {nullptr};

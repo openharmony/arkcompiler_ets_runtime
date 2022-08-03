@@ -25,6 +25,10 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
+#if !WIN_OR_MAC_PLATFORM
+#include "ecmascript/dfx/hprof/heap_profiler.h"
+#include "ecmascript/dfx/hprof/heap_profiler_interface.h"
+#endif
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/file_loader.h"
@@ -704,4 +708,25 @@ void EcmaVM::LoadAOTFiles()
     fileLoader_->LoadAOTFile(file);
     fileLoader_->LoadSnapshotFile();
 }
+
+#if !WIN_OR_MAC_PLATFORM
+void EcmaVM::DeleteHeapProfile()
+{
+    if (heapProfile_ == nullptr) {
+        return;
+    }
+    const_cast<NativeAreaAllocator *>(GetNativeAreaAllocator())->Delete(heapProfile_);
+    heapProfile_ = nullptr;
+}
+
+HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
+{
+    if (heapProfile_ != nullptr) {
+        return heapProfile_;
+    }
+    heapProfile_ = const_cast<NativeAreaAllocator *>(GetNativeAreaAllocator())->New<HeapProfiler>(this);
+    ASSERT(heapProfile_ != nullptr);
+    return heapProfile_;
+}
+#endif
 }  // namespace panda::ecmascript
