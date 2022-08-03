@@ -20,6 +20,9 @@ function foo0(a) {
 
 // haveThis
 function foo1(a) {
+    if (!this) {
+        return a;
+    }
     this.a = a;
 }
 
@@ -45,6 +48,9 @@ function foo4(a, ...args) {
 
 // haveThis, haveExtra
 function foo5(a, ...args) {
+    if (!this) {
+        return a;
+    }
     this.a = args[a];
 }
 
@@ -63,12 +69,17 @@ function foo7(a, ...args) {
     this.a = args[a];
 }
 
+// arguments
+function foo8() {
+    return arguments;
+}
+
 print(foo0(1,2,3));
-// print(foo1(1,2,3))  'this' is undefined in strict mode
+print(foo1(1,2,3));  // 'this' is undefined in strict mode
 print(foo2(1,2,3));
 print(foo3(1,2,3));
 print(foo4(1,2,3));
-// print(foo5(1,2,3))  'this' is undefined in strict mode
+print(foo5(1,2,3));  // 'this' is undefined in strict mode
 print(foo6(1,2,3));
 print(foo7(1,2,3));
 print(new foo0(1,2,3).a);
@@ -79,3 +90,10 @@ print(new foo4(1,2,3).a);
 print(new foo5(1,2,3).a);
 print(new foo6(1,2,3).a);
 print(new foo7(1,2,3).a);
+print("arguments");
+var arg = foo8(1,2,3);
+print(arg.length);
+print(arg[0]);
+print(arg[1]);
+print(arg[2]);
+print(arg[3]);

@@ -449,13 +449,6 @@ public:
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
     inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
-    void InitializeTaggedArrayWithSpeicalValue(
-        GateRef glue, GateRef array, GateRef value, GateRef start, GateRef length);
-    void InitializeWithSpeicalValue(
-        GateRef glue, GateRef object, GateRef value, GateRef start, GateRef end);
-    GateRef AllocateInYoung(GateRef glue, GateRef size);
-    GateRef NewLexicalEnv(GateRef glue, GateRef numSlots, GateRef parent);
-    GateRef NewJSObject(GateRef glue, GateRef hclass);
     GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor);
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,

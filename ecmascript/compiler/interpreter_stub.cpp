@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
@@ -220,6 +221,8 @@ DECLARE_ASM_HANDLER(HandlePopLexEnvDynPref)
 DECLARE_ASM_HANDLER(HandleGetUnmappedArgsPref)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(argumentsList, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(argumentsObj, VariableType::JS_ANY(), Hole());
     auto env = GetEnvironment();
     GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(sp, Int32(0));
     // 32: high 32 bits = startIdx, low 32 bits = numArgs
@@ -230,16 +233,22 @@ DECLARE_ASM_HANDLER(HandleGetUnmappedArgsPref)
     Label checkException(env);
     Label dispatch(env);
     Label slowPath(env);
-    GateRef argumentsList = NewArgumentsList(glue, sp, startIdx, numArgs);
-    Branch(TaggedIsException(argumentsList), &slowPath, &newArgumentsObj);
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    Label afterArgumentsList(env);
+    newBuilder.NewArgumentsList(&argumentsList, &afterArgumentsList, sp, startIdx, numArgs);
+    Bind(&afterArgumentsList);
+    Branch(TaggedIsException(*argumentsList), &slowPath, &newArgumentsObj);
     Bind(&newArgumentsObj);
-    GateRef argumentsObj = NewArgumentsObj(glue, argumentsList, numArgs);
-    Branch(TaggedIsException(argumentsObj), &slowPath, &checkException);
+    Label afterArgumentsObj(env);
+    newBuilder.NewArgumentsObj(&argumentsObj, &afterArgumentsObj, *argumentsList, numArgs);
+    Bind(&afterArgumentsObj);
+    Branch(TaggedIsException(*argumentsObj), &slowPath, &checkException);
     Bind(&checkException);
     Branch(HasPendingException(glue), &slowPath, &dispatch);
     Bind(&dispatch);
     {
-        varAcc = argumentsObj;
+        varAcc = *argumentsObj;
         DISPATCH_WITH_ACC(PREF_NONE);
     }
 
@@ -373,21 +382,26 @@ DECLARE_ASM_HANDLER(HandleThrowIfSuperNotCorrectCallPrefImm16)
 DECLARE_ASM_HANDLER(HandleNewLexEnvDynPrefImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     auto env = GetEnvironment();
     GateRef numVars = ReadInst16_1(pc);
     GateRef state = GetFrame(sp);
     auto parent = GetEnvFromFrame(state);
-    GateRef res = NewLexicalEnv(glue, ZExtInt16ToInt32(numVars), parent);
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    Label afterNew(env);
+    newBuilder.NewLexicalEnv(&result, &afterNew, ZExtInt16ToInt32(numVars), parent);
+    Bind(&afterNew);
     Label isException(env);
     Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
+    Branch(TaggedIsException(*result), &isException, &notException);
     Bind(&isException);
     {
         DISPATCH_LAST();
     }
     Bind(&notException);
-    varAcc = res;
-    SetEnvToFrame(glue, GetFrame(sp), res);
+    varAcc = *result;
+    SetEnvToFrame(glue, GetFrame(sp), *result);
     DISPATCH_WITH_ACC(PREF_IMM16);
 }
 
@@ -441,7 +455,11 @@ DECLARE_ASM_HANDLER(HandleNewObjDynRangePrefImm16V8)
                 &newObject, &callRuntime);
             Bind(&newObject);
             {
-                thisObj = NewJSObject(glue, protoOrHclass);
+                NewObjectStubBuilder newBuilder(this);
+                newBuilder.SetParameters(glue, 0);
+                Label afterNew(env);
+                newBuilder.NewJSObject(&thisObj, &afterNew, protoOrHclass);
+                Bind(&afterNew);
                 Jump(&newObjectCheckException);
             }
             Bind(&callRuntime);
