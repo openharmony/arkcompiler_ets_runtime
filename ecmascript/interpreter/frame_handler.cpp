@@ -28,14 +28,14 @@ namespace panda::ecmascript {
 FrameHandler::FrameHandler(const JSThread *thread)
     : sp_(const_cast<JSTaggedType *>(thread->GetCurrentFrame())), thread_(thread)
 {
-    stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+    arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     AdvanceToInterpretedFrame();
 }
 
 FrameHandler::FrameHandler(const JSThread *thread, void *fp)
     : sp_(reinterpret_cast<JSTaggedType *>(fp)), thread_(thread)
 {
-    stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+    arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     AdvanceToInterpretedFrame();
 }
 
@@ -434,30 +434,22 @@ void FrameHandler::CollectBCOffsetInfo()
     thread_->GetEcmaVM()->ClearExceptionBCList();
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
     FrameIterator it(current, thread_);
-    auto leaveFrame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
-    auto returnAddr = leaveFrame->GetReturnAddr();
-    // skip native function, need to fixit later.
     it.Advance();
 
     for (; !it.Done(); it.Advance()) {
         FrameType type = it.GetFrameType();
         switch (type) {
-            case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
-                auto constInfo = stackmapParser_->GetConstInfo(returnAddr);
+                auto constInfo = frame->CollectBCOffsetInfo(it);
                 if (!constInfo.empty()) {
                     auto name = GetAotExceptionFuncName(frame->GetArgv(it));
                     thread_->GetEcmaVM()->StoreBCOffsetInfo(name, constInfo[0]);
                 }
-                returnAddr = frame->GetReturnAddr();
                 break;
             }
-            case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
-                auto frame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
-                returnAddr = frame->GetReturnAddr();
-                break;
-            }
+            case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
+            case FrameType::BUILTIN_CALL_LEAVE_FRAME:
             case FrameType::LEAVE_FRAME:
             case FrameType::OPTIMIZED_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_ENTRY_FRAME:

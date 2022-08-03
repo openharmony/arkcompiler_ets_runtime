@@ -240,7 +240,7 @@ public:
         return tsManager_;
     }
 
-    FileLoader *GetFileLoader() const
+    FileLoader* PUBLIC_API GetFileLoader() const
     {
         return fileLoader_;
     }
