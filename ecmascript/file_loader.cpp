@@ -421,6 +421,8 @@ void FileLoader::InitializeStubEntries(const std::vector<AOTModulePackInfo::Func
             std::cout << "bytecode: " << GetEcmaOpcodeStr(static_cast<EcmaOpcode>(des.indexInKind_))
                 << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
 #endif
+        } else if (des.IsBuiltinsStub()) {
+            thread->SetBuiltinStubEntry(des.indexInKind_, des.codeAddr_);
         } else {
             thread->RegisterRTInterface(des.indexInKind_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG

@@ -195,13 +195,15 @@ enum class MethodIndex : uint8_t {
     METHOD_END
 };
 
+constexpr uint8_t INVALID_BUILTINS_ID = 0xFF;
+
 class ObjectFactory {
 public:
     explicit ObjectFactory(JSThread *thread, Heap *heap, Chunk *chunk);
     ~ObjectFactory();
     void GenerateInternalNativeMethods();
     JSMethod *GetMethodByIndex(MethodIndex idx);
-    JSMethod *NewMethodForNativeFunction(const void *func);
+    JSMethod *NewMethodForNativeFunction(const void *func, uint8_t builtinId = INVALID_BUILTINS_ID);
     JSMethod *NewMethodForAOTFunction(const void *func, size_t numArgs, const JSPandaFile *pf, uint32_t methodId);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
@@ -224,7 +226,8 @@ public:
     // use for others create, prototype is Function.prototype
     // use for native function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
-                                       FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+                                       FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                       uint8_t builtinId = INVALID_BUILTINS_ID);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, JSMethod *method,
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION);

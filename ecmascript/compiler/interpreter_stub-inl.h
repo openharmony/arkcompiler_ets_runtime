@@ -28,7 +28,7 @@ void InterpreterStubBuilder::SetVregValue(GateRef glue, GateRef sp, GateRef idx,
     Store(VariableType::INT64(), glue, sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx), val);
 }
 
-GateRef InterpreterStubBuilder::GetVregValue(GateRef sp, GateRef idx)
+inline GateRef InterpreterStubBuilder::GetVregValue(GateRef sp, GateRef idx)
 {
     return Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
 }

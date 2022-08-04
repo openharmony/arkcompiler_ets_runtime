@@ -46,6 +46,39 @@ public:
         return thread_;
     }
 
+    static size_t GetThreadOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::ThreadIndex)>(isArch32);
+    }
+
+    static size_t GetNumArgsOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::NumArgsIndex)>(isArch32);
+    }
+
+    static size_t GetStackArgsOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::StackArgsIndex)>(isArch32);
+    }
+
+    static size_t GetNewTargetOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::StackArgsIndex)>(isArch32) +
+            NEW_TARGET_INDEX * sizeof(JSTaggedType);
+    }
+
+    static size_t GetThisOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::StackArgsIndex)>(isArch32) +
+            THIS_INDEX * sizeof(JSTaggedType);
+    }
+
+    static size_t GetCallArgOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::StackArgsIndex)>(isArch32) +
+            FIRST_ARGS_INDEX * sizeof(JSTaggedType);
+    }
+
     inline void SetNewTarget(const JSTaggedValue tagged)
     {
         SetArg(NEW_TARGET_INDEX, tagged);

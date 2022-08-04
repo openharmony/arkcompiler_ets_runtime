@@ -105,6 +105,11 @@ public:
             return (kind_ == CallSignature::TargetKind::BYTECODE_HANDLER);
         }
 
+        bool IsBuiltinsStub() const
+        {
+            return (kind_ == CallSignature::TargetKind::BUILTINS_STUB);
+        }
+
         bool IsCommonStub() const
         {
             return (kind_ == CallSignature::TargetKind::COMMON_STUB);

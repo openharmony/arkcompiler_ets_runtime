@@ -102,6 +102,7 @@ public:
         CALL,
         BYTECODE_CALL,
         DEBUGGER_BYTECODE_CALL,
+        BUILTINS_CALL,
         ALLOCA,
         ARG,
         MUTABLE_DATA,

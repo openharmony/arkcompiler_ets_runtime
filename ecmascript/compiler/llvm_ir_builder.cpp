@@ -143,7 +143,8 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::NOGC_RUNTIME_CALL, &LLVMIRBuilder::HandleCall},
         {OpCode::CALL, &LLVMIRBuilder::HandleCall},
         {OpCode::BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
-        {OpCode::DEBUGGER_BYTECODE_CALL, &LLVMIRBuilder::HandleDebuggerBytecodeCall},
+        {OpCode::DEBUGGER_BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
+        {OpCode::BUILTINS_CALL, &LLVMIRBuilder::HandleCall},
         {OpCode::ALLOCA, &LLVMIRBuilder::HandleAlloca},
         {OpCode::ARG, &LLVMIRBuilder::HandleParameter},
         {OpCode::CONSTANT, &LLVMIRBuilder::HandleConstant},
@@ -488,7 +489,7 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
     std::vector<GateRef> ins;
     acc_.GetInVector(gate, ins);
     OpCode callOp = acc_.GetOpCode(gate);
-    if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL) {
+    if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL || callOp == OpCode::BUILTINS_CALL) {
         VisitCall(gate, ins, callOp);
     } else {
         UNREACHABLE();
@@ -500,13 +501,6 @@ void LLVMIRBuilder::HandleBytecodeCall(GateRef gate)
     std::vector<GateRef> ins;
     acc_.GetInVector(gate, ins);
     VisitBytecodeCall(gate, ins);
-}
-
-void LLVMIRBuilder::HandleDebuggerBytecodeCall(GateRef gate)
-{
-    std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
-    VisitDebuggerBytecodeCall(gate, ins);
 }
 
 void LLVMIRBuilder::HandleRuntimeCall(GateRef gate)
@@ -693,6 +687,12 @@ LLVMValueRef LLVMIRBuilder::GetBCDebugStubOffset(LLVMValueRef glue)
     return LLVMConstInt(glueType, JSThread::GlueData::GetBCDebuggerStubEntriesOffset(compCfg_->Is32Bit()), 0);
 }
 
+LLVMValueRef LLVMIRBuilder::GetBuiltinsStubOffset(LLVMValueRef glue)
+{
+    LLVMTypeRef glueType = LLVMTypeOf(glue);
+    return LLVMConstInt(glueType, JSThread::GlueData::GetBuiltinsStubEntriesOffset(compCfg_->Is32Bit()), 0);
+}
+
 // Only related to the call bytecode in Aot can record bcoffset
 bool LLVMIRBuilder::NeedBCOffset(OpCode op)
 {
@@ -712,8 +712,9 @@ void LLVMIRBuilder::ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueR
 
 void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, OpCode op)
 {
+    size_t targetIndex = static_cast<size_t>(CallInputs::TARGET);
     static_assert(static_cast<size_t>(CallInputs::FIRST_PARAMETER) == 3);
-    const size_t index = acc_.GetBitField(inList[static_cast<size_t>(CallInputs::TARGET)]);
+    const size_t index = acc_.GetBitField(inList[targetIndex]);
     const CallSignature *calleeDescriptor = nullptr;
     LLVMValueRef glue = GetGlue(inList);
     LLVMValueRef rtoffset;
@@ -724,10 +725,17 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         rtoffset = GetCoStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
-    } else {
+    } else if (op == OpCode::NOGC_RUNTIME_CALL) {
         calleeDescriptor = RuntimeStubCSigns::Get(index);
         rtoffset = GetRTStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
+        callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
+    } else {
+        LLVMValueRef opcodeOffset = gate2LValue_[inList[targetIndex]];
+        rtoffset = GetBuiltinsStubOffset(glue);
+        rtbaseoffset = LLVMBuildAdd(
+            builder_, glue, LLVMBuildAdd(builder_, rtoffset, opcodeOffset, ""), "");
+        calleeDescriptor = BuiltinsStubCSigns::BuiltinsHandler();
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
     }
 
@@ -799,9 +807,9 @@ void LLVMIRBuilder::VisitBytecodeCall(GateRef gate, const std::vector<GateRef> &
 
     // start index of bytecode handler csign in llvmModule
     LLVMValueRef glue = gate2LValue_[inList[glueIndex]];
-    LLVMValueRef bytecodeoffset = GetBCStubOffset(glue);
+    LLVMValueRef baseOffset = GetBaseOffset(gate, glue);
     LLVMValueRef rtbaseoffset = LLVMBuildAdd(
-        builder_, glue, LLVMBuildAdd(builder_, bytecodeoffset, opcodeOffset, ""), "");
+        builder_, glue, LLVMBuildAdd(builder_, baseOffset, opcodeOffset, ""), "");
     const CallSignature *signature = BytecodeStubCSigns::BCHandler();
     LLVMValueRef callee = GetFunction(glue, signature, rtbaseoffset);
 
@@ -817,32 +825,16 @@ void LLVMIRBuilder::VisitBytecodeCall(GateRef gate, const std::vector<GateRef> &
     gate2LValue_[gate] = call;
 }
 
-void LLVMIRBuilder::VisitDebuggerBytecodeCall(GateRef gate, const std::vector<GateRef> &inList)
+LLVMValueRef LLVMIRBuilder::GetBaseOffset(GateRef gate, LLVMValueRef glue)
 {
-    size_t paraStartIndex = static_cast<size_t>(CallInputs::FIRST_PARAMETER);
-    size_t targetIndex = static_cast<size_t>(CallInputs::TARGET);
-    size_t glueIndex = static_cast<size_t>(CallInputs::GLUE);
-    LLVMValueRef opcodeOffset = gate2LValue_[inList[targetIndex]];
-    ASSERT(llvmModule_ != nullptr);
-
-    // start index of bytecode handler csign in llvmModule
-    LLVMValueRef glue = gate2LValue_[inList[glueIndex]];
-    LLVMValueRef bytecodeoffset = GetBCDebugStubOffset(glue);
-    LLVMValueRef rtbaseoffset = LLVMBuildAdd(
-        builder_, glue, LLVMBuildAdd(builder_, bytecodeoffset, opcodeOffset, ""), "");
-    const CallSignature *signature = BytecodeStubCSigns::BCHandler();
-    LLVMValueRef callee = GetFunction(glue, signature, rtbaseoffset);
-
-    std::vector<LLVMValueRef> params;
-    for (size_t paraIdx = paraStartIndex; paraIdx < inList.size(); ++paraIdx) {
-        GateRef gateTmp = inList[paraIdx];
-        params.push_back(gate2LValue_[gateTmp]);
+    switch (acc_.GetOpCode(gate)) {
+        case OpCode::BYTECODE_CALL:
+            return GetBCStubOffset(glue);
+        case OpCode::DEBUGGER_BYTECODE_CALL:
+            return GetBCDebugStubOffset(glue);
+        default:
+            UNREACHABLE();
     }
-    LLVMValueRef call = LLVMBuildCall(builder_, callee, params.data(), inList.size() - paraStartIndex, "");
-    SetGCLeafFunction(call);
-    LLVMSetTailCall(call, true);
-    LLVMSetInstructionCallConv(call, LLVMGHCCallConv);
-    gate2LValue_[gate] = call;
 }
 
 void LLVMIRBuilder::HandleAlloca(GateRef gate)
@@ -1906,6 +1898,12 @@ void LLVMModule::SetUpForCommonStubs()
 void LLVMModule::SetUpForBytecodeHandlerStubs()
 {
     BytecodeStubCSigns::GetCSigns(callSigns_);
+    InitialLLVMFuncTypeAndFuncByModuleCSigns();
+}
+
+void LLVMModule::SetUpForBuiltinsStubs()
+{
+    BuiltinsStubCSigns::GetCSigns(callSigns_);
     InitialLLVMFuncTypeAndFuncByModuleCSigns();
 }
 

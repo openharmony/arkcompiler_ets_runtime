@@ -253,6 +253,7 @@ public:
     // call operation
     GateRef CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args);
     GateRef CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args);
+    GateRef CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args);
     GateRef CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv);
     GateRef CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);
     GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);

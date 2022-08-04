@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/circuit_builder.h"
 
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
@@ -246,6 +247,17 @@ GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::v
     return result;
 }
 
+GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args)
+{
+    const CallSignature *cs = BuiltinsStubCSigns::BuiltinsHandler();
+    ASSERT(cs->IsBuiltinsStub());
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
+    return result;
+}
+
 GateRef CircuitBuilder::CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args)
 {
     const CallSignature *cs = BytecodeStubCSigns::BCDebuggerHandler();
@@ -326,6 +338,8 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
         op = OpCode(OpCode::DEBUGGER_BYTECODE_CALL);
     } else if (cs->IsBCHandlerStub()) {
         op = OpCode(OpCode::BYTECODE_CALL);
+    } else if (cs->IsBuiltinsStub()) {
+        op = OpCode(OpCode::BUILTINS_CALL);
     } else if (cs->IsRuntimeNGCStub()) {
         op = OpCode(OpCode::NOGC_RUNTIME_CALL);
     } else {
