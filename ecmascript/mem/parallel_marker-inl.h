@@ -62,12 +62,11 @@ inline void NonMovableMarker::HandleRangeRoots(uint32_t threadId, [[maybe_unused
     }
 }
 
-inline void NonMovableMarker::HandleDerivedRoots([[maybe_unused]] Root type, ObjectSlot base,
-                                                 ObjectSlot derived, uintptr_t baseOldObject)
+inline void NonMovableMarker::HandleDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+                                                 [[maybe_unused]] ObjectSlot derived,
+                                                 [[maybe_unused]] uintptr_t baseOldObject)
 {
     // It is only used to update the derived value. The mark of partial GC does not need to update slot
-    LOG_GC(DEBUG) << std::hex << "fix base before:" << base.SlotAddress() << " base old Value: " << baseOldObject
-                  << " derived:" << derived.SlotAddress() << " old Value: " << derived.GetTaggedType();
 }
 
 inline void NonMovableMarker::HandleOldToNewRSet(uint32_t threadId, Region *region)
@@ -124,9 +123,6 @@ inline void MovableMarker::HandleDerivedRoots([[maybe_unused]] Root type, Object
 {
     if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
         derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
-        LOG_GC(DEBUG) << std::hex << "fix base after:" << base.SlotAddress() << " base Old Value:"
-                      << baseOldObject << " base New Value:" << base.GetTaggedType()
-                      << " derived:" << derived.SlotAddress() << " derived New Value:" << derived.GetTaggedType();
     }
 }
 
