@@ -317,9 +317,9 @@ config("icu_path_test_config") {
 
 # asm interpreter enable config
 config("asm_interp_enable_config") {
-  if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
-                    current_cpu == "x86_64")) ||
-      (is_ohos && current_cpu == "arm64")) {
+  if ((current_cpu == "amd64" || current_cpu == "x64" ||
+       current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
+      !is_mac) {
     defines = [ "SUPPORT_ENABLE_ASM_INTERP" ]
   }
 }
@@ -667,9 +667,9 @@ source_set("libark_jsruntime_test_set") {
     sdk_libc_secshared_dep,
   ]
 
-  if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
-                    current_cpu == "x86_64")) ||
-      (is_ohos && current_cpu == "arm64")) {
+  if ((current_cpu == "amd64" || current_cpu == "x64" ||
+       current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
+      !is_mac) {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
@@ -689,9 +689,9 @@ ohos_shared_library("libark_jsruntime") {
     "$ark_root/libpandafile:libarkfile_static",
   ]
 
-  if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
-                    current_cpu == "x86_64")) ||
-      (is_ohos && current_cpu == "arm64")) {
+  if ((current_cpu == "amd64" || current_cpu == "x64" ||
+       current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
+      !is_mac) {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
