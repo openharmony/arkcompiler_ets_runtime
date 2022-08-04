@@ -254,6 +254,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "NDEBUG" ]
   }
 
+  if (run_with_asan) {
+    defines += [ "RUN_WITH_ASAN" ]
+  }
+
   if (run_with_asan && is_linux &&
       (current_cpu == "x86" || current_cpu == "x64")) {
     cflags_cc += [

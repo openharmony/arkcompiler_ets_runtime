@@ -164,6 +164,10 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
     Label success(env);
     Label callRuntime(env);
 
+#ifdef ARK_ASAN_ON
+    DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
+    Jump(&callRuntime);
+#else
     auto topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(env->Is32Bit());
     auto endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(env->Is32Bit());
     auto topAddress = Load(VariableType::NATIVE_POINTER(), glue_, IntPtr(topOffset));
@@ -183,6 +187,7 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
         result->WriteVariable(*ret);
         Jump(exit);
     }
+#endif
     Bind(&callRuntime);
     {
         ret = CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), {

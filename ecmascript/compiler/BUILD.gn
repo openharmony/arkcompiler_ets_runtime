@@ -227,6 +227,10 @@ ohos_shared_library("libark_jsoptimizer") {
     "$js_root:libark_jsruntime",
   ]
 
+  if (run_with_asan) {
+    defines = [ "RUN_WITH_ASAN" ]
+  }
+
   install_enable = false
 
   output_extension = "so"
@@ -255,6 +259,10 @@ ohos_executable("ark_stub_compiler") {
 
   ldflags = [ "-Wl,--lto-O0" ]
   install_enable = false
+
+  if (run_with_asan) {
+    defines = [ "RUN_WITH_ASAN" ]
+  }
 
   part_name = "ark_js_runtime"
   subsystem_name = "ark"
