@@ -1988,17 +1988,12 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
                                  globalEnv->GetArrayProtoValuesFunction().GetTaggedValue());
     // 8. Perform DefinePropertyOrThrow(obj, "caller", PropertyDescriptor {[[Get]]: %ThrowTypeError%,
     // [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
-    JSHandle<JSTaggedValue> throwFunction = globalEnv->GetThrowTypeError();
-    JSHandle<AccessorData> accessor = factory->NewAccessorData();
-    accessor->SetGetter(thread, throwFunction);
-    accessor->SetSetter(thread, throwFunction);
-    obj->SetPropertyInlinedProps(thread, JSArguments::CALLER_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+    JSHandle<JSTaggedValue> accessorCaller = globalEnv->GetArgumentsCallerAccessor();
+    obj->SetPropertyInlinedProps(thread, JSArguments::CALLER_INLINE_PROPERTY_INDEX, accessorCaller.GetTaggedValue());
     // 9. Perform DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Get]]: %ThrowTypeError%,
     // [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
-    accessor = factory->NewAccessorData();
-    accessor->SetGetter(thread, throwFunction);
-    accessor->SetSetter(thread, throwFunction);
-    obj->SetPropertyInlinedProps(thread, JSArguments::CALLEE_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+    JSHandle<JSTaggedValue> accessorCallee = globalEnv->GetArgumentsCalleeAccessor();
+    obj->SetPropertyInlinedProps(thread, JSArguments::CALLEE_INLINE_PROPERTY_INDEX, accessorCallee.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11. Return obj
     return obj.GetTaggedValue();
