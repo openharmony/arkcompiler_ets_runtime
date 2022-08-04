@@ -18,36 +18,28 @@
 namespace panda::ecmascript::kungfu {
 void TypeInfer::TraverseCircuit()
 {
-    auto circuitRoot = Circuit::GetCircuitRoot(OpCode(OpCode::CIRCUIT_ROOT));
     size_t gateCount = circuit_->GetGateCount();
-    // worklist start
-    std::queue<GateRef> worklist;
-    worklist.push(circuitRoot);
-    std::vector<bool> visited(gateCount);
-    std::function<void(GateRef)> bfs = [&](GateRef root) -> void {
-        std::queue<GateRef> pendingQueue;
-        pendingQueue.push(root);
-        visited[gateAccessor_.GetId(root)] = true;
-        while (!pendingQueue.empty()) {
-            auto curGate = pendingQueue.front();
-            pendingQueue.pop();
-            auto uses = gateAccessor_.ConstUses(curGate);
-            for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
-                if (!visited[gateAccessor_.GetId(*useIt)]) {
-                    visited[gateAccessor_.GetId(*useIt)] = true;
-                    if (Infer(*useIt)) {
-                        worklist.push(*useIt);
-                    }
-                    pendingQueue.push(*useIt);
-                }
+    std::vector<bool> inQueue(gateCount, true);
+    std::vector<bool> visited(gateCount, false);
+    std::queue<GateRef> pendingQueue;
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+    for (auto gate : gateList) {
+        pendingQueue.push(gate);
+    }
+
+    while (!pendingQueue.empty()) {
+        auto curGate = pendingQueue.front();
+        inQueue[gateAccessor_.GetId(curGate)] = false;
+        pendingQueue.pop();
+        auto uses = gateAccessor_.ConstUses(curGate);
+        for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+            auto gateId = gateAccessor_.GetId(*useIt);
+            if (Infer(*useIt) && !inQueue[gateId]) {
+                inQueue[gateId] = true;
+                pendingQueue.push(*useIt);
             }
         }
-    };
-    while (!worklist.empty()) {
-        auto frontGate = worklist.front();
-        worklist.pop();
-        std::fill(visited.begin(), visited.end(), false);
-        bfs(frontGate);
     }
 
     if (IsLogEnabled()) {
