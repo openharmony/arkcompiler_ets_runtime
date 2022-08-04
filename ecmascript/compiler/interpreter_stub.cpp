@@ -2126,22 +2126,55 @@ DECLARE_ASM_HANDLER(HandleStrictEqDynPrefV8)
 
 DECLARE_ASM_HANDLER(HandleResumeGeneratorPrefV8)
 {
+    auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef vs = ReadInst8_1(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(vs));
-    GateRef resumeResultOffset = IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
-    varAcc = Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+
+    Label isAsyncGeneratorObj(env);
+    Label notAsyncGeneratorObj(env);
+    Label dispatch(env);
+    Branch(TaggedIsAsyncGeneratorObject(obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
+    Bind(&isAsyncGeneratorObj);
+    {
+        GateRef resumeResultOffset = IntPtr(JSAsyncGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
+        varAcc = Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+        Jump(&dispatch);
+    }
+    Bind(&notAsyncGeneratorObj);
+    {
+        GateRef resumeResultOffset = IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
+        varAcc = Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+        Jump(&dispatch);
+    }
+    Bind(&dispatch);
     DISPATCH_WITH_ACC(PREF_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleGetResumeModePrefV8)
 {
+    auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef vs = ReadInst8_1(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(vs));
-    varAcc = IntToTaggedNGC(GetResumeModeFromGeneratorObject(obj));
+
+    Label isAsyncGeneratorObj(env);
+    Label notAsyncGeneratorObj(env);
+    Label dispatch(env);
+    Branch(TaggedIsAsyncGeneratorObject(obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
+    Bind(&isAsyncGeneratorObj);
+    {
+        varAcc = IntToTaggedNGC(GetResumeModeFromAsyncGeneratorObject(obj));
+        Jump(&dispatch);
+    }
+    Bind(&notAsyncGeneratorObj);
+    {
+        varAcc = IntToTaggedNGC(GetResumeModeFromGeneratorObject(obj));
+        Jump(&dispatch);
+    }
+    Bind(&dispatch);
     DISPATCH_WITH_ACC(PREF_V8);
 }
 

@@ -74,6 +74,7 @@ public:
     inline GateRef GetProfileTypeInfoFromFunction(GateRef function);
     inline GateRef GetModuleFromFunction(GateRef function);
     inline GateRef GetResumeModeFromGeneratorObject(GateRef obj);
+    inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetHotnessCounterFromMethod(GateRef method);
 
     inline void SetHotnessCounter(GateRef glue, GateRef method, GateRef value);
