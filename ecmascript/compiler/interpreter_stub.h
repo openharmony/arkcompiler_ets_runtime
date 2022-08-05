@@ -91,6 +91,19 @@ public:
     inline void SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
                               GateRef env, GateRef pc, GateRef prev, GateRef type);
 
+    inline void CheckException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		               GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			       GateRef res, GateRef offset);
+    inline void CheckPendingException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			              GateRef res, GateRef offset);
+    inline void CheckExceptionWithJump(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		                       GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			               GateRef res, Label *jump);
+    inline void CheckExceptionWithVar(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			              GateRef res, GateRef offset);
+
     inline GateRef CheckStackOverflow(GateRef glue, GateRef sp);
     inline GateRef PushArg(GateRef glue, GateRef sp, GateRef value);
     inline GateRef PushUndefined(GateRef glue, GateRef sp, GateRef num);
