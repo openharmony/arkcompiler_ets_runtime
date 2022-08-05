@@ -450,8 +450,8 @@ JSTaggedValue JSBoundFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     }
 
     JSHandle<TaggedArray> boundArgs(thread, func->GetBoundArguments());
-    const int32_t boundLength = static_cast<int32_t>(boundArgs->GetLength());
-    const int32_t argsLength = info->GetArgsNumber() + boundLength;
+    const uint32_t boundLength = boundArgs->GetLength();
+    const uint32_t argsLength = info->GetArgsNumber() + boundLength;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, target, undefined, newTargetMutable, argsLength);

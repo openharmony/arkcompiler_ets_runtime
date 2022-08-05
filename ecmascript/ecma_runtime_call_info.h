@@ -61,7 +61,7 @@ public:
         SetArg(THIS_INDEX, tagged);
     }
 
-    inline void SetCallArg(int32_t idx, const JSTaggedValue tagged)
+    inline void SetCallArg(uint32_t idx, const JSTaggedValue tagged)
     {
         ASSERT_PRINT(idx < GetArgsNumber(), "Can not set values out of index range");
         SetArg(idx + FIRST_ARGS_INDEX, tagged);
@@ -116,9 +116,9 @@ public:
         }
     }
 
-    inline void SetCallArg(int32_t argsLength, const JSHandle<TaggedArray> args)
+    inline void SetCallArg(uint32_t argsLength, const JSHandle<TaggedArray> args)
     {
-        for (int32_t i = 0; i < argsLength; i++) {
+        for (uint32_t i = 0; i < argsLength; i++) {
             SetCallArg(i, args->Get(GetThread(), i));
         }
     }
@@ -130,9 +130,9 @@ public:
         }
     }
 
-    inline void SetCallArg(int32_t argsLength, int32_t startIndex, const EcmaRuntimeCallInfo* argv, int32_t offset)
+    inline void SetCallArg(uint32_t argsLength, uint32_t startIndex, const EcmaRuntimeCallInfo* argv, int32_t offset)
     {
-        for (int32_t i = startIndex; i < argsLength; i++) {
+        for (uint32_t i = startIndex; i < argsLength; i++) {
             SetCallArg(i, argv->GetCallArgValue(i - startIndex + offset));
         }
     }
@@ -152,7 +152,7 @@ public:
         return GetArg(THIS_INDEX);
     }
 
-    inline JSHandle<JSTaggedValue> GetCallArg(int32_t idx) const
+    inline JSHandle<JSTaggedValue> GetCallArg(uint32_t idx) const
     {
         return GetArg(idx + FIRST_ARGS_INDEX);
     }
@@ -175,7 +175,7 @@ public:
         return thisObj.GetTaggedValue();
     }
 
-    inline JSTaggedValue GetCallArgValue(int32_t idx) const
+    inline JSTaggedValue GetCallArgValue(uint32_t idx) const
     {
         JSHandle<JSTaggedValue> arg = GetCallArg(idx);
         return arg.GetTaggedValue();
@@ -185,7 +185,7 @@ public:
      * The number of arguments pairs excluding the 'func', 'new.target' and 'this'. For instance:
      * for code fragment: " foo(v1); ", GetArgsNumber() returns 1
      */
-    inline int32_t GetArgsNumber() const
+    inline uint32_t GetArgsNumber() const
     {
         return numArgs_ - NUM_MANDATORY_JSFUNC_ARGS;
     }
@@ -198,7 +198,7 @@ public:
 private:
     enum ArgsIndex : uint8_t { FUNC_INDEX = 0, NEW_TARGET_INDEX, THIS_INDEX, FIRST_ARGS_INDEX };
 
-    inline uintptr_t GetArgAddress(int32_t idx) const
+    inline uintptr_t GetArgAddress(uint32_t idx) const
     {
         if (idx < GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS) {
             return reinterpret_cast<uintptr_t>(&stackArgs_[idx]);
@@ -206,7 +206,7 @@ private:
         return 0U;
     }
 
-    inline void SetArg(int32_t idx, const JSTaggedValue tagged)
+    inline void SetArg(uint32_t idx, const JSTaggedValue tagged)
     {
         uintptr_t addr = GetArgAddress(idx);
         if (addr != 0U) {
@@ -214,7 +214,7 @@ private:
         }
     }
 
-    inline JSHandle<JSTaggedValue> GetArg(int32_t idx) const
+    inline JSHandle<JSTaggedValue> GetArg(uint32_t idx) const
     {
         return JSHandle<JSTaggedValue>(GetArgAddress(idx));
     }

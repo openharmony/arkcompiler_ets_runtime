@@ -1224,7 +1224,7 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
 }
 
 // ----------------------------------- ArrayRef ----------------------------------------
-Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, int32_t length)
+Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length)
 {
     JSThread *thread = vm->GetJSThread();
     JSTaggedNumber arrayLen(length);

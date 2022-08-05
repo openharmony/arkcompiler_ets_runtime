@@ -730,7 +730,7 @@ public:
 
 class PUBLIC_API ArrayRef : public ObjectRef {
 public:
-    static Local<ArrayRef> New(const EcmaVM *vm, int32_t length = 0);
+    static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
     int32_t Length(const EcmaVM *vm);
     static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
@@ -1194,7 +1194,7 @@ public:
 
     EcmaVM *GetVM() const;
 
-    inline int32_t GetArgsNumber() const
+    inline uint32_t GetArgsNumber() const
     {
         return numArgs_;
     }
@@ -1242,7 +1242,7 @@ private:
 
 private:
     JSThread *thread_ {nullptr};
-    int32_t numArgs_ = 0;
+    uint32_t numArgs_ = 0;
     JSTaggedType *stackArgs_ {nullptr};
     void *data_ {nullptr};
     friend class FunctionRef;

@@ -42,7 +42,7 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
     }
 
     JSTaggedValue timeValue(0.0);
-    uint32_t length = static_cast<uint32_t>(argv->GetArgsNumber());
+    uint32_t length = argv->GetArgsNumber();
     if (length == 0) {  // no value
         timeValue = JSDate::Now();
     } else if (length == 1) {  // one value

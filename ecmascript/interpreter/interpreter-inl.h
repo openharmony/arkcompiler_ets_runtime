@@ -317,8 +317,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             CALL_PUSH_ARGS_##ARG_TYPE();                                           \
             goto setVregsAndFrameNative;                                           \
         }                                                                          \
-        int32_t declaredNumArgs = static_cast<int32_t>(                            \
-            method->GetNumArgsWithCallField());                                    \
+        int32_t declaredNumArgs =                                                  \
+            static_cast<int32_t>(method->GetNumArgsWithCallField());               \
         if (actualNumArgs == declaredNumArgs) {                                    \
             /* fast path, just push all args directly */                           \
             CALL_PUSH_ARGS_##ARG_TYPE();                                           \
@@ -470,7 +470,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
 
     // current is entry frame.
     JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
-    int32_t actualNumArgs = info->GetArgsNumber();
+    int32_t actualNumArgs = static_cast<int32_t>(info->GetArgsNumber());
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     JSTaggedType *newSp = sp - InterpretedEntryFrame::NumOfMembers();
     if (UNLIKELY(thread->DoStackOverflowCheck(newSp - actualNumArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
