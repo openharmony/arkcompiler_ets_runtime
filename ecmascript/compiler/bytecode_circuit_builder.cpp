@@ -2259,7 +2259,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
             );
         } else {
             ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
-            uint32_t bitSet = 0;
+            [[maybe_unused]] uint32_t bitSet = 0;
             for (auto &bbNext: bb.succs) {
                 if (bbNext->id == bb.id + 1) {
                     auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
