@@ -618,5 +618,85 @@ void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc
     DispatchBase(target, glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
     Return();
 }
+
+#define DISPATCH_LAST(acc)                                                                  \
+    DispatchLast(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter)
+#define DISPATCH(acc)                                                                       \
+    Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, offset)
+void InterpreterStubBuilder::CheckException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+                                            GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+                                            GateRef res, GateRef offset)
+{
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(res), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST(acc);
+    }
+    Bind(&notException);
+    {
+        DISPATCH(acc);
+    }
+}
+
+void InterpreterStubBuilder::CheckPendingException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+                                                   GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+                                                   GateRef res, GateRef offset)
+{
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label notException(env);
+    Branch(HasPendingException(glue), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST(acc);
+    }
+    Bind(&notException);
+    {
+        DISPATCH(res);
+    }
+}
+
+void InterpreterStubBuilder::CheckExceptionWithVar(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+                                                   GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+                                                   GateRef res, GateRef offset)
+{
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(res), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST(acc);
+    }
+    Bind(&notException);
+    {
+        DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+        varAcc = res;
+        DISPATCH(*varAcc);
+    }
+}
+
+void InterpreterStubBuilder::CheckExceptionWithJump(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+                                                    GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+                                                    GateRef res, Label *jump)
+{
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(res), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST(acc);
+    }
+    Bind(&notException);
+    {
+        Jump(jump);
+    }
+}
+#undef DISPATCH_LAST
+#undef DISPATCH
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_INTERPRETER_STUB_INL_H

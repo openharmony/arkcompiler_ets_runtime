@@ -74,18 +74,16 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
                                      GateRef acc, GateRef hotnessCounter)
 #endif
 
-// TYPE:{OFFSET, ACC_RES, ACC_VARACC, JUMP, SSD}
+// TYPE:{OFFSET, ACC_VARACC, JUMP, SSD}
 #define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
 
 // Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, offset)
 #define DISPATCH_OFFSET(offset)                                                           \
     DISPATCH_BASE(profileTypeInfo, acc, hotnessCounter, offset)
 
-// Dispatch(glue, sp, pc, constpool, profileTypeInfo, res, hotnessCounter, offset)
-#define DISPATCH_ACC_RES(offset) DISPATCH_ACC(res, offset)
-
 // Dispatch(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter, offset)
-#define DISPATCH_ACC_VARACC(offset) DISPATCH_ACC(*varAcc, offset)
+#define DISPATCH_VARACC(offset)                                                           \
+    DISPATCH_BASE(profileTypeInfo, *varAcc, hotnessCounter, offset)
 
 // Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, *varHotnessCounter, offset)
 #define DISPATCH_JUMP(offset)                                                             \
@@ -95,16 +93,13 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     Dispatch(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc,           \
              *varHotnessCounter, offset)
 
-#define INT_PTR(format)                                                                   \
-    IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::format))
-
 #define DISPATCH_BASE(...)                                                                \
     Dispatch(glue, sp, pc, constpool, __VA_ARGS__)
 
-#define DISPATCH_ACC(acc, offset)                                                         \
-    DISPATCH_BASE(profileTypeInfo, acc, hotnessCounter, offset)
+#define INT_PTR(format)                                                                   \
+    IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::format))
 
-#define DISPATCH_WITH_ACC(format) DISPATCH_BAK(ACC_VARACC, INT_PTR(format))
+#define DISPATCH_WITH_ACC(format) DISPATCH_BAK(VARACC, INT_PTR(format))
 
 #define DISPATCH(format) DISPATCH_BAK(OFFSET, INT_PTR(format))
 
@@ -124,6 +119,30 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         Jump(&dispatch);                                                                  \
     }                                                                                     \
     Bind(&dispatch);
+
+#define CHECK_EXCEPTION(res, offset)                                                      \
+    CheckException(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,         \
+                   res, offset)
+
+#define CHECK_EXCEPTION_VARACC(res, offset)                                               \
+    CheckException(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter,     \
+                   res, offset)
+
+#define CHECK_EXCEPTION_WITH_JUMP(res, jump)                                              \
+    CheckExceptionWithJump(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, \
+		           res, jump)
+
+#define CHECK_EXCEPTION_WITH_ACC(res, offset)                                             \
+    CheckExceptionWithVar(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,  \
+		          res, offset)
+
+#define CHECK_EXCEPTION_WITH_VARACC(res, offset)                                              \
+    CheckExceptionWithVar(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter,  \
+		          res, offset)
+
+#define CHECK_PENDING_EXCEPTION(res, offset)                                              \
+    CheckPendingException(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,  \
+		          res, offset)
 
 DECLARE_ASM_HANDLER(HandleLdNanPref)
 {
@@ -253,130 +272,59 @@ DECLARE_ASM_HANDLER(HandleGetUnmappedArgsPref)
     }
 
     Bind(&slowPath);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(GetUnmapedArgs), {});
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
     {
-        DISPATCH_LAST();
+        GateRef res = CallRuntime(glue, RTSTUB_ID(GetUnmapedArgs), {});
+        CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_NONE));
     }
-    Bind(&notException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(PREF_NONE);
 }
 
 DECLARE_ASM_HANDLER(HandleCopyRestArgsPrefImm16)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef restIdx = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CopyRestArgs), { IntToTaggedTypeNGC(restIdx) });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(PREF_IMM16);
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateArrayWithBufferPrefImm16)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef result = GetObjectFromConstPool(constpool, imm);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { result });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(PREF_IMM16);
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateObjectWithBufferPrefImm16)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef result = GetObjectFromConstPool(constpool, imm);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithBuffer), { result });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(PREF_IMM16);
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateObjectWithExcludedKeysPrefImm16V8V8)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef numKeys = ReadInst16_1(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef firstArgRegIdx = ZExtInt8ToInt16(ReadInst8_4(pc));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithExcludedKeys),
         { Int16ToTaggedTypeNGC(numKeys), obj, Int16ToTaggedTypeNGC(firstArgRegIdx) });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(PREF_IMM16_V8_V8);
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_IMM16_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateObjectHavingMethodPrefImm16)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef result = GetObjectFromConstPool(constpool, imm);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, acc, constpool });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(PREF_IMM16);
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleThrowIfSuperNotCorrectCallPrefImm16)
 {
-    auto env = GetEnvironment();
     GateRef imm = ReadInst16_1(pc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
         { Int16ToTaggedTypeNGC(imm), acc }); // acc is thisValue
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH(PREF_IMM16);
+    CHECK_EXCEPTION(res, INT_PTR(PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleNewLexEnvDynPrefImm16)
@@ -392,13 +340,8 @@ DECLARE_ASM_HANDLER(HandleNewLexEnvDynPrefImm16)
     Label afterNew(env);
     newBuilder.NewLexicalEnv(&result, &afterNew, ZExtInt16ToInt32(numVars), parent);
     Bind(&afterNew);
-    Label isException(env);
     Label notException(env);
-    Branch(TaggedIsException(*result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
+    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
     varAcc = *result;
     SetEnvToFrame(glue, GetFrame(sp), *result);
@@ -517,13 +460,8 @@ DECLARE_ASM_HANDLER(HandleDefineFuncDynPrefId16Imm16V8)
     Bind(&isResolved);
     {
         result = CallRuntime(glue, RTSTUB_ID(DefinefuncDyn), { *result });
-        Label isException(env);
         Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
         Bind(&notException);
         {
             SetConstantPoolToFunction(glue, *result, constpool);
@@ -565,13 +503,8 @@ DECLARE_ASM_HANDLER(HandleDefineNCFuncDynPrefId16Imm16V8)
     Bind(&isResolved);
     {
         result = CallRuntime(glue, RTSTUB_ID(DefineNCFuncDyn), { *result });
-        Label isException(env);
         Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
         Bind(&notException);
         {
             SetConstantPoolToFunction(glue, *result, constpool);
@@ -614,13 +547,8 @@ DECLARE_ASM_HANDLER(HandleDefineGeneratorFuncPrefId16Imm16V8)
     Bind(&isResolved);
     {
         result = CallRuntime(glue, RTSTUB_ID(DefineGeneratorFunc), { *result });
-        Label isException(env);
         Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
         Bind(&notException);
         {
             SetConstantPoolToFunction(glue, *result, constpool);
@@ -662,13 +590,8 @@ DECLARE_ASM_HANDLER(HandleDefineAsyncFuncPrefId16Imm16V8)
     Bind(&isResolved);
     {
         result = CallRuntime(glue, RTSTUB_ID(DefineAsyncFunc), { *result });
-        Label isException(env);
         Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
         Bind(&notException);
         {
             SetConstantPoolToFunction(glue, *result, constpool);
@@ -710,13 +633,8 @@ DECLARE_ASM_HANDLER(HandleDefineMethodPrefId16Imm16V8)
     Bind(&isResolved);
     {
         result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc });
-        Label isException(env);
         Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
         Bind(&notException);
         {
             SetConstantPoolToFunction(glue, *result, constpool);
@@ -745,149 +663,64 @@ DECLARE_ASM_HANDLER(HandleDefineMethodPrefId16Imm16V8)
 
 DECLARE_ASM_HANDLER(HandleCallSpreadDynPrefV8V8V8)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef array = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CallSpreadDyn), { func, obj, array });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    {
-        varAcc = res;
-        DISPATCH_WITH_ACC(PREF_V8_V8_V8);
-    }
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_V8_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleAsyncFunctionResolvePrefV8V8V8)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef asyncFuncObj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionResolveOrReject),
                               { asyncFuncObj, value, TaggedTrue() });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    {
-        varAcc = res;
-        DISPATCH_WITH_ACC(PREF_V8_V8_V8);
-    }
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_V8_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleAsyncFunctionRejectPrefV8V8V8)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef asyncFuncObj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionResolveOrReject),
                               { asyncFuncObj, value, TaggedFalse() });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    {
-        varAcc = res;
-        DISPATCH_WITH_ACC(PREF_V8_V8_V8);
-    }
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_V8_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleDefineGetterSetterByValuePrefV8V8V8V8)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef getter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef setter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_4(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DefineGetterSetterByValue),
                               { obj, prop, getter, setter, acc }); // acc is flag
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    {
-        varAcc = res;
-        DISPATCH_WITH_ACC(PREF_V8_V8_V8_V8);
-    }
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_V8_V8_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleSuperCallPrefImm16V8)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef range = ReadInst16_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_3(pc));
     // acc is thisFunc
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
         { acc, Int16ToTaggedTypeNGC(v0), Int16ToTaggedTypeNGC(range) });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    {
-        varAcc = res;
-        DISPATCH_WITH_ACC(PREF_IMM16_V8);
-    }
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_IMM16_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleGetPropIteratorPref)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef res = CallRuntime(glue, RTSTUB_ID(GetPropIterator), { *varAcc });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&notException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(PREF_NONE);
+    CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(PREF_NONE));
 }
 
 DECLARE_ASM_HANDLER(HandleAsyncFunctionEnterPref)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionEnter), {});
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&notException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(PREF_NONE);
+    CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(PREF_NONE));
 }
 
 DECLARE_ASM_HANDLER(HandleLdHolePref)
@@ -929,16 +762,7 @@ DECLARE_ASM_HANDLER(HandleGetIteratorPref)
     Bind(&notGeneratorObj);
     {
         GateRef res = CallRuntime(glue, RTSTUB_ID(GetIterator), { *varAcc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(res), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        varAcc = res;
-        Jump(&dispatch);
+        CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(PREF_NONE));
     }
     Bind(&dispatch);
     DISPATCH_WITH_ACC(PREF_NONE);
@@ -991,18 +815,7 @@ DECLARE_ASM_HANDLER(HandleMul2DynPrefV8)
     {
         // slow path
         result = CallRuntime(glue, RTSTUB_ID(Mul2Dyn), { left, acc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            varAcc = *result;
-            Jump(&dispatch);
-        }
+        CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(PREF_V8));
     }
     Bind(&notHole);
     {
@@ -1029,18 +842,7 @@ DECLARE_ASM_HANDLER(HandleDiv2DynPrefV8)
     {
         // slow path
         result = CallRuntime(glue, RTSTUB_ID(Div2Dyn), { left, acc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            varAcc = *result;
-            Jump(&dispatch);
-        }
+        CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(PREF_V8));
     }
     Bind(&notHole);
     {
@@ -1067,18 +869,7 @@ DECLARE_ASM_HANDLER(HandleMod2DynPrefV8)
     {
         // slow path
         result = CallRuntime(glue, RTSTUB_ID(Mod2Dyn), { left, acc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            varAcc = *result;
-            Jump(&dispatch);
-        }
+        CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(PREF_V8));
     }
     Bind(&notHole);
     {
@@ -1105,18 +896,7 @@ DECLARE_ASM_HANDLER(HandleEqDynPrefV8)
     {
         // slow path
         result = CallRuntime(glue, RTSTUB_ID(EqDyn), { left, acc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            varAcc = *result;
-            Jump(&dispatch);
-        }
+        CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(PREF_V8));
     }
     Bind(&notHole);
     {
@@ -1143,18 +923,7 @@ DECLARE_ASM_HANDLER(HandleNotEqDynPrefV8)
     {
         // slow path
         result = CallRuntime(glue, RTSTUB_ID(NotEqDyn), { left, acc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            varAcc = *result;
-            Jump(&dispatch);
-        }
+        CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(PREF_V8));
     }
     Bind(&notHole);
     {
@@ -1265,18 +1034,7 @@ DECLARE_ASM_HANDLER(HandleLessDynPrefV8)
     {
         // slow path
         GateRef result = CallRuntime(glue, RTSTUB_ID(LessDyn), { left, acc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            varAcc = result;
-            Jump(&dispatch);
-        }
+        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
     }
     Bind(&dispatch);
     DISPATCH_WITH_ACC(PREF_V8);
@@ -1371,18 +1129,7 @@ DECLARE_ASM_HANDLER(HandleLessEqDynPrefV8)
     {
         // slow path
         GateRef result = CallRuntime(glue, RTSTUB_ID(LessEqDyn), { left, acc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            varAcc = result;
-            Jump(&dispatch);
-        }
+        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
     }
     Bind(&dispatch);
     DISPATCH_WITH_ACC(PREF_V8);
@@ -1477,18 +1224,7 @@ DECLARE_ASM_HANDLER(HandleGreaterDynPrefV8)
     {
         // slow path
         GateRef result = CallRuntime(glue, RTSTUB_ID(GreaterDyn), { left, acc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            varAcc = result;
-            Jump(&dispatch);
-        }
+        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
     }
     Bind(&dispatch);
     DISPATCH_WITH_ACC(PREF_V8);
@@ -1584,18 +1320,7 @@ DECLARE_ASM_HANDLER(HandleGreaterEqDynPrefV8)
     {
         // slow path
         GateRef result = CallRuntime(glue, RTSTUB_ID(GreaterEqDyn), { left, acc });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            varAcc = result;
-            Jump(&dispatch);
-        }
+        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
     }
     Bind(&dispatch);
     DISPATCH_WITH_ACC(PREF_V8);
@@ -1938,16 +1663,7 @@ DECLARE_ASM_HANDLER(HandleIncDynPrefV8)
     {
         // slow path
         GateRef result = CallRuntime(glue, RTSTUB_ID(IncDyn), { value });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        varAcc = result;
-        Jump(&accDispatch);
+        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
     }
     Bind(&accDispatch);
     DISPATCH_WITH_ACC(PREF_V8);
@@ -1994,16 +1710,7 @@ DECLARE_ASM_HANDLER(HandleDecDynPrefV8)
     {
         // slow path
         GateRef result = CallRuntime(glue, RTSTUB_ID(DecDyn), { value });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        varAcc = result;
-        Jump(&accDispatch);
+        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
     }
 
     Bind(&accDispatch);
@@ -2012,62 +1719,26 @@ DECLARE_ASM_HANDLER(HandleDecDynPrefV8)
 
 DECLARE_ASM_HANDLER(HandleExpDynPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef base = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(ExpDyn), { base, acc });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleIsInDynPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(IsInDyn), { prop, acc }); // acc is obj
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleInstanceOfDynPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(InstanceOfDyn), { obj, acc });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleStrictNotEqDynPrefV8)
@@ -2180,22 +1851,10 @@ DECLARE_ASM_HANDLER(HandleGetResumeModePrefV8)
 
 DECLARE_ASM_HANDLER(HandleCreateGeneratorObjPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef genFunc = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(CreateGeneratorObj), { genFunc });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleThrowConstAssignmentPrefV8)
@@ -2208,42 +1867,18 @@ DECLARE_ASM_HANDLER(HandleThrowConstAssignmentPrefV8)
 
 DECLARE_ASM_HANDLER(HandleGetTemplateObjectPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef literal = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetTemplateObject), { literal });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleGetNextPropNamePrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef iter = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetNextPropName), { iter });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleThrowIfNotObjectPrefV8)
@@ -2269,42 +1904,18 @@ DECLARE_ASM_HANDLER(HandleThrowIfNotObjectPrefV8)
 
 DECLARE_ASM_HANDLER(HandleIterNextPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef iter = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(IterNext), { iter });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleCloseIteratorPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef iter = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(CloseIterator), { iter });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleCopyModulePrefV8)
@@ -2314,110 +1925,50 @@ DECLARE_ASM_HANDLER(HandleCopyModulePrefV8)
 
 DECLARE_ASM_HANDLER(HandleSuperCallSpreadPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef array = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), { acc, array });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleDelObjPropPrefV8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(DelObjProp), { obj, prop });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleNewObjSpreadDynPrefV8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef newTarget = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(NewObjSpreadDyn), { func, newTarget, acc }); // acc is array
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateIterResultObjPrefV8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef flag = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(CreateIterResultObj), { value, flag });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleAsyncFunctionAwaitUncaughtPrefV8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef asyncFuncObj = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(AsyncFunctionAwaitUncaught), { asyncFuncObj, value });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleThrowUndefinedIfHolePrefV8V8)
@@ -2443,68 +1994,32 @@ DECLARE_ASM_HANDLER(HandleThrowUndefinedIfHolePrefV8V8)
 
 DECLARE_ASM_HANDLER(HandleCopyDataPropertiesPrefV8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef dst = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef src = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(CopyDataProperties), { dst, src });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleStArraySpreadPrefV8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef dst = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef index = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(StArraySpread), { dst, index, acc }); // acc is res
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleGetIteratorNextPrefV8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef method = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetIteratorNext), { obj, method });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleSetObjectWithProtoPrefV8V8)
@@ -2517,13 +2032,8 @@ DECLARE_ASM_HANDLER(HandleSetObjectWithProtoPrefV8V8)
     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(SetObjectWithProto), { proto, obj });
-    Label isException(env);
     Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
+    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
     DISPATCH_WITH_ACC(PREF_V8_V8);
 }
@@ -2543,7 +2053,6 @@ DECLARE_ASM_HANDLER(HandleLdObjByValuePrefV8V8)
     Label checkException(env);
     Label slowPath(env);
     Label tryFastPath(env);
-    Label dispatch(env);
 
     GateRef value = 0;
     ICStubBuilder builder(this);
@@ -2562,19 +2071,8 @@ DECLARE_ASM_HANDLER(HandleLdObjByValuePrefV8V8)
     }
     Bind(&checkException);
     {
-        Label isException(env);
-        Label noException(env);
-        Branch(TaggedIsException(*result), &isException, &noException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&noException);
-        varAcc = *result;
-        Jump(&dispatch);
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(PREF_V8_V8));
     }
-    Bind(&dispatch);
-    DISPATCH_WITH_ACC(PREF_V8_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleStObjByValuePrefV8V8)
@@ -2592,7 +2090,6 @@ DECLARE_ASM_HANDLER(HandleStObjByValuePrefV8V8)
     Label checkException(env);
     Label slowPath(env);
     Label tryFastPath(env);
-    Label dispatch(env);
 
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, acc, slotId, propKey);
@@ -2611,15 +2108,8 @@ DECLARE_ASM_HANDLER(HandleStObjByValuePrefV8V8)
     }
     Bind(&checkException);
     {
-        Label isException(env);
-        Branch(TaggedIsException(*result), &isException, &dispatch);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION(*result, INT_PTR(PREF_V8_V8));
     }
-    Bind(&dispatch);
-    DISPATCH(PREF_V8_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleStOwnByValuePrefV8V8)
@@ -2632,8 +2122,6 @@ DECLARE_ASM_HANDLER(HandleStOwnByValuePrefV8V8)
     GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v1));
     Label isHeapObject(env);
     Label slowPath(env);
-    Label isException(env);
-    Label notException(env);
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     Label notClassConstructor(env);
@@ -2648,120 +2136,67 @@ DECLARE_ASM_HANDLER(HandleStOwnByValuePrefV8V8)
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
-        Branch(TaggedIsException(result), &isException, &notException);
+        CHECK_EXCEPTION(result, INT_PTR(PREF_V8_V8));
     }
     Bind(&slowPath);
     {
         GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByValue), { receiver, propKey, acc });
-        Branch(TaggedIsException(result), &isException, &notException);
+        CHECK_EXCEPTION(result, INT_PTR(PREF_V8_V8));
     }
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH(PREF_V8_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleLdSuperByValuePrefV8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), {  receiver, propKey }); // sp for thisFunc
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_V8_V8);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleStSuperByValuePrefV8V8)
 {
-    auto env = GetEnvironment();
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v1));
      // acc is value, sp for thisFunc
     GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH(PREF_V8_V8);
+    CHECK_EXCEPTION(result, INT_PTR(PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleLdSuperByNamePrefId32V8)
 {
-    auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    Label isException(env);
-    Label dispatch(env);
 
     GateRef stringId = ReadInst32_1(pc);
     GateRef v0 = ReadInst8_5(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetObjectFromConstPool(constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
-    Branch(TaggedIsException(result), &isException, &dispatch);
-    Bind(&isException);
-    {
-        DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&dispatch);
-    varAcc = result;
-    DISPATCH_WITH_ACC(PREF_ID32_V8);
+    CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(PREF_ID32_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleStSuperByNamePrefId32V8)
 {
-    auto env = GetEnvironment();
-
-    Label isException(env);
-    Label dispatch(env);
-
     GateRef stringId = ReadInst32_1(pc);
     GateRef v0 = ReadInst8_5(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetObjectFromConstPool(constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
-    Branch(TaggedIsException(result), &isException, &dispatch);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&dispatch);
-    DISPATCH(PREF_ID32_V8);
+    CHECK_EXCEPTION(result, INT_PTR(PREF_ID32_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleLdObjByIndexPrefV8Imm32)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef index = ReadInst32_2(pc);
     Label fastPath(env);
     Label slowPath(env);
-    Label isException(env);
-    Label accDispatch(env);
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
@@ -2769,28 +2204,14 @@ DECLARE_ASM_HANDLER(HandleLdObjByIndexPrefV8Imm32)
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
-        Label notException(env);
-        Branch(TaggedIsException(result), &isException, &notException);
-        Bind(&notException);
-        varAcc = result;
-        Jump(&accDispatch);
+        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_IMM32));
     }
     Bind(&slowPath);
     {
         GateRef result = CallRuntime(glue, RTSTUB_ID(LdObjByIndex),
                                      { receiver, IntToTaggedTypeNGC(index), TaggedFalse(), Undefined() });
-        Label notException(env);
-        Branch(TaggedIsException(result), &isException, &notException);
-        Bind(&notException);
-        varAcc = result;
-        Jump(&accDispatch);
+        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(PREF_V8_IMM32));
     }
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&accDispatch);
-    DISPATCH_WITH_ACC(PREF_V8_IMM32);
 }
 
 DECLARE_ASM_HANDLER(HandleStObjByIndexPrefV8Imm32)
@@ -2802,8 +2223,6 @@ DECLARE_ASM_HANDLER(HandleStObjByIndexPrefV8Imm32)
     GateRef index = ReadInst32_2(pc);
     Label fastPath(env);
     Label slowPath(env);
-    Label isException(env);
-    Label notException(env);
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
@@ -2811,20 +2230,14 @@ DECLARE_ASM_HANDLER(HandleStObjByIndexPrefV8Imm32)
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
-        Branch(TaggedIsException(result), &isException, &notException);
+        CHECK_EXCEPTION(result, INT_PTR(PREF_V8_IMM32));
     }
     Bind(&slowPath);
     {
         GateRef result = CallRuntime(glue, RTSTUB_ID(StObjByIndex),
                                      { receiver, IntToTaggedTypeNGC(index), acc });
-        Branch(TaggedIsException(result), &isException, &notException);
+        CHECK_EXCEPTION(result, INT_PTR(PREF_V8_IMM32));
     }
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH(PREF_V8_IMM32);
 }
 
 DECLARE_ASM_HANDLER(HandleStOwnByIndexPrefV8Imm32)
@@ -2836,8 +2249,6 @@ DECLARE_ASM_HANDLER(HandleStOwnByIndexPrefV8Imm32)
     GateRef index = ReadInst32_2(pc);
     Label isHeapObject(env);
     Label slowPath(env);
-    Label isException(env);
-    Label notException(env);
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     Label notClassConstructor(env);
@@ -2852,79 +2263,46 @@ DECLARE_ASM_HANDLER(HandleStOwnByIndexPrefV8Imm32)
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
-        Branch(TaggedIsException(result), &isException, &notException);
+        CHECK_EXCEPTION(result, INT_PTR(PREF_V8_IMM32));
     }
     Bind(&slowPath);
     {
         GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex),
                                      { receiver, IntToTaggedTypeNGC(index), acc });
-        Branch(TaggedIsException(result), &isException, &notException);
+        CHECK_EXCEPTION(result, INT_PTR(PREF_V8_IMM32));
     }
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH(PREF_V8_IMM32);
 }
 
 DECLARE_ASM_HANDLER(HandleStConstToGlobalRecordPrefId32)
 {
-    auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
-    Label isException(env);
-    Label notException(env);
     GateRef stringId = ReadInst32_1(pc);
     GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedTrue() });
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&notException);
-    DISPATCH_WITH_ACC(PREF_ID32);
+    CHECK_EXCEPTION_VARACC(result, INT_PTR(PREF_ID32));
 }
 
 DECLARE_ASM_HANDLER(HandleStLetToGlobalRecordPrefId32)
 {
-    auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
-    Label isException(env);
-    Label notException(env);
     GateRef stringId = ReadInst32_1(pc);
     GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedFalse() });
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&notException);
-    DISPATCH_WITH_ACC(PREF_ID32);
+    CHECK_EXCEPTION_VARACC(result, INT_PTR(PREF_ID32));
 }
 
 DECLARE_ASM_HANDLER(HandleStClassToGlobalRecordPrefId32)
 {
-    auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
-    Label isException(env);
-    Label notException(env);
     GateRef stringId = ReadInst32_1(pc);
     GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord), { propKey, *varAcc, TaggedFalse() });
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&notException);
-    DISPATCH_WITH_ACC(PREF_ID32);
+    CHECK_EXCEPTION_VARACC(result, INT_PTR(PREF_ID32));
 }
 
 DECLARE_ASM_HANDLER(HandleNegDynPrefV8)
@@ -2968,20 +2346,11 @@ DECLARE_ASM_HANDLER(HandleNegDynPrefV8)
             varAcc = DoubleBuildTaggedWithNoGC(DoubleSub(Double(0), valueDouble));
             Jump(&accDispatch);
         }
-        Label isException(env);
-        Label notException(env);
         Bind(&valueNotDouble);
         {
             // slow path
             GateRef result = CallRuntime(glue, RTSTUB_ID(NegDyn), { value });
-            Branch(TaggedIsException(result), &isException, &notException);
-            Bind(&isException);
-            {
-                DISPATCH_LAST_WITH_ACC();
-            }
-            Bind(&notException);
-            varAcc = result;
-            Jump(&accDispatch);
+            CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(PREF_V8));
         }
     }
 
@@ -3023,19 +2392,9 @@ DECLARE_ASM_HANDLER(HandleNotDynPrefV8)
         {
             // slow path
             GateRef result = CallRuntime(glue, RTSTUB_ID(NotDyn), { value });
-            Label isException(env);
-            Label notException(env);
-            Branch(TaggedIsException(result), &isException, &notException);
-            Bind(&isException);
-            {
-                DISPATCH_LAST_WITH_ACC();
-            }
-            Bind(&notException);
-            varAcc = result;
-            Jump(&accDispatch);
+            CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(PREF_V8));
         }
     }
-
     Bind(&accDispatch);
     DISPATCH_WITH_ACC(PREF_V8);
 }
@@ -3110,18 +2469,7 @@ DECLARE_ASM_HANDLER(HandleAnd2DynPrefV8)
     Bind(&leftNotNumberOrRightNotNumber);
     {
         GateRef taggedNumber = CallRuntime(glue, RTSTUB_ID(And2Dyn), { left, right });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(taggedNumber), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        {
-            varAcc = taggedNumber;
-            DISPATCH_WITH_ACC(PREF_V8);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(taggedNumber, INT_PTR(PREF_V8));
     }
     Bind(&accDispatch);
     {
@@ -3201,18 +2549,7 @@ DECLARE_ASM_HANDLER(HandleOr2DynPrefV8)
     Bind(&leftNotNumberOrRightNotNumber);
     {
         GateRef taggedNumber = CallRuntime(glue, RTSTUB_ID(Or2Dyn), { left, right });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(taggedNumber), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        {
-            varAcc = taggedNumber;
-            DISPATCH_WITH_ACC(PREF_V8);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(taggedNumber, INT_PTR(PREF_V8));
     }
     Bind(&accDispatch);
     {
@@ -3292,18 +2629,7 @@ DECLARE_ASM_HANDLER(HandleXOr2DynPrefV8)
     Bind(&leftNotNumberOrRightNotNumber);
     {
         GateRef taggedNumber = CallRuntime(glue, RTSTUB_ID(Xor2Dyn), { left, right });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(taggedNumber), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        {
-            varAcc = taggedNumber;
-            DISPATCH_WITH_ACC(PREF_V8);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(taggedNumber, INT_PTR(PREF_V8));
     }
     Bind(&accDispatch);
     {
@@ -3383,18 +2709,7 @@ DECLARE_ASM_HANDLER(HandleAshr2DynPrefV8)
     Bind(&leftNotNumberOrRightNotNumber);
     {
         GateRef taggedNumber = CallRuntime(glue, RTSTUB_ID(Ashr2Dyn), { left, right });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(taggedNumber), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        {
-            varAcc = taggedNumber;
-            DISPATCH_WITH_ACC(PREF_V8);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(taggedNumber, INT_PTR(PREF_V8));
     }
     Bind(&accDispatch);
     {
@@ -3478,18 +2793,7 @@ DECLARE_ASM_HANDLER(HandleShr2DynPrefV8)
     Bind(&leftNotNumberOrRightNotNumber);
     {
         GateRef taggedNumber = CallRuntime(glue, RTSTUB_ID(Shr2Dyn), { left, right });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(taggedNumber), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        {
-            varAcc = taggedNumber;
-            Jump(&accDispatch);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(taggedNumber, INT_PTR(PREF_V8));
     }
     Bind(&doShr);
     {
@@ -3584,18 +2888,7 @@ DECLARE_ASM_HANDLER(HandleShl2DynPrefV8)
     Bind(&leftNotNumberOrRightNotNumber);
     {
         GateRef taggedNumber = CallRuntime(glue, RTSTUB_ID(Shl2Dyn), { left, right });
-        Label IsException(env);
-        Label NotException(env);
-        Branch(TaggedIsException(taggedNumber), &IsException, &NotException);
-        Bind(&IsException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&NotException);
-        {
-            varAcc = taggedNumber;
-            DISPATCH_WITH_ACC(PREF_V8);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(taggedNumber, INT_PTR(PREF_V8));
     }
     Bind(&accDispatch);
     {
@@ -3646,7 +2939,6 @@ DECLARE_ASM_HANDLER(HandleLdObjByNamePrefId32V8)
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
 
     Label checkException(env);
-    Label dispatch(env);
     Label tryFastPath(env);
     Label slowPath(env);
 
@@ -3671,19 +2963,8 @@ DECLARE_ASM_HANDLER(HandleLdObjByNamePrefId32V8)
     }
     Bind(&checkException);
     {
-        Label isException(env);
-        Label noException(env);
-        Branch(TaggedIsException(*result), &isException, &noException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&noException);
-        varAcc = *result;
-        Jump(&dispatch);
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(PREF_ID32_V8));
     }
-    Bind(&dispatch);
-    DISPATCH_WITH_ACC(PREF_ID32_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleStObjByNamePrefId32V8)
@@ -3695,7 +2976,6 @@ DECLARE_ASM_HANDLER(HandleStObjByNamePrefId32V8)
     DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
 
     Label checkException(env);
-    Label dispatch(env);
     Label tryFastPath(env);
     Label slowPath(env);
 
@@ -3720,15 +3000,8 @@ DECLARE_ASM_HANDLER(HandleStObjByNamePrefId32V8)
     }
     Bind(&checkException);
     {
-        Label isException(env);
-        Branch(TaggedIsException(*result), &isException, &dispatch);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION(*result, INT_PTR(PREF_ID32_V8));
     }
-    Bind(&dispatch);
-    DISPATCH(PREF_ID32_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleStOwnByValueWithNameSetPrefV8V8)
@@ -3742,9 +3015,7 @@ DECLARE_ASM_HANDLER(HandleStOwnByValueWithNameSetPrefV8V8)
     Label notClassConstructor(env);
     Label notClassPrototype(env);
     Label notHole(env);
-    Label isException(env);
     Label notException(env);
-    Label isException1(env);
     Label notException1(env);
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
@@ -3759,11 +3030,7 @@ DECLARE_ASM_HANDLER(HandleStOwnByValueWithNameSetPrefV8V8)
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
                 {
-                    Branch(TaggedIsException(res), &isException, &notException);
-                    Bind(&isException);
-                    {
-                        DispatchLast(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
-                    }
+                    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
                     Bind(&notException);
                     CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
                     DISPATCH(PREF_V8_V8);
@@ -3774,11 +3041,7 @@ DECLARE_ASM_HANDLER(HandleStOwnByValueWithNameSetPrefV8V8)
     Bind(&slowPath);
     {
         GateRef res = CallRuntime(glue, RTSTUB_ID(StOwnByValueWithNameSet), { receiver, propKey, acc });
-        Branch(TaggedIsException(res), &isException1, &notException1);
-        Bind(&isException1);
-        {
-            DispatchLast(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
-        }
+        CHECK_EXCEPTION_WITH_JUMP(res, &notException1);
         Bind(&notException1);
         DISPATCH(PREF_V8_V8);
     }
@@ -3792,7 +3055,6 @@ DECLARE_ASM_HANDLER(HandleStOwnByNamePrefId32V8)
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_5(pc)));
     DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
     Label checkResult(env);
-    Label dispatch(env);
 
     Label isJSObject(env);
     Label slowPath(env);
@@ -3819,15 +3081,8 @@ DECLARE_ASM_HANDLER(HandleStOwnByNamePrefId32V8)
     }
     Bind(&checkResult);
     {
-        Label isException(env);
-        Branch(TaggedIsException(*result), &isException, &dispatch);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION(*result, INT_PTR(PREF_ID32_V8));
     }
-    Bind(&dispatch);
-    DISPATCH(PREF_ID32_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleStOwnByNameWithNameSetPrefId32V8)
@@ -3841,9 +3096,7 @@ DECLARE_ASM_HANDLER(HandleStOwnByNameWithNameSetPrefId32V8)
     Label notClassConstructor(env);
     Label notClassPrototype(env);
     Label notHole(env);
-    Label isException(env);
     Label notException(env);
-    Label isException1(env);
     Label notException1(env);
     Branch(IsJSObject(receiver), &isJSObject, &notJSObject);
     Bind(&isJSObject);
@@ -3858,9 +3111,7 @@ DECLARE_ASM_HANDLER(HandleStOwnByNameWithNameSetPrefId32V8)
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
-                    Branch(TaggedIsException(res), &isException, &notException);
-                    Bind(&isException);
-                    DispatchLast(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
+                    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
                     Bind(&notException);
                     CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
                     DISPATCH(PREF_ID32_V8);
@@ -3871,9 +3122,7 @@ DECLARE_ASM_HANDLER(HandleStOwnByNameWithNameSetPrefId32V8)
     Bind(&notJSObject);
     {
         GateRef res = CallRuntime(glue, RTSTUB_ID(StOwnByNameWithNameSet), { receiver, propKey, acc });
-        Branch(TaggedIsException(res), &isException1, &notException1);
-        Bind(&isException1);
-        DispatchLast(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
+        CHECK_EXCEPTION_WITH_JUMP(res, &notException1);
         Bind(&notException1);
         DISPATCH(PREF_ID32_V8);
     }
@@ -4416,16 +3665,7 @@ DECLARE_ASM_HANDLER(HandleTryLdGlobalByNamePrefId32)
         }
         Bind(&icResultCheck);
         {
-            Label isException(env);
-            Label isNotException(env);
-            Branch(TaggedIsException(*icResult), &isException, &isNotException);
-            Bind(&isException);
-            {
-                DISPATCH_LAST_WITH_ACC();
-            }
-            Bind(&isNotException);
-            varAcc = *icResult;
-            Jump(&dispatch);
+            CHECK_EXCEPTION_WITH_VARACC(*icResult, INT_PTR(PREF_ID32));
         }
     }
     Bind(&icNotAvailable);
@@ -4445,16 +3685,7 @@ DECLARE_ASM_HANDLER(HandleTryLdGlobalByNamePrefId32)
             Bind(&slowPath);
             {
                 GateRef slowResult = CallRuntime(glue, RTSTUB_ID(TryLdGlobalByName), { prop });
-                Label isException(env);
-                Label isNotException(env);
-                Branch(TaggedIsException(slowResult), &isException, &isNotException);
-                Bind(&isException);
-                {
-                    DISPATCH_LAST_WITH_ACC();
-                }
-                Bind(&isNotException);
-                varAcc = slowResult;
-                Jump(&dispatch);
+                CHECK_EXCEPTION_WITH_VARACC(slowResult, INT_PTR(PREF_ID32));
             }
             Bind(&isFoundInGlobal);
             {
@@ -4480,7 +3711,6 @@ DECLARE_ASM_HANDLER(HandleTryStGlobalByNamePrefId32)
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
     Label checkResult(env);
-    Label dispatch(env);
 
     Label icAvailable(env);
     Label icNotAvailable(env);
@@ -4537,15 +3767,8 @@ DECLARE_ASM_HANDLER(HandleTryStGlobalByNamePrefId32)
     }
     Bind(&checkResult);
     {
-        Label isException(env);
-        Branch(TaggedIsException(*result), &isException, &dispatch);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION(*result, INT_PTR(PREF_ID32));
     }
-    Bind(&dispatch);
-    DISPATCH(PREF_ID32);
 }
 
 DECLARE_ASM_HANDLER(HandleLdGlobalVarPrefId32)
@@ -4601,12 +3824,7 @@ DECLARE_ASM_HANDLER(HandleLdGlobalVarPrefId32)
     }
     Bind(&checkResult);
     {
-        Label isException(env);
-        Branch(TaggedIsException(*result), &isException, &dispatch);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(PREF_ID32));
     }
     Bind(&dispatch);
     varAcc = *result;
@@ -4622,7 +3840,6 @@ DECLARE_ASM_HANDLER(HandleStGlobalVarPrefId32)
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
     Label checkResult(env);
-    Label dispatch(env);
 
     Label icAvailable(env);
     Label icNotAvailable(env);
@@ -4655,38 +3872,18 @@ DECLARE_ASM_HANDLER(HandleStGlobalVarPrefId32)
     }
     Bind(&checkResult);
     {
-        Label isException(env);
-        Branch(TaggedIsException(*result), &isException, &dispatch);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
+        CHECK_EXCEPTION(*result, INT_PTR(PREF_ID32));
     }
-    Bind(&dispatch);
-    DISPATCH(PREF_ID32);
 }
 
 DECLARE_ASM_HANDLER(HandleCreateRegExpWithLiteralPrefId32Imm8)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
     GateRef stringId = ReadInst32_1(pc);
     GateRef pattern = GetObjectFromConstPool(constpool, stringId);
     GateRef flags = ReadInst8_5(pc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateRegExpWithLiteral),
                               { pattern, Int8ToTaggedTypeNGC(flags) });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    {
-        varAcc = res;
-        DISPATCH_WITH_ACC(PREF_ID32_IMM8);
-    }
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_ID32_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleIsTruePref)
@@ -4738,18 +3935,7 @@ DECLARE_ASM_HANDLER(HandleToNumberPrefV8)
     Bind(&valueNotNumber);
     {
         GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumber), { value });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(res), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        {
-            varAcc = res;
-            DISPATCH_WITH_ACC(PREF_V8);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(PREF_V8));
     }
 }
 
@@ -4775,18 +3961,7 @@ DECLARE_ASM_HANDLER(HandleAdd2DynPrefV8)
     Bind(&slowPath);
     {
         GateRef taggedNumber = CallRuntime(glue, RTSTUB_ID(Add2Dyn), { left, right });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(taggedNumber), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        {
-            varAcc = taggedNumber;
-            Jump(&accDispatch);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(taggedNumber, INT_PTR(PREF_V8));
     }
 
     Bind(&accDispatch);
@@ -4815,18 +3990,7 @@ DECLARE_ASM_HANDLER(HandleSub2DynPrefV8)
     Bind(&slowPath);
     {
         GateRef taggedNumber = CallRuntime(glue, RTSTUB_ID(Sub2Dyn), { left, right });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(taggedNumber), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        {
-            varAcc = taggedNumber;
-            Jump(&accDispatch);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(taggedNumber, INT_PTR(PREF_V8));
     }
 
     Bind(&accDispatch);
@@ -4835,26 +3999,16 @@ DECLARE_ASM_HANDLER(HandleSub2DynPrefV8)
 
 DECLARE_ASM_HANDLER(HandleCallArg0DynPrefV8)
 {
-    auto env = GetEnvironment();
     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG0);
     GateRef funcReg = ReadInst8_1(pc);
     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, JSCallMode::CALL_ARG0, {});
-    Label isException(env);
-    Label notException(env);
-    Branch(HasPendingException(glue), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH_BAK(ACC_RES, jumpSize);
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallArg1DynPrefV8V8)
 {
-    auto env = GetEnvironment();
     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG1);
     GateRef funcReg = ReadInst8_1(pc);
     GateRef a0 = ReadInst8_2(pc);
@@ -4862,20 +4016,11 @@ DECLARE_ASM_HANDLER(HandleCallArg1DynPrefV8V8)
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, JSCallMode::CALL_ARG1, { a0Value });
-    Label isException(env);
-    Label notException(env);
-    Branch(HasPendingException(glue), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH_BAK(ACC_RES, jumpSize);
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallArgs2DynPrefV8V8V8)
 {
-    auto env = GetEnvironment();
     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARGS2);
     GateRef funcReg = ReadInst8_1(pc);
     GateRef a0 = ReadInst8_2(pc);
@@ -4886,20 +4031,11 @@ DECLARE_ASM_HANDLER(HandleCallArgs2DynPrefV8V8V8)
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs,
                                  JSCallMode::CALL_ARG2, { a0Value, a1Value });
-    Label isException(env);
-    Label notException(env);
-    Branch(HasPendingException(glue), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH_BAK(ACC_RES, jumpSize);
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallArgs3DynPrefV8V8V8V8)
 {
-    auto env = GetEnvironment();
     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARGS3);
     GateRef funcReg = ReadInst8_1(pc);
     GateRef a0 = ReadInst8_2(pc);
@@ -4912,20 +4048,11 @@ DECLARE_ASM_HANDLER(HandleCallArgs3DynPrefV8V8V8V8)
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8_V8_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs,
                                  JSCallMode::CALL_ARG3, { a0Value, a1Value, a2Value });
-    Label isException(env);
-    Label notException(env);
-    Branch(HasPendingException(glue), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH_BAK(ACC_RES, jumpSize);
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallIRangeDynPrefImm16V8)
 {
-    auto env = GetEnvironment();
     GateRef actualNumArgs = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef funcReg = ReadInst8_3(pc);
     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
@@ -4935,20 +4062,11 @@ DECLARE_ASM_HANDLER(HandleCallIRangeDynPrefImm16V8)
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs,
                                  JSCallMode::CALL_WITH_ARGV, { numArgs, argv });
-    Label isException(env);
-    Label notException(env);
-    Branch(HasPendingException(glue), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH_BAK(ACC_RES, jumpSize);
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleCallIThisRangeDynPrefImm16V8)
 {
-    auto env = GetEnvironment();
     GateRef actualNumArgs = Int32Sub(ZExtInt16ToInt32(ReadInst16_1(pc)), Int32(1));  // 1: exclude this
     GateRef funcReg = ReadInst8_3(pc);
     funcReg = ZExtInt8ToPtr(funcReg);
@@ -4960,34 +4078,15 @@ DECLARE_ASM_HANDLER(HandleCallIThisRangeDynPrefImm16V8)
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs,
                                  JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue });
-    Label isException(env);
-    Label notException(env);
-    Branch(HasPendingException(glue), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    DISPATCH_BAK(ACC_RES, jumpSize);
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
 DECLARE_ASM_HANDLER(HandleLdBigIntPrefId32)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef stringId = ReadInst32_1(pc);
     GateRef numberBigInt = GetObjectFromConstPool(constpool, stringId);
     GateRef res = CallRuntime(glue, RTSTUB_ID(LdBigInt), { numberBigInt });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(PREF_ID32);
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_ID32));
 }
 
 DECLARE_ASM_HANDLER(HandleToNumericPrefV8)
@@ -5007,18 +4106,7 @@ DECLARE_ASM_HANDLER(HandleToNumericPrefV8)
     Bind(&valueNotNumeric);
     {
         GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumeric), { value });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(res), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
-        Bind(&notException);
-        {
-            varAcc = res;
-            DISPATCH_WITH_ACC(PREF_V8);
-        }
+        CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(PREF_V8));
     }
 }
 
@@ -5121,13 +4209,8 @@ DECLARE_ASM_HANDLER(HandleNewLexEnvWithNameDynPrefImm16Imm16)
     GateRef scopeId = ReadInst16_3(pc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(NewLexicalEnvWithNameDyn),
                               { Int16ToTaggedTypeNGC(numVars), Int16ToTaggedTypeNGC(scopeId) });
-    Label isException(env);
     Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
+    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
     Bind(&notException);
     varAcc = res;
     GateRef state = GetFrame(sp);
@@ -5142,7 +4225,6 @@ DECLARE_ASM_HANDLER(InterpreterGetPropertyByName)
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
 
     Label checkResult(env);
-    Label dispatch(env);
     Label slowPath(env);
     Label isException(env);
 
@@ -5161,15 +4243,8 @@ DECLARE_ASM_HANDLER(InterpreterGetPropertyByName)
     }
     Bind(&checkResult);
     {
-        Branch(TaggedIsException(*result), &isException, &dispatch);
-        Bind(&isException);
-        {
-            DISPATCH_LAST_WITH_ACC();
-        }
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(PREF_ID32_V8));
     }
-    Bind(&dispatch);
-    varAcc = *result;
-    DISPATCH_WITH_ACC(PREF_ID32_V8);
 }
 
 DECLARE_ASM_HANDLER(NewObjectDynRangeThrowException)
