@@ -23,18 +23,6 @@
 #include "ecmascript/interpreter/frame_handler.h"
 
 namespace panda::ecmascript {
-JSTaggedType *OptimizedLeaveFrame::GetJsFuncFrameArgv(JSThread *thread) const
-{
-    int delta = 0;
-    auto current = GetPrevFrameFp();
-    FrameIterator it(current, thread);
-    delta = it.GetCallSiteDelta(returnAddr);
-    uintptr_t *preFrameSp = reinterpret_cast<uintptr_t *>(const_cast<JSTaggedType *>(current))
-        + delta / sizeof(uintptr_t);
-    JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(preFrameSp + sizeof(uint64_t) / sizeof(uintptr_t));
-    return argv;
-}
-
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
     if (thread != nullptr) {
@@ -260,7 +248,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc
             return frame->GetPrevFrameSp();
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME : {
-            auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + sizeof(uintptr_t);
+            auto callSiteSp = OptimizedJSFunctionFrame::ComputeArgsConfigFrameSp(current_);
             return callSiteSp;
         }
         case FrameType::BUILTIN_ENTRY_FRAME:

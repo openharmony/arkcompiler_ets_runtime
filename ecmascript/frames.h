@@ -465,6 +465,11 @@ public:
     {
         env = lexEnv;
     }
+    static uintptr_t ComputeArgsConfigFrameSp(JSTaggedType *fp)
+    {
+        const size_t offset = 2;  // 2: skip prevFp and return address.
+        return reinterpret_cast<uintptr_t>(fp) + offset * sizeof(uintptr_t);
+    }
     friend class FrameIterator;
 
 private:
@@ -479,6 +484,7 @@ private:
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
     // dynamic callee saveregisters for arm64
+    // env
     // argc
     // argv[0]
     // argv[1]
@@ -865,8 +871,6 @@ struct OptimizedLeaveFrame {
     {
         return reinterpret_cast<JSTaggedType*>(callsiteFp);
     }
-
-    JSTaggedType *GetJsFuncFrameArgv(JSThread *thread) const;
 
     uintptr_t GetReturnAddr() const
     {

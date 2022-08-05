@@ -235,7 +235,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(DefineAsyncGeneratorFunc)           \
     V(NewLexicalEnvWithNameDyn)           \
     V(OptGetUnmapedArgs)                  \
-    V(OptGetUnmapedArgsWithRestArgs)      \
     V(OptCopyRestArgs)                    \
     V(NotifyBytecodePcChanged)            \
     V(OptGetLexicalEnv)                   \
@@ -533,7 +532,6 @@ private:
     static inline JSTaggedValue RuntimeLdBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &numberBigInt);
     static inline JSTaggedValue RuntimeNewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId);
     static inline JSTaggedValue RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t actualNumArgs);
-    static inline JSTaggedValue RuntimeOptGetUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs);
     static inline JSTaggedValue RuntimeGetUnmapedJSArgumentObj(JSThread *thread,
                                                                const JSHandle<TaggedArray> &argumentsList);
     static inline JSTaggedValue RuntimeOptNewLexicalEnvDyn(JSThread *thread, uint16_t numVars,

@@ -1947,21 +1947,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t 
     return RuntimeGetUnmapedJSArgumentObj(thread, argumentsList);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeOptGetUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> argumentsList = factory->NewTaggedArray(actualNumArgs - FIXED_NUM_ARGS);
-    auto leaveFrame = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
-    auto frame = OptimizedLeaveFrame::GetFrameFromSp(leaveFrame);
-    JSTaggedType *argv = frame->GetJsFuncFrameArgv(thread);
-    for (uint32_t i = 0; i < actualNumArgs - FIXED_NUM_ARGS; ++i) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        JSTaggedType arg = reinterpret_cast<JSTaggedType *>(argv)[i + FIXED_NUM_ARGS]; // skip actualNumArgs
-        argumentsList->Set(thread, i, JSTaggedValue(arg));
-    }
-    return RuntimeGetUnmapedJSArgumentObj(thread, argumentsList);
-}
-
 JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, const JSHandle<TaggedArray> &argumentsList)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -2055,7 +2040,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
                                                        const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
-    JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
 
     // change state to SuspendedYield
     if (generatorObjectHandle->IsExecuting()) {

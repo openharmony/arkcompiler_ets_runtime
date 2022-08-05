@@ -1647,13 +1647,6 @@ DEF_RUNTIME_STUBS(OptGetUnmapedArgs)
     return RuntimeOptGetUnmapedArgs(thread, actualNumArgs.GetInt()).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(OptGetUnmapedArgsWithRestArgs)
-{
-    RUNTIME_STUBS_HEADER(OptGetUnmapedArgsWithRestArgs);
-    JSTaggedValue actualNumArgs = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeOptGetUnmapedArgsWithRestArgs(thread, actualNumArgs.GetInt()).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(OptGetLexicalEnv)
 {
     RUNTIME_STUBS_HEADER(OptGetLexicalEnv);
