@@ -220,10 +220,8 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     // initialize Function, forbidden change order
     InitializeFunction(env, emptyFuncDynclass);
 
-    JSHandle<JSObject> objFuncInstancePrototype = factory_->NewJSObject(objFuncDynclass);
-    JSHandle<JSTaggedValue> objFuncInstancePrototypeValue(objFuncInstancePrototype);
     JSHandle<JSHClass> asyncFuncClass = factory_->CreateFunctionClass(
-        FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION, objFuncInstancePrototypeValue);
+        FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION, env->GetFunctionPrototype());
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
 
     JSHandle<JSHClass> asyncAwaitStatusFuncClass =
