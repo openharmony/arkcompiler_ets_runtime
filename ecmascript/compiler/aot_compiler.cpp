@@ -67,10 +67,11 @@ int Main(const int argc, const char **argv)
     }
 
     Logger::Initialize(baseOptions);
-    Logger::SetLevel(Logger::Level::INFO);
-    Logger::ResetComponentMask();  // disable all Component
-    Logger::EnableComponent(Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
-
+    if (runtimeOptions.WasSetCompilerLogOption()) {
+        Logger::SetLevel(Logger::Level::INFO);
+        Logger::ResetComponentMask();  // disable all Component
+        Logger::EnableComponent(Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
+    }
     arg_list_t arguments = paParser.GetRemainder();
 
     if (runtimeOptions.IsStartupTime()) {

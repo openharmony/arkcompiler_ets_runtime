@@ -267,6 +267,7 @@ template("host_aot_test_action") {
   _test_aot_path_ = "$target_out_dir/${_target_name_}.aot"
   _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.etso"
   _test_aot_arg_ = "$target_out_dir/${_target_name_}"
+  _test_aot_log_level = "info"
   _test_expect_path_ = "./expect_output.txt"
 
   ts2abc_gen_abc("gen_${_target_name_}_abc") {
@@ -298,7 +299,9 @@ template("host_aot_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    _aot_compile_options_ = " --aot-file=" + rebase_path(_test_aot_arg_)
+    _aot_compile_options_ =
+        " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
+        _test_aot_log_level + " --log-components=ECMASCRIPT"
 
     args = [
       "--script-file",

@@ -190,9 +190,11 @@ int main(const int argc, const char **argv)
     }
 
     panda::Logger::Initialize(baseOptions);
-    panda::Logger::SetLevel(panda::Logger::Level::INFO);
-    panda::Logger::ResetComponentMask();  // disable all Component
-    panda::Logger::EnableComponent(panda::Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
+    if (runtimeOptions.WasSetCompilerLogOption()) {
+        panda::Logger::SetLevel(panda::Logger::Level::INFO);
+        panda::Logger::ResetComponentMask();  // disable all Component
+        panda::Logger::EnableComponent(panda::Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
+    }
 
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();
