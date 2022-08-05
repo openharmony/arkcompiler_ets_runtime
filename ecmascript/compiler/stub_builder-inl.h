@@ -1983,5 +1983,19 @@ inline GateRef StubBuilder::HasPendingException(GateRef glue)
     GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
     return Int64NotEqual(exception, Int64(JSTaggedValue::VALUE_HOLE));
 }
+
+inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
+                                             const std::initializer_list<GateRef>& args)
+{
+    GateRef target = PtrMul(ChangeInt32ToIntPtr(ZExtInt8ToInt32(builtinsId)), IntPtrSize());
+    return env_->GetBuilder()->CallBuiltin(glue, target, args);
+}
+
+inline GateRef StubBuilder::GetBuiltinId(GateRef method)
+{
+    // 7: builtinsIdOffset
+    GateRef builtinsIdOffset = PtrAdd(IntPtr(JSMethod::GetHotnessCounterOffset(env_->IsArch32Bit())), IntPtr(7));
+    return Load(VariableType::INT8(), method, builtinsIdOffset);
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

@@ -121,11 +121,17 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
     }
 }
 
-bool StubCompiler::BuildStubModuleAndSave() const
+void StubCompiler::InitializeCS() const
 {
     BytecodeStubCSigns::Initialize();
     CommonStubCSigns::Initialize();
+    BuiltinsStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
+}
+
+bool StubCompiler::BuildStubModuleAndSave() const
+{
+    InitializeCS();
     size_t res = 0;
     const CompilerLog *log = GetLog();
     const MethodLogList *logList = GetLogList();
@@ -144,6 +150,13 @@ bool StubCompiler::BuildStubModuleAndSave() const
         comStubModule.SetUpForCommonStubs();
         RunPipeline(&comStubModule);
         generator.AddModule(&comStubModule, &comStubAssembler);
+        res++;
+        LOG_COMPILER(INFO) << "compiling builtins stubs";
+        LLVMModule builtinsStubModule("builtins_stub", triple_);
+        LLVMAssembler builtinsStubAssembler(builtinsStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
+        builtinsStubModule.SetUpForBuiltinsStubs();
+        RunPipeline(&builtinsStubModule);
+        generator.AddModule(&builtinsStubModule, &builtinsStubAssembler);
         res++;
         generator.SaveStubFile(filePath_);
     }

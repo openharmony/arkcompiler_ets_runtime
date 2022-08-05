@@ -412,6 +412,25 @@ DEF_CALL_SIGNATURE(GetTaggedArrayPtrTest)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB);
 }
 
+DEF_CALL_SIGNATURE(Builtins)
+{
+    // 6 : 6 input parameters
+    CallSignature builtins("Builtins", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = builtins;
+    std::array<VariableType, 6> params = { // 6 : 6 input parameters
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::BUILTINS_STUB);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(BytecodeHandler)
 {
     // 7 : 7 input parameters

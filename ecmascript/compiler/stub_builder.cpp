@@ -3815,6 +3815,8 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label funcIsHeapObject(env);
     Label funcIsCallable(env);
     Label funcNotCallable(env);
+    Label isFastBuiltins(env);
+    Label notFastBuiltins(env);
     // save pc
     SavePcIfNeeded(glue);
     GateRef bitfield = 0;
@@ -3868,7 +3870,19 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 break;
             case JSCallMode::CALL_THIS_WITH_ARGV: {
                 thisValue = data[2]; // 2: this input
-                [[fallthrough]];
+                GateRef isFastBuiltinsMask = Int64(static_cast<uint64_t>(1) << JSMethod::IsFastBuiltinBit::START_BIT);
+                Branch(Int64NotEqual(Int64And(callField, isFastBuiltinsMask), Int64(0)),
+                    &isFastBuiltins, &notFastBuiltins);
+                Bind(&isFastBuiltins);
+                {
+                    GateRef builtinId = GetBuiltinId(method);
+                    result = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue, data[0], data[1] });
+                    Jump(&exit);
+                }
+                Bind(&notFastBuiltins);
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallIRangeAndDispatchNative),
+                    { glue, nativeCode, func, thisValue, data[0], data[1] });
+                break;
             }
             case JSCallMode::CALL_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallIRangeAndDispatchNative),

@@ -56,7 +56,8 @@ private:
                                            const char *name, int length) const;
 
     JSHandle<JSFunction> NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
-                                     EcmaEntrypoint func, int length) const;
+                                     EcmaEntrypoint func, int length,
+                                     uint8_t builtinId = INVALID_BUILTINS_ID) const;
 
     void InitializeCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
                         const JSHandle<JSFunction> &ctor, const char *name, int length) const;
@@ -212,10 +213,10 @@ private:
     void InitializeCjsRequire(const JSHandle<GlobalEnv> &env) const;
 
     void SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
-                     EcmaEntrypoint func, int length) const;
+                     EcmaEntrypoint func, int length, uint8_t builtinId = INVALID_BUILTINS_ID) const;
 
     void SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                     EcmaEntrypoint func, int length) const;
+                     EcmaEntrypoint func, int length, uint8_t builtinId = INVALID_BUILTINS_ID) const;
 
     void SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
                                const JSHandle<JSObject> &obj, const char *key, EcmaEntrypoint func, int length);

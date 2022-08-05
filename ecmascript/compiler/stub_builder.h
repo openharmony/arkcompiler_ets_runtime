@@ -405,6 +405,7 @@ public:
     GateRef GetFunctionBitFieldFromJSFunction(GateRef object);
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
+    inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetEntryIndexOfGlobalDictionary(GateRef entry);
@@ -458,6 +459,7 @@ public:
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                        GateRef jsType);
     GateRef TryStringOrSymbelToElementIndex(GateRef string);
+    inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::initializer_list<GateRef>& args);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode::Op Op>
