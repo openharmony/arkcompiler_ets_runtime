@@ -33,7 +33,8 @@ void AsyncFunctionLowering::ProcessJumpTable()
 
     GateRef contextOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET);
     GateRef val = builder_.PtrAdd(newTarget, contextOffset);
-    GateRef contextGate = circuit_->NewGate(OpCode(OpCode::LOAD), MachineType::I64, 0, {dependEntry_, val},
+    GateRef dependStart = builder_.DependRelay(ifFalseCondition, dependEntry_);
+    GateRef contextGate = circuit_->NewGate(OpCode(OpCode::LOAD), MachineType::I64, 0, {dependStart, val},
                                             GateType::TaggedPointer());
     GateRef bcOffset = builder_.IntPtr(GeneratorContext::GENERATOR_BC_OFFSET_OFFSET);
     val = builder_.PtrAdd(contextGate, bcOffset);
