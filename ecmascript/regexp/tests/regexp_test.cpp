@@ -604,6 +604,26 @@ HWTEST_F_L0(RegExpTest, ParseNoError2)
     ASSERT_FALSE(parseResult);
 }
 
+HWTEST_F_L0(RegExpTest, ParseNoError3)
+{
+    RegExpParser parser = RegExpParser(chunk_);
+    CString source("[\\⥚]");
+    parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 1);
+    parser.Parse();
+    bool parseResult = parser.IsError();
+    ASSERT_FALSE(parseResult);
+}
+
+HWTEST_F_L0(RegExpTest, ParseNoError4)
+{
+    RegExpParser parser = RegExpParser(chunk_);
+    CString source("[\\⊲|\\⇐]");
+    parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 1);
+    parser.Parse();
+    bool parseResult = parser.IsError();
+    ASSERT_FALSE(parseResult);
+}
+
 HWTEST_F_L0(RegExpTest, ParseAndExec1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
