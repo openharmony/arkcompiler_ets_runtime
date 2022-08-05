@@ -170,20 +170,6 @@ bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapA
     return true;
 }
 
-std::vector<intptr_t> LLVMStackMapParser::CalcCallsitePc(std::vector<std::pair<uintptr_t, DeoptInfoType>> &pc2Deopt,
-    std::vector<std::pair<uintptr_t, CallSiteInfo>> &pc2StackMap)
-{
-    std::set<uintptr_t> pcSet;
-    for (auto &it: pc2Deopt) {
-        pcSet.insert(it.first);
-    }
-    for (auto &it: pc2StackMap) {
-        pcSet.insert(it.first);
-    }
-    std::vector<intptr_t> pcVec(pcSet.begin(), pcSet.end());
-    return pcVec;
-}
-
 uint32_t ARKCallsite::CalHeadSize() const
 {
     uint32_t headSize = sizeof(head);

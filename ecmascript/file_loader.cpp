@@ -59,6 +59,22 @@ void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
     file.write(reinterpret_cast<char *>(&cnt), sizeof(cnt));
 }
 
+void ModuleSectionDes::LoadStackMapSection(BinaryBufferParser &parser, uintptr_t secBegin, uint32_t &curUnitOffset)
+{
+    uint32_t size;
+    parser.ParseBuffer(&size, sizeof(size));
+    parser.ParseBuffer(reinterpret_cast<void *>(secBegin), size);
+    SetArkStackMapSize(size);
+    SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secBegin));
+    curUnitOffset += size;
+    uint32_t index;
+    uint32_t cnt;
+    parser.ParseBuffer(&index, sizeof(index));
+    parser.ParseBuffer(&cnt, sizeof(cnt));
+    SetStartIndex(index);
+    SetFuncCount(cnt);
+}
+
 void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
     uint32_t &curUnitOffset, JSHandle<MachineCode> &code)
 {
@@ -77,17 +93,21 @@ void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
         SetSecAddr(secBegin, secEnumName);
         secBegin += secSize;
     }
+    LoadStackMapSection(parser, secBegin, curUnitOffset);
+}
 
+void ModuleSectionDes::LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset)
+{
     uint32_t size;
-    parser.ParseBuffer(&size, sizeof(size));
-    parser.ParseBuffer(reinterpret_cast<void *>(secBegin), size);
+    file.read(reinterpret_cast<char *>(&size), sizeof(size));
+    file.read(reinterpret_cast<char *>(secBegin), size);
     SetArkStackMapSize(size);
     SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secBegin));
     curUnitOffset += size;
     uint32_t index;
     uint32_t cnt;
-    parser.ParseBuffer(&index, sizeof(index));
-    parser.ParseBuffer(&cnt, sizeof(cnt));
+    file.read(reinterpret_cast<char *>(&index), sizeof(index));
+    file.read(reinterpret_cast<char *>(&cnt), sizeof(cnt));
     SetStartIndex(index);
     SetFuncCount(cnt);
 }
@@ -110,18 +130,7 @@ void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
         SetSecAddr(secBegin, secEnumName);
         secBegin += secSize;
     }
-    uint32_t size;
-    file.read(reinterpret_cast<char *>(&size), sizeof(size));
-    file.read(reinterpret_cast<char *>(secBegin), size);
-    SetArkStackMapSize(size);
-    SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secBegin));
-    curUnitOffset += size;
-    uint32_t index;
-    uint32_t cnt;
-    file.read(reinterpret_cast<char *>(&index), sizeof(index));
-    file.read(reinterpret_cast<char *>(&cnt), sizeof(cnt));
-    SetStartIndex(index);
-    SetFuncCount(cnt);
+    LoadStackMapSection(file, secBegin, curUnitOffset);
 }
 
 void StubModulePackInfo::Save(const std::string &filename)

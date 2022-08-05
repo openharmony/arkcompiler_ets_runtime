@@ -44,9 +44,10 @@ std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::Run(std::uniqu
     if (!result) {
         UNREACHABLE();
     }
-    auto pc2stackMaps = parser.GetPc2StackMap();
+    auto pc2stackMapVec = parser.GetPc2StackMapVec();
     auto pc2DeoptVec = parser.GetPc2Deopt();
-    ARKCallsitePackInfo packInfo = GenArkCallsitePackInfo(pc2stackMaps, pc2DeoptVec);
+    ARKCallsitePackInfo packInfo;
+    GenArkCallsitePackInfo(pc2stackMapVec, pc2DeoptVec, packInfo);
     uint32_t totalSize = packInfo.secHead.totalSize;
     uint8_t *p = new(std::nothrow) uint8_t[totalSize];
     if (p == nullptr) {
@@ -110,10 +111,9 @@ void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsitePackInfo& info, BinaryBuf
     }
 }
 
-ArkStackMap ArkStackMapParser::ParseArkStackMap(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
-    uint8_t *ptr) const
+void ArkStackMapParser::ParseArkStackMap(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
+    uint8_t *ptr, ArkStackMap &arkStackMaps) const
 {
-    ArkStackMap arkStackMaps;
     DwarfRegType reg;
     OffsetType offsetType;
     uint32_t offset = callsiteHead.stackmapOffset;
@@ -128,13 +128,11 @@ ArkStackMap ArkStackMapParser::ParseArkStackMap(const CallsiteHead& callsiteHead
         arkStackMaps.emplace_back(std::make_pair(reg, offsetType));
         ASSERT(reg == GCStackMapRegisters::SP || reg == GCStackMapRegisters::FP);
     }
-    return arkStackMaps;
 }
 
-std::vector<ARKDeopt> ArkStackMapParser::ParseArkDeopt(const CallsiteHead& callsiteHead,
-    BinaryBufferParser& binBufparser, uint8_t *ptr) const
+void ArkStackMapParser::ParseArkDeopt(const CallsiteHead& callsiteHead,
+    BinaryBufferParser& binBufparser, uint8_t *ptr, std::vector<ARKDeopt> &deopts) const
 {
-    std::vector<ARKDeopt> deopts;
     ARKDeopt deopt;
     uint32_t deoptOffset = callsiteHead.deoptOffset;
     uint32_t deoptNum = callsiteHead.deoptNum;
@@ -184,7 +182,6 @@ std::vector<ARKDeopt> ArkStackMapParser::ParseArkDeopt(const CallsiteHead& calls
         }
         deopts.emplace_back(deopt);
     }
-    return deopts;
 }
 
 void ArkStackMapParser::ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const
@@ -199,11 +196,13 @@ void ArkStackMapParser::ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) 
         uint32_t arkStackMapNum = callsiteHead.arkStackMapNum;
         uint32_t deoptOffset = callsiteHead.deoptOffset;
         uint32_t deoptNum = callsiteHead.deoptNum;
+        std::vector<ARKDeopt> deopts;
+        ArkStackMap arkStackMaps;
         LOG_COMPILER(DEBUG) << " calliteOffset:0x" << std::hex << callsiteHead.calliteOffset
             << " stackmap offset:0x" << std::hex << offset << " num:" << arkStackMapNum
             <<  "  deopt Offset:0x" << deoptOffset << " num:" << deoptNum;
-        ParseArkStackMap(callsiteHead, binBufparser, ptr);
-        ParseArkDeopt(callsiteHead, binBufparser, ptr);
+        ParseArkStackMap(callsiteHead, binBufparser, ptr, arkStackMaps);
+        ParseArkDeopt(callsiteHead, binBufparser, ptr, deopts);
     }
 }
 
@@ -224,25 +223,24 @@ void ArkStackMapBuilder::SaveArkCallsitePackInfo(uint8_t *ptr, uint32_t length, 
 }
 
 template <class Vec>
-std::vector<std::pair<uintptr_t, Vec>> ArkStackMapBuilder::SortCallSite(
-    std::vector<std::unordered_map<uintptr_t, Vec>> &infos)
+void ArkStackMapBuilder::SortCallSite(
+    std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
+    std::vector<std::pair<uintptr_t, Vec>>& result)
 {
     ASSERT(infos.size() == 1);
-    std::vector<std::pair<uintptr_t, Vec>> callsiteVec;
     for (auto &info: infos) {
         for (auto &it: info) {
-            callsiteVec.emplace_back(it);
+            result.emplace_back(it);
         }
     }
-    std::sort(callsiteVec.begin(), callsiteVec.end(),
+    std::sort(result.begin(), result.end(),
         [](const std::pair<uintptr_t, Vec> &x, const std::pair<uintptr_t, Vec> &y) {
             return x.first < y.first;
         });
-    return callsiteVec;
 }
 
-std::vector<intptr_t> ArkStackMapBuilder::CalcCallsitePc(std::vector<std::pair<uintptr_t, DeoptInfoType>> &pc2Deopt,
-    std::vector<std::pair<uintptr_t, CallSiteInfo>> &pc2StackMap)
+void ArkStackMapBuilder::CalcCallsitePc(std::vector<std::pair<uintptr_t, DeoptInfoType>> &pc2Deopt,
+    std::vector<std::pair<uintptr_t, CallSiteInfo>> &pc2StackMap, std::vector<intptr_t> &callsitePcs)
 {
     std::set<uintptr_t> pcSet;
     for (auto &it: pc2Deopt) {
@@ -251,8 +249,7 @@ std::vector<intptr_t> ArkStackMapBuilder::CalcCallsitePc(std::vector<std::pair<u
     for (auto &it: pc2StackMap) {
         pcSet.insert(it.first);
     }
-    std::vector<intptr_t> pcVec(pcSet.begin(), pcSet.end());
-    return pcVec;
+    callsitePcs.assign(pcSet.begin(), pcSet.end());
 }
 
 int ArkStackMapBuilder::FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc)
@@ -265,11 +262,10 @@ int ArkStackMapBuilder::FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc)
     return -1;
 }
 
-std::pair<int, std::vector<ARKDeopt>> ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt)
+void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<int, std::vector<ARKDeopt>> &sizeAndArkDeopt)
 {
     ASSERT(deopt.size() % 2 == 0); // 2:<id, value>
     int total = 0;
-    std::vector<ARKDeopt> deopts;
     ARKDeopt v;
     for (size_t i = 0; i < deopt.size(); i += 2) { // 2:<id, value>
         ASSERT(std::holds_alternative<OffsetType>(deopt[i]));
@@ -293,25 +289,31 @@ std::pair<int, std::vector<ARKDeopt>> ArkStackMapBuilder::GenARKDeopt(const Deop
         } else {
             UNREACHABLE();
         }
-        deopts.emplace_back(v);
+        sizeAndArkDeopt.second.emplace_back(v);
     }
-    return std::make_pair(total, deopts);
+    std::sort(sizeAndArkDeopt.second.begin(), sizeAndArkDeopt.second.end(),
+        [](const ARKDeopt &a, const ARKDeopt &b) {
+            return a.Id < b.Id;
+        });
+    sizeAndArkDeopt.first = total;
 }
 
-ARKCallsitePackInfo ArkStackMapBuilder::GenArkCallsitePackInfo(std::vector<Pc2CallSiteInfo> &pc2stackMaps,
-    std::vector<Pc2Deopt>& pc2DeoptVec)
+void ArkStackMapBuilder::GenArkCallsitePackInfo(std::vector<Pc2CallSiteInfo> &pc2stackMapVec,
+    std::vector<Pc2Deopt>& pc2DeoptVec, ARKCallsitePackInfo &result)
 {
-    ARKCallsitePackInfo pack;
     ARKCallsite callsite;
     uint32_t totalSize = 0;
-    auto pc2stackMap = SortCallSite(pc2stackMaps);
-    auto pc2Deopts = SortCallSite(pc2DeoptVec);
-    std::vector<intptr_t> CallsitePcs = CalcCallsitePc(pc2Deopts, pc2stackMap);
+    std::vector<std::pair<uintptr_t, CallSiteInfo>> pc2stackMaps;
+    std::vector<std::pair<uintptr_t, DeoptInfoType>> pc2Deopts;
+    std::vector<intptr_t> CallsitePcs;
+    SortCallSite(pc2stackMapVec, pc2stackMaps);
+    SortCallSite(pc2DeoptVec, pc2Deopts);
+    CalcCallsitePc(pc2Deopts, pc2stackMaps, CallsitePcs);
     uint32_t callsiteNum = CallsitePcs.size();
     ASSERT(callsiteNum > 0);
-    pack.callsites.resize(callsiteNum);
+    result.callsites.resize(callsiteNum);
     uint32_t stackmapOffset = sizeof(StackMapSecHead) + sizeof(CallsiteHead) * callsiteNum;
-    for (auto &x: pc2stackMap) {
+    for (auto &x: pc2stackMaps) {
         CallSiteInfo i = x.second;
         callsite.head.calliteOffset = x.first;
         callsite.head.arkStackMapNum = i.size();
@@ -322,82 +324,86 @@ ARKCallsitePackInfo ArkStackMapBuilder::GenArkCallsitePackInfo(std::vector<Pc2Ca
         stackmapOffset += callsite.CalStackMapSize();
         int loc = FindLoc(CallsitePcs, x.first);
         ASSERT(loc >= 0 && loc < static_cast<int>(callsiteNum));
-        pack.callsites[loc] = callsite;
+        result.callsites[loc] = callsite;
     }
     totalSize = stackmapOffset;
     for (auto &x: pc2Deopts) {
         int loc = FindLoc(CallsitePcs, x.first);
         ASSERT(loc >= 0 && loc < static_cast<int>(callsiteNum));
         DeoptInfoType deopt = x.second;
-        pack.callsites[loc].head.calliteOffset = x.first;
-        pack.callsites[loc].head.deoptNum = deopt.size();
-        pack.callsites[loc].head.deoptOffset = totalSize;
-        int size;
-        std::vector<ARKDeopt> arkDeopt;
-        std::tie(size, arkDeopt) = GenARKDeopt(deopt);
-        totalSize += size;
-        pack.callsites[loc].callsite2Deopt = arkDeopt;
+        result.callsites[loc].head.calliteOffset = x.first;
+        result.callsites[loc].head.deoptNum = deopt.size();
+        result.callsites[loc].head.deoptOffset = totalSize;
+        std::pair<int, std::vector<ARKDeopt>> sizeAndArkDeopt;
+        GenARKDeopt(deopt, sizeAndArkDeopt);
+        totalSize += sizeAndArkDeopt.first;
+        result.callsites[loc].callsite2Deopt = sizeAndArkDeopt.second;
     }
-    pack.secHead.callsiteNum = callsiteNum;
-    pack.secHead.callsitStart = sizeof(StackMapSecHead);
-    pack.secHead.callsitEnd =  pack.secHead.callsitStart + (pack.secHead.callsiteNum - 1) * sizeof(CallsiteHead);
-    pack.secHead.totalSize = totalSize;
-    return pack;
+    result.secHead.callsiteNum = callsiteNum;
+    result.secHead.callsitStart = sizeof(StackMapSecHead);
+    result.secHead.callsitEnd =  result.secHead.callsitStart + (result.secHead.callsiteNum - 1) * sizeof(CallsiteHead);
+    result.secHead.totalSize = totalSize;
 }
 
+// implement simple binary-search is improve performance. if use std api, it'll trigger copy CallsiteHead.
 int ArkStackMapParser::BinaraySearch(CallsiteHead *callsiteHead, uint32_t callsiteNum, uintptr_t callSiteAddr) const
 {
-    std::vector<CallsiteHead> vec(callsiteHead, callsiteHead + callsiteNum);
-    CallsiteHead target;
-    target.calliteOffset = callSiteAddr;
-    auto it = std::lower_bound(vec.begin(), vec.end(), target,
-        [](const CallsiteHead& a, const CallsiteHead& b) {
-            return a.calliteOffset < b.calliteOffset;
-        });
-    if (it->calliteOffset != callSiteAddr) {
-        return -1;
+    int slow = 0;
+    int high = callsiteNum - 1;
+    int mid;
+    uint32_t v;
+    while (slow <= high) {
+        mid = (slow + high) >> 1;
+        v = callsiteHead[mid].calliteOffset;
+        if (v == callSiteAddr) {
+            return mid;
+        } else if (v > callSiteAddr) {
+            high = mid - 1;
+        } else {
+            slow = mid + 1;
+        }
     }
-    return std::distance(vec.begin(), it);
+    return -1;
 }
 
-std::vector<ARKDeopt> ArkStackMapParser::GetArkDeopt(uint8_t *stackmapAddr, uint32_t length,
-    const CallsiteHead& callsiteHead) const
+void ArkStackMapParser::GetArkDeopt(uint8_t *stackmapAddr, uint32_t length,
+    const CallsiteHead& callsiteHead, std::vector<ARKDeopt> &deopts) const
 {
-    std::vector<ARKDeopt> deopts;
     BinaryBufferParser binBufparser(stackmapAddr, length);
-    deopts = ParseArkDeopt(callsiteHead, binBufparser, stackmapAddr);
-    return deopts;
+    ParseArkDeopt(callsiteHead, binBufparser, stackmapAddr, deopts);
 }
 
-ConstInfo ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr, uint8_t *stackmapAddr) const
+void ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr, ConstInfo &info, uint8_t *stackmapAddr) const
 {
     StackMapSecHead *head = reinterpret_cast<StackMapSecHead *>(stackmapAddr);
-    ConstInfo info;
     ASSERT(head != nullptr);
     uint32_t callsiteNum = head->callsiteNum;
-    [[maybe_unused]] uint32_t callsitStart = head->callsitStart;
-    [[maybe_unused]] uint32_t callsitEnd = head->callsitEnd;
     uint32_t length = head->totalSize;
-    CallSiteInfo infos;
-    ASSERT((callsitEnd - callsitStart) == ((callsiteNum - 1) * sizeof(CallsiteHead)));
+    ASSERT((head->callsitEnd - head->callsitStart) == ((callsiteNum - 1) * sizeof(CallsiteHead)));
 
     CallsiteHead *callsiteHead = reinterpret_cast<CallsiteHead *>(stackmapAddr + sizeof(StackMapSecHead));
     int mid = BinaraySearch(callsiteHead, callsiteNum, callSiteAddr);
     if (mid == -1) {
-        return {};
+        return;
     }
     CallsiteHead *found = callsiteHead + mid;
-    auto deopts = GetArkDeopt(stackmapAddr, length, *found);
-    for (auto deopt: deopts) {
-        if (deopt.Id == static_cast<OffsetType>(SpecVregIndex::BC_OFFSET_INDEX)) {
-            ASSERT(deopt.kind == LocationTy::Kind::CONSTANT);
-            ASSERT(std::holds_alternative<OffsetType>(deopt.value));
-            auto v = std::get<OffsetType>(deopt.value);
-            info.emplace_back(v);
-            return info;
-        }
+    std::vector<ARKDeopt> deopts;
+    GetArkDeopt(stackmapAddr, length, *found, deopts);
+
+    ARKDeopt target;
+    OffsetType id = static_cast<OffsetType>(SpecVregIndex::BC_OFFSET_INDEX);
+    target.Id = id;
+    auto it = std::lower_bound(deopts.begin(), deopts.end(), target,
+        [](const ARKDeopt& a, const ARKDeopt& b) {
+            return a.Id < b.Id;
+        });
+    if (it == deopts.end() || (it->Id > id)) {
+        return;
     }
-    return info;
+    ASSERT(it->kind == LocationTy::Kind::CONSTANT);
+    ASSERT(std::holds_alternative<OffsetType>(it->value));
+    auto v = std::get<OffsetType>(it->value);
+    info.emplace_back(v);
 }
 
 uintptr_t ArkStackMapParser::GetStackSlotAddress(const DwarfRegAndOffsetType info,
@@ -414,17 +420,15 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(const DwarfRegAndOffsetType inf
     return address;
 }
 
-bool ArkStackMapParser::CollectGCSlots(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor,
+bool ArkStackMapParser::IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor,
     uintptr_t callSiteAddr, uintptr_t callsiteFp, uintptr_t callSiteSp, uint8_t *stackmapAddr) const
 {
     StackMapSecHead *head = reinterpret_cast<StackMapSecHead *>(stackmapAddr);
     ASSERT(head != nullptr);
     uint32_t callsiteNum = head->callsiteNum;
-    [[maybe_unused]] uint32_t callsitStart = head->callsitStart;
-    [[maybe_unused]] uint32_t callsitEnd = head->callsitEnd;
     uint32_t length = head->totalSize;
     ArkStackMap arkStackMap;
-    ASSERT((callsitEnd - callsitStart) == ((callsiteNum - 1) * sizeof(CallsiteHead)));
+    ASSERT((head->callsitEnd - head->callsitStart) == ((callsiteNum - 1) * sizeof(CallsiteHead)));
 
     CallsiteHead *callsiteHead = reinterpret_cast<CallsiteHead *>(stackmapAddr + sizeof(StackMapSecHead));
     int mid = BinaraySearch(callsiteHead, callsiteNum, callSiteAddr);
@@ -433,7 +437,7 @@ bool ArkStackMapParser::CollectGCSlots(const RootVisitor &visitor, const RootBas
     }
     CallsiteHead *found = callsiteHead + mid;
     BinaryBufferParser binBufparser(stackmapAddr, length);
-    arkStackMap = ParseArkStackMap(*found, binBufparser, stackmapAddr);
+    ParseArkStackMap(*found, binBufparser, stackmapAddr, arkStackMap);
     if (arkStackMap.size() == 0) {
         return false;
     }

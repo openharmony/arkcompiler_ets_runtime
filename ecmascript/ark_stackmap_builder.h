@@ -54,18 +54,19 @@ public:
         uintptr_t hostCodeSectionAddr);
 private:
     template <class Vec>
-    std::vector<std::pair<uintptr_t, Vec>> SortCallSite(std::vector<std::unordered_map<uintptr_t, Vec>> &infos);
+    void SortCallSite(std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
+        std::vector<std::pair<uintptr_t, Vec>>& result);
 
-    std::vector<intptr_t> CalcCallsitePc(std::vector<std::pair<uintptr_t, DeoptInfoType>> &pc2Deopt,
-        std::vector<std::pair<uintptr_t, CallSiteInfo>> &pc2StackMap);
+    void CalcCallsitePc(std::vector<std::pair<uintptr_t, DeoptInfoType>> &pc2Deopt,
+        std::vector<std::pair<uintptr_t, CallSiteInfo>> &pc2StackMap, std::vector<intptr_t> &callsitePcs);
 
-    ARKCallsitePackInfo GenArkCallsitePackInfo(std::vector<Pc2CallSiteInfo> &pc2stackMaps,
-        std::vector<Pc2Deopt>& pc2DeoptVec);
+    void GenArkCallsitePackInfo(std::vector<Pc2CallSiteInfo> &pc2stackMaps,
+        std::vector<Pc2Deopt>& pc2DeoptVec, ARKCallsitePackInfo &result);
     void SaveArkDeopt(const ARKCallsitePackInfo& info, BinaryBufferWriter& writer);
     void SaveArkStackMap(const ARKCallsitePackInfo& info, BinaryBufferWriter& writer);
     void SaveArkCallsitePackInfo(uint8_t *ptr, uint32_t length, const ARKCallsitePackInfo& info);
     int FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc);
-    std::pair<int, std::vector<ARKDeopt>> GenARKDeopt(const DeoptInfoType& deopt);
+    void GenARKDeopt(const DeoptInfoType& deopt, std::pair<int, std::vector<ARKDeopt>> &sizeAndArkDeopt);
 };
 
 class ArkStackMapParser {
@@ -78,21 +79,22 @@ public:
     {
         enableLog_ = false;
     }
-    ConstInfo GetConstInfo(uintptr_t callsite, uint8_t *stackmapAddr = nullptr) const;
-    bool CollectGCSlots(const RootVisitor &visitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor,
-        uintptr_t callSiteAddr, uintptr_t callsiteFp,
-        uintptr_t callSiteSp, uint8_t *stackmapAddr) const;
+    void GetConstInfo(uintptr_t callsite, ConstInfo &info, uint8_t *stackmapAddr = nullptr) const;
+    bool IteratorStackMap(const RootVisitor &visitor,
+                          const RootBaseAndDerivedVisitor &derivedVisitor,
+                          uintptr_t callSiteAddr, uintptr_t callsiteFp,
+                          uintptr_t callSiteSp, uint8_t *stackmapAddr) const;
 private:
     int BinaraySearch(CallsiteHead *callsiteHead, uint32_t callsiteNum, uintptr_t callSiteAddr) const;
-    std::vector<ARKDeopt> GetArkDeopt(uint8_t *stackmapAddr, uint32_t length, const CallsiteHead& callsiteHead) const;
-    std::vector<ARKDeopt> ParseArkDeopt(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
-        uint8_t *ptr) const;
-    ArkStackMap ParseArkStackMap(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
-        uint8_t *ptr) const;
+    void GetArkDeopt(uint8_t *stackmapAddr, uint32_t length, const CallsiteHead& callsiteHead,
+                     std::vector<ARKDeopt>& deopt) const;
+    void ParseArkDeopt(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
+                       uint8_t *ptr, std::vector<ARKDeopt> &deopts) const;
+    void ParseArkStackMap(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
+                          uint8_t *ptr, ArkStackMap &stackMap) const;
     void ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const;
     uintptr_t GetStackSlotAddress(const DwarfRegAndOffsetType info,
-        uintptr_t callSiteSp, uintptr_t callsiteFp) const;
+                                  uintptr_t callSiteSp, uintptr_t callsiteFp) const;
     friend class ArkStackMapBuilder;
     bool enableLog_ {false};
 };

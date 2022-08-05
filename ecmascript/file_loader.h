@@ -41,7 +41,7 @@ private:
 
 struct ModuleSectionDes {
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
-    uint32_t startIndex_ {-1};
+    uint32_t startIndex_ {-1}; // record current module first function index in PackInfo
     uint32_t funcCount_ {0};
     /* arkStackMapPtr_: generator aot file, stackmap buffer lifecycle is managned by share ptr
     while arkStackMapRawPtr_ is allocated by machinecode, lifecycle is managned by machinecode.
@@ -135,8 +135,10 @@ struct ModuleSectionDes {
     void SaveSectionsInfo(std::ofstream &file);
     void LoadSectionsInfo(BinaryBufferParser &parser, uint32_t &curUnitOffset,
         JSHandle<MachineCode> &code);
+    void LoadStackMapSection(BinaryBufferParser &parser, uintptr_t secBegin, uint32_t &curUnitOffset);
     void LoadSectionsInfo(std::ifstream &file, uint32_t &curUnitOffset,
         JSHandle<MachineCode> &code);
+    void LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset);
 };
 
 class PUBLIC_API ModulePackInfo {

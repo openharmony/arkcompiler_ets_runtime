@@ -441,7 +441,8 @@ void FrameHandler::CollectBCOffsetInfo()
         switch (type) {
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
-                auto constInfo = frame->CollectBCOffsetInfo(it);
+                kungfu::ConstInfo constInfo;
+                frame->CollectBCOffsetInfo(it, constInfo);
                 if (!constInfo.empty()) {
                     auto name = GetAotExceptionFuncName(frame->GetArgv(it));
                     thread_->GetEcmaVM()->StoreBCOffsetInfo(name, constInfo[0]);

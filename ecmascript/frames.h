@@ -455,7 +455,7 @@ public:
     }
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor) const;
-    kungfu::ConstInfo CollectBCOffsetInfo(const FrameIterator &it) const;
+    void CollectBCOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const;
 
     inline JSTaggedValue GetEnv() const
     {
@@ -1112,9 +1112,10 @@ public:
     {
         return thread_;
     }
-    bool CollectGCSlots(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
-    kungfu::ConstInfo CollectBCOffsetInfo() const;
+    bool IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    void CollectBCOffsetInfo(kungfu::ConstInfo &info) const;
     std::tuple<uint64_t, uint8_t *, int> CalCallSiteInfo(uintptr_t retAddr) const;
+    int GetCallSiteDelta(uintptr_t retAddr) const;
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};

@@ -21,6 +21,25 @@
 #include "ecmascript/compiler/file_generators.h"
 
 namespace panda::ecmascript::kungfu {
+void Module::CollectStackMapDes(ModuleSectionDes& des) const
+{
+    uint32_t stackmapSize = des.GetSecSize(ElfSecName::LLVM_STACKMAP);
+    std::unique_ptr<uint8_t[]> stackmapPtr(std::make_unique<uint8_t[]>(stackmapSize));
+    uint64_t addr = des.GetSecAddr(ElfSecName::LLVM_STACKMAP);
+    uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
+    if (memcpy_s(stackmapPtr.get(), stackmapSize, reinterpret_cast<void *>(addr), stackmapSize) != EOK) {
+        LOG_FULL(FATAL) << "memcpy_s failed";
+        UNREACHABLE();
+    }
+    std::shared_ptr<uint8_t> ptr = nullptr;
+    uint32_t size = 0;
+    ArkStackMapBuilder builder;
+    std::tie(ptr, size) =  builder.Run(std::move(stackmapPtr), textAddr);
+    des.EraseSec(ElfSecName::LLVM_STACKMAP);
+    des.SetArkStackMapPtr(ptr);
+    des.SetArkStackMapSize(size);
+}
+
 void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name,
     uint32_t bridgeModuleIdx)
 {
@@ -49,22 +68,6 @@ void StubFileGenerator::CollectCodeInfo()
         modulePackage_[i].CollectFuncEntryInfo(addr2name, stubInfo_, i, GetLog());
         ModuleSectionDes des;
         modulePackage_[i].CollectModuleSectionDes(des);
-
-        uint32_t stackmapSize = des.GetSecSize(ElfSecName::LLVM_STACKMAP);
-        std::unique_ptr<uint8_t[]> stackmapPtr(std::make_unique<uint8_t[]>(stackmapSize));
-        uint64_t addr = des.GetSecAddr(ElfSecName::LLVM_STACKMAP);
-        uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
-        if (memcpy_s(stackmapPtr.get(), stackmapSize, reinterpret_cast<void *>(addr), stackmapSize) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-            UNREACHABLE();
-        }
-        std::shared_ptr<uint8_t> ptr = nullptr;
-        uint32_t size = 0;
-        ArkStackMapBuilder builder;
-        std::tie(ptr, size) =  builder.Run(std::move(stackmapPtr), textAddr);
-        des.EraseSec(ElfSecName::LLVM_STACKMAP);
-        des.SetArkStackMapPtr(ptr);
-        des.SetArkStackMapSize(size);
         stubInfo_.AddModuleDes(des);
     }
     // idx for bridge module is the one after last module in modulePackage
@@ -79,21 +82,6 @@ void AOTFileGenerator::CollectCodeInfo()
         modulePackage_[i].CollectFuncEntryInfo(addr2name, aotInfo_, i, GetLog());
         ModuleSectionDes des;
         modulePackage_[i].CollectModuleSectionDes(des);
-        uint32_t stackmapSize = des.GetSecSize(ElfSecName::LLVM_STACKMAP);
-        std::unique_ptr<uint8_t[]> stackmapPtr(std::make_unique<uint8_t[]>(stackmapSize));
-        uint64_t addr = des.GetSecAddr(ElfSecName::LLVM_STACKMAP);
-        uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
-        if (memcpy_s(stackmapPtr.get(), stackmapSize, reinterpret_cast<void *>(addr), stackmapSize) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-            UNREACHABLE();
-        }
-        std::shared_ptr<uint8_t> ptr = nullptr;
-        uint32_t size = 0;
-        ArkStackMapBuilder builder;
-        std::tie(ptr, size) =  builder.Run(std::move(stackmapPtr), textAddr);
-        des.EraseSec(ElfSecName::LLVM_STACKMAP);
-        des.SetArkStackMapPtr(ptr);
-        des.SetArkStackMapSize(size);
         aotInfo_.AddModuleDes(des, aotfileHashs_[i]);
     }
 

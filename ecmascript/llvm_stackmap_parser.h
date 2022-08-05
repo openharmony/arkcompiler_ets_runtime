@@ -67,7 +67,7 @@ public:
         fun2FpDelta_.clear();
         pc2DeoptVec_.clear();
     }
-    std::vector<Pc2CallSiteInfo> GetPc2StackMap() const
+    std::vector<Pc2CallSiteInfo> PUBLIC_API GetPc2StackMapVec() const
     {
         return pc2CallSiteInfoVec_;
     }
@@ -77,8 +77,6 @@ public:
     }
 private:
     void CalcCallSite();
-    std::vector<intptr_t> CalcCallsitePc(std::vector<std::pair<uintptr_t, DeoptInfoType>> &pc2Deopt,
-        std::vector<std::pair<uintptr_t, CallSiteInfo>> &pc2StackMap);
     struct LLVMStackMap llvmStackMap_;
     std::vector<Pc2CallSiteInfo> pc2CallSiteInfoVec_;
     std::vector<std::pair<uintptr_t, uint64_t>> fun2RecordNum_;
