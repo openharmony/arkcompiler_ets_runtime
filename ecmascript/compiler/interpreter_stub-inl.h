@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
@@ -245,6 +246,15 @@ GateRef InterpreterStubBuilder::GetResumeModeFromGeneratorObject(GateRef obj)
     return Int32And(
         Int32LSR(bitfield, Int32(JSGeneratorObject::ResumeModeBits::START_BIT)),
         Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
+}
+
+GateRef InterpreterStubBuilder::GetResumeModeFromAsyncGeneratorObject(GateRef obj)
+{
+    GateRef bitfieldOffset = IntPtr(JSAsyncGeneratorObject::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), obj, bitfieldOffset);
+    return Int32And(
+        Int32LSR(bitfield, Int32(JSAsyncGeneratorObject::ResumeModeBits::START_BIT)),
+        Int32((1LU << JSAsyncGeneratorObject::ResumeModeBits::SIZE) - 1));
 }
 
 void InterpreterStubBuilder::SetPcToFrame(GateRef glue, GateRef frame, GateRef value)

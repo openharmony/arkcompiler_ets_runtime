@@ -575,9 +575,8 @@ inline GateRef StubBuilder::TaggedIsGeneratorObject(GateRef x)
 {
     GateRef isHeapObj = SExtInt1ToInt32(TaggedIsHeapObject(x));
     GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isGeneratorObj = Int32Or(
-        SExtInt1ToInt32(Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT)))),
-        SExtInt1ToInt32(Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ASYNC_FUNC_OBJECT)))));
+    GateRef isGeneratorObj =
+        SExtInt1ToInt32(Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT))));
     return TruncInt32ToInt1(Int32And(isHeapObj, isGeneratorObj));
 }
 

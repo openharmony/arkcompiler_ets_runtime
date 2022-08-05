@@ -25,6 +25,7 @@
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -924,8 +925,15 @@ void InterpreterAssembly::HandleResumeGeneratorPrefV8(
 {
     LOG_INST() << "intrinsics::resumegenerator";
     uint16_t vs = READ_INST_8_1();
-    JSGeneratorObject *obj = JSGeneratorObject::Cast(GET_VREG_VALUE(vs).GetTaggedObject());
-    SET_ACC(obj->GetResumeResult());
+
+    JSTaggedValue objVal = GET_VREG_VALUE(vs);
+    if (objVal.IsAsyncGeneratorObject()) {
+        JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(obj->GetResumeResult());
+    } else {
+        JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(obj->GetResumeResult());
+    }
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
 }
 
@@ -935,8 +943,14 @@ void InterpreterAssembly::HandleGetResumeModePrefV8(
 {
     LOG_INST() << "intrinsics::getresumemode";
     uint16_t vs = READ_INST_8_1();
-    JSGeneratorObject *obj = JSGeneratorObject::Cast(GET_VREG_VALUE(vs).GetTaggedObject());
-    SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+    JSTaggedValue objVal = GET_VREG_VALUE(vs);
+    if (objVal.IsAsyncGeneratorObject()) {
+        JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+    } else {
+        JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+    }
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
 }
 
