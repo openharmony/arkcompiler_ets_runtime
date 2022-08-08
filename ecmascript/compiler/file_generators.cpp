@@ -26,6 +26,9 @@ void Module::CollectStackMapDes(ModuleSectionDes& des) const
     uint32_t stackmapSize = des.GetSecSize(ElfSecName::LLVM_STACKMAP);
     std::unique_ptr<uint8_t[]> stackmapPtr(std::make_unique<uint8_t[]>(stackmapSize));
     uint64_t addr = des.GetSecAddr(ElfSecName::LLVM_STACKMAP);
+    if (addr == 0) { // assembler stub don't existed llvm stackmap
+        return;
+    }
     uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
     if (memcpy_s(stackmapPtr.get(), stackmapSize, reinterpret_cast<void *>(addr), stackmapSize) != EOK) {
         LOG_FULL(FATAL) << "memcpy_s failed";

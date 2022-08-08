@@ -261,6 +261,7 @@ public:
     {
         totalCodeSize_ += size;
     }
+    bool CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uint8_t *, int>& ret) const;
 protected:
     uint32_t entryNum_ {0};
     uint32_t moduleNum_ {0};

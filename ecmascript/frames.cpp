@@ -15,7 +15,7 @@
 
 #include "ecmascript/frames.h"
 
-#include "ecmascript/ark_stackmap_builder.h"
+#include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/file_loader.h"
 #include "ecmascript/js_thread.h"
@@ -58,60 +58,21 @@ std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t re
 {
     auto loader = thread_->GetEcmaVM()->GetFileLoader();
     const std::vector<AOTModulePackInfo>& aotPackInfos = loader->GetPackInfos();
-    uint64_t textStart = 0;
-    uint8_t *stackmapAddr = nullptr;
-    int delta = 0;
-    std::tuple<uint64_t, uint8_t *, int> ret;
-    auto cmp = [](const ModulePackInfo::FuncEntryDes &a, const ModulePackInfo::FuncEntryDes &b) {
-                    return a.codeAddr_ < b.codeAddr_; };
+    std::tuple<uint64_t, uint8_t *, int> callsiteInfo;
 
-    auto fn = [&](const std::vector<ModuleSectionDes> &des,
-        const std::vector<ModulePackInfo::FuncEntryDes>& funcEntryDes) {
-        for (size_t i = 0; i < des.size(); i++) {
-            auto d = des[i];
-            uint64_t addr = d.GetSecAddr(ElfSecName::TEXT);
-            uint32_t size = d.GetSecSize(ElfSecName::TEXT);
-            if (retAddr < addr || retAddr >= addr + size) {
-                continue;
-            }
-            stackmapAddr = d.GetArkStackMapRawPtr();
-            ASSERT(stackmapAddr != nullptr);
-            textStart = addr;
-            auto startIndex = d.GetStartIndex();
-            auto funcCount = d.GetFuncCount();
-            auto s = funcEntryDes.begin() + startIndex;
-            auto t = funcEntryDes.begin() + startIndex + funcCount;
-            ModulePackInfo::FuncEntryDes target;
-            target.codeAddr_ = retAddr;
-            auto it = std::upper_bound(s, t, target, cmp);
-            --it;
-            ASSERT(it != t);
-            ASSERT((it->codeAddr_ <= target.codeAddr_) && (target.codeAddr_ < it->codeAddr_ + it->funcSize_));
-            delta = it->fpDeltaPrevFrameSp_;
-            LOG_ECMA(DEBUG) << "retAddr: 0x" << retAddr << " delta: 0x" << delta << " codeAddr_:0x"
-                << it->codeAddr_ << " funcSize:0x" << it->funcSize_;
-            ret = std::make_tuple(textStart, stackmapAddr, delta);
-            return true;
-        }
-        return false;
-    };
     StubModulePackInfo stubInfo = loader->GetStubPackInfo();
-    const std::vector<ModuleSectionDes> des = stubInfo.GetCodeUnits();
-    auto& stubFunEntryDes = stubInfo.GetStubs();
-    if (fn(des, stubFunEntryDes)) {
-        return ret;
+    bool ans = stubInfo.CalCallSiteInfo(retAddr, callsiteInfo);
+    if (ans) {
+        return callsiteInfo;
     }
-
     // aot
     for (auto &info : aotPackInfos) {
-        std::vector<ModuleSectionDes> codeUnits = info.GetCodeUnits();
-        auto& funEntryDes = info.GetStubs();
-        if (fn(codeUnits, funEntryDes)) {
-            ASSERT(stackmapAddr != nullptr);
-            return ret;
+        ans = info.CalCallSiteInfo(retAddr, callsiteInfo);
+        if (ans) {
+            return callsiteInfo;
         }
     }
-    return std::make_tuple(textStart, stackmapAddr, delta);
+    return callsiteInfo;
 }
 
 void FrameIterator::Advance()

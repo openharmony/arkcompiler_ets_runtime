@@ -24,7 +24,6 @@
 
 #include "ecmascript/ark_stackmap.h"
 #include "ecmascript/frames.h"
-#include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
     class BinaryBufferParser;
@@ -67,36 +66,6 @@ private:
     void SaveArkCallsitePackInfo(uint8_t *ptr, uint32_t length, const ARKCallsitePackInfo& info);
     int FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc);
     void GenARKDeopt(const DeoptInfoType& deopt, std::pair<int, std::vector<ARKDeopt>> &sizeAndArkDeopt);
-};
-
-class ArkStackMapParser {
-public:
-    explicit ArkStackMapParser(bool enableLog = false)
-    {
-        enableLog_ = enableLog;
-    }
-    ~ArkStackMapParser()
-    {
-        enableLog_ = false;
-    }
-    void GetConstInfo(uintptr_t callsite, ConstInfo &info, uint8_t *stackmapAddr = nullptr) const;
-    bool IteratorStackMap(const RootVisitor &visitor,
-                          const RootBaseAndDerivedVisitor &derivedVisitor,
-                          uintptr_t callSiteAddr, uintptr_t callsiteFp,
-                          uintptr_t callSiteSp, uint8_t *stackmapAddr) const;
-private:
-    int BinaraySearch(CallsiteHead *callsiteHead, uint32_t callsiteNum, uintptr_t callSiteAddr) const;
-    void GetArkDeopt(uint8_t *stackmapAddr, uint32_t length, const CallsiteHead& callsiteHead,
-                     std::vector<ARKDeopt>& deopt) const;
-    void ParseArkDeopt(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
-                       uint8_t *ptr, std::vector<ARKDeopt> &deopts) const;
-    void ParseArkStackMap(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
-                          uint8_t *ptr, ArkStackMap &stackMap) const;
-    void ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const;
-    uintptr_t GetStackSlotAddress(const DwarfRegAndOffsetType info,
-                                  uintptr_t callSiteSp, uintptr_t callsiteFp) const;
-    friend class ArkStackMapBuilder;
-    bool enableLog_ {false};
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_ARK_STACKMAP_BUILD_H

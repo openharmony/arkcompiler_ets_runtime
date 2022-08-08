@@ -18,7 +18,7 @@
 #include "shlwapi.h"
 #endif
 
-#include "ecmascript/ark_stackmap_builder.h"
+#include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
@@ -493,5 +493,43 @@ void BinaryBufferParser::ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src)
     } else {
         LOG_FULL(FATAL) << "parse buffer error, length is 0 or overflow";
     }
+}
+
+bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uint8_t *, int>& ret) const
+{
+    uint64_t textStart = 0;
+    uint8_t *stackmapAddr = nullptr;
+    int delta = 0;
+    auto& des = GetCodeUnits();
+    auto& funcEntryDes = GetStubs();
+
+    auto cmp = [](const ModulePackInfo::FuncEntryDes &a, const ModulePackInfo::FuncEntryDes &b) {
+                    return a.codeAddr_ < b.codeAddr_;
+                };
+    for (size_t i = 0; i < des.size(); i++) {
+        auto d = des[i];
+        uint64_t addr = d.GetSecAddr(ElfSecName::TEXT);
+        uint32_t size = d.GetSecSize(ElfSecName::TEXT);
+        if (retAddr < addr || retAddr >= addr + size) {
+            continue;
+        }
+        stackmapAddr = d.GetArkStackMapRawPtr();
+        ASSERT(stackmapAddr != nullptr);
+        textStart = addr;
+        auto startIndex = d.GetStartIndex();
+        auto funcCount = d.GetFuncCount();
+        auto s = funcEntryDes.begin() + startIndex;
+        auto t = funcEntryDes.begin() + startIndex + funcCount;
+        ModulePackInfo::FuncEntryDes target;
+        target.codeAddr_ = retAddr;
+        auto it = std::upper_bound(s, t, target, cmp);
+        --it;
+        ASSERT(it != t);
+        ASSERT((it->codeAddr_ <= target.codeAddr_) && (target.codeAddr_ < it->codeAddr_ + it->funcSize_));
+        delta = it->fpDeltaPrevFrameSp_;
+        ret = std::make_tuple(textStart, stackmapAddr, delta);
+        return true;
+    }
+    return false;
 }
 }
