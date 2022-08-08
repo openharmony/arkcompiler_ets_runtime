@@ -214,7 +214,7 @@ tooling::JSPtExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *
     LOG_ECMA_IF(jsPandaFile == nullptr, FATAL) << "GetJSPtExtractor error, js pandafile is nullptr";
 
     os::memory::LockHolder lock(jsPandaFileLock_);
-    auto const filename = jsPandaFile->GetJSPandaFileDesc();
+    [[maybe_unused]] auto const &filename = jsPandaFile->GetJSPandaFileDesc();
     ASSERT(loadedJSPandaFiles_.find(filename) != loadedJSPandaFiles_.end());
 
     auto iter = extractors_.find(jsPandaFile);

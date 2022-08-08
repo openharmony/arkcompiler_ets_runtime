@@ -82,6 +82,7 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
             }
             collectCount_++;
         }
+        generator_->SetSampleFlag(false);
     }
     uint64_t stopTime = GetMicrosecondsTimeStamp();
     generator_->SetThreadStopTime(stopTime);
