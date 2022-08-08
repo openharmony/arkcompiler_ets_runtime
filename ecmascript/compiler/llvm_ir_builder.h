@@ -124,6 +124,8 @@ public:
     }
     LLVMTypeRef GetFuncType(const CallSignature *stubDescriptor);
 
+    LLVMTypeRef GenerateFuncType(const std::vector<LLVMValueRef> &params, const CallSignature *stubDescriptor);
+
     void SetFunction(size_t index, LLVMValueRef func)
     {
         funcIndexMap_.emplace_back(std::make_pair(index, func));

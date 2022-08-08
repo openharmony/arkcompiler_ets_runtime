@@ -564,7 +564,10 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
         GateRef gateTmp = inList[paraIdx];
         params.push_back(gate2LValue_[gateTmp]);
     }
-    LLVMValueRef runtimeCall = LLVMBuildCall(builder_, callee, params.data(), inList.size(), "");
+
+    LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, signature);
+    callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
+    LLVMValueRef runtimeCall = LLVMBuildCall2(builder_, funcType, callee, params.data(), inList.size(), "");
     if (!compCfg_->Is32Bit()) {  // Arm32 not support webkit jscc calling convention
         LLVMSetInstructionCallConv(runtimeCall, LLVMWebKitJSCallConv);
     }
@@ -599,7 +602,10 @@ void LLVMIRBuilder::VisitRuntimeCallWithArgv(GateRef gate, const std::vector<Gat
         GateRef gateTmp = inList[paraIdx];
         params.push_back(gate2LValue_[gateTmp]);
     }
-    LLVMValueRef runtimeCall = LLVMBuildCall(builder_, callee, params.data(), inList.size() - 1, "");
+
+    LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, signature);
+    callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
+    LLVMValueRef runtimeCall = LLVMBuildCall2(builder_, funcType, callee, params.data(), inList.size() - 1, "");
     gate2LValue_[gate] = runtimeCall;
 }
 
@@ -783,15 +789,17 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     }
 
     LLVMValueRef call = nullptr;
+    LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, calleeDescriptor);
+    callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
     if (NeedBCOffset(op)) {
-        LLVMTypeRef funcType = llvmModule_->GetFuncType(calleeDescriptor);
         std::vector<LLVMValueRef> values;
         values.push_back(bcOffset);
         call = LLVMBuildCall3(
             builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt, "", values.data(),
             values.size());
     } else {
-        call = LLVMBuildCall(builder_, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt, "");
+        call = LLVMBuildCall2(builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt,
+                              "");
     }
     SetCallConvAttr(calleeDescriptor, call);
     gate2LValue_[gate] = call;
@@ -818,7 +826,10 @@ void LLVMIRBuilder::VisitBytecodeCall(GateRef gate, const std::vector<GateRef> &
         GateRef gateTmp = inList[paraIdx];
         params.push_back(gate2LValue_[gateTmp]);
     }
-    LLVMValueRef call = LLVMBuildCall(builder_, callee, params.data(), inList.size() - paraStartIndex, "");
+
+    LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, signature);
+    callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
+    LLVMValueRef call = LLVMBuildCall2(builder_, funcType, callee, params.data(), inList.size() - paraStartIndex, "");
     SetGCLeafFunction(call);
     LLVMSetTailCall(call, true);
     LLVMSetInstructionCallConv(call, LLVMGHCCallConv);
@@ -1940,6 +1951,17 @@ LLVMTypeRef LLVMModule::GetFuncType(const CallSignature *stubDescriptor)
     auto functype = LLVMFunctionType(returnType, paramTys.data(), paramCount + extraParameterCnt,
         stubDescriptor->IsVariadicArgs());
     return functype;
+}
+
+LLVMTypeRef LLVMModule::GenerateFuncType(const std::vector<LLVMValueRef> &params, const CallSignature *stubDescriptor)
+{
+    LLVMTypeRef returnType = ConvertLLVMTypeFromVariableType(stubDescriptor->GetReturnType());
+    std::vector<LLVMTypeRef> paramTys;
+    for (auto value : params) {
+        paramTys.emplace_back(LLVMTypeOf(value));
+    }
+    auto functionType = LLVMFunctionType(returnType, paramTys.data(), paramTys.size(), false);
+    return functionType;
 }
 
 LLVMTypeRef LLVMModule::ConvertLLVMTypeFromVariableType(VariableType type)
