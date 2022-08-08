@@ -2018,8 +2018,17 @@ JSTaggedValue BuiltinsArray::Slice(EcmaRuntimeCallInfo *argv)
         TaggedArray *destElements = *JSObject::GrowElementsCapacity(thread, newArrayHandle, count);
         TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
 
-        for (uint32_t idx = 0; idx < count; idx++) {
-            destElements->Set(thread, idx, srcElements->Get(k + idx));
+        uint32_t length = srcElements->GetLength();
+        if (length > k + count) {
+            for (uint32_t idx = 0; idx < count; idx++) {
+                destElements->Set(thread, idx, srcElements->Get(k + idx));
+            }
+        } else {
+            for (uint32_t idx = 0; idx < count; idx++) {
+                uint32_t index = k + idx;
+                JSTaggedValue value = length > index ? srcElements->Get(index) : JSTaggedValue::Hole();
+                destElements->Set(thread, idx, value);
+            }
         }
 
         JSHandle<JSArray>::Cast(newArrayHandle)->SetArrayLength(thread, count);
