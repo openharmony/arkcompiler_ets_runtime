@@ -1261,6 +1261,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::ASYNCFUNCTIONREJECT_PREF_V8_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v2 = READ_INST_8_3();
+            info.accOut = true;
             info.offset = BytecodeOffset::FIVE;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v2));

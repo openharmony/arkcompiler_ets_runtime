@@ -896,20 +896,45 @@ void SlowPathLowering::LowerGetIterator(GateRef gate, GateRef glue)
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetIteratorPref)));
     std::vector<GateRef> successControl(2);
     std::vector<GateRef> failControl(2);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), acc_.GetValueIn(gate, 0));
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), obj);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    Label isTrue(&builder_);
-    Label isNot(&builder_);
+    Label defaultLabel(&builder_);
+    Label isObject(&builder_);
+    Label notObject(&builder_);
     GateRef value = 0;
-    builder_.Branch(builder_.TaggedIsGeneratorObject(acc_.GetValueIn(gate, 0)), &isTrue, &isNot);
-    builder_.Bind(&isTrue);
+    builder_.Branch(builder_.TaggedIsHeapObject(obj), &isObject, &notObject);
+    builder_.Bind(&isObject);
     {
-        builder_.Jump(&successExit);
+        Label isGeneratorObj(&builder_);
+        Label notGeneratorObj(&builder_);
+        GateRef objType = builder_.GetObjectType(builder_.LoadHClass(obj));
+        builder_.Branch(builder_.Equal(objType, builder_.Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT))),
+                        &isGeneratorObj, &notGeneratorObj);
+        builder_.Bind(&isGeneratorObj);
+        {
+            builder_.Jump(&successExit);
+        }
+        builder_.Bind(&notGeneratorObj);
+        {
+            Label isAsyncFuncObj(&builder_);
+            Label notAsyncFunObj(&builder_);
+            builder_.Branch(builder_.Equal(objType, builder_.Int32(static_cast<int32_t>(JSType::JS_ASYNC_FUNC_OBJECT))),
+                            &isAsyncFuncObj, &notAsyncFunObj);
+            builder_.Bind(&isAsyncFuncObj);
+            builder_.Jump(&successExit);
+            builder_.Bind(&notAsyncFunObj);
+            builder_.Jump(&defaultLabel);
+        }
     }
-    builder_.Bind(&isNot);
+    builder_.Bind(&notObject);
     {
-        result = LowerCallRuntime(glue, RTSTUB_ID(GetIterator), {acc_.GetValueIn(gate, 0)}, true);
+        builder_.Jump(&defaultLabel);
+    }
+    builder_.Bind(&defaultLabel);
+    {
+        result = LowerCallRuntime(glue, RTSTUB_ID(GetIterator), {obj}, true);
         builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_EXCEPTION),
             &exceptionExit, &successExit);
     }
@@ -3379,8 +3404,7 @@ void SlowPathLowering::DebugPrintBC(GateRef gate, GateRef glue, GateRef index)
 {
     if (enableBcTrace_) {
         GateRef constIndex = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(index));
-        [[maybe_unused]]GateRef debugGate = builder_.CallRuntime(glue,  RTSTUB_ID(DebugAOTPrint),
-                                                                 acc_.GetDep(gate), {constIndex});
+        GateRef debugGate = builder_.CallRuntime(glue,  RTSTUB_ID(DebugAOTPrint), acc_.GetDep(gate), {constIndex});
         acc_.SetDep(gate, debugGate);
     }
 }

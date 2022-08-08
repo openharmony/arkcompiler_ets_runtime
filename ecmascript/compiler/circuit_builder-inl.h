@@ -140,20 +140,7 @@ GateRef CircuitBuilder::TaggedIsSpecial(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
 {
-    return TruncInt32ToInt1(Int32And(SExtInt1ToInt32(TaggedIsObject(x)),
-        SExtInt1ToInt32(Equal(SExtInt1ToInt32(TaggedIsSpecial(x)),
-        Int32(0)))));
-}
-
-GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef x)
-{
-    GateRef isHeapObj = SExtInt1ToInt32(TaggedIsHeapObject(x));
-    GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isGeneratorObj = Int32Or(SExtInt1ToInt32(Equal(objType,
-        Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT)))),
-        SExtInt1ToInt32(Equal(objType,
-        Int32(static_cast<int32_t>(JSType::JS_ASYNC_FUNC_OBJECT)))));
-    return TruncInt32ToInt1(Int32And(isHeapObj, isGeneratorObj));
+    return Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MARK)), Int64(0));
 }
 
 GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
