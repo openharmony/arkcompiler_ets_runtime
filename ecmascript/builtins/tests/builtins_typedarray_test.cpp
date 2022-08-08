@@ -88,7 +88,7 @@ protected:
 
         static JSTaggedValue TestEveryFunc(EcmaRuntimeCallInfo *argv)
         {
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 [[maybe_unused]] int aaa = GetCallArg(argv, 0)->GetInt();
                 //  10 : test case
@@ -102,7 +102,7 @@ protected:
         static JSTaggedValue TestFilterFunc(EcmaRuntimeCallInfo *argv)
         {
             ASSERT(argv);
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 // 10 : test case
                 if (GetCallArg(argv, 0)->GetInt() > 10) {
@@ -121,7 +121,7 @@ protected:
 
         static JSTaggedValue TestFindFunc(EcmaRuntimeCallInfo *argv)
         {
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 // 10 : test case
                 if (GetCallArg(argv, 0)->GetInt() > 10) {
@@ -133,7 +133,7 @@ protected:
 
         static JSTaggedValue TestFindIndexFunc(EcmaRuntimeCallInfo *argv)
         {
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 //  10 : test case
                 if (GetCallArg(argv, 0)->GetInt() > 10) {
@@ -159,7 +159,7 @@ protected:
 
         static JSTaggedValue TestSomeFunc(EcmaRuntimeCallInfo *argv)
         {
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 //  10 : test case
                 if (GetCallArg(argv, 0)->GetInt() > 10) {

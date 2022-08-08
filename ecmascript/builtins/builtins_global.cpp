@@ -481,8 +481,8 @@ JSTaggedValue BuiltinsGlobal::PrintEntrypoint(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     BUILTINS_API_TRACE(thread, Global, PrintEntryPoint);
 
-    int32_t numArgs = msg->GetArgsNumber();
-    for (int32_t i = 0; i < numArgs; i++) {
+    uint32_t numArgs = msg->GetArgsNumber();
+    for (uint32_t i = 0; i < numArgs; i++) {
         JSHandle<EcmaString> stringContent = JSTaggedValue::ToString(thread, GetCallArg(msg, i));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         PrintString(thread, *stringContent);

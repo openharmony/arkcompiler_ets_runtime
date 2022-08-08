@@ -554,7 +554,7 @@ JSTaggedValue JSDate::UTC(EcmaRuntimeCallInfo *argv)
         year = base::NAN_VALUE;
     }
     uint32_t index = 1;
-    uint32_t numArgs = static_cast<uint32_t>(argv->GetArgsNumber());
+    uint32_t numArgs = argv->GetArgsNumber();
     JSTaggedValue res;
     if (numArgs > index) {
         JSHandle<JSTaggedValue> value = base::BuiltinsBase::GetCallArg(argv, index);
@@ -976,7 +976,7 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
     double timeMs = this->GetTimeValue().GetDouble();
 
     // get values from argv.
-    uint32_t argc = static_cast<uint32_t>(argv->GetArgsNumber());
+    uint32_t argc = argv->GetArgsNumber();
     if (argc == 0) {
         return JSTaggedValue(base::NAN_VALUE);
     }

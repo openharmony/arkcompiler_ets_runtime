@@ -38,7 +38,7 @@ public:
     static inline JSTaggedValue ExecuteNative(EcmaRuntimeCallInfo *info);
     static EcmaRuntimeCallInfo* NewRuntimeCallInfo(
         JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
-        JSHandle<JSTaggedValue> newTarget, int32_t numArgs, bool needCheckStack = true);
+        JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack = true);
     static inline JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline void RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp);

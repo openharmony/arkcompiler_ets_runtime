@@ -223,7 +223,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     }
 #endif
     thread->CheckSafepoint();
-    int32_t argc = info->GetArgsNumber();
+    uint32_t argc = info->GetArgsNumber();
     uintptr_t argv = reinterpret_cast<uintptr_t>(info->GetArgs());
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
 
