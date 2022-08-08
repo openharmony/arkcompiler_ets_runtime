@@ -59,6 +59,10 @@ void PartialGC::Initialize()
         heap_->Prepare();
         if (heap_->IsFullMark()) {
             heap_->GetOldSpace()->SelectCSet();
+            heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
+                current->ClearMarkGCBitset();
+                current->ClearCrossRegionRSet();
+            });
             heap_->EnumerateNonNewSpaceRegions([](Region *current) {
                 current->ResetAliveObject();
             });

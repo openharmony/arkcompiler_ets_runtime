@@ -46,6 +46,7 @@ enum RegionSpaceFlag {
     IN_NON_MOVABLE_SPACE = 0x0C,
     IN_MACHINE_CODE_SPACE = 0x0D,
     IN_READ_ONLY_SPACE = 0x0E,
+    IN_APPSPAWN_SPACE = 0X0F,
 
     VALID_SPACE_MASK = 0xFF,
 };
@@ -83,6 +84,8 @@ static inline std::string ToSpaceTypeName(uint8_t space)
             return "machine code space";
         case RegionSpaceFlag::IN_READ_ONLY_SPACE:
             return "read only space";
+        case RegionSpaceFlag::IN_APPSPAWN_SPACE:
+            return "appspawn space";
         default:
             return "invalid space";
     }
@@ -278,7 +281,8 @@ public:
                 space == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
                 space == RegionSpaceFlag::IN_NON_MOVABLE_SPACE ||
                 space == RegionSpaceFlag::IN_SNAPSHOT_SPACE ||
-                space == RegionSpaceFlag::IN_READ_ONLY_SPACE);
+                space == RegionSpaceFlag::IN_READ_ONLY_SPACE ||
+                space == RegionSpaceFlag::IN_APPSPAWN_SPACE);
     }
 
     bool InCollectSet() const

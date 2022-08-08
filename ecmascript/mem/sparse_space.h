@@ -154,6 +154,16 @@ public:
     NO_MOVE_SEMANTIC(NonMovableSpace);
 };
 
+class AppSpawnSpace : public SparseSpace {
+public:
+    explicit AppSpawnSpace(Heap *heap, size_t initialCapacity);
+    ~AppSpawnSpace() override = default;
+    NO_COPY_SEMANTIC(AppSpawnSpace);
+    NO_MOVE_SEMANTIC(AppSpawnSpace);
+
+    void IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const;
+};
+
 class LocalSpace : public SparseSpace {
 public:
     LocalSpace() = delete;

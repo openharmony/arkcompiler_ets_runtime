@@ -114,6 +114,7 @@ bool EcmaVM::Destroy(EcmaVM *vm)
 void EcmaVM::preFork()
 {
     heap_->CompactHeapBeforeFork();
+    heap_->AdjustSpaceSizeForAppSpawn();
     heap_->GetReadOnlySpace()->SetReadOnly();
     heap_->DisableParallelGC();
 }

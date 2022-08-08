@@ -34,6 +34,8 @@ enum TriggerGCType {
     OLD_GC,
     // GC is expected to cover all valid heap spaces;
     FULL_GC,
+    // GC is expected to compress objects into appspawn space;
+    APPSPAWN_FULL_GC,
     GC_TYPE_LAST
 };
 

@@ -38,6 +38,7 @@ enum MemSpaceType {
     COMPRESS_SPACE,
     LOCAL_SPACE,
     READ_ONLY_SPACE,
+    APPSPAWN_SPACE,
     SPACE_TYPE_LAST,  // Count of different types
 
     FREE_LIST_NUM = MACHINE_CODE_SPACE - OLD_SPACE + 1,
@@ -62,6 +63,8 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "compress space";
         case READ_ONLY_SPACE:
             return "read only space";
+        case APPSPAWN_SPACE:
+            return "appspawn space";
         default:
             return "unknown space";
     }
@@ -205,7 +208,7 @@ public:
     size_t GetHeapObjectSize() const;
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
 
-    void RecliamHugeRegion();
+    void ReclaimHugeRegion();
 
 private:
     EcmaList<Region> hugeNeedFreeList_ {};

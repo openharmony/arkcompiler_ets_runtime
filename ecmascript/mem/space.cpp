@@ -108,7 +108,7 @@ void HugeObjectSpace::IterateOverObjects(const std::function<void(TaggedObject *
     });
 }
 
-void HugeObjectSpace::RecliamHugeRegion()
+void HugeObjectSpace::ReclaimHugeRegion()
 {
     if (hugeNeedFreeList_.IsEmpty()) {
         return;

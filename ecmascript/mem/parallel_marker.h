@@ -145,6 +145,8 @@ class CompressGCMarker : public MovableMarker {
 public:
     explicit CompressGCMarker(Heap *heap) : MovableMarker(heap) {}
     ~CompressGCMarker() = default;
+
+    inline bool NeedEvacuate(Region *region);
     void SetAppSpawn(bool flag)
     {
         isAppSpawn_ = flag;
@@ -156,6 +158,8 @@ protected:
 
     inline SlotStatus EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,
                                      ObjectSlot slot) override;
+    uintptr_t AllocateForwardAddress(uint32_t threadId, size_t size, TaggedObject *object);
+    inline uintptr_t AllocateAppSpawnSpace(size_t size);
     inline uintptr_t AllocateReadOnlySpace(size_t size);
     inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion = nullptr) override;
 

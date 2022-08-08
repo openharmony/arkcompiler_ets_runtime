@@ -141,7 +141,9 @@ void GCStats::PrintHeapStatisticResult(bool force)
                             << " non move space commit size: "
                             << sizeToMB(heap_->GetNonMovableSpace()->GetCommittedSize()) << "MB"
                             << " huge object space commit size: "
-                            << sizeToMB(heap_->GetHugeObjectSpace()->GetCommittedSize()) << "MB";
+                            << sizeToMB(heap_->GetHugeObjectSpace()->GetCommittedSize()) << "MB"
+                            <<  ", AppSpawn space commit size: "
+                            << sizeToMB(heap_->GetAppSpawnSpace()->GetCommittedSize()) << "MB";
     }
 }
 
