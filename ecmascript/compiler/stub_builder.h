@@ -237,6 +237,7 @@ public:
     GateRef IsClassPrototype(GateRef object);
     GateRef IsExtensible(GateRef object);
     GateRef TaggedObjectIsEcmaObject(GateRef obj);
+    GateRef IsEcmaObject(GateRef obj);
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
     GateRef TaggedIsBigInt(GateRef obj);
@@ -280,7 +281,7 @@ public:
     void SetBitFieldToHClass(GateRef glue, GateRef hClass, GateRef bitfield);
     void SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto);
     void SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass,
-	                                               GateRef protoChange);
+                                       GateRef protoChange);
     void SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr);
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);

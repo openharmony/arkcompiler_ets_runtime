@@ -4223,7 +4223,7 @@ GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
     {
         Label isObj(env);
         Label notObj(env);
-        Branch(TaggedObjectIsEcmaObject(value), &isObj, &notObj);
+        Branch(IsEcmaObject(value), &isObj, &notObj);
         Bind(&isObj);
         {
             result = Null();
