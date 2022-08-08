@@ -24,6 +24,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/log.cpp"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "generated/base_options.h"
@@ -92,8 +93,6 @@ int Main(const int argc, const char **argv)
         return 1;
     }
 
-    Logger::Initialize(baseOptions);
-
     arg_list_t arguments = paParser.GetRemainder();
 
     if (runtimeOptions.IsStartupTime()) {
@@ -101,7 +100,7 @@ int Main(const int argc, const char **argv)
                   << "Startup start time: " << startTime << std::endl;
     }
     bool ret = true;
-    EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
+    EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions, baseOptions);
     if (vm == nullptr) {
         std::cerr << "Cannot Create vm" << std::endl;
         return -1;

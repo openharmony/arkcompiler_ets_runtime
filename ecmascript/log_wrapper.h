@@ -16,24 +16,7 @@
 #ifndef ECMASCRIPT_LOG_WRAPPER_H
 #define ECMASCRIPT_LOG_WRAPPER_H
 
-#ifdef ENABLE_HILOG
-
 #include "ecmascript/log.h"
-
-#define LOG_ECMA(level) HILOG_ECMA(level)
-
-#else  // ENABLE_HILOG
-
-#include "libpandabase/utils/logger.h"
-
-// HILOG use WARN, but panda use WARNING
-#define _LOG_WARN(component, p) _LOG_WARNING(component, p)
-// print Verbose log as Debug in host
-#define _LOG_VERBOSE(component, p) _LOG_DEBUG(component, p)
-
-#define LOG_ECMA(level) LOG(level, ECMASCRIPT)
-
-#endif  // ENABLE_HILOG
 
 #define LOG_FULL(level) LOG_ECMA(level) << __func__ << ":" << __LINE__ << " "
 #define LOG_GC(level) LOG_ECMA(level) << " gc: "

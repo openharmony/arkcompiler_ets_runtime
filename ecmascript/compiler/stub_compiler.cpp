@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/stub.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/verifier.h"
+#include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 #include "generated/base_options.h"
@@ -189,12 +190,7 @@ int main(const int argc, const char **argv)
         return 1;
     }
 
-    panda::Logger::Initialize(baseOptions);
-    if (runtimeOptions.WasSetCompilerLogOption()) {
-        panda::Logger::SetLevel(panda::Logger::Level::INFO);
-        panda::Logger::ResetComponentMask();  // disable all Component
-        panda::Logger::EnableComponent(panda::Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
-    }
+    panda::ecmascript::Log::Initialize(baseOptions);
 
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();
