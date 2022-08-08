@@ -12,10 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "ecmascript/llvm_stackmap_parser.h"
 
 #include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/file_loader.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
@@ -52,145 +52,74 @@ const CallSiteInfo* LLVMStackMapParser::GetCallSiteInfoByPc(uintptr_t callSiteAd
     return nullptr;
 }
 
-void LLVMStackMapParser::PrintCallSiteSlotAddr(const CallSiteInfo& callsiteInfo, uintptr_t callSiteSp,
-    uintptr_t callsiteFp) const
-{
-    bool flag = (callsiteInfo.size() % 2 != 0);
-    size_t j = flag ? 1 : 0; // skip first element when size is odd number
-    for (; j < callsiteInfo.size(); j += 2) { // 2: base and derived
-        const DwarfRegAndOffsetType baseInfo = callsiteInfo[j];
-        const DwarfRegAndOffsetType derivedInfo = callsiteInfo[j + 1];
-        LOG_COMPILER(VERBOSE) << std::hex << " callSiteSp:0x" << callSiteSp << " callsiteFp:" << callsiteFp;
-        LOG_COMPILER(VERBOSE) << std::dec << "base DWARF_REG:" << baseInfo.first
-                    << " OFFSET:" << baseInfo.second;
-        uintptr_t base = GetStackSlotAddress(baseInfo, callSiteSp, callsiteFp);
-        uintptr_t derived = GetStackSlotAddress(derivedInfo, callSiteSp, callsiteFp);
-        if (base != derived) {
-            LOG_COMPILER(VERBOSE) << std::dec << "derived DWARF_REG:" << derivedInfo.first
-                << " OFFSET:" << derivedInfo.second;
-        }
-    }
-}
-void LLVMStackMapParser::PrintCallSiteInfo(const CallSiteInfo *infos, OptimizedLeaveFrame *frame) const
-{
-    uintptr_t callSiteSp = frame->GetCallSiteSp();
-    uintptr_t callsiteFp = frame->callsiteFp;
-    ASSERT(infos != nullptr);
-    PrintCallSiteSlotAddr(*infos, callSiteSp, callsiteFp);
-}
-
-void LLVMStackMapParser::PrintCallSiteInfo(const CallSiteInfo *infos, uintptr_t callsiteFp, uintptr_t callSiteSp) const
-{
-    if (!IsLogEnabled()) {
-        return;
-    }
-
-    CallSiteInfo callsiteInfo = *infos;
-    PrintCallSiteSlotAddr(*infos, callSiteSp, callsiteFp);
-}
-
-uintptr_t LLVMStackMapParser::GetStackSlotAddress(const DwarfRegAndOffsetType info,
-    uintptr_t callSiteSp, uintptr_t callsiteFp) const
-{
-    uintptr_t address = 0;
-    if (info.first == GCStackMapRegisters::SP) {
-        address = callSiteSp + info.second;
-    } else if (info.first == GCStackMapRegisters::FP) {
-        address = callsiteFp + info.second;
-    } else {
-        UNREACHABLE();
-    }
-    return address;
-}
-
-void LLVMStackMapParser::CollectBaseAndDerivedPointers(const RootVisitor &visitor,
-    const RootBaseAndDerivedVisitor &derivedVisitor, const CallSiteInfo* infos, uintptr_t callsiteFp,
-    uintptr_t callSiteSp) const
-{
-    bool flag = (infos->size() % 2 != 0);
-    size_t j = flag ? 1 : 0; // skip first element when size is odd number
-    std::map<uintptr_t, uintptr_t> baseSet;
-    for (; j < infos->size(); j += 2) { // 2: base and derived
-        const DwarfRegAndOffsetType& baseInfo = infos->at(j);
-        const DwarfRegAndOffsetType& derivedInfo = infos->at(j + 1);
-        uintptr_t base = GetStackSlotAddress(baseInfo, callSiteSp, callsiteFp);
-        uintptr_t derived = GetStackSlotAddress(derivedInfo, callSiteSp, callsiteFp);
-        if (*reinterpret_cast<uintptr_t *>(base) == 0) {
-            base = derived;
-        }
-        if (*reinterpret_cast<uintptr_t *>(base) != 0) {
-            // The base address may be marked repeatedly
-            if (baseSet.find(base) == baseSet.end()) {
-                baseSet.emplace(base, *reinterpret_cast<uintptr_t *>(base));
-                visitor(Root::ROOT_FRAME, ObjectSlot(base));
-            }
-
-            if (base != derived) {
-                derivedVisitor(Root::ROOT_FRAME, ObjectSlot(base), ObjectSlot(derived), baseSet[base]);
-            }
-        }
-    }
-    baseSet.clear();
-}
-
-bool LLVMStackMapParser::CollectGCSlots(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor,
-    uintptr_t callSiteAddr, uintptr_t callsiteFp, uintptr_t callSiteSp) const
-{
-    const CallSiteInfo *infos = GetCallSiteInfoByPc(callSiteAddr);
-    if (infos == nullptr) {
-        return false;
-    }
-    ASSERT(callsiteFp != callSiteSp);
-    CollectBaseAndDerivedPointers(visitor, derivedVisitor, infos, callsiteFp, callSiteSp);
-
-    if (IsLogEnabled()) {
-        PrintCallSiteInfo(infos, callsiteFp, callSiteSp);
-    }
-    return true;
-}
-
 void LLVMStackMapParser::CalcCallSite()
 {
     uint64_t recordNum = 0;
     Pc2CallSiteInfo pc2CallSiteInfo;
-    Pc2ConstInfo pc2ConstInfo;
+    Pc2Deopt deoptbundles;
     auto calStkMapRecordFunc =
-        [this, &recordNum, &pc2CallSiteInfo, &pc2ConstInfo](uintptr_t address, uint32_t recordId) {
+        [this, &recordNum, &pc2CallSiteInfo, &deoptbundles](uintptr_t address, uint32_t recordId) {
         struct StkMapRecordHeadTy recordHead = llvmStackMap_.StkMapRecord[recordNum + recordId].head;
+        int lastDeoptIndex = -1;
         for (int j = 0; j < recordHead.NumLocations; j++) {
             struct LocationTy loc = llvmStackMap_.StkMapRecord[recordNum + recordId].Locations[j];
             uint32_t instructionOffset = recordHead.InstructionOffset;
             uintptr_t callsite = address + instructionOffset;
             uint64_t  patchPointID = recordHead.PatchPointID;
+            if (j == LocationTy::CONSTANT_DEOPT_CNT_INDEX) {
+                ASSERT(loc.location == LocationTy::Kind::CONSTANT);
+                lastDeoptIndex = loc.OffsetOrSmallConstant + LocationTy::CONSTANT_DEOPT_CNT_INDEX;
+            }
             if (loc.location == LocationTy::Kind::INDIRECT) {
                 OPTIONAL_LOG_COMPILER(DEBUG) << "DwarfRegNum:" << loc.DwarfRegNum << " loc.OffsetOrSmallConstant:"
                     << loc.OffsetOrSmallConstant << "address:" << address << " instructionOffset:" <<
                     instructionOffset << " callsite:" << "  patchPointID :" << std::hex << patchPointID <<
                     callsite;
                 DwarfRegAndOffsetType info(loc.DwarfRegNum, loc.OffsetOrSmallConstant);
+                ASSERT(loc.DwarfRegNum == GCStackMapRegisters::SP || loc.DwarfRegNum == GCStackMapRegisters::FP);
                 auto it = pc2CallSiteInfo.find(callsite);
-                if (pc2CallSiteInfo.find(callsite) == pc2CallSiteInfo.end()) {
-                    pc2CallSiteInfo.insert(std::pair<uintptr_t, CallSiteInfo>(callsite, {info}));
-                } else {
-                    it->second.emplace_back(info);
+                if (j > lastDeoptIndex) {
+                    if (pc2CallSiteInfo.find(callsite) == pc2CallSiteInfo.end()) {
+                        pc2CallSiteInfo.insert(std::pair<uintptr_t, CallSiteInfo>(callsite, {info}));
+                    } else {
+                        it->second.emplace_back(info);
+                    }
+                } else if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX) {
+                    deoptbundles[callsite].push_back(info);
                 }
             } else if (loc.location == LocationTy::Kind::CONSTANT) {
-                if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX) {
-                    pc2ConstInfo[callsite].push_back(loc.OffsetOrSmallConstant);
+                if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX && j <= lastDeoptIndex) {
+                    deoptbundles[callsite].push_back(loc.OffsetOrSmallConstant);
                 }
+            } else if (loc.location == LocationTy::Kind::DIRECT) {
+                if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX && j <= lastDeoptIndex) {
+                    ASSERT(loc.DwarfRegNum == GCStackMapRegisters::SP || loc.DwarfRegNum == GCStackMapRegisters::FP);
+                    DwarfRegAndOffsetType info(loc.DwarfRegNum, loc.OffsetOrSmallConstant);
+                    deoptbundles[callsite].push_back(info);
+                }
+            } else if (loc.location == LocationTy::Kind::CONSTANTNDEX) {
+                if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX && j <= lastDeoptIndex) {
+                    LargeInt v = static_cast<LargeInt>(llvmStackMap_.
+                        Constants[loc.OffsetOrSmallConstant].LargeConstant);
+                    deoptbundles[callsite].push_back(v);
+                }
+            } else {
+                UNREACHABLE();
             }
         }
     };
     for (size_t i = 0; i < llvmStackMap_.StkSizeRecords.size(); i++) {
+        // relative offset
         uintptr_t address =  llvmStackMap_.StkSizeRecords[i].functionAddress;
         uint64_t recordCount = llvmStackMap_.StkSizeRecords[i].recordCount;
+        fun2RecordNum_.emplace_back(std::make_pair(address, recordCount));
         for (uint64_t k = 0; k < recordCount; k++) {
             calStkMapRecordFunc(address, k);
         }
         recordNum += recordCount;
     }
     pc2CallSiteInfoVec_.emplace_back(pc2CallSiteInfo);
-    pc2ConstInfoVec_.emplace_back(pc2ConstInfo);
+    pc2DeoptVec_.emplace_back(deoptbundles);
 }
 
 bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapAddr)
@@ -241,74 +170,65 @@ bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapA
     return true;
 }
 
+uint32_t ARKCallsite::CalHeadSize() const
+{
+    uint32_t headSize = sizeof(head);
+    return headSize;
+}
+
+uint32_t ARKCallsite::CalStackMapSize() const
+{
+    size_t stackmapSize = stackmaps.size() * (sizeof(OffsetType) + sizeof(DwarfRegType));
+    return stackmapSize;
+}
+
 bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapAddr,
-    uintptr_t hostCodeSectionAddr, uintptr_t deviceCodeSectionAddr)
+    uintptr_t hostCodeSectionAddr)
 {
     bool ret = CalculateStackMap(std::move(stackMapAddr));
     if (!ret) {
-        return ret;
+        return false;
     }
 
-    // update functionAddress from host side to device side
     OPTIONAL_LOG_COMPILER(DEBUG) << "stackmap calculate update funcitonaddress ";
 
     for (size_t i = 0; i < llvmStackMap_.StkSizeRecords.size(); i++) {
         uintptr_t hostAddr = llvmStackMap_.StkSizeRecords[i].functionAddress;
-        uintptr_t deviceAddr = hostAddr - hostCodeSectionAddr + deviceCodeSectionAddr;
-        llvmStackMap_.StkSizeRecords[i].functionAddress = deviceAddr;
+        uintptr_t offset = hostAddr - hostCodeSectionAddr;
+        llvmStackMap_.StkSizeRecords[i].functionAddress = offset;
         OPTIONAL_LOG_COMPILER(DEBUG) << std::dec << i << "th function " << std::hex << hostAddr << " ---> "
-                                     << deviceAddr;
+                                     << " offset:" << offset;
     }
+    pc2CallSiteInfoVec_.clear();
+    fun2RecordNum_.clear();
+    pc2DeoptVec_.clear();
     CalcCallSite();
     return true;
 }
 
-void LLVMStackMapParser::CalculateFuncFpDelta(Func2FpDelta info)
+void LLVMStackMapParser::CalculateFuncFpDelta(Func2FpDelta info, uint32_t moduleIndex)
 {
-    bool find = std::find(fun2FpDelta_.begin(), fun2FpDelta_.end(), info) == fun2FpDelta_.end();
+    std::vector<Func2FpDelta> fun2FpDelta;
+    auto it = module2fun2FpDelta_.find(moduleIndex);
+    if (it != module2fun2FpDelta_.end()) {
+        fun2FpDelta = module2fun2FpDelta_.at(moduleIndex);
+    }
+    bool find = std::find(fun2FpDelta.begin(), fun2FpDelta.end(), info) == fun2FpDelta.end();
     if (!info.empty() && find) {
-        fun2FpDelta_.emplace_back(info);
+        fun2FpDelta.emplace_back(info);
     }
-    for (auto &it: info) {
-        funAddr_.insert(it.first);
-    }
-}
+    module2fun2FpDelta_.erase(moduleIndex);
+    module2fun2FpDelta_[moduleIndex] = fun2FpDelta;
 
-int LLVMStackMapParser::FindFpDelta(uintptr_t funcAddr, uintptr_t callsitePc) const
-{
-    int delta = 0;
-    // next optimization can be performed via sorted/map.
-    for (auto &info: fun2FpDelta_) {
-        if (info.find(funcAddr) != info.end()) {
-            delta = info.at(funcAddr).first;
-            uint32_t funcSize = info.at(funcAddr).second;
-            if (callsitePc <= funcAddr + funcSize && callsitePc >= funcAddr) {
-                return delta;
-            }
-        }
+    std::set<uintptr_t> funAddr;
+    auto i = module2funAddr_.find(moduleIndex);
+    if (i != module2funAddr_.end()) {
+        funAddr = module2funAddr_.at(moduleIndex);
+        module2funAddr_.erase(moduleIndex);
     }
-    return delta;
-}
-
-int LLVMStackMapParser::GetFuncFpDelta(uintptr_t callsitePc) const
-{
-    int delta = 0;
-    auto itupper = funAddr_.upper_bound(callsitePc);
-    if (itupper != funAddr_.end()) { // find first element >= callsitePc
-        --itupper;
-        // callsitePC may jscall or entry, thus not existed in funAddr_
-        if ((itupper == funAddr_.end()) || (*itupper > callsitePc)) {
-            return delta;
-        }
-        delta = FindFpDelta(*itupper, callsitePc);
-    } else {
-        auto rit = funAddr_.crbegin(); // find last element
-        // callsitePC may jscall or entry, thus not existed in funAddr_
-        if ((rit == funAddr_.crend()) || (*rit > callsitePc)) {
-            return delta;
-        }
-        delta = FindFpDelta(*rit, callsitePc);
+    for (auto &iterator: info) {
+        funAddr.insert(iterator.first);
     }
-    return delta;
+    module2funAddr_[moduleIndex] = funAddr;
 }
 }  // namespace panda::ecmascript::kungfu

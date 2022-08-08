@@ -28,7 +28,7 @@ namespace ecmascript {
 class JSThread;
 class ConstantPool;
 namespace kungfu {
-    class LLVMStackMapParser;
+    class ArkStackMapParser;
 };
 
 class FrameHandler {
@@ -189,7 +189,7 @@ private:
     JSTaggedType *sp_ {nullptr};
     JSTaggedType *fp_ {nullptr};
     const JSThread *thread_ {nullptr};
-    const kungfu::LLVMStackMapParser *stackmapParser_ {nullptr};
+    const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 };
 
 class StackAssertScope {

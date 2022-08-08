@@ -50,6 +50,8 @@ public:
         }
         auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
         const size_t funcCount = llvmModule_->GetFuncCount();
+        funcCount_ = funcCount;
+        startIndex_ = stubInfo.GetEntrySize();
         for (size_t j = 0; j < funcCount; j++) {
             auto cs = callSigns[j];
             LLVMValueRef func = llvmModule_->GetFunction(j);
@@ -76,7 +78,7 @@ public:
         llvmModule_->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func) {
             uint64_t funcEntry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
             uint64_t length = 0;
-            std::string funcName(LLVMGetValueName2(func, &length));
+            std::string funcName(LLVMGetValueName2(func, reinterpret_cast<size_t *>(&length)));
             ASSERT(length != 0);
             LOG_COMPILER(INFO) << "CollectCodeInfo for AOT func: " << funcName.c_str();
             addr2name[funcEntry] = funcName;
@@ -86,6 +88,8 @@ public:
         });
         auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
         const size_t funcCount = funcInfo.size();
+        funcCount_ = funcCount;
+        startIndex_ = aotInfo.GetEntrySize();
         for (size_t i = 0; i < funcInfo.size(); i++) {
             uint64_t funcEntry;
             size_t idx;
@@ -109,8 +113,13 @@ public:
             auto curSec = ElfSection(i);
             moduleDes.SetSecAddr(reinterpret_cast<uint64_t>(secInfo.first), curSec.GetElfEnumValue());
             moduleDes.SetSecSize(secInfo.second, curSec.GetElfEnumValue());
+            moduleDes.SetStartIndex(startIndex_);
+            moduleDes.SetFuncCount(funcCount_);
         });
+        CollectStackMapDes(moduleDes);
     }
+
+    void CollectStackMapDes(ModuleSectionDes &moduleDes) const;
 
     const CompilationConfig *GetCompilationConfig()
     {
@@ -152,6 +161,8 @@ public:
 private:
     LLVMModule *llvmModule_ {nullptr};
     LLVMAssembler *assembler_ {nullptr};
+    uint32_t startIndex_ {-1}; // record current module first function index in StubModulePackInfo/AOTModulePackInfo
+    uint32_t funcCount_ {0};
 };
 
 class FileGenerator {
@@ -188,6 +199,8 @@ protected:
             m.DestoryModule();
         }
     }
+
+    void CollectStackMapDes(ModuleSectionDes& des);
 };
 
 class AOTFileGenerator : public FileGenerator {

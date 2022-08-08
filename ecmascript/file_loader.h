@@ -31,6 +31,7 @@ public:
     BinaryBufferParser(uint8_t *buffer, uint32_t length) : buffer_(buffer), length_(length) {}
     ~BinaryBufferParser() = default;
     void ParseBuffer(void *dst, uint32_t count);
+    void ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src);
 
 private:
     uint8_t *buffer_ {nullptr};
@@ -40,6 +41,64 @@ private:
 
 struct ModuleSectionDes {
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
+    uint32_t startIndex_ {-1}; // record current module first function index in PackInfo
+    uint32_t funcCount_ {0};
+    /* arkStackMapPtr_: generator aot file, stackmap buffer lifecycle is managned by share ptr
+    while arkStackMapRawPtr_ is allocated by machinecode, lifecycle is managned by machinecode.
+    */
+    std::shared_ptr<uint8_t> arkStackMapPtr_ {nullptr};
+    uint32_t arkStackMapSize_ {0};
+    uint8_t *arkStackMapRawPtr_ {nullptr};
+
+    void SetArkStackMapPtr(std::shared_ptr<uint8_t> ptr)
+    {
+        arkStackMapPtr_ = ptr;
+    }
+
+    std::shared_ptr<uint8_t> GetArkStackMapSharePtr()
+    {
+        return std::move(arkStackMapPtr_);
+    }
+
+    void SetArkStackMapPtr(uint8_t *ptr)
+    {
+        arkStackMapRawPtr_ = ptr;
+    }
+
+    uint8_t* GetArkStackMapRawPtr()
+    {
+        return arkStackMapRawPtr_;
+    }
+
+    void SetArkStackMapSize(uint32_t size)
+    {
+        arkStackMapSize_ = size;
+    }
+
+    uint32_t GetArkStackMapSize() const
+    {
+        return arkStackMapSize_;
+    }
+
+    void SetStartIndex(uint32_t index)
+    {
+        startIndex_ = index;
+    }
+
+    uint32_t GetStartIndex() const
+    {
+        return startIndex_;
+    }
+
+    void SetFuncCount(uint32_t cnt)
+    {
+        funcCount_ = cnt;
+    }
+
+    uint32_t GetFuncCount() const
+    {
+        return funcCount_;
+    }
 
     ModuleSectionDes() = default;
 
@@ -51,6 +110,11 @@ struct ModuleSectionDes {
     uint64_t GetSecAddr(const ElfSecName idx) const
     {
         return sectionsInfo_.at(idx).first;
+    }
+
+    void EraseSec(ElfSecName idx)
+    {
+        sectionsInfo_.erase(idx);
     }
 
     void SetSecSize(uint32_t size, ElfSecName idx)
@@ -70,9 +134,11 @@ struct ModuleSectionDes {
 
     void SaveSectionsInfo(std::ofstream &file);
     void LoadSectionsInfo(BinaryBufferParser &parser, uint32_t &curUnitOffset,
-        JSHandle<MachineCode> &code, EcmaVM *vm);
+        JSHandle<MachineCode> &code);
+    void LoadStackMapSection(BinaryBufferParser &parser, uintptr_t secBegin, uint32_t &curUnitOffset);
     void LoadSectionsInfo(std::ifstream &file, uint32_t &curUnitOffset,
-        JSHandle<MachineCode> &code, EcmaVM *vm);
+        JSHandle<MachineCode> &code);
+    void LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset);
 };
 
 class PUBLIC_API ModulePackInfo {
@@ -87,7 +153,7 @@ public:
         CallSignature::TargetKind kind_ {CallSignature::TargetKind::COMMON_STUB};
         uint32_t indexInKind_ {0};
         uint32_t moduleIndex_ {0};
-        int fpDeltaPrevFramSp_ {0};
+        int fpDeltaPrevFrameSp_ {0};
         uint32_t funcSize_ {0};
         bool IsStub() const
         {
@@ -125,6 +191,11 @@ public:
     const FuncEntryDes& GetStubDes(int index) const
     {
         return entries_[index];
+    }
+
+    uint32_t GetEntrySize() const
+    {
+        return entries_.size();
     }
 
     const std::vector<FuncEntryDes>& GetStubs() const
@@ -176,7 +247,7 @@ public:
         des.indexInKind_ = static_cast<uint32_t>(indexInKind);
         des.codeAddr_ = offset;
         des.moduleIndex_ = moduleIndex;
-        des.fpDeltaPrevFramSp_ = delta;
+        des.fpDeltaPrevFrameSp_ = delta;
         des.funcSize_ = size;
         entries_.emplace_back(des);
     }
@@ -195,6 +266,7 @@ public:
     {
         totalCodeSize_ += size;
     }
+    bool CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uint8_t *, int>& ret) const;
 protected:
     uint32_t entryNum_ {0};
     uint32_t moduleNum_ {0};
@@ -222,6 +294,7 @@ public:
                 accumulateTotalSize(s.second.second);
             }
         }
+        accumulateTotalSize(moduleDes.GetArkStackMapSize());
         aotFileHashs_.emplace_back(hash);
     }
 private:
@@ -244,6 +317,7 @@ public:
                 accumulateTotalSize(s.second.second);
             }
         }
+        accumulateTotalSize(moduleDes.GetArkStackMapSize());
     }
 
     uint64_t GetAsmStubAddr() const
@@ -327,12 +401,17 @@ public:
         return stubPackInfo_;
     }
 
+    const std::vector<AOTModulePackInfo>& GetPackInfos() const
+    {
+        return aotPackInfos_;
+    }
+
     void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile);
     bool hasLoaded(const JSPandaFile *jsPandaFile);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);
     void LoadSnapshotFile();
-    kungfu::LLVMStackMapParser* GetStackMapParser() const;
+    kungfu::ArkStackMapParser* GetStackMapParser() const;
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void RuntimeRelocate();
@@ -342,7 +421,7 @@ private:
     StubModulePackInfo stubPackInfo_ {};
     std::vector<AOTModulePackInfo> aotPackInfos_ {};
     std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint64_t>> hashToEntryMap_ {};
-    kungfu::LLVMStackMapParser *stackMapParser_ {nullptr};
+    kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 
     void InitializeStubEntries(const std::vector<AOTModulePackInfo::FuncEntryDes>& stubs);
     void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<ModulePackInfo::FuncEntryDes> &stubs,

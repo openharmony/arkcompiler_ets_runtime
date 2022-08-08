@@ -246,6 +246,7 @@
 // get foo's Frame by bar's Frame prev field
 
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/llvm_stackmap_type.h"
 #include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/visitor.h"
 
@@ -254,7 +255,7 @@ class JSThread;
 class EcmaVM;
 class FrameIterator;
 namespace kungfu {
-    class LLVMStackMapParser;
+    class ArkStackMapParser;
 };
 enum class FrameType: uintptr_t {
     OPTIMIZED_FRAME = 0,
@@ -454,6 +455,7 @@ public:
     }
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    void CollectBCOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const;
 
     inline JSTaggedValue GetEnv() const
     {
@@ -1096,7 +1098,7 @@ public:
     }
     int ComputeDelta() const;
     void Advance();
-    uintptr_t GetPrevFrameCallSiteSp(uintptr_t curPc = 0) const;
+    uintptr_t GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc = 0) const;
     uintptr_t GetPrevFrame() const;
     uintptr_t GetCallSiteSp() const
     {
@@ -1110,13 +1112,18 @@ public:
     {
         return thread_;
     }
-    bool CollectGCSlots(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    bool IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    void CollectBCOffsetInfo(kungfu::ConstInfo &info) const;
+    std::tuple<uint64_t, uint8_t *, int> CalCallSiteInfo(uintptr_t retAddr) const;
+    int GetCallSiteDelta(uintptr_t retAddr) const;
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
-    const kungfu::LLVMStackMapParser *stackmapParser_ {nullptr};
+    const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
     uintptr_t optimizedCallSiteSp_ {0};
     uintptr_t optimizedReturnAddr_ {0};
+    uint8_t *stackMapAddr_ {nullptr};
+    int fpDeltaPrevFrameSp_ {0};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_FRAMES_H

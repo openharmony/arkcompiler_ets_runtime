@@ -29,6 +29,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_method.h"
+#include "ecmascript/llvm_stackmap_parser.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -786,6 +787,8 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     if (NeedBCOffset(op)) {
         LLVMTypeRef funcType = llvmModule_->GetFuncType(calleeDescriptor);
         std::vector<LLVMValueRef> values;
+        auto bcIndex = LLVMConstInt(LLVMInt64Type(), static_cast<int>(SpecVregIndex::BC_OFFSET_INDEX), 1);
+        values.push_back(bcIndex);
         values.push_back(bcOffset);
         call = LLVMBuildCall3(
             builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt, "", values.data(),
