@@ -222,10 +222,8 @@ bool JSFinalizationRegistry::CleanupFinalizationRegistry(JSThread *thread, JSHan
     JSMutableHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister());
     int index = 0;
     int totalElements = maybeUnregister->NumberOfElements() + maybeUnregister->NumberOfDeletedElements();
-    JSMutableHandle<JSTaggedValue> key(thread, maybeUnregister->GetKey(index));
     while (index < totalElements) {
-        key.Update(maybeUnregister->GetKey(index++));
-        if (!key->IsHole()) {
+        if (!maybeUnregister->GetKey(index++).IsHole()) {
             JSHandle<CellRecordVector> cellVect(thread, maybeUnregister->GetValue(index - 1));
             DealCallBackOfMap(thread, cellVect, job, func);
             if (!cellVect->Empty()) {
