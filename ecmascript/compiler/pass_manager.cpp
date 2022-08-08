@@ -45,28 +45,30 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableLog, aotModule, &cmpCfg, tsManager]
         (const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> &constantPool,
         BytecodeInfoCollector::MethodPcInfo &methodPCInfo) {
-        const std::string methodName(methodPCInfo.method->GetMethodName());
-        if (log_->CertainMethod()) {
-            enableLog = logList_->IncludesMethod(fileName, methodName);
-        }
+        for (auto method : methodPCInfo.methods) {
+            const std::string methodName(method->GetMethodName());
+            if (log_->CertainMethod()) {
+                enableLog = logList_->IncludesMethod(fileName, methodName);
+            }
 
-        if (enableLog) {
-            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
-                            << methodName << "] log:" << "\033[0m";
-        }
+            if (enableLog) {
+                LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
+                                << methodName << "] log:" << "\033[0m";
+            }
 
-        BytecodeCircuitBuilder builder(jsPandaFile, constantPool, methodPCInfo, tsManager,
-                                       enableLog && log_->OutputCIR());
-        builder.BytecodeToCircuit();
-        PassData data(builder.GetCircuit());
-        PassRunner<PassData> pipeline(&data, enableLog && log_->OutputCIR());
-        pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
-        pipeline.RunPass<TypeInferPass>(&builder, tsManager);
-        pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
-        pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg);
-        pipeline.RunPass<VerifierPass>();
-        pipeline.RunPass<SchedulingPass>();
-        pipeline.RunPass<LLVMIRGenPass>(aotModule, methodPCInfo.method);
+            BytecodeCircuitBuilder builder(jsPandaFile, constantPool, method, methodPCInfo, tsManager,
+                                        enableLog && log_->OutputCIR());
+            builder.BytecodeToCircuit();
+            PassData data(builder.GetCircuit());
+            PassRunner<PassData> pipeline(&data, enableLog && log_->OutputCIR());
+            pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
+            pipeline.RunPass<TypeInferPass>(&builder, tsManager);
+            pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
+            pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg);
+            pipeline.RunPass<VerifierPass>();
+            pipeline.RunPass<SchedulingPass>();
+            pipeline.RunPass<LLVMIRGenPass>(aotModule, method);
+        }
     });
 
     generator.AddModule(aotModule, aotModuleAssembler, bytecodeInfo.jsPandaFile);

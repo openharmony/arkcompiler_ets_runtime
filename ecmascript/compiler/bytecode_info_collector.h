@@ -28,7 +28,7 @@ public:
     enum FixInsIndex : uint8_t { FIX_ONE = 1, FIX_TWO = 2, FIX_FOUR = 4 };
 
     struct MethodPcInfo {
-        const JSMethod *method {nullptr};
+        std::vector<const JSMethod *> methods;
         std::map<uint8_t *, uint8_t *> byteCodeCurPrePc {};
         std::vector<CfgInfo> bytecodeBlockInfos {};
         std::map<const uint8_t *, int32_t> pcToBCOffset {};
@@ -68,7 +68,7 @@ private:
     static void TranslateBCIns(JSPandaFile *jsPandaFile, const BytecodeInstruction &bcIns, const JSMethod *method);
 
     static void CollectMethodPcs(JSPandaFile *jsPandaFile, const uint32_t insSz, const uint8_t *insArr,
-                                 const JSMethod *method, std::vector<MethodPcInfo> &methodPcInfos);
+                                 const JSMethod *method, MethodPcInfo &methodPcInfos);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H
