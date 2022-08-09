@@ -203,4 +203,47 @@ HWTEST_F_L0(JSAPIQueueTest, GetOwnProperty)
     JSHandle<JSTaggedValue> queueKey2(thread, JSTaggedValue(testInt));
     EXPECT_FALSE(JSAPIQueue::GetOwnProperty(thread, jsQueue, queueKey2));
 }
+
+/**
+ * @tc.name: GetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIQueueTest, GetProperty)
+{
+    JSHandle<JSAPIQueue> jsQueue = CreateQueue();
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIQueue::Add(thread, jsQueue, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        OperationResult getPropertyRes = JSAPIQueue::GetProperty(thread, jsQueue, key);
+        EXPECT_EQ(getPropertyRes.GetValue().GetTaggedValue(), JSTaggedValue(i));
+    }
+}
+
+/**
+ * @tc.name: SetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIQueueTest, SetProperty)
+{
+    JSHandle<JSAPIQueue> jsQueue = CreateQueue();
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIQueue::Add(thread, jsQueue, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i * 2)); // 2 : It means double
+        bool setPropertyRes = JSAPIQueue::SetProperty(thread, jsQueue, key, value);
+        EXPECT_EQ(setPropertyRes, true);
+    }
+}
 }  // namespace panda::test

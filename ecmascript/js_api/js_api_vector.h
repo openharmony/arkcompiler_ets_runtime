@@ -95,6 +95,13 @@ public:
 
     static JSTaggedValue GetIteratorObj(JSThread *thread, const JSHandle<JSAPIVector> &obj);
 
+    static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIVector> &obj,
+                                       const JSHandle<JSTaggedValue> &key);
+
+    static bool SetProperty(JSThread *thread, const JSHandle<JSAPIVector> &obj,
+                            const JSHandle<JSTaggedValue> &key,
+                            const JSHandle<JSTaggedValue> &value);
+
     inline int32_t GetSize() const
     {
         return GetLength();

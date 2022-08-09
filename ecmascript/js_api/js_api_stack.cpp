@@ -165,4 +165,18 @@ OperationResult JSAPIStack::GetProperty(JSThread *thread, const JSHandle<JSAPISt
 
     return OperationResult(thread, obj->Get(index), PropertyMetaData(false));
 }
+
+bool JSAPIStack::SetProperty(JSThread *thread, const JSHandle<JSAPIStack> &obj,
+                             const JSHandle<JSTaggedValue> &key,
+                             const JSHandle<JSTaggedValue> &value)
+{
+    int length = obj->GetTop() + 1;
+    int index = key->GetInt();
+    if (index < 0 || index >= length) {
+        return false;
+    }
+
+    obj->Set(thread, index, value.GetTaggedValue());
+    return true;
+}
 }  // namespace panda::ecmascript

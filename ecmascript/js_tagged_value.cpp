@@ -603,7 +603,7 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     } else if (obj->IsModuleNamespace()) {
         success = ModuleNamespace::SetProperty(thread, mayThrow);
     } else if (obj->IsSpecialContainer()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", false);
+        success = SetJSAPIProperty(thread, obj, key, value);
     } else {
         success = JSObject::SetProperty(thread, obj, key, value, mayThrow);
     }
@@ -632,7 +632,8 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     } else if (obj->IsModuleNamespace()) {
         success = ModuleNamespace::SetProperty(thread, mayThrow);
     } else if (obj->IsSpecialContainer()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", false);
+        JSHandle<JSTaggedValue> keyHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(key));
+        success = SetJSAPIProperty(thread, obj, keyHandle, value);
     } else {
         success = JSObject::SetProperty(thread, obj, key, value, mayThrow);
     }
@@ -662,7 +663,7 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     } else if (obj->IsModuleNamespace()) {
         success = ModuleNamespace::SetProperty(thread, mayThrow);
     } else if (obj->IsSpecialContainer()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", false);
+        success = SetJSAPIProperty(thread, obj, key, value);
     } else {
         success = JSObject::SetProperty(thread, obj, key, value, receiver, mayThrow);
     }
@@ -1117,6 +1118,9 @@ OperationResult JSTaggedValue::GetJSAPIProperty(JSThread *thread, const JSHandle
             case JSType::JS_API_PLAIN_ARRAY: {
                 return JSAPIPlainArray::GetProperty(thread, JSHandle<JSAPIPlainArray>::Cast(obj), key);
             }
+            case JSType::JS_API_VECTOR: {
+                return JSAPIVector::GetProperty(thread, JSHandle<JSAPIVector>::Cast(obj), key);
+            }
             default: {
                 return JSObject::GetProperty(thread, JSHandle<JSObject>(obj), key);
             }
@@ -1125,5 +1129,47 @@ OperationResult JSTaggedValue::GetJSAPIProperty(JSThread *thread, const JSHandle
         return JSObject::GetProperty(thread, JSHandle<JSObject>(obj), key);
     }
     return OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false));
+}
+
+bool JSTaggedValue::SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                     const JSHandle<JSTaggedValue> &key,
+                                     const JSHandle<JSTaggedValue> &value)
+{
+    if (key->IsInteger()) {
+        auto *hclass = obj->GetTaggedObject()->GetClass();
+        JSType jsType = hclass->GetObjectType();
+        switch (jsType) {
+            case JSType::JS_API_ARRAY_LIST: {
+                return JSAPIArrayList::SetProperty(thread, JSHandle<JSAPIArrayList>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_LIST: {
+                return JSAPIList::SetProperty(thread, JSHandle<JSAPIList>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_LINKED_LIST: {
+                return JSAPILinkedList::SetProperty(thread, JSHandle<JSAPILinkedList>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_QUEUE: {
+                return JSAPIQueue::SetProperty(thread, JSHandle<JSAPIQueue>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_DEQUE: {
+                return JSAPIDeque::SetProperty(thread, JSHandle<JSAPIDeque>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_STACK: {
+                return JSAPIStack::SetProperty(thread, JSHandle<JSAPIStack>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_PLAIN_ARRAY: {
+                return JSAPIPlainArray::SetProperty(thread, JSHandle<JSAPIPlainArray>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_VECTOR: {
+                return JSAPIVector::SetProperty(thread, JSHandle<JSAPIVector>::Cast(obj), key, value);
+            }
+            default: {
+                return JSObject::SetProperty(thread, JSHandle<JSObject>::Cast(obj), key, value);
+            }
+        }
+    } else {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", false);
+    }
+    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", false);
 }
 }  // namespace panda::ecmascript

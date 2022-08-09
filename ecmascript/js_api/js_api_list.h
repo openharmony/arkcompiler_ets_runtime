@@ -49,6 +49,9 @@ public:
                                const JSHandle<JSTaggedValue> &key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIList> &list,
                                        const JSHandle<JSTaggedValue> &key);
+    static bool SetProperty(JSThread *thread, const JSHandle<JSAPIList> &obj,
+                            const JSHandle<JSTaggedValue> &key,
+                            const JSHandle<JSTaggedValue> &value);
 
     JSTaggedValue GetFirst();
     JSTaggedValue GetLast();

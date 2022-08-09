@@ -52,6 +52,9 @@ public:
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSAPIDeque> &deque, const JSHandle<JSTaggedValue> &key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIDeque> &obj,
                                        const JSHandle<JSTaggedValue> &key);
+    static bool SetProperty(JSThread *thread, const JSHandle<JSAPIDeque> &obj,
+                            const JSHandle<JSTaggedValue> &key,
+                            const JSHandle<JSTaggedValue> &value);
     JSTaggedValue GetFront();
 
     JSTaggedValue GetTail();

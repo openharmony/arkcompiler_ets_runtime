@@ -42,6 +42,9 @@ public:
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj, const JSHandle<JSTaggedValue> &key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,
                                        const JSHandle<JSTaggedValue> &key);
+    static bool SetProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,
+                            const JSHandle<JSTaggedValue> &key,
+                            const JSHandle<JSTaggedValue> &value);
 
     inline uint32_t GetSize() const
     {

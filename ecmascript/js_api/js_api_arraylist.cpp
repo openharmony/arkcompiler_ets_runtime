@@ -415,4 +415,18 @@ OperationResult JSAPIArrayList::GetProperty(JSThread *thread, const JSHandle<JSA
 
     return OperationResult(thread, obj->Get(thread, index), PropertyMetaData(false));
 }
+
+bool JSAPIArrayList::SetProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,
+                                 const JSHandle<JSTaggedValue> &key,
+                                 const JSHandle<JSTaggedValue> &value)
+{
+    int length = obj->GetLength().GetInt();
+    int index = key->GetInt();
+    if (index < 0 || index >= length) {
+        return false;
+    }
+
+    obj->Set(thread, index, value.GetTaggedValue());
+    return true;
+}
 }  // namespace panda::ecmascript

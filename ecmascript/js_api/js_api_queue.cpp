@@ -188,6 +188,21 @@ OperationResult JSAPIQueue::GetProperty(JSThread *thread, const JSHandle<JSAPIQu
     return OperationResult(thread, obj->Get(thread, index), PropertyMetaData(false));
 }
 
+bool JSAPIQueue::SetProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,
+                             const JSHandle<JSTaggedValue> &key,
+                             const JSHandle<JSTaggedValue> &value)
+{
+    int length = static_cast<int>(obj->GetLength().GetArrayLength());
+    int index = key->GetInt();
+    if (index < 0 || index >= length) {
+        return false;
+    }
+
+    obj->Set(thread, index, value.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    return true;
+}
+
 uint32_t JSAPIQueue::GetArrayLength(JSThread *thread, const JSHandle<JSAPIQueue> &queue)
 {
     uint32_t begin = queue->GetCurrentFront();

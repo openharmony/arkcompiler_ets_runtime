@@ -43,6 +43,9 @@ public:
                                const JSHandle<JSTaggedValue> &key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPILinkedList> &list,
                                        const JSHandle<JSTaggedValue> &key);
+    static bool SetProperty(JSThread *thread, const JSHandle<JSAPILinkedList> &obj,
+                            const JSHandle<JSTaggedValue> &key,
+                            const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue RemoveFirst(JSThread *thread, const JSHandle<JSAPILinkedList> &list);
     static JSTaggedValue RemoveLast(JSThread *thread, const JSHandle<JSAPILinkedList> &list);
     static JSTaggedValue RemoveByIndex(JSThread *thread, JSHandle<JSAPILinkedList> &list, const int index);
