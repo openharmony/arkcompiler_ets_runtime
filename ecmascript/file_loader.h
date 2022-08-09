@@ -134,10 +134,10 @@ struct ModuleSectionDes {
 
     void SaveSectionsInfo(std::ofstream &file);
     void LoadSectionsInfo(BinaryBufferParser &parser, uint32_t &curUnitOffset,
-        JSHandle<MachineCode> &code);
+        uint64_t codeAddress);
     void LoadStackMapSection(BinaryBufferParser &parser, uintptr_t secBegin, uint32_t &curUnitOffset);
     void LoadSectionsInfo(std::ifstream &file, uint32_t &curUnitOffset,
-        JSHandle<MachineCode> &code);
+        uint64_t codeAddress);
     void LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset);
 };
 
@@ -370,6 +370,14 @@ public:
     virtual ~FileLoader();
     void LoadStubFile();
     void LoadAOTFile(const std::string &fileName);
+    void SetAOTmmap(void *addr, uint32_t totalCodeSize)
+    {
+        aotAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
+    }
+    void SetStubmmap(void *addr, uint32_t totalCodeSize)
+    {
+        stubAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
+    }
     void AddAOTPackInfo(AOTModulePackInfo packInfo)
     {
         aotPackInfos_.emplace_back(packInfo);
@@ -416,6 +424,8 @@ public:
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void RuntimeRelocate();
 private:
+    std::vector<std::pair<void *, uint32_t>> aotAddrs_;
+    std::vector<std::pair<void *, uint32_t>> stubAddrs_;
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     StubModulePackInfo stubPackInfo_ {};
