@@ -26,17 +26,6 @@
 #include "libpandafile/file-inl.h"
 
 namespace panda::ecmascript {
-struct MethodPcInfo {
-    const JSMethod *method {nullptr};
-    std::vector<uint8_t *> pcArray {};
-};
-
-struct BytecodeTranslationInfo {
-    const JSPandaFile *jsPandaFile {nullptr};
-    JSHandle<JSTaggedValue> constantPool;
-    std::vector<MethodPcInfo> methodPcInfos {};
-};
-
 class JSThread;
 class Program;
 class JSPandaFileManager;
@@ -51,12 +40,11 @@ public:
     NO_COPY_SEMANTIC(PandaFileTranslator);
     NO_MOVE_SEMANTIC(PandaFileTranslator);
     static JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile);
-    static void TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName,
-                                 std::vector<MethodPcInfo> *methodPcInfos = nullptr);
+    static void TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName);
 
 private:
     static void TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t insSz, const uint8_t *insArr,
-                                  const JSMethod *method, std::vector<MethodPcInfo> *methodPcInfos);
+        const JSMethod *method);
     static void FixInstructionId32(const BytecodeInstruction &inst, uint32_t index, uint32_t fixOrder = 0);
     static void FixOpcode(uint8_t *pc);
     static void UpdateICOffset(JSMethod *method, uint8_t *pc);

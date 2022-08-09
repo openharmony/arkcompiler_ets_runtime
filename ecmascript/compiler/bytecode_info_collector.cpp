@@ -53,7 +53,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
     size_t methodIdx = 0;
     panda_file::File::StringData sd = {static_cast<uint32_t>(methodName.size()),
                                        reinterpret_cast<const uint8_t *>(methodName.c_str())};
-    std::set<const uint8_t *> processedInsns;
+    std::map<const uint8_t *, size_t> processedInsns;
     Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
@@ -79,9 +79,12 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
             method->SetHotnessCounter(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
             method->InitializeCallField(codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
-            if (processedInsns.find(insns) == processedInsns.end()) {
-                processedInsns.insert(insns);
+            auto it = processedInsns.find(insns);
+            if (it == processedInsns.end()) {
                 CollectMethodPcs(jsPandaFile, codeSize, insns, method, methodPcInfos);
+                processedInsns[insns] = methodPcInfos.size() - 1;
+            } else {
+                methodPcInfos[it->second].methods.emplace_back(method);
             }
             jsPandaFile->SetMethodToMap(method);
         });
@@ -357,7 +360,8 @@ void BytecodeInfoCollector::CollectMethodPcs(JSPandaFile *jsPandaFile, const uin
 {
     auto bcIns = BytecodeInstruction(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
-    methodPcInfos.emplace_back(MethodPcInfo { method, {}, {}, {} });
+
+    methodPcInfos.emplace_back(MethodPcInfo { std::vector<const JSMethod *>(1, method), {}, {}, {} });
 
     int32_t offsetIndex = 1;
     uint8_t *curPc = nullptr;

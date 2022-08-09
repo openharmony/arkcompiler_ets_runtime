@@ -336,7 +336,9 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
 
 void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func)
 {
-    auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), jsPandaFile->GetUniqueMethod(func));
+    JSMethod *method = func->GetMethod();
+    uint32_t methodId = method->GetMethodId().GetOffset();
+    auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
     func->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
