@@ -1021,6 +1021,26 @@ inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
     return TruncInt32ToInt1(ret);
 }
 
+inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    Label isHeapObject(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        result = TaggedObjectIsEcmaObject(obj);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 inline GateRef StubBuilder::IsJSObject(GateRef obj)
 {
     auto env = GetEnvironment();
