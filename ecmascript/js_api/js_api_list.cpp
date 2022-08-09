@@ -216,4 +216,19 @@ OperationResult JSAPIList::GetProperty(JSThread *thread, const JSHandle<JSAPILis
     
     return OperationResult(thread, singleList->Get(index), PropertyMetaData(false));
 }
+
+bool JSAPIList::SetProperty(JSThread *thread, const JSHandle<JSAPIList> &obj,
+                            const JSHandle<JSTaggedValue> &key,
+                            const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<TaggedSingleList> singleList(thread, obj->GetSingleList());
+    int nodeLength = singleList->Length();
+    int index = key->GetInt();
+    if (index < 0 || index >= nodeLength) {
+        return false;
+    }
+
+    TaggedSingleList::Set(thread, singleList, index, value);
+    return true;
+}
 }  // namespace panda::ecmascript

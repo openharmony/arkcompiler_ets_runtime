@@ -480,4 +480,31 @@ JSTaggedValue JSAPIVector::GetIteratorObj(JSThread *thread, const JSHandle<JSAPI
 
     return iter.GetTaggedValue();
 }
+
+OperationResult JSAPIVector::GetProperty(JSThread *thread, const JSHandle<JSAPIVector> &obj,
+                                         const JSHandle<JSTaggedValue> &key)
+{
+    int length = obj->GetSize();
+    int index = key->GetInt();
+    if (index < 0 || index >= length) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "GetProperty index out-of-bounds",
+                                     OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+    }
+
+    return OperationResult(thread, JSAPIVector::Get(thread, obj, index), PropertyMetaData(false));
+}
+
+bool JSAPIVector::SetProperty(JSThread *thread, const JSHandle<JSAPIVector> &obj,
+                              const JSHandle<JSTaggedValue> &key,
+                              const JSHandle<JSTaggedValue> &value)
+{
+    int length = obj->GetSize();
+    int index = key->GetInt();
+    if (index < 0 || index >= length) {
+        return false;
+    }
+
+    obj->Set(thread, index, value.GetTaggedValue());
+    return true;
+}
 } // namespace panda::ecmascript

@@ -56,8 +56,8 @@ public:
                                             const JSHandle<JSTaggedValue> &callbackFn,
                                             const JSHandle<JSTaggedValue> &thisArg);
     static JSHandle<JSAPIArrayList> SubArrayList(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
-                                              const JSHandle<JSTaggedValue> &value1,
-                                              const JSHandle<JSTaggedValue> &value2);
+                                                 const JSHandle<JSTaggedValue> &value1,
+                                                 const JSHandle<JSTaggedValue> &value2);
     static JSTaggedValue ForEach(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
                                  const JSHandle<JSTaggedValue> &callbackFn,
                                  const JSHandle<JSTaggedValue> &thisArg);
@@ -73,6 +73,9 @@ public:
                                const JSHandle<JSTaggedValue> &key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,
                                        const JSHandle<JSTaggedValue> &key);
+    static bool SetProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,
+                            const JSHandle<JSTaggedValue> &key,
+                            const JSHandle<JSTaggedValue> &value);
     inline int GetSize() const
     {
         return GetLength().GetInt();

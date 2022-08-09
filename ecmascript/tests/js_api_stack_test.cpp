@@ -213,4 +213,47 @@ HWTEST_F_L0(JSAPIStackTest, GetOwnProperty)
     JSHandle<JSTaggedValue> stackKey2(thread, JSTaggedValue(testInt));
     EXPECT_FALSE(JSAPIStack::GetOwnProperty(thread, toor, stackKey2));
 }
+
+/**
+ * @tc.name: GetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIStackTest, GetProperty)
+{
+    JSHandle<JSAPIStack> toor(thread, CreateStack());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIStack::Push(thread, toor, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        OperationResult getPropertyRes = JSAPIStack::GetProperty(thread, toor, key);
+        EXPECT_EQ(getPropertyRes.GetValue().GetTaggedValue(), JSTaggedValue(i));
+    }
+}
+
+/**
+ * @tc.name: SetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIStackTest, SetProperty)
+{
+    JSHandle<JSAPIStack> toor(thread, CreateStack());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIStack::Push(thread, toor, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i * 2)); // 2 : It means double
+        bool setPropertyRes = JSAPIStack::SetProperty(thread, toor, key, value);
+        EXPECT_EQ(setPropertyRes, true);
+    }
+}
 }  // namespace panda::test
