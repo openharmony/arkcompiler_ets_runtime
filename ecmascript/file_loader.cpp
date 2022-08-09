@@ -31,6 +31,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/mem/region.h"
+#include "ecmascript/base/mem_mmap.h"
 
 extern const uint8_t _binary_stub_aot_start[];
 extern const uint32_t _binary_stub_aot_length;
@@ -76,11 +77,11 @@ void ModuleSectionDes::LoadStackMapSection(BinaryBufferParser &parser, uintptr_t
 }
 
 void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
-    uint32_t &curUnitOffset, JSHandle<MachineCode> &code)
+    uint32_t &curUnitOffset, uint64_t codeAddress)
 {
     uint32_t secInfoSize;
     parser.ParseBuffer(&secInfoSize, sizeof(secInfoSize));
-    auto secBegin = code->GetDataOffsetAddress() + static_cast<uintptr_t>(curUnitOffset);
+    auto secBegin = codeAddress + static_cast<uintptr_t>(curUnitOffset);
     for (uint8_t i = 0; i < secInfoSize; i++) {
         uint8_t secName;
         parser.ParseBuffer(&secName, sizeof(secName));
@@ -113,11 +114,11 @@ void ModuleSectionDes::LoadStackMapSection(std::ifstream &file, uintptr_t secBeg
 }
 
 void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
-    uint32_t &curUnitOffset, JSHandle<MachineCode> &code)
+    uint32_t &curUnitOffset, uint64_t codeAddress)
 {
     uint32_t secInfoSize;
     file.read(reinterpret_cast<char *>(&secInfoSize), sizeof(secInfoSize));
-    auto secBegin = code->GetDataOffsetAddress() + static_cast<uintptr_t>(curUnitOffset);
+    auto secBegin = codeAddress + static_cast<uintptr_t>(curUnitOffset);
     for (uint8_t i = 0; i < secInfoSize; i++) {
         uint8_t secName;
         file.read(reinterpret_cast<char *>(&secName), sizeof(secName));
@@ -174,19 +175,22 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
     des_.resize(moduleNum_);
     uint32_t totalCodeSize = 0;
     binBufparser.ParseBuffer(&totalCodeSize, sizeof(totalCodeSize_));
-    auto factory = vm->GetFactory();
-    auto codeHandle = factory->NewMachineCodeObject(totalCodeSize, nullptr);
-    SetCode(codeHandle);
+    void *addr = base::MemMmap::Mmap(totalCodeSize);
+    if (addr == nullptr) {
+        LOG_FULL(FATAL) << "mmap fail";
+        return false;
+    }
+    vm->GetFileLoader()->SetStubmmap(addr, totalCodeSize);
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(addr);
     uint32_t curUnitOffset = 0;
     uint32_t asmStubSize;
     binBufparser.ParseBuffer(&asmStubSize, sizeof(asmStubSize));
     SetAsmStubSize(asmStubSize);
-    auto secBegin = codeHandle->GetDataOffsetAddress();
-    binBufparser.ParseBuffer(reinterpret_cast<void *>(secBegin), asmStubSize);
-    SetAsmStubAddr(secBegin);
+    binBufparser.ParseBuffer(reinterpret_cast<void *>(codeAddress), asmStubSize);
+    SetAsmStubAddr(codeAddress);
     curUnitOffset += asmStubSize;
     for (size_t i = 0; i < moduleNum_; i++) {
-        des_[i].LoadSectionsInfo(binBufparser, curUnitOffset, codeHandle);
+        des_[i].LoadSectionsInfo(binBufparser, curUnitOffset, codeAddress);
     }
     for (auto &entry : entries_) {
         if (entry.IsGeneralRTStub()) {
@@ -241,13 +245,17 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
     uint32_t totalCodeSize = 0;
     file.read(reinterpret_cast<char *>(&totalCodeSize), sizeof(totalCodeSize_));
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetAssociatedJSThread());
-    auto factory = vm->GetFactory();
-    auto codeHandle = factory->NewMachineCodeObject(totalCodeSize, nullptr);
-    SetCode(codeHandle);
+    void *addr = base::MemMmap::Mmap(totalCodeSize);
+    if (addr == nullptr) {
+        LOG_FULL(FATAL) << "mmap fail";
+        return false;
+    }
+    vm->GetFileLoader()->SetAOTmmap(addr, totalCodeSize);
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(addr);
     file.read(reinterpret_cast<char *>(aotFileHashs_.data()), sizeof(uint32_t) * moduleNum_);
     uint32_t curUnitOffset = 0;
     for (size_t i = 0; i < moduleNum_; i++) {
-        des_[i].LoadSectionsInfo(file, curUnitOffset, codeHandle);
+        des_[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
     }
     for (size_t i = 0; i < entries_.size(); i++) {
         auto des = des_[entries_[i].moduleIndex_];
@@ -444,6 +452,12 @@ FileLoader::~FileLoader()
     if (arkStackMapParser_ != nullptr) {
         delete arkStackMapParser_;
         arkStackMapParser_ = nullptr;
+    }
+    for (size_t i = 0; i < aotAddrs_.size(); i++) {
+        base::MemMmap::Munmap(aotAddrs_[i].first, aotAddrs_[i].second);
+    }
+    for (size_t i = 0; i < stubAddrs_.size(); i++) {
+        base::MemMmap::Munmap(stubAddrs_[i].first, stubAddrs_[i].second);
     }
 }
 

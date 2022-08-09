@@ -337,6 +337,7 @@ ecma_source = [
   "ecmascript/base/error_helper.cpp",
   "ecmascript/base/json_parser.cpp",
   "ecmascript/base/json_stringifier.cpp",
+  "ecmascript/base/mem_mmap.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
