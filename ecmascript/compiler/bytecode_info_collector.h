@@ -68,7 +68,7 @@ private:
     static void TranslateBCIns(JSPandaFile *jsPandaFile, const BytecodeInstruction &bcIns, const JSMethod *method);
 
     static void CollectMethodPcs(JSPandaFile *jsPandaFile, const uint32_t insSz, const uint8_t *insArr,
-                                 const JSMethod *method, MethodPcInfo &methodPcInfos);
+                                 const JSMethod *method, std::vector<MethodPcInfo> &methodPcInfos);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H

@@ -53,7 +53,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
     size_t methodIdx = 0;
     panda_file::File::StringData sd = {static_cast<uint32_t>(methodName.size()),
                                        reinterpret_cast<const uint8_t *>(methodName.c_str())};
-    std::map<const uint8_t *, MethodPcInfo> processedInsns;
+    std::map<const uint8_t *, size_t> processedInsns;
     Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
@@ -61,7 +61,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        cda.EnumerateMethods([methods, &methodIdx, pf, &processedInsns, jsPandaFile, &sd]
+        cda.EnumerateMethods([methods, &methodIdx, pf, &processedInsns, jsPandaFile, &methodPcInfos, &sd]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
             ASSERT(codeId.has_value());
@@ -80,18 +80,15 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
             method->InitializeCallField(codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             auto it = processedInsns.find(insns);
-            if ( it == processedInsns.end()) {
-                MethodPcInfo methodPcInfo;
-                CollectMethodPcs(jsPandaFile, codeSize, insns, method, methodPcInfo);
-                processedInsns[insns] = methodPcInfo;
+            if (it == processedInsns.end()) {
+                CollectMethodPcs(jsPandaFile, codeSize, insns, method, methodPcInfos);
+                processedInsns[insns] = methodPcInfos.size() - 1;
             } else {
-                it->second.methods.emplace_back(method);
+                auto index = it->second;
+                methodPcInfos[index].methods.emplace_back(method);
             }
             jsPandaFile->SetMethodToMap(method);
         });
-    }
-    for (auto it : processedInsns) {
-        methodPcInfos.emplace_back(it.second);
     }
 }
 
@@ -360,12 +357,12 @@ void BytecodeInfoCollector::TranslateBCIns(JSPandaFile *jsPandaFile, const panda
 }
 
 void BytecodeInfoCollector::CollectMethodPcs(JSPandaFile *jsPandaFile, const uint32_t insSz, const uint8_t *insArr,
-                                             const JSMethod *method, MethodPcInfo &methodPcInfo)
+                                             const JSMethod *method, std::vector<MethodPcInfo> &methodPcInfos)
 {
     auto bcIns = BytecodeInstruction(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
 
-    methodPcInfo.methods.emplace_back(method);
+    methodPcInfos.emplace_back(MethodPcInfo { std::vector<const JSMethod *>(1, method), {}, {}, {} });
 
     int32_t offsetIndex = 1;
     uint8_t *curPc = nullptr;
@@ -379,9 +376,9 @@ void BytecodeInfoCollector::CollectMethodPcs(JSPandaFile *jsPandaFile, const uin
         FixOpcode(pc);
         UpdateICOffset(const_cast<JSMethod *>(method), pc);
 
-        auto &bytecodeBlockInfos = methodPcInfo.bytecodeBlockInfos;
-        auto &byteCodeCurPrePc = methodPcInfo.byteCodeCurPrePc;
-        auto &pcToBCOffset = methodPcInfo.pcToBCOffset;
+        auto &bytecodeBlockInfos = methodPcInfos.back().bytecodeBlockInfos;
+        auto &byteCodeCurPrePc = methodPcInfos.back().byteCodeCurPrePc;
+        auto &pcToBCOffset = methodPcInfos.back().pcToBCOffset;
 
         if (offsetIndex == 1) {
             curPc = prePc = pc;
@@ -397,7 +394,7 @@ void BytecodeInfoCollector::CollectMethodPcs(JSPandaFile *jsPandaFile, const uin
         }
     }
     auto emptyPc = const_cast<uint8_t *>(bcInsLast.GetAddress());
-    methodPcInfo.byteCodeCurPrePc[emptyPc] = prePc;
-    methodPcInfo.pcToBCOffset[emptyPc] = offsetIndex++;
+    methodPcInfos.back().byteCodeCurPrePc[emptyPc] = prePc;
+    methodPcInfos.back().pcToBCOffset[emptyPc] = offsetIndex++;
 }
 }  // namespace panda::ecmascript::kungfu

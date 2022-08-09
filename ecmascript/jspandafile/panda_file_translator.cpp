@@ -40,8 +40,7 @@ static T *InitializeMemory(T *mem, Args... args)
     return new (mem) T(std::forward<Args>(args)...);
 }
 
-void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName,
-                                           std::vector<MethodPcInfo> *methodPcInfos)
+void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName)
 {
     ASSERT(jsPandaFile != nullptr && jsPandaFile->GetMethods() != nullptr);
     JSMethod *methods = jsPandaFile->GetMethods();
@@ -51,14 +50,13 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
                                        reinterpret_cast<const uint8_t *>(methodName.c_str())};
     std::set<const uint8_t *> translatedCode;
     Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
-    const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf->IsExternal(classId)) {
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        cda.EnumerateMethods([jsPandaFile, &translatedCode, &sd, methods, &methodIdx, pf, &methodPcInfos, &isLoadedAOT]
+        cda.EnumerateMethods([jsPandaFile, &translatedCode, &sd, methods, &methodIdx, pf]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
             ASSERT(codeId.has_value());
@@ -78,12 +76,9 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (translatedCode.find(insns) == translatedCode.end()) {
                 translatedCode.insert(insns);
-                TranslateBytecode(jsPandaFile, codeSize, insns, method, methodPcInfos);
+                TranslateBytecode(jsPandaFile, codeSize, insns, method);
             }
             jsPandaFile->SetMethodToMap(method);
-            if (isLoadedAOT) {
-                jsPandaFile->SetUniqueMethodMap(method, insns);
-            }
         });
     }
 }
@@ -483,15 +478,11 @@ void PandaFileTranslator::FixInstructionId32(const BytecodeInstruction &inst, ui
 }
 
 void PandaFileTranslator::TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t insSz, const uint8_t *insArr,
-                                            const JSMethod *method, std::vector<MethodPcInfo> *methodPcInfos)
+                                            const JSMethod *method)
 {
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     auto bcIns = BytecodeInstruction(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
-    if (methodPcInfos != nullptr) {
-        methodPcInfos->push_back(MethodPcInfo{method, {}});
-    }
-
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         if (bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
             BytecodeInstruction::HasId(bcIns.GetFormat(), 0)) {
@@ -567,14 +558,6 @@ void PandaFileTranslator::TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t i
         bcIns = bcIns.GetNext();
         FixOpcode(pc);
         UpdateICOffset(const_cast<JSMethod *>(method), pc);
-        if (methodPcInfos != nullptr) {
-            auto &pcArray = methodPcInfos->back().pcArray;
-            pcArray.emplace_back(pc);
-        }
-    }
-    if (methodPcInfos != nullptr) {
-        auto &pcArray = methodPcInfos->back().pcArray;
-        pcArray.emplace_back(const_cast<uint8_t *>(bcInsLast.GetAddress()));
     }
 }
 
