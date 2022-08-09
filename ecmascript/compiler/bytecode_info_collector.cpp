@@ -84,8 +84,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
                 CollectMethodPcs(jsPandaFile, codeSize, insns, method, methodPcInfos);
                 processedInsns[insns] = methodPcInfos.size() - 1;
             } else {
-                auto index = it->second;
-                methodPcInfos[index].methods.emplace_back(method);
+                methodPcInfos[it->second].methods.emplace_back(method);
             }
             jsPandaFile->SetMethodToMap(method);
         });
