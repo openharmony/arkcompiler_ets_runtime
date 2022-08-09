@@ -1046,7 +1046,7 @@ public:
     {
         return GetObjectType() == JSType::JS_GENERATOR_FUNCTION;
     }
-	
+
     inline bool IsAsyncGeneratorFunction() const
     {
         return GetObjectType() == JSType::JS_ASYNC_GENERATOR_FUNCTION;
