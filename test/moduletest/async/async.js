@@ -23,6 +23,11 @@ var arrow = () => {}
 var async_arrow = async () => {}
 
 print(foo.name)
+print(foo.call != undefined)
+print(foo.__proto__.constructor.name);
+print(foo.__proto__.__proto__.constructor.name);
+print(foo.__proto__.__proto__.__proto__.constructor.name);
+print(foo.length)
 print(arrow.name)
 print(async_arrow.name)
 
