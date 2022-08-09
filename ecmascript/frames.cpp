@@ -500,7 +500,7 @@ ARK_INLINE void BuiltinWithArgvFrame::GCIterate(const FrameIterator &it,
 {
     const JSTaggedType *sp = it.GetSp();
     auto frame = BuiltinWithArgvFrame::GetFrameFromSp(sp);
-    auto argc = frame->GetNumArgs() + NUM_MANDATORY_JSFUNC_ARGS;
+    auto argc = static_cast<uint32_t>(frame->GetNumArgs()) + NUM_MANDATORY_JSFUNC_ARGS;
     JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(frame->GetStackArgsAddress());
     uintptr_t start = ToUintPtr(argv);
     uintptr_t end = ToUintPtr(argv + argc);

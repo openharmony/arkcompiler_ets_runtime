@@ -263,7 +263,8 @@ int ArkStackMapBuilder::FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc)
     return -1;
 }
 
-void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<int, std::vector<ARKDeopt>> &sizeAndArkDeopt)
+void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint32_t,
+                                     std::vector<ARKDeopt>> &sizeAndArkDeopt)
 {
     ASSERT(deopt.size() % 2 == 0); // 2:<id, value>
     int total = 0;
@@ -334,7 +335,7 @@ void ArkStackMapBuilder::GenArkCallsitePackInfo(std::vector<Pc2CallSiteInfo> &pc
         result.callsites[loc].head.calliteOffset = x.first;
         result.callsites[loc].head.deoptNum = deopt.size();
         result.callsites[loc].head.deoptOffset = totalSize;
-        std::pair<int, std::vector<ARKDeopt>> sizeAndArkDeopt;
+        std::pair<uint32_t, std::vector<ARKDeopt>> sizeAndArkDeopt;
         GenARKDeopt(deopt, sizeAndArkDeopt);
         totalSize += sizeAndArkDeopt.first;
         result.callsites[loc].callsite2Deopt = sizeAndArkDeopt.second;

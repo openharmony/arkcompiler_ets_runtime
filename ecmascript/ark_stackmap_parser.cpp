@@ -22,7 +22,7 @@ namespace panda::ecmascript::kungfu {
 int ArkStackMapParser::BinaraySearch(CallsiteHead *callsiteHead, uint32_t callsiteNum, uintptr_t callSiteAddr) const
 {
     int slow = 0;
-    int high = callsiteNum - 1;
+    int high = static_cast<int>(callsiteNum) - 1;
     int mid;
     uint32_t v;
     while (slow <= high) {

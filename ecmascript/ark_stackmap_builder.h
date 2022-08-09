@@ -65,7 +65,7 @@ private:
     void SaveArkStackMap(const ARKCallsitePackInfo& info, BinaryBufferWriter& writer);
     void SaveArkCallsitePackInfo(uint8_t *ptr, uint32_t length, const ARKCallsitePackInfo& info);
     int FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc);
-    void GenARKDeopt(const DeoptInfoType& deopt, std::pair<int, std::vector<ARKDeopt>> &sizeAndArkDeopt);
+    void GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint32_t, std::vector<ARKDeopt>> &sizeAndArkDeopt);
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_ARK_STACKMAP_BUILD_H
