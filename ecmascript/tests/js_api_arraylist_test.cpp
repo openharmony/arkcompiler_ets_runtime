@@ -17,7 +17,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
@@ -538,6 +538,49 @@ HWTEST_F_L0(JSAPIArrayListTest, GetOwnProperty)
         JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
         bool getOwnPropertyRes = JSAPIArrayList::GetOwnProperty(thread, arrayList, key);
         EXPECT_EQ(getOwnPropertyRes, true);
+    }
+}
+
+/**
+ * @tc.name: GetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIArrayListTest, GetProperty)
+{
+    JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIArrayList::Add(thread, arrayList, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        OperationResult getPropertyRes = JSAPIArrayList::GetProperty(thread, arrayList, key);
+        EXPECT_EQ(getPropertyRes.GetValue().GetTaggedValue(), JSTaggedValue(i));
+    }
+}
+
+/**
+ * @tc.name: SetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIArrayListTest, SetProperty)
+{
+    JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIArrayList::Add(thread, arrayList, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i * 2)); // 2 : It means double
+        bool setPropertyRes = JSAPIArrayList::SetProperty(thread, arrayList, key, value);
+        EXPECT_EQ(setPropertyRes, true);
     }
 }
 } // namespace panda::test

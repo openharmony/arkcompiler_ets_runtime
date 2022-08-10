@@ -17,6 +17,8 @@
 #define ECMASCRIPT_MESSAGE_STRING_H
 
 #include <string>
+
+#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 
@@ -43,6 +45,7 @@ public:
 #define DEF_MESSAGE_ID(name) Message_##name,
         ASM_INTERPRETER_BC_STUB_LIST(DEF_MESSAGE_ID, DEF_MESSAGE_ID, DEF_MESSAGE_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_MESSAGE_ID)
+        BUILTINS_STUB_LIST(DEF_MESSAGE_ID)
 #undef DEF_MESSAGE_ID
         MAX_MESSAGE_COUNT
     };

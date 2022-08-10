@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_displaynames.h"
+
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_displaynames.h"
 #include "ecmascript/tests/test_helper.h"

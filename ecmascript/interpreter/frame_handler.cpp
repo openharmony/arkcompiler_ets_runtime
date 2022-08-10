@@ -28,14 +28,14 @@ namespace panda::ecmascript {
 FrameHandler::FrameHandler(const JSThread *thread)
     : sp_(const_cast<JSTaggedType *>(thread->GetCurrentFrame())), thread_(thread)
 {
-    stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+    arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     AdvanceToInterpretedFrame();
 }
 
 FrameHandler::FrameHandler(const JSThread *thread, void *fp)
     : sp_(reinterpret_cast<JSTaggedType *>(fp)), thread_(thread)
 {
-    stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+    arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     AdvanceToInterpretedFrame();
 }
 
@@ -302,31 +302,33 @@ ARK_INLINE uintptr_t FrameHandler::GetInterpretedFrameEnd(JSTaggedType *prevSp) 
     return end;
 }
 
-void FrameHandler::IterateAssembleStack(const RootVisitor &v0, const RootRangeVisitor &v1)
+void FrameHandler::IterateAssembleStack(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+    const RootBaseAndDerivedVisitor &derivedVisitor)
 {
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
-    IterateFrameChain(current, v0, v1);
+    IterateFrameChain(current, visitor, rangeVisitor, derivedVisitor);
 }
 
 // We seperate InterpretedEntryFrame from assemble stack when asm interpreter is enable.
 // To protect EcmaRuntimeCallInfo on InterpretedEntryFrame, we iterate InterpretedEntryFrame on thread sp individually.
 // And only InterpretedEntryFrame is on thread sp when asm interpreter is enable.
-void FrameHandler::IterateEcmaRuntimeCallInfo(const RootVisitor &v0, const RootRangeVisitor &v1)
+void FrameHandler::IterateEcmaRuntimeCallInfo(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
 {
     ASSERT(thread_->IsAsmInterpreter());
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
     for (FrameIterator it(current, thread_); !it.Done(); it.Advance()) {
         ASSERT(it.GetFrameType() == FrameType::INTERPRETER_ENTRY_FRAME);
         auto frame = it.GetFrame<InterpretedEntryFrame>();
-        frame->GCIterate(it, v0, v1);
+        frame->GCIterate(it, visitor, rangeVisitor);
     }
 }
 
-void FrameHandler::Iterate(const RootVisitor &v0, const RootRangeVisitor &v1)
+void FrameHandler::Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+    const RootBaseAndDerivedVisitor &derivedVisitor)
 {
     if (thread_->IsAsmInterpreter()) {
-        IterateEcmaRuntimeCallInfo(v0, v1);
-        IterateAssembleStack(v0, v1);
+        IterateEcmaRuntimeCallInfo(visitor, rangeVisitor);
+        IterateAssembleStack(visitor, rangeVisitor, derivedVisitor);
         return;
     }
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
@@ -337,79 +339,75 @@ void FrameHandler::Iterate(const RootVisitor &v0, const RootRangeVisitor &v1)
             current = leaveFrame;
         }
     }
-    IterateFrameChain(current, v0, v1);
+    IterateFrameChain(current, visitor, rangeVisitor, derivedVisitor);
 }
 
-void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &v0, const RootRangeVisitor &v1) const
+void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &visitor,
+    const RootRangeVisitor &rangeVisitor, const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
-    ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers = thread_->GetEcmaVM()->GetHeap()->GetDerivedPointers();
-    bool isVerifying = false;
-
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
-    isVerifying = thread_->GetEcmaVM()->GetHeap()->IsVerifying();
-#endif
     JSTaggedType *current = start;
     for (FrameIterator it(current, thread_); !it.Done(); it.Advance()) {
         FrameType type = it.GetFrameType();
         switch (type) {
             case FrameType::OPTIMIZED_FRAME: {
                 auto frame = it.GetFrame<OptimizedFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
                 break;
             }
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
                 break;
             }
             case FrameType::ASM_INTERPRETER_FRAME:
             case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
                 auto frame = it.GetFrame<AsmInterpretedFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
                 break;
             }
             case FrameType::INTERPRETER_FRAME:
             case FrameType::INTERPRETER_FAST_NEW_FRAME: {
                 auto frame = it.GetFrame<InterpretedFrame>();
-                frame->GCIterate(it, v0, v1);
+                frame->GCIterate(it, visitor, rangeVisitor);
                 break;
             }
             case FrameType::INTERPRETER_BUILTIN_FRAME: {
                 auto frame = it.GetFrame<InterpretedBuiltinFrame>();
-                frame->GCIterate(it, v0, v1);
+                frame->GCIterate(it, visitor, rangeVisitor);
                 break;
             }
             case FrameType::LEAVE_FRAME: {
                 auto frame = it.GetFrame<OptimizedLeaveFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, visitor, rangeVisitor);
                 break;
             }
             case FrameType::LEAVE_FRAME_WITH_ARGV: {
                 auto frame = it.GetFrame<OptimizedWithArgvLeaveFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, visitor, rangeVisitor);
                 break;
             }
             case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
                 auto frame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, visitor, rangeVisitor);
                 break;
             }
             case FrameType::BUILTIN_FRAME_WITH_ARGV: {
                 auto frame = it.GetFrame<BuiltinWithArgvFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, visitor, rangeVisitor);
                 break;
             }
             case FrameType::BUILTIN_ENTRY_FRAME:
             case FrameType::BUILTIN_FRAME: {
                 auto frame = it.GetFrame<BuiltinFrame>();
-                frame->GCIterate(it, v0, v1, derivedPointers, isVerifying);
+                frame->GCIterate(it, visitor, rangeVisitor);
                 break;
             }
             case FrameType::INTERPRETER_ENTRY_FRAME: {
                 auto frame = it.GetFrame<InterpretedEntryFrame>();
-                frame->GCIterate(it, v0, v1);
+                frame->GCIterate(it, visitor, rangeVisitor);
                 break;
             }
+            case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
             case FrameType::OPTIMIZED_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
@@ -436,31 +434,23 @@ void FrameHandler::CollectBCOffsetInfo()
     thread_->GetEcmaVM()->ClearExceptionBCList();
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
     FrameIterator it(current, thread_);
-    ASSERT(it.GetFrameType() == FrameType::BUILTIN_CALL_LEAVE_FRAME);
-    auto leaveFrame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
-    auto returnAddr = leaveFrame->GetReturnAddr();
-    // skip native function, need to fixit later.
     it.Advance();
 
     for (; !it.Done(); it.Advance()) {
         FrameType type = it.GetFrameType();
         switch (type) {
-            case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
-                auto constInfo = stackmapParser_->GetConstInfo(returnAddr);
+                kungfu::ConstInfo constInfo;
+                frame->CollectBCOffsetInfo(it, constInfo);
                 if (!constInfo.empty()) {
                     auto name = GetAotExceptionFuncName(frame->GetArgv(it));
                     thread_->GetEcmaVM()->StoreBCOffsetInfo(name, constInfo[0]);
                 }
-                returnAddr = frame->GetReturnAddr();
                 break;
             }
-            case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
-                auto frame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
-                returnAddr = frame->GetReturnAddr();
-                break;
-            }
+            case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
+            case FrameType::BUILTIN_CALL_LEAVE_FRAME:
             case FrameType::LEAVE_FRAME:
             case FrameType::OPTIMIZED_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
@@ -469,6 +459,7 @@ void FrameHandler::CollectBCOffsetInfo()
             case FrameType::INTERPRETER_FRAME:
             case FrameType::INTERPRETER_FAST_NEW_FRAME:
             case FrameType::OPTIMIZED_FRAME:
+            case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME:
             case FrameType::LEAVE_FRAME_WITH_ARGV:
             case FrameType::BUILTIN_FRAME_WITH_ARGV:
             case FrameType::BUILTIN_ENTRY_FRAME:

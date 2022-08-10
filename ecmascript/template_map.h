@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_TEMPLATE_MAP_H
 #define ECMASCRIPT_TEMPLATE_MAP_H
 
-#include "ecmascript/tagged_hash_table.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/tagged_hash_table.h"
 
 namespace panda::ecmascript {
 class TemplateMap : public TaggedHashTable<TemplateMap> {

@@ -18,7 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
-#include "js_function.h"
+#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript {
 class JSAsyncAwaitStatusFunction : public JSFunction {
@@ -49,6 +49,8 @@ public:
         return static_cast<JSAsyncFunction *>(object);
     }
 
+    static void AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTaggedValue> &asyncFuncObj,
+                                   const JSHandle<JSTaggedValue> &value);
     static void AsyncFunctionAwait(JSThread *thread, const JSHandle<JSAsyncFuncObject> &asyncFuncObj,
                                    const JSHandle<JSTaggedValue> &value);
     static constexpr size_t SIZE = JSFunction::SIZE;

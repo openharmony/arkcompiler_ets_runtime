@@ -16,6 +16,7 @@
 #include "ecmascript/tests/test_helper.h"
 
 #include <cstddef>
+
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -325,7 +326,7 @@ HWTEST_F_L0(JSNApiTests, GetProtoType)
 
 void CheckReject(JsiRuntimeCallInfo* info)
 {
-    ASSERT_EQ(info->GetArgsNumber(), 1);
+    ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> reason = info->GetCallArgRef(0);
     ASSERT_TRUE(reason->IsString());
     ASSERT_EQ(Local<StringRef>(reason)->ToString(), "Reject");
@@ -357,7 +358,7 @@ HWTEST_F_L0(JSNApiTests, PromiseCatch)
 
 void CheckResolve(JsiRuntimeCallInfo* info)
 {
-    ASSERT_EQ(info->GetArgsNumber(), 1);
+    ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> value = info->GetCallArgRef(0);
     ASSERT_TRUE(value->IsNumber());
     ASSERT_EQ(Local<NumberRef>(value)->Value(), 300.3); // 300.3 : test case of input

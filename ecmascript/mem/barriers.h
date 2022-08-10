@@ -18,6 +18,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/mem/mark_word.h"
+#include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
 class Region;

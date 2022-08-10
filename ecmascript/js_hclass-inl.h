@@ -19,8 +19,8 @@
 #include "ecmascript/js_hclass.h"
 
 #include "ecmascript/layout_info-inl.h"
-#include "ecmascript/transitions_dictionary.h"
 #include "ecmascript/mem/assert_scope.h"
+#include "ecmascript/transitions_dictionary.h"
 
 namespace panda::ecmascript {
 inline JSHClass *JSHClass::Cast(const TaggedObject *object)

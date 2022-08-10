@@ -604,3 +604,16 @@ groups:
         acc: inout:top
         prefix: ecma
         format: [pref_op_v_8]
+      - sig: ecma.createasyncgeneratorobj v:in:top
+        acc: out:top
+        prefix: ecma
+        format: [pref_op_v_8]
+      - sig: ecma.asyncgeneratorresolve v1:in:top, v2:in:top, v3:in:top
+        acc: out:top
+        prefix: ecma
+        format: [pref_op_v1_8_v2_8_v3_8]
+      - sig: ecma.defineasyncgeneratorfunc method_id, imm, v:in:top
+        acc: out:top
+        prefix: ecma
+        format: [pref_op_id_16_imm_16_v_8]
+        properties: [method_id]

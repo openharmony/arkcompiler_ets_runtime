@@ -330,8 +330,7 @@ inline bool JSTaggedValue::SameValue(const JSTaggedValue &x, const JSTaggedValue
         return SameValueNumberic(x, y);
     }
     if (x.IsString() && y.IsString()) {
-        return EcmaString::StringsAreEqual(static_cast<EcmaString *>(x.GetTaggedObject()),
-                                           static_cast<EcmaString *>(y.GetTaggedObject()));
+        return StringCompare(EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
     }
     if (x.IsBigInt() && y.IsBigInt()) {
         return BigInt::SameValue(x, y);
@@ -397,18 +396,25 @@ inline bool JSTaggedValue::StrictNumberEquals(double x, double y)
 inline bool JSTaggedValue::StrictEqual([[maybe_unused]] const JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                        const JSHandle<JSTaggedValue> &y)
 {
-    if (x->IsNumber() && y->IsNumber()) {
-        return StrictNumberEquals(x->ExtractNumber(), y->ExtractNumber());
+    return StrictEqual(x.GetTaggedValue(), y.GetTaggedValue());
+}
+
+inline bool JSTaggedValue::StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y)
+{
+    if (x.IsNumber() && y.IsNumber()) {
+        return StrictNumberEquals(x.ExtractNumber(), y.ExtractNumber());
     }
 
-    if (x.GetTaggedValue() == y.GetTaggedValue()) {
+    if (x == y) {
         return true;
     }
-    if (x->IsString() && y->IsString()) {
-        return EcmaString::StringsAreEqual(x.GetObject<EcmaString>(), y.GetObject<EcmaString>());
+
+    if (x.IsString() && y.IsString()) {
+        return StringCompare(EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
     }
-    if (x->IsBigInt() && y->IsBigInt()) {
-        return BigInt::Equal(x.GetTaggedValue(), y.GetTaggedValue());
+
+    if (x.IsBigInt() && y.IsBigInt()) {
+        return BigInt::Equal(x, y);
     }
     return false;
 }
@@ -484,7 +490,7 @@ inline bool JSTaggedValue::IsJSProxy() const
 
 inline bool JSTaggedValue::IsBoolean() const
 {
-    return ((value_ & TAG_HEAPOBJECT_MARK) == TAG_BOOLEAN_MARK);
+    return ((value_ & TAG_HEAPOBJECT_MASK) == TAG_BOOLEAN_MASK);
 }
 
 inline bool JSTaggedValue::IsJSObject() const
@@ -530,6 +536,11 @@ inline bool JSTaggedValue::IsJSPromiseExecutorFunction() const
 inline bool JSTaggedValue::IsJSPromiseAllResolveElementFunction() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSPromiseAllResolveElementFunction();
+}
+
+inline bool JSTaggedValue::IsJSAsyncGeneratorResNextRetProRstFtn() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncGeneratorResNextRetProRstFtn();
 }
 
 inline bool JSTaggedValue::IsCompletionRecord() const
@@ -1065,6 +1076,11 @@ inline bool JSTaggedValue::IsGeneratorFunction() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorFunction();
 }
 
+inline bool JSTaggedValue::IsAsyncGeneratorFunction() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsAsyncGeneratorFunction();
+}
+
 inline bool JSTaggedValue::IsGeneratorObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorObject();
@@ -1073,6 +1089,16 @@ inline bool JSTaggedValue::IsGeneratorObject() const
 inline bool JSTaggedValue::IsGeneratorContext() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorContext();
+}
+
+inline bool JSTaggedValue::IsAsyncGeneratorRequest() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsAsyncGeneratorRequest();
+}
+
+inline bool JSTaggedValue::IsAsyncGeneratorObject() const
+{
+    return IsHeapObject() &&  GetTaggedObject()->GetClass()->IsAsyncGeneratorObject();
 }
 
 inline bool JSTaggedValue::IsAsyncFuncObject() const
@@ -1348,6 +1374,22 @@ inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
     double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
                                                   base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
     return JSTaggedNumber(d);
+}
+
+inline bool JSTaggedValue::StringCompare(EcmaString *xStr, EcmaString *yStr)
+{
+    if (xStr->IsInternString() && yStr->IsInternString()) {
+        return xStr == yStr;
+    }
+    return EcmaString::StringsAreEqual(xStr, yStr);
+}
+
+inline JSTaggedValue JSTaggedValue::TryCastDoubleToInt32(double d)
+{
+    if (UNLIKELY(static_cast<int32_t>(d) != d)) {
+        return JSTaggedValue(d);
+    }
+    return JSTaggedValue(static_cast<int32_t>(d));
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_VALUE_INL_H

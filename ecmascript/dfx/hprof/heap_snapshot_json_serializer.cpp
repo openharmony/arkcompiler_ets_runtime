@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
+
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/string_hashmap.h"
 #include "ecmascript/mem/c_containers.h"

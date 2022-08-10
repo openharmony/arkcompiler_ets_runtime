@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/number_helper.h"
 #include "ecmascript/builtins/builtins_math.h"
+
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_tagged_value-inl.h"

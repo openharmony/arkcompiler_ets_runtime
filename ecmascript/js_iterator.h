@@ -17,7 +17,7 @@
 #define ECMASCRIPT_JS_ITERATOR_H
 
 #include "ecmascript/js_tagged_value.h"
-#include "tagged_array-inl.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 enum class IterationKind : uint8_t {

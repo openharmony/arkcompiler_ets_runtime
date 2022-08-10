@@ -15,9 +15,6 @@
 
 #include "ecmascript/interpreter/interpreter_assembly.h"
 
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
-#endif
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
@@ -28,14 +25,20 @@
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/template_string.h"
+
 #include "libpandafile/code_data_accessor.h"
 #include "libpandafile/file.h"
 #include "libpandafile/method_data_accessor-inl.h"
+
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#endif
 
 namespace panda::ecmascript {
 using panda::ecmascript::kungfu::CommonStubCSigns;
@@ -123,7 +126,7 @@ using panda::ecmascript::kungfu::CommonStubCSigns;
         hotnessCounter += offset;                                           \
         if (UNLIKELY(hotnessCounter <= 0)) {                                \
             profileTypeInfo = UpdateHotnessCounter(thread, sp);             \
-            hotnessCounter = InterpreterAssembly::METHOD_HOTNESS_THRESHOLD; \
+            hotnessCounter = EcmaInterpreter::METHOD_HOTNESS_THRESHOLD;     \
         }                                                                   \
     } while (false)
 #else
@@ -210,7 +213,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
-    INTERPRETER_TRACE(thread, Execute);
+    INTERPRETER_TRACE(thread, AsmExecute);
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
@@ -220,7 +223,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     }
 #endif
     thread->CheckSafepoint();
-    int32_t argc = info->GetArgsNumber();
+    uint32_t argc = info->GetArgsNumber();
     uintptr_t argv = reinterpret_cast<uintptr_t>(info->GetArgs());
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
 
@@ -252,7 +255,7 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
 
 void InterpreterAssembly::HandleMovV4V4(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t vdst = READ_INST_4_0();
     uint16_t vsrc = READ_INST_4_1();
@@ -264,7 +267,7 @@ void InterpreterAssembly::HandleMovV4V4(
 
 void InterpreterAssembly::HandleMovDynV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t vdst = READ_INST_8_0();
     uint16_t vsrc = READ_INST_8_1();
@@ -276,7 +279,7 @@ void InterpreterAssembly::HandleMovDynV8V8(
 
 void InterpreterAssembly::HandleMovDynV16V16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t vdst = READ_INST_16_0();
     uint16_t vsrc = READ_INST_16_2();
@@ -288,7 +291,7 @@ void InterpreterAssembly::HandleMovDynV16V16(
 
 void InterpreterAssembly::HandleLdaStrId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_0();
     LOG_INST() << "lda.str " << std::hex << stringId;
@@ -298,7 +301,7 @@ void InterpreterAssembly::HandleLdaStrId32(
 
 void InterpreterAssembly::HandleJmpImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     int8_t offset = READ_INST_8_0();
     UPDATE_HOTNESS_COUNTER(offset);
@@ -308,7 +311,7 @@ void InterpreterAssembly::HandleJmpImm8(
 
 void InterpreterAssembly::HandleJmpImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     int16_t offset = static_cast<int16_t>(READ_INST_16_0());
     UPDATE_HOTNESS_COUNTER(offset);
@@ -318,7 +321,7 @@ void InterpreterAssembly::HandleJmpImm16(
 
 void InterpreterAssembly::HandleJmpImm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
     UPDATE_HOTNESS_COUNTER(offset);
@@ -328,7 +331,7 @@ void InterpreterAssembly::HandleJmpImm32(
 
 void InterpreterAssembly::HandleJeqzImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     int8_t offset = READ_INST_8_0();
     LOG_INST() << "jeqz ->\t"
@@ -344,7 +347,7 @@ void InterpreterAssembly::HandleJeqzImm8(
 
 void InterpreterAssembly::HandleJeqzImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     int16_t offset = static_cast<int16_t>(READ_INST_16_0());
     LOG_INST() << "jeqz ->\t"
@@ -360,7 +363,7 @@ void InterpreterAssembly::HandleJeqzImm16(
 
 void InterpreterAssembly::HandleJnezImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     int8_t offset = READ_INST_8_0();
     LOG_INST() << "jnez ->\t"
@@ -376,7 +379,7 @@ void InterpreterAssembly::HandleJnezImm8(
 
 void InterpreterAssembly::HandleJnezImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     int16_t offset = static_cast<int16_t>(READ_INST_16_0());
     LOG_INST() << "jnez ->\t"
@@ -392,7 +395,7 @@ void InterpreterAssembly::HandleJnezImm16(
 
 void InterpreterAssembly::HandleLdaDynV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t vsrc = READ_INST_8_0();
     LOG_INST() << "lda.dyn v" << vsrc;
@@ -403,7 +406,7 @@ void InterpreterAssembly::HandleLdaDynV8(
 
 void InterpreterAssembly::HandleStaDynV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t vdst = READ_INST_8_0();
     LOG_INST() << "sta.dyn v" << vdst;
@@ -413,7 +416,7 @@ void InterpreterAssembly::HandleStaDynV8(
 
 void InterpreterAssembly::HandleLdaiDynImm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     int32_t imm = static_cast<int32_t>(READ_INST_32_0());
     LOG_INST() << "ldai.dyn " << std::hex << imm;
@@ -423,7 +426,7 @@ void InterpreterAssembly::HandleLdaiDynImm32(
 
 void InterpreterAssembly::HandleFldaiDynImm64(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     auto imm = bit_cast<double>(READ_INST_64_0());
     LOG_INST() << "fldai.dyn " << imm;
@@ -433,7 +436,7 @@ void InterpreterAssembly::HandleFldaiDynImm64(
 
 void InterpreterAssembly::HandleCallArg0DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t actualNumArgs = ActualNumArgsOfCall::CALLARG0;
     uint32_t funcReg = READ_INST_8_1();
@@ -450,7 +453,7 @@ void InterpreterAssembly::HandleCallArg0DynPrefV8(
 
 void InterpreterAssembly::HandleCallArg1DynPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t actualNumArgs = ActualNumArgsOfCall::CALLARG1;
     uint32_t funcReg = READ_INST_8_1();
@@ -470,7 +473,7 @@ void InterpreterAssembly::HandleCallArg1DynPrefV8V8(
 
 void InterpreterAssembly::HandleCallArgs2DynPrefV8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t actualNumArgs = ActualNumArgsOfCall::CALLARGS2;
     uint32_t funcReg = READ_INST_8_1();
@@ -491,7 +494,7 @@ void InterpreterAssembly::HandleCallArgs2DynPrefV8V8V8(
 
 void InterpreterAssembly::HandleCallArgs3DynPrefV8V8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t actualNumArgs = ActualNumArgsOfCall::CALLARGS3;
     uint32_t funcReg = READ_INST_8_1();
@@ -513,7 +516,7 @@ void InterpreterAssembly::HandleCallArgs3DynPrefV8V8V8V8(
 
 void InterpreterAssembly::HandleCallIThisRangeDynPrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t actualNumArgs = READ_INST_16_1() - 1;  // 1: exclude this
     uint32_t funcReg = READ_INST_8_3();
@@ -534,7 +537,7 @@ void InterpreterAssembly::HandleCallIThisRangeDynPrefImm16V8(
 
 void InterpreterAssembly::HandleCallSpreadDynPrefV8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -554,7 +557,7 @@ void InterpreterAssembly::HandleCallSpreadDynPrefV8V8V8(
 
 void InterpreterAssembly::HandleCallIRangeDynPrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t actualNumArgs = READ_INST_16_1();
     uint32_t funcReg = READ_INST_8_3();
@@ -574,7 +577,7 @@ void InterpreterAssembly::HandleCallIRangeDynPrefImm16V8(
 
 void InterpreterAssembly::HandleReturnDyn(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "returnla ";
     AsmInterpretedFrame *state = GET_ASM_FRAME(sp);
@@ -602,7 +605,7 @@ void InterpreterAssembly::HandleReturnDyn(
 
 void InterpreterAssembly::HandleReturnUndefinedPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "return.undefined";
     AsmInterpretedFrame *state = GET_ASM_FRAME(sp);
@@ -631,7 +634,7 @@ void InterpreterAssembly::HandleReturnUndefinedPref(
 
 void InterpreterAssembly::HandleLdNanPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldnan";
     SET_ACC(JSTaggedValue(base::NAN_VALUE));
@@ -640,7 +643,7 @@ void InterpreterAssembly::HandleLdNanPref(
 
 void InterpreterAssembly::HandleLdInfinityPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldinfinity";
     SET_ACC(JSTaggedValue(base::POSITIVE_INFINITY));
@@ -649,7 +652,7 @@ void InterpreterAssembly::HandleLdInfinityPref(
 
 void InterpreterAssembly::HandleLdGlobalThisPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldglobalthis";
     EcmaVM *ecmaVm = thread->GetEcmaVM();
@@ -661,7 +664,7 @@ void InterpreterAssembly::HandleLdGlobalThisPref(
 
 void InterpreterAssembly::HandleLdUndefinedPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldundefined";
     SET_ACC(JSTaggedValue::Undefined())
@@ -670,7 +673,7 @@ void InterpreterAssembly::HandleLdUndefinedPref(
 
 void InterpreterAssembly::HandleLdNullPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldnull";
     SET_ACC(JSTaggedValue::Null())
@@ -679,7 +682,7 @@ void InterpreterAssembly::HandleLdNullPref(
 
 void InterpreterAssembly::HandleLdSymbolPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldsymbol";
     EcmaVM *ecmaVm = thread->GetEcmaVM();
@@ -690,7 +693,7 @@ void InterpreterAssembly::HandleLdSymbolPref(
 
 void InterpreterAssembly::HandleLdGlobalPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldglobal";
     EcmaVM *ecmaVm = thread->GetEcmaVM();
@@ -702,7 +705,7 @@ void InterpreterAssembly::HandleLdGlobalPref(
 
 void InterpreterAssembly::HandleLdTruePref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldtrue";
     SET_ACC(JSTaggedValue::True())
@@ -711,7 +714,7 @@ void InterpreterAssembly::HandleLdTruePref(
 
 void InterpreterAssembly::HandleLdFalsePref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldfalse";
     SET_ACC(JSTaggedValue::False())
@@ -720,7 +723,7 @@ void InterpreterAssembly::HandleLdFalsePref(
 
 void InterpreterAssembly::HandleLdLexEnvDynPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldlexenvDyn ";
     AsmInterpretedFrame *state = GET_ASM_FRAME(sp);
@@ -731,7 +734,7 @@ void InterpreterAssembly::HandleLdLexEnvDynPref(
 
 void InterpreterAssembly::HandleGetUnmappedArgsPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::getunmappedargs";
 
@@ -746,7 +749,7 @@ void InterpreterAssembly::HandleGetUnmappedArgsPref(
 
 void InterpreterAssembly::HandleAsyncFunctionEnterPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::asyncfunctionenter";
     JSTaggedValue res = SlowRuntimeStub::AsyncFunctionEnter(thread);
@@ -757,7 +760,7 @@ void InterpreterAssembly::HandleAsyncFunctionEnterPref(
 
 void InterpreterAssembly::HandleToNumberPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -778,7 +781,7 @@ void InterpreterAssembly::HandleToNumberPrefV8(
 
 void InterpreterAssembly::HandleNegDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::negdyn"
@@ -803,7 +806,7 @@ void InterpreterAssembly::HandleNegDynPrefV8(
 
 void InterpreterAssembly::HandleNotDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -829,7 +832,7 @@ void InterpreterAssembly::HandleNotDynPrefV8(
 
 void InterpreterAssembly::HandleIncDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -859,7 +862,7 @@ void InterpreterAssembly::HandleIncDynPrefV8(
 
 void InterpreterAssembly::HandleDecDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::decdyn"
@@ -888,7 +891,7 @@ void InterpreterAssembly::HandleDecDynPrefV8(
 
 void InterpreterAssembly::HandleThrowDynPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::throwdyn";
     SlowRuntimeStub::ThrowDyn(thread, GET_ACC());
@@ -897,7 +900,7 @@ void InterpreterAssembly::HandleThrowDynPref(
 
 void InterpreterAssembly::HandleTypeOfDynPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::typeofdyn";
     JSTaggedValue res = FastRuntimeStub::FastTypeOf(thread, GET_ACC());
@@ -907,7 +910,7 @@ void InterpreterAssembly::HandleTypeOfDynPref(
 
 void InterpreterAssembly::HandleGetPropIteratorPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::getpropiterator";
     JSTaggedValue res = SlowRuntimeStub::GetPropIterator(thread, GET_ACC());
@@ -918,29 +921,42 @@ void InterpreterAssembly::HandleGetPropIteratorPref(
 
 void InterpreterAssembly::HandleResumeGeneratorPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::resumegenerator";
     uint16_t vs = READ_INST_8_1();
-    JSGeneratorObject *obj = JSGeneratorObject::Cast(GET_VREG_VALUE(vs).GetTaggedObject());
-    SET_ACC(obj->GetResumeResult());
+
+    JSTaggedValue objVal = GET_VREG_VALUE(vs);
+    if (objVal.IsAsyncGeneratorObject()) {
+        JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(obj->GetResumeResult());
+    } else {
+        JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(obj->GetResumeResult());
+    }
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
 }
 
 void InterpreterAssembly::HandleGetResumeModePrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::getresumemode";
     uint16_t vs = READ_INST_8_1();
-    JSGeneratorObject *obj = JSGeneratorObject::Cast(GET_VREG_VALUE(vs).GetTaggedObject());
-    SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+    JSTaggedValue objVal = GET_VREG_VALUE(vs);
+    if (objVal.IsAsyncGeneratorObject()) {
+        JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+    } else {
+        JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+    }
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
 }
 
 void InterpreterAssembly::HandleGetIteratorPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::getiterator";
     JSTaggedValue obj = GET_ACC();
@@ -957,7 +973,7 @@ void InterpreterAssembly::HandleGetIteratorPref(
 
 void InterpreterAssembly::HandleThrowConstAssignmentPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "throwconstassignment"
@@ -968,7 +984,7 @@ void InterpreterAssembly::HandleThrowConstAssignmentPrefV8(
 
 void InterpreterAssembly::HandleThrowThrowNotExistsPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "throwthrownotexists";
 
@@ -978,7 +994,7 @@ void InterpreterAssembly::HandleThrowThrowNotExistsPref(
 
 void InterpreterAssembly::HandleThrowPatternNonCoerciblePref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "throwpatternnoncoercible";
 
@@ -988,7 +1004,7 @@ void InterpreterAssembly::HandleThrowPatternNonCoerciblePref(
 
 void InterpreterAssembly::HandleThrowIfNotObjectPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "throwifnotobject";
     uint16_t v0 = READ_INST_8_1();
@@ -1006,7 +1022,7 @@ void InterpreterAssembly::HandleThrowIfNotObjectPrefV8(
 
 void InterpreterAssembly::HandleIterNextPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::iternext"
@@ -1020,7 +1036,7 @@ void InterpreterAssembly::HandleIterNextPrefV8(
 
 void InterpreterAssembly::HandleCloseIteratorPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::closeiterator"
@@ -1034,7 +1050,7 @@ void InterpreterAssembly::HandleCloseIteratorPrefV8(
 
 void InterpreterAssembly::HandleAdd2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::add2dyn"
@@ -1069,7 +1085,7 @@ void InterpreterAssembly::HandleAdd2DynPrefV8(
 
 void InterpreterAssembly::HandleSub2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::sub2dyn"
@@ -1102,7 +1118,7 @@ void InterpreterAssembly::HandleSub2DynPrefV8(
 }
 void InterpreterAssembly::HandleMul2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::mul2dyn"
@@ -1123,7 +1139,7 @@ void InterpreterAssembly::HandleMul2DynPrefV8(
 
 void InterpreterAssembly::HandleDiv2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::div2dyn"
@@ -1145,7 +1161,7 @@ void InterpreterAssembly::HandleDiv2DynPrefV8(
 
 void InterpreterAssembly::HandleMod2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t vs = READ_INST_8_1();
     LOG_INST() << "intrinsics::mod2dyn"
@@ -1167,7 +1183,7 @@ void InterpreterAssembly::HandleMod2DynPrefV8(
 
 void InterpreterAssembly::HandleEqDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -1190,7 +1206,7 @@ void InterpreterAssembly::HandleEqDynPrefV8(
 
 void InterpreterAssembly::HandleNotEqDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -1214,7 +1230,7 @@ void InterpreterAssembly::HandleNotEqDynPrefV8(
 
 void InterpreterAssembly::HandleLessDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -1246,7 +1262,7 @@ void InterpreterAssembly::HandleLessDynPrefV8(
 
 void InterpreterAssembly::HandleLessEqDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t vs = READ_INST_8_1();
     LOG_INST() << "intrinsics::lesseqdyn "
@@ -1277,7 +1293,7 @@ void InterpreterAssembly::HandleLessEqDynPrefV8(
 
 void InterpreterAssembly::HandleGreaterDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -1309,7 +1325,7 @@ void InterpreterAssembly::HandleGreaterDynPrefV8(
 
 void InterpreterAssembly::HandleGreaterEqDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t vs = READ_INST_8_1();
     LOG_INST() << "intrinsics::greateqdyn "
@@ -1341,7 +1357,7 @@ void InterpreterAssembly::HandleGreaterEqDynPrefV8(
 
 void InterpreterAssembly::HandleShl2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -1384,7 +1400,7 @@ void InterpreterAssembly::HandleShl2DynPrefV8(
 
 void InterpreterAssembly::HandleShr2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::shr2dyn"
@@ -1424,7 +1440,7 @@ void InterpreterAssembly::HandleShr2DynPrefV8(
 
 void InterpreterAssembly::HandleAshr2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::ashr2dyn"
@@ -1460,7 +1476,7 @@ void InterpreterAssembly::HandleAshr2DynPrefV8(
 
 void InterpreterAssembly::HandleAnd2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -1499,7 +1515,7 @@ void InterpreterAssembly::HandleAnd2DynPrefV8(
 
 void InterpreterAssembly::HandleOr2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -1538,7 +1554,7 @@ void InterpreterAssembly::HandleOr2DynPrefV8(
 
 void InterpreterAssembly::HandleXOr2DynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
@@ -1577,7 +1593,7 @@ void InterpreterAssembly::HandleXOr2DynPrefV8(
 
 void InterpreterAssembly::HandleDelObjPropPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -1595,7 +1611,7 @@ void InterpreterAssembly::HandleDelObjPropPrefV8V8(
 
 void InterpreterAssembly::HandleDefineFuncDynPrefId16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t methodId = READ_INST_16_1();
     uint16_t length = READ_INST_16_3();
@@ -1627,7 +1643,7 @@ void InterpreterAssembly::HandleDefineFuncDynPrefId16Imm16V8(
 
 void InterpreterAssembly::HandleDefineNCFuncDynPrefId16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t methodId = READ_INST_16_1();
     uint16_t length = READ_INST_16_3();
@@ -1664,7 +1680,7 @@ void InterpreterAssembly::HandleDefineNCFuncDynPrefId16Imm16V8(
 
 void InterpreterAssembly::HandleDefineMethodPrefId16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t methodId = READ_INST_16_1();
     uint16_t length = READ_INST_16_3();
@@ -1698,7 +1714,7 @@ void InterpreterAssembly::HandleDefineMethodPrefId16Imm16V8(
 
 void InterpreterAssembly::HandleNewObjDynRangePrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t numArgs = READ_INST_16_1();
     uint16_t firstArgRegIdx = READ_INST_8_3();
@@ -1721,7 +1737,7 @@ void InterpreterAssembly::HandleNewObjDynRangePrefImm16V8(
 
 void InterpreterAssembly::HandleExpDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::expdyn"
@@ -1759,7 +1775,7 @@ void InterpreterAssembly::HandleExpDynPrefV8(
 
 void InterpreterAssembly::HandleIsInDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::isindyn"
@@ -1774,7 +1790,7 @@ void InterpreterAssembly::HandleIsInDynPrefV8(
 
 void InterpreterAssembly::HandleInstanceOfDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::instanceofdyn"
@@ -1789,7 +1805,7 @@ void InterpreterAssembly::HandleInstanceOfDynPrefV8(
 
 void InterpreterAssembly::HandleStrictNotEqDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::strictnoteq"
@@ -1803,7 +1819,7 @@ void InterpreterAssembly::HandleStrictNotEqDynPrefV8(
 
 void InterpreterAssembly::HandleStrictEqDynPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::stricteq"
@@ -1817,7 +1833,7 @@ void InterpreterAssembly::HandleStrictEqDynPrefV8(
 
 void InterpreterAssembly::HandleLdLexVarDynPrefImm16Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t level = READ_INST_16_1();
     uint16_t slot = READ_INST_16_3();
@@ -1838,7 +1854,7 @@ void InterpreterAssembly::HandleLdLexVarDynPrefImm16Imm16(
 
 void InterpreterAssembly::HandleLdLexVarDynPrefImm8Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t level = READ_INST_8_1();
     uint16_t slot = READ_INST_8_2();
@@ -1859,7 +1875,7 @@ void InterpreterAssembly::HandleLdLexVarDynPrefImm8Imm8(
 
 void InterpreterAssembly::HandleLdLexVarDynPrefImm4Imm4(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t level = READ_INST_4_2();
     uint16_t slot = READ_INST_4_3();
@@ -1880,7 +1896,7 @@ void InterpreterAssembly::HandleLdLexVarDynPrefImm4Imm4(
 
 void InterpreterAssembly::HandleStLexVarDynPrefImm16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t level = READ_INST_16_1();
     uint16_t slot = READ_INST_16_3();
@@ -1903,7 +1919,7 @@ void InterpreterAssembly::HandleStLexVarDynPrefImm16Imm16V8(
 
 void InterpreterAssembly::HandleStLexVarDynPrefImm8Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t level = READ_INST_8_1();
     uint16_t slot = READ_INST_8_2();
@@ -1926,7 +1942,7 @@ void InterpreterAssembly::HandleStLexVarDynPrefImm8Imm8V8(
 
 void InterpreterAssembly::HandleStLexVarDynPrefImm4Imm4V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t level = READ_INST_4_2();
     uint16_t slot = READ_INST_4_3();
@@ -1949,7 +1965,7 @@ void InterpreterAssembly::HandleStLexVarDynPrefImm4Imm4V8(
 
 void InterpreterAssembly::HandleNewLexEnvDynPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t numVars = READ_INST_16_1();
     LOG_INST() << "intrinsics::newlexenvdyn"
@@ -1968,7 +1984,7 @@ void InterpreterAssembly::HandleNewLexEnvDynPrefImm16(
 
 void InterpreterAssembly::HandlePopLexEnvDynPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     AsmInterpretedFrame *state = GET_ASM_FRAME(sp);
     JSTaggedValue currentLexenv = state->env;
@@ -1979,7 +1995,7 @@ void InterpreterAssembly::HandlePopLexEnvDynPref(
 
 void InterpreterAssembly::HandleCreateIterResultObjPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -1995,7 +2011,7 @@ void InterpreterAssembly::HandleCreateIterResultObjPrefV8V8(
 
 void InterpreterAssembly::HandleSuspendGeneratorPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -2034,7 +2050,7 @@ void InterpreterAssembly::HandleSuspendGeneratorPrefV8V8(
 
 void InterpreterAssembly::HandleAsyncFunctionAwaitUncaughtPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -2050,7 +2066,7 @@ void InterpreterAssembly::HandleAsyncFunctionAwaitUncaughtPrefV8V8(
 
 void InterpreterAssembly::HandleAsyncFunctionResolvePrefV8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
@@ -2068,7 +2084,7 @@ void InterpreterAssembly::HandleAsyncFunctionResolvePrefV8V8V8(
 
 void InterpreterAssembly::HandleAsyncFunctionRejectPrefV8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
@@ -2086,7 +2102,7 @@ void InterpreterAssembly::HandleAsyncFunctionRejectPrefV8V8V8(
 
 void InterpreterAssembly::HandleNewObjSpreadDynPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -2103,7 +2119,7 @@ void InterpreterAssembly::HandleNewObjSpreadDynPrefV8V8(
 
 void InterpreterAssembly::HandleThrowUndefinedIfHolePrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -2121,7 +2137,7 @@ void InterpreterAssembly::HandleThrowUndefinedIfHolePrefV8V8(
 
 void InterpreterAssembly::HandleStOwnByNamePrefId32V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     uint32_t v0 = READ_INST_8_5();
@@ -2154,7 +2170,7 @@ void InterpreterAssembly::HandleStOwnByNamePrefId32V8(
 
 void InterpreterAssembly::HandleCreateEmptyArrayPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::createemptyarray";
     EcmaVM *ecmaVm = thread->GetEcmaVM();
@@ -2167,7 +2183,7 @@ void InterpreterAssembly::HandleCreateEmptyArrayPref(
 
 void InterpreterAssembly::HandleCreateEmptyObjectPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::createemptyobject";
     EcmaVM *ecmaVm = thread->GetEcmaVM();
@@ -2180,7 +2196,7 @@ void InterpreterAssembly::HandleCreateEmptyObjectPref(
 
 void InterpreterAssembly::HandleCreateObjectWithBufferPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t imm = READ_INST_16_1();
     LOG_INST() << "intrinsics::createobjectwithbuffer"
@@ -2197,7 +2213,7 @@ void InterpreterAssembly::HandleCreateObjectWithBufferPrefImm16(
 
 void InterpreterAssembly::HandleSetObjectWithProtoPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -2214,7 +2230,7 @@ void InterpreterAssembly::HandleSetObjectWithProtoPrefV8V8(
 
 void InterpreterAssembly::HandleCreateArrayWithBufferPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t imm = READ_INST_16_1();
     LOG_INST() << "intrinsics::createarraywithbuffer"
@@ -2231,7 +2247,7 @@ void InterpreterAssembly::HandleCreateArrayWithBufferPrefImm16(
 
 void InterpreterAssembly::HandleGetModuleNamespacePrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     auto localName = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -2247,7 +2263,7 @@ void InterpreterAssembly::HandleGetModuleNamespacePrefId32(
 
 void InterpreterAssembly::HandleStModuleVarPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     auto key = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -2265,14 +2281,14 @@ void InterpreterAssembly::HandleStModuleVarPrefId32(
 
 void InterpreterAssembly::HandleCopyModulePrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
 }
 
 void InterpreterAssembly::HandleLdModuleVarPrefId32Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     uint8_t innerFlag = READ_INST_8_5();
@@ -2290,7 +2306,7 @@ void InterpreterAssembly::HandleLdModuleVarPrefId32Imm8(
 
 void InterpreterAssembly::HandleCreateRegExpWithLiteralPrefId32Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     JSTaggedValue pattern = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -2306,7 +2322,7 @@ void InterpreterAssembly::HandleCreateRegExpWithLiteralPrefId32Imm8(
 
 void InterpreterAssembly::HandleGetTemplateObjectPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsic::gettemplateobject"
@@ -2321,7 +2337,7 @@ void InterpreterAssembly::HandleGetTemplateObjectPrefV8(
 
 void InterpreterAssembly::HandleGetNextPropNamePrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsic::getnextpropname"
@@ -2335,7 +2351,7 @@ void InterpreterAssembly::HandleGetNextPropNamePrefV8(
 
 void InterpreterAssembly::HandleCopyDataPropertiesPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -2351,7 +2367,7 @@ void InterpreterAssembly::HandleCopyDataPropertiesPrefV8V8(
 
 void InterpreterAssembly::HandleStOwnByIndexPrefV8Imm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t v0 = READ_INST_8_1();
     uint32_t index = READ_INST_32_2();
@@ -2383,7 +2399,7 @@ void InterpreterAssembly::HandleStOwnByIndexPrefV8Imm32(
 
 void InterpreterAssembly::HandleStOwnByValuePrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t v0 = READ_INST_8_1();
     uint32_t v1 = READ_INST_8_2();
@@ -2422,7 +2438,7 @@ void InterpreterAssembly::HandleStOwnByValuePrefV8V8(
 
 void InterpreterAssembly::HandleCreateObjectWithExcludedKeysPrefImm16V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t numKeys = READ_INST_16_1();
     uint16_t v0 = READ_INST_8_3();
@@ -2439,7 +2455,7 @@ void InterpreterAssembly::HandleCreateObjectWithExcludedKeysPrefImm16V8V8(
 
 void InterpreterAssembly::HandleDefineGeneratorFuncPrefId16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t methodId = READ_INST_16_1();
     uint16_t length = READ_INST_16_3();
@@ -2468,9 +2484,40 @@ void InterpreterAssembly::HandleDefineGeneratorFuncPrefId16Imm16V8(
     DISPATCH(BytecodeInstruction::Format::PREF_ID16_IMM16_V8);
 }
 
+void InterpreterAssembly::HandleDefineAsyncGeneratorFuncPrefId16Imm16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t methodId = READ_INST_16_1();
+    uint16_t length = READ_INST_16_3();
+    uint16_t v0 = READ_INST_8_5();
+    LOG_INST() << "define async gengerator function length: " << length
+               << " v" << v0;
+    JSFunction *result = JSFunction::Cast(
+        ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(methodId).GetTaggedObject());
+    ASSERT(result != nullptr);
+    if (result->GetResolved()) {
+        auto res = SlowRuntimeStub::DefineAsyncGeneratorFunc(thread, result);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
+        result->SetConstantPool(thread, JSTaggedValue(constpool));
+    } else {
+        result->SetResolved(thread);
+    }
+
+    result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    JSTaggedValue env = GET_VREG_VALUE(v0);
+    result->SetLexicalEnv(thread, env);
+
+    JSFunction *currentFunc = JSFunction::Cast((GET_ASM_FRAME(sp)->function).GetTaggedObject());
+    result->SetModule(thread, currentFunc->GetModule());
+    SET_ACC(JSTaggedValue(result))
+    DISPATCH(BytecodeInstruction::Format::PREF_ID16_IMM16_V8);
+}
+
 void InterpreterAssembly::HandleDefineAsyncFuncPrefId16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t methodId = READ_INST_16_1();
     uint16_t length = READ_INST_16_3();
@@ -2501,7 +2548,7 @@ void InterpreterAssembly::HandleDefineAsyncFuncPrefId16Imm16V8(
 
 void InterpreterAssembly::HandleLdHolePref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsic::ldhole";
     SET_ACC(JSTaggedValue::Hole());
@@ -2510,7 +2557,7 @@ void InterpreterAssembly::HandleLdHolePref(
 
 void InterpreterAssembly::HandleCopyRestArgsPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t restIdx = READ_INST_16_1();
     LOG_INST() << "intrinsics::copyrestargs"
@@ -2527,7 +2574,7 @@ void InterpreterAssembly::HandleCopyRestArgsPrefImm16(
 
 void InterpreterAssembly::HandleDefineGetterSetterByValuePrefV8V8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -2550,7 +2597,7 @@ void InterpreterAssembly::HandleDefineGetterSetterByValuePrefV8V8V8V8(
 
 void InterpreterAssembly::HandleLdObjByIndexPrefV8Imm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint32_t idx = READ_INST_32_2();
@@ -2577,7 +2624,7 @@ void InterpreterAssembly::HandleLdObjByIndexPrefV8Imm32(
 
 void InterpreterAssembly::HandleStObjByIndexPrefV8Imm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint32_t index = READ_INST_32_2();
@@ -2609,7 +2656,7 @@ void InterpreterAssembly::HandleStObjByIndexPrefV8Imm32(
 
 void InterpreterAssembly::HandleLdObjByValuePrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t v0 = READ_INST_8_1();
     uint32_t v1 = READ_INST_8_2();
@@ -2661,7 +2708,7 @@ void InterpreterAssembly::HandleLdObjByValuePrefV8V8(
 
 void InterpreterAssembly::HandleStObjByValuePrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t v0 = READ_INST_8_1();
     uint32_t v1 = READ_INST_8_2();
@@ -2726,7 +2773,7 @@ void InterpreterAssembly::HandleStObjByValuePrefV8V8(
 
 void InterpreterAssembly::HandleLdSuperByValuePrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t v0 = READ_INST_8_1();
     uint32_t v1 = READ_INST_8_2();
@@ -2746,7 +2793,7 @@ void InterpreterAssembly::HandleLdSuperByValuePrefV8V8(
 
 void InterpreterAssembly::HandleStSuperByValuePrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t v0 = READ_INST_8_1();
     uint32_t v1 = READ_INST_8_2();
@@ -2768,7 +2815,7 @@ void InterpreterAssembly::HandleStSuperByValuePrefV8V8(
 
 void InterpreterAssembly::HandleTryLdGlobalByNamePrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     auto prop = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -2805,7 +2852,7 @@ void InterpreterAssembly::HandleTryLdGlobalByNamePrefId32(
             SET_ACC(globalResult);
         } else {
             // slow path
-            JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByName(thread, globalObj, prop);
+            JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj, prop);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
         }
@@ -2816,7 +2863,7 @@ void InterpreterAssembly::HandleTryLdGlobalByNamePrefId32(
 
 void InterpreterAssembly::HandleTryStGlobalByNamePrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     JSTaggedValue propKey = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -2870,7 +2917,7 @@ void InterpreterAssembly::HandleTryStGlobalByNamePrefId32(
 
 void InterpreterAssembly::HandleStConstToGlobalRecordPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     JSTaggedValue propKey = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -2887,7 +2934,7 @@ void InterpreterAssembly::HandleStConstToGlobalRecordPrefId32(
 
 void InterpreterAssembly::HandleStLetToGlobalRecordPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     JSTaggedValue propKey = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -2904,7 +2951,7 @@ void InterpreterAssembly::HandleStLetToGlobalRecordPrefId32(
 
 void InterpreterAssembly::HandleStClassToGlobalRecordPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     JSTaggedValue propKey = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -2921,7 +2968,7 @@ void InterpreterAssembly::HandleStClassToGlobalRecordPrefId32(
 
 void InterpreterAssembly::HandleStOwnByValueWithNameSetPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t v0 = READ_INST_8_1();
     uint32_t v1 = READ_INST_8_2();
@@ -2960,7 +3007,7 @@ void InterpreterAssembly::HandleStOwnByValueWithNameSetPrefV8V8(
 
 void InterpreterAssembly::HandleStOwnByNameWithNameSetPrefId32V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     uint32_t v0 = READ_INST_8_5();
@@ -2995,7 +3042,7 @@ void InterpreterAssembly::HandleStOwnByNameWithNameSetPrefId32V8(
 
 void InterpreterAssembly::HandleLdGlobalVarPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     JSTaggedValue propKey = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -3019,7 +3066,7 @@ void InterpreterAssembly::HandleLdGlobalVarPrefId32(
         SET_ACC(result);
     } else {
         // slow path
-        JSTaggedValue res = SlowRuntimeStub::LdGlobalVar(thread, globalObj, propKey);
+        JSTaggedValue res = SlowRuntimeStub::LdGlobalVarFromGlobalProto(thread, globalObj, propKey);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
     }
@@ -3028,7 +3075,7 @@ void InterpreterAssembly::HandleLdGlobalVarPrefId32(
 
 void InterpreterAssembly::HandleLdObjByNamePrefId32V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t v0 = READ_INST_8_5();
     JSTaggedValue receiver = GET_VREG_VALUE(v0);
@@ -3084,7 +3131,7 @@ void InterpreterAssembly::HandleLdObjByNamePrefId32V8(
 
 void InterpreterAssembly::HandleStObjByNamePrefId32V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t v0 = READ_INST_8_5();
     JSTaggedValue receiver = GET_VREG_VALUE(v0);
@@ -3144,7 +3191,7 @@ void InterpreterAssembly::HandleStObjByNamePrefId32V8(
 
 void InterpreterAssembly::HandleLdSuperByNamePrefId32V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     uint32_t v0 = READ_INST_8_5();
@@ -3165,7 +3212,7 @@ void InterpreterAssembly::HandleLdSuperByNamePrefId32V8(
 
 void InterpreterAssembly::HandleStSuperByNamePrefId32V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     uint32_t v0 = READ_INST_8_5();
@@ -3190,7 +3237,7 @@ void InterpreterAssembly::HandleStSuperByNamePrefId32V8(
 
 void InterpreterAssembly::HandleStGlobalVarPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     JSTaggedValue prop = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
@@ -3224,7 +3271,7 @@ void InterpreterAssembly::HandleStGlobalVarPrefId32(
 
 void InterpreterAssembly::HandleCreateGeneratorObjPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::creategeneratorobj"
@@ -3236,9 +3283,41 @@ void InterpreterAssembly::HandleCreateGeneratorObjPrefV8(
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
 }
 
+void InterpreterAssembly::HandleCreateAsyncGeneratorObjPrefV8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::"
+               << " v" << v0;
+    JSTaggedValue genFunc = GET_VREG_VALUE(v0);
+    JSTaggedValue res = SlowRuntimeStub::CreateAsyncGeneratorObj(thread, genFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(BytecodeInstruction::Format::PREF_V8);
+}
+
+void InterpreterAssembly::HandleAsyncGeneratorResolvePrefV8V8V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    uint16_t v2 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::LowerAsyncGeneratorResolve"
+               << " v" << v0;
+    JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
+    JSTaggedValue value = GET_VREG_VALUE(v1);
+    JSTaggedValue flag = GET_VREG_VALUE(v2);
+    JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorResolve(thread, asyncGenerator, value, flag);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(BytecodeInstruction::Format::PREF_V8_V8_V8);
+}
+
 void InterpreterAssembly::HandleStArraySpreadPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -3255,7 +3334,7 @@ void InterpreterAssembly::HandleStArraySpreadPrefV8V8(
 
 void InterpreterAssembly::HandleGetIteratorNextPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
@@ -3271,32 +3350,24 @@ void InterpreterAssembly::HandleGetIteratorNextPrefV8V8(
 
 void InterpreterAssembly::HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t methodId = READ_INST_16_1();
-    uint16_t imm = READ_INST_16_3();
     uint16_t length = READ_INST_16_5();
     uint16_t v0 = READ_INST_8_7();
     uint16_t v1 = READ_INST_8_8();
     LOG_INST() << "intrinsics::defineclasswithbuffer"
-                << " method id:" << methodId << " literal id:" << imm << " lexenv: v" << v0 << " parent: v" << v1;
+                << " method id:" << methodId << " lexenv: v" << v0 << " parent: v" << v1;
     JSFunction *classTemplate = JSFunction::Cast(
         ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(methodId).GetTaggedObject());
     ASSERT(classTemplate != nullptr);
 
-    TaggedArray *literalBuffer = TaggedArray::Cast(
-        ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(imm).GetTaggedObject());
     JSTaggedValue lexenv = GET_VREG_VALUE(v0);
     JSTaggedValue proto = GET_VREG_VALUE(v1);
 
-    JSTaggedValue res;
-    if (LIKELY(!classTemplate->GetResolved())) {
-        res = SlowRuntimeStub::ResolveClass(thread, JSTaggedValue(classTemplate), literalBuffer,
-                                            proto, lexenv, ConstantPool::Cast(constpool.GetTaggedObject()));
-    } else {
-        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate),
-                                                      proto, lexenv, ConstantPool::Cast(constpool.GetTaggedObject()));
-    }
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate),
+        proto, lexenv, ConstantPool::Cast(constpool.GetTaggedObject()));
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
     ASSERT(res.IsClassConstructor());
@@ -3316,7 +3387,7 @@ void InterpreterAssembly::HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8(
 
 void InterpreterAssembly::HandleLdFunctionPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsic::ldfunction";
     SET_ACC(GetThisFunction(sp));
@@ -3325,7 +3396,7 @@ void InterpreterAssembly::HandleLdFunctionPref(
 
 void InterpreterAssembly::HandleNewLexEnvWithNameDynPrefImm16Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t numVars = READ_INST_16_1();
     uint16_t scopeId = READ_INST_16_3();
@@ -3343,7 +3414,7 @@ void InterpreterAssembly::HandleNewLexEnvWithNameDynPrefImm16Imm16(
 
 void InterpreterAssembly::HandleLdBigIntPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint32_t stringId = READ_INST_32_1();
     LOG_INST() << "intrinsic::ldbigint";
@@ -3357,22 +3428,28 @@ void InterpreterAssembly::HandleLdBigIntPrefId32(
 
 void InterpreterAssembly::HandleToNumericPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
 
     LOG_INST() << "intrinsics::tonumeric"
                 << " v" << v0;
     JSTaggedValue value = GET_VREG_VALUE(v0);
-    JSTaggedValue res = SlowRuntimeStub::ToNumeric(thread, value);
-    INTERPRETER_RETURN_IF_ABRUPT(res);
-    SET_ACC(res);
+    if (value.IsNumber() || value.IsBigInt()) {
+        // fast path
+        SET_ACC(value);
+    } else {
+        // slow path
+        JSTaggedValue res = SlowRuntimeStub::ToNumeric(thread, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+    }
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
 }
 
 void InterpreterAssembly::HandleSuperCallPrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t range = READ_INST_16_1();
     uint16_t v0 = READ_INST_8_3();
@@ -3390,7 +3467,7 @@ void InterpreterAssembly::HandleSuperCallPrefImm16V8(
 
 void InterpreterAssembly::HandleSuperCallSpreadPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsic::supercallspread"
@@ -3408,7 +3485,7 @@ void InterpreterAssembly::HandleSuperCallSpreadPrefV8(
 
 void InterpreterAssembly::HandleCreateObjectHavingMethodPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t imm = READ_INST_16_1();
     LOG_INST() << "intrinsics::createobjecthavingmethod"
@@ -3427,7 +3504,7 @@ void InterpreterAssembly::HandleCreateObjectHavingMethodPrefImm16(
 
 void InterpreterAssembly::HandleThrowIfSuperNotCorrectCallPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t imm = READ_INST_16_1();
     JSTaggedValue thisValue = GET_ACC();
@@ -3440,7 +3517,7 @@ void InterpreterAssembly::HandleThrowIfSuperNotCorrectCallPrefImm16(
 
 void InterpreterAssembly::HandleLdHomeObjectPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::ldhomeobject";
 
@@ -3453,7 +3530,7 @@ void InterpreterAssembly::HandleLdHomeObjectPref(
 
 void InterpreterAssembly::HandleThrowDeleteSuperPropertyPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "throwdeletesuperproperty";
 
@@ -3463,7 +3540,7 @@ void InterpreterAssembly::HandleThrowDeleteSuperPropertyPref(
 
 void InterpreterAssembly::HandleDebuggerPref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::debugger";
     DISPATCH(BytecodeInstruction::Format::PREF_NONE);
@@ -3471,7 +3548,7 @@ void InterpreterAssembly::HandleDebuggerPref(
 
 void InterpreterAssembly::HandleIsTruePref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::istrue";
     if (GET_ACC().ToBoolean()) {
@@ -3484,7 +3561,7 @@ void InterpreterAssembly::HandleIsTruePref(
 
 void InterpreterAssembly::HandleIsFalsePref(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::isfalse";
     if (!GET_ACC().ToBoolean()) {
@@ -3497,7 +3574,7 @@ void InterpreterAssembly::HandleIsFalsePref(
 
 void InterpreterAssembly::ExceptionHandler(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     FrameHandler frameHandler(thread);
     uint32_t pcOffset = panda_file::INVALID_OFFSET;
@@ -3527,7 +3604,7 @@ void InterpreterAssembly::ExceptionHandler(
 }
 void InterpreterAssembly::HandleOverflow(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int32_t hotnessCounter)
+    JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INTERPRETER(FATAL) << "opcode overflow";
 }

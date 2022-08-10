@@ -112,7 +112,6 @@ host_unittest_action("StubTest") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime/ecmascript/compiler:libark_jsoptimizer_test",
     sdk_libc_secshared_dep,
   ]
@@ -200,7 +199,6 @@ host_unittest_action("AssemblerTest") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime/ecmascript/compiler:libark_jsoptimizer_test",
     sdk_libc_secshared_dep,
   ]
@@ -286,7 +284,6 @@ host_unittest_action("CircuitOptimizerTest") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
     "//arkcompiler/ets_runtime/ecmascript/compiler:libark_jsoptimizer_test",
     sdk_libc_secshared_dep,
   ]

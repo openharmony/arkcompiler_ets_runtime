@@ -17,11 +17,10 @@
 #define ECMASCRIPT_LINKED_HASH_TABLE_H
 
 #include "ecmascript/js_tagged_value.h"
-#include "js_handle.h"
-#include "js_symbol.h"
-#include "js_tagged_number.h"
-#include "tagged_array-inl.h"
-#include "utils/bit_utils.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_symbol.h"
+#include "ecmascript/js_tagged_number.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 class LinkedHash {

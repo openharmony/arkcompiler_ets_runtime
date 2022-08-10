@@ -14,36 +14,27 @@
  */
 
 #include "initializedebugger_fuzzer.h"
-#include <cstddef>
-#include <cstdint>
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/tooling/debugger_service.h"
-#include "ecmascript/tooling/protocol_handler.h"
-#include "unistd.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::tooling;
 
-bool createstatus = true;
 namespace OHOS {
-    bool InitializeDebuggerFuzzTest(const uint8_t* data, size_t size)
+    void InitializeDebuggerFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        if (createstatus) {
-            JSNApi::CreateJSVM(option);
-            createstatus = false;
-        }
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        auto jsvm = JSNApi::CreateJSVM(option);
+        auto vm = JSNApi::CreateJSVM(option);
+        [[maybe_unused]] LocalScope scope(vm);
         using OnResponseType = const std::function<void(const void *, const std::string &)>;
         OnResponseType onResponse = [data, size](const void *d, [[maybe_unused]] const std::string &s) -> void {
             d = data + size;
         };
-        panda::ecmascript::tooling::InitializeDebugger(jsvm, onResponse);
-        panda::ecmascript::tooling::UninitializeDebugger(jsvm);
-        JSNApi::DestroyJSVM(jsvm);
-        return true;
+        InitializeDebugger(vm, onResponse);
+        UninitializeDebugger(vm);
+        JSNApi::DestroyJSVM(vm);
     }
 }
 

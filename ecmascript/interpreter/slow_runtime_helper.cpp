@@ -14,6 +14,7 @@
  */
 
 #include "slow_runtime_helper.h"
+
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
@@ -34,8 +35,8 @@ JSTaggedValue SlowRuntimeHelper::CallBoundFunction(EcmaRuntimeCallInfo *info)
     }
 
     JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());
-    const int32_t boundLength = static_cast<int32_t>(boundArgs->GetLength());
-    const int32_t argsLength = info->GetArgsNumber() + boundLength;
+    const uint32_t boundLength = boundArgs->GetLength();
+    const uint32_t argsLength = info->GetArgsNumber() + boundLength;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *runtimeInfo = EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(targetFunc),
         info->GetThis(), undefined, argsLength);
@@ -96,171 +97,5 @@ void SlowRuntimeHelper::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorC
     context->SetLexicalEnv(thread, thread->GetCurrentLexenv());
     context->SetNRegs(nregs);
     context->SetBCOffset(frameHandler.GetBytecodeOffset());
-}
-
-JSTaggedValue ConstructGeneric(JSThread *thread, JSHandle<JSFunction> ctor, JSHandle<JSTaggedValue> newTgt,
-                               JSHandle<JSTaggedValue> preArgs, uint32_t argsCount, uint32_t baseArgLocation)
-{
-    if (!ctor->IsConstructor()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
-    }
-
-    JSHandle<JSTaggedValue> obj(thread, JSTaggedValue::Undefined());
-    if (ctor->IsBase()) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        obj = JSHandle<JSTaggedValue>(factory->NewJSObjectByConstructor(ctor, newTgt));
-    }
-    uint32_t preArgsSize = preArgs->IsUndefined() ? 0 : JSHandle<TaggedArray>::Cast(preArgs)->GetLength();
-    const uint32_t size = preArgsSize + argsCount;
-    CVector<JSTaggedType> values;
-    values.reserve(size);
-
-    JSMethod *method = ctor->GetCallTarget();
-    if (method == nullptr) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Undefined target", JSTaggedValue::Exception());
-    }
-
-    // Add the input parameter
-    FrameHandler frameHandler(thread);
-    // add preArgs when boundfunction is encountered
-    if (preArgsSize > 0) {
-        JSHandle<TaggedArray> tgaPreArgs = JSHandle<TaggedArray>::Cast(preArgs);
-        for (uint32_t i = 0; i < preArgsSize; ++i) {
-            JSTaggedValue value = tgaPreArgs->Get(i);
-            values.emplace_back(value.GetRawData());
-        }
-        for (uint32_t i = 0; i < argsCount; ++i) {
-            JSTaggedValue value = frameHandler.GetVRegValue(baseArgLocation + i);
-            values.emplace_back(value.GetRawData());
-        }
-    } else {
-        for (uint32_t i = 0; i < argsCount; ++i) {
-            JSTaggedValue value = frameHandler.GetVRegValue(baseArgLocation + i);
-            values.emplace_back(value.GetRawData());
-        }
-    }
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(size, values.data());
-    JSTaggedValue resultValue = EcmaInterpreter::Execute(info);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 9.3.2 [[Construct]] (argumentsList, newTarget)
-    if (resultValue.IsECMAObject()) {
-        return resultValue;
-    }
-
-    if (ctor->IsBase()) {
-        return obj.GetTaggedValue();
-    }
-    if (!resultValue.IsUndefined()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "function is non-constructor", JSTaggedValue::Exception());
-    }
-    return obj.GetTaggedValue();
-}
-
-JSTaggedValue ConstructBoundFunction(JSThread *thread, JSHandle<JSBoundFunction> ctor, JSHandle<JSTaggedValue> newTgt,
-                                     JSHandle<JSTaggedValue> preArgs, uint32_t argsCount, uint32_t baseArgLocation)
-{
-    JSHandle<JSTaggedValue> target(thread, ctor->GetBoundTarget());
-    ASSERT(target->IsConstructor());
-
-    JSHandle<TaggedArray> boundArgs(thread, ctor->GetBoundArguments());
-    JSMutableHandle<JSTaggedValue> newPreArgs(thread, preArgs.GetTaggedValue());
-    if (newPreArgs->IsUndefined()) {
-        newPreArgs.Update(boundArgs.GetTaggedValue());
-    } else {
-        newPreArgs.Update(
-            TaggedArray::Append(thread, boundArgs, JSHandle<TaggedArray>::Cast(preArgs)).GetTaggedValue());
-    }
-    JSMutableHandle<JSTaggedValue> newTargetMutable(thread, newTgt.GetTaggedValue());
-    if (JSTaggedValue::SameValue(ctor.GetTaggedValue(), newTgt.GetTaggedValue())) {
-        newTargetMutable.Update(target.GetTaggedValue());
-    }
-    return SlowRuntimeHelper::Construct(thread, target, newTargetMutable, newPreArgs, argsCount, baseArgLocation);
-}
-
-JSTaggedValue ConstructProxy(JSThread *thread, JSHandle<JSProxy> ctor, JSHandle<JSTaggedValue> newTgt,
-                             JSHandle<JSTaggedValue> preArgs, uint32_t argsCount, uint32_t baseArgLocation)
-{
-    // step 1 ~ 4 get ProxyHandler and ProxyTarget
-    JSHandle<JSTaggedValue> handler(thread, ctor->GetHandler());
-    if (handler->IsNull()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor: handler is null", JSTaggedValue::Exception());
-    }
-    ASSERT(handler->IsJSObject());
-    JSHandle<JSTaggedValue> target(thread, ctor->GetTarget());
-
-    // 5.Let trap be GetMethod(handler, "construct").
-    JSHandle<JSTaggedValue> key(thread->GlobalConstants()->GetHandledProxyConstructString());
-    JSHandle<JSTaggedValue> method = JSObject::GetMethod(thread, handler, key);
-
-    // 6.ReturnIfAbrupt(trap).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 7.If trap is undefined, then
-    //   a.Assert: target has a [[Construct]] internal method.
-    //   b.Return Construct(target, argumentsList, newTarget).
-    if (method->IsUndefined()) {
-        ASSERT(target->IsConstructor());
-        return SlowRuntimeHelper::Construct(thread, target, newTgt, preArgs, argsCount, baseArgLocation);
-    }
-
-    // 8.Let argArray be CreateArrayFromList(argumentsList).
-    uint32_t preArgsSize = preArgs->IsUndefined() ? 0 : JSHandle<TaggedArray>::Cast(preArgs)->GetLength();
-    const uint32_t size = preArgsSize + argsCount;
-    JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(size);
-    if (preArgsSize > 0) {
-        JSHandle<TaggedArray> tgaPreArgs = JSHandle<TaggedArray>::Cast(preArgs);
-        for (uint32_t i = 0; i < preArgsSize; ++i) {
-            JSTaggedValue value = tgaPreArgs->Get(i);
-            args->Set(thread, i, value);
-        }
-    }
-    FrameHandler frameHandler(thread);
-    for (uint32_t i = 0; i < argsCount; ++i) {
-        JSTaggedValue value = frameHandler.GetVRegValue(baseArgLocation + i);
-        args->Set(thread, i + preArgsSize, value);
-    }
-
-    // step 8 ~ 9 Call(trap, handler, «target, argArray, newTarget »).
-    const int32_t argsLength = 3;  // 3: «target, argArray, newTarget »
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, method, handler, undefined, argsLength);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(target.GetTaggedValue(), args.GetTaggedValue(), newTgt.GetTaggedValue());
-    JSTaggedValue newObjValue = JSFunction::Call(info);
-    // 10.ReturnIfAbrupt(newObj).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 11.If Type(newObj) is not Object, throw a TypeError exception.
-    if (!newObjValue.IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "new object is not object", JSTaggedValue::Exception());
-    }
-    // 12.Return newObj.
-    return newObjValue;
-}
-
-JSTaggedValue SlowRuntimeHelper::Construct(JSThread *thread, JSHandle<JSTaggedValue> ctor,
-                                           JSHandle<JSTaggedValue> newTarget, JSHandle<JSTaggedValue> preArgs,
-                                           uint32_t argsCount, uint32_t baseArgLocation)
-{
-    if (newTarget->IsUndefined()) {
-        newTarget = ctor;
-    }
-
-    if (!(newTarget->IsConstructor() && ctor->IsConstructor())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
-    }
-    if (ctor->IsJSFunction()) {
-        return ConstructGeneric(thread, JSHandle<JSFunction>::Cast(ctor), newTarget, preArgs, argsCount,
-                                baseArgLocation);
-    }
-    if (ctor->IsBoundFunction()) {
-        return ConstructBoundFunction(thread, JSHandle<JSBoundFunction>::Cast(ctor), newTarget, preArgs, argsCount,
-                                      baseArgLocation);
-    }
-    if (ctor->IsJSProxy()) {
-        return ConstructProxy(thread, JSHandle<JSProxy>::Cast(ctor), newTarget, preArgs, argsCount, baseArgLocation);
-    }
-    THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor NonConstructor", JSTaggedValue::Exception());
 }
 }  // namespace panda::ecmascript

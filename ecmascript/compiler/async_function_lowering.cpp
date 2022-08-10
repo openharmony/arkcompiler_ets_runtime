@@ -33,7 +33,8 @@ void AsyncFunctionLowering::ProcessJumpTable()
 
     GateRef contextOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET);
     GateRef val = builder_.PtrAdd(newTarget, contextOffset);
-    GateRef contextGate = circuit_->NewGate(OpCode(OpCode::LOAD), MachineType::I64, 0, {dependEntry_, val},
+    GateRef dependStart = builder_.DependRelay(ifFalseCondition, dependEntry_);
+    GateRef contextGate = circuit_->NewGate(OpCode(OpCode::LOAD), MachineType::I64, 0, {dependStart, val},
                                             GateType::TaggedPointer());
     GateRef bcOffset = builder_.IntPtr(GeneratorContext::GENERATOR_BC_OFFSET_OFFSET);
     val = builder_.PtrAdd(contextGate, bcOffset);
@@ -132,9 +133,11 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
             // Find the node with LOOP_BEGIN as State input and modify its
             // state input to the newly created IF_FALSE node.
             auto uses = accessor_.Uses(stateInGate);
-            for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+            for (auto useIt = uses.begin(); useIt != uses.end();) {
                 if (accessor_.GetOpCode(*useIt).IsState() && *useIt != ifBranch) {
-                    accessor_.ReplaceIn(useIt, ifFalse);
+                    useIt = accessor_.ReplaceIn(useIt, ifFalse);
+                } else {
+                    useIt++;
                 }
             }
 

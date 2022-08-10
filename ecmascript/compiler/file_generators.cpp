@@ -12,13 +12,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "file_generators.h"
+
+#include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "llvm_ir_builder.h"
+#include "ecmascript/compiler/file_generators.h"
 
 namespace panda::ecmascript::kungfu {
+void Module::CollectStackMapDes(ModuleSectionDes& des) const
+{
+    uint32_t stackmapSize = des.GetSecSize(ElfSecName::LLVM_STACKMAP);
+    std::unique_ptr<uint8_t[]> stackmapPtr(std::make_unique<uint8_t[]>(stackmapSize));
+    uint64_t addr = des.GetSecAddr(ElfSecName::LLVM_STACKMAP);
+    if (addr == 0) { // assembler stub don't existed llvm stackmap
+        return;
+    }
+    uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
+    if (memcpy_s(stackmapPtr.get(), stackmapSize, reinterpret_cast<void *>(addr), stackmapSize) != EOK) {
+        LOG_FULL(FATAL) << "memcpy_s failed";
+        UNREACHABLE();
+    }
+    std::shared_ptr<uint8_t> ptr = nullptr;
+    uint32_t size = 0;
+    ArkStackMapBuilder builder;
+    std::tie(ptr, size) =  builder.Run(std::move(stackmapPtr), textAddr);
+    des.EraseSec(ElfSecName::LLVM_STACKMAP);
+    des.SetArkStackMapPtr(ptr);
+    des.SetArkStackMapSize(size);
+}
+
 void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name,
     uint32_t bridgeModuleIdx)
 {
@@ -63,6 +87,7 @@ void AOTFileGenerator::CollectCodeInfo()
         modulePackage_[i].CollectModuleSectionDes(des);
         aotInfo_.AddModuleDes(des, aotfileHashs_[i]);
     }
+
 #ifndef NDEBUG
     DisassembleEachFunc(addr2name);
 #endif
@@ -99,16 +124,16 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
     DestoryModule();
 }
 
-void AOTFileGenerator::GenerateSnapshotFile()
+void AOTFileGenerator::SaveSnapshotFile()
 {
-    TSLoader *tsLoader = vm_->GetTSLoader();
+    TSManager *tsManager = vm_->GetTSManager();
     Snapshot snapshot(vm_);
-    CVector<JSTaggedType> constStringTable = tsLoader->GetConstStringTable();
-    CVector<JSTaggedType> staticHClassTable = tsLoader->GetStaticHClassTable();
-    CVector<JSTaggedType> tsLoaderSerializeTable(constStringTable);
-    tsLoaderSerializeTable.insert(tsLoaderSerializeTable.end(), staticHClassTable.begin(), staticHClassTable.end());
-    const CString snapshotPath(vm_->GetJSOptions().GetSnapshotOutputFile().c_str());
-    snapshot.Serialize(reinterpret_cast<uintptr_t>(tsLoaderSerializeTable.data()), tsLoaderSerializeTable.size(),
-                       snapshotPath);
+    CVector<JSTaggedType> constStringTable = tsManager->GetConstStringTable();
+    CVector<JSTaggedType> staticHClassTable = tsManager->GetStaticHClassTable();
+    CVector<JSTaggedType> tsManagerSerializeTable(constStringTable);
+    tsManagerSerializeTable.insert(tsManagerSerializeTable.end(), staticHClassTable.begin(), staticHClassTable.end());
+    const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
+    snapshot.Serialize(reinterpret_cast<uintptr_t>(tsManagerSerializeTable.data()), tsManagerSerializeTable.size(),
+                       snapshotPath + ".etso");
 }
 }  // namespace panda::ecmascript::kungfu

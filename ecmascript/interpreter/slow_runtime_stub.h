@@ -73,6 +73,12 @@ public:
 
     static JSTaggedValue CreateGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
     static JSTaggedValue SuspendGenerator(JSThread *thread, JSTaggedValue genObj, JSTaggedValue value);
+    static JSTaggedValue SuspendGeneratorHelper(JSThread *thread, JSHandle<JSGeneratorObject> generatorObjectHandle,
+                                                JSHandle<GeneratorContext> genContextHandle, JSTaggedValue value);
+    static JSTaggedValue SuspendAsyncGeneratorHelper(JSThread *thread,
+                                                     JSHandle<JSAsyncGeneratorObject> generatorObjectHandle,
+                                                     JSHandle<GeneratorContext> genContextHandle,
+                                                     JSTaggedValue value);
     static JSTaggedValue AsyncFunctionAwaitUncaught(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value);
     static JSTaggedValue AsyncFunctionResolveOrReject(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value,
                                                       bool is_resolve);
@@ -127,9 +133,9 @@ public:
     static JSTaggedValue LdObjByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop, bool callGetter,
                                       JSTaggedValue receiver);
     static JSTaggedValue StObjByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop, JSTaggedValue value);
-    static JSTaggedValue TryLdGlobalByName(JSThread *thread, JSTaggedValue global, JSTaggedValue prop);
+    static JSTaggedValue TryLdGlobalByNameFromGlobalProto(JSThread *thread, JSTaggedValue global, JSTaggedValue prop);
     static JSTaggedValue TryStGlobalByName(JSThread *thread, JSTaggedValue prop);
-    static JSTaggedValue LdGlobalVar(JSThread *thread, JSTaggedValue global, JSTaggedValue prop);
+    static JSTaggedValue LdGlobalVarFromGlobalProto(JSThread *thread, JSTaggedValue global, JSTaggedValue prop);
     static JSTaggedValue StGlobalVar(JSThread *thread, JSTaggedValue prop, JSTaggedValue value);
     static JSTaggedValue StGlobalRecord(JSThread *thread, JSTaggedValue prop, JSTaggedValue value, bool isConst);
     static JSTaggedValue LdGlobalRecord(JSThread *thread, JSTaggedValue key);
@@ -162,6 +168,10 @@ public:
     static JSTaggedValue LdBigInt(JSThread *thread, JSTaggedValue numberBigInt);
     static JSTaggedValue ThrowTypeError(JSThread *thread, const char *message);
 
+    static JSTaggedValue AsyncGeneratorResolve(JSThread *thread, JSTaggedValue asyncFuncObj,
+                                               const JSTaggedValue value, JSTaggedValue flag);
+    static JSTaggedValue CreateAsyncGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
+    static JSTaggedValue DefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func);
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);
     static JSTaggedValue GetCallSpreadArgs(JSThread *thread, JSTaggedValue array);

@@ -14,7 +14,9 @@
  */
 
 #include "ecmascript/builtins/builtins_typedarray.h"
+
 #include <cmath>
+
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_array.h"
@@ -288,7 +290,7 @@ JSTaggedValue BuiltinsTypedArray::Of(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let len be the actual number of arguments passed to this function.
-    int32_t len = argv->GetArgsNumber();
+    uint32_t len = argv->GetArgsNumber();
     // 2. Let items be the List of arguments passed to this function.
     // 3. Let C be the this value.
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);

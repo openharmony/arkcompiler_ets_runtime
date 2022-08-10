@@ -19,8 +19,7 @@
 #include <cstdint>
 #include <atomic>
 
-#include "utils/bit_field.h"
-#include "libpandabase/mem/mem.h"
+#include "libpandabase/utils/bit_field.h"
 
 namespace panda {
 namespace ecmascript {

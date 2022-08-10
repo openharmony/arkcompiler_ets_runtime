@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "ecmascript/compiler/type.h"
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
@@ -101,6 +102,7 @@ public:
         CALL,
         BYTECODE_CALL,
         DEBUGGER_BYTECODE_CALL,
+        BUILTINS_CALL,
         ALLOCA,
         ARG,
         MUTABLE_DATA,

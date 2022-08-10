@@ -19,7 +19,6 @@
 #include <atomic>
 #include <cstdint>
 #include <fstream>
-#include <sys/time.h>
 
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
@@ -28,9 +27,11 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
-#include "os/mem.h"
 #include "ecmascript/tooling/interface/stream.h"
 #include "ecmascript/interpreter/frame_handler.h"
+
+#include <sys/time.h>
+#include "os/mem.h"
 
 namespace panda::ecmascript {
 // Define the Object Graphic

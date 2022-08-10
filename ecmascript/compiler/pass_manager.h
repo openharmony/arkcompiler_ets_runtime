@@ -25,14 +25,14 @@ namespace panda::ecmascript::kungfu {
 class PassManager {
 public:
     PassManager(EcmaVM* vm, std::string entry, std::string &triple,
-        size_t optLevel, size_t relocMode, AotLog *log) : vm_(vm), entry_(entry), triple_(triple),
-        optLevel_(optLevel), relocMode_(relocMode), log_(log) {};
+        size_t optLevel, size_t relocMode, CompilerLog *log, AotMethodLogList *logList) : vm_(vm),
+        entry_(entry), triple_(triple), optLevel_(optLevel),
+        relocMode_(relocMode), log_(log), logList_(logList) {};
     PassManager() = default;
     ~PassManager() = default;
-    bool CollectInfoOfPandaFile(const std::string &filename, std::string_view entryPoint,
-                                BytecodeTranslationInfo *translateInfo);
+    bool CollectBCInfo(const std::string &filename, BytecodeInfoCollector::BCInfo *bytecodeInfo);
     bool Compile(const std::string &fileName, AOTFileGenerator &generator);
-    void GenerateSnapshotFile();
+    void SaveSnapshotFile();
 
 private:
     EcmaVM* vm_ {nullptr};
@@ -40,7 +40,8 @@ private:
     std::string triple_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC
-    AotLog *log_ {nullptr};
+    CompilerLog *log_ {nullptr};
+    AotMethodLogList *logList_ {nullptr};
 };
 }
 #endif

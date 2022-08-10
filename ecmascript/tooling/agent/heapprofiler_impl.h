@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_TOOLING_AGENT_HEAPPROFILER_IMPL_H
 #define ECMASCRIPT_TOOLING_AGENT_HEAPPROFILER_IMPL_H
 
-#include <sys/time.h>
-#include "libpandabase/macros.h"
 #include "ecmascript/tooling/base/pt_params.h"
 #include "ecmascript/tooling/base/pt_events.h"
 #include "ecmascript/tooling/base/pt_returns.h"
@@ -27,6 +25,10 @@
 #include "ecmascript/tooling/protocol_handler.h"
 #include "ecmascript/tooling/protocol_channel.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
+
+#include "libpandabase/macros.h"
+
+#include <sys/time.h>
 
 static const double INTERVAL = 0.05;
 

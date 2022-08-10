@@ -185,6 +185,19 @@ inline void FreeListAllocator::CollectFreeObjectSet(Region *region)
     freeList_->IncreaseWastedSize(region->GetWastedSize());
 }
 
+inline bool FreeListAllocator::MatchFreeObjectSet(Region *region, size_t size)
+{
+    bool ret = false;
+    region->REnumerateFreeObjectSets([&](FreeObjectSet *set) {
+        if (set == nullptr || set->Empty()) {
+            return true;
+        }
+        ret = freeList_->MatchFreeObjectInSet(set, size);
+        return false;
+    });
+    return ret;
+}
+
 inline void FreeListAllocator::DetachFreeObjectSet(Region *region)
 {
     region->EnumerateFreeObjectSets([&](FreeObjectSet *set) {

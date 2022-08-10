@@ -12,10 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 #define ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 
 #include <tuple>
+
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/llvm_codegen.h"
@@ -48,6 +50,8 @@ public:
         }
         auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
         const size_t funcCount = llvmModule_->GetFuncCount();
+        funcCount_ = funcCount;
+        startIndex_ = stubInfo.GetEntrySize();
         for (size_t j = 0; j < funcCount; j++) {
             auto cs = callSigns[j];
             LLVMValueRef func = llvmModule_->GetFunction(j);
@@ -74,7 +78,7 @@ public:
         llvmModule_->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func) {
             uint64_t funcEntry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
             uint64_t length = 0;
-            std::string funcName(LLVMGetValueName2(func, &length));
+            std::string funcName(LLVMGetValueName2(func, reinterpret_cast<size_t *>(&length)));
             ASSERT(length != 0);
             LOG_COMPILER(INFO) << "CollectCodeInfo for AOT func: " << funcName.c_str();
             addr2name[funcEntry] = funcName;
@@ -84,6 +88,8 @@ public:
         });
         auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
         const size_t funcCount = funcInfo.size();
+        funcCount_ = funcCount;
+        startIndex_ = aotInfo.GetEntrySize();
         for (size_t i = 0; i < funcInfo.size(); i++) {
             uint64_t funcEntry;
             size_t idx;
@@ -107,8 +113,13 @@ public:
             auto curSec = ElfSection(i);
             moduleDes.SetSecAddr(reinterpret_cast<uint64_t>(secInfo.first), curSec.GetElfEnumValue());
             moduleDes.SetSecSize(secInfo.second, curSec.GetElfEnumValue());
+            moduleDes.SetStartIndex(startIndex_);
+            moduleDes.SetFuncCount(funcCount_);
         });
+        CollectStackMapDes(moduleDes);
     }
+
+    void CollectStackMapDes(ModuleSectionDes &moduleDes) const;
 
     const CompilationConfig *GetCompilationConfig()
     {
@@ -125,14 +136,15 @@ public:
         return assembler_->GetSectionAddr(sec);
     }
 
-    void RunAssembler()
+    void RunAssembler(const CompilerLog &log)
     {
-        assembler_->Run();
+        assembler_->Run(log);
     }
 
-    void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, const CompilerLog &log)
+    void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name,
+        const CompilerLog &log, const MethodLogList &logList)
     {
-        assembler_->Disassemble(addr2name, log);
+        assembler_->Disassemble(addr2name, log, logList);
     }
 
     void DestoryModule()
@@ -149,11 +161,13 @@ public:
 private:
     LLVMModule *llvmModule_ {nullptr};
     LLVMAssembler *assembler_ {nullptr};
+    uint32_t startIndex_ {-1}; // record current module first function index in StubModulePackInfo/AOTModulePackInfo
+    uint32_t funcCount_ {0};
 };
 
 class FileGenerator {
 public:
-    explicit FileGenerator(const CompilerLog *log) : log_(log) {};
+    FileGenerator(const CompilerLog *log, const MethodLogList *logList) : log_(log), logList_(logList) {};
     virtual ~FileGenerator() = default;
 
     const CompilerLog GetLog() const
@@ -163,18 +177,19 @@ public:
 protected:
     std::vector<Module> modulePackage_ {};
     const CompilerLog *log_ {nullptr};
+    const MethodLogList *logList_ {nullptr};
 
     void RunLLVMAssembler()
     {
         for (auto m : modulePackage_) {
-            m.RunAssembler();
+            m.RunAssembler(*(log_));
         }
     }
 
     void DisassembleEachFunc(std::map<uintptr_t, std::string> &addr2name)
     {
         for (auto m : modulePackage_) {
-            m.DisassemblerFunc(addr2name, *(log_));
+            m.DisassemblerFunc(addr2name, *(log_), *(logList_));
         }
     }
 
@@ -184,11 +199,14 @@ protected:
             m.DestoryModule();
         }
     }
+
+    void CollectStackMapDes(ModuleSectionDes& des);
 };
 
 class AOTFileGenerator : public FileGenerator {
 public:
-    explicit AOTFileGenerator(const CompilerLog *log, EcmaVM* vm) : FileGenerator(log), vm_(vm) {};
+    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList,
+        EcmaVM* vm) : FileGenerator(log, logList), vm_(vm) {};
     ~AOTFileGenerator() override = default;
 
     void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, const JSPandaFile *jsPandaFile)
@@ -200,7 +218,7 @@ public:
 
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename);
-    void GenerateSnapshotFile();
+    void SaveSnapshotFile();
 private:
     AOTModulePackInfo aotInfo_;
     std::vector<uint32_t> aotfileHashs_ {};
@@ -212,7 +230,8 @@ private:
 
 class StubFileGenerator : public FileGenerator {
 public:
-    StubFileGenerator(const CompilerLog *log, const std::string &triple) : FileGenerator(log), cfg_(triple) {};
+    StubFileGenerator(const CompilerLog *log, const MethodLogList *logList,
+        const std::string &triple) : FileGenerator(log, logList), cfg_(triple) {};
     ~StubFileGenerator() override = default;
     void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler)
     {

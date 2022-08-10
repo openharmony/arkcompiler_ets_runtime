@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_date.h"
+
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -41,7 +42,7 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
     }
 
     JSTaggedValue timeValue(0.0);
-    uint32_t length = static_cast<uint32_t>(argv->GetArgsNumber());
+    uint32_t length = argv->GetArgsNumber();
     if (length == 0) {  // no value
         timeValue = JSDate::Now();
     } else if (length == 1) {  // one value

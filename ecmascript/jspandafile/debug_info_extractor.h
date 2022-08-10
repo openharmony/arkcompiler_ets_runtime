@@ -19,6 +19,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/common.h"
+
 #include "libpandafile/file.h"
 
 namespace panda::ecmascript {

@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MEM_SPARSE_SPACE_H
 
 #include "ecmascript/mem/space-inl.h"
+#include "ecmascript/mem/mem_common.h"
 
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size) \
     if (object != 0) {                      \
@@ -54,13 +55,16 @@ public:
     void AsyncSweep(bool isMain);
     void Sweep();
 
-    bool FillSweptRegion();
+    bool TryFillSweptRegion();
+    // Ensure All region finished sweeping
+    bool FinishFillSweptRegion();
 
     void AddSweepingRegion(Region *region);
     void SortSweepingRegion();
     Region *GetSweepingRegionSafe();
     void AddSweptRegionSafe(Region *region);
     Region *GetSweptRegionSafe();
+    Region *TryToGetSuitableSweptRegion(size_t size);
 
     void FreeRegion(Region *current, bool isMain = true);
     void FreeLiveRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd, bool isMain);
@@ -68,6 +72,8 @@ public:
     void DetachFreeObjectSet(Region *region);
 
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
+    void IterateOldToNewOverObjects(
+        const std::function<void(TaggedObject *object, JSTaggedValue value)> &visitor) const;
 
     size_t GetHeapObjectSize() const;
 

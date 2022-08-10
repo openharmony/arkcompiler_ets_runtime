@@ -19,7 +19,9 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"
-#include "js_object.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/mem/mem_common.h"
+
 #include "securec.h"
 
 namespace panda::ecmascript {

@@ -124,7 +124,7 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
 {
     DISALLOW_GARBAGE_COLLECTION;
     ClearBitField();
-    if (JSType::JS_OBJECT_BEGIN <= type && type <= JSType::JS_OBJECT_END) {
+    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
         SetObjectSize(size + inlinedProps * JSTaggedValue::TaggedTypeSize());
         SetInlinedPropsStart(size);
         SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());

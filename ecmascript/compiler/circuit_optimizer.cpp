@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-#include "circuit_optimizer.h"
-
-#include <utility>
+#include "ecmascript/compiler/circuit_optimizer.h"
 
 namespace panda::ecmascript::kungfu {
 ValueLattice::ValueLattice() : value_(0), status_(LatticeStatus::TOP)
@@ -264,6 +262,7 @@ bool LatticeUpdateRuleSCCP::Run(GateRef gate)
         {OpCode::RUNTIME_CALL, [&]() -> bool { return RunRuntimeCall(gate); }},
         {OpCode::NOGC_RUNTIME_CALL, [&]() -> bool { return RunNoGCRuntimeCall(gate); }},
         {OpCode::BYTECODE_CALL, [&]() -> bool { return RunBytecodeCall(gate); }},
+        {OpCode::BUILTINS_CALL, [&]() -> bool { return RunBuiltinsCall(gate); }},
         {OpCode::DEBUGGER_BYTECODE_CALL, [&]() -> bool { return RunDebuggerBytecodeCall(gate); }},
         {OpCode::CALL, [&]() -> bool { return RunCall(gate); }},
         {OpCode::RUNTIME_CALL_WITH_ARGV, [&]() -> bool { return RunRuntimeCallWithArgv(gate); }},
@@ -566,6 +565,11 @@ bool LatticeUpdateRuleSCCP::RunDebuggerBytecodeCall(GateRef gate)
     return LatticeUpdateRuleSCCP::RunDependAnd(gate);
 }
 
+bool LatticeUpdateRuleSCCP::RunBuiltinsCall(GateRef gate)
+{
+    return LatticeUpdateRuleSCCP::RunDependAnd(gate);
+}
+
 bool LatticeUpdateRuleSCCP::RunCall(GateRef gate)
 {
     return LatticeUpdateRuleSCCP::RunDependAnd(gate);
@@ -807,8 +811,8 @@ bool LatticeUpdateRuleSCCP::RunFDiv(GateRef gate)
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
     return UpdateValueLattice(gate,
-                              ValueLattice(bit_cast<uint64_t>((bit_cast<double>(operandA.GetValue().value()) /
-                                  bit_cast<double>(operandB.GetValue().value())))));
+        ValueLattice(base::bit_cast<uint64_t>((base::bit_cast<double>(operandA.GetValue().value()) /
+                                               base::bit_cast<double>(operandB.GetValue().value())))));
 }
 
 bool LatticeUpdateRuleSCCP::RunFMod(GateRef gate)
@@ -822,8 +826,8 @@ bool LatticeUpdateRuleSCCP::RunFMod(GateRef gate)
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
     return UpdateValueLattice(gate,
-                              ValueLattice(bit_cast<uint64_t>(fmod(bit_cast<double>(operandA.GetValue().value()),
-                                                                   bit_cast<double>(operandB.GetValue().value())))));
+        ValueLattice(base::bit_cast<uint64_t>(fmod(base::bit_cast<double>(operandA.GetValue().value()),
+                                                   base::bit_cast<double>(operandB.GetValue().value())))));
 }
 
 bool LatticeUpdateRuleSCCP::RunAnd(GateRef gate)
@@ -1029,8 +1033,8 @@ bool LatticeUpdateRuleSCCP::RunFLT(GateRef gate)
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
     return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<uint64_t>(bit_cast<double>(operandA.GetValue().value())
-                                  < bit_cast<double>(operandB.GetValue().value()))));
+                              ValueLattice(static_cast<uint64_t>(base::bit_cast<double>(operandA.GetValue().value())
+                                  < base::bit_cast<double>(operandB.GetValue().value()))));
 }
 
 bool LatticeUpdateRuleSCCP::RunFLE(GateRef gate)
@@ -1044,8 +1048,8 @@ bool LatticeUpdateRuleSCCP::RunFLE(GateRef gate)
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
     return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<uint64_t>(bit_cast<double>(operandA.GetValue().value())
-                                  <= bit_cast<double>(operandB.GetValue().value()))));
+                              ValueLattice(static_cast<uint64_t>(base::bit_cast<double>(operandA.GetValue().value())
+                                  <= base::bit_cast<double>(operandB.GetValue().value()))));
 }
 
 bool LatticeUpdateRuleSCCP::RunFGT(GateRef gate)
@@ -1059,8 +1063,8 @@ bool LatticeUpdateRuleSCCP::RunFGT(GateRef gate)
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
     return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<uint64_t>(bit_cast<double>(operandA.GetValue().value())
-                                  > bit_cast<double>(operandB.GetValue().value()))));
+                              ValueLattice(static_cast<uint64_t>(base::bit_cast<double>(operandA.GetValue().value())
+                                  > base::bit_cast<double>(operandB.GetValue().value()))));
 }
 
 bool LatticeUpdateRuleSCCP::RunFGE(GateRef gate)
@@ -1074,8 +1078,8 @@ bool LatticeUpdateRuleSCCP::RunFGE(GateRef gate)
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
     return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<uint64_t>(bit_cast<double>(operandA.GetValue().value())
-                                  >= bit_cast<double>(operandB.GetValue().value()))));
+                              ValueLattice(static_cast<uint64_t>(base::bit_cast<double>(operandA.GetValue().value())
+                                  >= base::bit_cast<double>(operandB.GetValue().value()))));
 }
 
 bool LatticeUpdateRuleSCCP::RunEQ(GateRef gate)

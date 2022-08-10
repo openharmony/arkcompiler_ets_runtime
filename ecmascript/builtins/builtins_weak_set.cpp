@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "builtins_weak_set.h"
+#include "ecmascript/builtins/builtins_weak_set.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"

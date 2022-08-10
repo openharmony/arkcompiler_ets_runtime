@@ -16,9 +16,9 @@
 #ifndef ECMASCRIPT_JS_TYPED_ARRAY_H
 #define ECMASCRIPT_JS_TYPED_ARRAY_H
 
-#include "ecmascript/tagged_array.h"
 #include "ecmascript/js_dataview.h"
-#include "js_object.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
 enum class ContentType : uint8_t { None = 1, Number, BigInt };

@@ -67,6 +67,8 @@ protected:
     virtual inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) = 0;
     virtual inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
                                          ObjectSlot end) = 0;
+    virtual inline void HandleDerivedRoots(Root type, ObjectSlot base, ObjectSlot derived,
+                                           uintptr_t baseOldObject) = 0;
     virtual inline void RecordWeakReference([[maybe_unused]] uint32_t threadId, [[maybe_unused]] JSTaggedType *ref,
                                             [[maybe_unused]] Region *objectRegion)
     {
@@ -89,6 +91,8 @@ protected:
     inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) override;
     inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
                                  ObjectSlot end) override;
+    inline void HandleDerivedRoots(Root type, ObjectSlot base, ObjectSlot derived,
+                                   uintptr_t baseOldObject) override;
 
     inline void HandleOldToNewRSet(uint32_t threadId, Region *region) override;
     inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion) override;
@@ -103,6 +107,8 @@ protected:
     inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) override;
     inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
                                  ObjectSlot end) override;
+    inline void HandleDerivedRoots(Root type, ObjectSlot base, ObjectSlot derived,
+                                   uintptr_t baseOldObject) override;
     virtual inline SlotStatus EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,
                                              ObjectSlot slot) = 0;
 

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/ic/ic_runtime.h"
+
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/ic_handler.h"
@@ -26,6 +27,7 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tagged_dictionary.h"
+
 namespace panda::ecmascript {
 #define TRACE_IC 0  // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 

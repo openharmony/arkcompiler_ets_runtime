@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "js_proxy.h"
+#include "ecmascript/js_proxy.h"
+
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -879,7 +880,7 @@ JSTaggedValue JSProxy::CallInternal(EcmaRuntimeCallInfo *info)
 
     // 6.ReturnIfAbrupt(trap).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t argc = info->GetArgsNumber();
+    uint32_t argc = info->GetArgsNumber();
     JSHandle<JSTaggedValue> thisArg = info->GetThis();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     // 7.If trap is undefined, then
@@ -893,14 +894,14 @@ JSTaggedValue JSProxy::CallInternal(EcmaRuntimeCallInfo *info)
     }
     // 8.Let argArray be CreateArrayFromList(argumentsList).
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(static_cast<uint32_t>(argc));
-    for (int32_t index = 0; index < argc; ++index) {
+    JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(argc);
+    for (uint32_t index = 0; index < argc; ++index) {
         taggedArray->Set(thread, index, info->GetCallArg(index));
     }
     JSHandle<JSArray> arrHandle = JSArray::CreateArrayFromList(thread, taggedArray);
 
     // 9.Return Call(trap, handler, «target, thisArgument, argArray»).
-    const int32_t argsLength = 3;  // 3: «target, thisArgument, argArray»
+    const uint32_t argsLength = 3;  // 3: «target, thisArgument, argArray»
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, method, handler, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -943,9 +944,9 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
 
     // 8.Let argArray be CreateArrayFromList(argumentsList).
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    int32_t argc = info->GetArgsNumber();
-    JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(static_cast<uint32_t>(argc));
-    for (int32_t index = 0; index < argc; ++index) {
+    uint32_t argc = info->GetArgsNumber();
+    JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(argc);
+    for (uint32_t index = 0; index < argc; ++index) {
         taggedArray->Set(thread, index, info->GetCallArg(index));
     }
     JSHandle<JSArray> arrHandle = JSArray::CreateArrayFromList(thread, taggedArray);
@@ -963,7 +964,7 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
     // 10.ReturnIfAbrupt(newObj).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11.If Type(newObj) is not Object, throw a TypeError exception.
-    if (!newObj.IsHeapObject()) {
+    if (!newObj.IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "new object is not object", JSTaggedValue::Exception());
     }
     // 12.Return newObj.

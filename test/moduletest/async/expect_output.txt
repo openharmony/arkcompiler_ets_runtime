@@ -12,6 +12,11 @@
 # limitations under the License.
 
 foo
+true
+AsyncFunction
+Function
+Object
+0
 arrow
 async_arrow
 true

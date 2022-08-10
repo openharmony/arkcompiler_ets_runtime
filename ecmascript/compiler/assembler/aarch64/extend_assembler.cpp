@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "extend_assembler.h"
+
+#include "ecmascript/compiler/assembler/aarch64/extend_assembler.h"
+
 #include "ecmascript/frames.h"
 
 namespace panda::ecmascript::aarch64 {

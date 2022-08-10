@@ -148,6 +148,11 @@ inline bool JSObject::IsGeneratorObject() const
     return GetJSHClass()->IsGeneratorObject();
 }
 
+inline bool JSObject::IsAsyncGeneratorObject() const
+{
+    return GetJSHClass()->IsAsyncGeneratorObject();
+}
+
 inline bool JSObject::IsForinIterator() const
 {
     return GetJSHClass()->IsForinIterator();

@@ -13,22 +13,23 @@
  * limitations under the License.
  */
 
-#include "js_stable_array.h"
+#include "ecmascript/js_stable_array.h"
+
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
-#include "interpreter/fast_runtime_stub-inl.h"
 
 namespace panda::ecmascript {
 JSTaggedValue JSStableArray::Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
-    uint32_t argc = static_cast<uint32_t>(argv->GetArgsNumber());
+    uint32_t argc = argv->GetArgsNumber();
     uint32_t oldLength = receiver->GetArrayLength();
     uint32_t newLength = argc + oldLength;
 
@@ -73,7 +74,7 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
 {
     JSThread *thread = argv->GetThread();
     uint32_t len = receiver->GetArrayLength();
-    uint32_t argc = static_cast<uint32_t>(argv->GetArgsNumber());
+    uint32_t argc = argv->GetArgsNumber();
 
     JSHandle<JSObject> thisObjHandle(receiver);
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(actualDeleteCount));
@@ -319,12 +320,11 @@ JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSOb
     JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(true);
     while (k < len) {
         JSTaggedValue kValue = array->Get(k);
-        EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        
         if (!kValue.IsHole()) {
             key.Update(JSTaggedValue(k));
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(kValue, key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             callResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -334,6 +334,9 @@ JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSOb
         } else if (JSTaggedValue::HasProperty(thread, thisObjVal, k)) {
             key.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kValue1 = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(kValue1.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             callResult = JSFunction::Call(info);
@@ -362,11 +365,11 @@ JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JS
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     while (k < len) {
         JSTaggedValue kValue = array->Get(k);
-        EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!kValue.IsHole()) {
             key.Update(JSTaggedValue(k));
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(kValue, key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             JSTaggedValue funcResult = JSFunction::Call(info);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult);
@@ -376,6 +379,9 @@ JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JS
         } else if (JSTaggedValue::HasProperty(thread, thisObjVal, k)) {
             key.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kValue1 = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(kValue1.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             JSTaggedValue funcResult = JSFunction::Call(info);
@@ -387,5 +393,31 @@ JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JS
         }
     }
     return base::BuiltinsBase::GetTaggedBoolean(true);
+}
+
+JSTaggedValue JSStableArray::IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
+                                     JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len)
+{
+    JSHandle<TaggedArray> elements(thread, JSHandle<JSObject>::Cast(receiver)->GetElements());
+    while (from < len) {
+        JSTaggedValue value = elements->Get(from);
+        if (!value.IsUndefined() && !value.IsHole()) {
+            if (JSTaggedValue::StrictEqual(searchElement.GetTaggedValue(), value)) {
+                return JSTaggedValue(from);
+            }
+        } else {
+            bool exist = JSTaggedValue::HasProperty(thread, receiver, from);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (exist) {
+                JSHandle<JSTaggedValue> kValueHandle = JSArray::FastGetPropertyByValue(thread, receiver, from);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                if (JSTaggedValue::StrictEqual(thread, searchElement, kValueHandle)) {
+                    return JSTaggedValue(from);
+                }
+            }
+        }
+        from++;
+    }
+    return JSTaggedValue(-1);
 }
 }  // namespace panda::ecmascript

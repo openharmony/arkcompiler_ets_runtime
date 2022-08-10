@@ -28,7 +28,7 @@ namespace ecmascript {
 class JSThread;
 class ConstantPool;
 namespace kungfu {
-    class LLVMStackMapParser;
+    class ArkStackMapParser;
 };
 
 class FrameHandler {
@@ -69,12 +69,12 @@ public:
     bool IsInterpretedFrame() const
     {
         FrameType type = GetFrameType();
-        return (type >= FrameType::INTERPRETER_BEGIN) && (type <= FrameType::INTERPRETER_END);
+        return (type >= FrameType::INTERPRETER_FIRST) && (type <= FrameType::INTERPRETER_LAST);
     }
 
     bool IsInterpretedFrame(FrameType type) const
     {
-        return (type >= FrameType::INTERPRETER_BEGIN) && (type <= FrameType::INTERPRETER_END);
+        return (type >= FrameType::INTERPRETER_FIRST) && (type <= FrameType::INTERPRETER_LAST);
     }
 
     bool IsAsmInterpretedFrame() const
@@ -93,7 +93,7 @@ public:
     bool IsBuiltinFrame() const
     {
         FrameType type = GetFrameType();
-        return (type >= FrameType::BUILTIN_BEGIN) && (type <= FrameType::BUILTIN_END);
+        return (type >= FrameType::BUILTIN_FIRST) && (type <= FrameType::BUILTIN_LAST);
     }
     bool IsBuiltinEntryFrame() const
     {
@@ -163,10 +163,13 @@ public:
     }
 
     // for Frame GC.
-    void Iterate(const RootVisitor &v0, const RootRangeVisitor &v1);
-    void IterateFrameChain(JSTaggedType *start, const RootVisitor &v0, const RootRangeVisitor &v1) const;
-    void IterateAssembleStack(const RootVisitor &v0, const RootRangeVisitor &v1);
-    void IterateEcmaRuntimeCallInfo(const RootVisitor &v0, const RootRangeVisitor &v1);
+    void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor);
+    void IterateFrameChain(JSTaggedType *start, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    void IterateAssembleStack(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor);
+    void IterateEcmaRuntimeCallInfo(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
 
     // for collecting bc offset in aot
     void CollectBCOffsetInfo();
@@ -186,7 +189,7 @@ private:
     JSTaggedType *sp_ {nullptr};
     JSTaggedType *fp_ {nullptr};
     const JSThread *thread_ {nullptr};
-    const kungfu::LLVMStackMapParser *stackmapParser_ {nullptr};
+    const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 };
 
 class StackAssertScope {
@@ -195,8 +198,10 @@ public:
 
     ~StackAssertScope()
     {
-        DASSERT_PRINT(oldSp_ == thread_->GetCurrentSPFrame(),
-                      "StackAssertScope assert failed, sp did not restore as expeted");
+        if (!thread_->HasPendingException()) {
+            DASSERT_PRINT(oldSp_ == thread_->GetCurrentSPFrame(),
+                          "StackAssertScope assert failed, sp did not restore as expeted");
+        }
     }
 
 private:

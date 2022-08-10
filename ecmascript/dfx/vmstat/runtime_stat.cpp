@@ -89,9 +89,26 @@ void EcmaRuntimeStat::PrintAllStats() const
     });
 
     uint64_t totalTime = 0;
+    uint64_t interpreterTotalTime = 0;
+    uint64_t builtinTotalTime = 0;
+    uint64_t abstractOperationTotalTime = 0;
+    uint64_t memoryTotalTime = 0;
+    uint64_t runtimeTotalTime = 0;
     for (auto &runCallerStat : callerStat) {
         if (runCallerStat.TotalCount() != 0) {
             totalTime += runCallerStat.TotalTime();
+            CString header = runCallerStat.GetHeaderOfName();
+            if (header == CString("Interpreter")) {
+                interpreterTotalTime += runCallerStat.TotalTime();
+            } else if (header == CString("BuiltinsApi")) {
+                builtinTotalTime += runCallerStat.TotalTime();
+            } else if (header == CString("AbstractOperation")) {
+                abstractOperationTotalTime += runCallerStat.TotalTime();
+            } else if (header == CString("Memory")) {
+                memoryTotalTime += runCallerStat.TotalTime();
+            } else if (header == CString("Runtime")) {
+                runtimeTotalTime += runCallerStat.TotalTime();
+            }
             LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << runCallerStat.Name()
                                << std::setw(numberRightAdjustment) << runCallerStat.TotalTime()
                                << std::setw(numberRightAdjustment) << runCallerStat.TotalCount()
@@ -100,6 +117,18 @@ void EcmaRuntimeStat::PrintAllStats() const
                                << runCallerStat.TotalTime() / runCallerStat.TotalCount();
         }
     }
+    LOG_ECMA(INFO) << "------------------------------------------------------------"
+                       << "---------------------------------------------------------";
+    LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << "Interpreter Total Time(ns)"
+                       << std::setw(numberRightAdjustment) << interpreterTotalTime;
+    LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << "BuiltinsApi Total Time(ns)"
+                       << std::setw(numberRightAdjustment) << builtinTotalTime;
+    LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << "AbstractOperation Total Time(ns)"
+                       << std::setw(numberRightAdjustment) << abstractOperationTotalTime;
+    LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << "Memory Total Time(ns)"
+                       << std::setw(numberRightAdjustment) << memoryTotalTime;
+    LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << "Runtime Total Time(ns)"
+                       << std::setw(numberRightAdjustment) << runtimeTotalTime;
     LOG_ECMA(INFO) << "------------------------------------------------------------"
                        << "---------------------------------------------------------";
     LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << "Total Time(ns)"

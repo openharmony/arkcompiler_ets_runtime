@@ -17,40 +17,21 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/ts_types/ts_loader.h"
-
+#include "ecmascript/ts_types/ts_manager.h"
+ 
 namespace panda::ecmascript::kungfu {
 void BytecodeCircuitBuilder::BytecodeToCircuit()
 {
-    auto curPc = pcArray_.front();
-    auto prePc = curPc;
-    std::map<uint8_t *, uint8_t *> byteCodeCurPrePc;
-    std::vector<CfgInfo> bytecodeBlockInfos;
-    int32_t offsetIndex = 1;
-    auto startPc = curPc;
-    bytecodeBlockInfos.emplace_back(startPc, SplitKind::START, std::vector<uint8_t *>(1, startPc));
-    byteCodeCurPrePc[curPc] = prePc;
-    pcToBCOffset_[curPc]=offsetIndex++;
-    for (size_t i = 1; i < pcArray_.size() - 1; i++) {
-        curPc = pcArray_[i];
-        byteCodeCurPrePc[curPc] = prePc;
-        pcToBCOffset_[curPc]=offsetIndex++;
-        prePc = curPc;
-        CollectBytecodeBlockInfo(curPc, bytecodeBlockInfos);
-    }
-    // handle empty
-    uint8_t *emptyPc = pcArray_.back();
-    byteCodeCurPrePc[emptyPc] = prePc;
-    pcToBCOffset_[emptyPc] = offsetIndex++;
+    std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> exceptionInfo;
 
     // collect try catch block info
-    auto exceptionInfo = CollectTryCatchBlockInfo(byteCodeCurPrePc, bytecodeBlockInfos);
+    CollectTryCatchBlockInfo(exceptionInfo);
 
     // Complete bytecode block Information
-    CompleteBytecodeBlockInfo(byteCodeCurPrePc, bytecodeBlockInfos);
+    CompleteBytecodeBlockInfo();
 
     // Building the basic block diagram of bytecode
-    BuildBasicBlocks(exceptionInfo, bytecodeBlockInfos, byteCodeCurPrePc);
+    BuildBasicBlocks(exceptionInfo);
 }
 
 void BytecodeCircuitBuilder::CollectBytecodeBlockInfo(uint8_t *pc, std::vector<CfgInfo> &bytecodeBlockInfos)
@@ -152,14 +133,14 @@ void BytecodeCircuitBuilder::CollectBytecodeBlockInfo(uint8_t *pc, std::vector<C
     }
 }
 
-std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> BytecodeCircuitBuilder::CollectTryCatchBlockInfo(
-    std::map<uint8_t *, uint8_t*> &byteCodeCurPrePc, std::vector<CfgInfo> &bytecodeBlockInfos)
+void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>,
+                                                      std::vector<uint8_t *>> &byteCodeException)
 {
     // try contains many catch
-    std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> byteCodeException;
     panda_file::MethodDataAccessor mda(*pf_, method_->GetMethodId());
     panda_file::CodeDataAccessor cda(*pf_, mda.GetCodeId().value());
-    cda.EnumerateTryBlocks([this, &byteCodeCurPrePc, &bytecodeBlockInfos, &byteCodeException](
+
+    cda.EnumerateTryBlocks([this, &byteCodeException](
             panda_file::CodeDataAccessor::TryBlock &try_block) {
         auto tryStartOffset = try_block.GetStartPc();
         auto tryEndOffset = try_block.GetStartPc() + try_block.GetLength();
@@ -177,32 +158,32 @@ std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> BytecodeCircui
         // Check whether the previous block of the try block exists.
         // If yes, add the current block; otherwise, create a new block.
         bool flag = false;
-        for (size_t i = 0; i < bytecodeBlockInfos.size(); i++) {
-            if (bytecodeBlockInfos[i].splitKind == SplitKind::START) {
+        for (size_t i = 0; i < bytecodeBlockInfos_.size(); i++) {
+            if (bytecodeBlockInfos_[i].splitKind == SplitKind::START) {
                 continue;
             }
-            if (bytecodeBlockInfos[i].pc == byteCodeCurPrePc[tryStartPc]) {
+            if (bytecodeBlockInfos_[i].pc == byteCodeCurPrePc_.at(tryStartPc)) {
                 flag = true;
                 break;
             }
         }
         if (!flag) {
             // pre block
-            bytecodeBlockInfos.emplace_back(byteCodeCurPrePc[tryStartPc], SplitKind::END,
-                                            std::vector<uint8_t *>(1, tryStartPc));
+            bytecodeBlockInfos_.emplace_back(byteCodeCurPrePc_.at(tryStartPc), SplitKind::END,
+                                             std::vector<uint8_t *>(1, tryStartPc));
         }
         // try block
-        bytecodeBlockInfos.emplace_back(tryStartPc, SplitKind::START, std::vector<uint8_t *>(1, tryStartPc));
+        bytecodeBlockInfos_.emplace_back(tryStartPc, SplitKind::START, std::vector<uint8_t *>(1, tryStartPc));
         flag = false;
-        for (size_t i = 0; i < bytecodeBlockInfos.size(); i++) {
-            if (bytecodeBlockInfos[i].splitKind == SplitKind::START) {
+        for (size_t i = 0; i < bytecodeBlockInfos_.size(); i++) {
+            if (bytecodeBlockInfos_[i].splitKind == SplitKind::START) {
                 continue;
             }
-            if (bytecodeBlockInfos[i].pc == byteCodeCurPrePc[tryEndPc]) {
-                auto &succs = bytecodeBlockInfos[i].succs;
-                auto iter = std::find(succs.cbegin(), succs.cend(), bytecodeBlockInfos[i].pc);
+            if (bytecodeBlockInfos_[i].pc == byteCodeCurPrePc_.at(tryEndPc)) {
+                auto &succs = bytecodeBlockInfos_[i].succs;
+                auto iter = std::find(succs.cbegin(), succs.cend(), bytecodeBlockInfos_[i].pc);
                 if (iter == succs.cend()) {
-                    auto opcode = static_cast<EcmaOpcode>(*(bytecodeBlockInfos[i].pc));
+                    auto opcode = static_cast<EcmaOpcode>(*(bytecodeBlockInfos_[i].pc));
                     switch (opcode) {
                         case EcmaOpcode::JMP_IMM8:
                         case EcmaOpcode::JMP_IMM16:
@@ -227,47 +208,45 @@ std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> BytecodeCircui
             }
         }
         if (!flag) {
-            bytecodeBlockInfos.emplace_back(byteCodeCurPrePc[tryEndPc], SplitKind::END,
-                                            std::vector<uint8_t *>(1, tryEndPc));
+            bytecodeBlockInfos_.emplace_back(byteCodeCurPrePc_.at(tryEndPc), SplitKind::END,
+                                             std::vector<uint8_t *>(1, tryEndPc));
         }
-        bytecodeBlockInfos.emplace_back(tryEndPc, SplitKind::START, std::vector<uint8_t *>(1, tryEndPc)); // next block
+        bytecodeBlockInfos_.emplace_back(tryEndPc, SplitKind::START, std::vector<uint8_t *>(1, tryEndPc)); // next block
         return true;
     });
-    return byteCodeException;
 }
 
-void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo(std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc,
-                                                       std::vector<CfgInfo> &bytecodeBlockInfos)
+void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo()
 {
-    std::sort(bytecodeBlockInfos.begin(), bytecodeBlockInfos.end());
+    std::sort(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
 
     if (IsLogEnabled()) {
-        PrintCollectBlockInfo(bytecodeBlockInfos);
+        PrintCollectBlockInfo(bytecodeBlockInfos_);
     }
 
     // Deduplicate
-    auto deduplicateIndex = std::unique(bytecodeBlockInfos.begin(), bytecodeBlockInfos.end());
-    bytecodeBlockInfos.erase(deduplicateIndex, bytecodeBlockInfos.end());
+    auto deduplicateIndex = std::unique(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
+    bytecodeBlockInfos_.erase(deduplicateIndex, bytecodeBlockInfos_.end());
 
     // Supplementary block information
     std::vector<uint8_t *> endBlockPc;
     std::vector<uint8_t *> startBlockPc;
-    for (size_t i = 0; i < bytecodeBlockInfos.size() - 1; i++) {
-        if (bytecodeBlockInfos[i].splitKind == bytecodeBlockInfos[i + 1].splitKind &&
-            bytecodeBlockInfos[i].splitKind == SplitKind::START) {
-            auto prePc = byteCodeCurPrePc[bytecodeBlockInfos[i + 1].pc];
+    for (size_t i = 0; i < bytecodeBlockInfos_.size() - 1; i++) {
+        if (bytecodeBlockInfos_[i].splitKind == bytecodeBlockInfos_[i + 1].splitKind &&
+            bytecodeBlockInfos_[i].splitKind == SplitKind::START) {
+            auto prePc = byteCodeCurPrePc_.at(bytecodeBlockInfos_[i + 1].pc);
             endBlockPc.emplace_back(prePc); // Previous instruction of current instruction
-            endBlockPc.emplace_back(bytecodeBlockInfos[i + 1].pc); // current instruction
+            endBlockPc.emplace_back(bytecodeBlockInfos_[i + 1].pc); // current instruction
             continue;
         }
-        if (bytecodeBlockInfos[i].splitKind == bytecodeBlockInfos[i + 1].splitKind &&
-            bytecodeBlockInfos[i].splitKind == SplitKind::END) {
-            auto tempPc = bytecodeBlockInfos[i].pc;
-            auto findItem = std::find_if(byteCodeCurPrePc.cbegin(), byteCodeCurPrePc.cend(),
+        if (bytecodeBlockInfos_[i].splitKind == bytecodeBlockInfos_[i + 1].splitKind &&
+            bytecodeBlockInfos_[i].splitKind == SplitKind::END) {
+            auto tempPc = bytecodeBlockInfos_[i].pc;
+            auto findItem = std::find_if(byteCodeCurPrePc_.cbegin(), byteCodeCurPrePc_.cend(),
                                          [tempPc](const std::map<uint8_t *, uint8_t *>::value_type item) {
                                              return item.second == tempPc;
                                          });
-            if (findItem != byteCodeCurPrePc.cend()) {
+            if (findItem != byteCodeCurPrePc_.cend()) {
                 startBlockPc.emplace_back((*findItem).first);
             }
         }
@@ -275,54 +254,52 @@ void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo(std::map<uint8_t *, uint8
 
     // Supplementary end block info
     for (auto iter = endBlockPc.cbegin(); iter != endBlockPc.cend(); iter += 2) { // 2: index
-        bytecodeBlockInfos.emplace_back(*iter, SplitKind::END,
+        bytecodeBlockInfos_.emplace_back(*iter, SplitKind::END,
                                                           std::vector<uint8_t *>(1, *(iter + 1)));
     }
     // Supplementary start block info
     for (auto iter = startBlockPc.cbegin(); iter != startBlockPc.cend(); iter++) {
-        bytecodeBlockInfos.emplace_back(*iter, SplitKind::START, std::vector<uint8_t *>(1, *iter));
+        bytecodeBlockInfos_.emplace_back(*iter, SplitKind::START, std::vector<uint8_t *>(1, *iter));
     }
 
     // Deduplicate successor
-    for (size_t i = 0; i < bytecodeBlockInfos.size(); i++) {
-        if (bytecodeBlockInfos[i].splitKind == SplitKind::END) {
-            std::set<uint8_t *> tempSet(bytecodeBlockInfos[i].succs.cbegin(),
-                                        bytecodeBlockInfos[i].succs.cend());
-            bytecodeBlockInfos[i].succs.assign(tempSet.cbegin(), tempSet.cend());
+    for (size_t i = 0; i < bytecodeBlockInfos_.size(); i++) {
+        if (bytecodeBlockInfos_[i].splitKind == SplitKind::END) {
+            std::set<uint8_t *> tempSet(bytecodeBlockInfos_[i].succs.cbegin(),
+                                        bytecodeBlockInfos_[i].succs.cend());
+            bytecodeBlockInfos_[i].succs.assign(tempSet.cbegin(), tempSet.cend());
         }
     }
 
-    std::sort(bytecodeBlockInfos.begin(), bytecodeBlockInfos.end());
+    std::sort(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
 
     // handling jumps to an empty block
-    auto endPc = bytecodeBlockInfos[bytecodeBlockInfos.size() - 1].pc;
-    auto iter = --byteCodeCurPrePc.cend();
+    auto endPc = bytecodeBlockInfos_[bytecodeBlockInfos_.size() - 1].pc;
+    auto iter = --byteCodeCurPrePc_.cend();
     if (endPc == iter->first) {
-        bytecodeBlockInfos.emplace_back(endPc, SplitKind::END, std::vector<uint8_t *>(1, endPc));
+        bytecodeBlockInfos_.emplace_back(endPc, SplitKind::END, std::vector<uint8_t *>(1, endPc));
     }
     // Deduplicate
-    deduplicateIndex = std::unique(bytecodeBlockInfos.begin(), bytecodeBlockInfos.end());
-    bytecodeBlockInfos.erase(deduplicateIndex, bytecodeBlockInfos.end());
+    deduplicateIndex = std::unique(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
+    bytecodeBlockInfos_.erase(deduplicateIndex, bytecodeBlockInfos_.end());
 
     if (IsLogEnabled()) {
-        PrintCollectBlockInfo(bytecodeBlockInfos);
+        PrintCollectBlockInfo(bytecodeBlockInfos_);
     }
 }
 
 void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>,
-                                              std::vector<uint8_t *>> &exception,
-                                              std::vector<CfgInfo> &bytecodeBlockInfo,
-                                              [[maybe_unused]] std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc)
+                                              std::vector<uint8_t *>> &exception)
 {
     std::map<uint8_t *, BytecodeRegion *> startPcToBB; // [start, bb]
     std::map<uint8_t *, BytecodeRegion *> endPcToBB; // [end, bb]
-    graph_.resize(bytecodeBlockInfo.size() / 2); // 2 : half size
+    graph_.resize(bytecodeBlockInfos_.size() / 2); // 2 : half size
     // build basic block
     int blockId = 0;
     int index = 0;
-    for (size_t i = 0; i < bytecodeBlockInfo.size() - 1; i += 2) { // 2:index
-        auto startPc = bytecodeBlockInfo[i].pc;
-        auto endPc = bytecodeBlockInfo[i + 1].pc;
+    for (size_t i = 0; i < bytecodeBlockInfos_.size() - 1; i += 2) { // 2:index
+        auto startPc = bytecodeBlockInfos_[i].pc;
+        auto endPc = bytecodeBlockInfos_[i + 1].pc;
         auto block = &graph_[index++];
         block->id = blockId++;
         block->start = startPc;
@@ -334,12 +311,12 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
     }
 
     // add block associate
-    for (size_t i = 0; i < bytecodeBlockInfo.size(); i++) {
-        if (bytecodeBlockInfo[i].splitKind == SplitKind::START) {
+    for (size_t i = 0; i < bytecodeBlockInfos_.size(); i++) {
+        if (bytecodeBlockInfos_[i].splitKind == SplitKind::START) {
             continue;
         }
-        auto curPc = bytecodeBlockInfo[i].pc;
-        auto &successors = bytecodeBlockInfo[i].succs;
+        auto curPc = bytecodeBlockInfos_[i].pc;
+        auto &successors = bytecodeBlockInfos_[i].succs;
         for (size_t j = 0; j < successors.size(); j++) {
             if (successors[j] == curPc) {
                 continue;
@@ -368,7 +345,10 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
                 }
             }
         }
-        BytecodeRegion bb = graph_[i];
+
+        // When there are multiple catch blocks in the current block, the set of catch blocks
+        // needs to be sorted to satisfy the order of execution of catch blocks.
+        BytecodeRegion& bb = graph_[i];
         bb.SortCatches();
     }
 
@@ -382,21 +362,31 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
 {
     // Construct graph backward order
     std::map<size_t, size_t> bbIdToDfsTimestamp; // (basicblock id, dfs order)
+    std::unordered_map<size_t, size_t> dfsFatherIdx;
+    std::unordered_map<size_t, size_t> bbDfsTimestampToIdx;
+    std::vector<size_t> basicBlockList;
     size_t timestamp = 0;
     std::deque<size_t> pendingList;
     std::vector<size_t> visited(graph_.size(), 0);
     auto basicBlockId = graph_[0].id;
+    visited[graph_[0].id] = 1;
     pendingList.push_back(basicBlockId);
     while (!pendingList.empty()) {
-        auto &curBlockId = pendingList.back();
+        size_t curBlockId = pendingList.back();
         pendingList.pop_back();
+        basicBlockList.push_back(curBlockId);
         bbIdToDfsTimestamp[curBlockId] = timestamp++;
-        for (auto &succBlock: graph_[curBlockId].succs) {
+        for (const auto &succBlock: graph_[curBlockId].succs) {
             if (visited[succBlock->id] == 0) {
                 visited[succBlock->id] = 1;
                 pendingList.push_back(succBlock->id);
+                dfsFatherIdx[succBlock->id] = bbIdToDfsTimestamp[curBlockId];
             }
         }
+    }
+    
+    for (size_t idx = 0; idx < basicBlockList.size(); idx++) {
+        bbDfsTimestampToIdx[basicBlockList[idx]] = idx;
     }
 
     RemoveDeadRegions(bbIdToDfsTimestamp);
@@ -408,85 +398,69 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
         }
     }
 
-    std::vector<size_t> immDom(graph_.size()); // immediate dominator
-    std::vector<std::vector<size_t>> doms(graph_.size()); // dominators set
-    doms[0] = {0};
-    for (size_t i = 1; i < doms.size(); i++) {
-        doms[i].resize(doms.size());
-        std::iota(doms[i].begin(), doms[i].end(), 0);
-    }
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (size_t i = 1; i < doms.size(); i++) {
-            if (graph_[i].isDead) {
-                continue;
+    std::vector<size_t> immDom(basicBlockList.size()); // immediate dominator with dfs order index
+    std::vector<size_t> semiDom(basicBlockList.size());
+    std::vector<size_t> realImmDom(graph_.size()); // immediate dominator with real index
+    std::vector<std::vector<size_t> > semiDomTree(basicBlockList.size());
+    {
+        std::vector<size_t> parent(basicBlockList.size());
+        std::iota(parent.begin(), parent.end(), 0);
+        std::vector<size_t> minIdx(basicBlockList.size());
+        std::function<size_t(size_t)> unionFind = [&] (size_t idx) -> size_t {
+            if (parent[idx] == idx) return idx;
+            size_t unionFindSetRoot = unionFind(parent[idx]);
+            if (semiDom[minIdx[idx]] > semiDom[minIdx[parent[idx]]]) {
+                minIdx[idx] = minIdx[parent[idx]];
             }
-            auto &curDom = doms[i];
-            size_t curDomSize = curDom.size();
-            curDom.resize(doms.size());
-            std::iota(curDom.begin(), curDom.end(), 0);
-            // traverse the predecessor nodes of the current node, Computing Dominators
-            for (auto &preBlock : graph_[i].preds) {
-                std::vector<size_t> tmp(curDom.size());
-                auto preDom = doms[preBlock->id];
-                auto it = std::set_intersection(curDom.begin(), curDom.end(), preDom.begin(), preDom.end(),
-                                                tmp.begin());
-                tmp.resize(it - tmp.cbegin());
-                curDom = tmp;
+            return parent[idx] = unionFindSetRoot;
+        };
+        auto merge = [&] (size_t fatherIdx, size_t sonIdx) -> void {
+            size_t parentFatherIdx = unionFind(fatherIdx);
+            size_t parentSonIdx = unionFind(sonIdx);
+            parent[parentSonIdx] = parentFatherIdx;
+        };
+        std::iota(semiDom.begin(), semiDom.end(), 0);
+        semiDom[0] = semiDom.size();
+        for (size_t idx = basicBlockList.size() - 1; idx >= 1; idx--) {
+            for (const auto &preBlock : graph_[basicBlockList[idx]].preds) {
+                if (bbDfsTimestampToIdx[preBlock->id] < idx) {
+                    semiDom[idx] = std::min(semiDom[idx], bbDfsTimestampToIdx[preBlock->id]);
+                } else {
+                    unionFind(bbDfsTimestampToIdx[preBlock->id]);
+                    semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[bbDfsTimestampToIdx[preBlock->id]]]);
+                }
             }
-            auto it = std::find(curDom.cbegin(), curDom.cend(), i);
-            if (it == curDom.cend()) {
-                curDom.push_back(i);
-                std::sort(curDom.begin(), curDom.end());
+            for (const auto & succDomIdx : semiDomTree[idx]) {
+                unionFind(succDomIdx);
+                if (idx == semiDom[minIdx[succDomIdx]]) {
+                    immDom[succDomIdx] = idx;
+                } else {
+                    immDom[succDomIdx] = minIdx[succDomIdx];
+                }
             }
-
-            if (doms[i].size() != curDomSize) {
-                changed = true;
-            }
+            minIdx[idx] = idx;
+            merge(dfsFatherIdx[basicBlockList[idx]], idx);
+            semiDomTree[semiDom[idx]].push_back(idx);
         }
-    }
-
-    if (IsLogEnabled()) {
-        // print dominators set
-        for (size_t i = 0; i < doms.size(); i++) {
-            std::string log("block " + std::to_string(i) + " dominator blocks has: ");
-            for (auto j: doms[i]) {
-                log += std::to_string(j) + " , ";
+        for (size_t idx = 1; idx < basicBlockList.size(); idx++) {
+            if (immDom[idx] != semiDom[idx]) {
+                immDom[idx] = immDom[immDom[idx]];
             }
-            LOG_COMPILER(INFO) << log;
+            realImmDom[basicBlockList[idx]] = basicBlockList[immDom[idx]];
         }
-    }
-
-    // compute immediate dominator
-    immDom[0] = static_cast<size_t>(doms[0].front());
-    for (size_t i = 1; i < doms.size(); i++) {
-        if (graph_[i].isDead) {
-            continue;
-        }
-        auto it = std::remove(doms[i].begin(), doms[i].end(), i);
-        doms[i].resize(it - doms[i].cbegin());
-        immDom[i] = static_cast<size_t>(*std::max_element(
-            doms[i].cbegin(),
-            doms[i].cend(),
-            [this, &bbIdToDfsTimestamp](size_t lhs, size_t rhs) -> bool {
-                auto lhsTimestamp = bbIdToDfsTimestamp.at(this->graph_[lhs].id);
-                auto rhsTimestamp = bbIdToDfsTimestamp.at(this->graph_[rhs].id);
-                return lhsTimestamp < rhsTimestamp;
-            }));
+        semiDom[0] = 0;
     }
 
     if (IsLogEnabled()) {
         // print immediate dominator
-        for (size_t i = 0; i < immDom.size(); i++) {
-            LOG_COMPILER(INFO) << i << " immediate dominator: " << immDom[i];
+        for (size_t i = 0; i < realImmDom.size(); i++) {
+            LOG_COMPILER(INFO) << i << " immediate dominator: " << realImmDom[i];
         }
         PrintGraph();
     }
 
-    BuildImmediateDominator(immDom);
+    BuildImmediateDominator(realImmDom);
 }
-
 void BytecodeCircuitBuilder::BuildImmediateDominator(const std::vector<size_t> &immDom)
 {
     graph_[0].iDominator = &graph_[0];
@@ -523,7 +497,7 @@ void BytecodeCircuitBuilder::BuildImmediateDominator(const std::vector<size_t> &
             if (block.isDead) {
                 continue;
             }
-            std::string log ("block " + std::to_string(block.id) + " dominate block has: ");
+            std::string log("block " + std::to_string(block.id) + " dominate block has: ");
             for (size_t i = 0; i < block.immDomBlocks.size(); i++) {
                 log += std::to_string(block.immDomBlocks[i]->id) + ",";
             }
@@ -1287,6 +1261,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::ASYNCFUNCTIONREJECT_PREF_V8_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v2 = READ_INST_8_3();
+            info.accOut = true;
             info.offset = BytecodeOffset::FIVE;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v2));
@@ -1442,6 +1417,17 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8: {
+            uint16_t methodId = READ_INST_16_1();
+            uint16_t length = READ_INST_16_3();
+            uint16_t v0 = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(MethodId(methodId));
+            info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaOpcode::DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8: {
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_16_3();
             uint16_t v0 = READ_INST_8_5();
@@ -1648,6 +1634,24 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
+        case EcmaOpcode::CREATEASYNCGENERATOROBJ_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaOpcode::ASYNCGENERATORRESOLVE_PREF_V8_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            uint16_t v2 = READ_INST_8_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v1));
+            info.inputs.emplace_back(VirtualRegister(v2));
+            break;
+        }
         case EcmaOpcode::STARRAYSPREAD_PREF_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v1 = READ_INST_8_2();
@@ -1705,10 +1709,11 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             uint16_t range = READ_INST_16_1();
             uint16_t v0 = READ_INST_8_3();
             info.accIn = true;
+            for (size_t i = 0; i < range; i++) {
+                info.inputs.emplace_back(VirtualRegister(v0 + i));
+            }
             info.accOut = true;
             info.offset = BytecodeOffset::FIVE;
-            info.inputs.emplace_back(Immediate(range));
-            info.inputs.emplace_back(Immediate(v0));
             break;
         }
         case EcmaOpcode::SUPERCALLSPREAD_PREF_V8: {
@@ -1775,20 +1780,19 @@ void BytecodeCircuitBuilder::InsertPhi()
         if (bb.isDead) {
             continue;
         }
-        auto pc = bb.start;
-        while (pc <= bb.end) {
-            auto bytecodeInfo = GetBytecodeInfo(pc);
+        EnumerateBlock(bb, [this, &defsitesInfo, &bb]
+        ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR_PREF_V8)) {
                 auto numVRegs = method_->GetNumVregs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     bytecodeInfo.vregOut.emplace_back(i);
                 }
             }
-            pc = pc + bytecodeInfo.offset; // next inst start pc
             for (const auto &vreg: bytecodeInfo.vregOut) {
                 defsitesInfo[vreg].insert(bb.id);
             }
-        }
+            return true;
+        });
     }
 
     // handle phi generated from multiple control flow in the same source block
@@ -1833,14 +1837,20 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size
             continue;
         }
         std::set<size_t> vregs;
-        auto pc = bb.start;
-        while (pc <= bb.end) {
-            auto bytecodeInfo = GetBytecodeInfo(pc);
-            pc = pc + bytecodeInfo.offset; // next inst start pc
+        EnumerateBlock(bb, [this, &vregs]
+        ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+            if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR_PREF_V8)) {
+                auto numVRegs = method_->GetNumVregs();
+                for (size_t i = 0; i < numVRegs; i++) {
+                    vregs.insert(i);
+                }
+                return false;
+            }
             for (const auto &vreg: bytecodeInfo.vregOut) {
                 vregs.insert(vreg);
             }
-        }
+            return true;
+        });
 
         for (auto &vreg : vregs) {
             defsitesInfo[vreg].insert(bb.catchs.at(0)->id);
@@ -1898,6 +1908,24 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     }
 }
 
+bool BytecodeCircuitBuilder::ShouldBeDead(BytecodeRegion &curBlock)
+{
+    auto isDead = false;
+    for (auto bbPred : curBlock.preds) {
+        if (!bbPred->isDead) {
+            return false;
+        }
+        isDead = true;
+    }
+    for (auto bbTry : curBlock.trys) {
+        if (!bbTry->isDead) {
+            return false;
+        }
+        isDead = true;
+    }
+    return isDead;
+}
+
 void BytecodeCircuitBuilder::CollectPredsInfo()
 {
     for (auto &bb: graph_) {
@@ -1912,16 +1940,28 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
         if (bb.isDead) {
             continue;
         }
-        auto pc = bb.start;
-        while (pc <= bb.end) {
-            auto bytecodeInfo = GetBytecodeInfo(pc);
-            pc = pc + bytecodeInfo.offset; // next inst start pc
+        if (ShouldBeDead(bb)) {
+            bb.UpdateTryCatchInfoForDeadBlock();
+            bb.isDead = true;
+            continue;
+        }
+        bool noThrow = true;
+        EnumerateBlock(bb, [&noThrow, &bb]
+        ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsGeneral()) {
+                noThrow = false;
                 if (!bb.catchs.empty()) {
                     bb.catchs.at(0)->numOfStatePreds++;
                 }
             }
-        }
+            if (bytecodeInfo.IsCondJump() && bb.succs.size() == 1) {
+                ASSERT(bb.succs[0]->id == bb.id + 1);
+                bb.succs[0]->numOfStatePreds++;
+            }
+            return true;
+        });
+        bb.UpdateRedundantTryCatchInfo(noThrow);
+        bb.UpdateTryCatchInfoIfNoThrow(noThrow);
         for (auto &succ: bb.succs) {
             succ->numOfStatePreds++;
         }
@@ -1930,8 +1970,11 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
     std::vector<VisitState> visitState(graph_.size(), VisitState::UNVISITED);
     std::function<void(size_t)> dfs = [&](size_t bbId) -> void {
         visitState[bbId] = VisitState::PENDING;
-        auto it = this->graph_[bbId].succs.crbegin();
-        while (it != this->graph_[bbId].succs.crend()) {
+        std::vector<BytecodeRegion *> merge;
+        merge.insert(merge.end(), this->graph_[bbId].succs.begin(), this->graph_[bbId].succs.end());
+        merge.insert(merge.end(), this->graph_[bbId].catchs.begin(), this->graph_[bbId].catchs.end());
+        auto it = merge.crbegin();
+        while (it != merge.crend()) {
             auto succBlock = *it;
             it++;
             if (visitState[succBlock->id] == VisitState::UNVISITED) {
@@ -2010,7 +2053,7 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<StringId>(input)) {
-            size_t index = tsLoader_->GetStringIdx(constantPool_, std::get<StringId>(input).GetId());
+            size_t index = tsManager_->GetStringIdx(constantPool_, std::get<StringId>(input).GetId());
             inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32, index,
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
@@ -2056,13 +2099,13 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
     GateRef gate = 0;
     switch (opcode) {
         case EcmaOpcode::LDNAN_PREF:
-            gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::F64,
+            gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                     base::NumberHelper::GetNaN(),
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
         case EcmaOpcode::LDINFINITY_PREF:
-            gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::F64,
+            gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                     base::NumberHelper::GetPositiveInfinity(),
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
@@ -2190,26 +2233,37 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
         gateAcc_.NewIn(gate, 1, depend);
         auto ifTrue = circuit_.NewGate(OpCode(OpCode::IF_TRUE), 0, {gate}, GateType::Empty());
         auto ifFalse = circuit_.NewGate(OpCode(OpCode::IF_FALSE), 0, {gate}, GateType::Empty());
-        ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
-        uint32_t bitSet = 0;
-        for (auto &bbNext: bb.succs) {
-            if (bbNext->id == bb.id + 1) {
-                auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
-                SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
-                bbNext->expandedPreds.push_back(
-                    {bb.id, pc, false}
-                );
-                bitSet |= 1;
-            } else {
-                auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
-                SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
-                bbNext->expandedPreds.push_back(
-                    {bb.id, pc, false}
-                );
-                bitSet |= 2; // 2:verify
+        if (bb.succs.size() == 1) {
+            auto &bbNext = bb.succs[0];
+            ASSERT(bbNext->id == bb.id + 1);
+            auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
+            SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
+            SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
+            bbNext->expandedPreds.push_back(
+                {bb.id, pc, false}
+            );
+        } else {
+            ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
+            [[maybe_unused]] uint32_t bitSet = 0;
+            for (auto &bbNext: bb.succs) {
+                if (bbNext->id == bb.id + 1) {
+                    auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
+                    SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
+                    bbNext->expandedPreds.push_back(
+                        {bb.id, pc, false}
+                    );
+                    bitSet |= 1;
+                } else {
+                    auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
+                    SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
+                    bbNext->expandedPreds.push_back(
+                        {bb.id, pc, false}
+                    );
+                    bitSet |= 2; // 2:verify
+                }
             }
+            ASSERT(bitSet == 3); // 3:Verify the number of successor blocks
         }
-        ASSERT(bitSet == 3); // 3:Verify the number of successor blocks
         jsgateToBytecode_[gate] = {bb.id, pc};
     } else {
         ASSERT(bb.succs.size() == 1);
@@ -2255,6 +2309,14 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb, const uint8_t *pc, 
         // handle bytecode command to get constants
         GateRef gate = NewConst(bytecodeInfo);
         jsgateToBytecode_[gate] = {bb.id, pc};
+        if (pc == bb.end) {
+            auto &bbNext = graph_[bb.id + 1];
+            auto isLoopBack = bbNext.loopbackBlocks.count(bb.id);
+            SetBlockPred(bbNext, state, depend, isLoopBack);
+            bbNext.expandedPreds.push_back(
+                {bb.id, pc, false}
+            );
+        }
     } else if (bytecodeInfo.IsGeneral()) {
         // handle general ecma.* bytecodes
         NewJSGate(bb, pc, state, depend);
@@ -2294,16 +2356,14 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         if (!bb.trys.empty()) {
             dependCur = circuit_.NewGate(OpCode(OpCode::GET_EXCEPTION), 0, {dependCur}, GateType::Empty());
         }
-        auto pc = bb.start;
-        while (pc <= bb.end) {
-            auto pcPrev = pc;
-            auto bytecodeInfo = GetBytecodeInfo(pc);
-            pc = pc + bytecodeInfo.offset; // next inst start pc
-            NewByteCode(bb, pcPrev, stateCur, dependCur);
+        EnumerateBlock(bb, [this, &stateCur, &dependCur, &bb]
+        (uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+            NewByteCode(bb, pc, stateCur, dependCur);
             if (bytecodeInfo.IsJump() || bytecodeInfo.IsThrow()) {
-                break;
+                return false;
             }
-        }
+            return true;
+        });
     }
 }
 
@@ -2539,7 +2599,7 @@ void BytecodeCircuitBuilder::AddBytecodeOffsetInfo(GateRef &gate, const Bytecode
 {
     if (info.IsCall()) {
         auto bcOffset = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
-                                         pcToBCOffset_[pc],
+                                         pcToBCOffset_.at(pc),
                                          {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                          GateType::NJSValue());
         gateAcc_.NewIn(gate, bcOffsetIndex, bcOffset);
@@ -2630,31 +2690,29 @@ void BytecodeCircuitBuilder::PrintBytecodeInfo()
         if (bb.isDead) {
             continue;
         }
-        auto pc = bb.start;
         LOG_COMPILER(INFO) << "BB_" << bb.id << ": ";
-        while (pc <= bb.end) {
+        EnumerateBlock(bb, [](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             std::string log;
-            auto curInfo = GetBytecodeInfo(pc);
             log += "Inst_" + GetEcmaOpcodeStr(static_cast<EcmaOpcode>(*pc)) + ": " + "In=[";
-            if (curInfo.accIn) {
+            if (bytecodeInfo.accIn) {
                 log += "acc,";
             }
-            for (const auto &in: curInfo.inputs) {
+            for (const auto &in: bytecodeInfo.inputs) {
                 if (std::holds_alternative<VirtualRegister>(in)) {
                     log += std::to_string(std::get<VirtualRegister>(in).GetId()) + ",";
                 }
             }
             log += "] Out=[";
-            if (curInfo.accOut) {
+            if (bytecodeInfo.accOut) {
                 log += "acc,";
             }
-            for (const auto &out: curInfo.vregOut) {
+            for (const auto &out: bytecodeInfo.vregOut) {
                 log +=  std::to_string(out) + ",";
             }
             log += "]";
             LOG_COMPILER(INFO) << log;
-            pc += curInfo.offset;
-        }
+            return true;
+        });
     }
 }
 

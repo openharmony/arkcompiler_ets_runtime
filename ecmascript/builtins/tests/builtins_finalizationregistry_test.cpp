@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_finalization_registry.h"
+
 #include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -31,7 +32,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/tests/test_helper.h"
-#include "utils/bit_utils.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;

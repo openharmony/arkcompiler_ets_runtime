@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/js_method.h"
+
 #include "llvm-c/Core.h"
 
 namespace panda::ecmascript::kungfu {
@@ -115,12 +116,15 @@ public:
     ~LLVMModule();
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();
+    void SetUpForBuiltinsStubs();
     LLVMValueRef AddFunc(const panda::ecmascript::JSMethod *method);
     LLVMModuleRef GetModule() const
     {
         return module_;
     }
     LLVMTypeRef GetFuncType(const CallSignature *stubDescriptor);
+
+    LLVMTypeRef GenerateFuncType(const std::vector<LLVMValueRef> &params, const CallSignature *stubDescriptor);
 
     void SetFunction(size_t index, LLVMValueRef func)
     {
@@ -186,7 +190,6 @@ private:
     V(RuntimeCallWithArgv, (GateRef gate, const std::vector<GateRef> &inList))            \
     V(NoGcRuntimeCall, (GateRef gate, const std::vector<GateRef> &inList))                \
     V(BytecodeCall, (GateRef gate, const std::vector<GateRef> &inList))                   \
-    V(DebuggerBytecodeCall, (GateRef gate, const std::vector<GateRef> &inList))           \
     V(Alloca, (GateRef gate))                                                             \
     V(Block, (int id, const OperandsVector &predecessors))                                \
     V(Goto, (int block, int bbout))                                                       \
@@ -312,6 +315,8 @@ private:
     LLVMValueRef GetCoStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetBCStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBCDebugStubOffset(LLVMValueRef glue);
+    LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);
+    LLVMValueRef GetBaseOffset(GateRef gate, LLVMValueRef glue);
     bool NeedBCOffset(OpCode op);
     void ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueRef &bcOffset, const std::vector<GateRef> &inList,
                                     OpCode op);

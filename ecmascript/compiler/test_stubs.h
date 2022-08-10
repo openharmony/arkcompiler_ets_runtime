@@ -17,20 +17,20 @@
 #define ECMASCRIPT_COMPILER_TEST_STUBS_H
 
 #include "ecmascript/compiler/stub_builder.h"
-#include "test_stubs_signature.h"
+#include "ecmascript/compiler/test_stubs_signature.h"
 
 namespace panda::ecmascript::kungfu {
 
 #ifndef NDEBUG
-#define DECLARE_STUB_CLASS(name)                                                   \
-    class name##StubBuilder : public StubBuilder {                                 \
-    public:                                                                        \
-        explicit name##StubBuilder(CallSignature *callSignature, Circuit *circuit) \
-            : StubBuilder(callSignature, circuit) {}                               \
-        ~name##StubBuilder() = default;                                            \
-        NO_MOVE_SEMANTIC(name##StubBuilder);                                       \
-        NO_COPY_SEMANTIC(name##StubBuilder);                                       \
-        void GenerateCircuit(const CompilationConfig *cfg) override;               \
+#define DECLARE_STUB_CLASS(name)                                                    \
+    class name##StubBuilder : public StubBuilder {                                  \
+    public:                                                                         \
+        explicit name##StubBuilder(CallSignature *callSignature, Environment *env)  \
+            : StubBuilder(callSignature, env) {}                                    \
+        ~name##StubBuilder() = default;                                             \
+        NO_MOVE_SEMANTIC(name##StubBuilder);                                        \
+        NO_COPY_SEMANTIC(name##StubBuilder);                                        \
+        void GenerateCircuit() override;                                            \
     };
     TEST_STUB_SIGNATRUE_LIST(DECLARE_STUB_CLASS)
 #undef DECLARE_STUB_CLASS

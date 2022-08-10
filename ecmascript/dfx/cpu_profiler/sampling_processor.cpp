@@ -19,13 +19,13 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include <sys/time.h>
-
 #include "ecmascript/base/config.h"
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/log_wrapper.h"
+
+#include <sys/time.h>
 
 namespace panda::ecmascript {
 SamplingProcessor::SamplingProcessor(SamplesRecord *generator, int interval, bool outToFile)
@@ -82,6 +82,7 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
             }
             collectCount_++;
         }
+        generator_->SetSampleFlag(false);
     }
     uint64_t stopTime = GetMicrosecondsTimeStamp();
     generator_->SetThreadStopTime(stopTime);

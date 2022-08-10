@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/builtins/builtins_cjs_module.h"
+
+#include "ecmascript/base/builtins_base.h"
+#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_require_manager.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsCjsModule::CjsModuleConstructor(EcmaRuntimeCallInfo *argv)
@@ -51,7 +52,7 @@ JSTaggedValue BuiltinsCjsModule::ResolveFilename(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    int32_t length = argv->GetArgsNumber();
+    uint32_t length = argv->GetArgsNumber();
     JSMutableHandle<JSTaggedValue> parent(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread, JSTaggedValue::Undefined());
     const JSPandaFile *jsPandaFile = EcmaInterpreter::GetNativeCallPandafile(thread);

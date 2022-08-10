@@ -20,6 +20,7 @@
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_async_function.h"
+#include "ecmascript/builtins/builtins_async_generator.h"
 #include "ecmascript/builtins/builtins_atomics.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_boolean.h"
@@ -82,26 +83,26 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api_deque_iterator.h"
-#include "ecmascript/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api_list_iterator.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api_queue_iterator.h"
-#include "ecmascript/js_api_stack_iterator.h"
-#include "ecmascript/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightset_iterator.h"
+#include "ecmascript/js_api/js_api_linked_list_iterator.h"
+#include "ecmascript/js_api/js_api_list_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_queue_iterator.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_tree_map_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_regexp_iterator.h"
 #include "ecmascript/js_set_iterator.h"
-#include "ecmascript/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api_hashset_iterator.h"
+#include "ecmascript/js_api/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api/js_api_hashset_iterator.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/mem/heap.h"
@@ -151,6 +152,7 @@ using Proxy = builtins::BuiltinsProxy;
 using Reflect = builtins::BuiltinsReflect;
 using AsyncFunction = builtins::BuiltinsAsyncFunction;
 using GeneratorObject = builtins::BuiltinsGenerator;
+using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 using Promise = builtins::BuiltinsPromise;
 using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
@@ -621,6 +623,10 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(GeneratorObject::GeneratorPrototypeReturn),
     reinterpret_cast<uintptr_t>(GeneratorObject::GeneratorPrototypeThrow),
     reinterpret_cast<uintptr_t>(GeneratorObject::GeneratorFunctionConstructor),
+    reinterpret_cast<uintptr_t>(AsyncGeneratorObject::AsyncGeneratorPrototypeNext),
+    reinterpret_cast<uintptr_t>(AsyncGeneratorObject::AsyncGeneratorPrototypeReturn),
+    reinterpret_cast<uintptr_t>(AsyncGeneratorObject::AsyncGeneratorPrototypeThrow),
+    reinterpret_cast<uintptr_t>(AsyncGeneratorObject::AsyncGeneratorFunctionConstructor),
     reinterpret_cast<uintptr_t>(Promise::PromiseConstructor),
     reinterpret_cast<uintptr_t>(Promise::All),
     reinterpret_cast<uintptr_t>(Promise::Race),
@@ -1246,8 +1252,8 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
         }
         case SnapshotType::TS_LOADER: {
             if (JSType(objType) == JSType::HCLASS) {
-                TSLoader *tsLoader = vm_->GetTSLoader();
-                tsLoader->AddStaticHClassInRuntimePhase(JSTaggedValue(rootObjectAddr));
+                TSManager *tsManager = vm_->GetTSManager();
+                tsManager->AddStaticHClassInRuntimePhase(JSTaggedValue(rootObjectAddr));
             }
             break;
         }

@@ -51,7 +51,6 @@ void ParallelEvacuator::Evacuate()
     Initialize();
     EvacuateSpace();
     UpdateReference();
-    heap_->UpdateDerivedObjectInStack();
     Finalize();
     heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticConcurrentEvacuate(clockScope.GetPauseTime());
 }
@@ -228,8 +227,14 @@ void ParallelEvacuator::UpdateRoot()
             UpdateObjectSlot(slot);
         }
     };
+    RootBaseAndDerivedVisitor gcUpdateDerived =
+        []([[maybe_unused]]Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
+        if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
+            derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
+        }
+    };
 
-    objXRay_.VisitVMRoots(gcUpdateYoung, gcUpdateRangeYoung);
+    objXRay_.VisitVMRoots(gcUpdateYoung, gcUpdateRangeYoung, gcUpdateDerived);
 }
 
 void ParallelEvacuator::UpdateRecordWeakReference()
@@ -291,16 +296,30 @@ void ParallelEvacuator::UpdateRSet(Region *region)
 {
     auto cb = [this](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
+
         if (UpdateObjectSlot(slot)) {
-            Region *valueRegion = Region::ObjectAddressToRange(slot.GetTaggedObject());
+            TaggedObject *object = slot.GetTaggedObject();
+            Region *valueRegion = Region::ObjectAddressToRange(object);
+
             if (!valueRegion->InYoungSpace()) {
                 return false;
             }
+            if (valueRegion->InNewToNewSet()) {
+                if (!valueRegion->Test(object)) {
+                    return false;
+                }
+            }
+            return true;
         }
-        return true;
+        return false;
     };
     if (heap_->GetSweeper()->isSweeping()) {
-        region->AtomicIterateAllSweepingRSetBits(cb);
+        if (region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
+            // Region is safe while update remember set
+            region->MergeRSetForConcurrentSweeping();
+        } else {
+            region->AtomicIterateAllSweepingRSetBits(cb);
+        }
     }
     region->IterateAllOldToNewBits(cb);
     region->IterateAllCrossRegionBits([this](void *mem) {

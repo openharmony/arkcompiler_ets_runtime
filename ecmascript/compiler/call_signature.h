@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef ECMASCRIPT_COMPILER_CALL_SIGNATURE_H
 #define ECMASCRIPT_COMPILER_CALL_SIGNATURE_H
 
@@ -20,9 +21,10 @@
 #include <memory>
 
 #include "ecmascript/compiler/variable_type.h"
+#include "ecmascript/compiler/test_stubs_signature.h"
+
 #include "libpandabase/macros.h"
 #include "libpandabase/utils/bit_field.h"
-#include "test_stubs_signature.h"
 
 namespace panda::ecmascript::kungfu {
 class Circuit;
@@ -43,6 +45,7 @@ public:
         BYTECODE_DEBUGGER_HANDLER,
         BYTECODE_HELPER_HANDLER,
         JSFUNCTION,
+        BUILTINS_STUB,
 
         STUB_BEGIN = COMMON_STUB,
         STUB_END = BYTECODE_HANDLER,
@@ -54,7 +57,7 @@ public:
         GHCCallConv = 1,
         WebKitJSCallConv = 2,
     };
-    static constexpr size_t TARGET_KIND_BIT_LENGTH = 3;
+    static constexpr size_t TARGET_KIND_BIT_LENGTH = 4;
     static constexpr size_t CALL_CONV_BIT_LENGTH = 2;
     using TargetKindBit = panda::BitField<TargetKind, 0, TARGET_KIND_BIT_LENGTH>;
     using CallConvBit = TargetKindBit::NextField<CallConv, CALL_CONV_BIT_LENGTH>;
@@ -62,7 +65,8 @@ public:
     using TailCallBit = VariadicArgsBit::NextField<bool, 1>;
     using GCLeafFunctionBit = TailCallBit::NextField<bool, 1>;
 
-    explicit CallSignature(std::string name, int flags, size_t paramCounter, ArgumentsOrder order, VariableType returnType)
+    explicit CallSignature(std::string name, int flags, size_t paramCounter, ArgumentsOrder order,
+                           VariableType returnType)
         : name_(name), paramCounter_(paramCounter), order_(order), returnType_(returnType)
     {
         SetTargetKind(TargetKind::COMMON_STUB);
@@ -146,6 +150,11 @@ public:
     {
         TargetKind targetKind = GetTargetKind();
         return TargetKind::BCHANDLER_BEGIN <= targetKind && targetKind < TargetKind::BCHANDLER_END;
+    }
+
+    bool IsBuiltinsStub() const
+    {
+        return (GetTargetKind() == TargetKind::BUILTINS_STUB);
     }
 
     bool IsBCHandlerStub() const
@@ -308,6 +317,7 @@ private:
     V(SetValueWithBarrier)                  \
     V(GetTaggedArrayPtrTest)                \
     V(BytecodeHandler)                      \
+    V(Builtins)                             \
     V(BytecodeDebuggerHandler)              \
     V(CallRuntime)                          \
     V(AsmInterpreterEntry)                  \
@@ -327,6 +337,7 @@ private:
     V(CallGetter)                           \
     V(CallSetter)                           \
     V(JSCallWithArgV)                       \
+    V(ConstructorJSCallWithArgV)            \
     V(ResumeRspAndDispatch)                 \
     V(ResumeRspAndReturn)                   \
     V(ResumeCaughtFrameAndDispatch)         \
@@ -347,6 +358,7 @@ private:
     V(CallIThisRangeDyn)                    \
     V(CallIRangeDyn)                        \
     V(JSCall)                               \
+    V(ConstructorJSCall)                    \
     V(JSFunctionEntry)                      \
     V(JSProxyCallInternalWithArgV)          \
     V(CreateArrayFromList)                  \

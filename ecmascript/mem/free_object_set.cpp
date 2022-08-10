@@ -15,8 +15,7 @@
 
 #include "ecmascript/mem/free_object_set.h"
 
-#include <sanitizer/asan_interface.h>
-
+#include "ecmascript/base/asan_interface.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/free_object_list.h"
 

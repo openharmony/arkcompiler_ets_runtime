@@ -14,8 +14,6 @@
  */
 
 #include "dispatchprotocolmessage_fuzzer.h"
-#include<cstddef>
-#include<cstdint>
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/tooling/debugger_service.h"
 
@@ -23,20 +21,16 @@ using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::tooling;
 
-bool createstatus = true;
 namespace OHOS {
-    bool DispatchProtocolMessageFuzzTest(const uint8_t* data, size_t size)
+    void DispatchProtocolMessageFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        if (createstatus) {
-            JSNApi::CreateJSVM(option);
-            createstatus = false;
-        }
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        auto jsvm = JSNApi::CreateJSVM(option);
+        auto vm = JSNApi::CreateJSVM(option);
+        [[maybe_unused]] LocalScope scope(vm);
         std::string message(data, data+size);
-        panda::ecmascript::tooling::DispatchMessage(jsvm, std::move(message));
-        return true;
+        DispatchMessage(vm, std::move(message));
+        JSNApi::DestroyJSVM(vm);
     }
 }
 

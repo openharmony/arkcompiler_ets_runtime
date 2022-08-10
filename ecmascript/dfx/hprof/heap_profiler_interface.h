@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_HPROF_HEAP_PROFILER_INTERFACE_H
 #define ECMASCRIPT_HPROF_HEAP_PROFILER_INTERFACE_H
 
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class EcmaVM;
@@ -27,8 +27,8 @@ enum class DumpFormat { JSON, BINARY, OTHER };
 
 class HeapProfilerInterface {
 public:
-    static HeapProfilerInterface *GetInstance(const EcmaVM *vm);
-    static void Destroy(const EcmaVM *vm);
+    static HeapProfilerInterface *GetInstance(EcmaVM *vm);
+    static void Destroy(EcmaVM *vm);
 
     HeapProfilerInterface() = default;
     virtual ~HeapProfilerInterface() = default;
@@ -42,9 +42,6 @@ public:
 
     NO_MOVE_SEMANTIC(HeapProfilerInterface);
     NO_COPY_SEMANTIC(HeapProfilerInterface);
-
-private:
-    static HeapProfilerInterface *heapProfile_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_HPROF_HEAP_PROFILER_INTERFACE_H

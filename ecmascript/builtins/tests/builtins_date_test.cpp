@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_date.h"
+
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/tests/test_helper.h"
-#include "utils/bit_utils.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;

@@ -19,6 +19,7 @@
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_string.h"
+
 #include "libpandafile/file.h"
 
 static constexpr uint32_t CALL_TYPE_MASK = 0xF;  // 0xF: the last 4 bits are used as callType
@@ -74,6 +75,7 @@ struct PUBLIC_API JSMethod : public base::AlignedStruct<sizeof(uint64_t),
     using NumArgsBits = NumVregsBits::NextField<uint32_t, VREGS_ARGS_NUM_BITS>;  // offset 32-59
     using IsNativeBit = NumArgsBits::NextFlag;  // offset 60
     using IsAotCodeBit = IsNativeBit::NextFlag; // offset 61
+    using IsFastBuiltinBit = IsAotCodeBit::NextFlag; // offset 62
 
     uint64_t GetCallField() const
     {
@@ -98,6 +100,11 @@ struct PUBLIC_API JSMethod : public base::AlignedStruct<sizeof(uint64_t),
     void SetAotCodeBit(bool isCompiled)
     {
         callField_ = IsAotCodeBit::Update(callField_, isCompiled);
+    }
+
+    void SetFastBuiltinBit(bool isFastBuiltin)
+    {
+        callField_ = IsFastBuiltinBit::Update(callField_, isFastBuiltin);
     }
 
     std::string PUBLIC_API ParseFunctionName() const;
@@ -132,6 +139,11 @@ struct PUBLIC_API JSMethod : public base::AlignedStruct<sizeof(uint64_t),
     bool IsAotWithCallField() const
     {
         return IsAotCodeBit::Decode(callField_);
+    }
+
+    bool IsFastBuiltinWithCallField() const
+    {
+        return IsFastBuiltinBit::Decode(callField_);
     }
 
     bool OnlyHaveThisWithCallField() const
@@ -173,6 +185,7 @@ struct PUBLIC_API JSMethod : public base::AlignedStruct<sizeof(uint64_t),
     using HotnessCounterBits = BitField<int16_t, 0, METHOD_ARGS_NUM_BITS>; // offset 0-15
     using MethodIdBits = HotnessCounterBits::NextField<uint32_t, METHOD_ARGS_METHODID_BITS>; // offset 16-47
     using SlotSizeBits = MethodIdBits::NextField<uint8_t, METHOD_ARGS_NUM_BYTES>; // offset 48-55
+    using BuiiltinIdBits = SlotSizeBits::NextField<uint8_t, METHOD_ARGS_NUM_BYTES>; // offset 56-63
 
     uint32_t GetBytecodeArraySize() const;
 
@@ -216,6 +229,17 @@ struct PUBLIC_API JSMethod : public base::AlignedStruct<sizeof(uint64_t),
     uint8_t GetSlotSize() const
     {
         return SlotSizeBits::Decode(literalInfo_);;
+    }
+
+    uint8_t GetBuiiltinId() const
+    {
+        return BuiiltinIdBits::Decode(literalInfo_);;
+    }
+
+    
+    void SetBuiiltinId(uint8_t id)
+    {
+        literalInfo_ = BuiiltinIdBits::Update(literalInfo_, id);
     }
 
     uint8_t UpdateSlotSize(uint8_t size)

@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_TASKPOOL_TASK_H
 #define ECMASCRIPT_TASKPOOL_TASK_H
 
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class Task {

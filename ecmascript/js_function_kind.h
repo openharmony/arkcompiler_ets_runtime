@@ -44,7 +44,7 @@ enum class FunctionKind : uint8_t {
     GENERATOR_FUNCTION,
     // END generators
     // END constructable functions.
-
+    ASYNC_GENERATOR_FUNCTION,
     // BEGIN accessors
     GETTER_FUNCTION,
     SETTER_FUNCTION,

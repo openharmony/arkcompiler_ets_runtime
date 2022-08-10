@@ -13,12 +13,12 @@
  * limitations under the License.
  */
  
-#include "ecmascript/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_iterator.h"
@@ -303,5 +303,50 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_ToString)
     [[maybe_unused]] auto *res = EcmaString::Cast(resultHandle.GetTaggedValue().GetTaggedObject());
 
     ASSERT_EQ(res->Compare(*str), 0);
+}
+
+/**
+ * @tc.name: GetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIPlainArrayTest, GetProperty)
+{
+    JSHandle<JSAPIPlainArray> plainArray(thread, CreatePlainArray());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIPlainArray::Add(thread, plainArray, key, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        OperationResult getPropertyRes = JSAPIPlainArray::GetProperty(thread, plainArray, key);
+        EXPECT_EQ(getPropertyRes.GetValue().GetTaggedValue(), JSTaggedValue(i));
+    }
+}
+
+/**
+ * @tc.name: SetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIPlainArrayTest, SetProperty)
+{
+    JSHandle<JSAPIPlainArray> plainArray(thread, CreatePlainArray());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIPlainArray::Add(thread, plainArray, key, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i * 2)); // 2 : It means double
+        bool setPropertyRes = JSAPIPlainArray::SetProperty(thread, plainArray, key, value);
+        EXPECT_EQ(setPropertyRes, true);
+    }
 }
 }  // namespace panda::test

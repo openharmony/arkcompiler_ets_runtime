@@ -38,7 +38,7 @@ namespace panda::ecmascript {
 //   +--------------------------+
 EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
     JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj, JSHandle<JSTaggedValue> newTarget,
-    int32_t numArgs, bool needCheckStack)
+    uint32_t numArgs, bool needCheckStack)
 {
     JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
     JSTaggedType *newSp = nullptr;
@@ -58,7 +58,9 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
         return nullptr;
     }
 
-    newSp -= numArgs;
+    for (uint32_t i = 0; i < numArgs; i++) {
+        *(--newSp) = JSTaggedValue::VALUE_UNDEFINED;
+    }
     *(--newSp) = thisObj.GetTaggedType();
     *(--newSp) = newTarget.GetTaggedType();
     *(--newSp) = func.GetTaggedType();

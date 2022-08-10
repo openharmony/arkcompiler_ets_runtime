@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_intl.h"
+
 #include "ecmascript/js_array.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/tests/test_helper.h"

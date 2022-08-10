@@ -30,38 +30,39 @@
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_api_arraylist.h"
-#include "ecmascript/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api_deque.h"
-#include "ecmascript/js_api_deque_iterator.h"
-#include "ecmascript/js_api_hashmap.h"
-#include "ecmascript/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api_hashset.h"
-#include "ecmascript/js_api_hashset_iterator.h"
-#include "ecmascript/js_api_lightweightmap.h"
-#include "ecmascript/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api_lightweightset.h"
-#include "ecmascript/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api_linked_list.h"
-#include "ecmascript/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api_list.h"
-#include "ecmascript/js_api_list_iterator.h"
-#include "ecmascript/js_api_plain_array.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api_queue.h"
-#include "ecmascript/js_api_queue_iterator.h"
-#include "ecmascript/js_api_stack.h"
-#include "ecmascript/js_api_stack_iterator.h"
-#include "ecmascript/js_api_tree_map.h"
-#include "ecmascript/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api_tree_set.h"
-#include "ecmascript/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api_vector.h"
-#include "ecmascript/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_deque.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
+#include "ecmascript/js_api/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_api/js_api_hashset_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightmap.h"
+#include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_lightweightset_iterator.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
+#include "ecmascript/js_api/js_api_linked_list_iterator.h"
+#include "ecmascript/js_api/js_api_list.h"
+#include "ecmascript/js_api/js_api_list_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_queue.h"
+#include "ecmascript/js_api/js_api_queue_iterator.h"
+#include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_tree_map_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_function.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
@@ -249,6 +250,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "PromiseRecord";
         case JSType::RESOLVING_FUNCTIONS_RECORD:
             return "ResolvingFunctionsRecord";
+        case JSType::ASYNC_GENERATOR_REQUEST:
+            return "AsyncGeneratorRequest";
         case JSType::JS_PROMISE:
             return "Promise";
         case JSType::JS_PROMISE_REACTIONS_FUNCTION:
@@ -265,6 +268,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "PromiseFinallyFunction";
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             return "PromiseValueThunkOrThrowerFunction";
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            return "AsyncGeneratorResumeNextReturnProcessorRstFtn";
         case JSType::MICRO_JOB_QUEUE:
             return "MicroJobQueue";
         case JSType::PENDING_JOB:
@@ -311,6 +316,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "JSListFormat";
         case JSType::JS_GENERATOR_OBJECT:
             return "JSGeneratorObject";
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            return "JSAsyncGeneratorObject";
         case JSType::JS_GENERATOR_CONTEXT:
             return "JSGeneratorContext";
         case JSType::PROTO_CHANGE_MARKER:
@@ -655,6 +662,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSPromiseExecutorFunction::Cast(obj)->Dump(os);
             break;
+        case JSType::ASYNC_GENERATOR_REQUEST:
+            AsyncGeneratorRequest::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSPromiseAllResolveElementFunction::Cast(obj)->Dump(os);
             break;
@@ -690,6 +700,12 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_GENERATOR_FUNCTION:
             JSGeneratorFunction::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            JSAsyncGeneratorFunction::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            JSAsyncGeneratorResNextRetProRstFtn::Cast(obj)->Dump(os);
             break;
         case JSType::JS_INTL_BOUND_FUNCTION:
             JSIntlBoundFunction::Cast(obj)->Dump(os);
@@ -755,6 +771,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_GENERATOR_OBJECT:
             JSGeneratorObject::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            JSAsyncGeneratorObject::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ASYNC_FUNC_OBJECT:
             JSAsyncFuncObject::Cast(obj)->Dump(os);
@@ -1291,6 +1310,10 @@ void JSFunction::Dump(std::ostream &os) const
     os << " - HomeObject: ";
     GetHomeObject().Dump(os);
     os << "\n";
+
+    os << " - CodeEntry: " << std::hex << GetCodeEntry() << "\n";
+    os << "\n";
+
     os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
     os << "\n";
     os << " - Strict: " << GetStrict();
@@ -2346,6 +2369,14 @@ void ResolvingFunctionsRecord::Dump(std::ostream &os) const
     GetRejectFunction().Dump(os);
 }
 
+void AsyncGeneratorRequest::Dump(std::ostream &os) const
+{
+    os << " - completion: ";
+    GetCompletion().Dump(os);
+    os << " - capability: ";
+    GetCapability().Dump(os);
+}
+
 void JSPromise::Dump(std::ostream &os) const
 {
     os << " - promise-state: " << static_cast<int>(GetPromiseState());
@@ -2436,6 +2467,13 @@ void JSPromiseValueThunkOrThrowerFunction::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void JSAsyncGeneratorResNextRetProRstFtn::Dump(std::ostream &os) const
+{
+    os << " - AsyncGeneratorObject";
+    GetAsyncGeneratorObject().Dump(os);
+    JSObject::Dump(os);
+}
+
 void MicroJobQueue::Dump(std::ostream &os) const
 {
     os << " - promise-job-queue: ";
@@ -2493,6 +2531,11 @@ void JSAsyncAwaitStatusFunction::Dump(std::ostream &os) const
 }
 
 void JSGeneratorFunction::Dump(std::ostream &os) const
+{
+    JSFunction::Dump(os);
+}
+
+void JSAsyncGeneratorFunction::Dump(std::ostream &os) const
 {
     JSFunction::Dump(os);
 }
@@ -2758,6 +2801,27 @@ void JSGeneratorObject::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void JSAsyncGeneratorObject::Dump(std::ostream &os) const
+{
+    os << " - GeneratorContext: ";
+    GetGeneratorContext().Dump(os);
+    os << "\n";
+    os << " - AsyncGeneratorQueue: ";
+    GetAsyncGeneratorQueue().Dump(os);
+    os << "\n";
+    os << " - GeneratorBrand: ";
+    GetGeneratorBrand().Dump(os);
+    os << "\n";
+    os << " - ResumeResult: ";
+    GetResumeResult().Dump(os);
+    os << "\n";
+    os << " - AsyncGeneratorState: " << static_cast<uint8_t>(GetAsyncGeneratorState());
+    os << "\n";
+    os << " - ResumeMode: " << static_cast<uint8_t>(GetResumeMode());
+    os << "\n";
+    JSObject::Dump(os);
+}
+
 void JSAsyncFuncObject::Dump(std::ostream &os) const
 {
     os << " - Promise: ";
@@ -2839,7 +2903,7 @@ void ClassInfoExtractor::Dump(std::ostream &os) const
 void TSObjectType::Dump(std::ostream &os) const
 {
     os << " - TSObjectType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -2851,10 +2915,6 @@ void TSObjectType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSObjectType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
     os << "  - ObjLayoutInfo: ";
     DumpArrayClass(TaggedArray::Cast(GetObjLayoutInfo().GetTaggedObject()), os);
     os << "  - HClass: ";
@@ -2865,7 +2925,7 @@ void TSClassType::Dump(std::ostream &os) const
 {
     os << " - Dump TSClassType - " << "\n";
     os << " - TSClassType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -2876,10 +2936,6 @@ void TSClassType::Dump(std::ostream &os) const
     os << " - TSClassType localTypeId: ";
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
-    os << "\n";
-    os << " - TSClassType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
     os << "\n";
     os << " - ExtensionTypeGT: ";
     GlobalTSTypeRef extensionGT = GetExtensionGT();
@@ -2919,7 +2975,7 @@ void TSInterfaceType::Dump(std::ostream &os) const
 {
     os << " - Dump Interface Type - " << "\n";
     os << " - TSInterfaceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -2930,10 +2986,6 @@ void TSInterfaceType::Dump(std::ostream &os) const
     os << " - TSInterfaceType localTypeId: ";
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
-    os << "\n";
-    os << " - TSInterfaceType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
     os << "\n";
     os << " - Extends TypeId: " << "\n";
     if (TaggedArray::Cast(GetExtends().GetTaggedObject())->GetLength() == 0) {
@@ -2953,7 +3005,7 @@ void TSImportType::Dump(std::ostream &os) const
 {
     os << " - Dump Import Type - " << "\n";
     os << " - TSImportType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -2965,13 +3017,9 @@ void TSImportType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSImportType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
     os << " -------------------------------------------- ";
     os << " - Target Type: ";
-    GlobalTSTypeRef targetGT = GetTargetRefGT();
+    GlobalTSTypeRef targetGT = GetTargetGT();
     uint64_t targetGTValue = targetGT.GetType();
     os << " - TargetTypeGT: ";
     os << targetGTValue;
@@ -2984,43 +3032,6 @@ void TSImportType::Dump(std::ostream &os) const
     uint32_t targetLocalTypeId = targetGT.GetLocalId();
     os << targetLocalTypeId;
     os << "\n";
-    os << " - Target Type typeKind: ";
-    uint32_t targetTypeKind = targetGT.GetKind();
-    os << targetTypeKind;
-    os << "\n";
-    TSTypeKind flag = static_cast<TSTypeKind>(targetTypeKind);
-    switch (flag) {
-        case TSTypeKind::CLASS: {
-            os << " - Target Type typeKind is classType ";
-            break;
-        }
-        case TSTypeKind::CLASS_INSTANCE: {
-            os << " - Target Type typeKind is classInstanceType ";
-            break;
-        }
-        case TSTypeKind::INTERFACE_KIND: {
-            os << " - Target Type typeKind is interfaceType";
-            break;
-        }
-        case TSTypeKind::IMPORT: {
-            os << " - Target Type typeKind is importType";
-            break;
-        }
-        case TSTypeKind::UNION: {
-            os << " - Target Type typeKind is UnionType";
-            break;
-        }
-        case TSTypeKind::FUNCTION: {
-            os << " - Target Type typeKind is funtionType";
-            break;
-        }
-        case TSTypeKind::OBJECT: {
-            os << " - Target Type typeKind is objectType";
-            break;
-        }
-        default:
-            os << " - unknown type";
-    }
     os << " -------------------------------------------- ";
     os << " - Taget Type Path: ";
     JSTaggedValue importPath = GetImportPath();
@@ -3032,7 +3043,7 @@ void TSClassInstanceType::Dump(std::ostream &os) const
 {
     os << " - Dump ClassInstance Type - " << "\n";
     os << " - TSClassInstanceType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -3044,14 +3055,10 @@ void TSClassInstanceType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSClassInstanceType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
 
     os << " -------------------------------------------- ";
     os << " - createClassType GT: ";
-    GlobalTSTypeRef createClassTypeGT = GetClassRefGT();
+    GlobalTSTypeRef createClassTypeGT = GetClassGT();
     os << createClassTypeGT.GetType();
     os << "\n";
 }
@@ -3060,7 +3067,7 @@ void TSUnionType::Dump(std::ostream &os) const
 {
     os << " - Dump UnionType Type - " << "\n";
     os << " - TSUnionType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -3072,10 +3079,6 @@ void TSUnionType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSUnionType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
     os << " - TSUnionType TypeId: " << "\n";
     DumpArrayClass(TaggedArray::Cast(GetComponents().GetTaggedObject()), os);
 }
@@ -3084,7 +3087,7 @@ void TSFunctionType::Dump(std::ostream &os) const
 {
     os << " - Dump TSFunctionType - " << "\n";
     os << " - TSFunctionType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -3096,10 +3099,6 @@ void TSFunctionType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
-    os << " - TSFunctionType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
     os << " - TSFunctionType ParameterTypeIds: " << "\n";
     DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), os);
 }
@@ -3108,7 +3107,7 @@ void TSArrayType::Dump(std::ostream &os) const
 {
     os << " - Dump TSArrayType - " << "\n";
     os << " - TSArrayType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGTRef();
+    GlobalTSTypeRef gt = GetGT();
     uint64_t globalTSTypeRef = gt.GetType();
     os << globalTSTypeRef;
     os << "\n";
@@ -3119,14 +3118,6 @@ void TSArrayType::Dump(std::ostream &os) const
     os << " - TSArrayType localTypeId: ";
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
-    os << "\n";
-    os << " - TSArrayType typeKind: ";
-    uint32_t typeKind = gt.GetKind();
-    os << typeKind;
-    os << "\n";
-    os << " - TSArrayType parameterTypeRef: " << "\n";
-    uint64_t parameterTypeRef = GetElementTypeRef();
-    os << parameterTypeRef;
     os << "\n";
 }
 
@@ -3439,6 +3430,9 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSPromiseExecutorFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::ASYNC_GENERATOR_REQUEST:
+            AsyncGeneratorRequest::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSPromiseAllResolveElementFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -3453,6 +3447,9 @@ static void DumpObject(TaggedObject *obj,
             return;
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             JSPromiseValueThunkOrThrowerFunction::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            JSAsyncGeneratorResNextRetProRstFtn::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::MICRO_JOB_QUEUE:
             MicroJobQueue::Cast(obj)->DumpForSnapshot(vec);
@@ -3487,6 +3484,9 @@ static void DumpObject(TaggedObject *obj,
             return;
         case JSType::JS_GENERATOR_FUNCTION:
             JSGeneratorFunction::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            JSAsyncGeneratorFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_INTL_BOUND_FUNCTION:
             JSIntlBoundFunction::Cast(obj)->DumpForSnapshot(vec);
@@ -3532,6 +3532,9 @@ static void DumpObject(TaggedObject *obj,
             return;
         case JSType::JS_GENERATOR_OBJECT:
             JSGeneratorObject::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            JSAsyncGeneratorObject::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_ASYNC_FUNC_OBJECT:
             JSAsyncFuncObject::Cast(obj)->DumpForSnapshot(vec);
@@ -4426,6 +4429,12 @@ void ResolvingFunctionsRecord::DumpForSnapshot(std::vector<std::pair<CString, JS
     vec.push_back(std::make_pair(CString("reject-function"), GetRejectFunction()));
 }
 
+void AsyncGeneratorRequest::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("completion"), GetCompletion()));
+    vec.push_back(std::make_pair(CString("capability"), GetCapability()));
+}
+
 void JSPromise::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("promise-state"), JSTaggedValue(static_cast<int>(GetPromiseState()))));
@@ -4440,6 +4449,13 @@ void JSPromiseReactionsFunction::DumpForSnapshot(std::vector<std::pair<CString, 
 {
     vec.push_back(std::make_pair(CString("promise"), GetPromise()));
     vec.push_back(std::make_pair(CString("already-resolved"), GetAlreadyResolved()));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSAsyncGeneratorResNextRetProRstFtn::DumpForSnapshot(std::vector<std::pair<CString,
+                                                          JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("async-generator-object"), GetAsyncGeneratorObject()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4526,6 +4542,11 @@ void JSAsyncAwaitStatusFunction::DumpForSnapshot(std::vector<std::pair<CString, 
 }
 
 void JSGeneratorFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    JSFunction::DumpForSnapshot(vec);
+}
+
+void JSAsyncGeneratorFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     JSFunction::DumpForSnapshot(vec);
 }
@@ -4683,6 +4704,18 @@ void JSGeneratorObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedV
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSAsyncGeneratorObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("GeneratorContext"), GetGeneratorContext()));
+    vec.push_back(std::make_pair(CString("AsyncGeneratorQueue"), GetAsyncGeneratorQueue()));
+    vec.push_back(std::make_pair(CString("GeneratorBrand"), GetGeneratorBrand()));
+    vec.push_back(std::make_pair(CString("ResumeResult"), GetResumeResult()));
+    vec.push_back(std::make_pair(CString("AsyncGeneratorState"),
+                                 JSTaggedValue(static_cast<int>(GetAsyncGeneratorState()))));
+    vec.push_back(std::make_pair(CString("ResumeMode"), JSTaggedValue(static_cast<int>(GetResumeMode()))));
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSAsyncFuncObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("Promise"), GetPromise()));
@@ -4738,7 +4771,7 @@ void TSClassType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>>
     vec.push_back(std::make_pair(CString("InstanceType"), GetInstanceType()));
     vec.push_back(std::make_pair(CString("ConstructorType"), GetConstructorType()));
     vec.push_back(std::make_pair(CString("PrototypeType"), GetPrototypeType()));
-    vec.push_back(std::make_pair(CString("ExtensionGTRawData"), JSTaggedValue(GetExtensionGTRawData())));
+    vec.push_back(std::make_pair(CString("ExtensionGTRawData"), JSTaggedValue(GetExtensionGT().GetType())));
     vec.push_back(std::make_pair(CString("HasLinked"), JSTaggedValue(GetHasLinked())));
 }
 
@@ -4750,7 +4783,7 @@ void TSInterfaceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 
 void TSClassInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("classTypeIndex"), JSTaggedValue(GetClassRefGT().GetType())));
+    vec.push_back(std::make_pair(CString("classTypeIndex"), JSTaggedValue(GetClassGT().GetType())));
 }
 
 void TSImportType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4770,7 +4803,7 @@ void TSFunctionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValu
 
 void TSArrayType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ParameterTypeRef"), JSTaggedValue(GetElementTypeRef())));
+    vec.push_back(std::make_pair(CString("ParameterTypeRef"), JSTaggedValue(GetElementGT().GetType())));
 }
 
 void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

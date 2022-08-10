@@ -12,15 +12,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "assembler_module.h"
 
-#include "ecmascript/compiler/assembler/x64/assembler_x64.h"
+#include "ecmascript/compiler/assembler_module.h"
+
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+#include "ecmascript/compiler/assembler/x64/assembler_x64.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/trampoline/aarch64/common_call.h"
+#include "ecmascript/compiler/trampoline/x64/common_call.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/trampoline/x64/assembler_stubs_x64.h"
-#include "ecmascript/compiler/trampoline/aarch64/assembler_stubs.h"
+
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -207,13 +209,41 @@ void name##Stub::GenerateX64(Assembler *assembler)                              
     assemblerX64->Align16();                                                                      \
 }
 
-#define DECLARE_ASM_STUB_AARCH64_GENERATE(name)                                                   \
-void name##Stub::GenerateAarch64(Assembler *assembler)                                            \
+#define DECLARE_JSCALL_TRAMPOLINE_X64_GENERATE(name)                                              \
+void name##Stub::GenerateX64(Assembler *assembler)                                                \
 {                                                                                                 \
-    aarch64::ExtendedAssembler *assemblerAarch64 = static_cast<aarch64::ExtendedAssembler*>(assembler); \
-    aarch64::AssemblerStubs::name(assemblerAarch64);                                                    \
+    x64::ExtendedAssembler *assemblerX64 = static_cast<x64::ExtendedAssembler*>(assembler);       \
+    x64::OptimizedCall::name(assemblerX64);                                                       \
+    assemblerX64->Align16();                                                                      \
 }
-RUNTIME_ASM_STUB_LIST(DECLARE_ASM_STUB_X64_GENERATE)
-RUNTIME_ASM_STUB_LIST(DECLARE_ASM_STUB_AARCH64_GENERATE)
-#undef DECLARE_ASM_STUB_GENERATE
+
+#define DECLARE_ASM_INTERPRETER_TRAMPOLINE_X64_GENERATE(name)                                     \
+void name##Stub::GenerateX64(Assembler *assembler)                                                \
+{                                                                                                 \
+    x64::ExtendedAssembler *assemblerX64 = static_cast<x64::ExtendedAssembler*>(assembler);       \
+    x64::AsmInterpreterCall::name(assemblerX64);                                                  \
+    assemblerX64->Align16();                                                                      \
+}
+
+
+#define DECLARE_JSCALL_TRAMPOLINE_AARCH64_GENERATE(name)                                                \
+void name##Stub::GenerateAarch64(Assembler *assembler)                                                  \
+{                                                                                                       \
+    aarch64::ExtendedAssembler *assemblerAarch64 = static_cast<aarch64::ExtendedAssembler*>(assembler); \
+    aarch64::OptimizedCall::name(assemblerAarch64);                                                     \
+}
+
+#define DECLARE_ASM_INTERPRETER_TRAMPOLINE_AARCH64_GENERATE(name)                                       \
+void name##Stub::GenerateAarch64(Assembler *assembler)                                                  \
+{                                                                                                       \
+    aarch64::ExtendedAssembler *assemblerAarch64 = static_cast<aarch64::ExtendedAssembler*>(assembler); \
+    aarch64::AsmInterpreterCall::name(assemblerAarch64);                                                \
+}
+
+JS_CALL_TRAMPOLINE_LIST(DECLARE_JSCALL_TRAMPOLINE_X64_GENERATE)
+ASM_INTERPRETER_TRAMPOLINE_LIST(DECLARE_ASM_INTERPRETER_TRAMPOLINE_X64_GENERATE)
+JS_CALL_TRAMPOLINE_LIST(DECLARE_JSCALL_TRAMPOLINE_AARCH64_GENERATE)
+ASM_INTERPRETER_TRAMPOLINE_LIST(DECLARE_ASM_INTERPRETER_TRAMPOLINE_AARCH64_GENERATE)
+#undef DECLARE_JSCALL_TRAMPOLINE_AARCH64_GENERATE
+#undef DECLARE_ASM_INTERPRETER_TRAMPOLINE_AARCH64_GENERATE
 }  // namespace panda::ecmascript::kunfu

@@ -28,18 +28,16 @@ source_set("ark_js_vm_set") {
   ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase",
+    "$ark_root/libpandabase:libarkbase_static",
     "$js_root:libark_jsruntime",
   ]
 }
 
-if (!defined(ark_standalone_build)) {
-  ohos_executable("ark_js_vm") {
-    deps = [ ":ark_js_vm_set" ]
+ohos_executable("ark_js_vm") {
+  deps = [ ":ark_js_vm_set" ]
 
-    install_enable = false
+  install_enable = false
 
-    part_name = "ark_js_runtime"
-    subsystem_name = "ark"
-  }
+  part_name = "ark_js_runtime"
+  subsystem_name = "ark"
 }

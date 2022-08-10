@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/type_recorder.h"
+#include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -205,6 +206,45 @@ struct BytecodeRegion {
                 return first->start < second->start;
             });
         }
+    }
+
+    void UpdateTryCatchInfoForDeadBlock()
+    {
+        // Try-Catch infos of dead block should be cleared
+        UpdateTryCatchInfo();
+        isDead = true;
+    }
+
+    void UpdateRedundantTryCatchInfo(bool noThrow)
+    {
+        // if block which can throw exception has serval catchs block, only the innermost catch block is useful
+        if (!noThrow && catchs.size() > 1) {
+            size_t innerMostIndex = 1;
+            UpdateTryCatchInfo(innerMostIndex);
+        }
+    }
+
+    void UpdateTryCatchInfoIfNoThrow(bool noThrow)
+    {
+        // if block has no general insts, try-catch infos of it should be cleared
+        if (noThrow && !catchs.empty()) {
+            UpdateTryCatchInfo();
+        }
+    }
+
+private:
+    void UpdateTryCatchInfo(size_t index = 0)
+    {
+        for (auto catchBlock = catchs.begin() + index; catchBlock != catchs.end(); catchBlock++) {
+            auto tryBlock = std::find((*catchBlock)->trys.begin(), (*catchBlock)->trys.end(), this);
+            if (tryBlock != (*catchBlock)->trys.end()) {
+                (*catchBlock)->trys.erase(tryBlock);
+            }
+            if ((*catchBlock)->trys.size() == 0) {
+                (*catchBlock)->isDead = true;
+            }
+        }
+        catchs.erase(catchs.begin() + index, catchs.end());
     }
 };
 
@@ -404,21 +444,23 @@ enum BytecodeOffset {
 
 class BytecodeCircuitBuilder {
 public:
-    explicit BytecodeCircuitBuilder(const BytecodeTranslationInfo &translationInfo, size_t index,
-                                    TSLoader *tsLoader, bool enableLog)
-        : tsLoader_(tsLoader), file_(translationInfo.jsPandaFile), pf_(translationInfo.jsPandaFile->GetPandaFile()),
-          method_(translationInfo.methodPcInfos[index].method),
-          pcArray_(translationInfo.methodPcInfos[index].pcArray),
-          constantPool_(translationInfo.constantPool),
-          gateAcc_(&circuit_), argAcc_(&circuit_, method_),
-          typeRecorder_(method_, tsLoader), hasTypes_(file_->HasTSTypes()),
-          enableLog_(enableLog)
+    explicit BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
+                                    JSHandle<JSTaggedValue> &constantPool,
+                                    const JSMethod *method,
+                                    BytecodeInfoCollector::MethodPcInfo &methodPCInfo,
+                                    TSManager *tsManager, bool enableLog)
+        : tsManager_(tsManager), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
+          method_(method), constantPool_(constantPool), gateAcc_(&circuit_), argAcc_(&circuit_, method_),
+          typeRecorder_(method_, tsManager), hasTypes_(file_->HasTSTypes()),
+          enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
+          byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)
     {
     }
     ~BytecodeCircuitBuilder() = default;
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
     NO_MOVE_SEMANTIC(BytecodeCircuitBuilder);
     void PUBLIC_API BytecodeToCircuit();
+    static void PUBLIC_API CollectBytecodeBlockInfo(uint8_t *pc, std::vector<CfgInfo> &bytecodeBlockInfos);
 
     [[nodiscard]] kungfu::Circuit* GetCircuit()
     {
@@ -452,6 +494,11 @@ public:
         return jsgateToBytecode_.at(gate).second;
     }
 
+    [[nodiscard]] const JSMethod* GetMethod() const
+    {
+        return method_;
+    }
+
     BytecodeInfo GetBytecodeInfo(const uint8_t *pc);
     // for external users, circuit must be built
     BytecodeInfo GetByteCodeInfo(const GateRef gate)
@@ -475,18 +522,24 @@ public:
         return hasTypes_;
     }
 
+    template <class Callback>
+    void EnumerateBlock(BytecodeRegion &bb, const Callback &cb)
+    {
+        auto pc = bb.start;
+        while (pc <= bb.end) {
+            auto bytecodeInfo = GetBytecodeInfo(pc);
+            bool ret = cb(pc, bytecodeInfo);
+            if (!ret) {
+                break;
+            }
+            pc += bytecodeInfo.offset;
+        }
+    }
+
 private:
-    void PUBLIC_API CollectBytecodeBlockInfo(uint8_t* pc, std::vector<CfgInfo> &bytecodeBlockInfos);
-
-    std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> CollectTryCatchBlockInfo(
-        std::map<uint8_t *, uint8_t*> &byteCodeCurPrePc, std::vector<CfgInfo> &bytecodeBlockInfos);
-
-    void CompleteBytecodeBlockInfo(std::map<uint8_t *, uint8_t*> &byteCodeCurPrePc,
-                                   std::vector<CfgInfo> &bytecodeBlockInfos);
-
-    void BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &exception,
-                          std::vector<CfgInfo> &bytecodeBlockInfo,
-                          std::map<uint8_t *, uint8_t*> &byteCodeCurPrePc);
+    void CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
+    void CompleteBytecodeBlockInfo();
+    void BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
     void ComputeDominatorTree();
     void BuildImmediateDominator(const std::vector<size_t> &immDom);
     void ComputeDomFrontiers(const std::vector<size_t> &immDom);
@@ -494,6 +547,7 @@ private:
     void InsertPhi();
     void InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo);
     void UpdateCFG();
+    bool ShouldBeDead(BytecodeRegion &curBlock);
     // build circuit
     void BuildCircuitArgs();
     void CollectPredsInfo();
@@ -527,19 +581,20 @@ private:
     std::map<kungfu::GateRef, std::pair<size_t, const uint8_t *>> jsgateToBytecode_;
     std::map<const uint8_t *, kungfu::GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
-    TSLoader *tsLoader_ {nullptr};
+    TSManager *tsManager_ {nullptr};
     const JSPandaFile *file_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     const JSMethod *method_ {nullptr};
-    const std::vector<uint8_t *> pcArray_;
     JSHandle<JSTaggedValue> constantPool_;
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;
     TypeRecorder typeRecorder_;
     bool hasTypes_ {false};
     bool enableLog_ {false};
-    std::map<const uint8_t *, int32_t> pcToBCOffset_;
     std::vector<kungfu::GateRef> suspendAndResumeGates_ {};
+    const std::map<const uint8_t *, int32_t> &pcToBCOffset_;
+    const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
+    std::vector<CfgInfo> &bytecodeBlockInfos_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

@@ -23,6 +23,7 @@
 #include <random>
 #include <stdexcept>
 
+#include "ecmascript/base/bit_helper.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_accessor.h"
 
@@ -133,6 +134,7 @@ public:
     bool RunNoGCRuntimeCall(GateRef gate);
     bool RunBytecodeCall(GateRef gate);
     bool RunDebuggerBytecodeCall(GateRef gate);
+    bool RunBuiltinsCall(GateRef gate);
     bool RunCall(GateRef gate);
     bool RunRuntimeCallWithArgv(GateRef gate);
     bool RunAlloca(GateRef gate);

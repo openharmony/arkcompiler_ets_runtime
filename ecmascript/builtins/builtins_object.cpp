@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_object.h"
+
 #include "ecmascript/builtins/builtins_map.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
@@ -66,7 +67,7 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    int32_t numArgs = argv->GetArgsNumber();
+    uint32_t numArgs = argv->GetArgsNumber();
     // 1.Let to be ToObject(target).
     JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
     JSHandle<JSObject> toAssign = JSTaggedValue::ToObject(thread, target);
@@ -82,7 +83,7 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
     //     ii.Let keys be from.[[OwnPropertyKeys]]().
     //     iii.ReturnIfAbrupt(keys).
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    for (int32_t i = 1; i < numArgs; i++) {
+    for (uint32_t i = 1; i < numArgs; i++) {
         JSHandle<JSTaggedValue> source = GetCallArg(argv, i);
         if (!source->IsNull() && !source->IsUndefined()) {
             JSHandle<JSObject> from = JSTaggedValue::ToObject(thread, source);
@@ -774,7 +775,7 @@ JSTaggedValue BuiltinsObject::ToLocaleString(EcmaRuntimeCallInfo *argv)
 
     // 2. Return Invoke(O, "toString").
     JSHandle<JSTaggedValue> calleeKey = thread->GlobalConstants()->GetHandledToStringString();
-    const int32_t argsLength = argv->GetArgsNumber();
+    const uint32_t argsLength = argv->GetArgsNumber();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, object, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

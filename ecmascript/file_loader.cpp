@@ -18,6 +18,7 @@
 #include "shlwapi.h"
 #endif
 
+#include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
@@ -29,17 +30,17 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
+#include "ecmascript/mem/region.h"
+#include "ecmascript/base/mem_mmap.h"
 
-extern const uint8_t _binary_stub_m_start[];
-extern const uint32_t _binary_stub_m_length;
+extern const uint8_t _binary_stub_aot_start[];
+extern const uint32_t _binary_stub_aot_length;
 
 namespace panda::ecmascript {
 void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
 {
     uint32_t secInfoSize = GetSecInfosSize();
     file.write(reinterpret_cast<char *>(&secInfoSize), sizeof(secInfoSize));
-    uint64_t codeSecAddr = GetSecAddr(ElfSecName::TEXT);
-    file.write(reinterpret_cast<char *>(&codeSecAddr), sizeof(codeSecAddr));
     for (auto &s : sectionsInfo_) {
         uint8_t secName = static_cast<uint8_t>(s.first);
         uint32_t curSecSize = GetSecSize(s.first);
@@ -48,16 +49,39 @@ void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
         file.write(reinterpret_cast<char *>(&curSecSize), sizeof(curSecSize));
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
     }
+    std::shared_ptr<uint8_t> ptr = GetArkStackMapSharePtr();
+    uint32_t size = GetArkStackMapSize();
+    file.write(reinterpret_cast<char *>(&size), sizeof(size));
+    file.write(reinterpret_cast<char *>(ptr.get()), size);
+
+    uint32_t index = GetStartIndex();
+    uint32_t cnt = GetFuncCount();
+    file.write(reinterpret_cast<char *>(&index), sizeof(index));
+    file.write(reinterpret_cast<char *>(&cnt), sizeof(cnt));
+}
+
+void ModuleSectionDes::LoadStackMapSection(BinaryBufferParser &parser, uintptr_t secBegin, uint32_t &curUnitOffset)
+{
+    uint32_t size;
+    parser.ParseBuffer(&size, sizeof(size));
+    parser.ParseBuffer(reinterpret_cast<void *>(secBegin), size);
+    SetArkStackMapSize(size);
+    SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secBegin));
+    curUnitOffset += size;
+    uint32_t index;
+    uint32_t cnt;
+    parser.ParseBuffer(&index, sizeof(index));
+    parser.ParseBuffer(&cnt, sizeof(cnt));
+    SetStartIndex(index);
+    SetFuncCount(cnt);
 }
 
 void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
-    uint32_t &curUnitOffset, JSHandle<MachineCode> &code, EcmaVM *vm)
+    uint32_t &curUnitOffset, uint64_t codeAddress)
 {
     uint32_t secInfoSize;
     parser.ParseBuffer(&secInfoSize, sizeof(secInfoSize));
-    uint64_t codeSecAddr;
-    parser.ParseBuffer(&codeSecAddr, sizeof(codeSecAddr));
-    auto secBegin = code->GetDataOffsetAddress() + static_cast<uintptr_t>(curUnitOffset);
+    auto secBegin = codeAddress + static_cast<uintptr_t>(curUnitOffset);
     for (uint8_t i = 0; i < secInfoSize; i++) {
         uint8_t secName;
         parser.ParseBuffer(&secName, sizeof(secName));
@@ -65,37 +89,36 @@ void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
         uint32_t secSize;
         parser.ParseBuffer(&secSize, sizeof(secSize));
         SetSecSize(secSize, secEnumName);
-        switch (secEnumName) {
-            case ElfSecName::STACKMAP: {
-                uint32_t stackmapSize = GetSecSize(ElfSecName::STACKMAP);
-                std::unique_ptr<uint8_t[]> stackmapPtr(std::make_unique<uint8_t[]>(stackmapSize));
-                parser.ParseBuffer(stackmapPtr.get(), stackmapSize);
-                // since .llvm_stackmap is placed after .text, GetSecAddr(ElfSecName::TEXT) should be updated value
-                if (stackmapSize != 0) {
-                    vm->GetFileLoader()->GetStackMapParser()->CalculateStackMap(std::move(stackmapPtr),
-                        codeSecAddr, GetSecAddr(ElfSecName::TEXT));
-                }
-                break;
-            }
-            default : {
-                parser.ParseBuffer(reinterpret_cast<void *>(secBegin), secSize);
-                curUnitOffset += secSize;
-                SetSecAddr(secBegin, secEnumName);
-                secBegin += secSize;
-                break;
-            }
-        }
+        parser.ParseBuffer(reinterpret_cast<void *>(secBegin), secSize);
+        curUnitOffset += secSize;
+        SetSecAddr(secBegin, secEnumName);
+        secBegin += secSize;
     }
+    LoadStackMapSection(parser, secBegin, curUnitOffset);
+}
+
+void ModuleSectionDes::LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset)
+{
+    uint32_t size;
+    file.read(reinterpret_cast<char *>(&size), sizeof(size));
+    file.read(reinterpret_cast<char *>(secBegin), size);
+    SetArkStackMapSize(size);
+    SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secBegin));
+    curUnitOffset += size;
+    uint32_t index;
+    uint32_t cnt;
+    file.read(reinterpret_cast<char *>(&index), sizeof(index));
+    file.read(reinterpret_cast<char *>(&cnt), sizeof(cnt));
+    SetStartIndex(index);
+    SetFuncCount(cnt);
 }
 
 void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
-    uint32_t &curUnitOffset, JSHandle<MachineCode> &code, EcmaVM *vm)
+    uint32_t &curUnitOffset, uint64_t codeAddress)
 {
     uint32_t secInfoSize;
     file.read(reinterpret_cast<char *>(&secInfoSize), sizeof(secInfoSize));
-    uint64_t codeSecAddr;
-    file.read(reinterpret_cast<char *>(&codeSecAddr), sizeof(codeSecAddr));
-    auto secBegin = code->GetDataOffsetAddress() + static_cast<uintptr_t>(curUnitOffset);
+    auto secBegin = codeAddress + static_cast<uintptr_t>(curUnitOffset);
     for (uint8_t i = 0; i < secInfoSize; i++) {
         uint8_t secName;
         file.read(reinterpret_cast<char *>(&secName), sizeof(secName));
@@ -103,27 +126,12 @@ void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
         uint32_t secSize;
         file.read(reinterpret_cast<char *>(&secSize), sizeof(secSize));
         SetSecSize(secSize, secEnumName);
-        switch (secEnumName) {
-            case ElfSecName::STACKMAP: {
-                uint32_t stackmapSize = GetSecSize(ElfSecName::STACKMAP);
-                std::unique_ptr<uint8_t[]> stackmapPtr(std::make_unique<uint8_t[]>(stackmapSize));
-                file.read(reinterpret_cast<char *>(stackmapPtr.get()), stackmapSize);
-                // since .llvm_stackmap is placed after .text, GetSecAddr(ElfSecName::TEXT) should be updated value
-                if (stackmapSize != 0) {
-                    vm->GetFileLoader()->GetStackMapParser()->CalculateStackMap(std::move(stackmapPtr),
-                        codeSecAddr, GetSecAddr(ElfSecName::TEXT));
-                }
-                break;
-            }
-            default : {
-                file.read(reinterpret_cast<char *>(secBegin), secSize);
-                curUnitOffset += secSize;
-                SetSecAddr(secBegin, secEnumName);
-                secBegin += secSize;
-                break;
-            }
-        }
+        file.read(reinterpret_cast<char *>(secBegin), secSize);
+        curUnitOffset += secSize;
+        SetSecAddr(secBegin, secEnumName);
+        secBegin += secSize;
     }
+    LoadStackMapSection(file, secBegin, curUnitOffset);
 }
 
 void StubModulePackInfo::Save(const std::string &filename)
@@ -155,11 +163,11 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
     // by calling NewMachineCodeObject.
     //  then MachineCode will support movable, code is saved to MachineCode and stackmap is saved
     // to different heap which will be freed when stackmap is parsed by EcmaVM is started.
-    if (_binary_stub_m_length <= 1) {
-        LOG_FULL(FATAL) << "stub.m length <= 1, is default and invalid.";
+    if (_binary_stub_aot_length <= 1) {
+        LOG_FULL(FATAL) << "stub.aot length <= 1, is default and invalid.";
         return false;
     }
-    BinaryBufferParser binBufparser((uint8_t *)_binary_stub_m_start, _binary_stub_m_length);
+    BinaryBufferParser binBufparser((uint8_t *)_binary_stub_aot_start, _binary_stub_aot_length);
     binBufparser.ParseBuffer(&entryNum_, sizeof(entryNum_));
     entries_.resize(entryNum_);
     binBufparser.ParseBuffer(entries_.data(), sizeof(FuncEntryDes) * entryNum_);
@@ -167,33 +175,22 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
     des_.resize(moduleNum_);
     uint32_t totalCodeSize = 0;
     binBufparser.ParseBuffer(&totalCodeSize, sizeof(totalCodeSize_));
-    auto factory = vm->GetFactory();
-    auto codeHandle = factory->NewMachineCodeObject(totalCodeSize, nullptr);
-    SetCode(codeHandle);
+    void *addr = base::MemMmap::Mmap(totalCodeSize);
+    if (addr == nullptr) {
+        LOG_FULL(FATAL) << "mmap fail";
+        return false;
+    }
+    vm->GetFileLoader()->SetStubmmap(addr, totalCodeSize);
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(addr);
     uint32_t curUnitOffset = 0;
     uint32_t asmStubSize;
     binBufparser.ParseBuffer(&asmStubSize, sizeof(asmStubSize));
     SetAsmStubSize(asmStubSize);
-    auto secBegin = codeHandle->GetDataOffsetAddress();
-    binBufparser.ParseBuffer(reinterpret_cast<void *>(secBegin), asmStubSize);
-    SetAsmStubAddr(secBegin);
+    binBufparser.ParseBuffer(reinterpret_cast<void *>(codeAddress), asmStubSize);
+    SetAsmStubAddr(codeAddress);
     curUnitOffset += asmStubSize;
     for (size_t i = 0; i < moduleNum_; i++) {
-        des_[i].LoadSectionsInfo(binBufparser, curUnitOffset, codeHandle, vm);
-    }
-    for (auto &funcEntryDes : GetStubs()) {
-        if (funcEntryDes.IsGeneralRTStub()) {
-            continue;
-        }
-        auto codeAddr = funcEntryDes.codeAddr_;
-        auto moduleIndex = funcEntryDes.moduleIndex_;
-        auto startAddr = des_[moduleIndex].GetSecAddr(ElfSecName::TEXT);
-        auto delta = funcEntryDes.fpDeltaPrevFramSp_;
-        uintptr_t funAddr = startAddr + codeAddr;
-        kungfu::Func2FpDelta fun2fpDelta;
-        auto funSize = funcEntryDes.funcSize_;
-        fun2fpDelta[funAddr] = std::make_pair(delta, funSize);
-        vm->GetFileLoader()->GetStackMapParser()->CalculateFuncFpDelta(fun2fpDelta);
+        des_[i].LoadSectionsInfo(binBufparser, curUnitOffset, codeAddress);
     }
     for (auto &entry : entries_) {
         if (entry.IsGeneralRTStub()) {
@@ -248,32 +245,24 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
     uint32_t totalCodeSize = 0;
     file.read(reinterpret_cast<char *>(&totalCodeSize), sizeof(totalCodeSize_));
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetAssociatedJSThread());
-    auto factory = vm->GetFactory();
-    auto codeHandle = factory->NewMachineCodeObject(totalCodeSize, nullptr);
-    SetCode(codeHandle);
+    void *addr = base::MemMmap::Mmap(totalCodeSize);
+    if (addr == nullptr) {
+        LOG_FULL(FATAL) << "mmap fail";
+        return false;
+    }
+    vm->GetFileLoader()->SetAOTmmap(addr, totalCodeSize);
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(addr);
     file.read(reinterpret_cast<char *>(aotFileHashs_.data()), sizeof(uint32_t) * moduleNum_);
     uint32_t curUnitOffset = 0;
     for (size_t i = 0; i < moduleNum_; i++) {
-        des_[i].LoadSectionsInfo(file, curUnitOffset, codeHandle, vm);
+        des_[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
     }
-    for (auto &funcEntryDes : GetStubs()) {
-        auto codeAddr = funcEntryDes.codeAddr_;
-        auto moduleIndex = funcEntryDes.moduleIndex_;
-        auto delta = funcEntryDes.fpDeltaPrevFramSp_;
-        auto funSize = funcEntryDes.funcSize_;
-        auto startAddr = des_[moduleIndex].GetSecAddr(ElfSecName::TEXT);
-        uintptr_t funAddr = startAddr + codeAddr;
-        kungfu::Func2FpDelta fun2fpDelta;
-        fun2fpDelta[funAddr] = std::make_pair(delta, funSize);
-        vm->GetFileLoader()->GetStackMapParser()->CalculateFuncFpDelta(fun2fpDelta);
-    }
-
     for (size_t i = 0; i < entries_.size(); i++) {
         auto des = des_[entries_[i].moduleIndex_];
         entries_[i].codeAddr_ += des.GetSecAddr(ElfSecName::TEXT);
         auto curFileHash = aotFileHashs_[entries_[i].moduleIndex_];
         auto curMethodId = entries_[i].indexInKind_;
-        vm->SaveAOTFuncEntry(curFileHash, curMethodId, entries_[i].codeAddr_);
+        vm->GetFileLoader()->SaveAOTFuncEntry(curFileHash, curMethodId, entries_[i].codeAddr_);
     }
     file.close();
     LOG_COMPILER(INFO) << "Load aot file success";
@@ -325,9 +314,10 @@ void FileLoader::LoadAOTFile(const std::string &fileName)
     AddAOTPackInfo(aotPackInfo_);
 }
 
-void FileLoader::TryLoadSnapshotFile()
+void FileLoader::LoadSnapshotFile()
 {
-    const CString snapshotPath(vm_->GetJSOptions().GetSnapshotOutputFile().c_str());
+    CString snapshotArg(vm_->GetJSOptions().GetAOTOutputFile().c_str());
+    CString snapshotPath = snapshotArg + ".etso";
     Snapshot snapshot(vm_);
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     snapshot.Deserialize(SnapshotType::TS_LOADER, snapshotPath);
@@ -337,7 +327,7 @@ void FileLoader::TryLoadSnapshotFile()
 bool FileLoader::hasLoaded(const JSPandaFile *jsPandaFile)
 {
     auto fileHash = jsPandaFile->GetFileUniqId();
-    return !(hashToEntryMap_.find(fileHash) == hashToEntryMap_.end());
+    return hashToEntryMap_.find(fileHash) != hashToEntryMap_.end();
 }
 
 void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile)
@@ -354,7 +344,9 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
 
 void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func)
 {
-    auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), jsPandaFile->GetUniqueMethod(func));
+    JSMethod *method = func->GetMethod();
+    uint32_t methodId = method->GetMethodId().GetOffset();
+    auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
     func->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
@@ -371,9 +363,9 @@ void FileLoader::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const
     }
 }
 
-kungfu::LLVMStackMapParser* FileLoader::GetStackMapParser() const
+kungfu::ArkStackMapParser* FileLoader::GetStackMapParser() const
 {
-    return stackMapParser_;
+    return arkStackMapParser_;
 }
 
 void FileLoader::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
@@ -418,12 +410,15 @@ void FileLoader::InitializeStubEntries(const std::vector<AOTModulePackInfo::Func
             thread->SetBCStubEntry(des.indexInKind_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
             std::cout << "bytecode: " << GetEcmaOpcodeStr(static_cast<EcmaOpcode>(des.indexInKind_))
-                << " addr:" << des.codeAddr_ << std::endl;
+                << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
 #endif
+        } else if (des.IsBuiltinsStub()) {
+            thread->SetBuiltinStubEntry(des.indexInKind_, des.codeAddr_);
         } else {
             thread->RegisterRTInterface(des.indexInKind_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
-                std::cout << "runtime index: " << des.indexInKind_ << " addr:" << des.codeAddr_ << std::endl;
+                std::cout << "runtime index: " << std::dec << des.indexInKind_
+                    << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
 #endif
         }
     }
@@ -454,16 +449,22 @@ void FileLoader::RuntimeRelocate()
 
 FileLoader::~FileLoader()
 {
-    if (stackMapParser_ != nullptr) {
-        delete stackMapParser_;
-        stackMapParser_ = nullptr;
+    if (arkStackMapParser_ != nullptr) {
+        delete arkStackMapParser_;
+        arkStackMapParser_ = nullptr;
+    }
+    for (size_t i = 0; i < aotAddrs_.size(); i++) {
+        base::MemMmap::Munmap(aotAddrs_[i].first, aotAddrs_[i].second);
+    }
+    for (size_t i = 0; i < stubAddrs_.size(); i++) {
+        base::MemMmap::Munmap(stubAddrs_[i].first, stubAddrs_[i].second);
     }
 }
 
 FileLoader::FileLoader(EcmaVM *vm) : vm_(vm), factory_(vm->GetFactory())
 {
-    bool enableLog = vm->GetJSOptions().WasSetlogCompiledMethods();
-    stackMapParser_ = new kungfu::LLVMStackMapParser(enableLog);
+    bool enableLog = vm->GetJSOptions().WasSetCompilerLogOption();
+    arkStackMapParser_ = new kungfu::ArkStackMapParser(enableLog);
 }
 
 bool FileLoader::GetAbsolutePath(const std::string &relativePath, std::string &absPath)
@@ -494,11 +495,59 @@ void BinaryBufferParser::ParseBuffer(void *dst, uint32_t count)
     if (count > 0 && count + offset_ <= length_) {
         if (memcpy_s(dst, count, buffer_ + offset_, count) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
-            return;
-        };
+        }
         offset_ = offset_ + count;
     } else {
         LOG_FULL(FATAL) << "parse buffer error, length is 0 or overflow";
     }
+}
+
+void BinaryBufferParser::ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src)
+{
+    if (src >= buffer_ && src + count <= buffer_ + length_) {
+        if (memcpy_s(dst, count, src, count) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+        }
+    } else {
+        LOG_FULL(FATAL) << "parse buffer error, length is 0 or overflow";
+    }
+}
+
+bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uint8_t *, int>& ret) const
+{
+    uint64_t textStart = 0;
+    uint8_t *stackmapAddr = nullptr;
+    int delta = 0;
+    auto& des = GetCodeUnits();
+    auto& funcEntryDes = GetStubs();
+
+    auto cmp = [](const ModulePackInfo::FuncEntryDes &a, const ModulePackInfo::FuncEntryDes &b) {
+                    return a.codeAddr_ < b.codeAddr_;
+                };
+    for (size_t i = 0; i < des.size(); i++) {
+        auto d = des[i];
+        uint64_t addr = d.GetSecAddr(ElfSecName::TEXT);
+        uint32_t size = d.GetSecSize(ElfSecName::TEXT);
+        if (retAddr < addr || retAddr >= addr + size) {
+            continue;
+        }
+        stackmapAddr = d.GetArkStackMapRawPtr();
+        ASSERT(stackmapAddr != nullptr);
+        textStart = addr;
+        auto startIndex = d.GetStartIndex();
+        auto funcCount = d.GetFuncCount();
+        auto s = funcEntryDes.begin() + startIndex;
+        auto t = funcEntryDes.begin() + startIndex + funcCount;
+        ModulePackInfo::FuncEntryDes target;
+        target.codeAddr_ = retAddr;
+        auto it = std::upper_bound(s, t, target, cmp);
+        --it;
+        ASSERT(it != t);
+        ASSERT((it->codeAddr_ <= target.codeAddr_) && (target.codeAddr_ < it->codeAddr_ + it->funcSize_));
+        delta = it->fpDeltaPrevFrameSp_;
+        ret = std::make_tuple(textStart, stackmapAddr, delta);
+        return true;
+    }
+    return false;
 }
 }

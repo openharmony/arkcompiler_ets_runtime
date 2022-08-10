@@ -16,14 +16,17 @@
 #ifndef ECMASCRIPT_MEM_REGION_H
 #define ECMASCRIPT_MEM_REGION_H
 
-#include <sanitizer/asan_interface.h>
-
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/base/asan_interface.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/free_object_list.h"
 #include "ecmascript/mem/gc_bitset.h"
 #include "ecmascript/mem/remembered_set.h"
+#include "ecmascript/mem/mem_common.h"
+
 #include "libpandabase/os/mutex.h"
+#include "libpandabase/utils/aligned_storage.h"
+
 #include "securec.h"
 
 namespace panda {
@@ -196,6 +199,7 @@ public:
     void DeleteCrossRegionRSet();
     // Old to new remembered set
     void InsertOldToNewRSet(uintptr_t addr);
+    void ClearOldToNewRSet(uintptr_t addr);
     template <typename Visitor>
     void IterateAllOldToNewBits(Visitor visitor);
     void ClearOldToNewRSet();
@@ -203,9 +207,12 @@ public:
     void DeleteOldToNewRSet();
 
     void AtomicClearSweepingRSetInRange(uintptr_t start, uintptr_t end);
+    void ClearSweepingRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteSweepingRSet();
     template <typename Visitor>
     void AtomicIterateAllSweepingRSetBits(Visitor visitor);
+    template <typename Visitor>
+    void IterateAllSweepingRSetBits(Visitor visitor);
 
     static Region *ObjectAddressToRange(TaggedObject *obj)
     {
@@ -401,6 +408,18 @@ public:
         }
     }
 
+    template<class Callback>
+    void REnumerateFreeObjectSets(Callback cb)
+    {
+        auto last = freeObjectSets_.crbegin();
+        auto first = freeObjectSets_.crend();
+        for (; last != first; last++) {
+            if (!cb(*last)) {
+                break;
+            }
+        }
+    }
+
     inline bool IsMarking() const;
 
     void IncreaseAliveObjectSafe(size_t size)
@@ -484,7 +503,7 @@ public:
             markGCBitset_->Clear(bitsetSize_);
             begin_ = AlignUp(begin + bitsetSize_, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             // The object region marked with poison until it is allocated if is_asan is true
-            ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin_), (end - begin));
+            ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin_), (end - begin_));
         }
 
         static size_t GetFlagOffset(bool isArch32)

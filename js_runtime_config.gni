@@ -14,11 +14,14 @@
 if (!defined(ark_standalone_build)) {
   ark_root = "//arkcompiler/runtime_core"
   js_root = "//arkcompiler/ets_runtime"
+  third_party_gn_path = "//third_party"
+  import("//build/ohos.gni")
 } else {
   ark_root = "//runtime_core"
   js_root = "//ets_runtime"
+  third_party_gn_path = "//js_runtime/build/third_party_gn"
+  import("$build_root/ark.gni")
 }
-third_party_gn_path = "//third_party"
 compile_llvm_online = false
 run_with_asan = false
 enable_bytrace = true
@@ -26,6 +29,13 @@ enable_hitrace = true
 enable_hilog = true
 enable_dump_in_faultlog = true
 asan_lib_path = "/usr/lib/llvm-10/lib/clang/10.0.0/lib/linux"
+if (is_standard_system) {
+  icu_part_name = "icu"
+  icu_subsystem_name = "thirdparty"
+} else {
+  icu_part_name = "i18n"
+  icu_subsystem_name = "global"
+}
 
 # For OpenHarmony build, always link with the static lib:
 sdk_libc_secshared_dep =

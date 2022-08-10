@@ -57,7 +57,7 @@ void ConcurrentSweeper::Sweep(bool fullGC)
         heap_->GetNonMovableSpace()->Sweep();
         heap_->GetMachineCodeSpace()->Sweep();
     }
-    heap_->GetHugeObjectSpace()->Sweep(ConcurrentSweepEnabled());
+    heap_->GetHugeObjectSpace()->Sweep();
 }
 
 void ConcurrentSweeper::AsyncSweepSpace(MemSpaceType type, bool isMain)
@@ -123,22 +123,15 @@ void ConcurrentSweeper::WaitingTaskFinish(MemSpaceType type)
             cvs_[type].Wait(&mutexs_[type]);
         }
     }
-    FinishSweeping(type);
-}
-
-void ConcurrentSweeper::FinishSweeping(MemSpaceType type)
-{
     SparseSpace *space = heap_->GetSpaceWithType(type);
-    space->FillSweptRegion();
+    space->FinishFillSweptRegion();
 }
 
 void ConcurrentSweeper::TryFillSweptRegion()
 {
     for (int i = startSpaceType_; i < FREE_LIST_NUM; i++) {
-        FinishSweeping(static_cast<MemSpaceType>(i));
-    }
-    if (ConcurrentSweepEnabled()) {
-        heap_->GetHugeObjectSpace()->FinishConcurrentSweep();
+        SparseSpace *space = heap_->GetSpaceWithType(static_cast<MemSpaceType>(i));
+        space->TryFillSweptRegion();
     }
 }
 
@@ -146,11 +139,10 @@ void ConcurrentSweeper::ClearRSetInRange(Region *current, uintptr_t freeStart, u
 {
     if (ConcurrentSweepEnabled()) {
         current->AtomicClearSweepingRSetInRange(freeStart, freeEnd);
-        current->AtomicClearCrossRegionRSetInRange(freeStart, freeEnd);
     } else {
         current->ClearOldToNewRSetInRange(freeStart, freeEnd);
-        current->ClearCrossRegionRSetInRange(freeStart, freeEnd);
     }
+    current->ClearCrossRegionRSetInRange(freeStart, freeEnd);
 }
 
 bool ConcurrentSweeper::SweeperTask::Run([[maybe_unused]] uint32_t threadIndex)

@@ -12,11 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "tagged_hash_array.h"
+
+#include "ecmascript/tagged_hash_array.h"
+
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_queue.h"
-#include "object_factory.h"
-#include "js_handle.h"
 
 namespace panda::ecmascript {
 JSTaggedValue TaggedHashArray::Create(const JSThread *thread, uint32_t numberOfElements)
@@ -203,11 +205,11 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
         return JSTaggedValue::True();
     } else if (node->IsRBTreeNode()) {
         JSHandle<RBTreeNode> root = JSHandle<RBTreeNode>::Cast(node);
-        int curCount = root->GetCount();
+        uint32_t curCount = root->GetCount();
         JSHandle<RBTreeNode> changeNode = RBTreeNode::Set(thread, root, hash, key, value);
         changeNode->SetIsRed(thread, JSTaggedValue(false));
         table->Set(thread, index, changeNode);
-        int updateCount = changeNode->GetCount();
+        uint32_t updateCount = changeNode->GetCount();
         if (curCount == updateCount) {
             return JSTaggedValue::Undefined();
         }

@@ -19,6 +19,7 @@
 #include <atomic>
 
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
@@ -26,6 +27,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/mem/visitor.h"
+
 #include "libpandabase/os/thread.h"
 
 namespace panda::ecmascript {
@@ -81,7 +83,7 @@ struct BCStubEntries {
         return reinterpret_cast<Address*>(stubEntries_);
     }
 
-    Address Get(size_t index)
+    Address Get(size_t index) const
     {
         ASSERT(index < COUNT);
         return stubEntries_[index];
@@ -102,7 +104,7 @@ struct RTStubEntries {
         stubEntries_[index] = addr;
     }
 
-    Address Get(size_t index)
+    Address Get(size_t index) const
     {
         ASSERT(index < COUNT);
         return stubEntries_[index];
@@ -123,7 +125,7 @@ struct COStubEntries {
         stubEntries_[index] = addr;
     }
 
-    Address Get(size_t index)
+    Address Get(size_t index) const
     {
         ASSERT(index < COUNT);
         return stubEntries_[index];
@@ -145,7 +147,7 @@ struct BCDebuggerStubEntries {
         stubEntries_[index] = addr;
     }
 
-    Address Get(size_t index)
+    Address Get(size_t index) const
     {
         ASSERT(index < COUNT);
         return stubEntries_[index];
@@ -158,6 +160,26 @@ struct BCDebuggerStubEntries {
                 stubEntries_[i] = addr;
             }
         }
+    }
+};
+
+struct BuiltinStubEntries {
+    static constexpr size_t COUNT = kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS;
+    Address stubEntries_[COUNT];
+
+    static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;
+    static constexpr size_t SizeArch64 = sizeof(uint64_t) * COUNT;
+
+    void Set(size_t index, Address addr)
+    {
+        ASSERT(index < COUNT);
+        stubEntries_[index] = addr;
+    }
+
+    Address Get(size_t index) const
+    {
+        ASSERT(index < COUNT);
+        return stubEntries_[index];
     }
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(COStubEntries), COStubEntries::SizeArch32, COStubEntries::SizeArch64);
@@ -239,10 +261,11 @@ public:
         glueData_.newSpaceAllocationEndAddress_ = end;
     }
 
-    void Iterate(const RootVisitor &v0, const RootRangeVisitor &v1);
+    void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor);
 
 #if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    void IterateHandleWithCheck(const RootVisitor &v0, const RootRangeVisitor &v1);
+    void IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
 #endif
 
     uintptr_t* PUBLIC_API ExpandHandleStorage();
@@ -330,13 +353,13 @@ public:
         glueData_.rtStubEntries_.Set(id, addr);
     }
 
-    Address GetRTInterface(size_t id)
+    Address GetRTInterface(size_t id) const
     {
         ASSERT(id < kungfu::RuntimeStubCSigns::NUM_OF_STUBS);
         return glueData_.rtStubEntries_.Get(id);
     }
 
-    Address GetFastStubEntry(uint32_t id)
+    Address GetFastStubEntry(uint32_t id) const
     {
         return glueData_.coStubEntries_.Get(id);
     }
@@ -346,7 +369,17 @@ public:
         glueData_.coStubEntries_.Set(id, entry);
     }
 
-    Address GetBCStubEntry(uint32_t id)
+    Address GetBuiltinStubEntry(uint32_t id) const
+    {
+        return glueData_.builtinStubEntries_.Get(id);
+    }
+
+    void SetBuiltinStubEntry(size_t id, Address entry)
+    {
+        glueData_.builtinStubEntries_.Set(id, entry);
+    }
+
+    Address GetBCStubEntry(uint32_t id) const
     {
         return glueData_.bcStubEntries_.Get(id);
     }
@@ -381,7 +414,7 @@ public:
         return glueData_.bcStubEntries_.GetAddr();
     }
 
-    void CheckSwitchDebuggerBCStub();
+    void PUBLIC_API CheckSwitchDebuggerBCStub();
 
     ThreadId GetThreadId() const
     {
@@ -508,6 +541,17 @@ public:
         return finalizationCheckState_;
     }
 
+    GlobalEnv *GetGlueGlobalEnv()
+    {
+        return glueData_.glueGlobalEnv_;
+    }
+
+    void SetGlueGlobalEnv(GlobalEnv *global)
+    {
+        ASSERT(global != nullptr);
+        glueData_.glueGlobalEnv_ = global;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -519,10 +563,12 @@ public:
                                                  base::AlignedPointer,
                                                  RTStubEntries,
                                                  COStubEntries,
+                                                 BuiltinStubEntries,
                                                  BCDebuggerStubEntries,
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
+                                                 base::AlignedPointer,
                                                  GlobalEnvConstants> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -535,10 +581,12 @@ public:
             NewSpaceAllocationEndAddressIndex,
             RTStubEntriesIndex,
             COStubEntriesIndex,
+            BuiltinsStubEntriesIndex,
             BCDebuggerStubEntriesIndex,
             StateBitFieldIndex,
             FrameBaseIndex,
             StackLimitIndex,
+            GlueGlobalEnvIndex,
             GlobalConstIndex,
             NumOfMembers
         };
@@ -604,6 +652,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::COStubEntriesIndex)>(isArch32);
         }
 
+        static size_t GetBuiltinsStubEntriesOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::BuiltinsStubEntriesIndex)>(isArch32);
+        }
+
         static size_t GetBCDebuggerStubEntriesOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::BCDebuggerStubEntriesIndex)>(isArch32);
@@ -619,6 +672,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::StackLimitIndex)>(isArch32);
         }
 
+        static size_t GetGlueGlobalEnvOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::GlueGlobalEnvIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -629,10 +687,12 @@ public:
         alignas(EAS) const uintptr_t *newSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) RTStubEntries rtStubEntries_;
         alignas(EAS) COStubEntries coStubEntries_;
+        alignas(EAS) BuiltinStubEntries builtinStubEntries_;
         alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
         alignas(EAS) volatile uint64_t threadStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackLimit_ {0};
+        alignas(EAS) GlobalEnv *glueGlobalEnv_;
         alignas(EAS) GlobalEnvConstants globalConst_;
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);

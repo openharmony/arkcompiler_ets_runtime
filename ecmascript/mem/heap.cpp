@@ -15,15 +15,9 @@
 
 #include "ecmascript/mem/heap-inl.h"
 
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-#include <sys/sysinfo.h>
-#endif
-
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
-#endif
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
+#include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -41,7 +35,14 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
-#include "ecmascript/js_finalization_registry.h"
+
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#include <sys/sysinfo.h>
+#endif
+
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#endif
 
 namespace panda::ecmascript {
 Heap::Heap(EcmaVM *ecmaVm) : ecmaVm_(ecmaVm), thread_(ecmaVm->GetJSThread()),
@@ -113,7 +114,6 @@ void Heap::Initialize()
     stwYoungGC_ = new STWYoungGC(this, parallelGC_);
     fullGC_ = new FullGC(this);
 
-    derivedPointers_ = new ChunkMap<DerivedDataKey, uintptr_t>(ecmaVm_->GetChunk());
     partialGC_ = new PartialGC(this);
     sweeper_ = new ConcurrentSweeper(this, ecmaVm_->GetJSOptions().EnableConcurrentSweep() ?
         EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
@@ -201,10 +201,6 @@ void Heap::Destroy()
     if (sweeper_ != nullptr) {
         delete sweeper_;
         sweeper_ = nullptr;
-    }
-    if (derivedPointers_ != nullptr) {
-        delete derivedPointers_;
-        derivedPointers_ = nullptr;
     }
     if (concurrentMarker_ != nullptr) {
         delete concurrentMarker_;
@@ -326,7 +322,6 @@ void Heap::CollectGarbage(TriggerGCType gcType)
     size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
     memController_->StartCalculationBeforeGC();
     StatisticHeapObject(gcType);
-
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:
             // Use partial GC for young generation.
@@ -437,6 +432,16 @@ size_t Heap::VerifyHeapObjects() const
         VerifyObjectVisitor verifier(this, &failCount);
         snapshotSpace_->IterateOverObjects(verifier);
     }
+    return failCount;
+}
+
+size_t Heap::VerifyOldToNewRSet() const
+{
+    size_t failCount = 0;
+    VerifyObjectVisitor verifier(this, &failCount);
+    oldSpace_->IterateOldToNewOverObjects(verifier);
+    nonMovableSpace_->IterateOldToNewOverObjects(verifier);
+    machineCodeSpace_->IterateOldToNewOverObjects(verifier);
     return failCount;
 }
 
@@ -614,33 +619,6 @@ void Heap::TriggerConcurrentMarking()
     }
 }
 
-void Heap::UpdateDerivedObjectInStack()
-{
-    if (derivedPointers_->empty()) {
-        return;
-    }
-    for (auto derived : *derivedPointers_) {
-        auto baseAddr = reinterpret_cast<JSTaggedValue *>(derived.first.first);
-        JSTaggedValue base = *baseAddr;
-        if (base.IsHeapObject()) {
-            uintptr_t baseOldObject = derived.second;
-            uintptr_t *derivedAddr = reinterpret_cast<uintptr_t *>(derived.first.second);
-#ifndef NDEBUG
-            LOG_GC(DEBUG) << std::hex << "fix base before:" << baseAddr << " base old Value: " << baseOldObject <<
-                " derived:" << derivedAddr << " old Value: " << *derivedAddr << std::endl;
-#endif
-            // derived is always bigger than base
-            *derivedAddr = reinterpret_cast<uintptr_t>(base.GetTaggedObject()) + (*derivedAddr - baseOldObject);
-#ifndef NDEBUG
-            LOG_GC(DEBUG) << std::hex << "fix base after:" << baseAddr <<
-                " base New Value: " << base.GetTaggedObject() <<
-                " derived:" << derivedAddr << " New Value: " << *derivedAddr << std::endl;
-#endif
-        }
-    }
-    derivedPointers_->clear();
-}
-
 void Heap::WaitRunningTaskFinished()
 {
     os::memory::LockHolder holder(waitTaskFinishedMutex_);
@@ -777,6 +755,7 @@ bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 size_t Heap::GetArrayBufferSize() const
 {
     size_t result = 0;
+    sweeper_->EnsureAllTaskFinished();
     this->IterateOverObjects([&result](TaggedObject *obj) {
         JSHClass* jsClass = obj->GetClass();
         result += jsClass->IsArrayBuffer() ? jsClass->GetObjectSize() : 0;

@@ -35,6 +35,7 @@
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
@@ -88,6 +89,8 @@ using ecmascript::JSMap;
 using ecmascript::JSMethod;
 using ecmascript::JSNativePointer;
 using ecmascript::JSObject;
+using ecmascript::JSPandaFile;
+using ecmascript::JSPandaFileManager;
 using ecmascript::JSPrimitiveRef;
 using ecmascript::JSPromise;
 using ecmascript::JSRegExp;
@@ -455,6 +458,11 @@ void JSNApi::SetHostResolvePathTracker(EcmaVM *vm,
     vm->SetResolvePathCallback(cb);
 }
 
+void JSNApi::SetNativePtrGetter(EcmaVM *vm, void* cb)
+{
+    vm->SetNativePtrGetter(reinterpret_cast<ecmascript::NativePtrGetter>(cb));
+}
+
 void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb)
 {
     JSHandle<JSFunction> fun = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(cb));
@@ -592,6 +600,9 @@ EscapeLocalScope::EscapeLocalScope(const EcmaVM *vm) : LocalScope(vm, JSTaggedVa
 Local<NumberRef> NumberRef::New(const EcmaVM *vm, double input)
 {
     JSThread *thread = vm->GetJSThread();
+    if (std::isnan(input)) {
+        input = ecmascript::base::NAN_VALUE;
+    }
     JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
@@ -1032,7 +1043,8 @@ void ObjectRef::SetNativePointerField(int32_t index, void *nativePointer,
 }
 
 // ----------------------------------- FunctionRef --------------------------------------
-Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter, void *data)
+Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNative)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
@@ -1041,10 +1053,12 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc, Del
     JSHandle<JSNativePointer> extraInfo =
         factory->NewJSNativePointer(reinterpret_cast<void *>(nativeFunc), deleter, data);
     current->SetFunctionExtraInfo(thread, extraInfo.GetTaggedValue());
+    current->SetCallNative(callNative);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
-Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter, void *data)
+Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNative)
 {
     EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
@@ -1071,6 +1085,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
     JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(current), parent);
     current->SetHomeObject(thread, clsPrototype);
+    current->SetCallNative(callNative);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     return scope.Escape(result);
 }
@@ -1175,6 +1190,31 @@ Local<StringRef> FunctionRef::GetName(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(name);
 }
 
+Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
+{
+    [[maybe_unused]] LocalScope scope(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
+    JSMethod *method = func->GetMethod();
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    ecmascript::tooling::JSPtExtractor *debugExtractor =
+                                        JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    const std::string &allSourceCode = debugExtractor->GetSourceCode(panda_file::File::EntityId(
+        jsPandaFile->GetMainMethodIndex()));
+    std::string sourceCode = StringHelper::GetSpecifiedLine(allSourceCode, lineNumber);
+    uint32_t codeLen = sourceCode.length();
+    if (codeLen == 0 || sourceCode == "ANDA") {
+        sourceCode = "";
+        JSHandle<JSTaggedValue> sourceCodeHandle(thread, BuiltinsBase::GetTaggedString(thread, sourceCode.c_str()));
+        return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
+    }
+    if (sourceCode[codeLen - 1] == '\r') {
+        sourceCode = sourceCode.substr(0, codeLen - 1);
+    }
+    JSHandle<JSTaggedValue> sourceCodeHandle(thread, BuiltinsBase::GetTaggedString(thread, sourceCode.c_str()));
+    return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
+}
+
 bool FunctionRef::IsNative(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
@@ -1184,7 +1224,7 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
 }
 
 // ----------------------------------- ArrayRef ----------------------------------------
-Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, int32_t length)
+Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length)
 {
     JSThread *thread = vm->GetJSThread();
     JSTaggedNumber arrayLen(length);
@@ -2100,6 +2140,12 @@ bool JSValueRef::IsGeneratorObject()
     return rst;
 }
 
+bool JSValueRef::IsAsyncGeneratorObject()
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    return obj->IsAsyncGeneratorObject();
+}
+
 bool JSValueRef::IsAsyncFunction()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
@@ -2119,6 +2165,12 @@ bool JSValueRef::IsGeneratorFunction()
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     bool rst  = obj->IsGeneratorFunction();
     return rst;
+}
+
+bool JSValueRef::IsAsyncGeneratorFunction()
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    return obj->IsAsyncGeneratorFunction();
 }
 
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------

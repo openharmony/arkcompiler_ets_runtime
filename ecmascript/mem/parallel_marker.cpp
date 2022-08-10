@@ -24,7 +24,9 @@ void Marker::MarkRoots(uint32_t threadId)
     objXRay_.VisitVMRoots(
         std::bind(&Marker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2),
         std::bind(&Marker::HandleRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
-                  std::placeholders::_3));
+                  std::placeholders::_3),
+        std::bind(&Marker::HandleDerivedRoots, this, std::placeholders::_1, std::placeholders::_2,
+                  std::placeholders::_3, std::placeholders::_4));
     workManager_->PushWorkNodeToGlobal(threadId, false);
 }
 

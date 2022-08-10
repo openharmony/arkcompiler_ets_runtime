@@ -52,7 +52,7 @@ private:
                                 Local<StringRef> name, Local<JSValueRef> value);
     static bool SetGlobalValue(const EcmaVM *vm, Local<StringRef> name, Local<JSValueRef> value);
 
-    constexpr static int32_t NUM_ARGS = 2;
+    constexpr static uint32_t NUM_ARGS = 2;
 };
 }  // namespace tooling
 }  // namespace panda::ecmascript

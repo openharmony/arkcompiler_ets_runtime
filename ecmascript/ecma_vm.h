@@ -52,6 +52,9 @@ class EcmaStringTable;
 class SnapshotEnv;
 class SnapshotSerialize;
 class SnapshotProcessor;
+#if !WIN_OR_MAC_PLATFORM
+class HeapProfilerInterface;
+#endif
 namespace job {
 class MicroJobQueue;
 }  // namespace job
@@ -65,7 +68,7 @@ class JSHandle;
 class JSArrayBuffer;
 class JSFunction;
 class Program;
-class TSLoader;
+class TSManager;
 class FileLoader;
 class ModuleManager;
 class CjsModule;
@@ -83,6 +86,8 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
 
+using NativePtrGetter = void* (*)(void* info);
+
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
 
 class EcmaVM {
@@ -99,7 +104,7 @@ public:
 
     bool IsInitialized() const
     {
-        return vmInitialized_;
+        return initialized_;
     }
 
     bool IsGlobalConstInitialized() const
@@ -113,7 +118,6 @@ public:
     }
 
     bool Initialize();
-    bool InitializeFinish();
 
     GCStats *GetEcmaGCStats() const
     {
@@ -226,20 +230,20 @@ public:
     {
         return const_cast<Chunk *>(&chunk_);
     }
-    void ProcessNativeDelete(const WeakRootVisitor &v0);
-    void ProcessReferences(const WeakRootVisitor &v0);
+    void ProcessNativeDelete(const WeakRootVisitor &visitor);
+    void ProcessReferences(const WeakRootVisitor &visitor);
 
     ModuleManager *GetModuleManager() const
     {
         return moduleManager_;
     }
 
-    TSLoader *GetTSLoader() const
+    TSManager *GetTSManager() const
     {
-        return tsLoader_;
+        return tsManager_;
     }
 
-    FileLoader *GetFileLoader() const
+    FileLoader* PUBLIC_API GetFileLoader() const
     {
         return fileLoader_;
     }
@@ -286,6 +290,16 @@ public:
         return promiseRejectCallback_;
     }
 
+    void SetNativePtrGetter(NativePtrGetter cb)
+    {
+        nativePtrGetter_ = cb;
+    }
+
+    NativePtrGetter GetNativePtrGetter() const
+    {
+        return nativePtrGetter_;
+    }
+
     void SetHostPromiseRejectionTracker(HostPromiseRejectionTracker cb)
     {
         hostPromiseRejectionTracker_ = cb;
@@ -329,7 +343,6 @@ public:
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile);
 
-    void SaveAOTFuncEntry(uint32_t hash, uint32_t methodId, uint64_t funcEntry);
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {
         exceptionBCList_.emplace_back(std::pair<std::string, int32_t>(methodName, bcOffset));
@@ -344,6 +357,11 @@ public:
     {
         exceptionBCList_.clear();
     }
+
+#if !WIN_OR_MAC_PLATFORM
+    void DeleteHeapProfile();
+    HeapProfilerInterface *GetOrNewHeapProfile();
+#endif
 
     void preFork();
     void postFork();
@@ -388,7 +406,7 @@ private:
     // VM startup states.
     JSRuntimeOptions options_;
     bool icEnabled_ {true};
-    bool vmInitialized_ {false};
+    bool initialized_ {false};
     bool globalConstInitialized_ {false};
     GCStats *gcStats_ {nullptr};
     bool isUncaughtExceptionRegistered_ {false};
@@ -419,7 +437,7 @@ private:
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
-    TSLoader *tsLoader_ {nullptr};
+    TSManager *tsManager_ {nullptr};
     SnapshotEnv *snapshotEnv_ {nullptr};
     bool optionalLogEnabled_ {false};
     FileLoader *fileLoader_ {nullptr};
@@ -427,9 +445,14 @@ private:
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
 
+#if !WIN_OR_MAC_PLATFORM
+    HeapProfilerInterface *heapProfile_ {nullptr};
+#endif
+
     // Registered Callbacks
     PromiseRejectCallback promiseRejectCallback_ {nullptr};
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
+    NativePtrGetter nativePtrGetter_ {nullptr};
     void* data_ {nullptr};
 
     bool isProcessingPendingJob_ = false;

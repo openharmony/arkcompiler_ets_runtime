@@ -13,21 +13,23 @@
  * limitations under the License.
  */
 
-#include "accessor_data.h"
+#include "ecmascript/js_object-inl.h"
+
+#include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_for_in_iterator.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_iterator.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_thread.h"
-#include "global_dictionary-inl.h"
-#include "js_array.h"
-#include "js_for_in_iterator.h"
-#include "js_hclass.h"
-#include "js_iterator.h"
-#include "object_factory.h"
-#include "property_attributes.h"
-#include "tagged_array-inl.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/property_attributes.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 PropertyAttributes::PropertyAttributes(const PropertyDescriptor &desc)
@@ -1345,15 +1347,14 @@ JSHandle<TaggedArray> JSObject::EnumerableOwnNames(JSThread *thread, const JSHan
 {
     ASSERT_PRINT(obj->IsECMAObject(), "obj is not object");
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> keys;
     JSHandle<JSTaggedValue> tagObj(obj);
     // fast mode
     if (tagObj->IsJSObject() && !tagObj->IsTypedArray() && !tagObj->IsModuleNamespace()) {
-        keys = GetOwnEnumerableNamesInFastMode(thread, obj);
+        return GetOwnEnumerableNamesInFastMode(thread, obj);
     }
 
     uint32_t copyLength = 0;
-    keys = JSTaggedValue::GetOwnPropertyKeys(thread, tagObj);
+    JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, tagObj);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
     uint32_t length = keys->GetLength();
 
@@ -1905,7 +1906,7 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         propsLen++;
     }
     if (propsLen <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES) {
-        JSHandle<JSObject> obj = factory->GetObjectLiteralByHClass(properties, propsLen);
+        JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen);
         ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
         for (size_t i = 0; i < propsLen; i++) {
             // 2: literal contains a pair of key-value

@@ -21,7 +21,8 @@
 
 #include "ecmascript/mem/space.h"
 #include "ecmascript/taskpool/task.h"
-#include "os/mutex.h"
+
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 // CONFIG_DISABLE means concurrent sweeper is disabled by options or macros and cannot be changed.
@@ -47,7 +48,7 @@ public:
     void WaitAllTaskFinished();
     // Help to finish sweeping task. It can be called through js thread
     void EnsureAllTaskFinished();
-    // Ensure task finish
+    // Ensure task finish. It can be called through js thread
     void EnsureTaskFinished(MemSpaceType type);
 
     void TryFillSweptRegion();
@@ -100,7 +101,6 @@ private:
     };
 
     void AsyncSweepSpace(MemSpaceType type, bool isMain);
-    void FinishSweeping(MemSpaceType type);
 
     void WaitingTaskFinish(MemSpaceType type);
 

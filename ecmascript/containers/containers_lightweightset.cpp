@@ -13,10 +13,11 @@
  * limitations under the License.
  */
  
-#include "containers_lightweightset.h"
+#include "ecmascript/containers/containers_lightweightset.h"
+
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_api_lightweightset.h"
-#include "ecmascript/js_api_lightweightset_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_lightweightset_iterator.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"

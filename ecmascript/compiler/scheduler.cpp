@@ -12,10 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cmath>
 
-#include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
+#include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
 using DominatorTreeInfo = std::tuple<std::vector<GateRef>, std::unordered_map<GateRef, size_t>,
@@ -26,6 +27,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::unordered_map<GateRef, size_t> dfsTimestamp;
+    std::unordered_map<GateRef, size_t> dfsFatherIdx;
     circuit->AdvanceTime();
     {
         size_t timestamp = 0;
@@ -45,6 +47,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
                     if (acc.GetOpCode(succGate).IsState() && acc.GetMark(succGate) == MarkCode::NO_MARK) {
                         acc.SetMark(succGate, MarkCode::VISITED);
                         pendingList.push_back(succGate);
+                        dfsFatherIdx[succGate] = dfsTimestamp[curGate];
                     }
                 }
             }
@@ -54,52 +57,58 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         }
     }
     std::vector<size_t> immDom(bbGatesList.size());
+    std::vector<size_t> semiDom(bbGatesList.size());
+    std::vector<std::vector<size_t> > semiDomTree(bbGatesList.size());
     {
-        std::vector<std::vector<size_t>> dom(bbGatesList.size());
-        dom[0] = {0};
-        for (size_t idx = 1; idx < dom.size(); idx++) {
-            dom[idx].resize(dom.size());
-            std::iota(dom[idx].begin(), dom[idx].end(), 0);
-        }
-        bool changed = true;
-        while (changed) {
-            changed = false;
-            for (size_t idx = 1; idx < dom.size(); idx++) {
-                auto &curDom = dom[idx];
-                size_t origSize = curDom.size();
-                curDom.resize(dom.size());
-                std::iota(curDom.begin(), curDom.end(), 0);
-                std::vector<GateRef> preGates;
-                acc.GetInVector(bbGatesList[idx], preGates);
-                for (const auto &predGate : preGates) {
-                    if (bbGatesAddrToIdx.count(predGate) > 0) {
-                        std::vector<size_t> tmp(curDom.size());
-                        const auto &predDom = dom[bbGatesAddrToIdx[predGate]];
-                        auto it = std::set_intersection(
-                            curDom.begin(), curDom.end(), predDom.begin(), predDom.end(), tmp.begin());
-                        tmp.resize(it - tmp.begin());
-                        curDom = tmp;
+        std::vector<size_t> parent(bbGatesList.size());
+        std::iota(parent.begin(), parent.end(), 0);
+        std::vector<size_t> minIdx(bbGatesList.size());
+        std::function<size_t(size_t)> unionFind = [&] (size_t idx) -> size_t {
+            if (parent[idx] == idx) return idx;
+            size_t unionFindSetRoot = unionFind(parent[idx]);
+            if (semiDom[minIdx[idx]] > semiDom[minIdx[parent[idx]]]) {
+                minIdx[idx] = minIdx[parent[idx]];
+            }
+            return parent[idx] = unionFindSetRoot;
+        };
+        auto merge = [&] (size_t fatherIdx, size_t sonIdx) -> void {
+            size_t parentFatherIdx = unionFind(fatherIdx);
+            size_t parentSonIdx = unionFind(sonIdx);
+            parent[parentSonIdx] = parentFatherIdx;
+        };
+        std::iota(semiDom.begin(), semiDom.end(), 0);
+        semiDom[0] = semiDom.size();
+        for (size_t idx = bbGatesList.size() - 1; idx >= 1; idx --) {
+            std::vector<GateRef> preGates;
+            acc.GetInVector(bbGatesList[idx], preGates);
+            for (const auto &predGate : preGates) {
+                if (bbGatesAddrToIdx.count(predGate) > 0) {
+                    if (bbGatesAddrToIdx[predGate] < idx) {
+                        semiDom[idx] = std::min(semiDom[idx], bbGatesAddrToIdx[predGate]);
+                    } else {
+                        unionFind(bbGatesAddrToIdx[predGate]);
+                        semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[bbGatesAddrToIdx[predGate]]]);
                     }
                 }
-                auto it = std::find(curDom.begin(), curDom.end(), idx);
-                if (it == curDom.end()) {
-                    curDom.push_back(idx);
-                    std::sort(curDom.begin(), curDom.end());
-                }
-                if (dom[idx].size() != origSize) {
-                    changed = true;
+            }
+            for (const auto &succDomIdx : semiDomTree[idx]) {
+                unionFind(succDomIdx);
+                if (idx == semiDom[minIdx[succDomIdx]]) {
+                    immDom[succDomIdx] = idx;
+                } else {
+                    immDom[succDomIdx] = minIdx[succDomIdx];
                 }
             }
+            minIdx[idx] = idx;
+            merge(dfsFatherIdx[bbGatesList[idx]], idx);
+            semiDomTree[semiDom[idx]].push_back(idx);
         }
-        immDom[0] = dom[0].front();
-        for (size_t idx = 1; idx < dom.size(); idx++) {
-            auto it = std::remove(dom[idx].begin(), dom[idx].end(), idx);
-            dom[idx].resize(it - dom[idx].begin());
-            immDom[idx] = *std::max_element(dom[idx].begin(), dom[idx].end(),
-                [bbGatesList, dfsTimestamp](const size_t &lhs, const size_t &rhs) -> bool {
-                    return dfsTimestamp.at(bbGatesList[lhs]) < dfsTimestamp.at(bbGatesList[rhs]);
-                });
+        for (size_t idx = 1; idx < bbGatesList.size(); idx++) {
+            if (immDom[idx] != semiDom[idx]) {
+                immDom[idx] = immDom[immDom[idx]];
+            }
         }
+        semiDom[0] = 0;
     }
     return {bbGatesList, bbGatesAddrToIdx, immDom};
 }

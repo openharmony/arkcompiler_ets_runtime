@@ -20,32 +20,34 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/property_attributes.h"
-#include "ecmascript/ts_types/ts_loader.h"
-#include "utils/bit_field.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
+#include "libpandabase/utils/bit_field.h"
+
 namespace panda::ecmascript {
+#define ACCESSORS_ATTACHED_TYPEREF(name, offset, endOffset)               \
+    ACCESSORS_PRIMITIVE_FIELD(name##RawData, uint32_t, offset, endOffset) \
+    inline void Set##name(GlobalTSTypeRef type)                           \
+    {                                                                     \
+        Set##name##RawData(type.GetType());                               \
+    }                                                                     \
+    inline GlobalTSTypeRef Get##name() const                              \
+    {                                                                     \
+        return GlobalTSTypeRef(Get##name##RawData());                     \
+    }
+
 class TSType : public TaggedObject {
 public:
-    static constexpr size_t BIT_FIELD_OFFSET = TaggedObjectSize();
+    static constexpr size_t GT_OFFSET = TaggedObjectSize();
 
     inline static TSType *Cast(const TaggedObject *object)
     {
         return static_cast<TSType *>(const_cast<TaggedObject *>(object));
     }
 
-    ACCESSORS_PRIMITIVE_FIELD(GT, uint32_t, BIT_FIELD_OFFSET, LAST_OFFSET);
+    ACCESSORS_ATTACHED_TYPEREF(GT, GT_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
-
-    GlobalTSTypeRef GetGTRef() const
-    {
-        return GlobalTSTypeRef(GetGT());
-    }
-
-    void SetGTRef(GlobalTSTypeRef r)
-    {
-        SetGT(r.GetType());
-    }
 };
 
 class TSObjectType : public TSType {
@@ -56,8 +58,7 @@ public:
 
     static JSHClass *GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectType> objectType);
 
-    static GlobalTSTypeRef GetPropTypeGT(JSHandle<TSTypeTable> &table, JSHandle<TSObjectType> objType,
-                                          JSHandle<EcmaString> propName);
+    static GlobalTSTypeRef GetPropTypeGT(JSHandle<TSObjectType> objType, JSHandle<EcmaString> propName);
 
     ACCESSORS(ObjLayoutInfo, PROPERTIES_OFFSET, HCLASS_OFFSET);
     ACCESSORS(HClass, HCLASS_OFFSET, SIZE);
@@ -81,16 +82,16 @@ public:
 
     ACCESSORS(InstanceType, INSTANCE_TYPE_OFFSET, CONSTRUCTOR_TYPE_OFFSET);
     ACCESSORS(ConstructorType, CONSTRUCTOR_TYPE_OFFSET, PROTOTYPE_TYPE_OFFSET);
-    ACCESSORS(PrototypeType, PROTOTYPE_TYPE_OFFSET, EXTENSION_GT_RAW_DATA_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(ExtensionGTRawData, uint32_t, EXTENSION_GT_RAW_DATA_OFFSET, BIT_FIELD_OFFSET)
-    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
+    ACCESSORS(PrototypeType, PROTOTYPE_TYPE_OFFSET, EXTENSION_GT_OFFSET);
+    ACCESSORS_ATTACHED_TYPEREF(ExtensionGT, EXTENSION_GT_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     // define BitField
     static constexpr size_t HAS_LINKED_BITS = 1;
     FIRST_BIT_FIELD(BitField, HasLinked, bool, HAS_LINKED_BITS);
 
-    DECL_VISIT_OBJECT(INSTANCE_TYPE_OFFSET, EXTENSION_GT_RAW_DATA_OFFSET)
+    DECL_VISIT_OBJECT(INSTANCE_TYPE_OFFSET, EXTENSION_GT_OFFSET)
     DECL_DUMP()
 
     // Judgment base classType by extends typeId, ts2abc write 0 in base class type extends domain
@@ -100,22 +101,10 @@ public:
         return extendsTypeId == baseClassTypeExtendsTypeId;
     }
 
-    GlobalTSTypeRef GetExtensionGT() const
-    {
-        uint32_t extensionGTRawData = GetExtensionGTRawData();
-        return GlobalTSTypeRef(extensionGTRawData);
-    }
-
-    void SetExtensionGT(GlobalTSTypeRef gt)
-    {
-        uint32_t extensionGTRawData = gt.GetType();
-        SetExtensionGTRawData(extensionGTRawData);
-    }
-
     JSHandle<TSClassType> GetExtendClassType(JSThread *thread) const
     {
         GlobalTSTypeRef extensionGT = GetExtensionGT();
-        JSHandle<JSTaggedValue> extendClassType = thread->GetEcmaVM()->GetTSLoader()->GetType(extensionGT);
+        JSHandle<JSTaggedValue> extendClassType = thread->GetEcmaVM()->GetTSManager()->GetTSType(extensionGT);
         ASSERT(extendClassType->IsTSClassType());
         return JSHandle<TSClassType>(extendClassType);
     }
@@ -128,20 +117,10 @@ public:
     static GlobalTSTypeRef GetPropTypeGT(const JSThread *thread, JSHandle<TSTypeTable> &table,
                                           int localtypeId, JSHandle<EcmaString> propName);
 
-    static constexpr size_t CREATE_CLASS_TYPE_OFFSET = TSType::SIZE;
+    static constexpr size_t CLASS_GT_OFFSET = TSType::SIZE;
     static constexpr size_t CREATE_CLASS_OFFSET = 1;
-    ACCESSORS_PRIMITIVE_FIELD(ClassTypeRef, uint64_t, CREATE_CLASS_TYPE_OFFSET, LAST_OFFSET);
+    ACCESSORS_ATTACHED_TYPEREF(ClassGT, CLASS_GT_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
-
-    GlobalTSTypeRef GetClassRefGT() const
-    {
-        return GlobalTSTypeRef(GetClassTypeRef());
-    }
-
-    void SetClassRefGT(GlobalTSTypeRef r)
-    {
-        SetClassTypeRef(r.GetType());
-    }
 
     DECL_DUMP()
 };
@@ -152,21 +131,11 @@ public:
 
     static constexpr size_t IMPORT_TYPE_ID_OFFSET = TSType::SIZE;
     static constexpr size_t IMPORT_PATH_OFFSET_IN_LITERAL = 1;
-    ACCESSORS(ImportPath, IMPORT_TYPE_ID_OFFSET, IMPORT_PATH);
-    ACCESSORS_PRIMITIVE_FIELD(TargetTypeRef, uint64_t, IMPORT_PATH, LAST_OFFSET);
+    ACCESSORS(ImportPath, IMPORT_TYPE_ID_OFFSET, TARGET_GT_OFFSET);
+    ACCESSORS_ATTACHED_TYPEREF(TargetGT, TARGET_GT_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    GlobalTSTypeRef GetTargetRefGT() const
-    {
-        return GlobalTSTypeRef(GetTargetTypeRef());
-    }
-
-    void SetTargetRefGT(GlobalTSTypeRef r)
-    {
-        SetTargetTypeRef(r.GetType());
-    }
-
-    DECL_VISIT_OBJECT(IMPORT_TYPE_ID_OFFSET, IMPORT_PATH)
+    DECL_VISIT_OBJECT(IMPORT_TYPE_ID_OFFSET, TARGET_GT_OFFSET)
     DECL_DUMP()
 };
 
@@ -210,9 +179,9 @@ public:
 
     int GetParametersNum();
 
-    GlobalTSTypeRef GetParameterTypeGT(JSHandle<TSTypeTable> typeTable, int index);
+    GlobalTSTypeRef GetParameterTypeGT(int index);
 
-    GlobalTSTypeRef GetReturnValueTypeGT(JSHandle<TSTypeTable> typeTable);
+    GlobalTSTypeRef GetReturnValueTypeGT();
 
     DECL_VISIT_OBJECT(PARAMETER_TYPE_OFFSET, SIZE)
     DECL_DUMP()
@@ -221,10 +190,11 @@ public:
 class TSArrayType : public TSType {
 public:
     CAST_CHECK(TSArrayType, IsTSArrayType);
-    static constexpr size_t  PARAMETER_TYPE_REF_OFFSET = TSType::SIZE;
+    static constexpr size_t ELEMENT_GT_OFFSET = TSType::SIZE;
 
-    GlobalTSTypeRef GetElementTypeGT(JSHandle<TSTypeTable> typeTable);
-    ACCESSORS_PRIMITIVE_FIELD(ElementTypeRef, uint64_t, PARAMETER_TYPE_REF_OFFSET, SIZE);
+    ACCESSORS_ATTACHED_TYPEREF(ElementGT, ELEMENT_GT_OFFSET, LAST_OFFSET);
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

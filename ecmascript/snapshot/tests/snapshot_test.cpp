@@ -24,7 +24,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/snapshot/mem/snapshot_processor.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 using namespace panda::ecmascript;
 
@@ -67,26 +67,26 @@ public:
 HWTEST_F_L0(SnapshotTest, SerializeConstStringTable)
 {
     auto factory = ecmaVm->GetFactory();
-    auto tsLoader = ecmaVm->GetTSLoader();
+    auto tsManager = ecmaVm->GetTSManager();
     JSHandle<EcmaString> str1 = factory->NewFromASCII("str1");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("str2");
     JSHandle<EcmaString> str3 = factory->NewFromASCII("str3");
     JSHandle<EcmaString> str4 = factory->NewFromASCII("str4");
-    tsLoader->AddConstString(str1.GetTaggedValue());
-    tsLoader->AddConstString(str2.GetTaggedValue());
-    tsLoader->AddConstString(str3.GetTaggedValue());
-    tsLoader->AddConstString(str4.GetTaggedValue());
+    tsManager->AddConstString(str1.GetTaggedValue());
+    tsManager->AddConstString(str2.GetTaggedValue());
+    tsManager->AddConstString(str3.GetTaggedValue());
+    tsManager->AddConstString(str4.GetTaggedValue());
     CString fileName = "snapshot";
     Snapshot snapshotSerialize(ecmaVm);
     // serialize
-    CVector<JSTaggedType> constStringTable = tsLoader->GetConstStringTable();
+    CVector<JSTaggedType> constStringTable = tsManager->GetConstStringTable();
     snapshotSerialize.Serialize(reinterpret_cast<uintptr_t>(constStringTable.data()),
                                 constStringTable.size(), fileName);
-    tsLoader->ClearConstStringTable();
+    tsManager->ClearConstStringTable();
     Snapshot snapshotDeserialize(ecmaVm);
     // deserialize
     snapshotDeserialize.Deserialize(SnapshotType::TS_LOADER, fileName);
-    CVector<JSTaggedType> constStringTable1 = tsLoader->GetConstStringTable();
+    CVector<JSTaggedType> constStringTable1 = tsManager->GetConstStringTable();
     ASSERT_EQ(constStringTable1.size(), 4U);
     EcmaString *str11 = reinterpret_cast<EcmaString *>(constStringTable1[0]);
     EcmaString *str22 = reinterpret_cast<EcmaString *>(constStringTable1[1]);
@@ -126,7 +126,7 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
 
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetNonMovableSpace()->GetFirstRegion();
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetFirstRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
               constpool1->GetClass()->SizeFromJSHClass(constpool1));
@@ -171,7 +171,7 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
 
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetNonMovableSpace()->GetFirstRegion();
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetFirstRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
               constpool1->GetClass()->SizeFromJSHClass(constpool1));
@@ -186,8 +186,6 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     auto obj3 = constpool1->Get(200).GetTaggedObject();
     auto region = Region::ObjectAddressToRange(obj3);
     EXPECT_TRUE(region->InMachineCodeSpace());
-    auto region1 = Region::ObjectAddressToRange(constpool1);
-    EXPECT_TRUE(region1->InNonMovableSpace());
 
     std::remove(fileName.c_str());
 }
@@ -229,7 +227,7 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName1);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName2);
 
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetNonMovableSpace()->GetFirstRegion();
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetFirstRegion();
     auto constpool = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_TRUE(constpool->Get(0).IsTaggedArray());
     EXPECT_TRUE(constpool->Get(100).IsTaggedArray());
@@ -241,8 +239,6 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
     auto obj3 = constpool->Get(200).GetTaggedObject();
     auto region = Region::ObjectAddressToRange(obj3);
     EXPECT_TRUE(region->InMachineCodeSpace());
-    auto region1 = Region::ObjectAddressToRange(constpool);
-    EXPECT_TRUE(region1->InNonMovableSpace());
 
     std::remove(fileName1.c_str());
     std::remove(fileName2.c_str());

@@ -13,14 +13,17 @@
  * limitations under the License.
  */
 
-#include "js_date.h"
+#include "ecmascript/js_date.h"
+
 #include <ctime>
 #include <regex>
 #include <sys/time.h>
-#include "base/builtins_base.h"
+
 #ifdef PANDA_TARGET_WINDOWS
 #include <timezoneapi.h>
 #endif
+
+#include "ecmascript/base/builtins_base.h"
 
 namespace panda::ecmascript {
 using NumberHelper = base::NumberHelper;
@@ -75,28 +78,35 @@ int64_t DateUtils::FloorDiv(int64_t a, int64_t b)
 // static
 int64_t DateUtils::GetYearFromDays(int64_t *days)
 {
-    if (isCached_ && preSumDays_ == *days) {
-        *days = preDays_;
-        return preYear_;
+    if (isCached_) {
+        int64_t t = *days;
+        int64_t newDays = preDays_ + (t - preSumDays_);
+        if (newDays >= 1 && newDays < DAYS_IN_YEAR) {
+            preSumDays_ = t;
+            *days = newDays;
+            preDays_ = newDays;
+            return preYear_;
+        }
     }
     int64_t realDay;
     int64_t dayTemp = 0;
     int64_t d = *days;
     preSumDays_ = d;
-    int64_t year = FloorDiv(d * APPROXIMATION_NUMBER[0], APPROXIMATION_NUMBER[1]) + YEAR_NUMBER[0];
-    realDay = d - GetDaysFromYear(year);
-    while (realDay != 0) {
-        if (realDay < 0) {
-            year--;
-        } else {
-            dayTemp = GetDaysInYear(year);
-            if (realDay < dayTemp) {
-                break;
-            }
-            year++;
-        }
-        realDay = d - GetDaysFromYear(year);
-    }
+    d += DAYS_1970_TO_0000;                                          // shift from 1970-01-01 to 0000-03-01
+    int64_t era = (d >= 0 ? d : d - DAYS_IN_400_YEARS + 1) / DAYS_IN_400_YEARS;   // an era is a 400 year period
+    int64_t doe = static_cast<int64_t>(d - era * DAYS_IN_400_YEARS);              // days of era
+    int64_t yoe = (doe - doe / DAYS_IN_4_YEARS + doe / DAYS_IN_100_YEARS -
+                   doe / DAYS_IN_400_YEARS) / DAYS_IN_YEAR;        // year of era
+    int64_t y = static_cast<int64_t>(yoe) + era * LEAP_NUMBER[2];
+    int64_t doy = doe - (DAYS_IN_YEAR * yoe + yoe / LEAP_NUMBER[0] -
+                  yoe / LEAP_NUMBER[1]);                            // days of year
+    int64_t mp = (COEFFICIENT_TO_CIVIL[0] * doy + MONTH_COEFFICIENT) /
+                  COEFFICIENT_TO_CIVIL[1];                           // [0, 11] / [Mar,Feb] system
+    int64_t m = mp + (mp < MONTH_TRANSFORM[1] ?
+                MONTH_TRANSFORM[0] : MONTH_TRANSFORM[2]);           // transform the month to civil system
+    int64_t year = y + (m <= MONTH_COEFFICIENT);
+    dayTemp = doy + DAYS_JAN_AND_FEB + IsLeap(year);                // 03-01 is the first day of year
+    realDay = m > MONTH_COEFFICIENT ? dayTemp : (doy - DAYS_MAR_TO_DEC);   // shift from 03-01 to 01-01
     *days = realDay;
     preDays_ = realDay;
     preYear_ = year;
@@ -544,7 +554,7 @@ JSTaggedValue JSDate::UTC(EcmaRuntimeCallInfo *argv)
         year = base::NAN_VALUE;
     }
     uint32_t index = 1;
-    uint32_t numArgs = static_cast<uint32_t>(argv->GetArgsNumber());
+    uint32_t numArgs = argv->GetArgsNumber();
     JSTaggedValue res;
     if (numArgs > index) {
         JSHandle<JSTaggedValue> value = base::BuiltinsBase::GetCallArg(argv, index);
@@ -966,7 +976,7 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
     double timeMs = this->GetTimeValue().GetDouble();
 
     // get values from argv.
-    uint32_t argc = static_cast<uint32_t>(argv->GetArgsNumber());
+    uint32_t argc = argv->GetArgsNumber();
     if (argc == 0) {
         return JSTaggedValue(base::NAN_VALUE);
     }

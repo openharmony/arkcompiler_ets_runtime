@@ -12,17 +12,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+
 #include <ostream>
 #include <sstream>
-#include "ecmascript/tests/test_helper.h"
-#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/dyn_chunk.h"
+#include "ecmascript/tests/test_helper.h"
+
 #include "llvm-c/Analysis.h"
 #include "llvm-c/Core.h"
+#include "llvm-c/Disassembler.h"
 #include "llvm-c/ExecutionEngine.h"
 #include "llvm-c/Target.h"
-#include "llvm-c/Disassembler.h"
 
 namespace panda::test {
 using namespace panda::ecmascript;

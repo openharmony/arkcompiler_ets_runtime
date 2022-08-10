@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "tagged_dictionary.h"
-#include "tagged_hash_table.h"
+#include "ecmascript/tagged_dictionary.h"
+
+#include "ecmascript/tagged_hash_table.h"
 
 namespace panda::ecmascript {
 int NameDictionary::Hash(const JSTaggedValue &key)

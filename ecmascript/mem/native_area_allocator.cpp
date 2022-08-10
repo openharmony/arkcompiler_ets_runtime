@@ -20,7 +20,8 @@
 #else
 #include <malloc/malloc.h>
 #endif
-#include "os/mem.h"
+
+#include "libpandabase/os/mem.h"
 
 namespace panda::ecmascript {
 Area *NativeAreaAllocator::AllocateArea(size_t capacity)

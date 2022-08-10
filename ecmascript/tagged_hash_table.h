@@ -18,8 +18,8 @@
 
 #include <vector>
 
-#include "js_handle.h"
-#include "tagged_array.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
 template<typename Derived>

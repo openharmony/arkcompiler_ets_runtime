@@ -246,6 +246,7 @@
 // get foo's Frame by bar's Frame prev field
 
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/llvm_stackmap_type.h"
 #include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/visitor.h"
 
@@ -254,35 +255,35 @@ class JSThread;
 class EcmaVM;
 class FrameIterator;
 namespace kungfu {
-    class LLVMStackMapParser;
+    class ArkStackMapParser;
 };
-using DerivedDataKey = std::pair<uintptr_t, uintptr_t>;
 enum class FrameType: uintptr_t {
     OPTIMIZED_FRAME = 0,
-    OPTIMIZED_ENTRY_FRAME = 1,
-    OPTIMIZED_JS_FUNCTION_FRAME = 2,
-    LEAVE_FRAME = 3,
-    LEAVE_FRAME_WITH_ARGV = 4,
-    BUILTIN_CALL_LEAVE_FRAME = 5,
-    INTERPRETER_FRAME = 6,
-    ASM_INTERPRETER_FRAME = 7,
-    INTERPRETER_CONSTRUCTOR_FRAME = 8,
-    BUILTIN_FRAME = 9,
-    BUILTIN_FRAME_WITH_ARGV = 10,
-    BUILTIN_ENTRY_FRAME = 11,
-    INTERPRETER_BUILTIN_FRAME = 12,
-    INTERPRETER_FAST_NEW_FRAME = 13,
-    INTERPRETER_ENTRY_FRAME = 14,
-    ASM_INTERPRETER_ENTRY_FRAME = 15,
-    ASM_INTERPRETER_BRIDGE_FRAME = 16,
-    OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME = 17,
+    OPTIMIZED_ENTRY_FRAME,
+    OPTIMIZED_JS_FUNCTION_FRAME,
+    LEAVE_FRAME,
+    LEAVE_FRAME_WITH_ARGV,
+    BUILTIN_CALL_LEAVE_FRAME,
+    INTERPRETER_FRAME,
+    ASM_INTERPRETER_FRAME,
+    INTERPRETER_CONSTRUCTOR_FRAME,
+    BUILTIN_FRAME,
+    BUILTIN_FRAME_WITH_ARGV,
+    BUILTIN_ENTRY_FRAME,
+    INTERPRETER_BUILTIN_FRAME,
+    INTERPRETER_FAST_NEW_FRAME,
+    INTERPRETER_ENTRY_FRAME,
+    ASM_INTERPRETER_ENTRY_FRAME,
+    ASM_INTERPRETER_BRIDGE_FRAME,
+    OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME,
+    OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME,
 
-    FRAME_TYPE_BEGIN = OPTIMIZED_FRAME,
-    FRAME_TYPE_END = OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME,
-    INTERPRETER_BEGIN = INTERPRETER_FRAME,
-    INTERPRETER_END = INTERPRETER_FAST_NEW_FRAME,
-    BUILTIN_BEGIN = BUILTIN_FRAME,
-    BUILTIN_END = BUILTIN_ENTRY_FRAME,
+    FRAME_TYPE_FIRST = OPTIMIZED_FRAME,
+    FRAME_TYPE_LAST = OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME,
+    INTERPRETER_FIRST = INTERPRETER_FRAME,
+    INTERPRETER_LAST = INTERPRETER_FAST_NEW_FRAME,
+    BUILTIN_FIRST = BUILTIN_FRAME,
+    BUILTIN_LAST = BUILTIN_ENTRY_FRAME,
 };
 
 enum class ReservedSlots: int {
@@ -313,11 +314,8 @@ struct OptimizedFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                    base::AlignedPointer,
                                                    base::AlignedPointer> {
 public:
-    void GCIterate(const FrameIterator &it,
-        const RootVisitor &v0,
-        [[maybe_unused]] const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers,
-        bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const;
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -340,6 +338,47 @@ private:
     {
         return returnAddr;
     }
+    [[maybe_unused]] alignas(EAS) FrameType type {0};
+    alignas(EAS) JSTaggedType *prevFp {nullptr};
+    alignas(EAS) uintptr_t returnAddr {0};
+    friend class FrameIterator;
+};
+STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, OptimizedFrame::SizeArch64);
+
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+struct OptimizedJSFunctionUnfoldArgVFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer,
+                                                                       base::AlignedPointer> {
+private:
+    enum class Index : size_t {
+        CallSiteSpIndex = 0,
+        TypeIndex,
+        PrevFpIndex,
+        ReturnAddrIndex,
+        NumOfMembers
+    };
+    static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
+
+    static OptimizedJSFunctionUnfoldArgVFrame* GetFrameFromSp(const JSTaggedType *sp)
+    {
+        return reinterpret_cast<OptimizedJSFunctionUnfoldArgVFrame *>(reinterpret_cast<uintptr_t>(sp)
+            - MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, prevFp));
+    }
+    inline JSTaggedType* GetPrevFrameFp() const
+    {
+        return prevFp;
+    }
+    uintptr_t GetReturnAddr() const
+    {
+        return returnAddr;
+    }
+    uintptr_t GetPrevFrameSp() const
+    {
+        return callSiteSp;
+    }
+    [[maybe_unused]] alignas(EAS) uintptr_t callSiteSp {0};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
@@ -414,9 +453,9 @@ public:
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    void CollectBCOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const;
 
     inline JSTaggedValue GetEnv() const
     {
@@ -553,7 +592,7 @@ public:
     {
         return sizeof(InterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
-    void GCIterate(const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 
     alignas(EAS) JSTaggedValue constpool {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
@@ -594,7 +633,7 @@ struct InterpretedBuiltinFrame : public base::AlignedStruct<JSTaggedValue::Tagge
         return sizeof(InterpretedBuiltinFrame) / JSTaggedValue::TaggedTypeSize();
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
     alignas(EAS) const uint8_t *pc {nullptr};
@@ -685,8 +724,8 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
     {
         return sizeof(AsmInterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
-    void GCIterate(const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const;
 
     JSTaggedValue GetEnv() const
     {
@@ -739,8 +778,8 @@ struct InterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::TaggedT
         return sizeof(InterpretedEntryFrame) / JSTaggedValue::TaggedTypeSize();
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &v0,
-        const RootRangeVisitor &v1) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor,
+        const RootRangeVisitor &rangeVisitor) const;
     alignas(EAS) const uint8_t *pc {nullptr};
     alignas(EAS) InterpretedFrameBase base;
 };
@@ -833,9 +872,7 @@ struct OptimizedLeaveFrame {
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
 struct OptimizedWithArgvLeaveFrame {
@@ -861,9 +898,7 @@ struct OptimizedWithArgvLeaveFrame {
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
 struct OptimizedBuiltinLeaveFrame {
@@ -885,9 +920,7 @@ public:
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 
 private:
     [[maybe_unused]] FrameType type;
@@ -962,9 +995,7 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
     alignas(EAS) FrameType type;
     alignas(EAS) JSTaggedType *prevFp;
     alignas(EAS) uintptr_t returnAddr;
@@ -1022,9 +1053,7 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
     {
         return returnAddr;
     }
-    void GCIterate(
-        const FrameIterator &it, const RootVisitor &v0, const RootRangeVisitor &v1,
-        ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers, bool isVerifying) const;
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
     // argv(... this, new.target, function)
     // numargs
     alignas(EAS) FrameType type;
@@ -1069,7 +1098,7 @@ public:
     }
     int ComputeDelta() const;
     void Advance();
-    uintptr_t GetPrevFrameCallSiteSp(uintptr_t curPc = 0) const;
+    uintptr_t GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc = 0) const;
     uintptr_t GetPrevFrame() const;
     uintptr_t GetCallSiteSp() const
     {
@@ -1083,14 +1112,18 @@ public:
     {
         return thread_;
     }
-    bool CollectGCSlots(std::set<uintptr_t> &baseSet, ChunkMap<DerivedDataKey, uintptr_t> *data,
-                        bool isVerifying) const;
+    bool IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    void CollectBCOffsetInfo(kungfu::ConstInfo &info) const;
+    std::tuple<uint64_t, uint8_t *, int> CalCallSiteInfo(uintptr_t retAddr) const;
+    int GetCallSiteDelta(uintptr_t retAddr) const;
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
-    const kungfu::LLVMStackMapParser *stackmapParser_ {nullptr};
+    const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
     uintptr_t optimizedCallSiteSp_ {0};
     uintptr_t optimizedReturnAddr_ {0};
+    uint8_t *stackMapAddr_ {nullptr};
+    int fpDeltaPrevFrameSp_ {0};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_FRAMES_H

@@ -16,30 +16,33 @@
 #include <cstdint>
 #include <unistd.h>
 
-#include "gtest/gtest.h"
-#include "ecmascript/builtins/builtins_promise_handler.h"
+#include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/binary_section.h"
+#include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/compiler/common_stubs.h"
-#include "ecmascript/compiler/llvm_codegen.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
-#include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/llvm_codegen.h"
+#include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/stub.h"
+#include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/file_loader.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/tests/test_helper.h"
+
 #include "llvm/IR/Instructions.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/SourceMgr.h"
-#include "ecmascript/compiler/assembler_module.h"
+
+#include "gtest/gtest.h"
 
 namespace panda::test {
 using namespace panda::ecmascript;
@@ -54,18 +57,23 @@ public:
         BytecodeStubCSigns::Initialize();
         CommonStubCSigns::Initialize();
         RuntimeStubCSigns::Initialize();
+        auto logOpt = thread->GetEcmaVM()->GetJSOptions().GetCompilerLogOption();
+        log = new CompilerLog(logOpt);
         stubModule.SetUpForCommonStubs();
     }
 
     void TearDown() override
     {
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
+        if (log != nullptr) {
+            delete log;
+        }
     }
 
     void PrintCircuitByBasicBlock([[maybe_unused]] const std::vector<std::vector<GateRef>> &cfg,
                                   [[maybe_unused]] const Circuit &netOfGates) const
     {
-        if (thread->GetEcmaVM()->GetJSOptions().WasSetlogCompiledMethods()) {
+        if (thread->GetEcmaVM()->GetJSOptions().WasSetCompilerLogOption()) {
             GateAccessor acc(const_cast<Circuit*>(&netOfGates));
             for (size_t bbIdx = 0; bbIdx < cfg.size(); bbIdx++) {
                 LOG_COMPILER(INFO) << (acc.GetOpCode(cfg[bbIdx].front()).IsCFGMerge() ? "MERGE_" : "BB_")
@@ -94,6 +102,7 @@ public:
     EcmaVM *instance {nullptr};
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
+    CompilerLog *log {nullptr};
     LLVMModule stubModule {"stub_tests", "x86_64-unknown-linux-gnu"};
 };
 
@@ -104,8 +113,10 @@ HWTEST_F_L0(StubTest, FastAddTest)
     Circuit netOfGates;
     CallSignature callSignature;
     AddCallSignature::Initialize(&callSignature);
-    AddStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    AddStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -113,7 +124,7 @@ HWTEST_F_L0(StubTest, FastAddTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     // Testcase build and run
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
@@ -143,8 +154,10 @@ HWTEST_F_L0(StubTest, FastSubTest)
     Circuit netOfGates;
     CallSignature callSignature;
     SubCallSignature::Initialize(&callSignature);
-    SubStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    SubStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -152,7 +165,7 @@ HWTEST_F_L0(StubTest, FastSubTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     // Testcase build and run
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
@@ -178,8 +191,10 @@ HWTEST_F_L0(StubTest, FastMulTest)
     Circuit netOfGates;
     CallSignature callSignature;
     MulCallSignature::Initialize(&callSignature);
-    MulStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    MulStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -187,7 +202,7 @@ HWTEST_F_L0(StubTest, FastMulTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     // Testcase build and run
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
@@ -232,8 +247,10 @@ HWTEST_F_L0(StubTest, FastDivTest)
     Circuit netOfGates;
     CallSignature callSignature;
     DivCallSignature::Initialize(&callSignature);
-    DivStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    DivStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -241,7 +258,7 @@ HWTEST_F_L0(StubTest, FastDivTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
     // test normal Division operation
@@ -279,8 +296,10 @@ HWTEST_F_L0(StubTest, FastModTest)
     Circuit netOfGates;
     CallSignature callSignature;
     ModCallSignature::Initialize(&callSignature);
-    ModStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    ModStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -288,7 +307,7 @@ HWTEST_F_L0(StubTest, FastModTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
     // test left, right are all integer
@@ -345,8 +364,10 @@ HWTEST_F_L0(StubTest, TryLoadICByName)
     Circuit netOfGates;
     CallSignature callSignature;
     TryLoadICByNameCallSignature::Initialize(&callSignature);
-    TryLoadICByNameStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    TryLoadICByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -354,7 +375,7 @@ HWTEST_F_L0(StubTest, TryLoadICByName)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
 }
 
 HWTEST_F_L0(StubTest, TryLoadICByValue)
@@ -364,8 +385,10 @@ HWTEST_F_L0(StubTest, TryLoadICByValue)
     Circuit netOfGates;
     CallSignature callSignature;
     TryLoadICByValueCallSignature::Initialize(&callSignature);
-    TryLoadICByValueStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    TryLoadICByValueStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -373,7 +396,7 @@ HWTEST_F_L0(StubTest, TryLoadICByValue)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
 }
 
 HWTEST_F_L0(StubTest, TryStoreICByName)
@@ -383,8 +406,10 @@ HWTEST_F_L0(StubTest, TryStoreICByName)
     Circuit netOfGates;
     CallSignature callSignature;
     TryStoreICByNameCallSignature::Initialize(&callSignature);
-    TryStoreICByNameStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    TryStoreICByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -392,7 +417,7 @@ HWTEST_F_L0(StubTest, TryStoreICByName)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
 }
 
 HWTEST_F_L0(StubTest, TryStoreICByValue)
@@ -402,8 +427,10 @@ HWTEST_F_L0(StubTest, TryStoreICByValue)
     Circuit netOfGates;
     CallSignature callSignature;
     TryStoreICByValueCallSignature::Initialize(&callSignature);
-    TryStoreICByValueStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    TryStoreICByValueStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -411,7 +438,7 @@ HWTEST_F_L0(StubTest, TryStoreICByValue)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
 }
 
 struct ThreadTy {
@@ -670,7 +697,7 @@ HWTEST_F_L0(StubTest, JSEntryTest)
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
 
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto engine = assembler.GetEngine();
     uint64_t stub1Code = LLVMGetFunctionAddress(engine, "stub1");
     uint64_t stub2Code = LLVMGetFunctionAddress(engine, "stub2");
@@ -738,7 +765,7 @@ HWTEST_F_L0(StubTest, Prologue)
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
 
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto engine = assembler.GetEngine();
     uint64_t mainCode = LLVMGetFunctionAddress(engine, "main");
     auto mainFunc = reinterpret_cast<int64_t (*)(int64_t, int64_t)>(mainCode);
@@ -810,7 +837,7 @@ HWTEST_F_L0(StubTest, CEntryFp)
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
 
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto engine = assembler.GetEngine();
     uint64_t nativeCode = LLVMGetFunctionAddress(engine, "main");
     LOG_COMPILER(INFO) << " nativeCode : " << nativeCode;
@@ -847,7 +874,7 @@ HWTEST_F_L0(StubTest, LoadGCIRTest)
     }
     LLVMModuleRef module = LLVMCloneModule(wrap(rawModule.get()));
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto engine = assembler.GetEngine();
     LLVMValueRef function = LLVMGetNamedFunction(module, "main");
 
@@ -867,8 +894,10 @@ HWTEST_F_L0(StubTest, GetPropertyByIndexStub)
     Circuit netOfGates;
     CallSignature callSignature;
     GetPropertyByIndexCallSignature::Initialize(&callSignature);
-    GetPropertyByIndexStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    GetPropertyByIndexStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -876,7 +905,7 @@ HWTEST_F_L0(StubTest, GetPropertyByIndexStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *getpropertyByIndex = reinterpret_cast<JSTaggedValue (*)(uintptr_t, JSTaggedValue, uint32_t)>(
         reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
     auto *factory = thread->GetEcmaVM()->GetFactory();
@@ -899,8 +928,10 @@ HWTEST_F_L0(StubTest, SetPropertyByIndexStub)
     Circuit netOfGates;
     CallSignature callSignature;
     SetPropertyByIndexCallSignature::Initialize(&callSignature);
-    SetPropertyByIndexStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    SetPropertyByIndexStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
@@ -910,7 +941,7 @@ HWTEST_F_L0(StubTest, SetPropertyByIndexStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *setpropertyByIndex = reinterpret_cast<JSTaggedValue (*)(uintptr_t, JSTaggedValue, uint32_t, JSTaggedValue)>(
         reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
     auto *factory = thread->GetEcmaVM()->GetFactory();
@@ -935,8 +966,10 @@ HWTEST_F_L0(StubTest, GetPropertyByNameStub)
     Circuit netOfGates;
     CallSignature callSignature;
     GetPropertyByNameCallSignature::Initialize(&callSignature);
-    GetPropertyByNameStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    GetPropertyByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
@@ -946,7 +979,7 @@ HWTEST_F_L0(StubTest, GetPropertyByNameStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *getPropertyByNamePtr = reinterpret_cast<JSTaggedValue (*)(uintptr_t, uint64_t, uint64_t)>(
         reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
     auto *factory = thread->GetEcmaVM()->GetFactory();
@@ -973,8 +1006,10 @@ HWTEST_F_L0(StubTest, SetPropertyByNameStub)
     Circuit netOfGates;
     CallSignature callSignature;
     SetPropertyByNameCallSignature::Initialize(&callSignature);
-    SetPropertyByNameStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    SetPropertyByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -982,7 +1017,7 @@ HWTEST_F_L0(StubTest, SetPropertyByNameStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *setPropertyByName = reinterpret_cast<JSTaggedValue (*)(uintptr_t, JSTaggedValue,
         JSTaggedValue, JSTaggedValue, bool)>
         (reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
@@ -1008,8 +1043,10 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     Circuit netOfGates2;
     CallSignature callSignature;
     GetPropertyByIndexCallSignature::Initialize(&callSignature);
-    GetPropertyByIndexStubBuilder getPropertyByIndexStub(&callSignature, &netOfGates2);
-    getPropertyByIndexStub.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates2);
+    GetPropertyByIndexStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates2.PrintAllGates();
     auto cfg2 = Scheduler::Run(&netOfGates2);
     LLVMIRBuilder llvmBuilder2(&cfg2, &netOfGates2, &stubModule, getPropertyByIndexfunction,
@@ -1020,8 +1057,10 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     Circuit netOfGates1;
     CallSignature callSignature1;
     GetPropertyByNameCallSignature::Initialize(&callSignature1);
-    GetPropertyByNameStubBuilder getPropertyByNameStub(&callSignature1, &netOfGates1);
-    getPropertyByNameStub.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub1(&callSignature1, &netOfGates1);
+    GetPropertyByNameStubBuilder getPropertyByNameStub(&callSignature, stub1.GetEnvironment());
+    stub1.SetStubBuilder(&getPropertyByNameStub);
+    stub1.GenerateCircuit(stubModule.GetCompilationConfig());
     bool result = Verifier::Run(&netOfGates1);
     ASSERT_TRUE(result);
     auto cfg1 = Scheduler::Run(&netOfGates1);
@@ -1033,8 +1072,10 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     Circuit netOfGates;
     CallSignature callSignature2;
     GetPropertyByValueCallSignature::Initialize(&callSignature2);
-    GetPropertyByValueStubBuilder optimizer(&callSignature2, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub2(&callSignature2, &netOfGates);
+    GetPropertyByValueStubBuilder getPropertyByValueStub(&callSignature, stub2.GetEnvironment());
+    stub2.SetStubBuilder(&getPropertyByValueStub);
+    stub2.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
@@ -1045,7 +1086,7 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *getPropertyByValuePtr = reinterpret_cast<JSTaggedValue (*)(uintptr_t, uint64_t, uint64_t)>(
         reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(function)));
     auto *getPropertyByNamePtr = reinterpret_cast<JSTaggedValue (*)(uintptr_t, uint64_t, uint64_t)>(
@@ -1102,8 +1143,10 @@ HWTEST_F_L0(StubTest, FastTypeOfTest)
     Circuit netOfGates;
     CallSignature callSignature;
     TypeOfCallSignature::Initialize(&callSignature);
-    TypeOfStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    TypeOfStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
     ASSERT_TRUE(verRes);
@@ -1115,7 +1158,7 @@ HWTEST_F_L0(StubTest, FastTypeOfTest)
     char *error = nullptr;
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto *typeOfPtr =
         reinterpret_cast<JSTaggedValue (*)(uintptr_t, uint64_t)>(assembler.GetFuncPtrFromCompiledModule(function));
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -1190,8 +1233,10 @@ HWTEST_F_L0(StubTest, FastEqualTest)
     Circuit netOfGates;
     CallSignature callSignature;
     EqualCallSignature::Initialize(&callSignature);
-    EqualStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    EqualStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     auto cfg = Scheduler::Run(&netOfGates);
     PrintCircuitByBasicBlock(cfg, netOfGates);
@@ -1199,7 +1244,7 @@ HWTEST_F_L0(StubTest, FastEqualTest)
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     auto fn = reinterpret_cast<JSTaggedValue (*)(uintptr_t, int64_t, int64_t)>(
         assembler.GetFuncPtrFromCompiledModule(function));
     // test for 1 == 1
@@ -1275,11 +1320,11 @@ HWTEST_F_L0(StubTest, JSCallTest)
 
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
-    EXPECT_EQ(result, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(3.0));
 
     auto result1 = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 6, argV, fooEntry);
-    EXPECT_EQ(result1, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result1, JSTaggedValue(3.0));
 }
 
 HWTEST_F_L0(StubTest, JSCallTest1)
@@ -1300,7 +1345,7 @@ HWTEST_F_L0(StubTest, JSCallTest1)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, foo2Entry);
-    EXPECT_EQ(result, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(3.0));
 }
 
 HWTEST_F_L0(StubTest, JSCallTest2)
@@ -1322,7 +1367,7 @@ HWTEST_F_L0(StubTest, JSCallTest2)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, foo1Entry);
-    EXPECT_EQ(result, 0x7ff9000000000000UL);
+    EXPECT_EQ(result, JSTaggedValue(0x7ff9000000000000UL));
 }
 
 HWTEST_F_L0(StubTest, JSCallNativeTest)
@@ -1343,7 +1388,7 @@ HWTEST_F_L0(StubTest, JSCallNativeTest)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
-    EXPECT_EQ(result, JSTaggedValue::Undefined().GetRawData());
+    EXPECT_EQ(result, JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(StubTest, JSCallBoundTest)
@@ -1365,7 +1410,7 @@ HWTEST_F_L0(StubTest, JSCallBoundTest)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
-    EXPECT_EQ(result, JSTaggedValue(38.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(38.0));
 }
 
 // test for proxy method is undefined
@@ -1390,7 +1435,7 @@ HWTEST_F_L0(StubTest, JSCallTest3)
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
         reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 6, 6, argV, fooProxyEntry);
-    EXPECT_EQ(result, JSTaggedValue(3.0).GetRawData());
+    EXPECT_EQ(result, JSTaggedValue(3.0));
 }
 
 // test for proxy method isn't undefined
@@ -1423,8 +1468,10 @@ HWTEST_F_L0(StubTest, RelocateTest)
     Circuit netOfGates;
     CallSignature callSignature;
     TestAbsoluteAddressRelocationCallSignature::Initialize(&callSignature);
-    TestAbsoluteAddressRelocationStubBuilder optimizer(&callSignature, &netOfGates);
-    optimizer.GenerateCircuit(stubModule.GetCompilationConfig());
+    Stub stub(&callSignature, &netOfGates);
+    TestAbsoluteAddressRelocationStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    stub.SetStubBuilder(&optimizer);
+    stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
     ASSERT_TRUE(verRes);
@@ -1436,7 +1483,7 @@ HWTEST_F_L0(StubTest, RelocateTest)
     char *error = nullptr;
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
     LLVMAssembler assembler(module);
-    assembler.Run();
+    assembler.Run(*log);
     uint64_t input = 0x111;
     auto *ptr =
         reinterpret_cast<JSTaggedValue (*)(uint64_t)>(assembler.GetFuncPtrFromCompiledModule(function));

@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "assembler_x64.h"
+
+#include "ecmascript/compiler/assembler/x64/assembler_x64.h"
 
 namespace panda::ecmascript::x64 {
 void AssemblerX64::Pushq(Register x)

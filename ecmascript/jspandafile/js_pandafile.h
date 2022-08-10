@@ -21,6 +21,7 @@
 #include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/mem/c_containers.h"
+
 #include "libpandafile/file.h"
 
 namespace panda {
@@ -80,7 +81,7 @@ public:
         return constpoolMap_;
     }
 
-    uint32_t GetOrInsertConstantPool(ConstPoolType type, uint32_t offset);
+    uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset);
 
     void UpdateMainMethodIndex(uint32_t mainMethodIndex)
     {
@@ -94,7 +95,7 @@ public:
         return pf_->GetClasses();
     }
 
-    bool IsModule() const;
+    bool PUBLIC_API IsModule() const;
 
     bool IsCjs() const;
 
@@ -123,25 +124,6 @@ public:
         return static_cast<uint32_t>(GetPandaFile()->GetUniqId());
     }
 
-    inline void SetUniqueMethodMap(const JSMethod *method, const uint8_t *insans)
-    {
-        if (method != nullptr) {
-            auto offset = method->GetMethodId().GetOffset();
-            if (pcToUniqMethodOffset_.find(insans) == pcToUniqMethodOffset_.end()) {
-                pcToUniqMethodOffset_.emplace(insans, offset);
-            }
-            dupMethodOffsetToUniqMethodOffset_.emplace(offset, pcToUniqMethodOffset_.at(insans));
-        }
-    }
-
-    inline uint32_t GetUniqueMethod(const JSHandle<JSFunction> &func) const
-    {
-        auto method = func->GetMethod();
-        ASSERT(method != nullptr);
-        auto methodOffset = method->GetMethodId().GetOffset();
-        return dupMethodOffsetToUniqMethodOffset_.at(methodOffset);
-    }
-
 private:
     void Initialize();
     uint32_t constpoolIndex_ {0};
@@ -150,8 +132,6 @@ private:
     uint32_t mainMethodIndex_ {0};
     JSMethod *methods_ {nullptr};
     CUnorderedMap<uint32_t, JSMethod *> methodMap_;
-    CUnorderedMap<uint32_t, uint32_t> dupMethodOffsetToUniqMethodOffset_;
-    CUnorderedMap<const uint8_t *, uint32_t> pcToUniqMethodOffset_;
     const panda_file::File *pf_ {nullptr};
     CString desc_;
     bool isModule_ {false};

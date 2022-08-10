@@ -333,6 +333,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("PromiseReaction");
         case JSType::PROMISE_CAPABILITY:
             return GetString("PromiseCapability");
+        case JSType::ASYNC_GENERATOR_REQUEST:
+            return GetString("AsyncGeneratorRequest");
         case JSType::PROMISE_ITERATOR_RECORD:
             return GetString("PromiseIteratorRecord");
         case JSType::PROMISE_RECORD:
@@ -355,8 +357,12 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("PromiseFinallyFunction");
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             return GetString("PromiseValueThunkOrThrowerFunction");
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            return GetString("AsyncGeneratorResumeNextReturnProcessorRstFtn");
         case JSType::JS_GENERATOR_FUNCTION:
             return GetString("JSGeneratorFunction");
+        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            return GetString("JSAsyncGeneratorFunction");
         case JSType::SYMBOL:
             return GetString("Symbol");
         case JSType::JS_ASYNC_FUNCTION:
@@ -391,6 +397,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("JSListFormat");
         case JSType::JS_GENERATOR_OBJECT:
             return GetString("JSGeneratorObject");
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            return GetString("JSAsyncGeneratorObject");
         case JSType::JS_GENERATOR_CONTEXT:
             return GetString("JSGeneratorContext");
         case JSType::ACCESSOR_DATA:
@@ -961,6 +969,10 @@ void HeapSnapshot::AddSyntheticRoot()
     RootVisitor rootEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type, ObjectSlot slot) {
         ROOT_EDGE_BUILDER_CORE(type, slot);
     };
+    RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
+        ([[maybe_unused]] Root type, [[maybe_unused]]ObjectSlot base, [[maybe_unused]]ObjectSlot derived,
+         [[maybe_unused]]uintptr_t baseOldObject) {
+    };
 
     RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type,
                                                                                ObjectSlot start, ObjectSlot end) {
@@ -969,7 +981,7 @@ void HeapSnapshot::AddSyntheticRoot()
         }
     };
 #undef ROOT_EDGE_BUILDER_CORE
-    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder);
+    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder, rootBaseEdgeBuilder);
 
     int reindex = 0;
     for (Node *node : nodes_) {
@@ -1069,7 +1081,7 @@ FrontType NodeTypeConverter::Convert(NodeType type)
         fType = FrontType::STRING;
     } else if (type == NodeType::JS_OBJECT) {
         fType = FrontType::OBJECT;
-    } else if (type >= NodeType::JS_FUNCTION_BEGIN && type <= NodeType::JS_FUNCTION_END) {
+    } else if (type >= NodeType::JS_FUNCTION_FIRST && type <= NodeType::JS_FUNCTION_LAST) {
         fType = FrontType::CLOSURE;
     } else if (type == NodeType::JS_BOUND_FUNCTION) {
         fType = FrontType::CLOSURE;

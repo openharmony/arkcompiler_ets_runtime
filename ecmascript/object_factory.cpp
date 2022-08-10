@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecma_string_table.h"
-#include "ecma_vm.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/builtins.h"
@@ -27,7 +25,9 @@
 #include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/builtins/builtins_proxy.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -41,39 +41,40 @@
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_api_arraylist.h"
-#include "ecmascript/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api_deque.h"
-#include "ecmascript/js_api_deque_iterator.h"
-#include "ecmascript/js_api_hashmap.h"
-#include "ecmascript/js_api_hashset.h"
-#include "ecmascript/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api_hashset_iterator.h"
-#include "ecmascript/js_api_lightweightmap.h"
-#include "ecmascript/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api_lightweightset.h"
-#include "ecmascript/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api_linked_list.h"
-#include "ecmascript/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api_list.h"
-#include "ecmascript/js_api_list_iterator.h"
-#include "ecmascript/js_api_plain_array.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api_queue.h"
-#include "ecmascript/js_api_queue_iterator.h"
-#include "ecmascript/js_api_stack.h"
-#include "ecmascript/js_api_stack_iterator.h"
-#include "ecmascript/js_api_tree_map.h"
-#include "ecmascript/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api_tree_set.h"
-#include "ecmascript/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api_vector.h"
-#include "ecmascript/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_deque.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
+#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_api/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api/js_api_hashset_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightmap.h"
+#include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_lightweightset_iterator.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
+#include "ecmascript/js_api/js_api_linked_list_iterator.h"
+#include "ecmascript/js_api/js_api_list.h"
+#include "ecmascript/js_api/js_api_list_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_queue.h"
+#include "ecmascript/js_api/js_api_queue_iterator.h"
+#include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_tree_map_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_function.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
@@ -115,6 +116,9 @@
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/record.h"
+#include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/require/js_cjs_module.h"
+#include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/shared_mm/shared_mm.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -125,9 +129,6 @@
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
-#include "ecmascript/require/js_cjs_exports.h"
-#include "ecmascript/require/js_cjs_module.h"
-#include "ecmascript/require/js_cjs_require.h"
 
 namespace panda::ecmascript {
 using Error = builtins::BuiltinsError;
@@ -164,13 +165,17 @@ void ObjectFactory::ClearNativeMethodsData()
     internalNativeMethods_.clear();
 }
 
-JSMethod *ObjectFactory::NewMethodForNativeFunction(const void *func)
+JSMethod *ObjectFactory::NewMethodForNativeFunction(const void *func, uint8_t builtinId)
 {
     uint32_t numArgs = 2;  // function object and this
     auto method = vm_->GetChunk()->New<JSMethod>(nullptr, panda_file::File::EntityId(0));
     method->SetNativePointer(const_cast<void *>(func));
 
     method->SetNativeBit(true);
+    if (builtinId != INVALID_BUILTINS_ID) {
+        method->SetFastBuiltinBit(true);
+        method->SetBuiiltinId(builtinId);
+    }
     method->SetNumArgsWithCallField(numArgs);
     nativeMethods_.push_back(method);
     return nativeMethods_.back();
@@ -227,7 +232,9 @@ void * ObjectFactory::InternalMethodTable[] = {
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::ThenFinally),
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::CatchFinally),
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::valueThunkFunction),
-    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::throwerFunction)
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::throwerFunction),
+    reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorFulfilledFunc),
+    reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorRejectedFunc)
 };
 
 void ObjectFactory::GenerateInternalNativeMethods()
@@ -1100,6 +1107,14 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSGeneratorObject::Cast(*obj)->SetGeneratorState(JSGeneratorState::UNDEFINED);
             JSGeneratorObject::Cast(*obj)->SetResumeMode(GeneratorResumeMode::UNDEFINED);
             break;
+        case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            JSAsyncGeneratorObject::Cast(*obj)->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
+            JSAsyncGeneratorObject::Cast(*obj)->SetAsyncGeneratorQueue(thread_, GetEmptyTaggedQueue().GetTaggedValue());
+            JSAsyncGeneratorObject::Cast(*obj)->SetGeneratorBrand(thread_, JSTaggedValue::Undefined());
+            JSAsyncGeneratorObject::Cast(*obj)->SetResumeResult(thread_, JSTaggedValue::Undefined());
+            JSAsyncGeneratorObject::Cast(*obj)->SetAsyncGeneratorState(JSAsyncGeneratorState::UNDEFINED);
+            JSAsyncGeneratorObject::Cast(*obj)->SetResumeMode(AsyncGeneratorResumeMode::UNDEFINED);
+            break;
         case JSType::JS_STRING_ITERATOR:
             JSStringIterator::Cast(*obj)->SetStringIteratorNextIndex(0);
             JSStringIterator::Cast(*obj)->SetIteratedString(thread_, JSTaggedValue::Undefined());
@@ -1192,6 +1207,9 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_GENERATOR_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
             break;
+        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            break;
         case JSType::JS_PROXY_REVOC_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
             JSProxyRevocFunction::Cast(*obj)->SetRevocableProxy(thread_, JSTaggedValue::Undefined());
@@ -1204,6 +1222,11 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
             JSPromiseExecutorFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
+            break;
+        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSAsyncGeneratorResNextRetProRstFtn::Cast(*obj)->SetAsyncGeneratorObject(thread_,
+                                                                                     JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
@@ -1367,9 +1390,9 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
-                                                  FunctionKind kind)
+                                                  FunctionKind kind, uint8_t builtinId)
 {
-    JSMethod *target = NewMethodForNativeFunction(nativeFunc);
+    JSMethod *target = NewMethodForNativeFunction(nativeFunc, builtinId);
     return NewJSFunction(env, target, kind);
 }
 
@@ -1451,9 +1474,22 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(JSMethod *method, const JSHandle<JSHClass> &clazz,
-                                                            FunctionKind kind)
+                                                            FunctionKind kind, MemSpaceType type)
 {
-    JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
+    JSHandle<JSFunction> function;
+    switch (type) {
+        case MemSpaceType::SEMI_SPACE:
+            function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
+            break;
+        case MemSpaceType::OLD_SPACE:
+            function = JSHandle<JSFunction>::Cast(NewOldSpaceJSObject(clazz));
+            break;
+        case MemSpaceType::NON_MOVABLE:
+            function = JSHandle<JSFunction>::Cast(NewNonMovableJSObject(clazz));
+            break;
+        default:
+            UNREACHABLE();
+    }
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, kind);
@@ -1596,6 +1632,20 @@ JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTagge
     JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObject(dynclass));
     generatorObject->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
     generatorObject->SetResumeResult(thread_, JSTaggedValue::Undefined());
+    return generatorObject;
+}
+
+JSHandle<JSAsyncGeneratorObject> ObjectFactory::NewJSAsyncGeneratorObject(JSHandle<JSTaggedValue> generatorFunction)
+{
+    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrDynClass());
+    if (!proto->IsECMAObject()) {
+        JSHandle<GlobalEnv> realmHandle = JSObject::GetFunctionRealm(thread_, generatorFunction);
+        proto = realmHandle->GetAsyncGeneratorPrototype();
+    }
+    JSHandle<JSHClass> dynclass = NewEcmaDynClass(JSAsyncGeneratorObject::SIZE,
+                                                  JSType::JS_ASYNC_GENERATOR_OBJECT, proto);
+    JSHandle<JSAsyncGeneratorObject> generatorObject =
+        JSHandle<JSAsyncGeneratorObject>::Cast(NewJSObjectWithInit(dynclass));
     return generatorObject;
 }
 
@@ -2090,13 +2140,13 @@ JSHandle<TaggedArray> ObjectFactory::NewDictionaryArray(uint32_t length)
 }
 
 JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &old, uint32_t length,
-                                                 JSTaggedValue initVal)
+                                                 JSTaggedValue initVal, MemSpaceType type)
 {
     ASSERT(length > old->GetLength());
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
-    auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    TaggedObject *header = AllocObjectWithSpaceType(size, arrayClass, type);
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->SetLength(length);
 
@@ -2142,21 +2192,20 @@ JSHandle<TaggedArray> ObjectFactory::CopyPartArray(const JSHandle<TaggedArray> &
     return newArray;
 }
 
-JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
-                                               [[maybe_unused]] uint32_t oldLength, uint32_t newLength,
-                                               JSTaggedValue initVal)
+JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
+                                               JSTaggedValue initVal, MemSpaceType type)
 {
     if (newLength == 0) {
         return EmptyArray();
     }
     if (newLength > oldLength) {
-        return ExtendArray(old, newLength, initVal);
+        return ExtendArray(old, newLength, initVal, type);
     }
 
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
-    auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    TaggedObject *header = AllocObjectWithSpaceType(size, arrayClass, type);
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength);
     newArray->SetLength(newLength);
@@ -2169,10 +2218,10 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     return newArray;
 }
 
-JSHandle<LayoutInfo> ObjectFactory::CreateLayoutInfo(int properties, JSTaggedValue initVal)
+JSHandle<LayoutInfo> ObjectFactory::CreateLayoutInfo(int properties, MemSpaceType type, JSTaggedValue initVal)
 {
     uint32_t arrayLength = LayoutInfo::ComputeArrayLength(LayoutInfo::ComputeGrowCapacity(properties));
-    JSHandle<LayoutInfo> layoutInfoHandle = JSHandle<LayoutInfo>::Cast(NewTaggedArray(arrayLength, initVal));
+    JSHandle<LayoutInfo> layoutInfoHandle = JSHandle<LayoutInfo>::Cast(NewTaggedArray(arrayLength, initVal, type));
     layoutInfoHandle->SetNumberOfElements(thread_, 0);
     return layoutInfoHandle;
 }
@@ -2211,7 +2260,7 @@ JSHandle<ConstantPool> ObjectFactory::NewConstantPool(uint32_t capacity)
         return JSHandle<ConstantPool>::Cast(EmptyArray());
     }
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), capacity);
-    auto header = heap_->AllocateNonMovableOrHugeObject(
+    auto header = heap_->AllocateOldOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
     JSHandle<ConstantPool> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), capacity);
@@ -2328,8 +2377,8 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(EcmaString *string)
 }
 
 // NB! don't do special case for C0 80, it means '\u0000', so don't convert to UTF-8
-EcmaString *ObjectFactory::GetRawStringFromStringTable(const uint8_t *mutf8Data,
-                                                       uint32_t utf16Len, bool canBeCompressed) const
+EcmaString *ObjectFactory::GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len,
+                                                       bool canBeCompressed, MemSpaceType type) const
 {
     NewObjectHook();
     if (UNLIKELY(utf16Len == 0)) {
@@ -2337,12 +2386,12 @@ EcmaString *ObjectFactory::GetRawStringFromStringTable(const uint8_t *mutf8Data,
     }
 
     if (canBeCompressed) {
-        return EcmaString::Cast(vm_->GetEcmaStringTable()->GetOrInternString(mutf8Data, utf16Len, true));
+        return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, true, type);
     }
 
     CVector<uint16_t> utf16Data(utf16Len);
     auto len = utf::ConvertRegionMUtf8ToUtf16(mutf8Data, utf16Data.data(), utf::Mutf8Size(mutf8Data), utf16Len, 0);
-    return EcmaString::Cast(vm_->GetEcmaStringTable()->GetOrInternString(utf16Data.data(), len, false));
+    return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(utf16Data.data(), len, false, type);
 }
 
 JSHandle<PropertyBox> ObjectFactory::NewPropertyBox(const JSHandle<JSTaggedValue> &value)
@@ -2667,6 +2716,34 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseCatchFinallyFuncti
     return function;
 }
 
+JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextRetProRstFulfilledFtn()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(
+        env->GetAsyncGeneratorResNextRetProRstFtnClass());
+    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> function =
+        JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(dynclass));
+    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION));
+    function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
+    JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
+    return function;
+}
+
+JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextRetProRstRejectedFtn()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(
+        env->GetAsyncGeneratorResNextRetProRstFtnClass());
+    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> function =
+        JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(dynclass));
+    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    function->SetMethod(GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION));
+    function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
+    JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
+    return function;
+}
+
 JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseValueThunkFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -2837,10 +2914,11 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
     return SetLayoutInObjHClass(properties, length, JSHandle<JSHClass>(thread_, maybeHClass));
 }
 
-JSHandle<JSObject> ObjectFactory::GetObjectLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length)
+JSHandle<JSObject> ObjectFactory::NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length)
 {
     JSHandle<JSHClass> dynclass = GetObjectLiteralHClass(properties, length);
-    JSHandle<JSObject> obj = NewJSObjectWithInit(dynclass);
+    JSHandle<JSObject> obj = NewOldSpaceJSObject(dynclass);
+    InitializeJSObject(obj, dynclass);
     return obj;
 }
 
@@ -2920,7 +2998,7 @@ JSHandle<TSObjectType> ObjectFactory::NewTSObjectType(uint32_t numOfKeys)
     JSHandle<TSObjectType> objectType(thread_, header);
     objectType->SetHClass(thread_, JSTaggedValue::Undefined());
     objectType->SetObjLayoutInfo(thread_, JSTaggedValue::Undefined());
-    objectType->SetGTRef(GlobalTSTypeRef::Default());
+    objectType->SetGT(GlobalTSTypeRef::Default());
 
     JSHandle<TSObjLayoutInfo> tsPropInfo = CreateTSObjLayoutInfo(numOfKeys);
     objectType->SetObjLayoutInfo(thread_, tsPropInfo);
@@ -2935,11 +3013,11 @@ JSHandle<TSClassType> ObjectFactory::NewTSClassType()
         JSHClass::Cast(thread_->GlobalConstants()->GetTSClassTypeClass().GetTaggedObject()));
     JSHandle<TSClassType> classType(thread_, header);
 
-    classType->SetGTRef(GlobalTSTypeRef::Default());
+    classType->SetGT(GlobalTSTypeRef::Default());
     classType->SetInstanceType(thread_, JSTaggedValue::Undefined());
     classType->SetConstructorType(thread_, JSTaggedValue::Undefined());
     classType->SetPrototypeType(thread_, JSTaggedValue::Undefined());
-    classType->SetExtensionGTRawData(0);
+    classType->SetExtensionGT(GlobalTSTypeRef::Default());
     classType->SetHasLinked(false);
 
     return classType;
@@ -2954,7 +3032,7 @@ JSHandle<TSInterfaceType> ObjectFactory::NewTSInterfaceType()
     JSHandle<TSInterfaceType> interfaceType(thread_, header);
 
     JSHandle<TaggedArray> extends = EmptyArray();
-    interfaceType->SetGTRef(GlobalTSTypeRef::Default());
+    interfaceType->SetGT(GlobalTSTypeRef::Default());
     interfaceType->SetExtends(thread_, extends);
     interfaceType->SetFields(thread_, JSTaggedValue::Undefined());
 
@@ -2971,7 +3049,7 @@ JSHandle<TSUnionType> ObjectFactory::NewTSUnionType(uint32_t length)
         JSHClass::Cast(thread_->GlobalConstants()->GetTSUnionTypeClass().GetTaggedObject()));
     JSHandle<TSUnionType> unionType(thread_, header);
 
-    unionType->SetGTRef(GlobalTSTypeRef::Default());
+    unionType->SetGT(GlobalTSTypeRef::Default());
     unionType->SetComponents(thread_, JSTaggedValue::Undefined());
     JSHandle<TaggedArray> componentTypes = NewTaggedArray(length, JSTaggedValue::Undefined());
     unionType->SetComponents(thread_, componentTypes);
@@ -2987,8 +3065,8 @@ JSHandle<TSClassInstanceType> ObjectFactory::NewTSClassInstanceType()
         JSHClass::Cast(thread_->GlobalConstants()->GetTSClassInstanceTypeClass().GetTaggedObject()));
     JSHandle<TSClassInstanceType> classInstanceType(thread_, header);
 
-    classInstanceType->SetGTRef(GlobalTSTypeRef::Default());
-    classInstanceType->SetClassRefGT(GlobalTSTypeRef::Default());
+    classInstanceType->SetGT(GlobalTSTypeRef::Default());
+    classInstanceType->SetClassGT(GlobalTSTypeRef::Default());
 
     return classInstanceType;
 }
@@ -3001,8 +3079,8 @@ JSHandle<TSImportType> ObjectFactory::NewTSImportType()
         JSHClass::Cast(thread_->GlobalConstants()->GetTSImportTypeClass().GetTaggedObject()));
     JSHandle<TSImportType> importType(thread_, header);
 
-    importType->SetGTRef(GlobalTSTypeRef::Default());
-    importType->SetTargetRefGT(GlobalTSTypeRef::Default());
+    importType->SetGT(GlobalTSTypeRef::Default());
+    importType->SetTargetGT(GlobalTSTypeRef::Default());
     importType->SetImportPath(thread_, JSTaggedValue::Undefined());
 
     return importType;
@@ -3019,7 +3097,7 @@ JSHandle<TSFunctionType> ObjectFactory::NewTSFunctionType(uint32_t length)
 
     JSHandle<TaggedArray> parameterTypes = NewTaggedArray(length + TSFunctionType::DEFAULT_LENGTH,
                                                           JSTaggedValue::Undefined());
-    functionType->SetGTRef(GlobalTSTypeRef::Default());
+    functionType->SetGT(GlobalTSTypeRef::Default());
     functionType->SetParameterTypes(thread_, parameterTypes);
 
     return functionType;
@@ -3033,7 +3111,7 @@ JSHandle<TSArrayType> ObjectFactory::NewTSArrayType()
         JSHClass::Cast(thread_->GlobalConstants()->GetTSArrayTypeClass().GetTaggedObject()));
 
     JSHandle<TSArrayType> arrayType(thread_, header);
-    arrayType->SetElementTypeRef(0);
+    arrayType->SetElementGT(GlobalTSTypeRef::Default());
 
     return arrayType;
 }
@@ -3593,5 +3671,67 @@ JSHandle<JSHClass> ObjectFactory::CreateIteratorResultInstanceClass()
         iterResultClass->SetNumberOfProps(fieldOrder);
     }
     return iterResultClass;
+}
+
+TaggedObject *ObjectFactory::NewOldSpaceDynObject(const JSHandle<JSHClass> &dynclass)
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateOldOrHugeObject(*dynclass);
+    uint32_t inobjPropCount = dynclass->GetInlinedProperties();
+    if (inobjPropCount > 0) {
+        InitializeExtraProperties(dynclass, header, inobjPropCount);
+    }
+    return header;
+}
+
+JSHandle<JSObject> ObjectFactory::NewOldSpaceJSObject(const JSHandle<JSHClass> &jshclass)
+{
+    JSHandle<JSObject> obj(thread_, JSObject::Cast(NewOldSpaceDynObject(jshclass)));
+    JSHandle<TaggedArray> emptyArray = EmptyArray();
+    obj->InitializeHash();
+    obj->SetElements(thread_, emptyArray);
+    obj->SetProperties(thread_, emptyArray);
+    return obj;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal)
+{
+    return NewTaggedArray(length, initVal, MemSpaceType::OLD_SPACE);
+}
+
+JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<TaggedArray> &elements)
+{
+    JSHandle<JSHClass> cls(thread_,
+                           JSHandle<JSFunction>::Cast(vm_->GetGlobalEnv()->GetArrayFunction())->GetProtoOrDynClass());
+    JSHandle<JSArray> array = JSHandle<JSArray>::Cast(NewJSObject(cls));
+    array->SetElements(thread_, elements);
+
+    array->SetLength(thread_, JSTaggedValue(elements->GetLength()));
+    auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
+    array->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
+    return array;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSAsyncGeneratorFunction(JSMethod *method)
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+
+    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
+    JSHandle<JSFunction> asyncGeneratorFunc = JSHandle<JSFunction>::Cast(NewJSObject(dynclass));
+    JSFunction::InitializeJSFunction(thread_, asyncGeneratorFunc, FunctionKind::ASYNC_GENERATOR_FUNCTION);
+    asyncGeneratorFunc->SetMethod(method);
+    return asyncGeneratorFunc;
+}
+
+JSHandle<AsyncGeneratorRequest> ObjectFactory::NewAsyncGeneratorRequest()
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetAsyncGeneratorRequestRecordClass().GetTaggedObject()));
+    JSHandle<AsyncGeneratorRequest> obj(thread_, header);
+    obj->SetCompletion(thread_, JSTaggedValue::Undefined());
+    obj->SetCapability(thread_, JSTaggedValue::Undefined());
+    return obj;
 }
 }  // namespace panda::ecmascript

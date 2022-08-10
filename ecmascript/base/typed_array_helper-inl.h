@@ -18,19 +18,19 @@
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/base/error_helper.h"
+#include "ecmascript/base/error_type.h"
 #include "ecmascript/base/typed_array_helper.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/js_hclass.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_object.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
-#include "ecmascript/base/error_helper.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/base/error_type.h"
+#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::base {
 DataViewType TypedArrayHelper::GetType(const JSHandle<JSTypedArray> &obj)

@@ -353,13 +353,6 @@ public:
         return maxEvacuateTaskCount_;
     }
 
-    ChunkMap<DerivedDataKey, uintptr_t> *GetDerivedPointers() const
-    {
-        return derivedPointers_;
-    }
-    void UpdateDerivedObjectInStack();
-    static constexpr uint32_t STACK_MAP_DEFALUT_DERIVED_SIZE = 8U;
-
     /*
      * Heap tracking will be used by tools like heap profiler etc.
      */
@@ -389,6 +382,7 @@ public:
     bool ContainObject(TaggedObject *object) const;
 
     size_t VerifyHeapObjects() const;
+    size_t VerifyOldToNewRSet() const;
     void StatisticHeapObject(TriggerGCType gcType) const;
 
     bool OldSpaceExceedCapacity(size_t size) const
@@ -546,8 +540,6 @@ private:
     // Region allocators.
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
-
-    ChunkMap<DerivedDataKey, uintptr_t> *derivedPointers_ {nullptr};
 
     // The tracker tracking heap object allocation and movement events.
     HeapTracker *tracker_ {nullptr};

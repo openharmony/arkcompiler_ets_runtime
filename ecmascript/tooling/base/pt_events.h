@@ -19,10 +19,11 @@
 #include <memory>
 #include <optional>
 
-#include "libpandabase/macros.h"
 #include "ecmascript/tooling/base/pt_script.h"
 #include "ecmascript/tooling/base/pt_types.h"
 #include "ecmascript/tooling/dispatcher.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::tooling {
 class PtBaseEvents : public PtBaseTypes {

@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#include "message_string.h"
+#include "ecmascript/message_string.h"
+
 #include <array>
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
@@ -28,6 +30,7 @@ static std::array<std::string, MessageString::MAX_MESSAGE_COUNT> g_messageString
     ASM_INTERPRETER_BC_STUB_LIST(DEF_ASM_INTERPRETER_STUB_MESSAGE, DEF_ASM_INTERPRETER_STUB_MESSAGE,
                                  DEF_ASM_INTERPRETER_STUB_MESSAGE)
     ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_ASM_INTERPRETER_STUB_MESSAGE)
+    BUILTINS_STUB_LIST(DEF_ASM_INTERPRETER_STUB_MESSAGE)
 #undef DEF_ASM_INTERPRETER_STUB_MESSAGE
 };
 

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+
 #include "ecmascript/file_loader.h"
 #include "ecmascript/jspandafile/program_object.h"
 
@@ -40,30 +41,6 @@ JSPandaFileManager::~JSPandaFileManager()
         ReleaseJSPandaFile(jsPandaFile);
         iter = loadedJSPandaFiles_.erase(iter);
     }
-}
-
-// generate aot info on host
-const JSPandaFile *JSPandaFileManager::LoadAotInfoFromPf(const CString &filename, std::string_view entryPoint,
-                                                         std::vector<MethodPcInfo> *methodPcInfos)
-{
-    JSPandaFile *jsPandaFile = OpenJSPandaFile(filename);
-    if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "open file " << filename << " error";
-        return nullptr;
-    }
-
-    CString methodName;
-    auto pos = entryPoint.find_last_of("::");
-    if (pos != std::string_view::npos) {
-        methodName = entryPoint.substr(pos + 1);
-    } else {
-        // default use func_main_0 as entryPoint
-        methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
-    }
-
-    PandaFileTranslator::TranslateClasses(jsPandaFile, methodName, methodPcInfos);
-    InsertJSPandaFile(jsPandaFile);
-    return jsPandaFile;
 }
 
 const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
@@ -213,7 +190,7 @@ tooling::JSPtExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *
     LOG_ECMA_IF(jsPandaFile == nullptr, FATAL) << "GetJSPtExtractor error, js pandafile is nullptr";
 
     os::memory::LockHolder lock(jsPandaFileLock_);
-    auto const filename = jsPandaFile->GetJSPandaFileDesc();
+    [[maybe_unused]] auto const &filename = jsPandaFile->GetJSPandaFileDesc();
     ASSERT(loadedJSPandaFiles_.find(filename) != loadedJSPandaFiles_.end());
 
     auto iter = extractors_.find(jsPandaFile);

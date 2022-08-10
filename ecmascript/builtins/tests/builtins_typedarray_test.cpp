@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
+#include "ecmascript/builtins/builtins_typedarray.h"
+
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
-
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_object.h"
-#include "ecmascript/builtins/builtins_typedarray.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
@@ -34,9 +34,7 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_operator.h"
-
 #include "ecmascript/tests/test_helper.h"
-#include "utils/bit_utils.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
@@ -90,7 +88,7 @@ protected:
 
         static JSTaggedValue TestEveryFunc(EcmaRuntimeCallInfo *argv)
         {
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 [[maybe_unused]] int aaa = GetCallArg(argv, 0)->GetInt();
                 //  10 : test case
@@ -104,7 +102,7 @@ protected:
         static JSTaggedValue TestFilterFunc(EcmaRuntimeCallInfo *argv)
         {
             ASSERT(argv);
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 // 10 : test case
                 if (GetCallArg(argv, 0)->GetInt() > 10) {
@@ -123,7 +121,7 @@ protected:
 
         static JSTaggedValue TestFindFunc(EcmaRuntimeCallInfo *argv)
         {
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 // 10 : test case
                 if (GetCallArg(argv, 0)->GetInt() > 10) {
@@ -135,7 +133,7 @@ protected:
 
         static JSTaggedValue TestFindIndexFunc(EcmaRuntimeCallInfo *argv)
         {
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 //  10 : test case
                 if (GetCallArg(argv, 0)->GetInt() > 10) {
@@ -161,7 +159,7 @@ protected:
 
         static JSTaggedValue TestSomeFunc(EcmaRuntimeCallInfo *argv)
         {
-            int32_t argc = argv->GetArgsNumber();
+            uint32_t argc = argv->GetArgsNumber();
             if (argc > 0) {
                 //  10 : test case
                 if (GetCallArg(argv, 0)->GetInt() > 10) {

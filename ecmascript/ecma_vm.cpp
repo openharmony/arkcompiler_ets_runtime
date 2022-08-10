@@ -18,12 +18,17 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins.h"
 #include "ecmascript/builtins/builtins_regexp.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#endif
+#if !WIN_OR_MAC_PLATFORM
+#include "ecmascript/dfx/hprof/heap_profiler.h"
+#include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string_table.h"
@@ -62,7 +67,7 @@
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/tagged_queue.h"
-#include "ecmascript/ts_types/ts_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
@@ -140,6 +145,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
 bool EcmaVM::Initialize()
 {
     LOG_ECMA(INFO) << "EcmaVM Initialize";
+    LOG_ECMA(INFO) << "Asm interpreter enabled : " << (options_.GetEnableAsmInterpreter() ? "true" : "false");
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
@@ -192,9 +198,9 @@ bool EcmaVM::Initialize()
     factory_->GenerateInternalNativeMethods();
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     moduleManager_ = new ModuleManager(this);
-    debuggerManager_->Initialize();
-    tsLoader_ = new TSLoader(this);
-    tsLoader_->Initialize();
+    debuggerManager_->Initialize(this);
+    tsManager_ = new TSManager(this);
+    tsManager_->Initialize();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Initialize();
@@ -206,7 +212,7 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
         LoadAOTFiles();
     }
-    InitializeFinish();
+    initialized_ = true;
     return true;
 }
 
@@ -259,16 +265,10 @@ void EcmaVM::SetRuntimeStatEnable(bool flag)
     runtimeStat_->SetRuntimeStatEnabled(flag);
 }
 
-bool EcmaVM::InitializeFinish()
-{
-    vmInitialized_ = true;
-    return true;
-}
-
 EcmaVM::~EcmaVM()
 {
     LOG_ECMA(INFO) << "Destruct ecma_vm, vm address is: " << this;
-    vmInitialized_ = false;
+    initialized_ = false;
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy();
 
@@ -293,8 +293,10 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
-    delete regExpParserCache_;
-    regExpParserCache_ = nullptr;
+    if (regExpParserCache_ != nullptr) {
+        delete regExpParserCache_;
+        regExpParserCache_ = nullptr;
+    }
 
     if (debuggerManager_ != nullptr) {
         chunk_.Delete(debuggerManager_);
@@ -321,9 +323,9 @@ EcmaVM::~EcmaVM()
         moduleManager_ = nullptr;
     }
 
-    if (tsLoader_ != nullptr) {
-        delete tsLoader_;
-        tsLoader_ = nullptr;
+    if (tsManager_ != nullptr) {
+        delete tsManager_;
+        tsManager_ = nullptr;
     }
 
     if (snapshotEnv_ != nullptr) {
@@ -558,12 +560,12 @@ void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo)
     LOG_ECMA(ERROR) << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
 }
 
-void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &v0)
+void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
     auto iter = nativePointerList_.begin();
     while (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
-        auto fwd = v0(reinterpret_cast<TaggedObject *>(object));
+        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
         if (fwd == nullptr) {
             object->Destroy();
             iter = nativePointerList_.erase(iter);
@@ -572,7 +574,7 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &v0)
         }
     }
 }
-void EcmaVM::ProcessReferences(const WeakRootVisitor &v0)
+void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
     if (regExpParserCache_ != nullptr) {
         regExpParserCache_->Clear();
@@ -581,7 +583,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &v0)
     // array buffer
     for (auto iter = nativePointerList_.begin(); iter != nativePointerList_.end();) {
         JSNativePointer *object = *iter;
-        auto fwd = v0(reinterpret_cast<TaggedObject *>(object));
+        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
         if (fwd == nullptr) {
             object->Destroy();
             iter = nativePointerList_.erase(iter);
@@ -598,7 +600,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &v0)
         auto object = iter->second;
         if (object.IsHeapObject()) {
             TaggedObject *obj = object.GetTaggedObject();
-            auto fwd = v0(obj);
+            auto fwd = visitor(obj);
             if (fwd == nullptr) {
                 iter = cachedConstpools_.erase(iter);
                 continue;
@@ -672,7 +674,7 @@ void EcmaVM::Iterate(const RootVisitor &v)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&frameworkProgram_)));
     moduleManager_->Iterate(v);
-    tsLoader_->Iterate(v);
+    tsManager_->Iterate(v);
     fileLoader_->Iterate(v);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Iterate(v);
@@ -703,14 +705,30 @@ void EcmaVM::LoadStubFile()
 
 void EcmaVM::LoadAOTFiles()
 {
-    std::string file = options_.GetAOTOutputFile();
+    std::string file = options_.GetAOTOutputFile() + ".aot";
     LOG_ECMA(INFO) << "Try to load aot file" << file.c_str();
     fileLoader_->LoadAOTFile(file);
-    fileLoader_->TryLoadSnapshotFile();
+    fileLoader_->LoadSnapshotFile();
 }
 
-void EcmaVM::SaveAOTFuncEntry(uint32_t hash, uint32_t methodId, uint64_t funcEntry)
+#if !WIN_OR_MAC_PLATFORM
+void EcmaVM::DeleteHeapProfile()
 {
-    fileLoader_->SaveAOTFuncEntry(hash, methodId, funcEntry);
+    if (heapProfile_ == nullptr) {
+        return;
+    }
+    const_cast<NativeAreaAllocator *>(GetNativeAreaAllocator())->Delete(heapProfile_);
+    heapProfile_ = nullptr;
 }
+
+HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
+{
+    if (heapProfile_ != nullptr) {
+        return heapProfile_;
+    }
+    heapProfile_ = const_cast<NativeAreaAllocator *>(GetNativeAreaAllocator())->New<HeapProfiler>(this);
+    ASSERT(heapProfile_ != nullptr);
+    return heapProfile_;
+}
+#endif
 }  // namespace panda::ecmascript

@@ -15,7 +15,7 @@
 
 #include "ecmascript/js_dataview.h"
 
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 uint32_t JSDataView::GetElementSize(DataViewType type)

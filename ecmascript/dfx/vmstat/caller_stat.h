@@ -17,10 +17,11 @@
 #define ECMASCRIPT_VMSTAT_CALLER_STAT_H
 
 #include <cstdint>
-#include <string>
+#include <cstring>
 #include <time.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 
 #include "ecmascript/mem/c_string.h"
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
@@ -44,6 +45,15 @@ public:
     const char *Name() const
     {
         return name_.c_str();
+    }
+    CString GetHeaderOfName() const
+    {
+        CString::size_type index = name_.find_first_of("::");
+        if (index == CString::npos) {
+            return CString("");
+        }
+        CString header = name_.substr(0, index);
+        return header;
     }
     uint64_t TotalCount() const
     {

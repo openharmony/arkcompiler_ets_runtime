@@ -20,6 +20,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/tooling/backend/js_pt_extractor.h"
+
 #include "libpandafile/file.h"
 
 namespace panda {
@@ -33,9 +34,6 @@ public:
     ~JSPandaFileManager();
 
     JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile);
-
-    const JSPandaFile* LoadAotInfoFromPf(const CString &filename, std::string_view entryPoint,
-                                         std::vector<MethodPcInfo> *methodPcInfos);
 
     const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint);
 

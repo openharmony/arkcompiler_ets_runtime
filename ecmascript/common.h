@@ -37,7 +37,7 @@ enum TriggerGCType {
     GC_TYPE_LAST
 };
 
-constexpr int32_t NUM_MANDATORY_JSFUNC_ARGS = 3;
+constexpr uint32_t NUM_MANDATORY_JSFUNC_ARGS = 3;
 
 using Address = uintptr_t;
 

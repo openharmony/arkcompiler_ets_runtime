@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/builtins/builtins_map.h"
+
+#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
@@ -30,7 +31,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tests/test_helper.h"
-#include "utils/bit_utils.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;

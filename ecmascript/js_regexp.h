@@ -16,10 +16,10 @@
 #ifndef ECMASCRIPT_JSREGEXP_H
 #define ECMASCRIPT_JSREGEXP_H
 
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/ecma_macros.h"
 
 namespace panda::ecmascript {
 class JSRegExp : public JSObject {

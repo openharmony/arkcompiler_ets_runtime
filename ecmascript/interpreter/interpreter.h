@@ -38,15 +38,16 @@ public:
     static inline JSTaggedValue ExecuteNative(EcmaRuntimeCallInfo *info);
     static EcmaRuntimeCallInfo* NewRuntimeCallInfo(
         JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
-        JSHandle<JSTaggedValue> newTarget, int32_t numArgs, bool needCheckStack = true);
+        JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack = true);
     static inline JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
-    static inline void RunInternal(JSThread *thread, ConstantPool *constpool, const uint8_t *pc, JSTaggedType *sp);
+    static inline void RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp);
     static inline void InitStackFrame(JSThread *thread);
     static inline uint32_t FindCatchBlock(JSMethod *caller, uint32_t pc);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
 
     static inline JSTaggedValue GetRuntimeProfileTypeInfo(JSTaggedType *sp);
+    static inline JSTaggedValue GetConstantPool(JSTaggedType *sp);
     static inline bool UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset);
     static inline void NotifyBytecodePcChanged(JSThread *thread);
     static inline const JSPandaFile *GetNativeCallPandafile(JSThread *thread);
@@ -196,6 +197,9 @@ enum EcmaOpcode {
     NEWLEXENVWITHNAMEDYN_PREF_IMM16_IMM16,
     LDBIGINT_PREF_ID32,
     TONUMERIC_PREF_V8,
+    CREATEASYNCGENERATOROBJ_PREF_V8,
+    ASYNCGENERATORRESOLVE_PREF_V8_V8_V8,
+    DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8,
     MOV_DYN_V8_V8,
     MOV_DYN_V16_V16,
     LDA_STR_ID32,

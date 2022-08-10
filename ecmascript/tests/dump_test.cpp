@@ -29,35 +29,36 @@
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_api_arraylist.h"
-#include "ecmascript/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api_deque.h"
-#include "ecmascript/js_api_deque_iterator.h"
-#include "ecmascript/js_api_lightweightmap.h"
-#include "ecmascript/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api_lightweightset.h"
-#include "ecmascript/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api_linked_list.h"
-#include "ecmascript/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api_list.h"
-#include "ecmascript/js_api_list_iterator.h"
-#include "ecmascript/js_api_plain_array.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api_queue.h"
-#include "ecmascript/js_api_queue_iterator.h"
-#include "ecmascript/js_api_stack.h"
-#include "ecmascript/js_api_stack_iterator.h"
-#include "ecmascript/js_api_tree_map.h"
-#include "ecmascript/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api_tree_set.h"
-#include "ecmascript/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api_vector.h"
-#include "ecmascript/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_deque.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightmap.h"
+#include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_lightweightset_iterator.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
+#include "ecmascript/js_api/js_api_linked_list_iterator.h"
+#include "ecmascript/js_api/js_api_list.h"
+#include "ecmascript/js_api/js_api_list_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_queue.h"
+#include "ecmascript/js_api/js_api_queue_iterator.h"
+#include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_tree_map_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_function.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
@@ -69,10 +70,10 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_global_object.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_api_hashmap.h"
-#include "ecmascript/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api_hashset.h"
-#include "ecmascript/js_api_hashset_iterator.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
+#include "ecmascript/js_api/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_api/js_api_hashset_iterator.h"
 #include "ecmascript/js_intl.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_map.h"
@@ -506,6 +507,10 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(promiseValueFunc)
                 break;
             }
+            case JSType::JS_ASYNC_GENERATOR_FUNCTION: {
+                CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncGeneratorFunction::SIZE, 0U);
+                break;
+            }
             case JSType::JS_GENERATOR_FUNCTION: {
                 CHECK_DUMP_FIELDS(JSFunction::SIZE, JSGeneratorFunction::SIZE, 0U);
                 break;
@@ -711,6 +716,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 NEW_OBJECT_AND_DUMP(JSGeneratorObject, JS_GENERATOR_OBJECT)
                 break;
             }
+            case JSType::JS_ASYNC_GENERATOR_OBJECT: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAsyncGeneratorObject::SIZE, 5U);
+                NEW_OBJECT_AND_DUMP(JSAsyncGeneratorObject, JS_ASYNC_GENERATOR_OBJECT)
+                break;
+            }
             case JSType::JS_ASYNC_FUNC_OBJECT: {
                 CHECK_DUMP_FIELDS(JSGeneratorObject::SIZE, JSAsyncFuncObject::SIZE, 1U);
                 JSHandle<JSAsyncFuncObject> asyncFuncObject = factory->NewJSAsyncFuncObject();
@@ -862,6 +872,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(Record::SIZE, ResolvingFunctionsRecord::SIZE, 2U);
                 JSHandle<ResolvingFunctionsRecord> ResolvingFunc = factory->NewResolvingFunctionsRecord();
                 DUMP_FOR_HANDLE(ResolvingFunc)
+                break;
+            }
+            case JSType::ASYNC_GENERATOR_REQUEST: {
+                CHECK_DUMP_FIELDS(Record::SIZE, AsyncGeneratorRequest::SIZE, 2U);
+                JSHandle<AsyncGeneratorRequest> asyncGeneratorRequest = factory->NewAsyncGeneratorRequest();
+                DUMP_FOR_HANDLE(asyncGeneratorRequest)
                 break;
             }
             case JSType::PROMISE_REACTIONS: {
@@ -1236,6 +1252,10 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::FREE_OBJECT_WITH_NONE_FIELD:
             case JSType::FREE_OBJECT_WITH_TWO_FIELD:
             case JSType::JS_NATIVE_POINTER: {
+                break;
+            }
+            case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN: {
+                CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncGeneratorResNextRetProRstFtn::SIZE, 1U);
                 break;
             }
             default:

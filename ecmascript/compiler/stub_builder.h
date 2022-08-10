@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_STUB_H
-#define ECMASCRIPT_COMPILER_STUB_H
+#ifndef ECMASCRIPT_COMPILER_STUB_BUILDER_H
+#define ECMASCRIPT_COMPILER_STUB_BUILDER_H
 
+#include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/global_env_constants.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
@@ -28,22 +27,17 @@ using namespace panda::ecmascript;
 
 class StubBuilder {
 public:
-    explicit StubBuilder(CallSignature *callSignature, Circuit *circuit);
+    explicit StubBuilder(StubBuilder *parent)
+        : callSignature_(parent->GetCallSignature()), env_(parent->GetEnvironment()) {}
+    explicit StubBuilder(CallSignature *callSignature, Environment *env)
+        : callSignature_(callSignature), env_(env) {}
     virtual ~StubBuilder() = default;
     NO_MOVE_SEMANTIC(StubBuilder);
     NO_COPY_SEMANTIC(StubBuilder);
-    virtual void GenerateCircuit(const CompilationConfig *cfg)
+    virtual void GenerateCircuit() = 0;
+    Environment *GetEnvironment() const
     {
-        env_.SetCompilationConfig(cfg);
-        InitializeArguments();
-    }
-    CircuitBuilder* GetBuilder()
-    {
-        return &builder_;
-    }
-    Environment *GetEnvironment()
-    {
-        return &env_;
+        return env_;
     }
     CallSignature *GetCallSignature() const
     {
@@ -51,11 +45,7 @@ public:
     }
     int NextVariableId()
     {
-        return env_.NextVariableId();
-    }
-    const std::string &GetMethodName() const
-    {
-        return callSignature_->GetName();
+        return env_->NextVariableId();
     }
     // constant
     GateRef Int8(int8_t value);
@@ -158,6 +148,7 @@ public:
     GateRef TaggedIsDouble(GateRef x);
     GateRef TaggedIsObject(GateRef x);
     GateRef TaggedIsNumber(GateRef x);
+    GateRef TaggedIsNumeric(GateRef x);
     GateRef TaggedIsHole(GateRef x);
     GateRef TaggedIsNotHole(GateRef x);
     GateRef TaggedIsUndefined(GateRef x);
@@ -167,6 +158,7 @@ public:
     GateRef ObjectAddressToRange(GateRef x);
     GateRef InYoungGeneration(GateRef x);
     GateRef TaggedIsGeneratorObject(GateRef x);
+    GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     GateRef TaggedIsPropertyBox(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
     GateRef TaggedIsPrototypeHandler(GateRef x);
@@ -245,10 +237,11 @@ public:
     GateRef IsClassPrototype(GateRef object);
     GateRef IsExtensible(GateRef object);
     GateRef TaggedObjectIsEcmaObject(GateRef obj);
+    GateRef IsEcmaObject(GateRef obj);
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
     GateRef TaggedIsBigInt(GateRef obj);
-    GateRef IsBigInt(GateRef obj);
+    GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
     GateRef IsJSFunctionBase(GateRef obj);
     GateRef IsConstructor(GateRef object);
@@ -288,7 +281,7 @@ public:
     void SetBitFieldToHClass(GateRef glue, GateRef hClass, GateRef bitfield);
     void SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto);
     void SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass,
-	                                               GateRef protoChange);
+                                       GateRef protoChange);
     void SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr);
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
@@ -296,6 +289,8 @@ public:
     GateRef IsProtoTypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY());
+    GateRef GetPropertyInlinedProps(GateRef obj, GateRef hClass,
+        GateRef index, VariableType type = VariableType::JS_ANY());
 
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
@@ -413,6 +408,7 @@ public:
     GateRef GetFunctionBitFieldFromJSFunction(GateRef object);
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
+    inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetEntryIndexOfGlobalDictionary(GateRef entry);
@@ -456,14 +452,9 @@ public:
     inline GateRef ComputeTaggedArraySize(GateRef length);
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
-    void InitializeTaggedArrayWithSpeicalValue(
-        GateRef glue, GateRef array, GateRef value, GateRef start, GateRef length);
-    void InitializeWithSpeicalValue(
-        GateRef glue, GateRef object, GateRef value, GateRef start, GateRef end);
-    GateRef AllocateInYoung(GateRef glue, GateRef size);
-    GateRef NewLexicalEnv(GateRef glue, GateRef numSlots, GateRef parent);
-    GateRef NewJSObject(GateRef glue, GateRef hclass);
+    inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor);
+    GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
                            JSCallMode mode, std::initializer_list<GateRef> args);
     GateRef IsFastTypeArray(GateRef jsType);
@@ -471,6 +462,7 @@ public:
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                        GateRef jsType);
     GateRef TryStringOrSymbelToElementIndex(GateRef string);
+    inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::initializer_list<GateRef>& args);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode::Op Op>
@@ -479,9 +471,7 @@ private:
                          const BinaryOperation& intOp, const BinaryOperation& floatOp);
     void InitializeArguments();
     CallSignature *callSignature_;
-    CircuitBuilder builder_;
-    GateAccessor acc_;
-    Environment env_;
+    Environment *env_;
 };
 }  // namespace panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_STUB_H
+#endif  // ECMASCRIPT_COMPILER_STUB_BUILDER_H

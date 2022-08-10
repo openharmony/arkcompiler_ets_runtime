@@ -71,6 +71,7 @@ class JSPromise;
 class JSPromiseReactionsFunction;
 class JSPromiseExecutorFunction;
 class JSPromiseAllResolveElementFunction;
+class JSAsyncGeneratorResNextRetProRstFtn;
 class JSPromiseAnyRejectElementFunction;
 class JSPromiseAllSettledElementFunction;
 class JSPromiseFinallyFunction;
@@ -142,6 +143,9 @@ class CjsRequire;
 class CjsExports;
 class ResolvedBinding;
 class BigInt;
+class AsyncGeneratorRequest;
+class JSAsyncGeneratorFunction;
+class JSAsyncGeneratorObject;
 class CellRecord;
 namespace job {
 class MicroJobQueue;
@@ -186,8 +190,12 @@ enum class MethodIndex : uint8_t {
     BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION,
     BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION,
     BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION,
+    BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION,
+    BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION,
     METHOD_END
 };
+
+constexpr uint8_t INVALID_BUILTINS_ID = 0xFF;
 
 class ObjectFactory {
 public:
@@ -195,7 +203,7 @@ public:
     ~ObjectFactory();
     void GenerateInternalNativeMethods();
     JSMethod *GetMethodByIndex(MethodIndex idx);
-    JSMethod *NewMethodForNativeFunction(const void *func);
+    JSMethod *NewMethodForNativeFunction(const void *func, uint8_t builtinId = INVALID_BUILTINS_ID);
     JSMethod *NewMethodForAOTFunction(const void *func, size_t numArgs, const JSPandaFile *pf, uint32_t methodId);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
@@ -218,7 +226,8 @@ public:
     // use for others create, prototype is Function.prototype
     // use for native function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
-                                       FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+                                       FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                       uint8_t builtinId = INVALID_BUILTINS_ID);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, JSMethod *method,
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
@@ -250,6 +259,7 @@ public:
     JSHandle<JSGeneratorObject> NewJSGeneratorObject(JSHandle<JSTaggedValue> generatorFunction);
 
     JSHandle<JSAsyncFuncObject> NewJSAsyncFuncObject();
+    JSHandle<JSAsyncGeneratorObject> NewJSAsyncGeneratorObject(JSHandle<JSTaggedValue> generatorFunction);
 
     JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(const JSHandle<JSFunction> &function,
                                                const JSHandle<JSTaggedValue> &object);
@@ -291,6 +301,7 @@ public:
     JSHandle<PromiseReaction> NewPromiseReaction();
 
     JSHandle<PromiseRecord> NewPromiseRecord();
+    JSHandle<AsyncGeneratorRequest> NewAsyncGeneratorRequest();
 
     JSHandle<ResolvingFunctionsRecord> NewResolvingFunctionsRecord();
 
@@ -323,15 +334,18 @@ public:
     JSHandle<BigInt> NewBigInt(uint32_t length);
     // use for copy properties keys's array to another array
     JSHandle<TaggedArray> ExtendArray(const JSHandle<TaggedArray> &old, uint32_t length,
-                                      JSTaggedValue initVal = JSTaggedValue::Hole());
+                                      JSTaggedValue initVal = JSTaggedValue::Hole(),
+                                      MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<TaggedArray> CopyPartArray(const JSHandle<TaggedArray> &old, uint32_t start, uint32_t end);
     JSHandle<TaggedArray> CopyArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
-                                    JSTaggedValue initVal = JSTaggedValue::Hole());
+                                    JSTaggedValue initVal = JSTaggedValue::Hole(),
+                                    MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old, const JSHandle<JSTaggedValue> &env,
                                           const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &constpool);
 
-    JSHandle<LayoutInfo> CreateLayoutInfo(int properties, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<LayoutInfo> CreateLayoutInfo(int properties, MemSpaceType type = MemSpaceType::SEMI_SPACE,
+                                          JSTaggedValue initVal = JSTaggedValue::Hole());
 
     JSHandle<LayoutInfo> ExtendLayoutInfo(const JSHandle<LayoutInfo> &old, int properties,
                                           JSTaggedValue initVal = JSTaggedValue::Hole());
@@ -390,6 +404,10 @@ public:
 
     JSHandle<JSPromiseValueThunkOrThrowerFunction> NewJSPromiseThrowerFunction();
 
+    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> NewJSAsyGenResNextRetProRstFulfilledFtn();
+
+    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> NewJSAsyGenResNextRetProRstRejectedFtn();
+
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object, const JSHandle<JSTaggedValue> &env,
                                           const JSHandle<JSTaggedValue> &constpool, bool canShareHClass = true);
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object);
@@ -425,13 +443,14 @@ public:
                                                         void *data = nullptr,
                                                         bool nonMovable = false);
 
-    JSHandle<JSObject> GetObjectLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length);
+    JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> SetLayoutInObjHClass(const JSHandle<TaggedArray> &properties, size_t length,
                                             const JSHandle<JSHClass> &objClass);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByDynClass(JSMethod *method, const JSHandle<JSHClass> &clazz,
-                                                 FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+                                                 FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                                 MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSFunctionByDynClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
 
@@ -535,13 +554,21 @@ public:
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &bindingName);
     JSHandle<CellRecord> NewCellRecord();
-
+    JSHandle<JSFunction> NewJSAsyncGeneratorFunction(JSMethod *method);
     // --------------------------------------require--------------------------------------------
     JSHandle<CjsModule> NewCjsModule();
     JSHandle<CjsExports> NewCjsExports();
     JSHandle<CjsRequire> NewCjsRequire();
 
     JSHandle<JSHClass> CreateIteratorResultInstanceClass();
+
+    // --------------------------------------old space object--------------------------------------------
+    JSHandle<JSObject> NewOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
+    TaggedObject *NewOldSpaceDynObject(const JSHandle<JSHClass> &dynclass);
+    JSHandle<TaggedArray> NewOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+
+    // ---------------------------------New objects used internally--------------------------------------
+    JSHandle<JSArray> NewJSStableArrayWithElements(const JSHandle<TaggedArray> &elements);
 
 private:
     friend class GlobalEnv;
@@ -598,7 +625,8 @@ private:
     JSHandle<EcmaString> GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
     // For MUtf-8 string data
-    EcmaString *GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len, bool canBeCompressed) const;
+    EcmaString *GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len, bool canBeCompressed,
+                                            MemSpaceType type = MemSpaceType::SEMI_SPACE) const;
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                   bool canBeCompress) const;
@@ -609,12 +637,15 @@ private:
                                                   const JSHandle<EcmaString> &secondString);
 
     inline EcmaString *AllocStringObject(size_t size);
+    inline EcmaString *AllocOldSpaceStringObject(size_t size);
     inline EcmaString *AllocNonMovableStringObject(size_t size);
     JSHandle<TaggedArray> NewEmptyArray();  // only used for EcmaVM.
 
     JSHandle<JSHClass> CreateJSArguments();
     JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto);
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
+
+    inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type);
 
     friend class Builtins;    // create builtins object need dynclass
     friend class JSFunction;  // create prototype_or_dynclass need dynclass

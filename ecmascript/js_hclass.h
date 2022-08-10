@@ -17,38 +17,39 @@
 #define ECMASCRIPT_JS_HCLASS_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/property_attributes.h"
+#include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
-#include "utils/bit_field.h"
+#include "ecmascript/property_attributes.h"
+
+#include "libpandabase/utils/bit_field.h"
 
 /*
  *                         JS Object and JS HClass Layout
  *
  *      Properties                         JS Object                    JS HClass
  *      +------------+                     +------------+               +------------------+
- *      |arrayClass  + <---------|         |JS HClass   +-------------->|HClass class      |
+ *      |arrayHClass + <---------|         |JS HClass   +-------------->|   meta hclass    |
  *      +------------+           |         +------------+               +------------------+
- *      |property 0  |           |         |Hash        |               |BitField          |
+ *      | property 0 |           |         |Hash        |               |   hclass level   |
  *      +------------+           |         +------------+               +------------------+
- *      |property 1  |           |-------  |Properties  |               |BitField1         |
+ *      | property 1 |           |-------  |Properties  |               |   supers[]       |
  *      +------------+                     +------------+               +------------------+
- *      |...         |           |-------  |Elements    |               |Proto             |
+ *      |...         |           |-------  |Elements    |               |   vtable[]       |
  *      +------------+           |         +------------+               +------------------+
- *                               |         |in-obj 0    |               |Layout            |
+ *                               |         |inl-prop-0  |               |   prototype      |
  *      Elements                 |         +------------+               +------------------+
- *      +------------+           |         |in-obj 1    |               |Transitions       |
- *      |arrayClass  + <---------|         +------------+               +------------------+
- *      +------------+                     |...         |               |Parent            |
- *      |value 0     |                     +------------+               +------------------+
+ *      +------------+           |         |inl-prop-1  |               |   layout         |
+ *      |arrayHClass + <---------|         +------------+               +------------------+
+ *      +------------+                     |...         |               |   transitions    |
+ *      | value 0    |                     +------------+               +------------------+
+ *      +------------+                                                  |    paratent      |
+ *      | value 1    |                                                  +------------------+
  *      +------------+                                                  |ProtoChangeMarker |
- *      |value 1     |                                                  +------------------+
- *      +------------+                                                  |ProtoChangeDetails|
  *      |...         |                                                  +------------------+
- *      +------------+                                                  |EnumCache         |
+ *      +------------+                                                  |    EnumCache     |
  *                                                                      +------------------+
  *
  *                          Proto: [[Prototype]] in Ecma spec
@@ -63,7 +64,7 @@ class ProtoChangeDetails;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define JSTYPE_DECL       /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
     INVALID = 0,          /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_OBJECT,        /* JS_OBJECT_BEGIN ////////////////////////////////////////////////////////////////////// */ \
+        JS_OBJECT,        /* JS_OBJECT_FIRST ////////////////////////////////////////////////////////////////////// */ \
         JS_REALM,         /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FUNCTION_BASE, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FUNCTION,      /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -71,24 +72,26 @@ class ProtoChangeDetails;
         JS_PROMISE_REACTIONS_FUNCTION, /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_EXECUTOR_FUNCTION,  /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN, /* ///////////////////////////////////////-PADDING */ \
         JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION,  /* ///////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_FINALLY_FUNCTION,  /* //////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION,  /* ///////////////////////////////////////////////////-PADDING */ \
         JS_GENERATOR_FUNCTION, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_GENERATOR_FUNCTION,  /* //////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_FUNCTION, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_INTL_BOUND_FUNCTION, /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_AWAIT_STATUS_FUNCTION, /* ////////////////////////////////////////////////////////////////-PADDING */ \
         JS_BOUND_FUNCTION, /*  //////////////////////////////////////////////////////////////////////////////////// */ \
                                                                                                                        \
-        JS_ERROR,           /* JS_ERROR_BEGIN /////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ERROR,           /* JS_ERROR_FIRST /////////////////////////////////////////////////////////////-PADDING */ \
         JS_EVAL_ERROR,      /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_RANGE_ERROR,     /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_REFERENCE_ERROR, /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_TYPE_ERROR,      /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_AGGREGATE_ERROR, /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_URI_ERROR,       /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_SYNTAX_ERROR,    /* JS_ERROR_END /////////////////////////////////////////////////////////////////////// */ \
+        JS_SYNTAX_ERROR,    /* JS_ERROR_LAST /////////////////////////////////////////////////////////////////////// */\
                                                                                                                        \
         JS_REG_EXP,  /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SET,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -135,6 +138,7 @@ class ProtoChangeDetails;
         JS_DATA_VIEW,    /* /////////////////////////////////////////////////////////////////////////////////////// */ \
         JS_ARGUMENTS, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_GENERATOR_OBJECT,  /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_GENERATOR_OBJECT,  /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_FUNC_OBJECT, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         /* SPECIAL indexed objects begin, DON'T CHANGE HERE ///////////////////////////////////////////////-PADDING */ \
@@ -153,7 +157,7 @@ class ProtoChangeDetails;
         JS_API_STACK,      /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_PLAIN_ARRAY, /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_QUEUE,      /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_TYPED_ARRAY, /* JS_TYPED_ARRAY_BEGIN /////////////////////////////////////////////////////////////////// */ \
+        JS_TYPED_ARRAY, /* JS_TYPED_ARRAY_FIRST /////////////////////////////////////////////////////////////////// */ \
         JS_INT8_ARRAY,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_UINT8_ARRAY, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_UINT8_CLAMPED_ARRAY, /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -164,14 +168,14 @@ class ProtoChangeDetails;
         JS_FLOAT32_ARRAY,       /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FLOAT64_ARRAY,       /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_BIGINT64_ARRAY,      /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_BIGUINT64_ARRAY,     /* JS_TYPED_ARRAY_END ///////////////////////////////////////////////////////////// */ \
+        JS_BIGUINT64_ARRAY,     /* JS_TYPED_ARRAY_LAST ///////////////////////////////////////////////////////////// */\
         JS_PRIMITIVE_REF, /* number\boolean\string. SPECIAL indexed objects end, DON'T CHANGE HERE ////////-PADDING */ \
         JS_MODULE_NAMESPACE, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_MODULE, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_EXPORTS, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_REQUIRE, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_GLOBAL_OBJECT, /* JS_OBJECT_END/////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_PROXY, /* ECMA_OBJECT_END ////////////////////////////////////////////////////////////////////////////// */ \
+        JS_GLOBAL_OBJECT, /* JS_OBJECT_LAST/////////////////////////////////////////////////////////////////-PADDING */\
+        JS_PROXY, /* ECMA_OBJECT_LAST ////////////////////////////////////////////////////////////////////////////// */\
                                                                                                                        \
         HCLASS,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         STRING,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -198,10 +202,11 @@ class ProtoChangeDetails;
         TEMPLATE_MAP,       /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROGRAM, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */       \
                                                                                                                        \
-        PROMISE_CAPABILITY, /* JS_RECORD_BEGIN //////////////////////////////////////////////////////////////////// */ \
+        PROMISE_CAPABILITY, /* JS_RECORD_FIRST //////////////////////////////////////////////////////////////////// */ \
         PROMISE_RECORD,     /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         RESOLVING_FUNCTIONS_RECORD, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         PROMISE_REACTIONS,          /* ////////////////////////////////////////////////////////////////////-PADDING */ \
+        ASYNC_GENERATOR_REQUEST, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         PROMISE_ITERATOR_RECORD,    /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         MICRO_JOB_QUEUE, /* /////////////////////////////////////////////////////////////////////////////-PADDING */   \
         PENDING_JOB,     /* /////////////////////////////////////////////////////////////////////////////-PADDING */   \
@@ -211,7 +216,7 @@ class ProtoChangeDetails;
         EXPORTENTRY_RECORD, /* /////////////////////////////////////////////////////////////////////////-PADDING */    \
         RESOLVEDBINDING_RECORD, /* /////////////////////////////////////////////////////////////////////-PADDING */    \
         CELL_RECORD,          /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
-        COMPLETION_RECORD, /* JS_RECORD_END /////////////////////////////////////////////////////////////////////// */ \
+        COMPLETION_RECORD, /* JS_RECORD_LAST /////////////////////////////////////////////////////////////////////// */\
         MACHINE_CODE_OBJECT,                                                                                           \
         CLASS_INFO_EXTRACTOR, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_ARRAY_TYPE,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -224,29 +229,29 @@ class ProtoChangeDetails;
         TS_INTERFACE_TYPE,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         TYPE_LAST = TS_INTERFACE_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
-        JS_FUNCTION_BEGIN = JS_FUNCTION, /* ///////////////////////////////////////////////////////////////-PADDING */ \
-        JS_FUNCTION_END = JS_ASYNC_AWAIT_STATUS_FUNCTION, /* //////////////////////////////////////////////-PADDING */ \
+        JS_FUNCTION_FIRST = JS_FUNCTION, /* ///////////////////////////////////////////////////////////////-PADDING */ \
+        JS_FUNCTION_LAST = JS_ASYNC_AWAIT_STATUS_FUNCTION, /* //////////////////////////////////////////////-PADDING */\
                                                                                                                        \
-        JS_OBJECT_BEGIN = JS_OBJECT, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_OBJECT_END = JS_GLOBAL_OBJECT, /* //////////////////////////////////////////////////////////////-PADDING */ \
+        JS_OBJECT_FIRST = JS_OBJECT, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_OBJECT_LAST = JS_GLOBAL_OBJECT, /* //////////////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
-        ECMA_OBJECT_BEGIN = JS_OBJECT, /* /////////////////////////////////////////////////////////////////-PADDING */ \
-        ECMA_OBJECT_END = JS_PROXY,    /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        ECMA_OBJECT_FIRST = JS_OBJECT, /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        ECMA_OBJECT_LAST = JS_PROXY,    /* /////////////////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
-        JS_ERROR_BEGIN = JS_ERROR,      /* ////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_ERROR_END = JS_SYNTAX_ERROR, /* ////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ERROR_FIRST = JS_ERROR,      /* ////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ERROR_LAST = JS_SYNTAX_ERROR, /* ////////////////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
-        JS_ITERATOR_BEGIN = JS_ITERATOR,      /* //////////////////////////////////////////////////////////-PADDING */ \
-        JS_ITERATOR_END = JS_STRING_ITERATOR, /* //////////////////////////////////////////////////////////-PADDING */ \
+        JS_ITERATOR_FIRST = JS_ITERATOR,      /* //////////////////////////////////////////////////////////-PADDING */ \
+        JS_ITERATOR_LAST = JS_STRING_ITERATOR, /* //////////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
-        JS_RECORD_BEGIN = PROMISE_CAPABILITY, /* //////////////////////////////////////////////////////////-PADDING */ \
-        JS_RECORD_END = COMPLETION_RECORD,    /* ///////////////////////////////////////////////////////-PADDING */    \
+        JS_RECORD_FIRST = PROMISE_CAPABILITY, /* //////////////////////////////////////////////////////////-PADDING */ \
+        JS_RECORD_LAST = COMPLETION_RECORD,    /* ///////////////////////////////////////////////////////-PADDING */   \
                                                                                                                        \
-        JS_TYPED_ARRAY_BEGIN = JS_TYPED_ARRAY, /* /////////////////////////////////////////////////////////-PADDING */ \
-        JS_TYPED_ARRAY_END = JS_BIGUINT64_ARRAY, /* ///////////////////////////////////////////////////////-PADDING */ \
+        JS_TYPED_ARRAY_FIRST = JS_TYPED_ARRAY, /* /////////////////////////////////////////////////////////-PADDING */ \
+        JS_TYPED_ARRAY_LAST = JS_BIGUINT64_ARRAY, /* ///////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
-        MODULE_RECORD_BEGIN = MODULE_RECORD, /* ///////////////////////////////////////////////////////////-PADDING */ \
-        MODULE_RECORD_END = SOURCE_TEXT_MODULE_RECORD /* //////////////////////////////////////////////////-PADDING */
+        MODULE_RECORD_FIRST = MODULE_RECORD, /* ///////////////////////////////////////////////////////////-PADDING */ \
+        MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD /* //////////////////////////////////////////////////-PADDING */
 
 
 enum class JSType : uint8_t {
@@ -406,13 +411,13 @@ public:
     inline bool IsJSObject() const
     {
         JSType jsType = GetObjectType();
-        return (JSType::JS_OBJECT_BEGIN <= jsType && jsType <= JSType::JS_OBJECT_END);
+        return (JSType::JS_OBJECT_FIRST <= jsType && jsType <= JSType::JS_OBJECT_LAST);
     }
 
     inline bool IsECMAObject() const
     {
         JSType jsType = GetObjectType();
-        return (JSType::ECMA_OBJECT_BEGIN <= jsType && jsType <= JSType::ECMA_OBJECT_END);
+        return (JSType::ECMA_OBJECT_FIRST <= jsType && jsType <= JSType::ECMA_OBJECT_LAST);
     }
 
     inline bool IsRealm() const
@@ -475,7 +480,7 @@ public:
     inline bool IsTypedArray() const
     {
         JSType jsType = GetObjectType();
-        return (JSType::JS_TYPED_ARRAY_BEGIN < jsType && jsType <= JSType::JS_TYPED_ARRAY_END);
+        return (JSType::JS_TYPED_ARRAY_FIRST < jsType && jsType <= JSType::JS_TYPED_ARRAY_LAST);
     }
 
     inline bool IsJSTypedArray() const
@@ -589,6 +594,11 @@ public:
         return GetObjectType() == JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION;
     }
 
+    inline bool IsJSAsyncGeneratorResNextRetProRstFtn() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN;
+    }
+
     inline bool IsJSPromiseAnyRejectElementFunction() const
     {
         return GetObjectType() == JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION;
@@ -656,13 +666,13 @@ public:
 
     bool IsJSFunction() const
     {
-        return GetObjectType() >= JSType::JS_FUNCTION_BEGIN && GetObjectType() <= JSType::JS_FUNCTION_END;
+        return GetObjectType() >= JSType::JS_FUNCTION_FIRST && GetObjectType() <= JSType::JS_FUNCTION_LAST;
     }
 
     inline bool IsJSError() const
     {
         JSType jsType = GetObjectType();
-        return jsType >= JSType::JS_ERROR_BEGIN && jsType <= JSType::JS_ERROR_END;
+        return jsType >= JSType::JS_ERROR_FIRST && jsType <= JSType::JS_ERROR_LAST;
     }
 
     inline bool IsArguments() const
@@ -860,7 +870,7 @@ public:
     inline bool IsIterator() const
     {
         JSType jsType = GetObjectType();
-        return jsType >= JSType::JS_ITERATOR_BEGIN && jsType <= JSType::JS_ITERATOR_END;
+        return jsType >= JSType::JS_ITERATOR_FIRST && jsType <= JSType::JS_ITERATOR_LAST;
     }
 
     inline bool IsForinIterator() const
@@ -1037,15 +1047,32 @@ public:
         return GetObjectType() == JSType::JS_GENERATOR_FUNCTION;
     }
 
+    inline bool IsAsyncGeneratorFunction() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_GENERATOR_FUNCTION;
+    }
+
     inline bool IsGeneratorObject() const
     {
         JSType jsType = GetObjectType();
         return jsType == JSType::JS_GENERATOR_OBJECT || jsType == JSType::JS_ASYNC_FUNC_OBJECT;
     }
 
+    inline bool IsAsyncGeneratorObject() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::JS_ASYNC_GENERATOR_OBJECT;
+    }
+
     inline bool IsGeneratorContext() const
     {
         return GetObjectType() == JSType::JS_GENERATOR_CONTEXT;
+    }
+
+    inline bool IsAsyncGeneratorRequest() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::ASYNC_GENERATOR_REQUEST;
     }
 
     inline bool IsAsyncFuncObject() const
@@ -1096,7 +1123,7 @@ public:
     inline bool IsRecord() const
     {
         JSType jsType = GetObjectType();
-        return jsType >= JSType::JS_RECORD_BEGIN && jsType <= JSType::JS_RECORD_END;
+        return jsType >= JSType::JS_RECORD_FIRST && jsType <= JSType::JS_RECORD_LAST;
     }
 
     inline bool IsTemplateMap() const
@@ -1106,14 +1133,8 @@ public:
 
     inline bool IsFreeObject() const
     {
-        switch (GetObjectType()) {
-            case JSType::FREE_OBJECT_WITH_ONE_FIELD:
-            case JSType::FREE_OBJECT_WITH_NONE_FIELD:
-            case JSType::FREE_OBJECT_WITH_TWO_FIELD:
-                return true;
-            default:
-                return false;
-        }
+        JSType t = GetObjectType();
+        return (JSType::FREE_OBJECT_WITH_ONE_FIELD <= t) && (t <= JSType::FREE_OBJECT_WITH_TWO_FIELD);
     }
 
     inline bool IsFreeObjectWithShortField() const
@@ -1190,7 +1211,7 @@ public:
     inline bool IsModuleRecord() const
     {
         JSType jsType = GetObjectType();
-        return jsType >= JSType::MODULE_RECORD_BEGIN && jsType <= JSType::MODULE_RECORD_END;
+        return jsType >= JSType::MODULE_RECORD_FIRST && jsType <= JSType::MODULE_RECORD_LAST;
     }
 
     inline bool IsSourceTextModule() const
@@ -1374,7 +1395,7 @@ public:
     inline uint32_t GetInlinedProperties() const
     {
         JSType type = GetObjectType();
-        if (JSType::JS_OBJECT_BEGIN <= type && type <= JSType::JS_OBJECT_END) {
+        if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
             uint32_t bits = GetBitField1();
             return static_cast<uint32_t>(ObjectSizeInWordsBits::Decode(bits) - InlinedPropsStartBits::Decode(bits));
         } else {

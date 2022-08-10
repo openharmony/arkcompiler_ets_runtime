@@ -19,14 +19,19 @@
 #include <atomic>
 #include <ctime>
 #include <fstream>
-#include <string>
-#include <unistd.h>
+#include <cstring>
 #include <semaphore.h>
-#include <sys/syscall.h>
+
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
+
+#include <unistd.h>
+#include <sys/syscall.h>
+
+
 namespace panda::ecmascript {
 const long long TIME_CHANGE = 10000000000000; // 10000000000000:Discard the first 3 bits of the current nanosecond time
+const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
 struct FrameInfo {
     std::string codeType = "";
     std::string functionName = "";
@@ -53,6 +58,16 @@ struct SampleInfo {
     int id = 0;
     int line = 0;
     int timeStamp = 0;
+};
+
+struct FrameInfoTemp {
+    char codeType[20] = {0}; // 20:the maximum size of the codeType
+    char functionName[50] = {0}; // 50:the maximum size of the functionName
+    int columnNumber = 0;
+    int lineNumber = 0;
+    int scriptId = 0;
+    char url[500] = {0}; // 500:the maximum size of the url
+    JSMethod *method = nullptr;
 };
 struct MethodKey {
     JSMethod *method = nullptr;
@@ -84,25 +99,22 @@ public:
     void SetIsStart(bool isStart);
     bool GetGcState() const;
     void SetGcState(bool gcState);
-    void SetLastSampleFlag(bool lastSampleFlag);
+    void SetSampleFlag(bool sampleFlag);
     int SemInit(int index, int pshared, int value);
     int SemPost(int index);
     int SemWait(int index);
     int SemDestroy(int index);
     const CMap<JSMethod *, struct FrameInfo> &GetStackInfo() const;
     void InsertStackInfo(JSMethod *method, struct FrameInfo &codeEntry);
-    const CVector<JSMethod *> &GetFrameStack() const;
-    void ClearFrameStack();
-    void PushFrameStack(JSMethod *method);
-    const CMap<std::string, int> &GetScriptIdMap() const;
-    void InsertScriptId(std::string &url, int size);
-
+    void PushFrameStack(JSMethod *method, int count);
+    void PushStackInfo(const FrameInfoTemp &frameInfoTemp, int index);
     std::ofstream fileHandle_;
 private:
     void WriteAddNodes();
     void WriteAddSamples();
     struct FrameInfo GetMethodInfo(JSMethod *method);
     struct FrameInfo GetGcInfo();
+    void FrameInfoTempToMap();
 
     int previousId_ = 0;
     uint64_t threadStartTime_ = 0;
@@ -117,8 +129,11 @@ private:
     std::string fileName_ = "";
     sem_t sem_[2]; // 2 : sem_ size is two.
     CMap<JSMethod *, struct FrameInfo> stackInfoMap_;
-    CVector<JSMethod *> frameStack_;
+    JSMethod *frameStack_[MAX_ARRAY_COUNT] = {};
+    int frameStackLength_ = 0;
     CMap<std::string, int> scriptIdMap_;
+    FrameInfoTemp frameInfoTemps_[MAX_ARRAY_COUNT] = {};
+    int frameInfoTempLength_ = 0;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_SAMPLES_RECORD_H

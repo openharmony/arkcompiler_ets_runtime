@@ -31,8 +31,7 @@
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
-#include "ecmascript/ts_types/ts_loader.h"
-#include "libpandabase/mem/mem.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
 void Snapshot::Serialize(TaggedObject *objectHeader, const panda_file::File *pf, const CString &fileName)
@@ -162,7 +161,7 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
         auto stringVector = processor.GetStringVector();
         for (uint32_t i = 0; i < stringVector.size(); ++i) {
             JSTaggedValue result(reinterpret_cast<EcmaString *>(stringVector[i]));
-            vm_->GetTSLoader()->AddConstString(result);
+            vm_->GetTSManager()->AddConstString(result);
         }
     }
     munmap(ToNativePtr<void>(readFile), hdr.pandaFileBegin);

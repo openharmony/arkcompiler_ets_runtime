@@ -20,7 +20,9 @@
 #include <map>
 
 #include "ecmascript/mem/mem.h"
-#include "os/mutex.h"
+#include "ecmascript/mem/mem_common.h"
+
+#include "libpandabase/os/mutex.h"
 
 #if !(defined PANDA_TARGET_MACOS || defined PANDA_TARGET_WINDOWS)
 #include <sys/prctl.h>

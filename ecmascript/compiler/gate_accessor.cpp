@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
-#include "gate_accessor.h"
+#include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {
+using UseIterator = GateAccessor::UseIterator;
+
 size_t GateAccessor::GetNumIns(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -30,6 +32,31 @@ MarkCode GateAccessor::GetMark(GateRef gate) const
 void GateAccessor::SetMark(GateRef gate, MarkCode mark)
 {
     circuit_->SetMark(gate, mark);
+}
+
+bool GateAccessor::IsFinished(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::FINISHED;
+}
+
+bool GateAccessor::IsVisited(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::VISITED;
+}
+
+bool GateAccessor::IsNotMarked(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::NO_MARK;
+}
+
+void GateAccessor::SetFinished(GateRef gate)
+{
+    SetMark(gate, MarkCode::FINISHED);
+}
+
+void GateAccessor::SetVisited(GateRef gate)
+{
+    SetMark(gate, MarkCode::VISITED);
 }
 
 OpCode GateAccessor::GetOpCode(GateRef gate) const
@@ -136,6 +163,21 @@ bool GateAccessor::IsLoopHead(GateRef gate) const
     return circuit_->IsLoopHead(gate);
 }
 
+bool GateAccessor::IsLoopBack(GateRef gate) const
+{
+    return GetOpCode(gate) == OpCode::LOOP_BACK;
+}
+
+bool GateAccessor::IsState(GateRef gate) const
+{
+    return GetOpCode(gate).IsState();
+}
+
+bool GateAccessor::IsSchedulable(GateRef gate) const
+{
+    return GetOpCode(gate).IsSchedulable();
+}
+
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -154,7 +196,7 @@ size_t GateAccessor::GetImmediateId(GateRef gate) const
     return imm;
 }
 
-bool GateAccessor::IsDependIn(const UsesIterator &useIt) const
+bool GateAccessor::IsDependIn(const UseIterator &useIt) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(*useIt);
     size_t dependStartIndex = gatePtr->GetStateCount();
@@ -171,12 +213,14 @@ void GateAccessor::SetDep(GateRef gate, GateRef depGate, size_t idx)
     gatePtr->ModifyIn(dependIndex + idx, circuit_->LoadGatePtr(depGate));
 }
 
-void GateAccessor::ReplaceIn(UsesIterator &useIt, GateRef replaceGate)
+UseIterator GateAccessor::ReplaceIn(const UseIterator &useIt, GateRef replaceGate)
 {
+    UseIterator next = useIt;
+    next++;
     Gate *curGatePtr = circuit_->LoadGatePtr(*useIt);
     Gate *replaceGatePtr = circuit_->LoadGatePtr(replaceGate);
     curGatePtr->ModifyIn(useIt.GetIndex(), replaceGatePtr);
-    useIt.SetChanged();
+    return next;
 }
 
 GateType GateAccessor::GetGateType(GateRef gate) const
@@ -189,8 +233,10 @@ void GateAccessor::SetGateType(GateRef gate, GateType gt)
     circuit_->LoadGatePtr(gate)->SetGateType(gt);
 }
 
-void GateAccessor::DeleteExceptionDep(UsesIterator &useIt)
+UseIterator GateAccessor::DeleteExceptionDep(const UseIterator &useIt)
 {
+    auto next = useIt;
+    next++;
     ASSERT(GetOpCode(*useIt) == OpCode::RETURN || GetOpCode(*useIt) == OpCode::DEPEND_SELECTOR);
     if (GetOpCode(*useIt) == OpCode::RETURN) {
         // 0 : the index of CONSTANT
@@ -208,27 +254,21 @@ void GateAccessor::DeleteExceptionDep(UsesIterator &useIt)
         }
         DecreaseIn(useIt);
     }
+    return next;
 }
 
-void GateAccessor::DeleteIn(UsesIterator &useIt)
+UseIterator GateAccessor::DeleteGate(const UseIterator &useIt)
 {
-    size_t idx = useIt.GetIndex();
-    Gate *curGatePtr = circuit_->LoadGatePtr(*useIt);
-    curGatePtr->DeleteIn(idx);
-    useIt.SetChanged();
-}
-
-void GateAccessor::DeleteGate(UsesIterator &useIt)
-{
+    auto next = useIt;
+    next++;
     circuit_->DeleteGate(*useIt);
-    useIt.SetChanged();
+    return next;
 }
 
-void GateAccessor::DecreaseIn(UsesIterator &useIt)
+void GateAccessor::DecreaseIn(const UseIterator &useIt)
 {
     size_t idx = useIt.GetIndex();
     circuit_->DecreaseIn(*useIt, idx);
-    useIt.SetChanged();
 }
 
 void GateAccessor::NewIn(GateRef gate, size_t idx, GateRef in)
@@ -313,5 +353,11 @@ void GateAccessor::SetMachineType(GateRef gate, MachineType type)
 GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, GateType type) const
 {
     return circuit_->GetConstantGate(bitValue, bitfield, type);
+}
+
+bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
+{
+    size_t valueStartIndex = GetStateCount(gate) + GetDependCount(gate);
+    return (index >= valueStartIndex && index < GetNumIns(gate));
 }
 }  // namespace panda::ecmascript::kungfu

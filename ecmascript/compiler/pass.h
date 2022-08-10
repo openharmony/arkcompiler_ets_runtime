@@ -54,8 +54,7 @@ private:
 template<typename T1>
 class PassRunner {
 public:
-    explicit PassRunner(T1* data, bool enableLog = false)
-        : data_(data), enableLog_(enableLog) {}
+    explicit PassRunner(T1* data, bool log = false) : data_(data), enableLog_(log) {}
     virtual ~PassRunner() = default;
     template<typename T2, typename... Args>
     bool RunPass(Args... args)
@@ -66,14 +65,14 @@ public:
 
 private:
     T1* data_;
-    bool enableLog_ {false};
+    bool enableLog_;
 };
 
 class TypeInferPass {
 public:
-    bool Run(PassData* data, bool enableLog, BytecodeCircuitBuilder *builder, TSLoader *tsLoader)
+    bool Run(PassData* data, bool enableLog, BytecodeCircuitBuilder *builder, TSManager *tsManager)
     {
-        TypeInfer typeInfer(builder, data->GetCircuit(), tsLoader, enableLog);
+        TypeInfer typeInfer(builder, data->GetCircuit(), tsManager, enableLog);
         if (builder->HasTypes()) {
             typeInfer.TraverseCircuit();
         }
@@ -84,9 +83,9 @@ public:
 class TypeLoweringPass {
 public:
     bool Run(PassData *data, bool enableLog, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg,
-             TSLoader *tsLoader)
+             TSManager *tsManager)
     {
-        TypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsLoader, enableLog);
+        TypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog);
         if (builder->HasTypes()) {
             lowering.RunTypeLowering();
         }

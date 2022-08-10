@@ -13,113 +13,91 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/stub_builder.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/js_api_arraylist.h"
-#include "ecmascript/js_api_vector.h"
+
+#include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_table.h"
-#include "ecmascript/compiler/rt_call_signature.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
-StubBuilder::StubBuilder(CallSignature *callSignature, Circuit *circuit)
-    : callSignature_(callSignature), builder_(circuit),
-      acc_(circuit), env_(callSignature->GetParametersCount(), &builder_)
-{
-}
-
-void StubBuilder::InitializeArguments()
-{
-    auto argLength = callSignature_->GetParametersCount();
-    auto paramsType = callSignature_->GetParametersType();
-    for (size_t i = 0; i < argLength; i++) {
-        GateRef argument = Argument(i);
-        if (paramsType[i] == VariableType::NATIVE_POINTER()) {
-            auto type = env_.IsArch64Bit() ? MachineType::I64 : MachineType::I32;
-            acc_.SetMachineType(argument, type);
-        } else {
-            acc_.SetMachineType(argument, paramsType[i].GetMachineType());
-        }
-        acc_.SetGateType(argument, paramsType[i].GetGateType());
-    }
-}
-
 void StubBuilder::Jump(Label *label)
 {
     ASSERT(label);
-    auto currentLabel = env_.GetCurrentLabel();
+    auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    auto jump = env_.GetBulder()->Goto(currentControl);
+    auto jump = env_->GetBuilder()->Goto(currentControl);
     currentLabel->SetControl(jump);
     label->AppendPredecessor(currentLabel);
     label->MergeControl(currentLabel->GetControl());
-    env_.SetCurrentLabel(nullptr);
+    env_->SetCurrentLabel(nullptr);
 }
 
 void StubBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel)
 {
-    auto currentLabel = env_.GetCurrentLabel();
+    auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    GateRef ifBranch = env_.GetBulder()->Branch(currentControl, condition);
+    GateRef ifBranch = env_->GetBuilder()->Branch(currentControl, condition);
     currentLabel->SetControl(ifBranch);
-    GateRef ifTrue = env_.GetBulder()->IfTrue(ifBranch);
-    trueLabel->AppendPredecessor(env_.GetCurrentLabel());
+    GateRef ifTrue = env_->GetBuilder()->IfTrue(ifBranch);
+    trueLabel->AppendPredecessor(env_->GetCurrentLabel());
     trueLabel->MergeControl(ifTrue);
-    GateRef ifFalse = env_.GetBulder()->IfFalse(ifBranch);
-    falseLabel->AppendPredecessor(env_.GetCurrentLabel());
+    GateRef ifFalse = env_->GetBuilder()->IfFalse(ifBranch);
+    falseLabel->AppendPredecessor(env_->GetCurrentLabel());
     falseLabel->MergeControl(ifFalse);
-    env_.SetCurrentLabel(nullptr);
+    env_->SetCurrentLabel(nullptr);
 }
 
 void StubBuilder::Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys)
 {
-    auto currentLabel = env_.GetCurrentLabel();
+    auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    GateRef switchBranch = env_.GetBulder()->SwitchBranch(currentControl, index, numberOfKeys);
+    GateRef switchBranch = env_->GetBuilder()->SwitchBranch(currentControl, index, numberOfKeys);
     currentLabel->SetControl(switchBranch);
     for (int i = 0; i < numberOfKeys; i++) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        GateRef switchCase = env_.GetBulder()->SwitchCase(switchBranch, keysValue[i]);
+        GateRef switchCase = env_->GetBuilder()->SwitchCase(switchBranch, keysValue[i]);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         keysLabel[i].AppendPredecessor(currentLabel);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         keysLabel[i].MergeControl(switchCase);
     }
 
-    GateRef defaultCase = env_.GetBulder()->DefaultCase(switchBranch);
+    GateRef defaultCase = env_->GetBuilder()->DefaultCase(switchBranch);
     defaultLabel->AppendPredecessor(currentLabel);
     defaultLabel->MergeControl(defaultCase);
-    env_.SetCurrentLabel(nullptr);
+    env_->SetCurrentLabel(nullptr);
 }
 
 void StubBuilder::LoopBegin(Label *loopHead)
 {
     ASSERT(loopHead);
-    auto loopControl = env_.GetBulder()->LoopBegin(loopHead->GetControl());
+    auto loopControl = env_->GetBuilder()->LoopBegin(loopHead->GetControl());
     loopHead->SetControl(loopControl);
     loopHead->SetPreControl(loopControl);
     loopHead->Bind();
-    env_.SetCurrentLabel(loopHead);
+    env_->SetCurrentLabel(loopHead);
 }
 
 void StubBuilder::LoopEnd(Label *loopHead)
 {
     ASSERT(loopHead);
-    auto currentLabel = env_.GetCurrentLabel();
+    auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    auto loopend = env_.GetBulder()->LoopEnd(currentControl);
+    auto loopend = env_->GetBuilder()->LoopEnd(currentControl);
     currentLabel->SetControl(loopend);
     loopHead->AppendPredecessor(currentLabel);
     loopHead->MergeControl(loopend);
     loopHead->Seal();
     loopHead->MergeAllControl();
     loopHead->MergeAllDepend();
-    env_.SetCurrentLabel(nullptr);
+    env_->SetCurrentLabel(nullptr);
 }
 
 // FindElementWithCache in ecmascript/layout_info-inl.h
@@ -473,12 +451,7 @@ GateRef StubBuilder::JSObjectGetProperty(VariableType returnType, GateRef obj, G
     {
         Bind(&inlinedProp);
         {
-            // GetPropertyInlinedProps
-            GateRef inlinedPropsStart = GetInlinedPropsStartFromHClass(hClass);
-            GateRef propOffset = Int32Mul(
-                Int32Add(inlinedPropsStart, attrOffset),
-                Int32(JSTaggedValue::TaggedTypeSize()));
-            result = Load(returnType, obj, ZExtInt32ToInt64(propOffset));
+            result = GetPropertyInlinedProps(obj, hClass, attrOffset, returnType);
             Jump(&exit);
         }
         Bind(&notInlinedProp);
@@ -743,7 +716,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
 GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key)
 {
     GateRef gConstOffset = PtrAdd(glue,
-                                  IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_.Is32Bit())));
+                                  IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
     GateRef gCtorStr = Load(VariableType::JS_ANY(),
         gConstOffset,
         Int64Mul(Int64(sizeof(JSTaggedValue)),
@@ -929,22 +902,22 @@ GateRef StubBuilder::TaggedToRepresentation(GateRef value)
 
 void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
 {
-    auto depend = env_.GetCurrentLabel()->GetDepend();
+    auto depend = env_->GetCurrentLabel()->GetDepend();
     GateRef result;
-    if (env_.IsArch64Bit()) {
+    if (env_->IsArch64Bit()) {
         GateRef ptr = Int64Add(base, offset);
         if (type == VariableType::NATIVE_POINTER()) {
             type = VariableType::INT64();
         }
-        result = env_.GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
-        env_.GetCurrentLabel()->SetDepend(result);
-    } else if (env_.IsArch32Bit()) {
+        result = env_->GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
+        env_->GetCurrentLabel()->SetDepend(result);
+    } else if (env_->IsArch32Bit()) {
         if (type == VariableType::NATIVE_POINTER()) {
             type = VariableType::INT32();
         }
         GateRef ptr = Int32Add(base, offset);
-        result = env_.GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
-        env_.GetCurrentLabel()->SetDepend(result);
+        result = env_->GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
+        env_->GetCurrentLabel()->SetDepend(result);
     } else {
         UNREACHABLE();
     }
@@ -975,7 +948,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
         Branch(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);
         Bind(&isVailedIndex);
         {
-            GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_.Is32Bit()));
+            GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_->Is32Bit()));
             auto oldToNewSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
             Label isNullPtr(env);
             Label notNullPtr(env);
@@ -1612,7 +1585,8 @@ GateRef StubBuilder::GetArrayLength(GateRef object)
     return ret;
 }
 
-GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder, GateRef value, GateRef argHandler)
+GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder,
+                                        GateRef value, GateRef argHandler)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1853,7 +1827,8 @@ GateRef StubBuilder::GetKeyFromDictionary(VariableType returnType, GateRef eleme
     return ret;
 }
 
-inline void StubBuilder::UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr)
+inline void StubBuilder::UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index,
+                                                  GateRef value, GateRef attr)
 {
     GateRef arrayIndex =
         Int32Add(Int32(NameDictionary::TABLE_HEADER_SIZE),
@@ -2924,7 +2899,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                     {
                         Label objIsBigInt(env);
                         Label objNotBigInt(env);
-                        Branch(IsBigInt(obj), &objIsBigInt, &objNotBigInt);
+                        Branch(TaggedObjectIsBigInt(obj), &objIsBigInt, &objNotBigInt);
                         Bind(&objIsBigInt);
                         {
                             result = Load(VariableType::JS_POINTER(), gConstAddr,
@@ -3223,7 +3198,7 @@ GateRef StubBuilder::FastToBoolean(GateRef value)
                 Branch(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
             }
             Bind(&notString);
-            Branch(IsBigInt(value), &isBigint, &returnTrue);
+            Branch(TaggedObjectIsBigInt(value), &isBigint, &returnTrue);
             Bind(&isBigint);
             {
                 auto len = Load(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));
@@ -3378,8 +3353,8 @@ GateRef StubBuilder::FastDiv(GateRef left, GateRef right)
 }
 
 GateRef StubBuilder::FastBinaryOp(GateRef left, GateRef right,
-                           const BinaryOperation& intOp,
-                           const BinaryOperation& floatOp)
+                                  const BinaryOperation& intOp,
+                                  const BinaryOperation& floatOp)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3774,38 +3749,48 @@ GateRef StubBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     return ret;
 }
 
-GateRef StubBuilder::AllocateInYoung(GateRef glue, GateRef size)
+GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj)
 {
     auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
+    Label entryPass(env);
     Label exit(env);
-    Label success(env);
-    Label callRuntime(env);
-
-    auto topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(env->Is32Bit());
-    auto endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(env->Is32Bit());
-    auto topAddress = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(topOffset));
-    auto endAddress = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(endOffset));
-    auto top = Load(VariableType::JS_POINTER(), topAddress, IntPtr(0));
-    auto end = Load(VariableType::JS_POINTER(), endAddress, IntPtr(0));
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    auto newTop = PtrAdd(top, size);
-    Branch(IntPtrGreaterThan(newTop, end), &callRuntime, &success);
-    Bind(&success);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
+    Label isHeapObject(env);
+    Label isEcmaObj(env);
+    Label notEcmaObj(env);
+    Branch(TaggedIsHeapObject(outPut), &isHeapObject, &notEcmaObj);
+    Bind(&isHeapObject);
+    Branch(TaggedObjectIsEcmaObject(outPut), &isEcmaObj, &notEcmaObj);
+    Bind(&isEcmaObj);
     {
-        Store(VariableType::NATIVE_POINTER(), glue, topAddress, IntPtr(0), newTop);
-        if (env->Is32Bit()) {
-            top = ZExtInt32ToInt64(top);
-        }
-        result = top;
+        result = outPut;
         Jump(&exit);
     }
-    Bind(&callRuntime);
+    Bind(&notEcmaObj);
     {
-        result = CallRuntime(glue, RTSTUB_ID(AllocateInYoung), {
-            IntToTaggedTypeNGC(size) });
-        Jump(&exit);
+        Label ctorIsBase(env);
+        Label ctorNotBase(env);
+        Branch(IsBase(ctor), &ctorIsBase, &ctorNotBase);
+        Bind(&ctorIsBase);
+        {
+            result = thisObj;
+            Jump(&exit);
+        }
+        Bind(&ctorNotBase);
+        {
+            Label throwExeption(env);
+            Label returnObj(env);
+            Branch(TaggedIsUndefined(outPut), &returnObj, &throwExeption);
+            Bind(&returnObj);
+            result = thisObj;
+            Jump(&exit);
+            Bind(&throwExeption);
+            {
+                CallRuntime(glue, RTSTUB_ID(ThrowNonConstructorException), {});
+                Jump(&exit);
+            }
+        }
     }
     Bind(&exit);
     auto ret = *result;
@@ -3813,122 +3798,8 @@ GateRef StubBuilder::AllocateInYoung(GateRef glue, GateRef size)
     return ret;
 }
 
-void StubBuilder::InitializeWithSpeicalValue(
-    GateRef glue, GateRef object, GateRef value, GateRef start, GateRef end)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label begin(env);
-    Label storeValue(env);
-    Label endLoop(env);
-
-    DEFVARIABLE(startOffset, VariableType::INT32(), start);
-    Jump(&begin);
-    LoopBegin(&begin);
-    {
-        Branch(Int32UnsignedLessThan(*startOffset, end), &storeValue, &exit);
-        Bind(&storeValue);
-        {
-            Store(VariableType::INT64(), glue, object, ChangeInt32ToIntPtr(*startOffset), value);
-            startOffset = Int32Add(*startOffset, Int32(JSTaggedValue::TaggedTypeSize()));
-            Jump(&endLoop);
-        }
-        Bind(&endLoop);
-        LoopEnd(&begin);
-    }
-    Bind(&exit);
-    env->SubCfgExit();
-}
-
-void StubBuilder::InitializeTaggedArrayWithSpeicalValue(
-    GateRef glue, GateRef array, GateRef value, GateRef start, GateRef length)
-{
-    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), length);
-    auto offset = Int32Mul(start, Int32(JSTaggedValue::TaggedTypeSize()));
-    auto dataOffset = Int32Add(offset, Int32(TaggedArray::DATA_OFFSET));
-    offset = Int32Mul(length, Int32(JSTaggedValue::TaggedTypeSize()));
-    auto endOffset = Int32Add(offset, Int32(TaggedArray::DATA_OFFSET));
-    InitializeWithSpeicalValue(glue, array, value, dataOffset, endOffset);
-}
-
-GateRef StubBuilder::NewLexicalEnv(GateRef glue, GateRef numSlots, GateRef parent)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-
-    auto length = Int32Add(numSlots, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
-    auto size = ComputeTaggedArraySize(ChangeInt32ToIntPtr(length));
-    // Be careful. NO GC is allowed when initization is not complete.
-    auto object = AllocateInYoung(glue, size);
-    Label hasPendingException(env);
-    Label noException(env);
-    Branch(TaggedIsException(object), &hasPendingException, &noException);
-    Bind(&noException);
-    {
-        auto hclass = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue, ConstantIndex::ENV_CLASS_INDEX);
-        StoreHClass(glue, object, hclass);
-        InitializeTaggedArrayWithSpeicalValue(glue,
-            object, Hole(), Int32(LexicalEnv::RESERVED_ENV_LENGTH), length);
-        SetValueToTaggedArray(VariableType::INT64(),
-            glue, object, Int32(LexicalEnv::SCOPE_INFO_INDEX), Hole());
-        SetValueToTaggedArray(VariableType::JS_POINTER(),
-            glue, object, Int32(LexicalEnv::PARENT_ENV_INDEX), parent);
-        Jump(&exit);
-    }
-    Bind(&hasPendingException);
-    {
-        Jump(&exit);
-    }
-
-    Bind(&exit);
-    env->SubCfgExit();
-    return object;
-}
-
-GateRef StubBuilder::NewJSObject(GateRef glue, GateRef hclass)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-
-    auto size = GetObjectSizeFromHClass(hclass);
-    // Be careful. NO GC is allowed when initization is not complete.
-    auto object = AllocateInYoung(glue, size);
-    Label hasPendingException(env);
-    Label noException(env);
-    Branch(TaggedIsException(object), &hasPendingException, &noException);
-    Bind(&noException);
-    {
-        StoreHClass(glue, object, hclass);
-        InitializeWithSpeicalValue(glue,
-            object, Undefined(), Int32(JSObject::SIZE), ChangeIntPtrToInt32(size));
-        auto emptyArray = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        SetHash(glue, object, Int64(JSTaggedValue(0).GetRawData()));
-        SetPropertiesArray(VariableType::INT64(),
-            glue, object, emptyArray);
-        SetElementsArray(VariableType::INT64(),
-            glue, object, emptyArray);
-        Jump(&exit);
-    }
-    Bind(&hasPendingException);
-    {
-        Jump(&exit);
-    }
-
-    Bind(&exit);
-    env->SubCfgExit();
-    return object;
-}
-
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
-                             JSCallMode mode, std::initializer_list<GateRef> args)
+                                    JSCallMode mode, std::initializer_list<GateRef> args)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -3939,6 +3810,8 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label funcIsHeapObject(env);
     Label funcIsCallable(env);
     Label funcNotCallable(env);
+    Label isFastBuiltins(env);
+    Label notFastBuiltins(env);
     // save pc
     SavePcIfNeeded(glue);
     GateRef bitfield = 0;
@@ -3992,7 +3865,19 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 break;
             case JSCallMode::CALL_THIS_WITH_ARGV: {
                 thisValue = data[2]; // 2: this input
-                [[fallthrough]];
+                GateRef isFastBuiltinsMask = Int64(static_cast<uint64_t>(1) << JSMethod::IsFastBuiltinBit::START_BIT);
+                Branch(Int64NotEqual(Int64And(callField, isFastBuiltinsMask), Int64(0)),
+                    &isFastBuiltins, &notFastBuiltins);
+                Bind(&isFastBuiltins);
+                {
+                    GateRef builtinId = GetBuiltinId(method);
+                    result = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue, data[0], data[1] });
+                    Jump(&exit);
+                }
+                Bind(&notFastBuiltins);
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallIRangeAndDispatchNative),
+                    { glue, nativeCode, func, thisValue, data[0], data[1] });
+                break;
             }
             case JSCallMode::CALL_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallIRangeAndDispatchNative),
@@ -4041,7 +3926,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         {
             GateRef newTarget = Undefined();
             GateRef thisValue = Undefined();
-            GateRef lexEnv = builder_.GetLexicalEnv(func);
+            GateRef lexEnv = env_->GetBuilder()->GetLexicalEnv(func);
             GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
             switch (mode) {
                 case JSCallMode::CALL_ARG0:
@@ -4074,8 +3959,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(ConstructorJSCallWithArgV),
                         { glue, ZExtInt32ToInt64(actualNumArgs), func, func, data[2], data[1]});
+                    result = ConstructorCheck(glue, func, *result, data[2]);  // 2: the second index
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_GETTER:
@@ -4258,7 +4144,8 @@ GateRef StubBuilder::TryStringOrSymbelToElementIndex(GateRef key)
     return ret;
 }
 
-GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType)
+GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder,
+                                                GateRef key, GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4310,8 +4197,8 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
     return ret;
 }
 
-GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
-                                         GateRef jsType)
+GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key,
+                                                GateRef value, GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4331,7 +4218,7 @@ GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
     {
         Label isObj(env);
         Label notObj(env);
-        Branch(TaggedObjectIsEcmaObject(value), &isObj, &notObj);
+        Branch(IsEcmaObject(value), &isObj, &notObj);
         Bind(&isObj);
         {
             result = Null();

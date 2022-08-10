@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "ecmascript/compiler/bc_call_signature.h"
+
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/stubs/runtime_stubs.h"
@@ -29,10 +31,10 @@ void BytecodeStubCSigns::Initialize()
     callSigns_[name].SetID(ID_##name);                                   \
     callSigns_[name].SetName(#name);                                     \
     callSigns_[name].SetConstructor(                                     \
-    [](void* ciruit) {                                                   \
+    [](void* env) {                                                      \
         return static_cast<void*>(                                       \
             new name##StubBuilder(&callSigns_[name],                     \
-                static_cast<Circuit*>(ciruit)));                         \
+                static_cast<Environment*>(env)));                        \
     });
     INTERPRETER_BC_STUB_LIST(INIT_SIGNATURES)
 #undef INIT_SIGNATURES
@@ -43,9 +45,9 @@ void BytecodeStubCSigns::Initialize()
     callSigns_[name].SetName(#name);                                                        \
     callSigns_[name].SetTargetKind(CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);     \
     callSigns_[name].SetConstructor(                                                        \
-    [](void* ciruit) {                                                                      \
+    [](void* env) {                                                                         \
         return static_cast<void*>(                                                          \
-            new name##StubBuilder(&callSigns_[name], static_cast<Circuit*>(ciruit)));       \
+            new name##StubBuilder(&callSigns_[name], static_cast<Environment*>(env)));      \
     });
     ASM_INTERPRETER_BC_HELPER_STUB_LIST(INIT_HELPER_SIGNATURES)
 #undef INIT_HELPER_SIGNATURES

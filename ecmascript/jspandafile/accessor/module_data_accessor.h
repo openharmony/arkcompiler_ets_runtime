@@ -21,12 +21,11 @@
 #include <variant>
 #include <vector>
 
-#include "macros.h"
-
+#include "libpandabase/macros.h"
+#include "libpandabase/utils/span.h"
 #include "libpandafile/file.h"
 #include "libpandafile/file_items.h"
 #include "libpandafile/helpers.h"
-#include "libpandabase/utils/span.h"
 
 namespace panda::ecmascript::jspandafile {
 using StringData = panda_file::File::StringData;

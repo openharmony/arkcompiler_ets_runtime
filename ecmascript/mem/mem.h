@@ -17,14 +17,14 @@
 #define ECMASCRIPT_MEM_MEM_H
 
 #include <cstdint>
-
 #ifndef PANDA_TARGET_WINDOWS
 #include <sys/mman.h>
 #endif
 
+#include "ecmascript/base/math_helper.h"
 #include "ecmascript/ecma_param_configuration.h"
+#include "ecmascript/mem/mem_common.h"
 #include "ecmascript/mem/tagged_object.h"
-#include "libpandabase/mem/mem.h"
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage, bugprone-lambda-function-name)
 #define LOG_ECMA_MEM(level) LOG_GC(level) << __func__ << ":" << __LINE__ << " "
@@ -75,7 +75,7 @@ static constexpr size_t MAX_CHUNK_AREA_SIZE = 1_MB;
 
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);
-static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = panda::helpers::math::GetIntLog2(TAGGED_TYPE_SIZE);
+static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = base::math::GetIntLog2(TAGGED_TYPE_SIZE);
 
 template<typename T>
 constexpr inline bool IsAligned(T value, size_t alignment)

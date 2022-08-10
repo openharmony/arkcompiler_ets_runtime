@@ -16,9 +16,19 @@ template("ohos_executable") {
     forward_variables_from(invoker,
                            "*",
                            [
+                             "configs",
+                             "remove_configs",
                              "subsystem_name",
                              "install_enable",
+                             "part_name",
                            ])
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+
+    if (defined(invoker.remove_configs)) {
+      configs -= invoker.remove_configs
+    }
   }
 }
 template("ohos_static_library") {
@@ -41,6 +51,7 @@ template("ohos_shared_library") {
                              "subsystem_name",
                              "install_enable",
                              "part_name",
+                             "install_images",
                              "use_exceptions",
                            ])
   }

@@ -18,46 +18,21 @@
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <vector>
 
-#include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/napi/include/jsnapi.h"
+
 #include "generated/base_options.h"
-#include "libpandabase/os/native_stack.h"
 #include "libpandabase/utils/pandargs.h"
-#include "libpandabase/utils/span.h"
-#include "libpandafile/file.h"
-#include "pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
-void BlockSignals()
-{
-#if defined(PANDA_TARGET_UNIX)
-    sigset_t set;
-    if (sigemptyset(&set) == -1) {
-        LOG_COMPILER(ERROR) << "sigemptyset failed";
-        return;
-    }
-    int rc = 0;
-
-    if (rc < 0) {
-        LOG_COMPILER(ERROR) << "sigaddset failed";
-        return;
-    }
-
-    if (panda::os::native_stack::g_PandaThreadSigmask(SIG_BLOCK, &set, nullptr) != 0) {
-        LOG_COMPILER(ERROR) << "g_PandaThreadSigmask failed";
-    }
-#endif  // PANDA_TARGET_UNIX
-}
-
 int Main(const int argc, const char **argv)
 {
     auto startTime =
             std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch())
                     .count();
-    BlockSignals();
     Span<const char *> sp(argv, argc);
     JSRuntimeOptions runtimeOptions;
     base_options::Options baseOptions(sp[0]);
@@ -92,10 +67,11 @@ int Main(const int argc, const char **argv)
     }
 
     Logger::Initialize(baseOptions);
-    Logger::SetLevel(Logger::Level::INFO);
-    Logger::ResetComponentMask();  // disable all Component
-    Logger::EnableComponent(Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
-
+    if (runtimeOptions.WasSetCompilerLogOption()) {
+        Logger::SetLevel(Logger::Level::INFO);
+        Logger::ResetComponentMask();  // disable all Component
+        Logger::EnableComponent(Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
+    }
     arg_list_t arguments = paParser.GetRemainder();
 
     if (runtimeOptions.IsStartupTime()) {
@@ -111,32 +87,33 @@ int Main(const int argc, const char **argv)
         return -1;
     }
 
-    {
-        LocalScope scope(vm);
-        std::string entry = entrypoint.GetValue();
-        arg_list_t pandaFileNames = files.GetValue();
-        std::string triple = runtimeOptions.GetTargetTriple();
-        std::string outputFileName = runtimeOptions.GetAOTOutputFile();
-        size_t optLevel = runtimeOptions.GetOptLevel();
-        size_t relocMode = runtimeOptions.GetRelocMode();
-        BytecodeStubCSigns::Initialize();
-        CommonStubCSigns::Initialize();
-        RuntimeStubCSigns::Initialize();
+    LocalScope scope(vm);
+    std::string entry = entrypoint.GetValue();
+    arg_list_t pandaFileNames = files.GetValue();
+    std::string triple = runtimeOptions.GetTargetTriple();
+    std::string outputFileName = runtimeOptions.GetAOTOutputFile();
+    size_t optLevel = runtimeOptions.GetOptLevel();
+    size_t relocMode = runtimeOptions.GetRelocMode();
+    std::string logOption = runtimeOptions.GetCompilerLogOption();
+    std::string logMethodsList = runtimeOptions.GetMethodsListForLog();
+    bool isEnableBcTrace = runtimeOptions.IsEnableByteCodeTrace();
+    BytecodeStubCSigns::Initialize();
+    CommonStubCSigns::Initialize();
+    RuntimeStubCSigns::Initialize();
 
-        std::string logMethods = runtimeOptions.GetlogCompiledMethods();
-        AotLog log(logMethods);
-        AOTFileGenerator generator(&log, vm);
-        PassManager passManager(vm, entry, triple, optLevel, relocMode, &log);
-        for (const auto &fileName : pandaFileNames) {
-            LOG_COMPILER(INFO) << "AOT start to execute ark file: " << fileName;
-            if (passManager.Compile(fileName, generator) == false) {
-                ret = false;
-                break;
-            }
+    CompilerLog log(logOption, isEnableBcTrace);
+    AotMethodLogList logList(logMethodsList);
+    AOTFileGenerator generator(&log, &logList, vm);
+    PassManager passManager(vm, entry, triple, optLevel, relocMode, &log, &logList);
+    for (const auto &fileName : pandaFileNames) {
+        LOG_COMPILER(INFO) << "AOT start to execute ark file: " << fileName;
+        if (passManager.Compile(fileName, generator) == false) {
+            ret = false;
+            break;
         }
-        generator.SaveAOTFile(outputFileName);
-        generator.GenerateSnapshotFile();
     }
+    generator.SaveAOTFile(outputFileName + ".aot");
+    generator.SaveSnapshotFile();
 
     JSNApi::DestroyJSVM(vm);
     paParser.DisableTail();

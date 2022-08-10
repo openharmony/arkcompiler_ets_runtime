@@ -21,6 +21,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/linked_hash_table.h"
+
 namespace panda::ecmascript {
 // -------------------------------CellRecordVector-----------------------------------
 JSHandle<CellRecordVector> CellRecordVector::Append(const JSThread *thread, const JSHandle<CellRecordVector> &array,
@@ -76,7 +77,7 @@ void JSFinalizationRegistry::Register(JSThread *thread, JSHandle<JSTaggedValue> 
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<CellRecord> cellRecord = factory->NewCellRecord();
-    cellRecord->SetToWeakRefTarget(target.GetTaggedValue());
+    cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
     cellRecord->SetHeldValue(thread, heldValue);
     JSHandle<JSTaggedValue> cell(cellRecord);
     // If unregisterToken is undefined, we use vector to store
@@ -221,10 +222,8 @@ bool JSFinalizationRegistry::CleanupFinalizationRegistry(JSThread *thread, JSHan
     JSMutableHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister());
     int index = 0;
     int totalElements = maybeUnregister->NumberOfElements() + maybeUnregister->NumberOfDeletedElements();
-    JSMutableHandle<JSTaggedValue> key(thread, maybeUnregister->GetKey(index));
     while (index < totalElements) {
-        key.Update(maybeUnregister->GetKey(index++));
-        if (!key->IsHole()) {
+        if (!maybeUnregister->GetKey(index++).IsHole()) {
             JSHandle<CellRecordVector> cellVect(thread, maybeUnregister->GetValue(index - 1));
             DealCallBackOfMap(thread, cellVect, job, func);
             if (!cellVect->Empty()) {

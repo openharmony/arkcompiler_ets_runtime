@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-#include "js_map_iterator.h"
-#include "builtins/builtins_errors.h"
-#include "js_array.h"
-#include "js_map.h"
-#include "linked_hash_table.h"
-#include "object_factory.h"
+#include "ecmascript/js_map_iterator.h"
+
+#include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_map.h"
+#include "ecmascript/linked_hash_table.h"
+#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

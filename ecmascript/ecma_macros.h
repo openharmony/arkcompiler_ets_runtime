@@ -18,7 +18,6 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/log_wrapper.h"
-#include "libpandabase/trace/trace.h"
 
 #if defined(ENABLE_BYTRACE)
     #include "hitrace_meter.h"
@@ -31,9 +30,9 @@
 #define OPTIONAL_LOG_COMPILER(level) LOG_ECMA_IF(IsLogEnabled(), level)
 
 #if !defined(ENABLE_BYTRACE)
-    #define ECMA_BYTRACE_NAME(tag, name) trace::ScopedTrace scopedTrace(name)
+    #define ECMA_BYTRACE_NAME(tag, name)
 #else
-    #define ECMA_BYTRACE_NAME(tag, name) HITRACE_METER_NAME(tag, name); trace::ScopedTrace scopedTrace(name)
+    #define ECMA_BYTRACE_NAME(tag, name) HITRACE_METER_NAME(tag, name)
 #endif
 
 #if defined(ENABLE_HITRACE)

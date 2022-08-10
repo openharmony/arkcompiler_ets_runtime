@@ -17,8 +17,8 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_api_deque.h"
-#include "ecmascript/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_deque.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_iterator.h"
@@ -189,5 +189,49 @@ HWTEST_F_L0(JSAPIDequeTest, GetOwnProperty)
     testInt = 20;
     JSHandle<JSTaggedValue> dequeKey2(thread, JSTaggedValue(testInt));
     EXPECT_FALSE(JSAPIDeque::GetOwnProperty(thread, toor, dequeKey2));
+}
+
+/**
+ * @tc.name: GetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIDequeTest, GetProperty)
+{
+    JSHandle<JSAPIDeque> toor(thread, CreateDeque());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIDeque::InsertEnd(thread, toor, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        OperationResult getPropertyRes = JSAPIDeque::GetProperty(thread, toor, key);
+        EXPECT_EQ(getPropertyRes.GetValue().GetTaggedValue(), JSTaggedValue(i));
+    }
+}
+
+/**
+ * @tc.name: SetProperty
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIDequeTest, SetProperty)
+{
+    JSHandle<JSAPIDeque> toor(thread, CreateDeque());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIDeque::InsertFront(thread, toor, value);
+        JSAPIDeque::InsertEnd(thread, toor, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i * 2)); // 2 : It means double
+        bool setPropertyRes = JSAPIDeque::SetProperty(thread, toor, key, value);
+        EXPECT_EQ(setPropertyRes, true);
+    }
 }
 }  // namespace panda::test

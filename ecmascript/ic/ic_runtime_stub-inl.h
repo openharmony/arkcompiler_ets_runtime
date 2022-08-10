@@ -17,21 +17,20 @@
 #define ECMASCRIPT_IC_IC_RUNTIME_STUB_INL_H_
 
 #include "ecmascript/base/config.h"
-#include "ic_runtime_stub.h"
-#include "ic_handler.h"
-#include "ic_runtime.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/global_dictionary-inl.h"
+#include "ecmascript/ic/ic_runtime_stub.h"
+#include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/ic/ic_runtime.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_proxy.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/ic/proto_change_details.h"
-
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript {

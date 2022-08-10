@@ -27,20 +27,21 @@
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
-#include "ecmascript/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api_deque_iterator.h"
-#include "ecmascript/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api_list_iterator.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api_queue_iterator.h"
-#include "ecmascript/js_api_stack_iterator.h"
-#include "ecmascript/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api_hashset_iterator.h"
-#include "ecmascript/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightset_iterator.h"
+#include "ecmascript/js_api/js_api_linked_list_iterator.h"
+#include "ecmascript/js_api/js_api_list_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_queue_iterator.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api/js_api_hashset_iterator.h"
+#include "ecmascript/js_api/js_api_tree_map_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_vector_iterator.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_arguments.h"
@@ -113,6 +114,9 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, CompletionRecord::SIZE, JSType::COMPLETION_RECORD));
     SetConstant(ConstantIndex::GENERATOR_CONTEST_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, GeneratorContext::SIZE, JSType::JS_GENERATOR_CONTEXT));
+    SetConstant(ConstantIndex::ASYNC_GENERATOR_REQUEST_CLASS_INDEX,
+                factory->NewEcmaReadOnlyDynClass(dynClassClass, AsyncGeneratorRequest::SIZE,
+                                                 JSType::ASYNC_GENERATOR_REQUEST));
     SetConstant(ConstantIndex::CAPABILITY_RECORD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, PromiseCapability::SIZE, JSType::PROMISE_CAPABILITY));
     SetConstant(ConstantIndex::REACTIONS_RECORD_CLASS_INDEX,
@@ -348,6 +352,7 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::URI_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("URIError"));
     SetConstant(ConstantIndex::SYNTAX_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("SyntaxError"));
     SetConstant(ConstantIndex::EVAL_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("EvalError"));
+    SetConstant(ConstantIndex::ERROR_FUNC_STRING_INDEX, factory->NewFromASCIINonMovable("errorfunc"));
     SetConstant(ConstantIndex::STACK_STRING_INDEX, factory->NewFromASCIINonMovable("stack"));
     SetConstant(ConstantIndex::STACK_EMPTY_STRING_INDEX, factory->NewFromASCIINonMovable("stackisempty"));
     SetConstant(ConstantIndex::OBJ_NOT_COERCIBLE_STRING_INDEX,

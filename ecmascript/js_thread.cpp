@@ -12,18 +12,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "ecmascript/js_thread.h"
-#include "ecmascript/llvm_stackmap_parser.h"
+
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_param_configuration.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/mem/mark_word.h"
+
 
 namespace panda::ecmascript {
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
 using BytecodeStubCSigns = panda::ecmascript::kungfu::BytecodeStubCSigns;
+
 // static
 JSThread *JSThread::Create(EcmaVM *vm)
 {
@@ -128,23 +132,24 @@ const JSTaggedType *JSThread::GetCurrentInterpretedFrame() const
     return GetCurrentSPFrame();
 }
 
-void JSThread::Iterate(const RootVisitor &v0, const RootRangeVisitor &v1)
+void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+    const RootBaseAndDerivedVisitor &derivedVisitor)
 {
     if (propertiesCache_ != nullptr) {
         propertiesCache_->Clear();
     }
 
     if (!glueData_.exception_.IsHole()) {
-        v0(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
+        visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
     // visit global Constant
-    glueData_.globalConst_.VisitRangeSlot(v1);
+    glueData_.globalConst_.VisitRangeSlot(rangeVisitor);
     // visit stack roots
     FrameHandler frameHandler(this);
-    frameHandler.Iterate(v0, v1);
+    frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
     // visit tagged handle storage roots
 #if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    IterateHandleWithCheck(v0, v1);
+    IterateHandleWithCheck(visitor, rangeVisitor);
 #else
     if (currentHandleStorageIndex_ != -1) {
         int32_t nid = currentHandleStorageIndex_;
@@ -152,21 +157,21 @@ void JSThread::Iterate(const RootVisitor &v0, const RootRangeVisitor &v1)
             auto node = handleStorageNodes_.at(i);
             auto start = node->data();
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            v1(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            rangeVisitor(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
     }
 
-    globalStorage_->IterateUsageGlobal([v0](EcmaGlobalStorage::Node *node) {
+    globalStorage_->IterateUsageGlobal([visitor](EcmaGlobalStorage::Node *node) {
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
-            v0(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+            visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
         }
     });
 #endif
 }
 
 #if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-void JSThread::IterateHandleWithCheck(const RootVisitor &v0, const RootRangeVisitor &v1)
+void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
 {
     size_t handleCount = 0;
     if (currentHandleStorageIndex_ != -1) {
@@ -175,7 +180,7 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &v0, const RootRangeVisi
             auto node = handleStorageNodes_.at(i);
             auto start = node->data();
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            v1(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            rangeVisitor(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
             handleCount += (ToUintPtr(end) - ToUintPtr(start)) / sizeof(JSTaggedType);
         }
     }
@@ -184,11 +189,12 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &v0, const RootRangeVisi
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
     int primitiveCount = 0;
-    globalStorage_->IterateUsageGlobal([v0, &globalCount, &typeCount, &primitiveCount](EcmaGlobalStorage::Node *node) {
+    globalStorage_->IterateUsageGlobal(
+        [visitor, &globalCount, &typeCount, &primitiveCount](EcmaGlobalStorage::Node *node) {
         node->MarkCount();
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
-            v0(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+            visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             TaggedObject *object = value.GetTaggedObject();
             MarkWord word(value.GetTaggedObject());
             if (word.IsForwardingAddress()) {
@@ -198,7 +204,7 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &v0, const RootRangeVisi
 
             // There are some reasonable framework-level global objects in the initial phase.
             // The value can be adjusted as required.
-            static const int MIN_NUMBER_COUNT = 100000;
+            static const int MIN_NUMBER_COUNT = 110000;
             static const int MARK_INTERVAL_TIMES = 10;
             // Print global information about possible memory leaks.
             // You can print the global new stack within the range of the leaked global number.
@@ -360,8 +366,10 @@ bool JSThread::CheckSafepoint() const
         vmThreadControl_->SuspendVM();
     }
 #ifndef NDEBUG
-    GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
-    return true;
+    if (vm_->GetJSOptions().EnableForceGC()) {
+        GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+        return true;
+    }
 #endif
     if (IsMarkFinished()) {
         auto heap = GetEcmaVM()->GetHeap();

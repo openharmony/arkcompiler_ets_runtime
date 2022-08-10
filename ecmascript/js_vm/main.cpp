@@ -27,7 +27,6 @@
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "generated/base_options.h"
-#include "libpandabase/os/native_stack.h"
 #include "libpandabase/utils/pandargs.h"
 #include "libpandabase/utils/span.h"
 
@@ -46,10 +45,6 @@ void BlockSignals()
         LOG_ECMA(ERROR) << "sigaddset failed";
         return;
     }
-
-    if (panda::os::native_stack::g_PandaThreadSigmask(SIG_BLOCK, &set, nullptr) != 0) {
-        LOG_ECMA(ERROR) << "g_PandaThreadSigmask failed";
-    }
 #endif  // PANDA_TARGET_UNIX
 }
 
@@ -67,7 +62,11 @@ int Main(const int argc, const char **argv)
     panda::PandArg<bool> help("help", false, "Print this message and exit");
     panda::PandArg<bool> options("options", false, "Print compiler and runtime options");
     // tail arguments
+#if defined(PANDA_TARGET_WINDOWS)
+    panda::PandArg<arg_list_t> files("files", {""}, "path to pandafiles", ";");
+#else
     panda::PandArg<arg_list_t> files("files", {""}, "path to pandafiles", ":");
+#endif
     panda::PandArg<std::string> entrypoint("entrypoint", "_GLOBAL::func_main_0",
                                            "full name of entrypoint function or method");
     panda::PandArgParser paParser;

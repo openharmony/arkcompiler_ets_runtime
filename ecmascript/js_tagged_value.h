@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_JS_TAGGED_VALUE_H
 #define ECMASCRIPT_JS_TAGGED_VALUE_H
 
+#include "ecmascript/base/bit_helper.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
 class JSObject;
@@ -52,11 +54,11 @@ static const JSTaggedType NULL_POINTER = 0x05ULL;
 
 static inline JSTaggedType ReinterpretDoubleToTaggedType(double value)
 {
-    return bit_cast<JSTaggedType>(value);
+    return base::bit_cast<JSTaggedType>(value);
 }
 static inline double ReinterpretTaggedTypeToDouble(JSTaggedType value)
 {
-    return bit_cast<double>(value);
+    return base::bit_cast<double>(value);
 }
 
 //  Every double with all of its exponent bits set and its highest mantissa bit set is a quiet NaN.
@@ -83,7 +85,7 @@ static inline double ReinterpretTaggedTypeToDouble(JSTaggedType value)
 class JSTaggedValue {
 public:
     static constexpr size_t TAG_BITS_SIZE = 16;  // 16 means bit numbers of 0xFFFF
-    static constexpr size_t TAG_BITS_SHIFT = BitNumbers<JSTaggedType>() - TAG_BITS_SIZE;
+    static constexpr size_t TAG_BITS_SHIFT = base::BitNumbers<JSTaggedType>() - TAG_BITS_SIZE;
     static_assert((TAG_BITS_SHIFT + TAG_BITS_SIZE) == sizeof(JSTaggedType) * CHAR_BIT, "Insufficient bits!");
     static constexpr JSTaggedType TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
     // int tag
@@ -97,16 +99,16 @@ public:
     static constexpr JSTaggedType TAG_SPECIAL = 0x02ULL;
     static constexpr JSTaggedType TAG_BOOLEAN = 0x04ULL;
     static constexpr JSTaggedType TAG_EXCEPTION = 0x08ULL;
-    // tag mark
-    static constexpr JSTaggedType TAG_SPECIAL_MARK = TAG_MARK | TAG_SPECIAL;
-    static constexpr JSTaggedType TAG_BOOLEAN_MARK = TAG_SPECIAL | TAG_BOOLEAN;
-    static constexpr JSTaggedType TAG_HEAPOBJECT_MARK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
-    static constexpr JSTaggedType TAG_WEAK_MARK = TAG_HEAPOBJECT_MARK | TAG_WEAK;
+    // tag mask
+    static constexpr JSTaggedType TAG_SPECIAL_MASK = TAG_MARK | TAG_SPECIAL;
+    static constexpr JSTaggedType TAG_BOOLEAN_MASK = TAG_SPECIAL | TAG_BOOLEAN;
+    static constexpr JSTaggedType TAG_HEAPOBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
+    static constexpr JSTaggedType TAG_WEAK_MASK = TAG_HEAPOBJECT_MASK | TAG_WEAK;
     // special value
     static constexpr JSTaggedType VALUE_HOLE = 0x05ULL;
     static constexpr JSTaggedType VALUE_NULL = TAG_OBJECT | TAG_SPECIAL | TAG_NULL;
-    static constexpr JSTaggedType VALUE_FALSE = TAG_BOOLEAN_MARK | static_cast<JSTaggedType>(false);
-    static constexpr JSTaggedType VALUE_TRUE = TAG_BOOLEAN_MARK | static_cast<JSTaggedType>(true);
+    static constexpr JSTaggedType VALUE_FALSE = TAG_BOOLEAN_MASK | static_cast<JSTaggedType>(false);
+    static constexpr JSTaggedType VALUE_TRUE = TAG_BOOLEAN_MASK | static_cast<JSTaggedType>(true);
     static constexpr JSTaggedType VALUE_UNDEFINED = TAG_SPECIAL;
     static constexpr JSTaggedType VALUE_EXCEPTION = TAG_SPECIAL | TAG_EXCEPTION;
     static constexpr JSTaggedType VALUE_ZERO = TAG_INT | 0x00ULL;
@@ -146,7 +148,7 @@ public:
     }
 
     constexpr explicit JSTaggedValue(bool v)
-        : value_(static_cast<JSTaggedType>(v) | TAG_BOOLEAN_MARK) {}
+        : value_(static_cast<JSTaggedType>(v) | TAG_BOOLEAN_MASK) {}
 
     explicit JSTaggedValue(double v)
     {
@@ -192,7 +194,7 @@ public:
 
     inline bool IsWeak() const
     {
-        return ((value_ & TAG_WEAK_MARK) == TAG_WEAK);
+        return ((value_ & TAG_WEAK_MASK) == TAG_WEAK);
     }
 
     inline bool IsDouble() const
@@ -207,7 +209,7 @@ public:
 
     inline bool IsSpecial() const
     {
-        return ((value_ & TAG_SPECIAL_MARK) == TAG_SPECIAL) || IsHole();
+        return ((value_ & TAG_SPECIAL_MASK) == TAG_SPECIAL) || IsHole();
     }
 
     inline bool IsObject() const
@@ -222,7 +224,7 @@ public:
 
     inline bool IsHeapObject() const
     {
-        return ((value_ & TAG_HEAPOBJECT_MARK) == 0U);
+        return ((value_ & TAG_HEAPOBJECT_MASK) == 0U);
     }
 
     inline double GetDouble() const
@@ -283,7 +285,7 @@ public:
 
     inline bool IsUndefinedOrNull() const
     {
-        return ((value_ & TAG_HEAPOBJECT_MARK) == TAG_SPECIAL);
+        return ((value_ & TAG_HEAPOBJECT_MASK) == TAG_SPECIAL);
     }
 
     inline bool IsHole() const
@@ -299,7 +301,7 @@ public:
     static inline bool IsImpureNaN(double value)
     {
         // Tests if the double value would break tagged double encoding.
-        return bit_cast<JSTaggedType>(value) >= (TAG_INT - DOUBLE_ENCODE_OFFSET);
+        return base::bit_cast<JSTaggedType>(value) >= (TAG_INT - DOUBLE_ENCODE_OFFSET);
     }
 
     inline bool operator==(const JSTaggedValue &other) const
@@ -417,6 +419,7 @@ public:
     static bool Less(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
     static bool Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
     static bool StrictEqual(const JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
+    static bool StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y);
     static bool SameValueNumberic(const JSTaggedValue &x, const JSTaggedValue &y);
 
     // ES6 7.4 Operations on Iterator Objects
@@ -531,8 +534,11 @@ public:
     bool IsJSArrayIterator() const;
     bool IsIterator() const;
     bool IsGeneratorFunction() const;
+    bool IsAsyncGeneratorFunction() const;
     bool IsGeneratorObject() const;
     bool IsGeneratorContext() const;
+    bool IsAsyncGeneratorRequest() const;
+    bool IsAsyncGeneratorObject() const;
     bool IsAsyncFuncObject() const;
     bool IsJSPromise() const;
     bool IsRecord() const;
@@ -541,6 +547,7 @@ public:
     bool IsJSPromiseReactionFunction() const;
     bool IsJSPromiseExecutorFunction() const;
     bool IsJSPromiseAllResolveElementFunction() const;
+    bool IsJSAsyncGeneratorResNextRetProRstFtn() const;
     bool IsPromiseCapability() const;
     bool IsPromiseIteratorRecord() const;
     bool IsPromiseRecord() const;
@@ -626,10 +633,12 @@ public:
                                     const JSHandle<JSTaggedValue> &y);
     static ComparisonResult StrictNumberCompare(double x, double y);
     static bool StrictNumberEquals(double x, double y);
+    static bool StringCompare(EcmaString *xStr, EcmaString *yStr);
 
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     inline uint32_t GetKeyHashCode() const;
     static JSTaggedValue GetSuperBase(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static JSTaggedValue TryCastDoubleToInt32(double d);
 
     void DumpTaggedValue(std::ostream &os) const DUMP_API_ATTR;
     void Dump(std::ostream &os) const DUMP_API_ATTR;
@@ -654,6 +663,9 @@ private:
                                      const JSHandle<JSTaggedValue> &key, PropertyDescriptor &desc);
     static OperationResult GetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                             const JSHandle<JSTaggedValue> &key);
+    static bool SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                 const JSHandle<JSTaggedValue> &key,
+                                 const JSHandle<JSTaggedValue> &value);
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(JSTaggedValue), JSTaggedValue::SizeArch32, JSTaggedValue::SizeArch64);
 }  // namespace panda::ecmascript

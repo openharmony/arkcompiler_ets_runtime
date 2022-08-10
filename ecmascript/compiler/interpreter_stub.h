@@ -24,12 +24,12 @@
 namespace panda::ecmascript::kungfu {
 class InterpreterStubBuilder : public StubBuilder {
 public:
-    InterpreterStubBuilder(CallSignature *callSignature, Circuit *circuit)
-        : StubBuilder(callSignature, circuit) {}
+    InterpreterStubBuilder(CallSignature *callSignature, Environment *env)
+        : StubBuilder(callSignature, env) {}
     ~InterpreterStubBuilder() = default;
     NO_MOVE_SEMANTIC(InterpreterStubBuilder);
     NO_COPY_SEMANTIC(InterpreterStubBuilder);
-    virtual void GenerateCircuit(const CompilationConfig *cfg) = 0;
+    virtual void GenerateCircuit() = 0;
 
     inline void SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val);
     inline GateRef GetVregValue(GateRef sp, GateRef idx);
@@ -74,6 +74,7 @@ public:
     inline GateRef GetProfileTypeInfoFromFunction(GateRef function);
     inline GateRef GetModuleFromFunction(GateRef function);
     inline GateRef GetResumeModeFromGeneratorObject(GateRef obj);
+    inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetHotnessCounterFromMethod(GateRef method);
 
     inline void SetHotnessCounter(GateRef glue, GateRef method, GateRef value);
@@ -91,10 +92,24 @@ public:
     inline void SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
                               GateRef env, GateRef pc, GateRef prev, GateRef type);
 
+    inline void CheckException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		               GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			       GateRef res, GateRef offset);
+    inline void CheckPendingException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			              GateRef res, GateRef offset);
+    inline void CheckExceptionWithJump(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		                       GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			               GateRef res, Label *jump);
+    inline void CheckExceptionWithVar(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			              GateRef res, GateRef offset);
+
     inline GateRef CheckStackOverflow(GateRef glue, GateRef sp);
     inline GateRef PushArg(GateRef glue, GateRef sp, GateRef value);
     inline GateRef PushUndefined(GateRef glue, GateRef sp, GateRef num);
     inline GateRef PushRange(GateRef glue, GateRef sp, GateRef array, GateRef startIndex, GateRef endIndex);
+    inline GateRef GetStartIdxAndNumArgs(GateRef sp, GateRef restIdx);
 
     inline void Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                          GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, GateRef format);
@@ -116,15 +131,15 @@ private:
 #define DECLARE_HANDLE_STUB_CLASS(name)                                                         \
     class name##StubBuilder : public InterpreterStubBuilder {                                   \
     public:                                                                                     \
-        explicit name##StubBuilder(CallSignature *callSignature, Circuit *circuit)              \
-            : InterpreterStubBuilder(callSignature, circuit)                                    \
+        explicit name##StubBuilder(CallSignature *callSignature, Environment *env)              \
+            : InterpreterStubBuilder(callSignature, env)                                        \
         {                                                                                       \
-            circuit->SetFrameType(FrameType::INTERPRETER_FRAME);                                \
+            env->GetCircuit()->SetFrameType(FrameType::INTERPRETER_FRAME);                      \
         }                                                                                       \
         ~name##StubBuilder() = default;                                                         \
         NO_MOVE_SEMANTIC(name##StubBuilder);                                                    \
         NO_COPY_SEMANTIC(name##StubBuilder);                                                    \
-        void GenerateCircuit(const CompilationConfig *cfg) override;                            \
+        void GenerateCircuit() override;                                                        \
                                                                                                 \
     private:                                                                                    \
         void GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,       \

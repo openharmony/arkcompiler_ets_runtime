@@ -14,12 +14,9 @@
  */
 
 #include "ecmascript/napi/include/dfx_jsnapi.h"
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
-#include "ecmascript/dfx/cpu_profiler/samples_record.h"
-#endif
+
 #include "ecmascript/dfx/hprof/heap_profiler.h"
-#include "ecmascript/base/error_helper.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/heap-inl.h"
@@ -27,6 +24,10 @@
 #include "ecmascript/tooling/interface/file_stream.h"
 #include "ecmascript/tooling/interface/stream.h"
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#include "ecmascript/dfx/cpu_profiler/samples_record.h"
+#endif
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "include/faultloggerd_client.h"
 #endif
@@ -55,9 +56,10 @@ void DFXJSNApi::DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat,
 void DFXJSNApi::DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress,
                                  bool isVmMode, bool isPrivate)
 {
-    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(vm);
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress, isVmMode, isPrivate);
-    ecmascript::HeapProfilerInterface::Destroy(vm);
+    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
 }
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
@@ -77,7 +79,20 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 
 bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 {
-    stackTraceStr = ecmascript::base::ErrorHelper::BuildJsStackTrace(vm->GetAssociatedJSThread(), true);
+    LOG_ECMA(INFO) <<"BuildJsStackInfoList start";
+    std::vector<JsFrameInfo> jf = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
+    LOG_ECMA(INFO) <<"BuildJsStackInfoList JsFrameInfo";
+    for (uint32_t i = 0; i < jf.size(); ++i) {
+        std::string functionname = jf[i].functionname;
+        std::string filename = jf[i].filename;
+        std::string lines = jf[i].lines;
+        std::string nativepointer = jf[i].nativepointer;
+        LOG_ECMA(INFO) << "BuildJsStackInfoList functionname: " << functionname;
+        LOG_ECMA(INFO) << "BuildJsStackInfoList filenaem: " << filename;
+        LOG_ECMA(INFO) << "BuildJsStackInfoList lines: " << lines;
+        LOG_ECMA(INFO) << "BuildJsStackInfoList nativepointer: " << nativepointer;
+    }
+    stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(vm->GetAssociatedJSThread(), true);
     if (stackTraceStr.empty()) {
         return false;
     }
@@ -86,7 +101,7 @@ bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackT
 
 bool DFXJSNApi::BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 {
-    stackTraceStr = ecmascript::base::ErrorHelper::BuildJsStackTrace(vm->GetAssociatedJSThread(), false);
+    stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(vm->GetAssociatedJSThread(), false);
     if (stackTraceStr.empty()) {
         return false;
     }
@@ -96,7 +111,8 @@ bool DFXJSNApi::BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 bool DFXJSNApi::StartHeapTracking(const EcmaVM *vm, double timeInterval, bool isVmMode,
                                   Stream *stream, bool traceAllocation)
 {
-    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(vm);
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
     return heapProfile->StartHeapTracking(timeInterval, isVmMode, stream, traceAllocation);
 }
 
@@ -109,9 +125,10 @@ bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, const std::string &filePath)
 bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, Stream* stream, Progress *progress)
 {
     bool result = false;
-    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(vm);
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
     result = heapProfile->StopHeapTracking(stream, progress);
-    ecmascript::HeapProfilerInterface::Destroy(vm);
+    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
     return result;
 }
 
@@ -232,5 +249,11 @@ bool DFXJSNApi::CheckSafepoint(const EcmaVM *vm)
 {
     ecmascript::JSThread* thread = vm->GetJSThread();
     return  thread->CheckSafepoint();
+}
+
+std::vector<JsFrameInfo> DFXJSNApi::BuildJsStackInfoList(const EcmaVM *vm)
+{
+    std::vector<JsFrameInfo> jsframeinfo = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
+    return jsframeinfo;
 }
 } // namespace panda

@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_ECMA_PARAM_CONFIGURATION_H
 #define ECMASCRIPT_ECMA_PARAM_CONFIGURATION_H
 
-#include "libpandabase/mem/mem.h"
+#include "ecmascript/mem/mem_common.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 static constexpr size_t DEFAULT_HEAP_SIZE = 256_MB;                 // Recommended range: 128-256MB
@@ -59,7 +61,7 @@ public:
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
             defaultReadOnlySpaceSize_ = 256_KB;
-            defaultNonMovableSpaceSize_ = 4_MB;
+            defaultNonMovableSpaceSize_ = 6_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
@@ -71,7 +73,7 @@ public:
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
             defaultReadOnlySpaceSize_ = 256_KB;
-            defaultNonMovableSpaceSize_ = 4_MB;
+            defaultNonMovableSpaceSize_ = 6_MB;
             defaultSnapshotSpaceSize_ = 4_MB;
             defaultMachineCodeSpaceSize_ = 8_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;

@@ -23,8 +23,9 @@
 #include <vector>
 
 #include "ecmascript/common.h"
-#include "libpandabase/macros.h"
 #include "ecmascript/tooling/interface/stream.h"
+
+#include "libpandabase/macros.h"
 
 namespace panda {
 namespace ecmascript {
@@ -32,12 +33,14 @@ class EcmaVM;
 class Stream;
 class Progress;
 struct ProfileInfo;
+struct JsFrameInfo;
 }
 class DFXJSNApi;
 using EcmaVM = ecmascript::EcmaVM;
 using Stream = ecmascript::Stream;
 using Progress = ecmascript::Progress;
 using ProfileInfo = ecmascript::ProfileInfo;
+using JsFrameInfo = ecmascript::JsFrameInfo;
 
 class PUBLIC_API DFXJSNApi {
 public:
@@ -63,6 +66,7 @@ public:
     static size_t GetHeapUsedSize(const EcmaVM *vm);
     static void NotifyApplicationState(EcmaVM *vm, bool inBackground);
     static void NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure);
+    static std::vector<JsFrameInfo> BuildJsStackInfoList(const EcmaVM *vm);
 
     // profile generator
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

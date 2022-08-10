@@ -17,7 +17,8 @@
 #define ECMASCRIPT_COMPILER_BINARY_SECTION_H
 
 #include <map>
-#include <string>
+#include <cstring>
+
 #include "ecmascript/common.h"
 
 namespace panda::ecmascript {
@@ -31,7 +32,7 @@ enum class ElfSecName : uint8_t {
     TEXT,
     DATA,
     GOT,
-    STACKMAP,
+    LLVM_STACKMAP,
     SIZE
 };
 
@@ -72,7 +73,7 @@ public:
         } else if (str.compare(".got") == 0) {
             value_ = ElfSecName::GOT;
         } else if (str.compare(".llvm_stackmaps") == 0) {
-            value_ = ElfSecName::STACKMAP;
+            value_ = ElfSecName::LLVM_STACKMAP;
         }
     }
 
@@ -109,7 +110,7 @@ private:
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
-        ElfSecFeature::VALID_NOT_SEQUENTIAL
+        ElfSecFeature::VALID_NOT_SEQUENTIAL,
     };
 };
 }

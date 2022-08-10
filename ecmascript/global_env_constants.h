@@ -47,6 +47,7 @@ class JSThread;
     V(JSTaggedValue, JSProxyOrdinaryClass, JS_PROXY_ORDINARY_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, CompletionRecordClass, COMPLETION_RECORD_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, GeneratorContextClass, GENERATOR_CONTEST_INDEX, ecma_roots_class)                                \
+    V(JSTaggedValue, AsyncGeneratorRequestRecordClass, ASYNC_GENERATOR_REQUEST_CLASS_INDEX, ecma_roots_class)         \
     V(JSTaggedValue, CapabilityRecordClass, CAPABILITY_RECORD_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, ReactionsRecordClass, REACTIONS_RECORD_CLASS_INDEX, ecma_roots_class)                            \
     V(JSTaggedValue, PromiseIteratorRecordClass, PROMISE_ITERATOR_RECORD_CLASS_INDEX, ecma_roots_class)               \
@@ -221,6 +222,7 @@ class JSThread;
     V(JSTaggedValue, URIErrorString, URI_ERROR_STRING_INDEX, URIError)                                                \
     V(JSTaggedValue, SyntaxErrorString, SYNTAX_ERROR_STRING_INDEX, SyntaxError)                                       \
     V(JSTaggedValue, EvalErrorString, EVAL_ERROR_STRING_INDEX, EvalError)                                             \
+    V(JSTaggedValue, ErrorFuncString, ERROR_FUNC_STRING_INDEX, errorfunc)                                             \
     V(JSTaggedValue, StackString, STACK_STRING_INDEX, stack)                                                          \
     V(JSTaggedValue, StackEmptyString, STACK_EMPTY_STRING_INDEX, stackisempty)                                        \
     V(JSTaggedValue, ObjNotCoercibleString, OBJ_NOT_COERCIBLE_STRING_INDEX, objectnotcoercible)                       \

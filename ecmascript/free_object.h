@@ -71,7 +71,7 @@ public:
     // Before operating any freeobject, need to mark unpoison when is_asan is true.
     inline void AsanUnPoisonFreeObject() const
     {
-#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+#ifdef ARK_ASAN_ON
         ASAN_UNPOISON_MEMORY_REGION(this, NEXT_OFFSET);
         if (GetClass()->IsFreeObjectWithOneField()) {
             ASAN_UNPOISON_MEMORY_REGION(this, SIZE_OFFSET);
@@ -84,7 +84,7 @@ public:
     // After operating any freeobject, need to marked poison again when is_asan is true
     inline void AsanPoisonFreeObject() const
     {
-#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+#ifdef ARK_ASAN_ON
         if (GetClass()->IsFreeObjectWithNoneField()) {
             ASAN_POISON_MEMORY_REGION(this, NEXT_OFFSET);
         } else if (GetClass()->IsFreeObjectWithOneField()) {

@@ -1316,7 +1316,7 @@ HWTEST_F_L0(DebuggerTypesTest, ScopeToJsonTest)
 
     ret = objJson->GetString("type", &tmpStr);
     EXPECT_EQ(ret, Result::SUCCESS);
-    EXPECT_EQ("global", tmpStr);   
+    EXPECT_EQ("global", tmpStr);
 
     ret = objJson->GetObject("object", &tmpJson);
     EXPECT_EQ(ret, Result::SUCCESS);

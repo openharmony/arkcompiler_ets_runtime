@@ -19,6 +19,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
+
 #include "os/mem.h"
 
 namespace panda::ecmascript {
@@ -74,7 +75,7 @@ private:
     void Clear();
     const EcmaVM *vm_;
     CVector<StringKey> orderedKey_;  // Used for Serialize Order
-    size_t index_ {2};                       // 2: Offset the String-Table Header
+    size_t index_ {2};  // 2: Offset the String-Table Header
     CUnorderedMap<StringKey, StringId> indexMap_;
     CUnorderedMap<StringKey, CString *> hashmap_;
 };

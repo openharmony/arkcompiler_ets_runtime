@@ -68,7 +68,7 @@ JSTaggedValue TestFunctionApplyAndCall(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     int result = 0;
-    for (int32_t index = 0; index < argv->GetArgsNumber(); ++index) {
+    for (uint32_t index = 0; index < argv->GetArgsNumber(); ++index) {
         result += BuiltinsBase::GetCallArg(argv, index)->GetInt();
     }
     JSHandle<JSTaggedValue> thisValue(BuiltinsBase::GetThis(argv));
@@ -423,5 +423,31 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeHasInstance)
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
     EXPECT_TRUE(BuiltinsFunction::FunctionPrototypeHasInstance(ecmaRuntimeCallInfo2).GetRawData());
     TestHelper::TearDownFrame(thread, prev);
+}
+
+// Function.prototype.call.toString()
+HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeToString)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    CString key = "call";
+    JSHandle<JSTaggedValue> keyString(factory->NewFromUtf8(key));
+
+    JSHandle<JSFunction> func = factory->NewJSFunction(
+                                env, reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeCall));
+    JSHandle<JSFunctionBase> baseFunction(func);
+    JSHandle<JSTaggedValue> handleUndefine(thread, JSTaggedValue::Undefined());
+    JSFunction::SetFunctionName(thread, baseFunction, keyString, handleUndefine);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(func.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsFunction::FunctionPrototypeToString(ecmaRuntimeCallInfo);
+    ASSERT_TRUE(result.IsString());
+    JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
+    JSTaggedValue test = factory->NewFromASCII("function call() { [native code] }").GetTaggedValue();
+    ASSERT_EQ(resultHandle->Compare(reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
 }
 }  // namespace panda::test

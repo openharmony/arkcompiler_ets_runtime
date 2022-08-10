@@ -115,7 +115,10 @@ public:
         : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
-          enableLog_(enableLog) {}
+          enableLog_(enableLog)
+    {
+        enableBcTrace_ = cmpCfg->IsEnableByteCodeTrace();
+    }
     ~SlowPathLowering() = default;
     void CallRuntimeLowering();
 
@@ -124,8 +127,14 @@ public:
         return enableLog_;
     }
 
+    bool IsEnableByteCodeTrace() const
+    {
+        return enableBcTrace_;
+    }
+
 private:
-    void ReplaceHirControlGate(GateAccessor::UsesIterator &useIt, GateRef newGate, bool noThrow = false);
+    GateAccessor::UseIterator ReplaceHirControlGate(const GateAccessor::UseIterator &useIt, GateRef newGate,
+                                                    bool noThrow = false);
     void ReplaceHirToSubCfg(GateRef hir, GateRef outir,
                        const std::vector<GateRef> &successControl,
                        const std::vector<GateRef> &exceptionControl,
@@ -207,13 +216,13 @@ private:
     void LowerCreateEmptyObject(GateRef gate, GateRef glue);
     void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerStModuleVar(GateRef gate, GateRef glue);
+    void LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetTemplateObject(GateRef gate, GateRef glue);
     void LowerSetObjectWithProto(GateRef gate, GateRef glue);
     void LowerLdBigInt(GateRef gate, GateRef glue);
     void LowerToNumeric(GateRef gate, GateRef glue);
-    void LowerLdModuleVar(GateRef gate, GateRef glue);
-    void LowerGetModuleNamespace(GateRef gate, GateRef glue);
+    void LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIteratorNext(GateRef gate, GateRef glue);
     void LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget);
     void LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef newTarget);
@@ -229,6 +238,7 @@ private:
     void LowerStOwnByName(GateRef gate, GateRef glue);
     void LowerDefineFuncDyn(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerDefineAsyncGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineAsyncFunc(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerNewLexicalEnvDyn(GateRef gate, GateRef glue);
     void LowerNewLexicalEnvWithNameDyn(GateRef gate, GateRef glue, GateRef jsFunc);
@@ -244,8 +254,8 @@ private:
     void LowerLdGlobalVar(GateRef gate, GateRef glue);
     void LowerLdObjByName(GateRef gate, GateRef glue);
     void LowerStObjByName(GateRef gate, GateRef glue);
-    void LowerLdSuperByName(GateRef gate, GateRef glue);
-    void LowerStSuperByName(GateRef gate, GateRef glue);
+    void LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGetterSetterByValue(GateRef gate, GateRef glue);
     void LowerLdObjByIndex(GateRef gate, GateRef glue);
     void LowerStObjByIndex(GateRef gate, GateRef glue);
@@ -268,7 +278,10 @@ private:
     void LowerCopyRestArgs(GateRef gate, GateRef glue, GateRef actualArgc);
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
     int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
+    void LowerCreateAsyncGeneratorObj(GateRef gate, GateRef glue);
+    void LowerAsyncGeneratorResolve(GateRef gate, GateRef glue);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
+    void DebugPrintBC(GateRef gate, GateRef glue, GateRef index);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
@@ -277,6 +290,7 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_;
     bool enableLog_ {false};
+    bool enableBcTrace_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_SLOWPATH_LOWERING_H

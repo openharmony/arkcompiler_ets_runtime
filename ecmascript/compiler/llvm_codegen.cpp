@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "llvm_codegen.h"
+#include "ecmascript/compiler/llvm_codegen.h"
 
+#include <cstring>
 #include <iomanip>
-#include <string>
 #include <vector>
 
 #include "ecmascript/compiler/call_signature.h"
@@ -187,12 +187,14 @@ LLVMAssembler::~LLVMAssembler()
     error_ = nullptr;
 }
 
-void LLVMAssembler::Run()
+void LLVMAssembler::Run(const CompilerLog &log)
 {
     char *error = nullptr;
     std::string originName = llvm::unwrap(module_)->getModuleIdentifier() + ".ll";
     std::string optName = llvm::unwrap(module_)->getModuleIdentifier() + "_opt" + ".ll";
-    LLVMPrintModuleToFile(module_, originName.c_str(), &error);
+    if (!log.NoneMethod() && log.OutputLLIR()) {
+        LLVMPrintModuleToFile(module_, originName.c_str(), &error);
+    }
     LLVMVerifyModule(module_, LLVMAbortProcessAction, &error);
     LLVMDisposeMessage(error);
     UseRoundTripSectionMemoryManager();
@@ -201,7 +203,9 @@ void LLVMAssembler::Run()
     }
     llvm::unwrap(engine_)-> setProcessAllSections(true);
     BuildAndRunPasses();
-    LLVMPrintModuleToFile(module_, optName.c_str(), &error);
+    if (!log.NoneMethod() && log.OutputLLIR()) {
+        LLVMPrintModuleToFile(module_, optName.c_str(), &error);
+    }
 }
 
 void LLVMAssembler::Initialize(LOptions option)
@@ -259,16 +263,33 @@ int LLVMAssembler::GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log)
         llvm::Attribute attr = llvm::unwrap(attrirbuteRef);
         auto value = attr.getValueAsString().data();
         fpToCallerSpDelta = atoi(value);
-        if (log.IsAlwaysEnabled()) {
+        if (log.AllMethod()) {
             size_t length;
-            LOG_COMPILER(INFO) << " funcName: " << LLVMGetValueName2(fn, &length) << " fpToCallerSpDelta:"
+            LOG_COMPILER(DEBUG) << " funcName: " << LLVMGetValueName2(fn, &length) << " fpToCallerSpDelta:"
             << fpToCallerSpDelta;
         }
     }
     return fpToCallerSpDelta;
 }
 
-void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2name, const CompilerLog &log) const
+void LLVMAssembler::PrintInstAndStep(unsigned &pc, uint8_t **byteSp, uintptr_t &numBytes,
+    size_t instSize, char *outString, bool logFlag)
+{
+    if (instSize == 0) {
+        instSize = 4; // 4: default instruction step size while instruction can't be resolved or be constant
+    }
+    if (logFlag) {
+        // 8: length of output content
+        LOG_COMPILER(INFO) << std::setw(8) << std::setfill('0') << std::hex << pc << ":" << std::setw(8)
+                            << *reinterpret_cast<uint32_t *>(*byteSp) << " " << outString;
+    }
+    pc += instSize;
+    *byteSp += instSize;
+    numBytes -= instSize;
+}
+
+void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2name,
+    const CompilerLog &log, const MethodLogList &logList) const
 {
     LLVMDisasmContextRef dcr = LLVMCreateDisasm(LLVMGetTarget(module_), nullptr, 0, nullptr, SymbolLookupCallback);
     bool logFlag = false;
@@ -287,30 +308,20 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
             uint64_t addr = reinterpret_cast<uint64_t>(byteSp);
             if (addr2name.find(addr) != addr2name.end()) {
                 methodName = addr2name.at(addr);
+                logFlag = log.OutputASM();
+                if (log.CertainMethod()) {
+                    logFlag = logFlag && logList.IncludesMethod(methodName);
+                } else if (log.NoneMethod()) {
+                    logFlag = false;
+                }
                 if (logFlag) {
                     LOG_COMPILER(INFO) << "=======================================================================";
                     LOG_COMPILER(INFO) << methodName.c_str() << " disassemble:";
                 }
             }
-            logFlag = log.IsDisassembleEnabled() ? true : log.IncludesMethod(methodName);
 
-            size_t InstSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
-            if (InstSize == 0) {
-                if (logFlag) {
-                    LOG_COMPILER(INFO) << std::setw(8) << std::setfill('0') << std::hex << pc << ":" << std::setw(8)
-                                        << *reinterpret_cast<uint32_t *>(byteSp) << "maybe constant";
-                }
-                pc += 4; // 4 pc length
-                byteSp += 4; // 4 sp offset
-                numBytes -= 4; // 4 num bytes
-            }
-            if (logFlag) {
-                LOG_COMPILER(INFO) << std::setw(8) << std::setfill('0') << std::hex << pc << ":" << std::setw(8)
-                                   << *reinterpret_cast<uint32_t *>(byteSp) << " " << outString;
-            }
-            pc += InstSize;
-            byteSp += InstSize;
-            numBytes -= InstSize;
+            size_t instSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
+            PrintInstAndStep(pc, &byteSp, numBytes, instSize, outString, logFlag);
         }
     }
     LLVMDisasmDispose(dcr);
@@ -341,19 +352,8 @@ void LLVMAssembler::Disassemble(uint8_t *buf, size_t size)
     const char outStringSize = 100;
     char outString[outStringSize];
     while (numBytes > 0) {
-        size_t InstSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
-        if (InstSize == 0) {
-            LOG_COMPILER(ERROR) << std::setw(8) << std::setfill('0') << std::hex << pc << ":" << std::setw(8)
-                               << *reinterpret_cast<uint32_t *>(byteSp) << "maybe constant";
-            pc += 4; // 4 pc length
-            byteSp += 4; // 4 sp offset
-            numBytes -= 4; // 4 num bytes
-        }
-        LOG_COMPILER(ERROR) << std::setw(8) << std::setfill('0') << std::hex << pc << ":" << std::setw(8)
-                               << *reinterpret_cast<uint32_t *>(byteSp) << " " << outString;
-        pc += InstSize;
-        byteSp += InstSize;
-        numBytes -= InstSize;
+        size_t instSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
+        PrintInstAndStep(pc, &byteSp, numBytes, instSize, outString);
     }
     LLVMDisasmDispose(dcr);
 }

@@ -12,14 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "ecmascript/builtins/builtins_cjs_require.h"
+
+#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/builtins/builtins_cjs_require.h"
+#include "ecmascript/require/js_cjs_module.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsCjsRequire::CjsRequireConstructor(EcmaRuntimeCallInfo *argv)
@@ -32,7 +34,7 @@ JSTaggedValue BuiltinsCjsRequire::CjsRequireConstructor(EcmaRuntimeCallInfo *arg
     if (!newTarget->IsUndefined()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "newTarget is undefined", JSTaggedValue::Exception());
     }
-    int32_t length = argv->GetArgsNumber();
+    uint32_t length = argv->GetArgsNumber();
     JSHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
     if (length != 1) {  // strange arg's number
         LOG_ECMA(ERROR) << "BuiltinsCjsRequire::CjsRequireConstructor : can only accept one argument";

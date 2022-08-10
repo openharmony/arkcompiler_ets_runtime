@@ -26,39 +26,40 @@
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_api_arraylist.h"
-#include "ecmascript/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api_deque.h"
-#include "ecmascript/js_api_deque_iterator.h"
-#include "ecmascript/js_api_hashmap.h"
-#include "ecmascript/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api_hashset.h"
-#include "ecmascript/js_api_hashset_iterator.h"
-#include "ecmascript/js_api_lightweightmap.h"
-#include "ecmascript/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api_lightweightset.h"
-#include "ecmascript/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api_linked_list.h"
-#include "ecmascript/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api_list.h"
-#include "ecmascript/js_api_list_iterator.h"
-#include "ecmascript/js_api_plain_array.h"
-#include "ecmascript/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api_queue.h"
-#include "ecmascript/js_api_queue_iterator.h"
-#include "ecmascript/js_api_stack.h"
-#include "ecmascript/js_api_stack_iterator.h"
-#include "ecmascript/js_api_tree_map.h"
-#include "ecmascript/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api_tree_set.h"
-#include "ecmascript/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api_vector.h"
-#include "ecmascript/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_deque.h"
+#include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
+#include "ecmascript/js_api/js_api_hashmap_iterator.h"
+#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_api/js_api_hashset_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightmap.h"
+#include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_lightweightset_iterator.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
+#include "ecmascript/js_api/js_api_linked_list_iterator.h"
+#include "ecmascript/js_api/js_api_list.h"
+#include "ecmascript/js_api/js_api_list_iterator.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_plain_array_iterator.h"
+#include "ecmascript/js_api/js_api_queue.h"
+#include "ecmascript/js_api/js_api_queue_iterator.h"
+#include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_stack_iterator.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_tree_map_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_function.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_date.h"
@@ -109,10 +110,11 @@ public:
     explicit ObjectXRay(EcmaVM *ecmaVm) : ecmaVm_(ecmaVm) {}
     ~ObjectXRay() = default;
 
-    inline void VisitVMRoots(const RootVisitor &visitor, const RootRangeVisitor &range_visitor) const
+    inline void VisitVMRoots(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor) const
     {
         ecmaVm_->Iterate(visitor);
-        ecmaVm_->GetJSThread()->Iterate(visitor, range_visitor);
+        ecmaVm_->GetJSThread()->Iterate(visitor, rangeVisitor, derivedVisitor);
     }
     template<VisitType visitType>
     inline void VisitObjectBody(TaggedObject *object, JSHClass *klass, const EcmaObjectRangeVisitor &visitor)
@@ -159,6 +161,14 @@ public:
                 }
                 break;
             }
+            case JSType::JS_ASYNC_GENERATOR_FUNCTION: {
+                auto jsGeneratorFunction = JSAsyncGeneratorFunction::Cast(object);
+                jsGeneratorFunction->VisitRangeSlot(visitor);
+                if (visitType == VisitType::SNAPSHOT_VISIT) {
+                    jsGeneratorFunction->VisitRangeSlotForNative(visitor);
+                }
+                break;
+            }
             case JSType::JS_PROXY_REVOC_FUNCTION: {
                 auto jsProxyRevocFunction = JSProxyRevocFunction::Cast(object);
                 jsProxyRevocFunction->VisitRangeSlot(visitor);
@@ -188,6 +198,14 @@ public:
                 jsPromiseAllResolveElementFunction->VisitRangeSlot(visitor);
                 if (visitType == VisitType::SNAPSHOT_VISIT) {
                     jsPromiseAllResolveElementFunction->VisitRangeSlotForNative(visitor);
+                }
+                break;
+            }
+            case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN: {
+                auto jsAsyGeneratorRseNextRtnProRstFtn = JSAsyncGeneratorResNextRetProRstFtn::Cast(object);
+                jsAsyGeneratorRseNextRtnProRstFtn->VisitRangeSlot(visitor);
+                if (visitType == VisitType::SNAPSHOT_VISIT) {
+                    jsAsyGeneratorRseNextRtnProRstFtn->VisitRangeSlotForNative(visitor);
                 }
                 break;
             }
@@ -310,6 +328,9 @@ public:
             case JSType::JS_GENERATOR_OBJECT:
                 JSGeneratorObject::Cast(object)->VisitRangeSlot(visitor);
                 break;
+            case JSType::JS_ASYNC_GENERATOR_OBJECT:
+                JSAsyncGeneratorObject::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::JS_ASYNC_FUNC_OBJECT:
                 JSAsyncFuncObject::Cast(object)->VisitRangeSlot(visitor);
                 break;
@@ -389,6 +410,9 @@ public:
                 break;
             case JSType::PROMISE_CAPABILITY:
                 PromiseCapability::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::ASYNC_GENERATOR_REQUEST:
+                AsyncGeneratorRequest::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::PROMISE_RECORD:
                 PromiseRecord::Cast(object)->VisitRangeSlot(visitor);

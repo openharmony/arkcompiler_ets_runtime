@@ -14,16 +14,18 @@
  */
 
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {
 void HeapRootVisitor::VisitHeapRoots(JSThread *thread, const RootVisitor &visitor,
-                                     const RootRangeVisitor &range_visitor)
+                                     const RootRangeVisitor &rangeVisitor,
+                                     const RootBaseAndDerivedVisitor &derivedVisitor)
 {
     auto ecma_vm = GetVMInstance(thread);
     ecma_vm->Iterate(visitor);
-    thread->Iterate(visitor, range_visitor);
+    thread->Iterate(visitor, rangeVisitor, derivedVisitor);
 }
 
 EcmaVM *HeapRootVisitor::GetVMInstance(JSThread *thread) const

@@ -14,13 +14,14 @@
  */
 
 #include "ecmascript/js_array.h"
+
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
-#include "interpreter/fast_runtime_stub-inl.h"
 
 namespace panda::ecmascript {
 JSTaggedValue JSArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSHandle<JSObject> &self)

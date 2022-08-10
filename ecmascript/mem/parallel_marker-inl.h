@@ -55,13 +55,18 @@ inline void NonMovableMarker::HandleRangeRoots(uint32_t threadId, [[maybe_unused
         JSTaggedValue value(slot.GetTaggedType());
         if (value.IsHeapObject()) {
             if (value.IsWeakForHeapObject()) {
-                Region *objectRegion = Region::ObjectAddressToRange(start.SlotAddress());
-                RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()), objectRegion);
-                continue;
+                LOG_ECMA_MEM(FATAL) << "Weak Reference in NonMovableMarker roots";
             }
             MarkObject(threadId, value.GetTaggedObject());
         }
     }
+}
+
+inline void NonMovableMarker::HandleDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+                                                 [[maybe_unused]] ObjectSlot derived,
+                                                 [[maybe_unused]] uintptr_t baseOldObject)
+{
+    // It is only used to update the derived value. The mark of partial GC does not need to update slot
 }
 
 inline void NonMovableMarker::HandleOldToNewRSet(uint32_t threadId, Region *region)
@@ -110,6 +115,14 @@ inline void MovableMarker::HandleRangeRoots(uint32_t threadId, [[maybe_unused]] 
                 MarkObject(threadId, value.GetTaggedObject(), slot);
             }
         }
+    }
+}
+
+inline void MovableMarker::HandleDerivedRoots([[maybe_unused]] Root type, ObjectSlot base,
+                                              ObjectSlot derived, uintptr_t baseOldObject)
+{
+    if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
+        derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
     }
 }
 

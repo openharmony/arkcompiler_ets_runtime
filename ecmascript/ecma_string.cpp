@@ -35,6 +35,10 @@ EcmaString *EcmaString::Concat(const JSHandle<EcmaString> &str1Handle, const JSH
     uint32_t newLength = length1 + length2;
     if (newLength == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
+    } else if (length1 == 0) {
+        return string2;
+    } else if (length2 == 0) {
+        return string1;
     }
     bool compressed = GetCompressedStringsEnabled() && (!string1->IsUtf16() && !string2->IsUtf16());
     auto newString = AllocStringObject(newLength, compressed, vm);

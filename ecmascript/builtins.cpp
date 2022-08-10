@@ -29,6 +29,7 @@
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_async_function.h"
+#include "ecmascript/builtins/builtins_async_generator.h"
 #include "ecmascript/builtins/builtins_atomics.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_boolean.h"
@@ -78,6 +79,7 @@
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_async_function.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_date_time_format.h"
@@ -114,6 +116,7 @@
 #include "ecmascript/require/js_cjs_exports.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
+
 #include "ohos/init_data.h"
 
 namespace panda::ecmascript {
@@ -176,6 +179,8 @@ using BuiltinsCjsRequire = builtins::BuiltinsCjsRequire;
 using ContainersPrivate = containers::ContainersPrivate;
 using SharedArrayBuffer = builtins::BuiltinsSharedArrayBuffer;
 
+using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
+
 void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
 {
     thread_ = thread;
@@ -215,17 +220,19 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     // initialize Function, forbidden change order
     InitializeFunction(env, emptyFuncDynclass);
 
-    JSHandle<JSObject> objFuncInstancePrototype = factory_->NewJSObject(objFuncDynclass);
-    JSHandle<JSTaggedValue> objFuncInstancePrototypeValue(objFuncInstancePrototype);
-    JSHandle<JSHClass> asyncFuncClass = factory_->CreateFunctionClass(
-        FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION, objFuncInstancePrototypeValue);
-    env->SetAsyncFunctionClass(thread_, asyncFuncClass);
-
     JSHandle<JSHClass> asyncAwaitStatusFuncClass =
         factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSAsyncAwaitStatusFunction::SIZE,
                                       JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION, env->GetFunctionPrototype());
     env->SetAsyncAwaitStatusFunctionClass(thread_, asyncAwaitStatusFuncClass);
 
+    JSHandle<JSHClass> asyncGeneratorResNextRetProRstFtnClass =
+        factory_->NewEcmaDynClass(JSAsyncGeneratorResNextRetProRstFtn::SIZE,
+                                  JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN,
+                                  env->GetFunctionPrototype());
+    asyncGeneratorResNextRetProRstFtnClass->SetCallable(true);
+    asyncGeneratorResNextRetProRstFtnClass->SetExtensible(true);
+    env->SetAsyncGeneratorResNextRetProRstFtnClass(thread_, asyncGeneratorResNextRetProRstFtnClass);
+    
     JSHandle<JSHClass> proxyRevocFuncClass = factory_->NewEcmaDynClass(
         JSProxyRevocFunction::SIZE, JSType::JS_PROXY_REVOC_FUNCTION, env->GetFunctionPrototype());
     proxyRevocFuncClass->SetCallable(true);
@@ -293,7 +300,9 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializeReflect(env, objFuncPrototypeVal);
     InitializeAsyncFunction(env, objFuncDynclass);
     InitializeGenerator(env, objFuncDynclass);
+    InitializeAsyncGenerator(env, objFuncDynclass);
     InitializeGeneratorFunction(env, objFuncDynclass);
+    InitializeAsyncGeneratorFunction(env, objFuncDynclass);
     InitializePromise(env, objFuncDynclass);
     InitializePromiseJob(env);
     InitializeIntl(env, objFuncPrototypeVal);
@@ -314,8 +323,18 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
         factory_->CreateFunctionClass(FunctionKind::GENERATOR_FUNCTION, JSFunction::SIZE, JSType::JS_GENERATOR_FUNCTION,
                                       env->GetGeneratorFunctionPrototype());
     env->SetGeneratorFunctionClass(thread_, generatorFuncClass);
+
+    JSHandle<JSHClass> asyncGenetatorFuncClass =
+        factory_->CreateFunctionClass(FunctionKind::ASYNC_GENERATOR_FUNCTION, JSFunction::SIZE,
+                                      JSType::JS_ASYNC_GENERATOR_FUNCTION, env->GetAsyncGeneratorFunctionPrototype());
+    env->SetAsyncGeneratorFunctionClass(thread_, asyncGenetatorFuncClass);
     env->SetObjectFunctionPrototypeClass(thread_, JSTaggedValue(objFuncPrototype->GetClass()));
+    JSHandle<JSHClass> asyncFuncClass = factory_->CreateFunctionClass(
+        FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION,
+        env->GetAsyncFunctionPrototype());
+    env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
+    thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(env.GetTaggedType()));
 }
 void Builtins::InitializeForSnapshot(JSThread *thread)
 {
@@ -1550,7 +1569,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
 
     // String.prototype method
     SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "charCodeAt", BuiltinsString::CharCodeAt, FunctionLength::ONE);
+    SetFunction(env, stringFuncPrototype, "charCodeAt", BuiltinsString::CharCodeAt, FunctionLength::ONE,
+                static_cast<uint8_t>(BUILTINS_STUB_ID(CharCodeAt)));
     SetFunction(env, stringFuncPrototype, "codePointAt", BuiltinsString::CodePointAt, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "concat", BuiltinsString::Concat, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "endsWith", BuiltinsString::EndsWith, FunctionLength::ONE);
@@ -2604,9 +2624,10 @@ JSHandle<JSFunction> Builtins::NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
 }
 
 JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
-                                           EcmaEntrypoint func, int length) const
+                                           EcmaEntrypoint func, int length, uint8_t builtinId) const
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+        FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
@@ -2615,16 +2636,17 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
 }
 
 void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
-                           EcmaEntrypoint func, int length) const
+                           EcmaEntrypoint func, int length, uint8_t builtinId) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
-    SetFunction(env, obj, keyString, func, length);
+    SetFunction(env, obj, keyString, func, length, builtinId);
 }
 
 void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
-                           const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length) const
+                           const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length,
+                           uint8_t builtinId) const
 {
-    JSHandle<JSFunction> function(NewFunction(env, key, func, length));
+    JSHandle<JSFunction> function(NewFunction(env, key, func, length, builtinId));
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(function), true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, key, descriptor);
 }
@@ -2813,6 +2835,51 @@ void Builtins::InitializeGeneratorFunction(const JSHandle<GlobalEnv> &env,
     env->SetGeneratorFunctionPrototype(thread_, generatorFuncPrototype);
 }
 
+void Builtins::InitializeAsyncGeneratorFunction(const JSHandle<GlobalEnv> &env,
+                                                const JSHandle<JSHClass> &objFuncDynclass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSObject> asyncGeneratorFuncPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
+    JSHandle<JSTaggedValue> asyncGeneratorFuncPrototypeValue(asyncGeneratorFuncPrototype);
+     // 27.4.3.1 AsyncGeneratorFunction.prototype.constructor
+    JSHandle<JSHClass> asyncGeneratorFuncInstanceDynclass =
+        factory_->NewEcmaDynClass(JSFunction::SIZE, JSType::JS_ASYNC_GENERATOR_FUNCTION,
+                                  asyncGeneratorFuncPrototypeValue);
+    asyncGeneratorFuncInstanceDynclass->SetCallable(true);
+    asyncGeneratorFuncInstanceDynclass->SetExtensible(true);
+    JSHandle<JSFunction> asyncGeneratorFunction =
+        NewBuiltinConstructor(env, asyncGeneratorFuncPrototype,
+                              AsyncGeneratorObject::AsyncGeneratorFunctionConstructor, "AsyncGeneratorFunction",
+                              FunctionLength::ONE);
+    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+    PropertyDescriptor asyncGeneratorDesc(thread_, JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction),
+                                          false, false, true);
+    JSObject::DefineOwnProperty(thread_, asyncGeneratorFuncPrototype, constructorKey, asyncGeneratorDesc);
+    asyncGeneratorFunction->SetProtoOrDynClass(thread_, asyncGeneratorFuncInstanceDynclass.GetTaggedValue());
+    env->SetAsyncGeneratorFunctionFunction(thread_, asyncGeneratorFunction);
+
+    // 27.4.3.2 AsyncGeneratorFunction.prototype.prototype
+    PropertyDescriptor descriptor(thread_, env->GetAsyncGeneratorPrototype(), false, false, true);
+    JSObject::DefineOwnProperty(thread_, asyncGeneratorFuncPrototype, globalConst->GetHandledPrototypeString(),
+                                descriptor);
+
+    // 27.4.3.3 AsyncGeneratorFunction.prototype [ @@toStringTag ]
+    SetStringTagSymbol(env, asyncGeneratorFuncPrototype, "AsyncGeneratorFunction");
+    // AsyncGeneratorFunction prototype __proto__ -> Function.
+    JSObject::SetPrototype(thread_, asyncGeneratorFuncPrototype, env->GetFunctionPrototype());
+
+    PropertyDescriptor asyncGeneratorObjDesc(thread_, asyncGeneratorFuncPrototypeValue, false, false, true);
+    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(env->GetInitialAsyncGenerator()),
+                                globalConst->GetHandledConstructorString(), asyncGeneratorObjDesc);
+    
+    PropertyDescriptor asyncGeneratorObjProtoDesc(thread_, asyncGeneratorFuncPrototypeValue, true, false, false);
+    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(env->GetInitialAsyncGenerator()),
+                                globalConst->GetHandledPrototypeString(), asyncGeneratorObjProtoDesc);
+
+    env->SetAsyncGeneratorFunctionPrototype(thread_, asyncGeneratorFuncPrototype);
+}
+
 void Builtins::InitializeGenerator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncDynclass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -2840,6 +2907,34 @@ void Builtins::InitializeGenerator(const JSHandle<GlobalEnv> &env, const JSHandl
     JSHandle<JSObject> initialGeneratorFuncPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
     JSObject::SetPrototype(thread_, initialGeneratorFuncPrototype, JSHandle<JSTaggedValue>(generatorFuncPrototype));
     env->SetInitialGenerator(thread_, initialGeneratorFuncPrototype);
+}
+
+void Builtins::InitializeAsyncGenerator(const JSHandle<GlobalEnv> &env,
+                                        const JSHandle<JSHClass> &objFuncDynclass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+
+    JSHandle<JSObject> asyncGeneratorFuncPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
+
+    // GeneratorObject.prototype method
+    // 27.6.1.2 AsyncGenerator.prototype.next ( value )
+    SetFunction(env, asyncGeneratorFuncPrototype, "next", AsyncGeneratorObject::AsyncGeneratorPrototypeNext,
+                FunctionLength::ONE);
+    // 27.6.1.3 AsyncGenerator.prototype.return ( value )
+    SetFunction(env, asyncGeneratorFuncPrototype, "return", AsyncGeneratorObject::AsyncGeneratorPrototypeReturn,
+                FunctionLength::ONE);
+    // 27.6.1.4 AsyncGenerator.prototype.throw ( exception )
+    SetFunction(env, asyncGeneratorFuncPrototype, "throw", AsyncGeneratorObject::AsyncGeneratorPrototypeThrow,
+                FunctionLength::ONE);
+
+    // 27.6.1.5 AsyncGenerator.prototype [ @@toStringTag ]
+    SetStringTagSymbol(env, asyncGeneratorFuncPrototype, "AsyncGenerator");
+
+    env->SetAsyncGeneratorPrototype(thread_, asyncGeneratorFuncPrototype);
+    JSHandle<JSObject> initialAsyncGeneratorFuncPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
+    JSObject::SetPrototype(thread_, initialAsyncGeneratorFuncPrototype,
+                           JSHandle<JSTaggedValue>(asyncGeneratorFuncPrototype));
+    env->SetInitialAsyncGenerator(thread_, initialAsyncGeneratorFuncPrototype);
 }
 
 void Builtins::SetArgumentsSharedAccessor(const JSHandle<GlobalEnv> &env)

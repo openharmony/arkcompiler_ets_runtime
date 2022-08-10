@@ -16,12 +16,12 @@
 #ifndef ECMASCRIPT_SYMBOL_TABLE_H
 #define ECMASCRIPT_SYMBOL_TABLE_H
 
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_hash_table.h"
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/tagged_hash_table.h"
 
 namespace panda::ecmascript {
 class SymbolTable : public TaggedHashTable<SymbolTable> {
