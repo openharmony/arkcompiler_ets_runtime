@@ -11,8 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+builtins test start
+builtins ir start
 112
 119
 NaN
 NaN
 100
+builtins ir end
+builtins number start
+parseInt result = 16947500000
+builtins number end
