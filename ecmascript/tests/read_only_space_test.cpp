@@ -16,6 +16,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/log.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/verification.h"
@@ -53,10 +54,7 @@ public:
     {
         base_options::Options baseOptions("");
         baseOptions.SetLogLevel("error");
-        arg_list_t logComponents;
-        logComponents.emplace_back("all");
-        baseOptions.SetLogComponents(logComponents);
-        Logger::Initialize(baseOptions);
+        panda::ecmascript::Log::Initialize(baseOptions);
     }
 
     void TearDown() override

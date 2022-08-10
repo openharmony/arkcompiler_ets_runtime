@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_JS_TAGGED_VALUE_H
 #define ECMASCRIPT_JS_TAGGED_VALUE_H
 
+#include <limits.h>
+
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/mem_common.h"

@@ -25,6 +25,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/mem/mem_common.h"
+#include "generated/base_options.h"
 
 #include "libpandabase/macros.h"
 
@@ -1153,7 +1154,8 @@ public:
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();
     static void DestroyMemMapAllocator();
-    static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
+    static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options,
+                                const base_options::Options &baseOption = base_options::Options(""));
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
 private:

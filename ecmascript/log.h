@@ -16,8 +16,14 @@
 #ifndef ECMASCRIPT_LOG_H
 #define ECMASCRIPT_LOG_H
 
+#include <cstdint>
+#include <iostream>
 #include <sstream>
 
+#include "ecmascript/common.h"
+#include "generated/base_options.h"
+
+#ifdef ENABLE_HILOG
 #include "hilog/log.h"
 
 constexpr static unsigned int DOMAIN = 0xD003F00;
@@ -30,13 +36,42 @@ constexpr static OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, DOMAIN, TAG};
 #else
 #define LOG_VERBOSE LOG_LEVEL_MIN
 #endif
+#endif // ENABLE_HILOG
+
+enum Level {
+    VERBOSE,
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+    FATAL,
+};
 
 namespace panda::ecmascript {
-template<LogLevel level>
-class Log {
+class PUBLIC_API Log {
 public:
-    Log() = default;
-    ~Log()
+    static void Initialize(const panda::base_options::Options &options);
+    static Level GetLevel()
+    {
+        return level_;
+    }
+
+    static void SetLevel(Level level)
+    {
+        level_ = level;
+    }
+
+private:
+    static void SetLogLevelFromString(const std::string& level);
+    static Level level_;
+};
+
+#ifdef ENABLE_HILOG
+template<LogLevel level>
+class HiLog {
+public:
+    HiLog() = default;
+    ~HiLog()
     {
         if constexpr (level == LOG_LEVEL_MIN) {
             // print nothing
@@ -63,8 +98,31 @@ public:
 private:
     std::ostringstream stream_;
 };
+#endif // ENABLE_HILOG
+class StdLog {
+public:
+    StdLog() = default;
+    ~StdLog()
+    {
+        std::cerr << stream_.str().c_str() << std::endl;
+    }
+
+    template<class type>
+    std::ostream &operator <<(type input)
+    {
+        stream_ << input;
+        return stream_;
+    }
+
+private:
+    std::ostringstream stream_;
+};
 }  // namespace panda::ecmascript
 
-#define HILOG_ECMA(level) HiLogIsLoggable(DOMAIN, TAG, LOG_##level) && panda::ecmascript::Log<LOG_##level>()
+#ifdef ENABLE_HILOG
+#define LOG_ECMA(level) HiLogIsLoggable(DOMAIN, TAG, LOG_##level) && panda::ecmascript::HiLog<LOG_##level>()
+#else
+#define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog()
+#endif // ENABLE_HILOG
 
 #endif  // ECMASCRIPT_LOG_H

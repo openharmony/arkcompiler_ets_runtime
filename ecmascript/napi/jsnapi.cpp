@@ -54,6 +54,7 @@
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/log.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/mem/region.h"
@@ -62,7 +63,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
-#include "generated/base_options.h"
 
 #include "ohos/init_data.h"
 #include "utils/pandargs.h"
@@ -151,23 +151,17 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     // Dfx
     base_options::Options baseOptions("");
     baseOptions.SetLogLevel(option.GetLogLevel());
-    arg_list_t logComponents;
-    logComponents.emplace_back("all");
-    baseOptions.SetLogComponents(logComponents);
-    Logger::Initialize(baseOptions);
-    if (option.GetLogBufPrint() != nullptr) {
-        Logger::SetMobileLogPrintEntryPointByPtr(reinterpret_cast<void *>(option.GetLogBufPrint()));
-    }
     runtimeOptions.SetEnableArkTools(option.GetEnableArkTools());
-    return CreateEcmaVM(runtimeOptions);
+    return CreateEcmaVM(runtimeOptions, baseOptions);
 }
 
-EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
+EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options, const base_options::Options &baseOption)
 {
     {
         os::memory::LockHolder lock(mutex);
         vmCount_++;
         if (!initialize_) {
+            panda::ecmascript::Log::Initialize(baseOption);
             InitializeIcuData(options);
             InitializeMemMapAllocator();
             initialize_ = true;
