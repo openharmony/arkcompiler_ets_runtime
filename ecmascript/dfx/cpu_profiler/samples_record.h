@@ -30,7 +30,6 @@
 
 
 namespace panda::ecmascript {
-const long long TIME_CHANGE = 10000000000000; // 10000000000000:Discard the first 3 bits of the current nanosecond time
 const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
 struct FrameInfo {
     std::string codeType = "";

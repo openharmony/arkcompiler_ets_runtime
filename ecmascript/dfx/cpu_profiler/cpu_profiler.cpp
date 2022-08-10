@@ -125,7 +125,6 @@ void CpuProfiler::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &f
     }
 #endif
     uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    ts = ts % TIME_CHANGE;
     SetProfileStart(ts);
     outToFile_ = true;
     generator_->SetIsStart(true);
@@ -223,7 +222,6 @@ CpuProfiler::~CpuProfiler()
 void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
 {
     uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    ts = ts % TIME_CHANGE;
     struct CurrentProcessInfo currentProcessInfo = {0};
     GetCurrentProcessInfo(currentProcessInfo);
     std::string data = "";
@@ -234,7 +232,6 @@ void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
             + std::to_string(currentProcessInfo.tid) + ",\"ts\":"
             + std::to_string(ts) + ",\"tts\":178460227},\n";
     ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    ts = ts % TIME_CHANGE;
     data += "{\"args\":{\"data\":{\"startTime\":" + std::to_string(nowTimeStamp) + "}},"
             + "\"cat\":\"disabled-by-default-ark.cpu_profiler\",\"id\":\"0x2\","
             + "\"name\":\"Profile\",\"ph\":\"P\",\"pid\":"
@@ -247,7 +244,7 @@ void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
 
 void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo)
 {
-    currentProcessInfo.nowTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp() % TIME_CHANGE;
+    currentProcessInfo.nowTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
     currentProcessInfo.pid = getpid();
     if (syscall(SYS_gettid) == -1) {
         LOG_FULL(FATAL) << "syscall failed";
