@@ -1031,8 +1031,8 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> prefixString(thread, EcmaString::FastSubString(thisString, 0, pos, ecmaVm));
     JSHandle<EcmaString> suffixString(
         thread, EcmaString::FastSubString(thisString, tailPos, thisString->GetLength() - tailPos, ecmaVm));
-    JSHandle<EcmaString> tempString = factory->ConcatFromString(prefixString, realReplaceStr);
-    return factory->ConcatFromString(tempString, suffixString).GetTaggedValue();
+    JSHandle<EcmaString> tempString(thread, EcmaString::Concat(prefixString, realReplaceStr, ecmaVm));
+    return JSTaggedValue(EcmaString::Concat(tempString, suffixString, ecmaVm));
 }
 
 JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
