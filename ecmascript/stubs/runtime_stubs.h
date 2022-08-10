@@ -290,10 +290,10 @@ public:
     }
 
     template<typename T>
-    inline static T GetPtrArg(uintptr_t argv, [[maybe_unused]] uint32_t argc, uint32_t index)
+    inline static T *GetPtrArg(uintptr_t argv, [[maybe_unused]] uint32_t argc, uint32_t index)
     {
         ASSERT(index < argc);
-        return reinterpret_cast<T>(*(reinterpret_cast<JSTaggedType *>(argv) + (index)));
+        return reinterpret_cast<T*>(*(reinterpret_cast<JSTaggedType *>(argv) + (index)));
     }
 
     static void DebugPrint(int fmtMessageId, ...);
@@ -322,7 +322,7 @@ private:
 
     static inline JSTaggedValue RuntimeCreateAsyncGeneratorObj(JSThread *thread,
                                                                const JSHandle<JSTaggedValue> &genFunc);
-                                                               
+
     static inline JSTaggedValue RuntimeAsyncGeneratorResolve(JSThread *thread, JSHandle<JSTaggedValue> asyncFuncObj,
                                                              JSHandle<JSTaggedValue> value, JSTaggedValue flag);
     static inline JSTaggedValue RuntimeGetTemplateObject(JSThread *thread, const JSHandle<JSTaggedValue> &literal);

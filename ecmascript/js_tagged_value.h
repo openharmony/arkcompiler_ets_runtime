@@ -99,16 +99,16 @@ public:
     static constexpr JSTaggedType TAG_SPECIAL = 0x02ULL;
     static constexpr JSTaggedType TAG_BOOLEAN = 0x04ULL;
     static constexpr JSTaggedType TAG_EXCEPTION = 0x08ULL;
-    // tag mark
-    static constexpr JSTaggedType TAG_SPECIAL_MARK = TAG_MARK | TAG_SPECIAL;
-    static constexpr JSTaggedType TAG_BOOLEAN_MARK = TAG_SPECIAL | TAG_BOOLEAN;
-    static constexpr JSTaggedType TAG_HEAPOBJECT_MARK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
-    static constexpr JSTaggedType TAG_WEAK_MARK = TAG_HEAPOBJECT_MARK | TAG_WEAK;
+    // tag mask
+    static constexpr JSTaggedType TAG_SPECIAL_MASK = TAG_MARK | TAG_SPECIAL;
+    static constexpr JSTaggedType TAG_BOOLEAN_MASK = TAG_SPECIAL | TAG_BOOLEAN;
+    static constexpr JSTaggedType TAG_HEAPOBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
+    static constexpr JSTaggedType TAG_WEAK_MASK = TAG_HEAPOBJECT_MASK | TAG_WEAK;
     // special value
     static constexpr JSTaggedType VALUE_HOLE = 0x05ULL;
     static constexpr JSTaggedType VALUE_NULL = TAG_OBJECT | TAG_SPECIAL | TAG_NULL;
-    static constexpr JSTaggedType VALUE_FALSE = TAG_BOOLEAN_MARK | static_cast<JSTaggedType>(false);
-    static constexpr JSTaggedType VALUE_TRUE = TAG_BOOLEAN_MARK | static_cast<JSTaggedType>(true);
+    static constexpr JSTaggedType VALUE_FALSE = TAG_BOOLEAN_MASK | static_cast<JSTaggedType>(false);
+    static constexpr JSTaggedType VALUE_TRUE = TAG_BOOLEAN_MASK | static_cast<JSTaggedType>(true);
     static constexpr JSTaggedType VALUE_UNDEFINED = TAG_SPECIAL;
     static constexpr JSTaggedType VALUE_EXCEPTION = TAG_SPECIAL | TAG_EXCEPTION;
     static constexpr JSTaggedType VALUE_ZERO = TAG_INT | 0x00ULL;
@@ -148,7 +148,7 @@ public:
     }
 
     constexpr explicit JSTaggedValue(bool v)
-        : value_(static_cast<JSTaggedType>(v) | TAG_BOOLEAN_MARK) {}
+        : value_(static_cast<JSTaggedType>(v) | TAG_BOOLEAN_MASK) {}
 
     explicit JSTaggedValue(double v)
     {
@@ -194,7 +194,7 @@ public:
 
     inline bool IsWeak() const
     {
-        return ((value_ & TAG_WEAK_MARK) == TAG_WEAK);
+        return ((value_ & TAG_WEAK_MASK) == TAG_WEAK);
     }
 
     inline bool IsDouble() const
@@ -209,7 +209,7 @@ public:
 
     inline bool IsSpecial() const
     {
-        return ((value_ & TAG_SPECIAL_MARK) == TAG_SPECIAL) || IsHole();
+        return ((value_ & TAG_SPECIAL_MASK) == TAG_SPECIAL) || IsHole();
     }
 
     inline bool IsObject() const
@@ -224,7 +224,7 @@ public:
 
     inline bool IsHeapObject() const
     {
-        return ((value_ & TAG_HEAPOBJECT_MARK) == 0U);
+        return ((value_ & TAG_HEAPOBJECT_MASK) == 0U);
     }
 
     inline double GetDouble() const
@@ -285,7 +285,7 @@ public:
 
     inline bool IsUndefinedOrNull() const
     {
-        return ((value_ & TAG_HEAPOBJECT_MARK) == TAG_SPECIAL);
+        return ((value_ & TAG_HEAPOBJECT_MASK) == TAG_SPECIAL);
     }
 
     inline bool IsHole() const

@@ -826,16 +826,14 @@ DEF_RUNTIME_STUBS(SetClassConstructorLength)
 DEF_RUNTIME_STUBS(UpdateHotnessCounter)
 {
     RUNTIME_STUBS_HEADER(UpdateHotnessCounter);
-    auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    AsmInterpretedFrame *state = GET_ASM_FRAME(sp);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     thread->CheckSafepoint();
-    auto thisFunc = JSFunction::Cast(state->function.GetTaggedObject());
     if (thisFunc->GetProfileTypeInfo() == JSTaggedValue::Undefined()) {
         auto method = thisFunc->GetCallTarget();
-        auto res = RuntimeNotifyInlineCache(thread, JSHandle<JSFunction>(thread, thisFunc), method);
+        auto res = RuntimeNotifyInlineCache(thread, thisFunc, method);
         return res.GetRawData();
     }
-    return thisFunc->GetProfileTypeInfo().GetRawData();
+    return JSTaggedValue::Undefined().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LoadICByName)

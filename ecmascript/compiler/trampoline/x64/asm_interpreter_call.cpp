@@ -959,7 +959,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     __ Bind(&notUndefined);
     {
         Label notEcmaObject;
-        __ Movabs(JSTaggedValue::TAG_HEAPOBJECT_MARK, temp);
+        __ Movabs(JSTaggedValue::TAG_HEAPOBJECT_MASK, temp);
         __ And(ret, temp);
         __ Cmpq(0, temp);
         __ Jne(&notEcmaObject);
