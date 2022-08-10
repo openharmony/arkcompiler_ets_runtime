@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
+print("builtins ir start");
 var str1 = "wpydejkl";
 print(str1.charCodeAt(1.231));
 print(str1.charCodeAt(undefined));
 print(str1.charCodeAt(new Date()));
 print(str1.charCodeAt(14));
 print(str1.charCodeAt(3));
+print("builtins ir end");
