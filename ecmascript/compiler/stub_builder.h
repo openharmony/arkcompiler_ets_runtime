@@ -289,6 +289,8 @@ public:
     GateRef IsProtoTypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY());
+    GateRef GetPropertyInlinedProps(GateRef obj, GateRef hClass,
+        GateRef index, VariableType type = VariableType::JS_ANY());
 
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);

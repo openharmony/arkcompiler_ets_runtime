@@ -451,12 +451,7 @@ GateRef StubBuilder::JSObjectGetProperty(VariableType returnType, GateRef obj, G
     {
         Bind(&inlinedProp);
         {
-            // GetPropertyInlinedProps
-            GateRef inlinedPropsStart = GetInlinedPropsStartFromHClass(hClass);
-            GateRef propOffset = Int32Mul(
-                Int32Add(inlinedPropsStart, attrOffset),
-                Int32(JSTaggedValue::TaggedTypeSize()));
-            result = Load(returnType, obj, ZExtInt32ToInt64(propOffset));
+            result = GetPropertyInlinedProps(obj, hClass, attrOffset, returnType);
             Jump(&exit);
         }
         Bind(&notInlinedProp);

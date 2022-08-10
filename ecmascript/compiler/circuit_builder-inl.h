@@ -134,13 +134,13 @@ GateRef CircuitBuilder::TaggedIsException(GateRef x)
 GateRef CircuitBuilder::TaggedIsSpecial(GateRef x)
 {
     return BoolOr(
-        Equal(Int64And(x, Int64(JSTaggedValue::TAG_SPECIAL_MARK)), Int64(JSTaggedValue::TAG_SPECIAL)),
+        Equal(Int64And(x, Int64(JSTaggedValue::TAG_SPECIAL_MASK)), Int64(JSTaggedValue::TAG_SPECIAL)),
         TaggedIsHole(x));
 }
 
 GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
 {
-    return Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MARK)), Int64(0));
+    return Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)), Int64(0));
 }
 
 GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
