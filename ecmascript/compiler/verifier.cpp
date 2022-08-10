@@ -401,6 +401,7 @@ bool Verifier::RunSchedulingBoundsCheck(const Circuit *circuit, const std::vecto
                 LOG_COMPILER(ERROR) << "Proof:";
                 LOG_COMPILER(ERROR) << "Upper bound is BB_" << upperBound.at(item.first);
                 LOG_COMPILER(ERROR) << "Lower bound is BB_" << lowerBound.at(item.first);
+                return false;
             }
         }
     }

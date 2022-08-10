@@ -421,7 +421,7 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
         };
         std::iota(semiDom.begin(), semiDom.end(), 0);
         semiDom[0] = semiDom.size();
-        for (size_t idx = basicBlockList.size() - 1; idx >= 1; idx --) {
+        for (size_t idx = basicBlockList.size() - 1; idx >= 1; idx--) {
             for (const auto &preBlock : graph_[basicBlockList[idx]].preds) {
                 if (bbDfsTimestampToIdx[preBlock->id] < idx) {
                     semiDom[idx] = std::min(semiDom[idx], bbDfsTimestampToIdx[preBlock->id]);
@@ -497,7 +497,7 @@ void BytecodeCircuitBuilder::BuildImmediateDominator(const std::vector<size_t> &
             if (block.isDead) {
                 continue;
             }
-            std::string log ("block " + std::to_string(block.id) + " dominate block has: ");
+            std::string log("block " + std::to_string(block.id) + " dominate block has: ");
             for (size_t i = 0; i < block.immDomBlocks.size(); i++) {
                 log += std::to_string(block.immDomBlocks[i]->id) + ",";
             }
@@ -1837,8 +1837,15 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size
             continue;
         }
         std::set<size_t> vregs;
-        EnumerateBlock(bb, [&vregs]
+        EnumerateBlock(bb, [this, &vregs]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+            if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR_PREF_V8)) {
+                auto numVRegs = method_->GetNumVregs();
+                for (size_t i = 0; i < numVRegs; i++) {
+                    vregs.insert(i);
+                }
+                return false;
+            }
             for (const auto &vreg: bytecodeInfo.vregOut) {
                 vregs.insert(vreg);
             }
