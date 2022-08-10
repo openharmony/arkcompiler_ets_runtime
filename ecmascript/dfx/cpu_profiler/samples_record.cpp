@@ -187,10 +187,7 @@ void SamplesRecord::WriteMethodsAndSampleInfo(bool timeEnd)
     pid_t pid = getpid();
     int64_t tid = syscall(SYS_gettid);
     uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    ts = ts % TIME_CHANGE;
-    struct timespec time = {0, 0};
-    clock_gettime(CLOCK_MONOTONIC, &time);
-    uint64_t tts = static_cast<uint64_t>(time.tv_nsec) / 1000; // 1000:Nanoseconds to milliseconds.
+    uint64_t tts = SamplingProcessor::GetMicrosecondsTimeStamp();
     sampleData_ += std::to_string(pid) + ",\"tid\":" +
                    std::to_string(tid) + ",\"ts\":" +
                    std::to_string(ts) + ",\"tts\":" +
