@@ -62,7 +62,7 @@ DebuggerImpl::~DebuggerImpl()
 bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &fileName)
 {
     if (fileName.substr(0, DATA_APP_PATH.length()) != DATA_APP_PATH) {
-        LOG_DEBUGGER(WARN) << "NotifyScriptParsed: unsupport file: " << fileName;
+        LOG_DEBUGGER(DEBUG) << "NotifyScriptParsed: unsupport file: " << fileName;
         return false;
     }
 
