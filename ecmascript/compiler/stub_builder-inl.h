@@ -573,11 +573,7 @@ inline GateRef StubBuilder::TaggedIsHeapObject(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsGeneratorObject(GateRef x)
 {
-    GateRef isHeapObj = TaggedIsHeapObject(x);
-    GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isGeneratorObj =
-        Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT)));
-    return BoolAnd(isHeapObj, isGeneratorObj);
+    return env_->GetBuilder()->TaggedIsGeneratorObject(x);
 }
 
 inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)

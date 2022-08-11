@@ -203,7 +203,8 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
         }
     // 11. Else if state is completed, return ! AsyncGeneratorResolve(generator, undefined, true).
     } else if (state == JSAsyncGeneratorState::COMPLETED) {
-        return AsyncGeneratorResolve(thread, generator, thread->GlobalConstants()->GetHandledUndefined(), true);
+        JSHandle<JSTaggedValue> comVal(thread, completion->GetValue());
+        return AsyncGeneratorReject(thread, generator, comVal);
     }
     // 12. Assert: state is either suspendedStart or suspendedYield.
     ASSERT((state == JSAsyncGeneratorState::SUSPENDED_START) ||

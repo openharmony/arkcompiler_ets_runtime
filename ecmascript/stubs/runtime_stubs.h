@@ -233,6 +233,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CreateAsyncGeneratorObj)            \
     V(AsyncGeneratorResolve)              \
     V(DefineAsyncGeneratorFunc)           \
+    V(AsyncGeneratorReject)               \
     V(NewLexicalEnvWithNameDyn)           \
     V(OptGetUnmapedArgs)                  \
     V(OptCopyRestArgs)                    \
@@ -324,6 +325,8 @@ private:
 
     static inline JSTaggedValue RuntimeAsyncGeneratorResolve(JSThread *thread, JSHandle<JSTaggedValue> asyncFuncObj,
                                                              JSHandle<JSTaggedValue> value, JSTaggedValue flag);
+    static inline JSTaggedValue RuntimeAsyncGeneratorReject(JSThread *thread, JSHandle<JSTaggedValue> asyncFuncObj,
+                                                            JSHandle<JSTaggedValue> value);
     static inline JSTaggedValue RuntimeGetTemplateObject(JSThread *thread, const JSHandle<JSTaggedValue> &literal);
     static inline JSTaggedValue RuntimeGetNextPropName(JSThread *thread, const JSHandle<JSTaggedValue> &iter);
     static inline JSTaggedValue RuntimeIterNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter);

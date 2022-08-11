@@ -3577,6 +3577,21 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(BytecodeInstruction::Format::PREF_V8_V8_V8);
     }
+    HANDLE_OPCODE(HANDLE_ASYNCGENERATORREJECT_PREF_V8_V8) {
+        uint16_t v0 = READ_INST_8_1();
+        uint16_t v1 = READ_INST_8_2();
+        LOG_INST() << "intrinsics::asyncgeneratorreject"
+                   << " v" << v0 << " v" << v1;
+
+        JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
+        JSTaggedValue value = GET_VREG_VALUE(v1);
+
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorReject(thread, asyncGenerator, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(BytecodeInstruction::Format::PREF_V8_V8);
+    }
     HANDLE_OPCODE(HANDLE_SUPERCALL_PREF_IMM16_V8) {
         uint16_t range = READ_INST_16_1();
         uint16_t v0 = READ_INST_8_3();
@@ -4170,6 +4185,7 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {TONUMERIC_PREF_V8, "TONUMERIC"},
         {CREATEASYNCGENERATOROBJ_PREF_V8, "CREATEASYNCGENERATOROBJ"},
         {ASYNCGENERATORRESOLVE_PREF_V8_V8_V8, "ASYNCGENERATORRESOLVE"},
+        {ASYNCGENERATORREJECT_PREF_V8_V8, "ASYNCGENERATORREJECT"},
         {MOV_DYN_V8_V8, "MOV_DYN"},
         {MOV_DYN_V16_V16, "MOV_DYN"},
         {LDA_STR_ID32, "LDA_STR"},

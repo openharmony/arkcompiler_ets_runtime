@@ -643,6 +643,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case ASYNCGENERATORRESOLVE_PREF_V8_V8_V8:
             LowerAsyncGeneratorResolve(gate, glue);
             break;
+        case ASYNCGENERATORREJECT_PREF_V8_V8:
+            LowerAsyncGeneratorReject(gate, glue);
+            break;
         case STARRAYSPREAD_PREF_V8_V8:
             LowerStArraySpread(gate, glue);
             break;
@@ -2831,6 +2834,16 @@ void SlowPathLowering::LowerAsyncGeneratorResolve(GateRef gate, GateRef glue)
     GateRef value = acc_.GetValueIn(gate, 1);
     GateRef flag = acc_.GetValueIn(gate, 2);
     GateRef newGate = LowerCallRuntime(glue, id, {asyncGen, value, flag});
+    ReplaceHirToCall(gate, newGate);
+}
+
+void SlowPathLowering::LowerAsyncGeneratorReject(GateRef gate, GateRef glue)
+{
+    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncGeneratorRejectPrefV8V8)));
+    int id = RTSTUB_ID(AsyncGeneratorReject);
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
     ReplaceHirToCall(gate, newGate);
 }
 

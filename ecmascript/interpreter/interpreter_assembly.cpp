@@ -3315,6 +3315,22 @@ void InterpreterAssembly::HandleAsyncGeneratorResolvePrefV8V8V8(
     DISPATCH(BytecodeInstruction::Format::PREF_V8_V8_V8);
 }
 
+void InterpreterAssembly::HandleAsyncGeneratorRejectPrefV8V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::LowerAsyncGeneratorReject"
+               << " v" << v0;
+    JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
+    JSTaggedValue value = GET_VREG_VALUE(v1);
+    JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorReject(thread, asyncGenerator, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(BytecodeInstruction::Format::PREF_V8_V8);
+}
+
 void InterpreterAssembly::HandleStArraySpreadPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
