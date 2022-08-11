@@ -322,6 +322,7 @@ public:
     inline GateRef TaggedIsSpecial(GateRef x);
     inline GateRef TaggedIsHeapObject(GateRef x);
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef x);
+    inline GateRef TaggedIsGeneratorObject(GateRef x);
     inline GateRef TaggedIsPropertyBox(GateRef x);
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef x);
@@ -355,9 +356,12 @@ public:
     inline GateRef IsClassPrototype(GateRef object);
     inline GateRef IsExtensible(GateRef object);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
-    inline GateRef IsJsObject(GateRef obj);
-    inline GateRef BothAreString(GateRef x, GateRef y);
+    inline GateRef IsJSObject(GateRef obj);
+    inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef IsCallable(GateRef obj);
+    inline GateRef IsCallableFromBitField(GateRef bitfield);
+    inline GateRef LogicAnd(GateRef x, GateRef y);
+    inline GateRef LogicOr(GateRef x, GateRef y);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetFunctionBitFieldFromJSFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);

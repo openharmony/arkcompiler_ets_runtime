@@ -2007,12 +2007,12 @@ void SlowPathLowering::LowerStOwnByName(GateRef gate, GateRef glue)
     GateRef accValue = acc_.GetValueIn(gate, 2);
     // we do not need to merge outValueGate, so using GateRef directly instead of using Variable
     GateRef result;
-    Label isJsObject(&builder_);
+    Label isJSObject(&builder_);
     Label slowPath(&builder_);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    builder_.Branch(builder_.IsJsObject(receiver), &isJsObject, &slowPath);
-    builder_.Bind(&isJsObject);
+    builder_.Branch(builder_.IsJSObject(receiver), &isJSObject, &slowPath);
+    builder_.Bind(&isJSObject);
     Label notClassConstructor(&builder_);
     builder_.Branch(builder_.IsClassConstructor(receiver), &slowPath, &notClassConstructor);
     builder_.Bind(&notClassConstructor);
@@ -2415,15 +2415,15 @@ void SlowPathLowering::LowerStOwnByNameWithNameSet(GateRef gate, GateRef glue)
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateRef accValue = acc_.GetValueIn(gate, 2);
     GateRef result;
-    Label isJsObject(&builder_);
+    Label isJSObject(&builder_);
     Label notJSObject(&builder_);
     Label notClassConstructor(&builder_);
     Label notClassPrototype(&builder_);
     Label notHole(&builder_);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    builder_.Branch(builder_.IsJsObject(receiver), &isJsObject, &notJSObject);
-    builder_.Bind(&isJsObject);
+    builder_.Branch(builder_.IsJSObject(receiver), &isJSObject, &notJSObject);
+    builder_.Bind(&isJSObject);
     {
         builder_.Branch(builder_.IsClassConstructor(receiver), &notJSObject, &notClassConstructor);
         builder_.Bind(&notClassConstructor);

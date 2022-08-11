@@ -145,25 +145,32 @@ GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
 {
-    GateRef isHeapObj = SExtInt1ToInt32(TaggedIsHeapObject(x));
+    GateRef isHeapObj = TaggedIsHeapObject(x);
     GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isAsyncGeneratorObj = SExtInt1ToInt32(Equal(objType,
-        Int32(static_cast<int32_t>(JSType::JS_ASYNC_GENERATOR_OBJECT))));
-    return TruncInt32ToInt1(Int32And(isHeapObj, isAsyncGeneratorObj));
+    GateRef isAsyncGeneratorObj = Equal(objType,
+        Int32(static_cast<int32_t>(JSType::JS_ASYNC_GENERATOR_OBJECT)));
+    return LogicAnd(isHeapObj, isAsyncGeneratorObj);
+}
+
+GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef x)
+{
+    GateRef isHeapObj = TaggedIsHeapObject(x);
+    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef isAsyncGeneratorObj = Equal(objType,
+        Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT)));
+    return LogicAnd(isHeapObj, isAsyncGeneratorObj);
 }
 
 GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef x)
 {
-    return TruncInt32ToInt1(Int32And(SExtInt1ToInt32(TaggedIsHeapObject(x)),
-        SExtInt1ToInt32(IsJsType(x, JSType::PROPERTY_BOX))));
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::PROPERTY_BOX));
 }
 
 GateRef CircuitBuilder::TaggedIsWeak(GateRef x)
 {
-    return TruncInt32ToInt1(Int32And(SExtInt1ToInt32(TaggedIsHeapObject(x)),
-        SExtInt1ToInt32(Equal(Int64And(x,
-        Int64(JSTaggedValue::TAG_WEAK)),
-        Int64(1)))));
+    return LogicAnd(TaggedIsHeapObject(x),
+        Equal(Int64And(x, Int64(JSTaggedValue::TAG_WEAK)), Int64(1)));
 }
 
 GateRef CircuitBuilder::TaggedIsPrototypeHandler(GateRef x)
@@ -173,14 +180,13 @@ GateRef CircuitBuilder::TaggedIsPrototypeHandler(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsTransitionHandler(GateRef x)
 {
-    return TruncInt32ToInt1(Int32And(SExtInt1ToInt32(TaggedIsHeapObject(x)),
-        SExtInt1ToInt32(IsJsType(x, JSType::TRANSITION_HANDLER))));
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::TRANSITION_HANDLER));
 }
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
 {
-    return TruncInt32ToInt1(Int32Or(SExtInt1ToInt32(IsSpecial(x, JSTaggedValue::VALUE_UNDEFINED)),
-        SExtInt1ToInt32(IsSpecial(x, JSTaggedValue::VALUE_NULL))));
+    return BoolOr(TaggedIsUndefined(x), TaggedIsNull(x));
 }
 
 GateRef CircuitBuilder::TaggedIsTrue(GateRef x)
@@ -200,8 +206,7 @@ GateRef CircuitBuilder::TaggedIsNull(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsBoolean(GateRef x)
 {
-    return TruncInt32ToInt1(Int32Or(SExtInt1ToInt32(IsSpecial(x, JSTaggedValue::VALUE_TRUE)),
-        SExtInt1ToInt32(IsSpecial(x, JSTaggedValue::VALUE_FALSE))));
+    return BoolOr(TaggedIsFalse(x), TaggedIsTrue(x));
 }
 
 GateRef CircuitBuilder::TaggedGetInt(GateRef x)
@@ -350,10 +355,11 @@ GateRef CircuitBuilder::IsClassConstructor(GateRef object)
 GateRef CircuitBuilder::IsClassPrototype(GateRef object)
 {
     GateRef hClass = LoadHClass(object);
-    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return NotEqual(Int32And(Int32LSR(bitfield,
-        Int32(JSHClass::ClassPrototypeBit::START_BIT)),
+    // decode
+    return NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::ClassPrototypeBit::START_BIT)),
         Int32((1LU << JSHClass::ClassPrototypeBit::SIZE) - 1)),
         Int32(0));
 }
@@ -372,29 +378,57 @@ GateRef CircuitBuilder::IsExtensible(GateRef object)
 GateRef CircuitBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    auto ret = Int32And(ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST)))),
-        ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST)))));
-    return TruncInt32ToInt1(ret);
+    return BoolAnd(
+        Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST))),
+        Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST))));
 }
 
-GateRef CircuitBuilder::IsJsObject(GateRef obj)
+GateRef CircuitBuilder::IsJSObject(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    auto ret = BoolAnd(
+        Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST))),
+        Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST))));
+    return LogicAnd(TaggedIsHeapObject(obj), ret);
+}
+
+GateRef CircuitBuilder::TaggedObjectBothAreString(GateRef x, GateRef y)
+{
+    return BoolAnd(IsJsType(x, JSType::STRING), IsJsType(y, JSType::STRING));
+}
+
+GateRef CircuitBuilder::IsCallableFromBitField(GateRef bitfield)
+{
+    return NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::CallableBit::START_BIT)),
+            Int32((1LU << JSHClass::CallableBit::SIZE) - 1)),
+        Int32(0));
+}
+
+GateRef CircuitBuilder::IsCallable(GateRef obj)
+{
+    GateRef hclass = LoadHClass(obj);
+    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hclass, bitfieldOffset);
+    return IsCallableFromBitField(bitfield);
+}
+
+GateRef CircuitBuilder::LogicAnd(GateRef x, GateRef y)
 {
     Label subentry(env_);
     SubCfgEntry(&subentry);
     Label exit(env_);
-    Label isHeapObject(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
+    Label isX(env_);
+    Label notX(env_);
+    DEFVAlUE(result, env_, VariableType::BOOL(), x);
+    Branch(x, &isX, &notX);
+    Bind(&isX);
     {
-        GateRef objectType = GetObjectType(LoadHClass(obj));
-        auto ret1 = Int32And(ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-            Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST)))),
-            ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-            Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST)))));
-        result = TruncInt32ToInt1(ret1);
+        result = y;
+        Jump(&exit);
+    }
+    Bind(&notX);
+    {
         Jump(&exit);
     }
     Bind(&exit);
@@ -403,21 +437,28 @@ GateRef CircuitBuilder::IsJsObject(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
+GateRef CircuitBuilder::LogicOr(GateRef x, GateRef y)
 {
-    return TruncInt32ToInt1(Int32And(SExtInt1ToInt32(IsJsType(x, JSType::STRING)),
-        SExtInt1ToInt32(IsJsType(y, JSType::STRING))));
-}
-
-GateRef CircuitBuilder::IsCallable(GateRef obj)
-{
-    GateRef hclass = LoadHClass(obj);
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hclass, bitfieldOffset);
-    return NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::CallableBit::START_BIT)),
-            Int32((1LU << JSHClass::CallableBit::SIZE) - 1)),
-        Int32(0));
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label exit(env_);
+    Label isX(env_);
+    Label notX(env_);
+    DEFVAlUE(result, env_, VariableType::BOOL(), x);
+    Branch(x, &isX, &notX);
+    Bind(&isX);
+    {
+        Jump(&exit);
+    }
+    Bind(&notX);
+    {
+        result = y;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
 }
 
 int CircuitBuilder::NextVariableId()
