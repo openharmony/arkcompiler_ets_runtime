@@ -18,6 +18,14 @@ builtins ir start
 NaN
 NaN
 100
+0
+1
+-1
+-1
+-1
+5
+-1
+-1
 builtins ir end
 builtins number start
 parseInt result = 16947500000
