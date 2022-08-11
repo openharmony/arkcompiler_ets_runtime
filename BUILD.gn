@@ -115,6 +115,7 @@ if (defined(ark_standalone_build)) {
       # ts aot test and asm test
       if (is_standard_system) {
         deps += [
+          "//arkcompiler/ets_runtime/test/aottest:ark_aot_js_test",
           "//arkcompiler/ets_runtime/test/aottest:ark_aot_test",
           "//arkcompiler/ets_runtime/test/moduletest:ark_asm_single_step_test",
           "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test",
