@@ -251,9 +251,7 @@ void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProces
         UNREACHABLE();
     }
     tid_ = currentProcessInfo.tid = static_cast<pthread_t>(syscall(SYS_gettid));
-    struct timespec time = {0, 0};
-    clock_gettime(CLOCK_MONOTONIC, &time);
-    currentProcessInfo.tts = static_cast<uint64_t>(time.tv_nsec) / 1000; // 1000:Nanoseconds to milliseconds.
+    currentProcessInfo.tts = SamplingProcessor::GetMicrosecondsTimeStamp();
 }
 
 void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
