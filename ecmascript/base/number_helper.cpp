@@ -667,8 +667,8 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
     if (strLen == 0) {
         return BigInt::Int32ToBigInt(thread, 0).GetTaggedValue();
     }
+    [[maybe_unused]] CVector<uint8_t> buf; // Span will use buf.data(), shouldn't define inside 'if'
     if (UNLIKELY(strObj->IsUtf16())) {
-        CVector<uint8_t> buf;
         size_t len = base::utf_helper::Utf16ToUtf8Size(strObj->GetDataUtf16(), strLen) - 1;
         buf.reserve(len);
         len = base::utf_helper::ConvertRegionUtf16ToUtf8(strObj->GetDataUtf16(), buf.data(), strLen, len, 0);
