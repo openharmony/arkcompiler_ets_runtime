@@ -42,6 +42,8 @@ host_unittest_action("ContainersTest") {
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
+
+  ldflags = [ "-Wl,--lto-O0" ]
 }
 
 group("unittest") {

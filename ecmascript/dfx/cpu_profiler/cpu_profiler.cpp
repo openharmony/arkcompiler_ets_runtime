@@ -125,7 +125,6 @@ void CpuProfiler::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &f
     }
 #endif
     uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    ts = ts % TIME_CHANGE;
     SetProfileStart(ts);
     outToFile_ = true;
     generator_->SetIsStart(true);
@@ -151,7 +150,7 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
     }
     isProfiling_ = false;
     generator_->SetIsStart(false);
-    generator_->SetLastSampleFlag(true);
+    generator_->SetSampleFlag(true);
     if (generator_->SemPost(0) != 0) {
         LOG_ECMA(ERROR) << "sem_[0] post failed";
         return profileInfo;
@@ -190,7 +189,7 @@ void CpuProfiler::StopCpuProfilerForFile()
     }
     isProfiling_ = false;
     generator_->SetIsStart(false);
-    generator_->SetLastSampleFlag(true);
+    generator_->SetSampleFlag(true);
     if (generator_->SemPost(0) != 0) {
         LOG_ECMA(ERROR) << "sem_[0] post failed";
         return;
@@ -223,7 +222,6 @@ CpuProfiler::~CpuProfiler()
 void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
 {
     uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    ts = ts % TIME_CHANGE;
     struct CurrentProcessInfo currentProcessInfo = {0};
     GetCurrentProcessInfo(currentProcessInfo);
     std::string data = "";
@@ -234,7 +232,6 @@ void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
             + std::to_string(currentProcessInfo.tid) + ",\"ts\":"
             + std::to_string(ts) + ",\"tts\":178460227},\n";
     ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    ts = ts % TIME_CHANGE;
     data += "{\"args\":{\"data\":{\"startTime\":" + std::to_string(nowTimeStamp) + "}},"
             + "\"cat\":\"disabled-by-default-ark.cpu_profiler\",\"id\":\"0x2\","
             + "\"name\":\"Profile\",\"ph\":\"P\",\"pid\":"
@@ -247,7 +244,7 @@ void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
 
 void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo)
 {
-    currentProcessInfo.nowTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp() % TIME_CHANGE;
+    currentProcessInfo.nowTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
     currentProcessInfo.pid = getpid();
     if (syscall(SYS_gettid) == -1) {
         LOG_FULL(FATAL) << "syscall failed";
@@ -261,59 +258,63 @@ void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProces
 
 void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
 {
-    generator_->ClearFrameStack();
     const CMap<JSMethod *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->SetGcState(vm_->GetAssociatedJSThread()->GetGcState());
     if (!generator_->GetGcState()) {
-        for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        int methodCount = 0;
+        int methodInfoCount = 0;
+        for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame(), ++methodCount) {
             if (!frameHandler.IsInterpretedFrame()) {
                 continue;
             }
             auto method = frameHandler.CheckAndGetMethod();
             if (method == nullptr) {
-                break;
+                continue;
             }
 
             if (stackInfo.count(method) == 0) {
-                ParseMethodInfo(method, frameHandler);
+                ParseMethodInfo(method, frameHandler, &methodInfoCount);
             }
-            generator_->PushFrameStack(method);
+            generator_->PushFrameStack(method, methodCount);
         }
     }
 }
 
-void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler)
+void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler, int *index)
 {
-    struct FrameInfo codeEntry;
+    struct FrameInfoTemp codeEntry;
+    codeEntry.method = method;
     JSThread *thread = pThis_->vm_->GetAssociatedJSThread();
     if (method != nullptr && method->IsNativeWithCallField()) {
-        codeEntry.codeType = "other";
-        codeEntry.functionName = GetNativeStack(thread, frameHandler);
-        generator_->InsertStackInfo(method, codeEntry);
-    } else if (method != nullptr) {
-        codeEntry.codeType = "JS";
+        if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
+            return;
+        }
+        GetNativeStack(thread, frameHandler, codeEntry.functionName, sizeof(codeEntry.functionName));
+    } else {
+        if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {
+            return;
+        }
         const std::string &functionName = method->ParseFunctionName();
+        const char *tempVariable = nullptr;
         if (functionName.empty()) {
-            codeEntry.functionName = "anonymous";
+            tempVariable = "anonymous";
         } else {
-            codeEntry.functionName = functionName;
+            tempVariable = functionName.c_str();
+        }
+        if (!CheckAndCopy(codeEntry.functionName, sizeof(codeEntry.functionName), tempVariable)) {
+            return;
         }
         // source file
         tooling::JSPtExtractor *debugExtractor =
             JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
         const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
         if (sourceFile.empty()) {
-            codeEntry.url = "";
+            tempVariable = "";
         } else {
-            codeEntry.url = sourceFile;
-            const CMap<std::string, int> &scriptIdMap = generator_->GetScriptIdMap();
-            auto iter = scriptIdMap.find(codeEntry.url);
-            if (iter == scriptIdMap.end()) {
-                generator_->InsertScriptId(codeEntry.url, scriptIdMap.size() + 1);
-                codeEntry.scriptId = static_cast<int>(scriptIdMap.size());
-            } else {
-                codeEntry.scriptId = iter->second;
-            }
+            tempVariable = sourceFile.c_str();
+        }
+        if (!CheckAndCopy(codeEntry.url, sizeof(codeEntry.url), tempVariable)) {
+            return;
         }
         // line number
         int32_t lineNumber = 0;
@@ -336,13 +337,12 @@ void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler)
             codeEntry.lineNumber = lineNumber;
             codeEntry.columnNumber = columnNumber;
         }
-        CMap<JSMethod *, struct FrameInfo> value;
-        value[method] = codeEntry;
-        generator_->InsertStackInfo(method, codeEntry);
     }
+    generator_->PushStackInfo(codeEntry, *index);
+    *index = *index + 1;
 }
 
-std::string CpuProfiler::GetNativeStack(JSThread *thread, FrameHandler &frameHandler)
+void CpuProfiler::GetNativeStack(JSThread *thread, FrameHandler &frameHandler, char *functionName, size_t size)
 {
     std::stringstream stream;
     JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
@@ -351,14 +351,15 @@ std::string CpuProfiler::GetNativeStack(JSThread *thread, FrameHandler &frameHan
         auto cb = thread->GetEcmaVM()->GetNativePtrGetter();
         if (cb != nullptr) {
             auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
-            stream << addr;
-            return "napi(" + stream.str() + ")";
+            stream << "napi(" << addr << ")";
+            CheckAndCopy(functionName, size, stream.str().c_str());
+            return;
         }
     }
     auto method = frameHandler.CheckAndGetMethod();
     auto addr = method->GetNativePointer();
-    stream << addr;
-    return "other(" + stream.str() + ")";
+    stream << "other(" << addr << ")";
+    CheckAndCopy(functionName, size, stream.str().c_str());
 }
 
 void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
@@ -520,6 +521,18 @@ bool CpuProfiler::CheckFileName(const std::string &fileName, std::string &absolu
     }
     file.close();
     absoluteFilePath = resolvedPath.data();
+    return true;
+}
+
+bool CpuProfiler::CheckAndCopy(char *dest, size_t length, const char *src) const
+{
+    int srcLength = strlen(src);
+    if (length <= static_cast<size_t>(srcLength) || strcpy_s(dest, srcLength + 1, src) != EOK) {
+        LOG_ECMA(ERROR) << "CpuProfiler parseMethodInfo strcpy_s failed, maybe srcLength more than destLength";
+        generator_->SetSampleFlag(true);
+        return false;
+    }
+    dest[srcLength] = '\0';
     return true;
 }
 } // namespace panda::ecmascript

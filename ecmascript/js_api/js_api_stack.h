@@ -37,6 +37,9 @@ public:
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSAPIStack> &obj, const JSHandle<JSTaggedValue> &key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIStack> &obj,
                                        const JSHandle<JSTaggedValue> &key);
+    static bool SetProperty(JSThread *thread, const JSHandle<JSAPIStack> &obj,
+                            const JSHandle<JSTaggedValue> &key,
+                            const JSHandle<JSTaggedValue> &value);
     bool Empty();
 
     bool Has(JSTaggedValue value) const;

@@ -49,6 +49,15 @@ static constexpr int CHINA_AFTER_1901_MIN = 480;
 static constexpr int CHINA_BEFORE_1901_MS = 343000;
 static constexpr std::array<int, 3> LEAP_NUMBER = {4, 100, 400};
 static constexpr std::array<int, 4> YEAR_NUMBER = {1970, 1969, 1901, 1601};
+static constexpr int DAYS_1970_TO_0000 = 719468;
+static constexpr int DAYS_IN_4_YEARS = 1460;
+static constexpr int DAYS_IN_100_YEARS = 35624;
+static constexpr int DAYS_IN_400_YEARS = 146097;
+static constexpr int DAYS_MAR_TO_DEC = 306;
+static constexpr int DAYS_JAN_AND_FEB = 59;
+static constexpr int MONTH_COEFFICIENT = 2;
+static constexpr std::array<int, 2> COEFFICIENT_TO_CIVIL = {5, 153};
+static constexpr std::array<int, 3> MONTH_TRANSFORM = {3, 10, -9};
 
 class DateUtils {
 public:

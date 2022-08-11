@@ -42,6 +42,8 @@ function testTypeArray1(ctor) {
     result.push(obj["a"] == undefined);
     obj["a"] = "abc";
     result.push(obj["a"] == "abc");
+    obj["-0"] = 12;
+    result.push(obj["-0"] == undefined)
     for (let i = 0; i < result.length; i++) {
         if (!result[i]) {
             return false;

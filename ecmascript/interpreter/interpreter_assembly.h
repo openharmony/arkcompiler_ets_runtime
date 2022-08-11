@@ -27,7 +27,7 @@
 
 namespace panda::ecmascript {
 using DispatchEntryPoint =
-    void (*)(JSThread *, const uint8_t *, JSTaggedType *, JSTaggedValue, JSTaggedValue, JSTaggedValue, int32_t);
+    void (*)(JSThread *, const uint8_t *, JSTaggedType *, JSTaggedValue, JSTaggedValue, JSTaggedValue, int16_t);
 class ConstantPool;
 class ECMAObject;
 class GeneratorContext;
@@ -35,7 +35,6 @@ struct CallParams;
 
 class InterpreterAssembly {
 public:
-    static const uint32_t METHOD_HOTNESS_THRESHOLD = 512;
     enum ActualNumArgsOfCall : uint8_t { CALLARG0 = 0, CALLARG1, CALLARGS2, CALLARGS3 };
     static void InitStackFrame(JSThread *thread);
     static JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
@@ -53,12 +52,12 @@ public:
 
     static void HandleOverflow(JSThread *thread, const uint8_t *pc, JSTaggedType *sp,
                                JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-                               JSTaggedValue acc, int32_t hotnessCounter);
+                               JSTaggedValue acc, int16_t hotnessCounter);
 
 #define DEF_HANDLER(name)                                                    \
     static void name(JSThread *thread, const uint8_t *pc, JSTaggedType *sp,  \
                      JSTaggedValue constpool, JSTaggedValue profileTypeInfo, \
-                     JSTaggedValue acc, int32_t hotnessCounter);
+                     JSTaggedValue acc, int16_t hotnessCounter);
     ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
 #undef DEF_HANDLER
 };

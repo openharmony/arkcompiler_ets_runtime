@@ -165,13 +165,17 @@ void ObjectFactory::ClearNativeMethodsData()
     internalNativeMethods_.clear();
 }
 
-JSMethod *ObjectFactory::NewMethodForNativeFunction(const void *func)
+JSMethod *ObjectFactory::NewMethodForNativeFunction(const void *func, uint8_t builtinId)
 {
     uint32_t numArgs = 2;  // function object and this
     auto method = vm_->GetChunk()->New<JSMethod>(nullptr, panda_file::File::EntityId(0));
     method->SetNativePointer(const_cast<void *>(func));
 
     method->SetNativeBit(true);
+    if (builtinId != INVALID_BUILTINS_ID) {
+        method->SetFastBuiltinBit(true);
+        method->SetBuiiltinId(builtinId);
+    }
     method->SetNumArgsWithCallField(numArgs);
     nativeMethods_.push_back(method);
     return nativeMethods_.back();
@@ -1386,9 +1390,9 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
-                                                  FunctionKind kind)
+                                                  FunctionKind kind, uint8_t builtinId)
 {
-    JSMethod *target = NewMethodForNativeFunction(nativeFunc);
+    JSMethod *target = NewMethodForNativeFunction(nativeFunc, builtinId);
     return NewJSFunction(env, target, kind);
 }
 

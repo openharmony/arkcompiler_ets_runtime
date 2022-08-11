@@ -15,11 +15,13 @@ group("ark_js_moduletest") {
   testonly = true
   deps = [
     "allocatearraybuffer:allocatearraybufferAction",
+    "array:arrayAction",
     "arrayjoin:arrayjoinAction",
     "assignproxy:assignproxyAction",
     "async:asyncAction",
     "bindfunction:bindfunctionAction",
     "bitwiseop:bitwiseopAction",
+    "builtins:builtinsAction",
     "callframe:callframeAction",
     "calltype:calltypeAction",
     "class:classAction",
@@ -66,12 +68,14 @@ group("ark_asm_test") {
   testonly = true
   deps = [
     "allocatearraybuffer:allocatearraybufferAsmAction",
+    "array:arrayAsmAction",
     "arrayjoin:arrayjoinAsmAction",
     "asmstackoverflow:asmstackoverflowAsmAction",
     "assignproxy:assignproxyAsmAction",
     "async:asyncAsmAction",
     "bindfunction:bindfunctionAsmAction",
     "bitwiseop:bitwiseopAsmAction",
+    "builtins:builtinsAsmAction",
     "callframe:callframeAsmAction",
     "calltype:calltypeAsmAction",
     "class:classAsmAction",

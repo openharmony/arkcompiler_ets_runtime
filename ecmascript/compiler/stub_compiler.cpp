@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/stub.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/verifier.h"
+#include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 #include "generated/base_options.h"
@@ -121,11 +122,17 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
     }
 }
 
-bool StubCompiler::BuildStubModuleAndSave() const
+void StubCompiler::InitializeCS() const
 {
     BytecodeStubCSigns::Initialize();
     CommonStubCSigns::Initialize();
+    BuiltinsStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
+}
+
+bool StubCompiler::BuildStubModuleAndSave() const
+{
+    InitializeCS();
     size_t res = 0;
     const CompilerLog *log = GetLog();
     const MethodLogList *logList = GetLogList();
@@ -144,6 +151,13 @@ bool StubCompiler::BuildStubModuleAndSave() const
         comStubModule.SetUpForCommonStubs();
         RunPipeline(&comStubModule);
         generator.AddModule(&comStubModule, &comStubAssembler);
+        res++;
+        LOG_COMPILER(INFO) << "compiling builtins stubs";
+        LLVMModule builtinsStubModule("builtins_stub", triple_);
+        LLVMAssembler builtinsStubAssembler(builtinsStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
+        builtinsStubModule.SetUpForBuiltinsStubs();
+        RunPipeline(&builtinsStubModule);
+        generator.AddModule(&builtinsStubModule, &builtinsStubAssembler);
         res++;
         generator.SaveStubFile(filePath_);
     }
@@ -176,10 +190,7 @@ int main(const int argc, const char **argv)
         return 1;
     }
 
-    panda::Logger::Initialize(baseOptions);
-    panda::Logger::SetLevel(panda::Logger::Level::INFO);
-    panda::Logger::ResetComponentMask();  // disable all Component
-    panda::Logger::EnableComponent(panda::Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
+    panda::ecmascript::Log::Initialize(baseOptions);
 
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();

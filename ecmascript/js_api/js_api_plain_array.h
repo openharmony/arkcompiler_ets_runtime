@@ -40,7 +40,10 @@ public:
                                  const JSHandle<JSTaggedValue> &callbackFn, const JSHandle<JSTaggedValue> &thisArg);
     static JSTaggedValue ToString(JSThread *thread, const JSHandle<JSAPIPlainArray> &plainarray);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
-                                const JSHandle<JSTaggedValue> &key);
+                                       const JSHandle<JSTaggedValue> &key);
+    static bool SetProperty(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
+                            const JSHandle<JSTaggedValue> &key,
+                            const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue Set(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
                              const uint32_t index, JSTaggedValue value);
     JSTaggedValue RemoveAt(JSThread *thread, JSTaggedValue index);

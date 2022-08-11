@@ -43,6 +43,7 @@ public:
     }
 private:
     void RunPipeline(LLVMModule *module) const;
+    void InitializeCS() const;
     std::string triple_ {};
     std::string filePath_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level

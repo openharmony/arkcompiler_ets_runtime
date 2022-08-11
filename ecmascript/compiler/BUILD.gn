@@ -52,6 +52,7 @@ source_set("libark_jsoptimizer_set") {
     "builtins/builtins_call_signature.cpp",
     "builtins/builtins_stubs.cpp",
     "bytecode_circuit_builder.cpp",
+    "bytecode_info_collector.cpp",
     "call_signature.cpp",
     "circuit.cpp",
     "circuit_builder.cpp",

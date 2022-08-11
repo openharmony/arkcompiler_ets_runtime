@@ -237,6 +237,7 @@ public:
     GateRef IsClassPrototype(GateRef object);
     GateRef IsExtensible(GateRef object);
     GateRef TaggedObjectIsEcmaObject(GateRef obj);
+    GateRef IsEcmaObject(GateRef obj);
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
     GateRef TaggedIsBigInt(GateRef obj);
@@ -280,7 +281,7 @@ public:
     void SetBitFieldToHClass(GateRef glue, GateRef hClass, GateRef bitfield);
     void SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto);
     void SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass,
-	                                               GateRef protoChange);
+                                       GateRef protoChange);
     void SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr);
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
@@ -288,6 +289,8 @@ public:
     GateRef IsProtoTypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY());
+    GateRef GetPropertyInlinedProps(GateRef obj, GateRef hClass,
+        GateRef index, VariableType type = VariableType::JS_ANY());
 
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
@@ -405,6 +408,7 @@ public:
     GateRef GetFunctionBitFieldFromJSFunction(GateRef object);
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
+    inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetEntryIndexOfGlobalDictionary(GateRef entry);
@@ -449,13 +453,6 @@ public:
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
     inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
-    void InitializeTaggedArrayWithSpeicalValue(
-        GateRef glue, GateRef array, GateRef value, GateRef start, GateRef length);
-    void InitializeWithSpeicalValue(
-        GateRef glue, GateRef object, GateRef value, GateRef start, GateRef end);
-    GateRef AllocateInYoung(GateRef glue, GateRef size);
-    GateRef NewLexicalEnv(GateRef glue, GateRef numSlots, GateRef parent);
-    GateRef NewJSObject(GateRef glue, GateRef hclass);
     GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor);
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
@@ -465,6 +462,7 @@ public:
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                        GateRef jsType);
     GateRef TryStringOrSymbelToElementIndex(GateRef string);
+    inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::initializer_list<GateRef>& args);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode::Op Op>

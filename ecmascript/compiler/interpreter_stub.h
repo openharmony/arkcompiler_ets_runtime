@@ -74,6 +74,7 @@ public:
     inline GateRef GetProfileTypeInfoFromFunction(GateRef function);
     inline GateRef GetModuleFromFunction(GateRef function);
     inline GateRef GetResumeModeFromGeneratorObject(GateRef obj);
+    inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetHotnessCounterFromMethod(GateRef method);
 
     inline void SetHotnessCounter(GateRef glue, GateRef method, GateRef value);
@@ -91,13 +92,24 @@ public:
     inline void SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
                               GateRef env, GateRef pc, GateRef prev, GateRef type);
 
+    inline void CheckException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		               GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			       GateRef res, GateRef offset);
+    inline void CheckPendingException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			              GateRef res, GateRef offset);
+    inline void CheckExceptionWithJump(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		                       GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			               GateRef res, Label *jump);
+    inline void CheckExceptionWithVar(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+		                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+			              GateRef res, GateRef offset);
+
     inline GateRef CheckStackOverflow(GateRef glue, GateRef sp);
     inline GateRef PushArg(GateRef glue, GateRef sp, GateRef value);
     inline GateRef PushUndefined(GateRef glue, GateRef sp, GateRef num);
     inline GateRef PushRange(GateRef glue, GateRef sp, GateRef array, GateRef startIndex, GateRef endIndex);
     inline GateRef GetStartIdxAndNumArgs(GateRef sp, GateRef restIdx);
-    inline GateRef NewArgumentsList(GateRef glue, GateRef sp, GateRef startIdx, GateRef numArgs);
-    inline GateRef NewArgumentsObj(GateRef glue, GateRef argumentsList, GateRef numArgs);
 
     inline void Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                          GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, GateRef format);
@@ -122,7 +134,7 @@ private:
         explicit name##StubBuilder(CallSignature *callSignature, Environment *env)              \
             : InterpreterStubBuilder(callSignature, env)                                        \
         {                                                                                       \
-            env->GetCircuit()->SetFrameType(FrameType::INTERPRETER_FRAME);                      \
+            env->GetCircuit()->SetFrameType(FrameType::ASM_INTERPRETER_FRAME);                  \
         }                                                                                       \
         ~name##StubBuilder() = default;                                                         \
         NO_MOVE_SEMANTIC(name##StubBuilder);                                                    \

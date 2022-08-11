@@ -235,7 +235,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(DefineAsyncGeneratorFunc)           \
     V(NewLexicalEnvWithNameDyn)           \
     V(OptGetUnmapedArgs)                  \
-    V(OptGetUnmapedArgsWithRestArgs)      \
     V(OptCopyRestArgs)                    \
     V(NotifyBytecodePcChanged)            \
     V(OptGetLexicalEnv)                   \
@@ -290,10 +289,10 @@ public:
     }
 
     template<typename T>
-    inline static T GetPtrArg(uintptr_t argv, [[maybe_unused]] uint32_t argc, uint32_t index)
+    inline static T *GetPtrArg(uintptr_t argv, [[maybe_unused]] uint32_t argc, uint32_t index)
     {
         ASSERT(index < argc);
-        return reinterpret_cast<T>(*(reinterpret_cast<JSTaggedType *>(argv) + (index)));
+        return reinterpret_cast<T*>(*(reinterpret_cast<JSTaggedType *>(argv) + (index)));
     }
 
     static void DebugPrint(int fmtMessageId, ...);
@@ -322,7 +321,7 @@ private:
 
     static inline JSTaggedValue RuntimeCreateAsyncGeneratorObj(JSThread *thread,
                                                                const JSHandle<JSTaggedValue> &genFunc);
-                                                               
+
     static inline JSTaggedValue RuntimeAsyncGeneratorResolve(JSThread *thread, JSHandle<JSTaggedValue> asyncFuncObj,
                                                              JSHandle<JSTaggedValue> value, JSTaggedValue flag);
     static inline JSTaggedValue RuntimeGetTemplateObject(JSThread *thread, const JSHandle<JSTaggedValue> &literal);
@@ -533,7 +532,6 @@ private:
     static inline JSTaggedValue RuntimeLdBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &numberBigInt);
     static inline JSTaggedValue RuntimeNewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId);
     static inline JSTaggedValue RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t actualNumArgs);
-    static inline JSTaggedValue RuntimeOptGetUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs);
     static inline JSTaggedValue RuntimeGetUnmapedJSArgumentObj(JSThread *thread,
                                                                const JSHandle<TaggedArray> &argumentsList);
     static inline JSTaggedValue RuntimeOptNewLexicalEnvDyn(JSThread *thread, uint16_t numVars,

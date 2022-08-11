@@ -253,6 +253,7 @@ public:
     // call operation
     GateRef CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args);
     GateRef CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args);
+    GateRef CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args);
     GateRef CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv);
     GateRef CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);
     GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);
@@ -320,7 +321,6 @@ public:
     inline GateRef TaggedIsException(GateRef x);
     inline GateRef TaggedIsSpecial(GateRef x);
     inline GateRef TaggedIsHeapObject(GateRef x);
-    inline GateRef TaggedIsGeneratorObject(GateRef x);
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     inline GateRef TaggedIsPropertyBox(GateRef x);
     inline GateRef TaggedIsWeak(GateRef x);
@@ -581,7 +581,7 @@ public:
     }
     inline bool IsAsmInterp() const
     {
-        return circuit_->GetFrameType() == FrameType::INTERPRETER_FRAME;
+        return circuit_->GetFrameType() == FrameType::ASM_INTERPRETER_FRAME;
     }
     inline bool IsArch32Bit() const
     {

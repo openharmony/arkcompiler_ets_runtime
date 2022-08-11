@@ -35,9 +35,6 @@ public:
 
     JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile);
 
-    const JSPandaFile* LoadAotInfoFromPf(const CString &filename, std::string_view entryPoint,
-                                         std::vector<MethodPcInfo> *methodPcInfos);
-
     const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint);
 
     const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,

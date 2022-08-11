@@ -254,6 +254,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "NDEBUG" ]
   }
 
+  if (run_with_asan) {
+    defines += [ "RUN_WITH_ASAN" ]
+  }
+
   if (run_with_asan && is_linux &&
       (current_cpu == "x86" || current_cpu == "x64")) {
     cflags_cc += [
@@ -317,20 +321,23 @@ config("icu_path_test_config") {
 
 # asm interpreter enable config
 config("asm_interp_enable_config") {
-  if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
-                    current_cpu == "x86_64")) ||
-      (is_ohos && current_cpu == "arm64")) {
+  if ((current_cpu == "amd64" || current_cpu == "x64" ||
+       current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
+      !is_mac) {
     defines = [ "SUPPORT_ENABLE_ASM_INTERP" ]
   }
 }
 
 ecma_source = [
+  "ecmascript/ark_stackmap_builder.cpp",
+  "ecmascript/ark_stackmap_parser.cpp",
   "ecmascript/base/array_helper.cpp",
   "ecmascript/base/atomic_helper.cpp",
   "ecmascript/base/builtins_base.cpp",
   "ecmascript/base/error_helper.cpp",
   "ecmascript/base/json_parser.cpp",
   "ecmascript/base/json_stringifier.cpp",
+  "ecmascript/base/mem_mmap.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
@@ -486,6 +493,7 @@ ecma_source = [
   "ecmascript/js_typed_array.cpp",
   "ecmascript/js_weak_container.cpp",
   "ecmascript/linked_hash_table.cpp",
+  "ecmascript/log.cpp",
   "ecmascript/message_string.cpp",
   "ecmascript/mem/barriers.cpp",
   "ecmascript/mem/c_string.cpp",
@@ -667,9 +675,9 @@ source_set("libark_jsruntime_test_set") {
     sdk_libc_secshared_dep,
   ]
 
-  if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
-                    current_cpu == "x86_64")) ||
-      (is_ohos && current_cpu == "arm64")) {
+  if ((current_cpu == "amd64" || current_cpu == "x64" ||
+       current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
+      !is_mac) {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
@@ -689,9 +697,9 @@ ohos_shared_library("libark_jsruntime") {
     "$ark_root/libpandafile:libarkfile_static",
   ]
 
-  if ((is_linux && (current_cpu == "amd64" || current_cpu == "x64" ||
-                    current_cpu == "x86_64")) ||
-      (is_ohos && current_cpu == "arm64")) {
+  if ((current_cpu == "amd64" || current_cpu == "x64" ||
+       current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
+      !is_mac) {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]

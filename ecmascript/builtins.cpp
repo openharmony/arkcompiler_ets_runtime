@@ -220,12 +220,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     // initialize Function, forbidden change order
     InitializeFunction(env, emptyFuncDynclass);
 
-    JSHandle<JSObject> objFuncInstancePrototype = factory_->NewJSObject(objFuncDynclass);
-    JSHandle<JSTaggedValue> objFuncInstancePrototypeValue(objFuncInstancePrototype);
-    JSHandle<JSHClass> asyncFuncClass = factory_->CreateFunctionClass(
-        FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION, objFuncInstancePrototypeValue);
-    env->SetAsyncFunctionClass(thread_, asyncFuncClass);
-
     JSHandle<JSHClass> asyncAwaitStatusFuncClass =
         factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSAsyncAwaitStatusFunction::SIZE,
                                       JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION, env->GetFunctionPrototype());
@@ -335,6 +329,10 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
                                       JSType::JS_ASYNC_GENERATOR_FUNCTION, env->GetAsyncGeneratorFunctionPrototype());
     env->SetAsyncGeneratorFunctionClass(thread_, asyncGenetatorFuncClass);
     env->SetObjectFunctionPrototypeClass(thread_, JSTaggedValue(objFuncPrototype->GetClass()));
+    JSHandle<JSHClass> asyncFuncClass = factory_->CreateFunctionClass(
+        FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION,
+        env->GetAsyncFunctionPrototype());
+    env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
     thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(env.GetTaggedType()));
 }
@@ -1571,7 +1569,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
 
     // String.prototype method
     SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "charCodeAt", BuiltinsString::CharCodeAt, FunctionLength::ONE);
+    SetFunction(env, stringFuncPrototype, "charCodeAt", BuiltinsString::CharCodeAt, FunctionLength::ONE,
+                static_cast<uint8_t>(BUILTINS_STUB_ID(CharCodeAt)));
     SetFunction(env, stringFuncPrototype, "codePointAt", BuiltinsString::CodePointAt, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "concat", BuiltinsString::Concat, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "endsWith", BuiltinsString::EndsWith, FunctionLength::ONE);
@@ -2625,9 +2624,10 @@ JSHandle<JSFunction> Builtins::NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
 }
 
 JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
-                                           EcmaEntrypoint func, int length) const
+                                           EcmaEntrypoint func, int length, uint8_t builtinId) const
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+        FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
@@ -2636,16 +2636,17 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
 }
 
 void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
-                           EcmaEntrypoint func, int length) const
+                           EcmaEntrypoint func, int length, uint8_t builtinId) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
-    SetFunction(env, obj, keyString, func, length);
+    SetFunction(env, obj, keyString, func, length, builtinId);
 }
 
 void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
-                           const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length) const
+                           const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length,
+                           uint8_t builtinId) const
 {
-    JSHandle<JSFunction> function(NewFunction(env, key, func, length));
+    JSHandle<JSFunction> function(NewFunction(env, key, func, length, builtinId));
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(function), true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, key, descriptor);
 }

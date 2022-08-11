@@ -15,6 +15,7 @@
 
 #include "ecmascript/frames.h"
 
+#include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/file_loader.h"
 #include "ecmascript/js_thread.h"
@@ -22,38 +23,58 @@
 #include "ecmascript/interpreter/frame_handler.h"
 
 namespace panda::ecmascript {
-JSTaggedType *OptimizedLeaveFrame::GetJsFuncFrameArgv(JSThread *thread) const
-{
-    auto current = GetPrevFrameFp();
-    int delta = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser()->GetFuncFpDelta(returnAddr);
-    uintptr_t *preFrameSp = reinterpret_cast<uintptr_t *>(const_cast<JSTaggedType *>(current))
-        + delta / sizeof(uintptr_t);
-    JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(preFrameSp + sizeof(uint64_t) / sizeof(uintptr_t));
-    return argv;
-}
-
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
     if (thread != nullptr) {
-        stackmapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+        arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     }
 }
 
 int FrameIterator::ComputeDelta() const
 {
-    return stackmapParser_->GetFuncFpDelta(optimizedReturnAddr_);
+    return fpDeltaPrevFrameSp_;
+}
+
+int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
+{
+    auto callsiteInfo = CalCallSiteInfo(returnAddr);
+    int delta = std::get<2>(callsiteInfo); // 2:delta index
+    return delta;
+}
+
+std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
+{
+    auto loader = thread_->GetEcmaVM()->GetFileLoader();
+    const std::vector<AOTModulePackInfo>& aotPackInfos = loader->GetPackInfos();
+    std::tuple<uint64_t, uint8_t *, int> callsiteInfo;
+
+    StubModulePackInfo stubInfo = loader->GetStubPackInfo();
+    bool ans = stubInfo.CalCallSiteInfo(retAddr, callsiteInfo);
+    if (ans) {
+        return callsiteInfo;
+    }
+    // aot
+    for (auto &info : aotPackInfos) {
+        ans = info.CalCallSiteInfo(retAddr, callsiteInfo);
+        if (ans) {
+            return callsiteInfo;
+        }
+    }
+    return callsiteInfo;
 }
 
 void FrameIterator::Advance()
 {
     ASSERT(!Done());
     FrameType t = GetFrameType();
+    bool needCalCallSiteInfo = false;
     switch (t) {
         case FrameType::OPTIMIZED_FRAME : {
             auto frame = GetFrame<OptimizedFrame>();
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
             optimizedReturnAddr_ = frame->GetReturnAddr();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::OPTIMIZED_ENTRY_FRAME : {
@@ -68,6 +89,7 @@ void FrameIterator::Advance()
             optimizedCallSiteSp_ = frame->GetPrevFrameSp();
             optimizedReturnAddr_ = frame->GetReturnAddr();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME: {
@@ -75,6 +97,7 @@ void FrameIterator::Advance()
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
             optimizedReturnAddr_ = frame->GetReturnAddr();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
@@ -82,6 +105,7 @@ void FrameIterator::Advance()
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
             optimizedReturnAddr_ = frame->GetReturnAddr();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::LEAVE_FRAME : {
@@ -89,6 +113,7 @@ void FrameIterator::Advance()
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
             optimizedReturnAddr_ = frame->GetReturnAddr();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::LEAVE_FRAME_WITH_ARGV : {
@@ -96,6 +121,7 @@ void FrameIterator::Advance()
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
             optimizedReturnAddr_ = frame->GetReturnAddr();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::BUILTIN_CALL_LEAVE_FRAME : {
@@ -103,6 +129,7 @@ void FrameIterator::Advance()
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
             optimizedReturnAddr_ = frame->GetReturnAddr();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::INTERPRETER_FRAME:
@@ -134,6 +161,7 @@ void FrameIterator::Advance()
             optimizedReturnAddr_ = frame->GetReturnAddr();
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::BUILTIN_FRAME_WITH_ARGV : {
@@ -141,6 +169,7 @@ void FrameIterator::Advance()
             optimizedReturnAddr_ = frame->GetReturnAddr();
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::INTERPRETER_ENTRY_FRAME : {
@@ -162,14 +191,22 @@ void FrameIterator::Advance()
             optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
             optimizedReturnAddr_ = frame->GetReturnAddr();
             current_ = frame->GetPrevFrameFp();
+            needCalCallSiteInfo = true;
             break;
         }
         default: {
             UNREACHABLE();
         }
     }
+    if (!needCalCallSiteInfo) {
+        return;
+    }
+    uint64_t textStart;
+    std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_) = CalCallSiteInfo(optimizedReturnAddr_);
+    ASSERT(optimizedReturnAddr_ >= textStart);
+    optimizedReturnAddr_ = optimizedReturnAddr_ - textStart;
 }
-uintptr_t FrameIterator::GetPrevFrameCallSiteSp(uintptr_t curPc) const
+uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc) const
 {
     if (Done()) {
         return 0;
@@ -203,7 +240,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp(uintptr_t curPc) const
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             ASSERT(thread_ != nullptr);
-            auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + stackmapParser_->GetFuncFpDelta(curPc);
+            auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + fpDeltaPrevFrameSp_;
             return callSiteSp;
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
@@ -211,7 +248,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp(uintptr_t curPc) const
             return frame->GetPrevFrameSp();
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME : {
-            auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + sizeof(uintptr_t);
+            auto callSiteSp = OptimizedJSFunctionFrame::ComputeArgsConfigFrameSp(current_);
             return callSiteSp;
         }
         case FrameType::BUILTIN_ENTRY_FRAME:
@@ -259,10 +296,11 @@ uintptr_t FrameIterator::GetPrevFrame() const
     return end;
 }
 
-bool FrameIterator::CollectGCSlots(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const
+bool FrameIterator::IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
-    return stackmapParser_->CollectGCSlots(visitor, derivedVisitor, optimizedReturnAddr_,
-        reinterpret_cast<uintptr_t>(current_), optimizedCallSiteSp_);
+    ASSERT(arkStackMapParser_ != nullptr);
+    return arkStackMapParser_->IteratorStackMap(visitor, derivedVisitor, optimizedReturnAddr_,
+        reinterpret_cast<uintptr_t>(current_), optimizedCallSiteSp_, stackMapAddr_);
 }
 
 ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
@@ -270,12 +308,17 @@ ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
     [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
     const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
-    bool ret = it.CollectGCSlots(visitor, derivedVisitor);
+    bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG
         LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
 #endif
     }
+}
+
+void FrameIterator::CollectBCOffsetInfo(kungfu::ConstInfo &info) const
+{
+    arkStackMapParser_->GetConstInfo(optimizedReturnAddr_, info, stackMapAddr_);
 }
 
 ARK_INLINE JSTaggedType* OptimizedJSFunctionFrame::GetArgv(const FrameIterator &it) const
@@ -288,9 +331,16 @@ ARK_INLINE uintptr_t* OptimizedJSFunctionFrame::ComputePrevFrameSp(const FrameIt
 {
     const JSTaggedType *sp = it.GetSp();
     int delta = it.ComputeDelta();
+    ASSERT((delta > 0) && (delta % sizeof(uintptr_t) == 0));
     uintptr_t *preFrameSp = reinterpret_cast<uintptr_t *>(const_cast<JSTaggedType *>(sp))
             + delta / sizeof(uintptr_t);
     return preFrameSp;
+}
+
+
+void OptimizedJSFunctionFrame::CollectBCOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const
+{
+    it.CollectBCOffsetInfo(info);
 }
 
 ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
@@ -313,7 +363,7 @@ ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
         rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
     }
 
-    bool ret = it.CollectGCSlots(visitor, derivedVisitor);
+    bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG
         LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
@@ -337,7 +387,7 @@ ARK_INLINE void AsmInterpretedFrame::GCIterate(const FrameIterator &it,
     }
 
     std::set<uintptr_t> slotAddrs;
-    bool ret = it.CollectGCSlots(visitor, derivedVisitor);
+    bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG
         LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
@@ -438,7 +488,7 @@ ARK_INLINE void BuiltinWithArgvFrame::GCIterate(const FrameIterator &it,
 {
     const JSTaggedType *sp = it.GetSp();
     auto frame = BuiltinWithArgvFrame::GetFrameFromSp(sp);
-    auto argc = frame->GetNumArgs() + NUM_MANDATORY_JSFUNC_ARGS;
+    auto argc = static_cast<uint32_t>(frame->GetNumArgs()) + NUM_MANDATORY_JSFUNC_ARGS;
     JSTaggedType *argv = reinterpret_cast<JSTaggedType *>(frame->GetStackArgsAddress());
     uintptr_t start = ToUintPtr(argv);
     uintptr_t end = ToUintPtr(argv + argc);

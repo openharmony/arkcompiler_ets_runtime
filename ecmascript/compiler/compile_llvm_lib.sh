@@ -29,7 +29,6 @@ if [ ! -d "${BASE_HOME}/third_party/third_party_llvm-project" ]; then
     cd ${BASE_HOME}/third_party
 	dd if=/dev/zero of=/tmp/mem.swap bs=1M count=4096
     git clone git@gitee.com:openharmony-sig/third_party_llvm-project.git -b llvmorg-12.0.1-ark
-    git checkout 12.0.1-ark-1.0
 fi
 
 cd ${BASE_HOME}/third_party/third_party_llvm-project

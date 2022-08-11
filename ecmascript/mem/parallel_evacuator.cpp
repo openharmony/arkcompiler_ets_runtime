@@ -231,10 +231,6 @@ void ParallelEvacuator::UpdateRoot()
         []([[maybe_unused]]Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
         if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
             derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
-            LOG_GC(DEBUG) << std::hex << "fix base after:" << base.SlotAddress() << " base Old Value:"
-                          << baseOldObject << " base New Value:" << base.GetTaggedType()
-                          << " derived:" << derived.SlotAddress() << " derived New Value:"
-                          << derived.GetTaggedType();
         }
     };
 

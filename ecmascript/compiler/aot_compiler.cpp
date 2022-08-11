@@ -22,6 +22,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 #include "generated/base_options.h"
@@ -66,11 +67,6 @@ int Main(const int argc, const char **argv)
         return 1;
     }
 
-    Logger::Initialize(baseOptions);
-    Logger::SetLevel(Logger::Level::INFO);
-    Logger::ResetComponentMask();  // disable all Component
-    Logger::EnableComponent(Logger::Component::ECMASCRIPT);  // enable ECMASCRIPT
-
     arg_list_t arguments = paParser.GetRemainder();
 
     if (runtimeOptions.IsStartupTime()) {
@@ -80,7 +76,7 @@ int Main(const int argc, const char **argv)
     bool ret = true;
     // ark_aot_compiler running need disable asm interpreter
     runtimeOptions.SetEnableAsmInterpreter(false);
-    EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
+    EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions, baseOptions);
     if (vm == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot Create vm";
         return -1;

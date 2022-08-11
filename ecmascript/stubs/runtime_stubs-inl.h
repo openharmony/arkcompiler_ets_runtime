@@ -1947,21 +1947,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t 
     return RuntimeGetUnmapedJSArgumentObj(thread, argumentsList);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeOptGetUnmapedArgsWithRestArgs(JSThread *thread, uint32_t actualNumArgs)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> argumentsList = factory->NewTaggedArray(actualNumArgs - FIXED_NUM_ARGS);
-    auto leaveFrame = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
-    auto frame = OptimizedLeaveFrame::GetFrameFromSp(leaveFrame);
-    JSTaggedType *argv = frame->GetJsFuncFrameArgv(thread);
-    for (uint32_t i = 0; i < actualNumArgs - FIXED_NUM_ARGS; ++i) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        JSTaggedType arg = reinterpret_cast<JSTaggedType *>(argv)[i + FIXED_NUM_ARGS]; // skip actualNumArgs
-        argumentsList->Set(thread, i, JSTaggedValue(arg));
-    }
-    return RuntimeGetUnmapedJSArgumentObj(thread, argumentsList);
-}
-
 JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, const JSHandle<TaggedArray> &argumentsList)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1988,17 +1973,12 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
                                  globalEnv->GetArrayProtoValuesFunction().GetTaggedValue());
     // 8. Perform DefinePropertyOrThrow(obj, "caller", PropertyDescriptor {[[Get]]: %ThrowTypeError%,
     // [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
-    JSHandle<JSTaggedValue> throwFunction = globalEnv->GetThrowTypeError();
-    JSHandle<AccessorData> accessor = factory->NewAccessorData();
-    accessor->SetGetter(thread, throwFunction);
-    accessor->SetSetter(thread, throwFunction);
-    obj->SetPropertyInlinedProps(thread, JSArguments::CALLER_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+    JSHandle<JSTaggedValue> accessorCaller = globalEnv->GetArgumentsCallerAccessor();
+    obj->SetPropertyInlinedProps(thread, JSArguments::CALLER_INLINE_PROPERTY_INDEX, accessorCaller.GetTaggedValue());
     // 9. Perform DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Get]]: %ThrowTypeError%,
     // [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
-    accessor = factory->NewAccessorData();
-    accessor->SetGetter(thread, throwFunction);
-    accessor->SetSetter(thread, throwFunction);
-    obj->SetPropertyInlinedProps(thread, JSArguments::CALLEE_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+    JSHandle<JSTaggedValue> accessorCallee = globalEnv->GetArgumentsCalleeAccessor();
+    obj->SetPropertyInlinedProps(thread, JSArguments::CALLEE_INLINE_PROPERTY_INDEX, accessorCallee.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11. Return obj
     return obj.GetTaggedValue();
@@ -2060,7 +2040,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
                                                        const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
-    JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
 
     // change state to SuspendedYield
     if (generatorObjectHandle->IsExecuting()) {

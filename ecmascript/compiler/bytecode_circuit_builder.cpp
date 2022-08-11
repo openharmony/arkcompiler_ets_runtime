@@ -22,35 +22,16 @@
 namespace panda::ecmascript::kungfu {
 void BytecodeCircuitBuilder::BytecodeToCircuit()
 {
-    auto curPc = pcArray_.front();
-    auto prePc = curPc;
-    std::map<uint8_t *, uint8_t *> byteCodeCurPrePc;
-    std::vector<CfgInfo> bytecodeBlockInfos;
-    int32_t offsetIndex = 1;
-    auto startPc = curPc;
-    bytecodeBlockInfos.emplace_back(startPc, SplitKind::START, std::vector<uint8_t *>(1, startPc));
-    byteCodeCurPrePc[curPc] = prePc;
-    pcToBCOffset_[curPc]=offsetIndex++;
-    for (size_t i = 1; i < pcArray_.size() - 1; i++) {
-        curPc = pcArray_[i];
-        byteCodeCurPrePc[curPc] = prePc;
-        pcToBCOffset_[curPc]=offsetIndex++;
-        prePc = curPc;
-        CollectBytecodeBlockInfo(curPc, bytecodeBlockInfos);
-    }
-    // handle empty
-    uint8_t *emptyPc = pcArray_.back();
-    byteCodeCurPrePc[emptyPc] = prePc;
-    pcToBCOffset_[emptyPc] = offsetIndex++;
+    std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> exceptionInfo;
 
     // collect try catch block info
-    auto exceptionInfo = CollectTryCatchBlockInfo(byteCodeCurPrePc, bytecodeBlockInfos);
+    CollectTryCatchBlockInfo(exceptionInfo);
 
     // Complete bytecode block Information
-    CompleteBytecodeBlockInfo(byteCodeCurPrePc, bytecodeBlockInfos);
+    CompleteBytecodeBlockInfo();
 
     // Building the basic block diagram of bytecode
-    BuildBasicBlocks(exceptionInfo, bytecodeBlockInfos, byteCodeCurPrePc);
+    BuildBasicBlocks(exceptionInfo);
 }
 
 void BytecodeCircuitBuilder::CollectBytecodeBlockInfo(uint8_t *pc, std::vector<CfgInfo> &bytecodeBlockInfos)
@@ -152,14 +133,14 @@ void BytecodeCircuitBuilder::CollectBytecodeBlockInfo(uint8_t *pc, std::vector<C
     }
 }
 
-std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> BytecodeCircuitBuilder::CollectTryCatchBlockInfo(
-    std::map<uint8_t *, uint8_t*> &byteCodeCurPrePc, std::vector<CfgInfo> &bytecodeBlockInfos)
+void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>,
+                                                      std::vector<uint8_t *>> &byteCodeException)
 {
     // try contains many catch
-    std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> byteCodeException;
     panda_file::MethodDataAccessor mda(*pf_, method_->GetMethodId());
     panda_file::CodeDataAccessor cda(*pf_, mda.GetCodeId().value());
-    cda.EnumerateTryBlocks([this, &byteCodeCurPrePc, &bytecodeBlockInfos, &byteCodeException](
+
+    cda.EnumerateTryBlocks([this, &byteCodeException](
             panda_file::CodeDataAccessor::TryBlock &try_block) {
         auto tryStartOffset = try_block.GetStartPc();
         auto tryEndOffset = try_block.GetStartPc() + try_block.GetLength();
@@ -177,32 +158,32 @@ std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> BytecodeCircui
         // Check whether the previous block of the try block exists.
         // If yes, add the current block; otherwise, create a new block.
         bool flag = false;
-        for (size_t i = 0; i < bytecodeBlockInfos.size(); i++) {
-            if (bytecodeBlockInfos[i].splitKind == SplitKind::START) {
+        for (size_t i = 0; i < bytecodeBlockInfos_.size(); i++) {
+            if (bytecodeBlockInfos_[i].splitKind == SplitKind::START) {
                 continue;
             }
-            if (bytecodeBlockInfos[i].pc == byteCodeCurPrePc[tryStartPc]) {
+            if (bytecodeBlockInfos_[i].pc == byteCodeCurPrePc_.at(tryStartPc)) {
                 flag = true;
                 break;
             }
         }
         if (!flag) {
             // pre block
-            bytecodeBlockInfos.emplace_back(byteCodeCurPrePc[tryStartPc], SplitKind::END,
-                                            std::vector<uint8_t *>(1, tryStartPc));
+            bytecodeBlockInfos_.emplace_back(byteCodeCurPrePc_.at(tryStartPc), SplitKind::END,
+                                             std::vector<uint8_t *>(1, tryStartPc));
         }
         // try block
-        bytecodeBlockInfos.emplace_back(tryStartPc, SplitKind::START, std::vector<uint8_t *>(1, tryStartPc));
+        bytecodeBlockInfos_.emplace_back(tryStartPc, SplitKind::START, std::vector<uint8_t *>(1, tryStartPc));
         flag = false;
-        for (size_t i = 0; i < bytecodeBlockInfos.size(); i++) {
-            if (bytecodeBlockInfos[i].splitKind == SplitKind::START) {
+        for (size_t i = 0; i < bytecodeBlockInfos_.size(); i++) {
+            if (bytecodeBlockInfos_[i].splitKind == SplitKind::START) {
                 continue;
             }
-            if (bytecodeBlockInfos[i].pc == byteCodeCurPrePc[tryEndPc]) {
-                auto &succs = bytecodeBlockInfos[i].succs;
-                auto iter = std::find(succs.cbegin(), succs.cend(), bytecodeBlockInfos[i].pc);
+            if (bytecodeBlockInfos_[i].pc == byteCodeCurPrePc_.at(tryEndPc)) {
+                auto &succs = bytecodeBlockInfos_[i].succs;
+                auto iter = std::find(succs.cbegin(), succs.cend(), bytecodeBlockInfos_[i].pc);
                 if (iter == succs.cend()) {
-                    auto opcode = static_cast<EcmaOpcode>(*(bytecodeBlockInfos[i].pc));
+                    auto opcode = static_cast<EcmaOpcode>(*(bytecodeBlockInfos_[i].pc));
                     switch (opcode) {
                         case EcmaOpcode::JMP_IMM8:
                         case EcmaOpcode::JMP_IMM16:
@@ -227,47 +208,45 @@ std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> BytecodeCircui
             }
         }
         if (!flag) {
-            bytecodeBlockInfos.emplace_back(byteCodeCurPrePc[tryEndPc], SplitKind::END,
-                                            std::vector<uint8_t *>(1, tryEndPc));
+            bytecodeBlockInfos_.emplace_back(byteCodeCurPrePc_.at(tryEndPc), SplitKind::END,
+                                             std::vector<uint8_t *>(1, tryEndPc));
         }
-        bytecodeBlockInfos.emplace_back(tryEndPc, SplitKind::START, std::vector<uint8_t *>(1, tryEndPc)); // next block
+        bytecodeBlockInfos_.emplace_back(tryEndPc, SplitKind::START, std::vector<uint8_t *>(1, tryEndPc)); // next block
         return true;
     });
-    return byteCodeException;
 }
 
-void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo(std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc,
-                                                       std::vector<CfgInfo> &bytecodeBlockInfos)
+void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo()
 {
-    std::sort(bytecodeBlockInfos.begin(), bytecodeBlockInfos.end());
+    std::sort(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
 
     if (IsLogEnabled()) {
-        PrintCollectBlockInfo(bytecodeBlockInfos);
+        PrintCollectBlockInfo(bytecodeBlockInfos_);
     }
 
     // Deduplicate
-    auto deduplicateIndex = std::unique(bytecodeBlockInfos.begin(), bytecodeBlockInfos.end());
-    bytecodeBlockInfos.erase(deduplicateIndex, bytecodeBlockInfos.end());
+    auto deduplicateIndex = std::unique(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
+    bytecodeBlockInfos_.erase(deduplicateIndex, bytecodeBlockInfos_.end());
 
     // Supplementary block information
     std::vector<uint8_t *> endBlockPc;
     std::vector<uint8_t *> startBlockPc;
-    for (size_t i = 0; i < bytecodeBlockInfos.size() - 1; i++) {
-        if (bytecodeBlockInfos[i].splitKind == bytecodeBlockInfos[i + 1].splitKind &&
-            bytecodeBlockInfos[i].splitKind == SplitKind::START) {
-            auto prePc = byteCodeCurPrePc[bytecodeBlockInfos[i + 1].pc];
+    for (size_t i = 0; i < bytecodeBlockInfos_.size() - 1; i++) {
+        if (bytecodeBlockInfos_[i].splitKind == bytecodeBlockInfos_[i + 1].splitKind &&
+            bytecodeBlockInfos_[i].splitKind == SplitKind::START) {
+            auto prePc = byteCodeCurPrePc_.at(bytecodeBlockInfos_[i + 1].pc);
             endBlockPc.emplace_back(prePc); // Previous instruction of current instruction
-            endBlockPc.emplace_back(bytecodeBlockInfos[i + 1].pc); // current instruction
+            endBlockPc.emplace_back(bytecodeBlockInfos_[i + 1].pc); // current instruction
             continue;
         }
-        if (bytecodeBlockInfos[i].splitKind == bytecodeBlockInfos[i + 1].splitKind &&
-            bytecodeBlockInfos[i].splitKind == SplitKind::END) {
-            auto tempPc = bytecodeBlockInfos[i].pc;
-            auto findItem = std::find_if(byteCodeCurPrePc.cbegin(), byteCodeCurPrePc.cend(),
+        if (bytecodeBlockInfos_[i].splitKind == bytecodeBlockInfos_[i + 1].splitKind &&
+            bytecodeBlockInfos_[i].splitKind == SplitKind::END) {
+            auto tempPc = bytecodeBlockInfos_[i].pc;
+            auto findItem = std::find_if(byteCodeCurPrePc_.cbegin(), byteCodeCurPrePc_.cend(),
                                          [tempPc](const std::map<uint8_t *, uint8_t *>::value_type item) {
                                              return item.second == tempPc;
                                          });
-            if (findItem != byteCodeCurPrePc.cend()) {
+            if (findItem != byteCodeCurPrePc_.cend()) {
                 startBlockPc.emplace_back((*findItem).first);
             }
         }
@@ -275,54 +254,52 @@ void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo(std::map<uint8_t *, uint8
 
     // Supplementary end block info
     for (auto iter = endBlockPc.cbegin(); iter != endBlockPc.cend(); iter += 2) { // 2: index
-        bytecodeBlockInfos.emplace_back(*iter, SplitKind::END,
+        bytecodeBlockInfos_.emplace_back(*iter, SplitKind::END,
                                                           std::vector<uint8_t *>(1, *(iter + 1)));
     }
     // Supplementary start block info
     for (auto iter = startBlockPc.cbegin(); iter != startBlockPc.cend(); iter++) {
-        bytecodeBlockInfos.emplace_back(*iter, SplitKind::START, std::vector<uint8_t *>(1, *iter));
+        bytecodeBlockInfos_.emplace_back(*iter, SplitKind::START, std::vector<uint8_t *>(1, *iter));
     }
 
     // Deduplicate successor
-    for (size_t i = 0; i < bytecodeBlockInfos.size(); i++) {
-        if (bytecodeBlockInfos[i].splitKind == SplitKind::END) {
-            std::set<uint8_t *> tempSet(bytecodeBlockInfos[i].succs.cbegin(),
-                                        bytecodeBlockInfos[i].succs.cend());
-            bytecodeBlockInfos[i].succs.assign(tempSet.cbegin(), tempSet.cend());
+    for (size_t i = 0; i < bytecodeBlockInfos_.size(); i++) {
+        if (bytecodeBlockInfos_[i].splitKind == SplitKind::END) {
+            std::set<uint8_t *> tempSet(bytecodeBlockInfos_[i].succs.cbegin(),
+                                        bytecodeBlockInfos_[i].succs.cend());
+            bytecodeBlockInfos_[i].succs.assign(tempSet.cbegin(), tempSet.cend());
         }
     }
 
-    std::sort(bytecodeBlockInfos.begin(), bytecodeBlockInfos.end());
+    std::sort(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
 
     // handling jumps to an empty block
-    auto endPc = bytecodeBlockInfos[bytecodeBlockInfos.size() - 1].pc;
-    auto iter = --byteCodeCurPrePc.cend();
+    auto endPc = bytecodeBlockInfos_[bytecodeBlockInfos_.size() - 1].pc;
+    auto iter = --byteCodeCurPrePc_.cend();
     if (endPc == iter->first) {
-        bytecodeBlockInfos.emplace_back(endPc, SplitKind::END, std::vector<uint8_t *>(1, endPc));
+        bytecodeBlockInfos_.emplace_back(endPc, SplitKind::END, std::vector<uint8_t *>(1, endPc));
     }
     // Deduplicate
-    deduplicateIndex = std::unique(bytecodeBlockInfos.begin(), bytecodeBlockInfos.end());
-    bytecodeBlockInfos.erase(deduplicateIndex, bytecodeBlockInfos.end());
+    deduplicateIndex = std::unique(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
+    bytecodeBlockInfos_.erase(deduplicateIndex, bytecodeBlockInfos_.end());
 
     if (IsLogEnabled()) {
-        PrintCollectBlockInfo(bytecodeBlockInfos);
+        PrintCollectBlockInfo(bytecodeBlockInfos_);
     }
 }
 
 void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>,
-                                              std::vector<uint8_t *>> &exception,
-                                              std::vector<CfgInfo> &bytecodeBlockInfo,
-                                              [[maybe_unused]] std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc)
+                                              std::vector<uint8_t *>> &exception)
 {
     std::map<uint8_t *, BytecodeRegion *> startPcToBB; // [start, bb]
     std::map<uint8_t *, BytecodeRegion *> endPcToBB; // [end, bb]
-    graph_.resize(bytecodeBlockInfo.size() / 2); // 2 : half size
+    graph_.resize(bytecodeBlockInfos_.size() / 2); // 2 : half size
     // build basic block
     int blockId = 0;
     int index = 0;
-    for (size_t i = 0; i < bytecodeBlockInfo.size() - 1; i += 2) { // 2:index
-        auto startPc = bytecodeBlockInfo[i].pc;
-        auto endPc = bytecodeBlockInfo[i + 1].pc;
+    for (size_t i = 0; i < bytecodeBlockInfos_.size() - 1; i += 2) { // 2:index
+        auto startPc = bytecodeBlockInfos_[i].pc;
+        auto endPc = bytecodeBlockInfos_[i + 1].pc;
         auto block = &graph_[index++];
         block->id = blockId++;
         block->start = startPc;
@@ -334,12 +311,12 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
     }
 
     // add block associate
-    for (size_t i = 0; i < bytecodeBlockInfo.size(); i++) {
-        if (bytecodeBlockInfo[i].splitKind == SplitKind::START) {
+    for (size_t i = 0; i < bytecodeBlockInfos_.size(); i++) {
+        if (bytecodeBlockInfos_[i].splitKind == SplitKind::START) {
             continue;
         }
-        auto curPc = bytecodeBlockInfo[i].pc;
-        auto &successors = bytecodeBlockInfo[i].succs;
+        auto curPc = bytecodeBlockInfos_[i].pc;
+        auto &successors = bytecodeBlockInfos_[i].succs;
         for (size_t j = 0; j < successors.size(); j++) {
             if (successors[j] == curPc) {
                 continue;
@@ -444,7 +421,7 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
         };
         std::iota(semiDom.begin(), semiDom.end(), 0);
         semiDom[0] = semiDom.size();
-        for (size_t idx = basicBlockList.size() - 1; idx >= 1; idx --) {
+        for (size_t idx = basicBlockList.size() - 1; idx >= 1; idx--) {
             for (const auto &preBlock : graph_[basicBlockList[idx]].preds) {
                 if (bbDfsTimestampToIdx[preBlock->id] < idx) {
                     semiDom[idx] = std::min(semiDom[idx], bbDfsTimestampToIdx[preBlock->id]);
@@ -520,7 +497,7 @@ void BytecodeCircuitBuilder::BuildImmediateDominator(const std::vector<size_t> &
             if (block.isDead) {
                 continue;
             }
-            std::string log ("block " + std::to_string(block.id) + " dominate block has: ");
+            std::string log("block " + std::to_string(block.id) + " dominate block has: ");
             for (size_t i = 0; i < block.immDomBlocks.size(); i++) {
                 log += std::to_string(block.immDomBlocks[i]->id) + ",";
             }
@@ -1284,6 +1261,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::ASYNCFUNCTIONREJECT_PREF_V8_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v2 = READ_INST_8_3();
+            info.accOut = true;
             info.offset = BytecodeOffset::FIVE;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v2));
@@ -1805,7 +1783,7 @@ void BytecodeCircuitBuilder::InsertPhi()
         EnumerateBlock(bb, [this, &defsitesInfo, &bb]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR_PREF_V8)) {
-                auto numVRegs = method_->GetNumVregs();
+                auto numVRegs = method_->GetNumVregs() + method_->GetNumArgs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     bytecodeInfo.vregOut.emplace_back(i);
                 }
@@ -1859,8 +1837,15 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size
             continue;
         }
         std::set<size_t> vregs;
-        EnumerateBlock(bb, [&vregs]
+        EnumerateBlock(bb, [this, &vregs]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+            if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR_PREF_V8)) {
+                auto numVRegs = method_->GetNumVregs() + method_->GetNumArgs();
+                for (size_t i = 0; i < numVRegs; i++) {
+                    vregs.insert(i);
+                }
+                return false;
+            }
             for (const auto &vreg: bytecodeInfo.vregOut) {
                 vregs.insert(vreg);
             }
@@ -2259,7 +2244,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
             );
         } else {
             ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
-            uint32_t bitSet = 0;
+            [[maybe_unused]] uint32_t bitSet = 0;
             for (auto &bbNext: bb.succs) {
                 if (bbNext->id == bb.id + 1) {
                     auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
@@ -2614,7 +2599,7 @@ void BytecodeCircuitBuilder::AddBytecodeOffsetInfo(GateRef &gate, const Bytecode
 {
     if (info.IsCall()) {
         auto bcOffset = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
-                                         pcToBCOffset_[pc],
+                                         pcToBCOffset_.at(pc),
                                          {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                          GateType::NJSValue());
         gateAcc_.NewIn(gate, bcOffsetIndex, bcOffset);

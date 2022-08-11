@@ -279,6 +279,7 @@ void LLVMAssembler::PrintInstAndStep(unsigned &pc, uint8_t **byteSp, uintptr_t &
         instSize = 4; // 4: default instruction step size while instruction can't be resolved or be constant
     }
     if (logFlag) {
+        // 8: length of output content
         LOG_COMPILER(INFO) << std::setw(8) << std::setfill('0') << std::hex << pc << ":" << std::setw(8)
                             << *reinterpret_cast<uint32_t *>(*byteSp) << " " << outString;
     }

@@ -45,6 +45,7 @@ public:
         BYTECODE_DEBUGGER_HANDLER,
         BYTECODE_HELPER_HANDLER,
         JSFUNCTION,
+        BUILTINS_STUB,
 
         STUB_BEGIN = COMMON_STUB,
         STUB_END = BYTECODE_HANDLER,
@@ -56,7 +57,7 @@ public:
         GHCCallConv = 1,
         WebKitJSCallConv = 2,
     };
-    static constexpr size_t TARGET_KIND_BIT_LENGTH = 3;
+    static constexpr size_t TARGET_KIND_BIT_LENGTH = 4;
     static constexpr size_t CALL_CONV_BIT_LENGTH = 2;
     using TargetKindBit = panda::BitField<TargetKind, 0, TARGET_KIND_BIT_LENGTH>;
     using CallConvBit = TargetKindBit::NextField<CallConv, CALL_CONV_BIT_LENGTH>;
@@ -149,6 +150,11 @@ public:
     {
         TargetKind targetKind = GetTargetKind();
         return TargetKind::BCHANDLER_BEGIN <= targetKind && targetKind < TargetKind::BCHANDLER_END;
+    }
+
+    bool IsBuiltinsStub() const
+    {
+        return (GetTargetKind() == TargetKind::BUILTINS_STUB);
     }
 
     bool IsBCHandlerStub() const
@@ -311,6 +317,7 @@ private:
     V(SetValueWithBarrier)                  \
     V(GetTaggedArrayPtrTest)                \
     V(BytecodeHandler)                      \
+    V(Builtins)                             \
     V(BytecodeDebuggerHandler)              \
     V(CallRuntime)                          \
     V(AsmInterpreterEntry)                  \

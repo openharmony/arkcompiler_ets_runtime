@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
@@ -28,7 +29,7 @@ void InterpreterStubBuilder::SetVregValue(GateRef glue, GateRef sp, GateRef idx,
     Store(VariableType::INT64(), glue, sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx), val);
 }
 
-GateRef InterpreterStubBuilder::GetVregValue(GateRef sp, GateRef idx)
+inline GateRef InterpreterStubBuilder::GetVregValue(GateRef sp, GateRef idx)
 {
     return Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
 }
@@ -245,6 +246,15 @@ GateRef InterpreterStubBuilder::GetResumeModeFromGeneratorObject(GateRef obj)
     return Int32And(
         Int32LSR(bitfield, Int32(JSGeneratorObject::ResumeModeBits::START_BIT)),
         Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
+}
+
+GateRef InterpreterStubBuilder::GetResumeModeFromAsyncGeneratorObject(GateRef obj)
+{
+    GateRef bitfieldOffset = IntPtr(JSAsyncGeneratorObject::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), obj, bitfieldOffset);
+    return Int32And(
+        Int32LSR(bitfield, Int32(JSAsyncGeneratorObject::ResumeModeBits::START_BIT)),
+        Int32((1LU << JSAsyncGeneratorObject::ResumeModeBits::SIZE) - 1));
 }
 
 void InterpreterStubBuilder::SetPcToFrame(GateRef glue, GateRef frame, GateRef value)
@@ -468,76 +478,6 @@ GateRef InterpreterStubBuilder::GetStartIdxAndNumArgs(GateRef sp, GateRef restId
     return ret;
 }
 
-GateRef InterpreterStubBuilder::NewArgumentsList(GateRef glue, GateRef sp, GateRef startIdx, GateRef numArgs)
-{
-    auto env = GetEnvironment();
-    Label subEntry(env);
-    env->SubCfgEntry(&subEntry);
-    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-    Label exit(env);
-    Label setHClass(env);
-    GateRef arraySize = ComputeTaggedArraySize(ChangeInt32ToIntPtr(numArgs));
-    GateRef argumentsList = AllocateInYoung(glue, arraySize);
-    Branch(TaggedIsException(argumentsList), &exit, &setHClass);
-    Bind(&setHClass);
-    GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                ConstantIndex::ARRAY_CLASS_INDEX);
-    StoreHClass(glue, argumentsList, arrayClass);
-    Store(VariableType::INT32(), glue, argumentsList, IntPtr(TaggedArray::LENGTH_OFFSET), numArgs);
-    // skip InitializeTaggedArrayWithSpeicalValue due to immediate setting arguments
-    Label setArgumentsBegin(env);
-    Label setArgumentsAgain(env);
-    Label setArgumentsEnd(env);
-    Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
-    LoopBegin(&setArgumentsBegin);
-    GateRef argument = GetVregValue(sp, ChangeInt32ToIntPtr(Int32Add(startIdx, *i)));
-    SetValueToTaggedArray(VariableType::JS_ANY(), glue, argumentsList, *i, argument);
-    i = Int32Add(*i, Int32(1));
-    Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
-    Bind(&setArgumentsAgain);
-    LoopEnd(&setArgumentsBegin);
-    Bind(&setArgumentsEnd);
-    Jump(&exit);
-    Bind(&exit);
-    env->SubCfgExit();
-    return argumentsList;
-}
-
-GateRef InterpreterStubBuilder::NewArgumentsObj(GateRef glue, GateRef argumentsList, GateRef numArgs)
-{
-    auto env = GetEnvironment();
-    Label subEntry(env);
-    env->SubCfgEntry(&subEntry);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef argumentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                               GlobalEnv::ARGUMENTS_CLASS);
-    GateRef argumentsObj = NewJSObject(glue, argumentsClass);
-    Label exit(env);
-    Label setArgumentsObjProperties(env);
-    Branch(TaggedIsException(argumentsObj), &exit, &setArgumentsObjProperties);
-    Bind(&setArgumentsObjProperties);
-    SetPropertyInlinedProps(glue, argumentsObj, argumentsClass, IntToTaggedNGC(numArgs),
-                            Int32(JSArguments::LENGTH_INLINE_PROPERTY_INDEX));
-    SetElementsArray(VariableType::JS_ANY(), glue, argumentsObj, argumentsList);
-    GateRef arrayProtoValuesFunction = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                                         GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
-    SetPropertyInlinedProps(glue, argumentsObj, argumentsClass, arrayProtoValuesFunction,
-                            Int32(JSArguments::ITERATOR_INLINE_PROPERTY_INDEX));
-    GateRef accessorCaller = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                               GlobalEnv::ARGUMENTS_CALLER_ACCESSOR);
-    SetPropertyInlinedProps(glue, argumentsObj, argumentsClass, accessorCaller,
-                            Int32(JSArguments::CALLER_INLINE_PROPERTY_INDEX));
-    GateRef accessorCallee = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                               GlobalEnv::ARGUMENTS_CALLEE_ACCESSOR);
-    SetPropertyInlinedProps(glue, argumentsObj, argumentsClass, accessorCallee,
-                            Int32(JSArguments::CALLEE_INLINE_PROPERTY_INDEX));
-    Jump(&exit);
-    Bind(&exit);
-    env->SubCfgExit();
-    return argumentsObj;
-}
-
 GateRef InterpreterStubBuilder::GetCurrentFrame(GateRef glue)
 {
     return GetLastLeaveFrame(glue);
@@ -678,5 +618,85 @@ void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc
     DispatchBase(target, glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
     Return();
 }
+
+#define DISPATCH_LAST(acc)                                                                  \
+    DispatchLast(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter)
+#define DISPATCH(acc)                                                                       \
+    Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, offset)
+void InterpreterStubBuilder::CheckException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+                                            GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+                                            GateRef res, GateRef offset)
+{
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(res), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST(acc);
+    }
+    Bind(&notException);
+    {
+        DISPATCH(acc);
+    }
+}
+
+void InterpreterStubBuilder::CheckPendingException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+                                                   GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+                                                   GateRef res, GateRef offset)
+{
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label notException(env);
+    Branch(HasPendingException(glue), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST(acc);
+    }
+    Bind(&notException);
+    {
+        DISPATCH(res);
+    }
+}
+
+void InterpreterStubBuilder::CheckExceptionWithVar(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+                                                   GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+                                                   GateRef res, GateRef offset)
+{
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(res), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST(acc);
+    }
+    Bind(&notException);
+    {
+        DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+        varAcc = res;
+        DISPATCH(*varAcc);
+    }
+}
+
+void InterpreterStubBuilder::CheckExceptionWithJump(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
+                                                    GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
+                                                    GateRef res, Label *jump)
+{
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(res), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST(acc);
+    }
+    Bind(&notException);
+    {
+        Jump(jump);
+    }
+}
+#undef DISPATCH_LAST
+#undef DISPATCH
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_INTERPRETER_STUB_INL_H

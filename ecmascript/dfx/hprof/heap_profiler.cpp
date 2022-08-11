@@ -24,6 +24,15 @@
 #include "ecmascript/tooling/interface/stream.h"
 
 namespace panda::ecmascript {
+HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), hprofs_(vm->GetChunk())
+{
+    jsonSerializer_ =
+        const_cast<NativeAreaAllocator *>(vm->GetNativeAreaAllocator())->New<HeapSnapshotJSONSerializer>();
+    if (UNLIKELY(jsonSerializer_ == nullptr)) {
+        LOG_FULL(FATAL) << "alloc snapshot json serializer failed";
+        UNREACHABLE();
+    }
+}
 HeapProfiler::~HeapProfiler()
 {
     ClearSnapshot();

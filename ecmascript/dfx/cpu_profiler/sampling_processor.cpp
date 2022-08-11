@@ -39,9 +39,8 @@ SamplingProcessor::~SamplingProcessor() {}
 
 bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    uint64_t startTime = 0;
-    uint64_t endTime = 0;
-    startTime = GetMicrosecondsTimeStamp();
+    uint64_t startTime = GetMicrosecondsTimeStamp();
+    uint64_t endTime = GetMicrosecondsTimeStamp();
     generator_->SetThreadStartTime(startTime);
     while (generator_->GetIsStart()) {
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
@@ -63,7 +62,13 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
             return false;
         }
 #endif
-        endTime = GetMicrosecondsTimeStamp();
+        startTime = GetMicrosecondsTimeStamp();
+        int64_t ts = interval_ - static_cast<int64_t>(startTime - endTime);
+        endTime = startTime;
+        if (ts > 0) {
+            usleep(ts);
+            endTime = GetMicrosecondsTimeStamp();
+        }
         generator_->AddSample(endTime, outToFile_);
         if (outToFile_) {
             if (generator_->GetMethodNodes().size() >= 10 || // 10:Number of nodes currently stored
@@ -71,17 +76,13 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
                 generator_->WriteMethodsAndSampleInfo(false);
             }
         }
-        int64_t ts = interval_ - static_cast<int64_t>(endTime - startTime);
-        if (ts > 0) {
-            usleep(ts);
-        }
-        startTime = GetMicrosecondsTimeStamp();
         if (outToFile_) {
             if (collectCount_ % 50 == 0) { // 50:The sampling times reached 50 times.
                 WriteSampleDataToFile();
             }
             collectCount_++;
         }
+        generator_->SetSampleFlag(false);
     }
     uint64_t stopTime = GetMicrosecondsTimeStamp();
     generator_->SetThreadStopTime(stopTime);
@@ -94,9 +95,9 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
 
 uint64_t SamplingProcessor::GetMicrosecondsTimeStamp()
 {
-    struct timeval time;
-    gettimeofday(&time, nullptr);
-    return (time.tv_sec * 1000000 + time.tv_usec); // 1000000:Second to subtle
+    struct timespec time;
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    return time.tv_nsec / 1000; // 1000:Nanoseconds convert subtle
 }
 
 void SamplingProcessor::WriteSampleDataToFile()

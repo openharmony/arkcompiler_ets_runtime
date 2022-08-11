@@ -182,6 +182,21 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
     return OperationResult(thread, obj->Get(JSTaggedValue(index)), PropertyMetaData(false));
 }
 
+bool JSAPIPlainArray::SetProperty(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
+                                  const JSHandle<JSTaggedValue> &key,
+                                  const JSHandle<JSTaggedValue> &value)
+{
+    TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys().GetTaggedObject());
+    int32_t size = obj->GetLength();
+    int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
+    if (index < 0 || index >= size) {
+        return false;
+    }
+
+    obj->Set(thread, obj, index, value.GetTaggedValue());
+    return true;
+}
+
 JSHandle<JSAPIPlainArray> JSAPIPlainArray::Clone(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj)
 {
     JSHandle<TaggedArray> keys(thread, obj->GetKeys());

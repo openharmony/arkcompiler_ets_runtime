@@ -87,7 +87,7 @@ JSTaggedValue BuiltinsString::FromCharCode(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    int32_t argLength = argv->GetArgsNumber();
+    uint32_t argLength = argv->GetArgsNumber();
     if (argLength == 0) {
         return factory->GetEmptyString().GetTaggedValue();
     }
@@ -101,7 +101,7 @@ JSTaggedValue BuiltinsString::FromCharCode(EcmaRuntimeCallInfo *argv)
     std::u16string u16str = base::StringHelper::Utf16ToU16String(&codePointValue, 1);
     CVector<uint16_t> valueTable;
     valueTable.reserve(argLength - 1);
-    for (int32_t i = 1; i < argLength; i++) {
+    for (uint32_t i = 1; i < argLength; i++) {
         JSHandle<JSTaggedValue> nextCp = BuiltinsString::GetCallArg(argv, i);
         uint16_t nextCv = JSTaggedValue::ToUint16(thread, nextCp);
         valueTable.emplace_back(nextCv);
@@ -124,13 +124,13 @@ JSTaggedValue BuiltinsString::FromCodePoint(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    int32_t argLength = argv->GetArgsNumber();
+    uint32_t argLength = argv->GetArgsNumber();
     if (argLength == 0) {
         return factory->GetEmptyString().GetTaggedValue();
     }
     std::u16string u16str;
-    int32_t u16strSize = argLength;
-    for (int32_t i = 0; i < argLength; i++) {
+    uint32_t u16strSize = argLength;
+    for (uint32_t i = 0; i < argLength; i++) {
         JSHandle<JSTaggedValue> nextCpTag = BuiltinsString::GetCallArg(argv, i);
         JSTaggedNumber nextCpVal = JSTaggedValue::ToNumber(thread, nextCpTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -199,9 +199,9 @@ JSTaggedValue BuiltinsString::Raw(EcmaRuntimeCallInfo *argv)
     }
 
     std::u16string u16str;
-    int argc = argv->GetArgsNumber() - 1;
+    uint32_t argc = argv->GetArgsNumber() - 1;
     bool canBeCompress = true;
-    for (int i = 0, argsI = 1; i < length; ++i, ++argsI) {
+    for (uint32_t i = 0, argsI = 1; i < static_cast<uint32_t>(length); ++i, ++argsI) {
         // Let nextSeg be ToString(Get(raw, nextKey)).
         JSHandle<JSTaggedValue> elementString =
             JSObject::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(rawObj), i).GetValue();
@@ -214,7 +214,7 @@ JSTaggedValue BuiltinsString::Raw(EcmaRuntimeCallInfo *argv)
         } else {
             u16str += base::StringHelper::Utf8ToU16String(nextSeg->GetDataUtf8(), nextSeg->GetLength());
         }
-        if (i + 1 == length) {
+        if (i + 1 == static_cast<uint32_t>(length)) {
             break;
         }
         if (argsI <= argc) {
@@ -336,7 +336,7 @@ JSTaggedValue BuiltinsString::Concat(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t thisLen = thisHandle->GetLength();
-    int32_t argLength = argv->GetArgsNumber();
+    uint32_t argLength = argv->GetArgsNumber();
     if (argLength == 0) {
         return thisHandle.GetTaggedValue();
     }
@@ -349,7 +349,7 @@ JSTaggedValue BuiltinsString::Concat(EcmaRuntimeCallInfo *argv)
     } else {
         u16strThis = base::StringHelper::Utf8ToU16String(thisHandle->GetDataUtf8(), thisLen);
     }
-    for (int32_t i = 0; i < argLength; i++) {
+    for (uint32_t i = 0; i < argLength; i++) {
         JSHandle<JSTaggedValue> nextTag = BuiltinsString::GetCallArg(argv, i);
         JSHandle<EcmaString> nextHandle = JSTaggedValue::ToString(thread, nextTag);
         uint32_t nextLen = nextHandle->GetLength();
@@ -1031,8 +1031,8 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> prefixString(thread, EcmaString::FastSubString(thisString, 0, pos, ecmaVm));
     JSHandle<EcmaString> suffixString(
         thread, EcmaString::FastSubString(thisString, tailPos, thisString->GetLength() - tailPos, ecmaVm));
-    JSHandle<EcmaString> tempString = factory->ConcatFromString(prefixString, realReplaceStr);
-    return factory->ConcatFromString(tempString, suffixString).GetTaggedValue();
+    JSHandle<EcmaString> tempString(thread, EcmaString::Concat(prefixString, realReplaceStr, ecmaVm));
+    return JSTaggedValue(EcmaString::Concat(tempString, suffixString, ecmaVm));
 }
 
 JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)

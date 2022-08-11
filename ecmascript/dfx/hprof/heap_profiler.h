@@ -20,9 +20,7 @@
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/tooling/interface/file_stream.h"
 #include "ecmascript/tooling/interface/progress.h"
 
@@ -30,19 +28,13 @@
 
 namespace panda::ecmascript {
 class HeapSnapshot;
+class EcmaVM;
+
 class HeapProfiler : public HeapProfilerInterface {
 public:
     NO_MOVE_SEMANTIC(HeapProfiler);
     NO_COPY_SEMANTIC(HeapProfiler);
-    explicit HeapProfiler(const EcmaVM *vm) : vm_(vm), hprofs_(vm->GetChunk())
-    {
-        jsonSerializer_ =
-            const_cast<NativeAreaAllocator *>(vm->GetNativeAreaAllocator())->New<HeapSnapshotJSONSerializer>();
-        if (UNLIKELY(jsonSerializer_ == nullptr)) {
-            LOG_FULL(FATAL) << "alloc snapshot json serializer failed";
-            UNREACHABLE();
-        }
-    }
+    explicit HeapProfiler(const EcmaVM *vm);
     ~HeapProfiler() override;
 
     enum class SampleType { ONE_SHOT, REAL_TIME };

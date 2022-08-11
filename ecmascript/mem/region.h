@@ -16,9 +16,8 @@
 #ifndef ECMASCRIPT_MEM_REGION_H
 #define ECMASCRIPT_MEM_REGION_H
 
-#include <sanitizer/asan_interface.h>
-
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/base/asan_interface.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/free_object_list.h"
 #include "ecmascript/mem/gc_bitset.h"
@@ -504,7 +503,7 @@ public:
             markGCBitset_->Clear(bitsetSize_);
             begin_ = AlignUp(begin + bitsetSize_, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             // The object region marked with poison until it is allocated if is_asan is true
-            ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin_), (end - begin));
+            ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin_), (end - begin_));
         }
 
         static size_t GetFlagOffset(bool isArch32)

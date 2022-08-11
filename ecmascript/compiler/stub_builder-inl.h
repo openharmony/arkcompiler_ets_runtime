@@ -562,44 +562,41 @@ inline GateRef StubBuilder::TaggedIsException(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsSpecial(GateRef x)
 {
-    return BoolOr(Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_SPECIAL_MARK)),
+    return BoolOr(Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_SPECIAL_MASK)),
         Int64(JSTaggedValue::TAG_SPECIAL)), TaggedIsHole(x));
 }
 
 inline GateRef StubBuilder::TaggedIsHeapObject(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MARK)), Int64(0));
+    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)), Int64(0));
 }
 
 inline GateRef StubBuilder::TaggedIsGeneratorObject(GateRef x)
 {
-    GateRef isHeapObj = SExtInt1ToInt32(TaggedIsHeapObject(x));
+    GateRef isHeapObj = TaggedIsHeapObject(x);
     GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isGeneratorObj = Int32Or(
-        SExtInt1ToInt32(Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT)))),
-        SExtInt1ToInt32(Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ASYNC_FUNC_OBJECT)))));
-    return TruncInt32ToInt1(Int32And(isHeapObj, isGeneratorObj));
+    GateRef isGeneratorObj =
+        Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT)));
+    return BoolAnd(isHeapObj, isGeneratorObj);
 }
 
 inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
 {
-    GateRef isHeapObj = SExtInt1ToInt32(TaggedIsHeapObject(x));
+    GateRef isHeapObj = TaggedIsHeapObject(x);
     GateRef objType = GetObjectType(LoadHClass(x));
     GateRef isGeneratorObj =
-        SExtInt1ToInt32(Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ASYNC_GENERATOR_OBJECT))));
-    return TruncInt32ToInt1(Int32And(isHeapObj, isGeneratorObj));
+        Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ASYNC_GENERATOR_OBJECT)));
+    return BoolAnd(isHeapObj, isGeneratorObj);
 }
 
 inline GateRef StubBuilder::TaggedIsPropertyBox(GateRef x)
 {
-    return TruncInt32ToInt1(
-        Int32And(SExtInt1ToInt32(TaggedIsHeapObject(x)),
-                 SExtInt1ToInt32(HclassIsPropertyBox(LoadHClass(x)))));
+    return BoolAnd(TaggedIsHeapObject(x), HclassIsPropertyBox(LoadHClass(x)));
 }
 
 inline GateRef StubBuilder::TaggedIsWeak(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_WEAK_MARK)), Int64(JSTaggedValue::TAG_WEAK));
+    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_WEAK_MASK)), Int64(JSTaggedValue::TAG_WEAK));
 }
 
 inline GateRef StubBuilder::TaggedIsPrototypeHandler(GateRef x)
@@ -644,7 +641,7 @@ inline GateRef StubBuilder::TaggedIsNull(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsUndefinedOrNull(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MARK)),
+    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)),
         Int64(JSTaggedValue::TAG_SPECIAL));
 }
 
@@ -660,8 +657,8 @@ inline GateRef StubBuilder::TaggedIsFalse(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsBoolean(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MARK)),
-        Int64(JSTaggedValue::TAG_BOOLEAN_MARK));
+    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)),
+        Int64(JSTaggedValue::TAG_BOOLEAN_MASK));
 }
 
 inline GateRef StubBuilder::TaggedGetInt(GateRef x)
@@ -1020,6 +1017,26 @@ inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
             Int32GreaterThanOrEqual(objectType,
                 Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST)))));
     return TruncInt32ToInt1(ret);
+}
+
+inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    Label isHeapObject(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        result = TaggedObjectIsEcmaObject(obj);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 inline GateRef StubBuilder::IsJSObject(GateRef obj)
@@ -1387,6 +1404,15 @@ inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, Gate
 
     // NOTE: need to translate MarkingBarrier
     Store(type, glue, obj, ChangeInt32ToIntPtr(propOffset), value);
+}
+
+inline GateRef StubBuilder::GetPropertyInlinedProps(GateRef obj, GateRef hClass,
+    GateRef index, VariableType type)
+{
+    GateRef inlinedPropsStart = GetInlinedPropsStartFromHClass(hClass);
+    GateRef propOffset = Int32Mul(
+        Int32Add(inlinedPropsStart, index), Int32(JSTaggedValue::TaggedTypeSize()));
+    return Load(type, obj, ZExtInt32ToInt64(propOffset));
 }
 
 inline void StubBuilder::IncNumberOfProps(GateRef glue, GateRef hClass)
@@ -1983,6 +2009,20 @@ inline GateRef StubBuilder::HasPendingException(GateRef glue)
     GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
     GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
     return Int64NotEqual(exception, Int64(JSTaggedValue::VALUE_HOLE));
+}
+
+inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
+                                             const std::initializer_list<GateRef>& args)
+{
+    GateRef target = PtrMul(ChangeInt32ToIntPtr(ZExtInt8ToInt32(builtinsId)), IntPtrSize());
+    return env_->GetBuilder()->CallBuiltin(glue, target, args);
+}
+
+inline GateRef StubBuilder::GetBuiltinId(GateRef method)
+{
+    // 7: builtinsIdOffset
+    GateRef builtinsIdOffset = PtrAdd(IntPtr(JSMethod::GetHotnessCounterOffset(env_->IsArch32Bit())), IntPtr(7));
+    return Load(VariableType::INT8(), method, builtinsIdOffset);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

@@ -134,6 +134,7 @@ public:
     bool RunNoGCRuntimeCall(GateRef gate);
     bool RunBytecodeCall(GateRef gate);
     bool RunDebuggerBytecodeCall(GateRef gate);
+    bool RunBuiltinsCall(GateRef gate);
     bool RunCall(GateRef gate);
     bool RunRuntimeCallWithArgv(GateRef gate);
     bool RunAlloca(GateRef gate);

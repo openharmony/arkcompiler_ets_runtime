@@ -232,4 +232,19 @@ OperationResult JSAPILinkedList::GetProperty(JSThread *thread, const JSHandle<JS
     
     return OperationResult(thread, doubleList->Get(index), PropertyMetaData(false));
 }
+
+bool JSAPILinkedList::SetProperty(JSThread *thread, const JSHandle<JSAPILinkedList> &obj,
+                                  const JSHandle<JSTaggedValue> &key,
+                                  const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<TaggedDoubleList> doubleList(thread, obj->GetDoubleList());
+    int nodeLength = doubleList->Length();
+    int index = key->GetInt();
+    if (index < 0 || index >= nodeLength) {
+        return false;
+    }
+
+    TaggedDoubleList::Set(thread, doubleList, index, value);
+    return true;
+}
 }  // namespace panda::ecmascript

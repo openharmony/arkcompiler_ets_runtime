@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/type_recorder.h"
+#include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -443,21 +444,23 @@ enum BytecodeOffset {
 
 class BytecodeCircuitBuilder {
 public:
-    explicit BytecodeCircuitBuilder(const BytecodeTranslationInfo &translationInfo, size_t index,
+    explicit BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
+                                    JSHandle<JSTaggedValue> &constantPool,
+                                    const JSMethod *method,
+                                    BytecodeInfoCollector::MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager, bool enableLog)
-        : tsManager_(tsManager), file_(translationInfo.jsPandaFile), pf_(translationInfo.jsPandaFile->GetPandaFile()),
-          method_(translationInfo.methodPcInfos[index].method),
-          pcArray_(translationInfo.methodPcInfos[index].pcArray),
-          constantPool_(translationInfo.constantPool),
-          gateAcc_(&circuit_), argAcc_(&circuit_, method_),
+        : tsManager_(tsManager), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
+          method_(method), constantPool_(constantPool), gateAcc_(&circuit_), argAcc_(&circuit_, method_),
           typeRecorder_(method_, tsManager), hasTypes_(file_->HasTSTypes()),
-          enableLog_(enableLog)
+          enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
+          byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)
     {
     }
     ~BytecodeCircuitBuilder() = default;
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
     NO_MOVE_SEMANTIC(BytecodeCircuitBuilder);
     void PUBLIC_API BytecodeToCircuit();
+    static void PUBLIC_API CollectBytecodeBlockInfo(uint8_t *pc, std::vector<CfgInfo> &bytecodeBlockInfos);
 
     [[nodiscard]] kungfu::Circuit* GetCircuit()
     {
@@ -534,17 +537,9 @@ public:
     }
 
 private:
-    void PUBLIC_API CollectBytecodeBlockInfo(uint8_t* pc, std::vector<CfgInfo> &bytecodeBlockInfos);
-
-    std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> CollectTryCatchBlockInfo(
-        std::map<uint8_t *, uint8_t*> &byteCodeCurPrePc, std::vector<CfgInfo> &bytecodeBlockInfos);
-
-    void CompleteBytecodeBlockInfo(std::map<uint8_t *, uint8_t*> &byteCodeCurPrePc,
-                                   std::vector<CfgInfo> &bytecodeBlockInfos);
-
-    void BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &exception,
-                          std::vector<CfgInfo> &bytecodeBlockInfo,
-                          std::map<uint8_t *, uint8_t*> &byteCodeCurPrePc);
+    void CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
+    void CompleteBytecodeBlockInfo();
+    void BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
     void ComputeDominatorTree();
     void BuildImmediateDominator(const std::vector<size_t> &immDom);
     void ComputeDomFrontiers(const std::vector<size_t> &immDom);
@@ -590,15 +585,16 @@ private:
     const JSPandaFile *file_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     const JSMethod *method_ {nullptr};
-    const std::vector<uint8_t *> pcArray_;
     JSHandle<JSTaggedValue> constantPool_;
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;
     TypeRecorder typeRecorder_;
     bool hasTypes_ {false};
     bool enableLog_ {false};
-    std::map<const uint8_t *, int32_t> pcToBCOffset_;
     std::vector<kungfu::GateRef> suspendAndResumeGates_ {};
+    const std::map<const uint8_t *, int32_t> &pcToBCOffset_;
+    const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
+    std::vector<CfgInfo> &bytecodeBlockInfos_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H
