@@ -54,7 +54,7 @@ public:
     {
         base_options::Options baseOptions("");
         baseOptions.SetLogLevel("error");
-        panda::ecmascript::Log::Initialize(baseOptions);
+        ecmascript::Log::Initialize(baseOptions);
     }
 
     void TearDown() override
