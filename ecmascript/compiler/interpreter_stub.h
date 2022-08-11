@@ -134,7 +134,7 @@ private:
         explicit name##StubBuilder(CallSignature *callSignature, Environment *env)              \
             : InterpreterStubBuilder(callSignature, env)                                        \
         {                                                                                       \
-            env->GetCircuit()->SetFrameType(FrameType::INTERPRETER_FRAME);                      \
+            env->GetCircuit()->SetFrameType(FrameType::ASM_INTERPRETER_FRAME);                  \
         }                                                                                       \
         ~name##StubBuilder() = default;                                                         \
         NO_MOVE_SEMANTIC(name##StubBuilder);                                                    \

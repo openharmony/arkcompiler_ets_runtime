@@ -581,7 +581,7 @@ public:
     }
     inline bool IsAsmInterp() const
     {
-        return circuit_->GetFrameType() == FrameType::INTERPRETER_FRAME;
+        return circuit_->GetFrameType() == FrameType::ASM_INTERPRETER_FRAME;
     }
     inline bool IsArch32Bit() const
     {

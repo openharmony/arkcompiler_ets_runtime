@@ -536,7 +536,7 @@ LLVMValueRef LLVMIRBuilder::GetFunctionFromGlobalValue([[maybe_unused]]LLVMValue
 
 bool LLVMIRBuilder::IsInterpreted()
 {
-    return circuit_->GetFrameType() == FrameType::INTERPRETER_FRAME;
+    return circuit_->GetFrameType() == FrameType::ASM_INTERPRETER_FRAME;
 }
 
 bool LLVMIRBuilder::IsOptimized()
