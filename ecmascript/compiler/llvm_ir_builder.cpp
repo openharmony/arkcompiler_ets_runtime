@@ -1934,7 +1934,6 @@ LLVMTypeRef LLVMModule::GetFuncType(const CallSignature *stubDescriptor)
     auto paramCount = stubDescriptor->GetParametersCount();
     int extraParameterCnt = 0;
     auto paramsType = stubDescriptor->GetParametersType();
-
     if (paramsType != nullptr) {
         LLVMTypeRef glueType = ConvertLLVMTypeFromVariableType(paramsType[0]);
         paramTys.push_back(glueType);
