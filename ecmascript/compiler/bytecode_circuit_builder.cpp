@@ -2386,22 +2386,22 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
             circuit_.NewGate(OpCode(OpCode::VALUE_SELECTOR), MachineType::I64, bb.numOfLoopBacks,
                              std::vector<GateRef>(1 + bb.numOfLoopBacks, Circuit::NullGate()), GateType::AnyType());
         gateAcc_.NewIn(loopBackValue, 0, bb.mergeLoopBackEdges);
-        bb.loopBackIndex = 1;  // 1: start index of value inputs
+        size_t loopBackIndex = 1;  // 1: start index of value inputs
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predPc, isException] = bb.expandedPreds.at(i);
             if (bb.loopbackBlocks.count(predId)) {
-                gateAcc_.NewIn(loopBackValue, bb.loopBackIndex++, RenameVariable(predId, predPc, reg, acc));
+                gateAcc_.NewIn(loopBackValue, loopBackIndex++, RenameVariable(predId, predPc, reg, acc));
             }
         }
         auto forwardValue = circuit_.NewGate(
             OpCode(OpCode::VALUE_SELECTOR), MachineType::I64, bb.numOfStatePreds - bb.numOfLoopBacks,
             std::vector<GateRef>(1 + bb.numOfStatePreds - bb.numOfLoopBacks, Circuit::NullGate()), GateType::AnyType());
         gateAcc_.NewIn(forwardValue, 0, bb.mergeForwardEdges);
-        bb.forwardIndex = 1;  // 1: start index of value inputs
+        size_t forwardIndex = 1;  // 1: start index of value inputs
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predPc, isException] = bb.expandedPreds.at(i);
             if (!bb.loopbackBlocks.count(predId)) {
-                gateAcc_.NewIn(forwardValue, bb.forwardIndex++, RenameVariable(predId, predPc, reg, acc));
+                gateAcc_.NewIn(forwardValue, forwardIndex++, RenameVariable(predId, predPc, reg, acc));
             }
         }
         gateAcc_.NewIn(currentPhi, 1, forwardValue);   // 1: index of forward value input
