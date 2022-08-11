@@ -21,21 +21,18 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
-
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript {
 FrameHandler::FrameHandler(const JSThread *thread)
     : sp_(const_cast<JSTaggedType *>(thread->GetCurrentFrame())), thread_(thread)
 {
-    arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     AdvanceToInterpretedFrame();
 }
 
 FrameHandler::FrameHandler(const JSThread *thread, void *fp)
     : sp_(reinterpret_cast<JSTaggedType *>(fp)), thread_(thread)
 {
-    arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
     AdvanceToInterpretedFrame();
 }
 
@@ -339,6 +336,10 @@ void FrameHandler::Iterate(const RootVisitor &visitor, const RootRangeVisitor &r
             current = leaveFrame;
         }
     }
+    // lazy assignment: only Iterate need arkStackMapParser_ in order to high improve performance
+    if (arkStackMapParser_ == nullptr) {
+        arkStackMapParser_ = thread_->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+    }
     IterateFrameChain(current, visitor, rangeVisitor, derivedVisitor);
 }
 
@@ -346,7 +347,7 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
     const RootRangeVisitor &rangeVisitor, const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     JSTaggedType *current = start;
-    for (FrameIterator it(current, thread_); !it.Done(); it.Advance()) {
+    for (FrameIterator it(current, thread_); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
         FrameType type = it.GetFrameType();
         switch (type) {
             case FrameType::OPTIMIZED_FRAME: {
@@ -422,21 +423,21 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
     }
 }
 
-std::string FrameHandler::GetAotExceptionFuncName(JSTaggedType* argv) const
+std::string FrameBcCollector::GetAotExceptionFuncName(JSTaggedType* argv) const
 {
     JSTaggedValue func = JSTaggedValue(*(argv)); // 3: skip returnaddr and argc
     JSMethod *method = JSFunction::Cast(func.GetTaggedObject())->GetMethod();
     return method->GetMethodName();
 }
 
-void FrameHandler::CollectBCOffsetInfo()
+void FrameBcCollector::CollectBCOffsetInfo()
 {
     thread_->GetEcmaVM()->ClearExceptionBCList();
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
     FrameIterator it(current, thread_);
-    it.Advance();
+    it.Advance<GCVisitedFlag::VISITED>();
 
-    for (; !it.Done(); it.Advance()) {
+    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
         FrameType type = it.GetFrameType();
         switch (type) {
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {

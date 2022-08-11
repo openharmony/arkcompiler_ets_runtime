@@ -2322,7 +2322,7 @@ JSTaggedType *RuntimeStubs::GetActualArgv(JSThread *thread)
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
     ASSERT(FrameHandler::GetFrameType(current) == FrameType::LEAVE_FRAME);
     FrameIterator it(current, thread);
-    it.Advance();
+    it.Advance<GCVisitedFlag::VISITED>();
     ASSERT(it.GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
     auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
     return optimizedJSFunctionFrame->GetArgv(it);
