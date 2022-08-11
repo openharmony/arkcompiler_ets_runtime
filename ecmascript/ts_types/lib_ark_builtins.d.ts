@@ -150,3 +150,5 @@ declare class Set<T> {
 
     // fixme: add iterateable declaration entries(), values() and keys()
 }
+
+declare function print(arg:any, arg1?:any):string;

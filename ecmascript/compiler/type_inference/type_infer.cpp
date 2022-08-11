@@ -508,6 +508,7 @@ void TypeInfer::TypeCheck(GateRef gate) const
             log += "gate id: "+ std::to_string(gateAccessor_.GetId(valueGate)) + ", ";
             log += "expected type: " + expectedTypeStr;
             LOG_COMPILER(FATAL) << log;
+            std::abort();
         }
     }
 }
@@ -524,8 +525,8 @@ void TypeInfer::PrintType(GateRef gate) const
     auto type = gateAccessor_.GetGateType(gate);
     log += "type: " + tsManager_->GetTypeStr(type) + ", ";
     auto typeRef = GlobalTSTypeRef(type.GetType());
-    log += "moduleid: " + std::to_string(typeRef.GetModuleId()) + ", ";
-    log += "localid: " + std::to_string(typeRef.GetLocalId());
+    log += "moduleId: " + std::to_string(typeRef.GetModuleId()) + ", ";
+    log += "localId: " + std::to_string(typeRef.GetLocalId());
     LOG_COMPILER(INFO) << log;
 }
 }  // namespace panda::ecmascript

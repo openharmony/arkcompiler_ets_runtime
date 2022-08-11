@@ -611,6 +611,7 @@ public:
     bool IsProtoChangeDetails() const;
     bool IsMachineCodeObject() const;
     bool IsClassInfoExtractor() const;
+    bool IsTSType() const;
     bool IsTSObjectType() const;
     bool IsTSClassType() const;
     bool IsTSUnionType() const;

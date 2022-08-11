@@ -1151,6 +1151,11 @@ inline bool JSTaggedValue::IsClassInfoExtractor() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsClassInfoExtractor();
 }
 
+inline bool JSTaggedValue::IsTSType() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSType();
+}
+
 inline bool JSTaggedValue::IsTSObjectType() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSObjectType();

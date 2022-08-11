@@ -128,7 +128,7 @@ HWTEST_F_L0(TSTypeTest, ImportType)
 
     JSHandle<TaggedArray> redirectExportTableHandle = factory->NewTaggedArray(2);
     JSHandle<EcmaString> exportVal = factory->NewFromASCII("A");
-    JSHandle<EcmaString> exportIndex = factory->NewFromASCII("51");
+    JSHandle<EcmaString> exportIndex = factory->NewFromASCII("101");
     redirectExportTableHandle->Set(thread, 0, exportVal);
     redirectExportTableHandle->Set(thread, 1, exportIndex);
 
@@ -310,14 +310,16 @@ HWTEST_F_L0(TSTypeTest, FuntionType)
 {
     auto factory = ecmaVm->GetFactory();
 
-    const int literalLength = 8;
-    const int parameterLength = 2;
+    const uint32_t literalLength = 8;
+    const uint32_t parameterLength = 2;
+    const uint32_t bitFiled = 8;
+    const uint32_t thisFlag = 0;
     JSHandle<TaggedArray> literal = factory->NewTaggedArray(literalLength);
     JSHandle<EcmaString> functionName = factory->NewFromASCII("testFunction");
     literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::FUNCTION)));
-    literal->Set(thread, 1, JSTaggedValue(0));
-    literal->Set(thread, 2, JSTaggedValue(0));
-    literal->Set(thread, 3, functionName);
+    literal->Set(thread, 1, JSTaggedValue(bitFiled));
+    literal->Set(thread, 2, functionName);
+    literal->Set(thread, 3, JSTaggedValue(thisFlag));
     literal->Set(thread, 4, JSTaggedValue(parameterLength));
     literal->Set(thread, 5, JSTaggedValue(1));
     literal->Set(thread, 6, JSTaggedValue(2));
@@ -332,13 +334,11 @@ HWTEST_F_L0(TSTypeTest, FuntionType)
 
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(type);
     ASSERT_TRUE(functionType->GetParameterTypes().IsTaggedArray());
-
-    JSHandle<TaggedArray> parameterTypes(thread, functionType->GetParameterTypes());
-    ASSERT_EQ(parameterTypes->GetLength(), parameterLength + TSFunctionType::DEFAULT_LENGTH);
-    ASSERT_EQ(functionType->GetParametersNum(), parameterLength);
+    ASSERT_EQ(functionType->GetLength(), parameterLength);
     ASSERT_EQ(functionType->GetParameterTypeGT(0).GetType(), 1ULL);
     ASSERT_EQ(functionType->GetParameterTypeGT(1).GetType(), 2ULL);
-    ASSERT_EQ(functionType->GetReturnValueTypeGT().GetType(), 6ULL);
+    ASSERT_EQ(functionType->GetReturnGT().GetType(), 6ULL);
+    ASSERT_TRUE(functionType->GetAsync());
 }
 
 HWTEST_F_L0(TSTypeTest, ObjectType)

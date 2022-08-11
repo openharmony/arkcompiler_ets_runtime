@@ -58,7 +58,7 @@ public:
 
     static JSHClass *GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectType> objectType);
 
-    static GlobalTSTypeRef GetPropTypeGT(JSHandle<TSObjectType> objType, JSHandle<EcmaString> propName);
+    static GlobalTSTypeRef GetPropTypeGT(JSHandle<TSObjectType> objectType, JSHandle<EcmaString> propName);
 
     ACCESSORS(ObjLayoutInfo, PROPERTIES_OFFSET, HCLASS_OFFSET);
     ACCESSORS(HClass, HCLASS_OFFSET, SIZE);
@@ -77,8 +77,8 @@ public:
     static constexpr size_t FIELD_LENGTH = 4;  // every field record name, typeIndex, accessFlag, readonly
     static constexpr size_t INSTANCE_TYPE_OFFSET = TSType::SIZE;
 
-    static GlobalTSTypeRef GetPropTypeGT(const JSThread *thread, JSHandle<TSTypeTable> &table,
-                                          int localtypeId, JSHandle<EcmaString> propName);
+    static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                         JSHandle<EcmaString> propName);
 
     ACCESSORS(InstanceType, INSTANCE_TYPE_OFFSET, CONSTRUCTOR_TYPE_OFFSET);
     ACCESSORS(ConstructorType, CONSTRUCTOR_TYPE_OFFSET, PROTOTYPE_TYPE_OFFSET);
@@ -114,8 +114,8 @@ class TSClassInstanceType : public TSType {
 public:
     CAST_CHECK(TSClassInstanceType, IsTSClassInstanceType);
 
-    static GlobalTSTypeRef GetPropTypeGT(const JSThread *thread, JSHandle<TSTypeTable> &table,
-                                          int localtypeId, JSHandle<EcmaString> propName);
+    static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassInstanceType> classInstanceType,
+                                         JSHandle<EcmaString> propName);
 
     static constexpr size_t CLASS_GT_OFFSET = TSType::SIZE;
     static constexpr size_t CREATE_CLASS_OFFSET = 1;
@@ -168,22 +168,35 @@ class TSFunctionType : public TSType {
 public:
     CAST_CHECK(TSFunctionType, IsTSFunctionType);
 
-    static constexpr size_t PARAMETER_TYPE_OFFSET = TSType::SIZE;
-    static constexpr size_t FUNCTION_NAME_OFFSET = 0;
-    static constexpr size_t RETURN_VALUE_TYPE_OFFSET = 1;
-    static constexpr size_t PARAMETER_START_ENTRY = 2;
-    static constexpr size_t FIELD_LENGTH = 2;  // every function record accessFlag, modifierStatic
-    static constexpr size_t DEFAULT_LENGTH = 2;
+    uint32_t GetLength() const
+    {
+        TaggedArray* parameterTypes = TaggedArray::Cast(GetParameterTypes().GetTaggedObject());
+        return parameterTypes->GetLength();
+    }
 
-    ACCESSORS(ParameterTypes, PARAMETER_TYPE_OFFSET, SIZE);
+    GlobalTSTypeRef GetParameterTypeGT(int index) const;
 
-    int GetParametersNum();
+    static constexpr size_t NAME_OFFSET = TSType::SIZE;
+    ACCESSORS(Name, NAME_OFFSET, PARAMETER_TYPES_OFFSET);
+    ACCESSORS(ParameterTypes, PARAMETER_TYPES_OFFSET, RETURN_GT_OFFSET);
+    ACCESSORS_ATTACHED_TYPEREF(ReturnGT, RETURN_GT_OFFSET, THIS_GT_OFFSET);
+    ACCESSORS_ATTACHED_TYPEREF(ThisGT, THIS_GT_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    GlobalTSTypeRef GetParameterTypeGT(int index);
+    enum class Visibility : uint8_t { PUBLIC = 0, PRIVATE, PROTECTED };
 
-    GlobalTSTypeRef GetReturnValueTypeGT();
+    // define BitField
+    static constexpr size_t VISIBILITY_BITS = 2;
+    static constexpr size_t STATIC_BITS = 1;
+    static constexpr size_t ASYNC_BITS = 1;
+    static constexpr size_t GENERATOR_BITS = 1;
+    FIRST_BIT_FIELD(BitField, Visibility, Visibility, VISIBILITY_BITS);
+    NEXT_BIT_FIELD(BitField, Static, bool, STATIC_BITS, Visibility);
+    NEXT_BIT_FIELD(BitField, Async, bool, ASYNC_BITS, Static);
+    NEXT_BIT_FIELD(BitField, Generator, bool, GENERATOR_BITS, Async);
 
-    DECL_VISIT_OBJECT(PARAMETER_TYPE_OFFSET, SIZE)
+    DECL_VISIT_OBJECT(NAME_OFFSET, PARAMETER_TYPES_OFFSET)
     DECL_DUMP()
 };
 

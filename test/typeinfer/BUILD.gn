@@ -16,6 +16,7 @@ group("ark_typeinfer_test") {
   deps = [
     "add2dyn:add2dynAotTypeInferAction",
     "bitwise_op:bitwise_opAotTypeInferAction",
+    "builtins:builtinsAotTypeInferAction",
     "callarg0dyn:callarg0dynAotTypeInferAction",
     "callarg1dyn:callarg1dynAotTypeInferAction",
     "callargs2dyn:callargs2dynAotTypeInferAction",

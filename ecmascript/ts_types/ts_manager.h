@@ -38,11 +38,12 @@ public:
     static constexpr int ELEMENTS_LENGTH = 3;
     static constexpr int NUMBER_OF_TABLES_INDEX = 0;
     static constexpr int INCREASE_CAPACITY_RATE = 2;
-    static constexpr int DEFAULT_NUMBER_OF_TABLES = 2;  // builtins table and global union table
+    static constexpr int DEFAULT_NUMBER_OF_TABLES = 3;  // primitive table, builtins table and infer table
     // first +1 means reserve a table from pandafile, second +1 menas the NUMBER_OF_TABLES_INDEX
     static constexpr int DEFAULT_TABLE_CAPACITY =  (DEFAULT_NUMBER_OF_TABLES + 1) * ELEMENTS_LENGTH + 1;
-    static constexpr int BUILTINS_TABLE_ID = 0;
-    static constexpr int INFER_TABLE_ID = 1;
+    static constexpr int PRIMITIVE_TABLE_ID = 0;
+    static constexpr int BUILTINS_TABLE_ID = 1;
+    static constexpr int INFER_TABLE_ID = 2;
     static constexpr int NOT_FOUND = -1;
 
     static TSModuleTable *Cast(TaggedObject *object)
@@ -168,7 +169,7 @@ public:
 
     GlobalTSTypeRef PUBLIC_API GetOrCreateUnionType(CVector<GlobalTSTypeRef> unionTypeVec);
 
-    int PUBLIC_API GetFuncParametersNum(GlobalTSTypeRef gt) const;
+    int PUBLIC_API GetFunctionTypLength(GlobalTSTypeRef gt) const;
 
     GlobalTSTypeRef PUBLIC_API GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const;
 
