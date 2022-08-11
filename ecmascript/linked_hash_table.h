@@ -86,7 +86,7 @@ public:
         if (!IsKey(key)) {
             return -1;
         }
-        int hash = static_cast<int>(LinkedHash::Hash(key));
+        int hash = LinkedHash::Hash(key);
         uint32_t bucket = HashToBucket(hash);
         for (JSTaggedValue entry = GetElement(BucketToIndex(bucket)); !entry.IsHole();
             entry = GetNextEntry(entry.GetInt())) {
@@ -356,7 +356,7 @@ public:
 
     bool Has(JSTaggedValue key) const;
 
-    void Clear(const JSThread *thread);
+    static JSHandle<LinkedHashMap> Clear(const JSThread *thread, const JSHandle<LinkedHashMap> &table);
     DECL_DUMP()
 };
 
@@ -394,7 +394,7 @@ public:
 
     bool Has(JSTaggedValue key) const;
 
-    void Clear(const JSThread *thread);
+    static JSHandle<LinkedHashSet> Clear(const JSThread *thread, const JSHandle<LinkedHashSet> &table);
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript
