@@ -389,7 +389,7 @@ void JSThread::CheckJSTaggedType(JSTaggedType value) const
 
 void JSThread::CollectBCOffsetInfo()
 {
-    FrameHandler frameHandler(this);
-    frameHandler.CollectBCOffsetInfo();
+    FrameBcCollector collector(this);
+    collector.CollectBCOffsetInfo();
 }
 }  // namespace panda::ecmascript

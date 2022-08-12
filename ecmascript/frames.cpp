@@ -63,149 +63,187 @@ std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t re
     return callsiteInfo;
 }
 
+template <GCVisitedFlag GCVisit>
 void FrameIterator::Advance()
 {
     ASSERT(!Done());
     FrameType t = GetFrameType();
-    bool needCalCallSiteInfo = false;
+    [[maybe_unused]] bool needCalCallSiteInfo = false;
     switch (t) {
         case FrameType::OPTIMIZED_FRAME : {
             auto frame = GetFrame<OptimizedFrame>();
-            optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
-            optimizedReturnAddr_ = frame->GetReturnAddr();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::OPTIMIZED_ENTRY_FRAME : {
             auto frame = GetFrame<OptimizedEntryFrame>();
-            optimizedReturnAddr_ = 0;
-            optimizedCallSiteSp_ = 0;
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedReturnAddr_ = 0;
+                optimizedCallSiteSp_ = 0;
+            }
             current_ = frame->GetPrevFrameFp();
             break;
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionUnfoldArgVFrame>();
-            optimizedCallSiteSp_ = frame->GetPrevFrameSp();
-            optimizedReturnAddr_ = frame->GetReturnAddr();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedCallSiteSp_ = frame->GetPrevFrameSp();
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionFrame>();
-            optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
-            optimizedReturnAddr_ = frame->GetReturnAddr();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionFrame>();
-            optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
-            optimizedReturnAddr_ = frame->GetReturnAddr();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::LEAVE_FRAME : {
             auto frame = GetFrame<OptimizedLeaveFrame>();
-            optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
-            optimizedReturnAddr_ = frame->GetReturnAddr();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::LEAVE_FRAME_WITH_ARGV : {
             auto frame = GetFrame<OptimizedWithArgvLeaveFrame>();
-            optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
-            optimizedReturnAddr_ = frame->GetReturnAddr();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::BUILTIN_CALL_LEAVE_FRAME : {
             auto frame = GetFrame<OptimizedBuiltinLeaveFrame>();
-            optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
-            optimizedReturnAddr_ = frame->GetReturnAddr();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::INTERPRETER_FRAME:
         case FrameType::INTERPRETER_FAST_NEW_FRAME : {
             auto frame = GetFrame<InterpretedFrame>();
-            optimizedReturnAddr_ = 0;
-            optimizedCallSiteSp_ = 0;
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedReturnAddr_ = 0;
+                optimizedCallSiteSp_ = 0;
+            }
             current_ = frame->GetPrevFrameFp();
             break;
         }
         case FrameType::INTERPRETER_BUILTIN_FRAME: {
             auto frame = GetFrame<InterpretedBuiltinFrame>();
-            optimizedReturnAddr_ = 0;
-            optimizedCallSiteSp_ = 0;
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedReturnAddr_ = 0;
+                optimizedCallSiteSp_ = 0;
+            }
             current_ = frame->GetPrevFrameFp();
             break;
         }
         case FrameType::INTERPRETER_CONSTRUCTOR_FRAME:
         case FrameType::ASM_INTERPRETER_FRAME : {
             auto frame = GetFrame<AsmInterpretedFrame>();
-            optimizedReturnAddr_ = 0;
-            optimizedCallSiteSp_ = 0;
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedReturnAddr_ = 0;
+                optimizedCallSiteSp_ = 0;
+            }
             current_ = frame->GetPrevFrameFp();
             break;
         }
         case FrameType::BUILTIN_FRAME:
         case FrameType::BUILTIN_ENTRY_FRAME : {
             auto frame = GetFrame<BuiltinFrame>();
-            optimizedReturnAddr_ = frame->GetReturnAddr();
-            optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::BUILTIN_FRAME_WITH_ARGV : {
             auto frame = GetFrame<BuiltinWithArgvFrame>();
-            optimizedReturnAddr_ = frame->GetReturnAddr();
-            optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         case FrameType::INTERPRETER_ENTRY_FRAME : {
             auto frame = GetFrame<InterpretedEntryFrame>();
-            optimizedReturnAddr_ = 0;
-            optimizedCallSiteSp_ = 0;
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedReturnAddr_ = 0;
+                optimizedCallSiteSp_ = 0;
+            }
             current_ = frame->GetPrevFrameFp();
             break;
         }
         case FrameType::ASM_INTERPRETER_ENTRY_FRAME : {
             auto frame = GetFrame<AsmInterpretedEntryFrame>();
-            optimizedReturnAddr_ = 0;
-            optimizedCallSiteSp_ = 0;
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedReturnAddr_ = 0;
+                optimizedCallSiteSp_ = 0;
+            }
             current_ = frame->GetPrevFrameFp();
             break;
         }
         case FrameType::ASM_INTERPRETER_BRIDGE_FRAME : {
             auto frame = GetFrame<AsmInterpretedBridgeFrame>();
-            optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
-            optimizedReturnAddr_ = frame->GetReturnAddr();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
             current_ = frame->GetPrevFrameFp();
-            needCalCallSiteInfo = true;
             break;
         }
         default: {
             UNREACHABLE();
         }
     }
-    if (!needCalCallSiteInfo) {
-        return;
+    if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+        if (!needCalCallSiteInfo) {
+            return;
+        }
+        uint64_t textStart;
+        std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_) = CalCallSiteInfo(optimizedReturnAddr_);
+        ASSERT(optimizedReturnAddr_ >= textStart);
+        optimizedReturnAddr_ = optimizedReturnAddr_ - textStart;
     }
-    uint64_t textStart;
-    std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_) = CalCallSiteInfo(optimizedReturnAddr_);
-    ASSERT(optimizedReturnAddr_ >= textStart);
-    optimizedReturnAddr_ = optimizedReturnAddr_ - textStart;
 }
+template void FrameIterator::Advance<GCVisitedFlag::VISITED>();
+template void FrameIterator::Advance<GCVisitedFlag::IGNORED>();
+
 uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc) const
 {
     if (Done()) {

@@ -34,6 +34,7 @@ namespace kungfu {
 class FrameHandler {
 public:
     explicit FrameHandler(const JSThread *thread);
+
     explicit FrameHandler(const JSThread *thread, void *fp);
     ~FrameHandler() = default;
 
@@ -171,10 +172,6 @@ public:
         const RootBaseAndDerivedVisitor &derivedVisitor);
     void IterateEcmaRuntimeCallInfo(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
 
-    // for collecting bc offset in aot
-    void CollectBCOffsetInfo();
-    std::string GetAotExceptionFuncName(JSTaggedType* fp) const;
-
 private:
     FrameType GetFrameType() const
     {
@@ -208,6 +205,19 @@ private:
     [[maybe_unused]] JSThread *thread_ {nullptr};
     const JSTaggedType *oldSp_ {nullptr};
 };
-} // namespace ecmascript
+
+class FrameBcCollector {
+public:
+    explicit FrameBcCollector(const JSThread *thread) : thread_(thread)
+    {
+    }
+    ~FrameBcCollector() = default;
+    // for collecting bc offset in aot
+    void CollectBCOffsetInfo();
+private:
+    std::string GetAotExceptionFuncName(JSTaggedType* fp) const;
+    const JSThread *thread_ {nullptr};
+};
+}; // namespace ecmascript
 }  // namespace panda
 #endif  // ECMASCRIPT_INTERPRETER_FRAME_HANDLER_H

@@ -1065,6 +1065,11 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
     alignas(EAS) uintptr_t returnAddr;
 };
 
+enum class GCVisitedFlag : bool {
+    VISITED = true,
+    IGNORED = false,
+};
+
 class FrameIterator {
 public:
     explicit FrameIterator(JSTaggedType *sp, const JSThread *thread = nullptr);
@@ -1101,6 +1106,7 @@ public:
         return current_;
     }
     int ComputeDelta() const;
+    template <GCVisitedFlag GCVisit = GCVisitedFlag::IGNORED>
     void Advance();
     uintptr_t GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc = 0) const;
     uintptr_t GetPrevFrame() const;
