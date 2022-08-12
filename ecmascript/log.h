@@ -99,12 +99,16 @@ private:
     std::ostringstream stream_;
 };
 #endif // ENABLE_HILOG
+template<Level level>
 class StdLog {
 public:
     StdLog() = default;
     ~StdLog()
     {
         std::cerr << stream_.str().c_str() << std::endl;
+        if constexpr (level == FATAL) {
+            std::abort();
+        }
     }
 
     template<class type>
@@ -117,12 +121,11 @@ public:
 private:
     std::ostringstream stream_;
 };
-}  // namespace panda::ecmascript
 
 #ifdef ENABLE_HILOG
 #define LOG_ECMA(level) HiLogIsLoggable(DOMAIN, TAG, LOG_##level) && panda::ecmascript::HiLog<LOG_##level>()
-#else
-#define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog()
+#else // ENABLE_HILOG
+#define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog<(level)>()
 #endif // ENABLE_HILOG
-
+}  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LOG_H

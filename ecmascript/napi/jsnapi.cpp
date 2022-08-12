@@ -161,7 +161,7 @@ EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options, const base_options
         os::memory::LockHolder lock(mutex);
         vmCount_++;
         if (!initialize_) {
-            panda::ecmascript::Log::Initialize(baseOption);
+            ecmascript::Log::Initialize(baseOption);
             InitializeIcuData(options);
             InitializeMemMapAllocator();
             initialize_ = true;
