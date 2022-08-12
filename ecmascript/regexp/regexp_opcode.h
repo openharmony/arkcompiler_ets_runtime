@@ -89,8 +89,8 @@ public:
     virtual uint32_t DumpOpCode(std::ostream &out, const DynChunk &buf, uint32_t offset) const = 0;
 
 private:
-    uint8_t opCode_{0};
-    uint8_t size_{0};
+    uint8_t opCode_ {0};
+    uint8_t size_ {0};
 };
 
 class SaveStartOpCode : public RegExpOpCode {
@@ -364,7 +364,7 @@ public:
 private:
     friend class RangeOpCode;
     friend class Range32OpCode;
-    std::list<std::pair<uint32_t, uint32_t>> rangeSet_{};
+    std::list<std::pair<uint32_t, uint32_t>> rangeSet_ {};
 };
 
 class RangeOpCode : public RegExpOpCode {

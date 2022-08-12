@@ -613,7 +613,7 @@ private:
     std::stack<Label *> stack_;
     int nextVariableId_ {0};
     std::vector<GateRef> arguments_;
-    const CompilationConfig *ccfg_ { nullptr };
+    const CompilationConfig *ccfg_ {nullptr};
 };
 
 class Variable {

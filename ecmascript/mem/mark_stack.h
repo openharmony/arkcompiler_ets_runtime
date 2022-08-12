@@ -88,9 +88,9 @@ private:
     template<class T>
     friend class ContinuousStack;
     friend class WorkNode;
-    uintptr_t begin_{0};
-    uintptr_t *end_{nullptr};
-    uintptr_t *top_{nullptr};
+    uintptr_t begin_ {0};
+    uintptr_t *end_ {nullptr};
+    uintptr_t *top_ {nullptr};
 };
 
 template<class T>
@@ -161,10 +161,10 @@ private:
         ResetBegin(currentArea_->GetBegin(), currentArea_->GetEnd());
     }
 
-    Heap *heap_{nullptr};
-    Area *currentArea_{nullptr};
-    EcmaList<Area> areaList_{};
-    EcmaList<Area> unusedList_{};
+    Heap *heap_ {nullptr};
+    Area *currentArea_ {nullptr};
+    EcmaList<Area> areaList_ {};
+    EcmaList<Area> unusedList_ {};
 };
 
 using MarkStack = ContinuousStack<TaggedObject>;

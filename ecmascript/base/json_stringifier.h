@@ -80,12 +80,12 @@ private:
     CString gap_;
     CString result_;
     CString indent_;
-    JSThread *thread_{nullptr};
-    ObjectFactory *factory_{nullptr};
+    JSThread *thread_ {nullptr};
+    ObjectFactory *factory_ {nullptr};
     CVector<JSHandle<JSTaggedValue>> stack_;
     CVector<JSHandle<JSTaggedValue>> propList_;
-    JSMutableHandle<JSTaggedValue> handleKey_{};
-    JSMutableHandle<JSTaggedValue> handleValue_{};
+    JSMutableHandle<JSTaggedValue> handleKey_ {};
+    JSMutableHandle<JSTaggedValue> handleValue_ {};
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_JSON_STRINGIFY_INL_H
