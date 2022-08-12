@@ -828,12 +828,13 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     RUNTIME_STUBS_HEADER(UpdateHotnessCounter);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     thread->CheckSafepoint();
-    if (thisFunc->GetProfileTypeInfo() == JSTaggedValue::Undefined()) {
+    auto profileTypeInfo = thisFunc->GetProfileTypeInfo();
+    if (profileTypeInfo == JSTaggedValue::Undefined()) {
         auto method = thisFunc->GetCallTarget();
         auto res = RuntimeNotifyInlineCache(thread, thisFunc, method);
         return res.GetRawData();
     }
-    return JSTaggedValue::Undefined().GetRawData();
+    return profileTypeInfo.GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LoadICByName)
