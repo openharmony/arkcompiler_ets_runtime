@@ -530,6 +530,23 @@ inline GateRef StubBuilder::TaggedIsObject(GateRef x)
                       Int64(JSTaggedValue::TAG_OBJECT));
 }
 
+inline GateRef StubBuilder::TaggedIsString(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsString(obj);
+}
+
+inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsStringOrSymbol(obj);
+}
+
+inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
+{
+    auto allHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
+    auto allString = env_->GetBuilder()->TaggedObjectBothAreString(x, y);
+    return env_->GetBuilder()->LogicAnd(allHeapObject, allString);
+}
+
 inline GateRef StubBuilder::TaggedIsNumber(GateRef x)
 {
     return BoolNot(TaggedIsObject(x));
@@ -573,30 +590,22 @@ inline GateRef StubBuilder::TaggedIsHeapObject(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsGeneratorObject(GateRef x)
 {
-    GateRef isHeapObj = TaggedIsHeapObject(x);
-    GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isGeneratorObj =
-        Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT)));
-    return BoolAnd(isHeapObj, isGeneratorObj);
+    return env_->GetBuilder()->TaggedIsGeneratorObject(x);
 }
 
 inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
 {
-    GateRef isHeapObj = TaggedIsHeapObject(x);
-    GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isGeneratorObj =
-        Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ASYNC_GENERATOR_OBJECT)));
-    return BoolAnd(isHeapObj, isGeneratorObj);
+    return env_->GetBuilder()->TaggedIsAsyncGeneratorObject(x);
 }
 
 inline GateRef StubBuilder::TaggedIsPropertyBox(GateRef x)
 {
-    return BoolAnd(TaggedIsHeapObject(x), HclassIsPropertyBox(LoadHClass(x)));
+    return env_->GetBuilder()->TaggedIsPropertyBox(x);
 }
 
 inline GateRef StubBuilder::TaggedIsWeak(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_WEAK_MASK)), Int64(JSTaggedValue::TAG_WEAK));
+    return env_->GetBuilder()->TaggedIsWeak(x);
 }
 
 inline GateRef StubBuilder::TaggedIsPrototypeHandler(GateRef x)
@@ -606,9 +615,7 @@ inline GateRef StubBuilder::TaggedIsPrototypeHandler(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsTransitionHandler(GateRef x)
 {
-    return TruncInt32ToInt1(
-        Int32And(SExtInt1ToInt32(TaggedIsHeapObject(x)),
-                 SExtInt1ToInt32(HclassIsTransitionHandler(LoadHClass(x)))));
+    return env_->GetBuilder()->TaggedIsTransitionHandler(x);
 }
 
 inline GateRef StubBuilder::GetNextPositionForHash(GateRef last, GateRef count, GateRef size)
@@ -630,8 +637,8 @@ inline GateRef StubBuilder::DoubleIsINF(GateRef x)
     GateRef negativeInfinity = Double(-base::POSITIVE_INFINITY);
     GateRef diff1 = DoubleEqual(x, infinity);
     GateRef diff2 = DoubleEqual(x, negativeInfinity);
-    return TruncInt32ToInt1(Int32Or(Int32Equal(SExtInt1ToInt32(diff1), Int32(1)),
-        Int32Equal(SExtInt1ToInt32(diff2), Int32(1))));
+    return BoolOr(Int32Equal(SExtInt1ToInt32(diff1), Int32(1)),
+        Int32Equal(SExtInt1ToInt32(diff2), Int32(1)));
 }
 
 inline GateRef StubBuilder::TaggedIsNull(GateRef x)
@@ -657,8 +664,7 @@ inline GateRef StubBuilder::TaggedIsFalse(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsBoolean(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)),
-        Int64(JSTaggedValue::TAG_BOOLEAN_MASK));
+    return env_->GetBuilder()->TaggedIsBoolean(x);
 }
 
 inline GateRef StubBuilder::TaggedGetInt(GateRef x)
@@ -942,25 +948,12 @@ inline GateRef StubBuilder::IsDictionaryMode(GateRef object)
 
 inline GateRef StubBuilder::IsDictionaryModeByHClass(GateRef hClass)
 {
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return Int32NotEqual(
-        Int32And(
-            Int32LSR(bitfield, Int32(JSHClass::IsDictionaryBit::START_BIT)),
-            Int32((1LU << JSHClass::IsDictionaryBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsDictionaryModeByHClass(hClass);
 }
 
 inline GateRef StubBuilder::IsDictionaryElement(GateRef hClass)
 {
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    // decode
-    return Int32NotEqual(
-        Int32And(
-            Int32LSR(bitfield, Int32(JSHClass::DictionaryElementBits::START_BIT)),
-            Int32((1LU << JSHClass::DictionaryElementBits::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsDictionaryElement(hClass);
 }
 
 inline GateRef StubBuilder::IsClassConstructorFromBitField(GateRef bitfield)
@@ -974,113 +967,49 @@ inline GateRef StubBuilder::IsClassConstructorFromBitField(GateRef bitfield)
 
 inline GateRef StubBuilder::IsClassConstructor(GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return IsClassConstructorFromBitField(bitfield);
+    return env_->GetBuilder()->IsClassConstructor(object);
 }
 
 inline GateRef StubBuilder::IsClassPrototype(GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    // decode
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::ClassPrototypeBit::START_BIT)),
-            Int32((1LU << JSHClass::ClassPrototypeBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsClassPrototype(object);
 }
 
 inline GateRef StubBuilder::IsExtensible(GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    // decode
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::ExtensibleBit::START_BIT)),
-                 Int32((1LU << JSHClass::ExtensibleBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsExtensible(object);
 }
 
 inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    auto ret = Int32And(
-        ZExtInt1ToInt32(
-            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST)))),
-        ZExtInt1ToInt32(
-            Int32GreaterThanOrEqual(objectType,
-                Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST)))));
-    return TruncInt32ToInt1(ret);
+    return env_->GetBuilder()->TaggedObjectIsEcmaObject(obj);
 }
 
 inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
 {
-    auto env = GetEnvironment();
-    Label subentry(env);
-    env->SubCfgEntry(&subentry);
-    Label exit(env);
-    Label isHeapObject(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        result = TaggedObjectIsEcmaObject(obj);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    auto isEcmaObject = TaggedObjectIsEcmaObject(obj);
+    return env_->GetBuilder()->LogicAnd(TaggedIsHeapObject(obj), isEcmaObject);
 }
 
 inline GateRef StubBuilder::IsJSObject(GateRef obj)
 {
-    auto env = GetEnvironment();
-    Label subentry(env);
-    env->SubCfgEntry(&subentry);
-    Label exit(env);
-    Label isHeapObject(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        GateRef objectType = GetObjectType(LoadHClass(obj));
-        auto ret1 = Int32And(
-            ZExtInt1ToInt32(
-                Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST)))),
-            ZExtInt1ToInt32(
-                Int32GreaterThanOrEqual(objectType,
-                    Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST)))));
-        result = TruncInt32ToInt1(ret1);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    return env_->GetBuilder()->IsJSObject(obj);
 }
 
 inline GateRef StubBuilder::IsJSFunctionBase(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    GateRef greater = ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_BASE))));
-    GateRef less = ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION))));
-    return TruncInt32ToInt1(Int32And(greater, less));
+    GateRef greater = Int32GreaterThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_BASE)));
+    GateRef less = Int32LessThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION)));
+    return BoolAnd(greater, less);
 }
 
 inline GateRef StubBuilder::IsConstructor(GateRef object)
 {
     GateRef hClass = LoadHClass(object);
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     // decode
     return Int32NotEqual(
@@ -1494,18 +1423,16 @@ inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 {
     // arraylist and vector has fast pass now
-    return TruncInt32ToInt1(Int32And(
-        ZExtInt1ToInt32(
-            Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)))),
-        ZExtInt1ToInt32(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))))));
+    return BoolAnd(
+        Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
+        Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
 }
 
 inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
 {
-    return TruncInt32ToInt1(Int32And(
-        ZExtInt1ToInt32(
-            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST)))),
-        ZExtInt1ToInt32(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))))));
+    return BoolAnd(
+            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+            Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))));
 }
 
 inline GateRef StubBuilder::IsAccessorInternal(GateRef value)
@@ -1729,18 +1656,12 @@ inline GateRef StubBuilder::GetGlobalConstantString(ConstantIndex index)
 
 inline GateRef StubBuilder::IsCallableFromBitField(GateRef bitfield)
 {
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::CallableBit::START_BIT)),
-            Int32((1LU << JSHClass::CallableBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsCallableFromBitField(bitfield);
 }
 
 inline GateRef StubBuilder::IsCallable(GateRef obj)
 {
-    GateRef hclass = LoadHClass(obj);
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hclass, bitfieldOffset);
-    return IsCallableFromBitField(bitfield);
+    return env_->GetBuilder()->IsCallable(obj);
 }
 
 // GetOffset func in property_attribute.h
@@ -1922,11 +1843,11 @@ inline GateRef StubBuilder::GetPropertiesFromJSObject(GateRef object)
 inline GateRef StubBuilder::IsJSFunction(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    GateRef greater = ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST))));
-    GateRef less = ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST))));
-    return TruncInt32ToInt1(Int32And(greater, less));
+    GateRef greater = Int32GreaterThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST)));
+    GateRef less = Int32LessThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST)));
+    return BoolAnd(greater, less);
 }
 
 inline GateRef StubBuilder::IsBoundFunction(GateRef obj)

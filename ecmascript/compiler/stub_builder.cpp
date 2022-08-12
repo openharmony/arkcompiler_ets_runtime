@@ -325,8 +325,7 @@ GateRef StubBuilder::FindEntryFromNameDictionary(GateRef glue, GateRef elements,
 
 GateRef StubBuilder::IsMatchInTransitionDictionary(GateRef element, GateRef key, GateRef metaData, GateRef attr)
 {
-    return TruncInt32ToInt1(Int32And(ZExtInt1ToInt32(Int64Equal(element, key)),
-        ZExtInt1ToInt32(Int32Equal(metaData, attr))));
+    return BoolAnd(Int64Equal(element, key), Int32Equal(metaData, attr));
 }
 
 // metaData is int32 type
@@ -722,8 +721,7 @@ GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, 
         Int64Mul(Int64(sizeof(JSTaggedValue)),
             Int64(static_cast<uint64_t>(ConstantIndex::CONSTRUCTOR_STRING_INDEX))));
     GateRef isCtorStr = Int64Equal(key, gCtorStr);
-    return Int32NotEqual(
-        Int32And(SExtInt1ToInt32(IsJsArray(receiver)), SExtInt1ToInt32(isCtorStr)), Int32(0));
+    return BoolAnd(IsJsArray(receiver), isCtorStr);
 }
 
 // Note: set return exit node
@@ -1000,55 +998,6 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     return;
 }
 
-GateRef StubBuilder::TaggedIsString(GateRef obj)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label isHeapObject(env);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        result = Int32Equal(GetObjectType(LoadHClass(obj)),
-                            Int32(static_cast<int32_t>(JSType::STRING)));
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label isHeapObject(env);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        GateRef objType = GetObjectType(LoadHClass(obj));
-        result = Int32Equal(objType, Int32(static_cast<int32_t>(JSType::STRING)));
-        Label isString(env);
-        Label notString(env);
-        Branch(*result, &exit, &notString);
-        Bind(&notString);
-        {
-            result = Int32Equal(objType, Int32(static_cast<int32_t>(JSType::SYMBOL)));
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 GateRef StubBuilder::TaggedIsBigInt(GateRef obj)
 {
     auto env = GetEnvironment();
@@ -1099,9 +1048,8 @@ GateRef StubBuilder::IsInternalString(GateRef string)
 
 GateRef StubBuilder::IsDigit(GateRef ch)
 {
-    return TruncInt32ToInt1(
-        Int32And(SExtInt1ToInt32(Int32LessThanOrEqual(ch, Int32('9'))),
-                 SExtInt1ToInt32(Int32GreaterThanOrEqual(ch, Int32('0')))));
+    return BoolAnd(Int32LessThanOrEqual(ch, Int32('9')),
+        Int32GreaterThanOrEqual(ch, Int32('0')));
 }
 
 GateRef StubBuilder::StringToElementIndex(GateRef string)
@@ -3008,7 +2956,7 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right)
     Bind(&sameVariableCheck);
     Branch(Int64Equal(left, right), &strictEqual, &stringEqualCheck);
     Bind(&stringEqualCheck);
-    Branch(BoolAnd(TaggedIsString(left), TaggedIsString(right)), &stringCompare, &bigIntEqualCheck);
+    Branch(BothAreString(left, right), &stringCompare, &bigIntEqualCheck);
     Bind(&stringCompare);
     {
         Label lengthCompare(env);
@@ -3653,8 +3601,8 @@ GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef i
     GateRef length = TaggedCastToInt32(Load(VariableType::INT64(), receiver, lengthOffset));
     Label isVailedIndex(env);
     Label notValidIndex(env);
-    Branch(TruncInt32ToInt1(Int32And(ZExtInt1ToInt32(Int32GreaterThanOrEqual(index, Int32(0))),
-        ZExtInt1ToInt32(Int32UnsignedLessThan(index, length)))), &isVailedIndex, &notValidIndex);
+    Branch(BoolAnd(Int32GreaterThanOrEqual(index, Int32(0)),
+        Int32UnsignedLessThan(index, length)), &isVailedIndex, &notValidIndex);
     Bind(&isVailedIndex);
     {
         GateRef elements = GetElementsArray(receiver);
