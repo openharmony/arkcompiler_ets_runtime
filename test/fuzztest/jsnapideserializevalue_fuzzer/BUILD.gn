@@ -25,6 +25,9 @@ ohos_fuzztest("JSNApiDeserializeValueFuzzTest") {
   fuzz_config_file =
       "//arkcompiler/ets_runtime/test/fuzztest/jsnapideserializevalue_fuzzer"
 
+  resource_config_file =
+      "//arkcompiler/ets_runtime/test/resource/js_runtime/ohos_test.xml"
+
   sources = [ "jsnapideserializevalue_fuzzer.cpp" ]
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]

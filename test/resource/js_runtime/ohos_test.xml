@@ -127,7 +127,17 @@
     </target>
     <target name="AssemblerTest">
         <preparer>
-	    <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+	        <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="JSNApiDeserializeValueFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="JSNApiDeleteSerializationDataFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
 </configuration>
