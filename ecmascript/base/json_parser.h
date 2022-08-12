@@ -755,13 +755,13 @@ private:
         return true;
     }
 
-    bool isAsciiString_{false};
-    Text end_{nullptr};
-    Text current_{nullptr};
-    Text range_{nullptr};
-    JSThread *thread_{nullptr};
-    ObjectFactory *factory_{nullptr};
-    GlobalEnv *env_{nullptr};
+    bool isAsciiString_ {false};
+    Text end_ {nullptr};
+    Text current_ {nullptr};
+    Text range_ {nullptr};
+    JSThread *thread_ {nullptr};
+    ObjectFactory *factory_ {nullptr};
+    GlobalEnv *env_ {nullptr};
 };
 
 class Internalize {

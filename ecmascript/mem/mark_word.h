@@ -67,7 +67,7 @@ public:
     }
 
 private:
-    MarkWordType value_{0};
+    MarkWordType value_ {0};
 };
 }  // namespace ecmascript
 }  // namespace panda

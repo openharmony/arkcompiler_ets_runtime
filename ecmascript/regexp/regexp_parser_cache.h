@@ -40,14 +40,14 @@ private:
     size_t GetHash(EcmaString *pattern, const uint32_t flags);
 
     struct ParserKey {
-        EcmaString *pattern_{nullptr};
-        uint32_t flags_{UINT32_MAX};
-        JSTaggedValue codeBuffer_{JSTaggedValue::Hole()};
-        size_t bufferSize_{0};
+        EcmaString *pattern_ {nullptr};
+        uint32_t flags_ {UINT32_MAX};
+        JSTaggedValue codeBuffer_ {JSTaggedValue::Hole()};
+        size_t bufferSize_ {0};
         CVector<CString> newGroupNames_;
     };
 
-    std::array<ParserKey, CACHE_SIZE> info_{};
+    std::array<ParserKey, CACHE_SIZE> info_ {};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_REGEXP_PARSER_CACHE_H
