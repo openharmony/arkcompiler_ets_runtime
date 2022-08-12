@@ -74,3 +74,12 @@ let uint8 = new Uint8Array(2);
 print(...uint8);
 Uint8Array.prototype[Symbol.iterator] = iterFunc;
 print(...uint8);
+
+let fruits = ['Apple', 'Banana']
+print(...fruits)
+Array.prototype[Symbol.iterator] = function* () {
+    yield 1;
+    yield 2;
+    yield 3;
+}
+print(...fruits)
