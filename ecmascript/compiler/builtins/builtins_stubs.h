@@ -67,37 +67,23 @@ public:
         return Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(sizeof(JSTaggedType))));
     }
 
-    GateRef StringAt(GateRef obj, GateRef index)
-    {
-        auto env = GetEnvironment();
-        Label entry(env);
-        env->SubCfgEntry(&entry);
-        DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    inline GateRef StringAt(GateRef obj, GateRef index);
 
-        Label exit(env);
-        Label isUtf16(env);
-        Label isUtf8(env);
-        Label doIntOp(env);
-        Label leftIsNumber(env);
-        Label rightIsNumber(env);
-        GateRef dataUtf16 = PtrAdd(obj, IntPtr(EcmaString::DATA_OFFSET));
-        Branch(IsUtf16String(obj), &isUtf16, &isUtf8);
-        Bind(&isUtf16);
-        {
-            result = ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(dataUtf16,
-                PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint16_t))))));
-            Jump(&exit);
-        }
-        Bind(&isUtf8);
-        {
-            result = ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(dataUtf16,
-                PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint8_t))))));
-            Jump(&exit);
-        }
-        Bind(&exit);
-        auto ret = *result;
-        env->SubCfgExit();
-        return ret;
+    GateRef StringIndexOf(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,
+                          GateRef pos, GateRef max, GateRef rhsCount);
+    
+    GateRef StringIndexOf(GateRef lhs, GateRef rhs, GateRef pos);
+
+    GateRef GetUtf16Date(GateRef stringData, GateRef index)
+    {
+        return ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(stringData,
+            PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint16_t))))));
+    }
+
+    GateRef GetUtf8Date(GateRef stringData, GateRef index)
+    {
+        return ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(stringData,
+            PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint8_t))))));
     }
 };
 

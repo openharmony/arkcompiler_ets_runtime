@@ -1575,7 +1575,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetFunction(env, stringFuncPrototype, "concat", BuiltinsString::Concat, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "endsWith", BuiltinsString::EndsWith, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "includes", BuiltinsString::Includes, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "indexOf", BuiltinsString::IndexOf, FunctionLength::ONE);
+    SetFunction(env, stringFuncPrototype, "indexOf", BuiltinsString::IndexOf, FunctionLength::ONE,
+                static_cast<uint8_t>(BUILTINS_STUB_ID(IndexOf)));
     SetFunction(env, stringFuncPrototype, "lastIndexOf", BuiltinsString::LastIndexOf, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "localeCompare", BuiltinsString::LocaleCompare, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "match", BuiltinsString::Match, FunctionLength::ONE);
