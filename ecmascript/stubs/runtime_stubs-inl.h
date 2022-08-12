@@ -1900,9 +1900,12 @@ JSTaggedValue RuntimeStubs::RuntimeGetCallSpreadArgs(JSThread *thread, const JSH
         }
         nextArg.Update(JSIterator::IteratorValue(thread, next).GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (UNLIKELY(argvIndex + 1 >= argvMayMaxLength)) {
+            argvMayMaxLength = argvMayMaxLength + (argvMayMaxLength >> 1U);
+            argv = argv->SetCapacity(thread, argv, argvMayMaxLength);
+        }
         argv->Set(thread, argvIndex++, nextArg);
     }
-
     argv = factory->CopyArray(argv, argvMayMaxLength, argvIndex);
     return argv.GetTaggedValue();
 }
