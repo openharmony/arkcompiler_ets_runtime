@@ -21,7 +21,7 @@
 
 
 #### 安装教程
-1.  独立编译拉取arkcompiler_ets_runtime、arkcompiler_runtime_core、arkcompiler_ets_frontend三个仓（拉取时注意去掉前缀arkcompiler），执行[./ets_runtime/build/prebuilts_download.sh] 下载相关的编译所需工具。
+1.  独立编译拉取arkcompiler_ets_runtime、arkcompiler_runtime_core、arkcompiler_ets_frontend三个仓（拉取时注意去掉前缀arkcompiler），执行[./ets_runtime/build/prebuilts_download/prebuilts_download.sh] 下载相关的编译所需工具。
 2.  之后执行[./ets_runtime/build/compile_script/gen.sh ark]将.gn、.sh文件拿出来。
 3.  执行[./gen.sh]命令编译目前独立编译支持的所有目标，执行[./gen.sh abc]命令生成abc文件，执行[./gen.sh .]命令执行abc文件
 

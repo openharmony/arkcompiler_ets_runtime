@@ -47,7 +47,7 @@ export PATH=${source_root_dir}/prebuilts/build-tools/${HOST_DIR}/bin:$PATH
 tools="${source_root_dir}/prebuilts/build-tools/${HOST_DIR}/bin"
 own_npm="${source_root_dir}/prebuilts/build-tools/common/nodejs/node-v12.18.4-linux-x64/bin/npm"
 own_node="${source_root_dir}/prebuilts/build-tools/common/nodejs/node-v12.18.4-linux-x64/bin/node"
-build="out/ark/ark/build"
+build="out/build"
 add_path="out:${source_root_dir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib"
 
 
