@@ -13,7 +13,17 @@
 
 group("ark_aot_js_test") {
   testonly = true
-  deps = [ "formatrangetoparts:formatrangetopartsAotAction" ]
+  deps = [
+    "asyncfunctionenter:asyncfunctionenterAotAction",
+    "bigint_typed_array_constructors:bigint_typed_array_constructorsAotAction",
+    "call_default_args:call_default_argsAotAction",
+    "constructor_returns_non_object:constructor_returns_non_objectAotAction",
+    "formatrangetoparts:formatrangetopartsAotAction",
+    "global_this_js:global_this_jsAotAction",
+
+    #"module:moduleAotAction",
+    "undefined:undefinedAotAction",
+  ]
 }
 
 group("ark_aot_test") {
@@ -23,13 +33,8 @@ group("ark_aot_test") {
     "and:andAotAction",
     "aot_compatibility_test:aot_compatibility_test",
     "ashr:ashrAotAction",
-
-    #"asyncfunctionenter:asyncfunctionenterAotAction",
-    #bigint_typed_array_constructors:js
     "bind:bindAotAction",
-
-    #call_default_args:js
-    #"call_same_bytecode_func:call_same_bytecode_funcAotAction",
+    "call_same_bytecode_func:call_same_bytecode_funcAotAction",
     "callithisrange:callithisrangeAotAction",
     "calls:callsAotAction",
     "closeiterator:closeiteratorAotAction",
@@ -42,44 +47,39 @@ group("ark_aot_test") {
     "createobjecthavingmethod:createobjecthavingmethodAotAction",
     "createobjectwithbuffer:createobjectwithbufferAotAction",
     "createregexpwithliteral:createregexpwithliteralAotAction",
-
-    #constructor_returns_non_object:js
     "dec:decAotAction",
     "defineasyncfunc:defineasyncfuncAotAction",
     "defineclasswithbuffer:defineclasswithbufferAotAction",
     "definefunc:definefuncAotAction",
     "definefunc_variable_args:definefunc_variable_argsAotAction",
     "definegeneratorfunc:definegeneratorfuncAotAction",
-
-    #"definegettersetterbyvalue:definegettersetterbyvalueAotAction",
+    "definegettersetterbyvalue:definegettersetterbyvalueAotAction",
     "definemethod:definemethodAotAction",
     "definencfunc:definencfuncAotAction",
     "delobjprop:delobjpropAotAction",
-
-    #"destructuring:destructuringAotAction",
+    "destructuring:destructuringAotAction",
     "div:divAotAction",
     "duplicatefunctions:duplicatefunctionsAotAction",
     "exceptionhandler:exceptionhandlerAotAction",
     "exp:expAotAction",
-
-    #"generatorcontinuefinally:generatorcontinuefinallyAotAction",
+    "generatorcontinuefinally:generatorcontinuefinallyAotAction",
     "getiterator:getiteratorAotAction",
-
-    #"getiteratornext:getiteratornextAotAction",
+    "getiteratornext:getiteratornextAotAction",
     "getnextpropname:getnextpropnameAotAction",
     "getpropiterator:getpropiteratorAotAction",
     "getresumemode:getresumemodeAotAction",
-
-    #"gettemplateobject:gettemplateobjectAotAction",
-    #"getunmappedargs:getunmappedargsAotAction",
+    "gettemplateobject:gettemplateobjectAotAction",
+    "getunmappedargs:getunmappedargsAotAction",
+    "global_this_ts:global_this_tsAotAction",
     "helloaot:helloaotAotAction",
     "inc:incAotAction",
     "instanceof:instanceofAotAction",
     "isfalse:isfalseAotAction",
     "isin:isinAotAction",
     "istrue:istrueAotAction",
-
-    #"ldbigint:ldbigintAotAction",
+    "large_func:large_funcAotAction",
+    "large_func_acc:large_func_accAotAction",
+    "ldbigint:ldbigintAotAction",
     "ldconst:ldconstAotAction",
     "ldfunctionpref:ldfunctionprefAotAction",
     "ldglobalvar:ldglobalvarAotAction",
@@ -88,6 +88,8 @@ group("ark_aot_test") {
     "ldsuperbyname:ldsuperbynameAotAction",
     "logic_op:logic_opAotAction",
     "loops:loopsAotAction",
+
+    #"loop_with_variable_exchange:loop_with_variable_exchangeAotAction",
     "mod:modAotAction",
     "mul:mulAotAction",
     "neg:negAotAction",
@@ -97,6 +99,8 @@ group("ark_aot_test") {
     "not:notAotAction",
     "or:orAotAction",
     "poplexenv:poplexenvAotAction",
+
+    #"proxy:proxyAotAction",
     "resumegenerator:resumegeneratorAotAction",
     "setobjectwithproto:setobjectwithprotoAotAction",
     "shl:shlAotAction",
@@ -109,8 +113,7 @@ group("ark_aot_test") {
 
     #"stobjbyindex:stobjbyindexAotAction",
     "stobjbyname:stobjbynameAotAction",
-
-    #"stobjbyvalue:stobjbyvalueAotAction",
+    "stobjbyvalue:stobjbyvalueAotAction",
     "stownbyindex:stownbyindexAotAction",
     "stownbyname:stownbynameAotAction",
     "stownbynamewithnameset:stownbynamewithnamesetAotAction",
@@ -120,13 +123,11 @@ group("ark_aot_test") {
     "strictnotequal:strictnotequalAotAction",
     "stsuperbyname:stsuperbynameAotAction",
     "sub:subAotAction",
-
-    #"supercall:supercallAotAction",
-    #"supercallspread:supercallspreadAotAction",
+    "supercall:supercallAotAction",
+    "supercallspread:supercallspreadAotAction",
     "suspendgenerator:suspendgeneratorAotAction",
     "suspendgeneratorbranch:suspendgeneratorbranchAotAction",
-
-    #"suspendgeneratorfor:suspendgeneratorforAotAction",
+    "suspendgeneratorfor:suspendgeneratorforAotAction",
     "suspendgeneratorphi:suspendgeneratorphiAotAction",
     "suspendgeneratorreturn:suspendgeneratorreturnAotAction",
     "suspendgeneratorthrow:suspendgeneratorthrowAotAction",
@@ -138,8 +139,6 @@ group("ark_aot_test") {
     "try_catch_finally:try_catch_finallyAotAction",
     "trystglobalbynameprefid32:trystglobalbynameprefid32AotAction",
     "typeof:typeofAotAction",
-
-    #undefined:js
     "xor:xorAotAction",
   ]
 }

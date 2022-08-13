@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-declare function print(str:string):string;
-
 let C = class {
     [async () => {}]() {
         return 10;
