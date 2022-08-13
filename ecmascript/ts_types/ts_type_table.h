@@ -79,8 +79,6 @@ private:
     static void CheckModule(JSThread *thread, const TSManager* tsManager, const JSHandle<EcmaString> target,
                             CVector<JSHandle<EcmaString>> &recordImportModules);
 
-    static int GetTypeKindFromFileByLocalId(JSThread *thread, const JSPandaFile *jsPandaFile, int localId);
-
     static void MergeClassFiled(JSThread *thread, JSHandle<TSClassType> classType,
                                 JSHandle<TSClassType> extendClassType);
 };
