@@ -58,10 +58,12 @@ DebuggerImpl::~DebuggerImpl()
 
 bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &fileName)
 {
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     if (fileName.substr(0, DATA_APP_PATH.length()) != DATA_APP_PATH) {
         LOG_DEBUGGER(DEBUG) << "NotifyScriptParsed: unsupport file: " << fileName;
         return false;
     }
+#endif
 
     const JSPandaFile *jsPandaFile = nullptr;
     JSPandaFileManager::GetInstance()->EnumerateJSPandaFiles([&jsPandaFile, &fileName](

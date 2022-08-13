@@ -39,13 +39,13 @@ bool JSPtExtractor::SingleStepper::StepComplete(uint32_t bcOffset) const
     uint32_t stackDepth = GetStackDepth();
 
     switch (type_) {
-        case Type::INTO: {
+        case Type::STEP_INTO: {
             if (method_ == method && InStepRange(bcOffset)) {
                 return false;
             }
             break;
         }
-        case Type::OVER: {
+        case Type::STEP_OVER: {
             if (stackDepth_ < stackDepth) {
                 return false;
             }
@@ -54,7 +54,7 @@ bool JSPtExtractor::SingleStepper::StepComplete(uint32_t bcOffset) const
             }
             break;
         }
-        case Type::OUT: {
+        case Type::STEP_OUT: {
             if (stackDepth_ <= stackDepth) {
                 return false;
             }
@@ -70,17 +70,17 @@ bool JSPtExtractor::SingleStepper::StepComplete(uint32_t bcOffset) const
 
 std::unique_ptr<JSPtExtractor::SingleStepper> JSPtExtractor::GetStepIntoStepper(const EcmaVM *ecmaVm)
 {
-    return GetStepper(ecmaVm, SingleStepper::Type::INTO);
+    return GetStepper(ecmaVm, SingleStepper::Type::STEP_INTO);
 }
 
 std::unique_ptr<JSPtExtractor::SingleStepper> JSPtExtractor::GetStepOverStepper(const EcmaVM *ecmaVm)
 {
-    return GetStepper(ecmaVm, SingleStepper::Type::OVER);
+    return GetStepper(ecmaVm, SingleStepper::Type::STEP_OVER);
 }
 
 std::unique_ptr<JSPtExtractor::SingleStepper> JSPtExtractor::GetStepOutStepper(const EcmaVM *ecmaVm)
 {
-    return GetStepper(ecmaVm, SingleStepper::Type::OUT);
+    return GetStepper(ecmaVm, SingleStepper::Type::STEP_OUT);
 }
 
 std::list<JSPtStepRange> JSPtExtractor::GetStepRanges(File::EntityId methodId, uint32_t offset)
@@ -106,7 +106,7 @@ std::unique_ptr<JSPtExtractor::SingleStepper> JSPtExtractor::GetStepper(const Ec
     JSMethod *method = DebuggerApi::GetMethod(ecmaVm);
     ASSERT(method != nullptr);
 
-    if (type == SingleStepper::Type::OUT) {
+    if (type == SingleStepper::Type::STEP_OUT) {
         return std::make_unique<SingleStepper>(ecmaVm, method, std::list<JSPtStepRange> {}, type);
     }
 

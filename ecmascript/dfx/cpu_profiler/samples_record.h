@@ -25,10 +25,6 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 
-#include <unistd.h>
-#include <sys/syscall.h>
-
-
 namespace panda::ecmascript {
 const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
 struct FrameInfo {

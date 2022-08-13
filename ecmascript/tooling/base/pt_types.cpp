@@ -15,8 +15,6 @@
 
 #include "pt_types.h"
 
-#include "ecmascript/dfx/cpu_profiler/samples_record.h"
-
 namespace panda::ecmascript::tooling {
 using ObjectType = RemoteObject::TypeName;
 using ObjectSubType = RemoteObject::SubTypeName;
