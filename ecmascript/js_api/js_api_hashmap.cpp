@@ -165,6 +165,9 @@ JSTaggedValue JSAPIHashMap::Remove(JSThread *thread, JSHandle<JSAPIHashMap> hash
     }
     hashMap->SetSize(--nodeNum);
     uint32_t length = hashArray->GetLength();
+    ASSERT_PRINT(length >= TaggedHashArray::DEFAULT_INITIAL_CAPACITY,
+                 "TaggedHashArray length must greater than or equal to the default minimum value");
+
     uint32_t index = (length - 1) & hash;
     JSTaggedValue rootVa = hashArray->Get(index);
     if (rootVa.IsRBTreeNode()) {

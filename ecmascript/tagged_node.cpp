@@ -38,11 +38,11 @@ JSHandle<RBTreeNode> LinkedNode::Treeing(JSThread *thread, const JSHandle<Linked
 void RBTreeNode::InitRBTreeNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key,
                                 JSHandle<JSTaggedValue> value, int count)
 {
-    this->InitTaggedNode(thread, hash, key, value);
-    this->SetLeft(thread, JSTaggedValue::Hole());
-    this->SetRight(thread, JSTaggedValue::Hole());
-    this->SetIsRed(thread, JSTaggedValue(true));
-    this->SetCount(count);
+    InitTaggedNode(thread, hash, key, value);
+    SetLeft(thread, JSTaggedValue::Hole());
+    SetRight(thread, JSTaggedValue::Hole());
+    SetIsRed(thread, JSTaggedValue(true));
+    SetCount(count);
 }
 
 // number of node in subtree rooted at treeNode; 0 if treeNode is Hole
@@ -111,7 +111,6 @@ void RBTreeNode::InOrderTraverse(JSThread *thread, const JSHandle<RBTreeNode> &t
         JSHandle<RBTreeNode> rightChild(thread, treeNode->GetRight());
         InOrderTraverse(thread, rightChild, bit, nodeStruct);
     }
-    return;
 }
 
 void RBTreeNode::Divide(JSThread *thread, JSHandle<TaggedHashArray> table,

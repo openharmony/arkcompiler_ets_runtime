@@ -25,9 +25,9 @@ class TaggedNode : public TaggedObject {
 public:
     void InitTaggedNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value)
     {
-        this->SetHash(thread, JSTaggedValue(hash));
-        this->SetKey(thread, key.GetTaggedValue());
-        this->SetValue(thread, value.GetTaggedValue());
+        SetHash(thread, JSTaggedValue(hash));
+        SetKey(thread, key.GetTaggedValue());
+        SetValue(thread, value.GetTaggedValue());
     }
 
     static TaggedNode *Cast(TaggedObject *object)
@@ -84,8 +84,8 @@ public:
     void InitLinkedNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key,
                         JSHandle<JSTaggedValue> value, JSHandle<LinkedNode> next)
     {
-        this->SetNext(thread, next);
-        this->InitTaggedNode(thread, hash, key, value);
+        SetNext(thread, next);
+        InitTaggedNode(thread, hash, key, value);
     }
 
     static LinkedNode *Cast(TaggedObject *object)

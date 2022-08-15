@@ -1144,60 +1144,74 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSDataView::Cast(*obj)->SetByteOffset(0);
             break;
         // non ECMA standard jsapi container
-        case JSType::JS_API_ARRAY_LIST:
+        case JSType::JS_API_ARRAY_LIST: {
             JSAPIArrayList::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
             break;
-        case JSType::JS_API_HASH_MAP:
+        }
+        case JSType::JS_API_HASH_MAP: {
             JSAPIHashMap::Cast(*obj)->SetSize(0);
             JSAPIHashMap::Cast(*obj)->SetTable(thread_, JSTaggedValue::Undefined());
             break;
-        case JSType::JS_API_HASH_SET:
+        }
+        case JSType::JS_API_HASH_SET: {
             JSAPIHashSet::Cast(*obj)->SetSize(0);
             JSAPIHashSet::Cast(*obj)->SetTable(thread_, JSTaggedValue::Undefined());
             break;
-        case JSType::JS_API_TREE_MAP:
+        }
+        case JSType::JS_API_TREE_MAP: {
             JSAPITreeMap::Cast(*obj)->SetTreeMap(thread_, JSTaggedValue::Undefined());
             break;
-        case JSType::JS_API_TREE_SET:
+        }
+        case JSType::JS_API_TREE_SET: {
             JSAPITreeSet::Cast(*obj)->SetTreeSet(thread_, JSTaggedValue::Undefined());
             break;
-        case JSType::JS_API_QUEUE:
+        }
+        case JSType::JS_API_QUEUE: {
             JSAPIQueue::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
             JSAPIQueue::Cast(*obj)->SetFront(0);
             JSAPIQueue::Cast(*obj)->SetTail(0);
             break;
-        case JSType::JS_API_PLAIN_ARRAY:
+        }
+        case JSType::JS_API_PLAIN_ARRAY: {
             JSAPIPlainArray::Cast(*obj)->SetLength(0);
             JSAPIPlainArray::Cast(*obj)->SetValues(thread_, JSTaggedValue(0));
             JSAPIPlainArray::Cast(*obj)->SetKeys(thread_, JSTaggedValue(0));
             break;
-        case JSType::JS_API_STACK:
+        }
+        case JSType::JS_API_STACK: {
             JSAPIStack::Cast(*obj)->SetTop(0);
             break;
-        case JSType::JS_API_DEQUE:
+        }
+        case JSType::JS_API_DEQUE: {
             JSAPIDeque::Cast(*obj)->SetFirst(0);
             JSAPIDeque::Cast(*obj)->SetLast(0);
             break;
-        case JSType::JS_API_LIGHT_WEIGHT_MAP:
+        }
+        case JSType::JS_API_LIGHT_WEIGHT_MAP: {
             JSAPILightWeightMap::Cast(*obj)->SetLength(0);
             JSAPILightWeightMap::Cast(*obj)->SetHashes(thread_, JSTaggedValue::Undefined());
             JSAPILightWeightMap::Cast(*obj)->SetKeys(thread_, JSTaggedValue::Undefined());
             JSAPILightWeightMap::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
             break;
-        case JSType::JS_API_LIGHT_WEIGHT_SET:
+        }
+        case JSType::JS_API_LIGHT_WEIGHT_SET: {
             JSAPILightWeightSet::Cast(*obj)->SetLength(0);
             JSAPILightWeightSet::Cast(*obj)->SetHashes(thread_, JSTaggedValue::Undefined());
             JSAPILightWeightSet::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
             break;
-        case JSType::JS_API_VECTOR:
+        }
+        case JSType::JS_API_VECTOR: {
             JSAPIVector::Cast(*obj)->SetLength(0);
             break;
-        case JSType::JS_API_LIST:
+        }
+        case JSType::JS_API_LIST: {
             JSAPIList::Cast(*obj)->SetSingleList(thread_, JSTaggedValue::Undefined());
             break;
-        case JSType::JS_API_LINKED_LIST:
+        }
+        case JSType::JS_API_LINKED_LIST: {
             JSAPILinkedList::Cast(*obj)->SetDoubleList(thread_, JSTaggedValue::Undefined());
             break;
+        }
         case JSType::JS_ASYNC_FUNC_OBJECT:
             JSAsyncFuncObject::Cast(*obj)->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
             JSAsyncFuncObject::Cast(*obj)->SetResumeResult(thread_, JSTaggedValue::Undefined());
