@@ -83,6 +83,7 @@ HWTEST_F_L0(GCTest, FullGCOne)
 
 HWTEST_F_L0(GCTest, ChangeGCParams)
 {
+#ifndef ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
     EXPECT_TRUE(heap->GetConcurrentMarker()->IsEnabled());
@@ -112,10 +113,12 @@ HWTEST_F_L0(GCTest, ChangeGCParams)
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
     EXPECT_TRUE(heap->GetConcurrentMarker()->IsEnabled());
     EXPECT_TRUE(heap->GetSweeper()->ConcurrentSweepEnabled());
+#endif
 }
 
 HWTEST_F_L0(GCTest, ConfigDisable)
 {
+#ifndef ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::CONFIG_DISABLE);
     heap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::CONFIG_DISABLE);
@@ -130,10 +133,12 @@ HWTEST_F_L0(GCTest, ConfigDisable)
 
     EXPECT_FALSE(heap->GetConcurrentMarker()->IsEnabled());
     EXPECT_FALSE(heap->GetSweeper()->ConcurrentSweepEnabled());
+#endif
 }
 
 HWTEST_F_L0(GCTest, NotifyMemoryPressure)
 {
+#ifndef ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
     uint32_t markTaskNum = heap->GetMaxMarkTaskCount();
@@ -163,5 +168,6 @@ HWTEST_F_L0(GCTest, NotifyMemoryPressure)
 
     heap->NotifyMemoryPressure(false);
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::CONSERVATIVE);
+#endif
 }
 }  // namespace panda::test
