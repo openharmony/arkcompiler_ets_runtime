@@ -32,8 +32,8 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsObject::ObjectConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, Constructor);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, Constructor);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     auto ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
@@ -63,8 +63,8 @@ JSTaggedValue BuiltinsObject::ObjectConstructor(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, Assign);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, Assign);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     uint32_t numArgs = argv->GetArgsNumber();
@@ -89,7 +89,7 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
             JSHandle<JSObject> from = JSTaggedValue::ToObject(thread, source);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-            JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, JSHandle<JSTaggedValue>::Cast(from));
+            JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, source);
             // ReturnIfAbrupt(keys)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -105,7 +105,7 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
             for (uint32_t j = 0; j < keysLen; j++) {
                 PropertyDescriptor desc(thread);
                 key.Update(keys->Get(j));
-                bool success = JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(from), key, desc);
+                bool success = JSTaggedValue::GetOwnProperty(thread, source, key, desc);
                 // ReturnIfAbrupt(desc)
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -211,8 +211,8 @@ JSTaggedValue BuiltinsObject::ObjectDefineProperties(JSThread *thread, const JSH
 JSTaggedValue BuiltinsObject::Create(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, Create);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, Create);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1.If Type(O) is neither Object nor Null, throw a TypeError exception.
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
@@ -240,8 +240,8 @@ JSTaggedValue BuiltinsObject::Create(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::DefineProperties(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, DefineProperties);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, DefineProperties);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1.Return ObjectDefineProperties(O, Properties).
     return ObjectDefineProperties(thread, GetCallArg(argv, 0), GetCallArg(argv, 1));
@@ -251,8 +251,8 @@ JSTaggedValue BuiltinsObject::DefineProperties(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::DefineProperty(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, DefineProperty);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, DefineProperty);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1.If Type(O) is not Object, throw a TypeError exception.
@@ -288,7 +288,8 @@ JSTaggedValue BuiltinsObject::DefineProperty(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::Freeze(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, Freeze);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, Freeze);
 
     // 1.If Type(O) is not Object, return O.
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
@@ -296,7 +297,6 @@ JSTaggedValue BuiltinsObject::Freeze(EcmaRuntimeCallInfo *argv)
         return obj.GetTaggedValue();
     }
 
-    JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 2.Let status be SetIntegrityLevel( O, "frozen").
@@ -319,8 +319,8 @@ JSTaggedValue BuiltinsObject::Freeze(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::GetOwnPropertyDescriptor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, GetOwnPropertyDescriptor);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, GetOwnPropertyDescriptor);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1.Let obj be ToObject(O).
@@ -409,34 +409,36 @@ JSTaggedValue BuiltinsObject::GetOwnPropertyKeys(JSThread *thread, const JSHandl
 JSTaggedValue BuiltinsObject::GetOwnPropertyNames(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, GetOwnPropertyNames);
-    [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, GetOwnPropertyNames);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
     KeyType type = KeyType::STRING_TYPE;
 
     // 1.Return GetOwnPropertyKeys(O, String).
-    return GetOwnPropertyKeys(argv->GetThread(), obj, type);
+    return GetOwnPropertyKeys(thread, obj, type);
 }
 
 // 19.1.2.8 Object.getOwnPropertySymbols ( O )
 JSTaggedValue BuiltinsObject::GetOwnPropertySymbols(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, GetOwnPropertySymbols);
-    [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, GetOwnPropertySymbols);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
     KeyType type = KeyType::SYMBOL_TYPE;
 
     // 1.Return GetOwnPropertyKeys(O, Symbol).
-    return GetOwnPropertyKeys(argv->GetThread(), obj, type);
+    return GetOwnPropertyKeys(thread, obj, type);
 }
 
 // 19.1.2.9 Object.getPrototypeOf ( O )
 JSTaggedValue BuiltinsObject::GetPrototypeOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, GetPrototypeOf);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, GetPrototypeOf);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1.Let obj be ToObject(O).
@@ -518,8 +520,8 @@ JSTaggedValue BuiltinsObject::IsSealed(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::Keys(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, Keys);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, Keys);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let obj be ToObject(O).
@@ -571,23 +573,24 @@ JSTaggedValue BuiltinsObject::Values(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::PreventExtensions(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, PreventExtensions);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, PreventExtensions);
     // 1. If Type(O) is not Object, return O.
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
     if (!obj->IsECMAObject()) {
         return obj.GetTaggedValue();
     }
-    [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 2. Let status be O.[[PreventExtensions]]().
-    bool status = JSTaggedValue::PreventExtensions(argv->GetThread(), obj);
+    bool status = JSTaggedValue::PreventExtensions(thread, obj);
 
     // 3. ReturnIfAbrupt(status).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(argv->GetThread());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 4. If status is false, throw a TypeError exception.
     if (!status) {
         // throw a TypeError exception.
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "PreventExtensions: preventExtensions failed",
+        THROW_TYPE_ERROR_AND_RETURN(thread, "PreventExtensions: preventExtensions failed",
                                     JSTaggedValue::Exception());
     }
 
@@ -600,7 +603,8 @@ JSTaggedValue BuiltinsObject::PreventExtensions(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::Seal(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, Seal);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, Seal);
 
     // 1. If Type(O) is not Object, return O.
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
@@ -608,7 +612,6 @@ JSTaggedValue BuiltinsObject::Seal(EcmaRuntimeCallInfo *argv)
         return msg.GetTaggedValue();
     }
 
-    JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 2. Let status be SetIntegrityLevel(O, "sealed").
@@ -621,7 +624,7 @@ JSTaggedValue BuiltinsObject::Seal(EcmaRuntimeCallInfo *argv)
     // 4. If status is false, throw a TypeError exception.
     if (!status) {
         // throw a TypeError exception.
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "Seal: seal failed", JSTaggedValue::Exception());
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Seal: seal failed", JSTaggedValue::Exception());
     }
 
     // 5. Return O.
@@ -632,8 +635,8 @@ JSTaggedValue BuiltinsObject::Seal(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::SetPrototypeOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, SetPrototypeOf);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, SetPrototypeOf);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be RequireObjectCoercible(O).
     JSHandle<JSTaggedValue> object = JSTaggedValue::RequireObjectCoercible(thread, GetCallArg(argv, 0));
@@ -676,8 +679,8 @@ JSTaggedValue BuiltinsObject::SetPrototypeOf(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::HasOwnProperty(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, HasOwnProperty);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, HasOwnProperty);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let P be ToPropertyKey(V).
     JSHandle<JSTaggedValue> prop = GetCallArg(argv, 0);
@@ -701,8 +704,8 @@ JSTaggedValue BuiltinsObject::HasOwnProperty(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::IsPrototypeOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, IsPrototypeOf);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, IsPrototypeOf);
     // 1. If Type(V) is not Object, return false.
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     if (!msg->IsECMAObject()) {
@@ -766,8 +769,8 @@ JSTaggedValue BuiltinsObject::PropertyIsEnumerable(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::ToLocaleString(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, ToLocaleString);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, ToLocaleString);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be the this value.
     JSHandle<JSTaggedValue> object = GetThis(argv);
@@ -827,8 +830,8 @@ JSTaggedValue BuiltinsObject::GetBuiltinTag(JSThread *thread, const JSHandle<JSO
 JSTaggedValue BuiltinsObject::ToString(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, ToString);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, ToString);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. If the this value is undefined, return "[object Undefined]".
 
@@ -875,8 +878,8 @@ JSTaggedValue BuiltinsObject::ToString(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::ValueOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, ValueOf);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, ValueOf);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Return ToObject(this value).
@@ -888,8 +891,8 @@ JSTaggedValue BuiltinsObject::ValueOf(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::ProtoGetter(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, ProtoGetter);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, ProtoGetter);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1.Let obj be ToObject(this value).
@@ -905,8 +908,8 @@ JSTaggedValue BuiltinsObject::ProtoGetter(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::ProtoSetter(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, ProtoSetter);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, ProtoSetter);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be RequireObjectCoercible(this value).
     JSHandle<JSTaggedValue> obj = JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv));
@@ -954,8 +957,8 @@ JSTaggedValue BuiltinsObject::CreateRealm(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::Entries(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Object, ToString);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, ToString);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let obj be ? ToObject(O).

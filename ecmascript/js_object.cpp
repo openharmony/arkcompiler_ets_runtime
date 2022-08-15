@@ -1125,10 +1125,10 @@ JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHan
 
 JSHandle<JSObject> JSObject::ObjectCreate(JSThread *thread, const JSHandle<JSObject> &proto)
 {
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetObjectFunction();
+    auto ecmaVM = thread->GetEcmaVM();
+    JSHandle<JSTaggedValue> constructor = ecmaVM->GetGlobalEnv()->GetObjectFunction();
     JSHandle<JSObject> objHandle =
-        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor);
+        ecmaVM->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread);
     SetPrototype(thread, objHandle, JSHandle<JSTaggedValue>(proto));
     return objHandle;
