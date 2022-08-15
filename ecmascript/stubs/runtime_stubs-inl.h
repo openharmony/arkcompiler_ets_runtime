@@ -954,10 +954,9 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionEnter(JSThread *thread)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. create promise
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> promiseFunc = globalEnv->GetPromiseFunction();
+    JSHandle<JSFunction> promiseFunc(globalEnv->GetPromiseFunction());
 
-    JSHandle<JSPromise> promiseObject =
-        JSHandle<JSPromise>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(promiseFunc), promiseFunc));
+    JSHandle<JSPromise> promiseObject(factory->NewJSObjectByConstructor(promiseFunc));
     promiseObject->SetPromiseState(PromiseState::PENDING);
     // 2. create asyncfuncobj
     JSHandle<JSAsyncFuncObject> asyncFuncObj = factory->NewJSAsyncFuncObject();
@@ -1491,7 +1490,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateEmptyObject([[maybe_unused]] JSThread *
                                                      JSHandle<GlobalEnv> globalEnv)
 {
     JSHandle<JSFunction> builtinObj(globalEnv->GetObjectFunction());
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(builtinObj, JSHandle<JSTaggedValue>(builtinObj));
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(builtinObj);
     return obj.GetTaggedValue();
 }
 
@@ -1499,7 +1498,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateEmptyArray([[maybe_unused]] JSThread *t
                                                     JSHandle<GlobalEnv> globalEnv)
 {
     JSHandle<JSFunction> builtinObj(globalEnv->GetArrayFunction());
-    JSHandle<JSObject> arr = factory->NewJSObjectByConstructor(builtinObj, JSHandle<JSTaggedValue>(builtinObj));
+    JSHandle<JSObject> arr = factory->NewJSObjectByConstructor(builtinObj);
     return arr.GetTaggedValue();
 }
 
@@ -1699,9 +1698,8 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, const J
     // 26.3.4.3 prototype
     // Whenever a GeneratorFunction instance is created another ordinary object is also created and
     // is the initial value of the generator function's "prototype" property.
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> initialGeneratorFuncPrototype =
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
     JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
@@ -1721,9 +1719,8 @@ JSTaggedValue RuntimeStubs::RuntimeDefineAsyncGeneratorFunc(JSThread *thread, co
     // 26.3.4.3 prototype
     // Whenever a GeneratorFunction instance is created another ordinary object is also created and
     // is the initial value of the generator function's "prototype" property.
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> initialGeneratorFuncPrototype =
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
     JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);

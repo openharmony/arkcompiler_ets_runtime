@@ -45,6 +45,7 @@ JSTaggedValue BuiltinsObject::ObjectConstructor(EcmaRuntimeCallInfo *argv)
     if (!newTarget->IsUndefined() && !(newTarget.GetTaggedValue() == constructor.GetTaggedValue())) {
         JSHandle<JSObject> obj =
             ecmaVm->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return obj.GetTaggedValue();
     }
 
@@ -986,8 +987,8 @@ JSTaggedValue BuiltinsObject::FromEntries(EcmaRuntimeCallInfo *argv)
     // 3. Assert: obj is an extensible ordinary object with no own properties.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetObjectFunction();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor);
+    JSHandle<JSFunction> constructor(env->GetObjectFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(constructor);
 
     // 4. Let stepsDefine be the algorithm steps defined in CreateDataPropertyOnObject Functions.
     // 5. Let lengthDefine be the number of non-optional parameters of the function definition in

@@ -101,8 +101,8 @@ JSTaggedValue BuiltinsLocale::Maximize(EcmaRuntimeCallInfo *argv)
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
 
-    JSHandle<JSTaggedValue> ctor = env->GetLocaleFunction();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor);
+    JSHandle<JSFunction> ctor(env->GetLocaleFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
     factory->NewJSIntlIcuData(JSHandle<JSLocale>::Cast(obj), source, JSLocale::FreeIcuLocale);
     return obj.GetTaggedValue();
 }
@@ -135,8 +135,8 @@ JSTaggedValue BuiltinsLocale::Minimize(EcmaRuntimeCallInfo *argv)
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
 
-    JSHandle<JSTaggedValue> ctor = env->GetLocaleFunction();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor);
+    JSHandle<JSFunction> ctor(env->GetLocaleFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
     factory->NewJSIntlIcuData(JSHandle<JSLocale>::Cast(obj), source, JSLocale::FreeIcuLocale);
     return obj.GetTaggedValue();
 }

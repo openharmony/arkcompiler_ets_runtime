@@ -41,9 +41,9 @@ JSTaggedValue ContainersVector::VectorConstructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
     JSHandle<JSAPIVector> obj =
         JSHandle<JSAPIVector>(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<TaggedArray> newTaggedArray = factory->NewTaggedArray(JSAPIVector::DEFAULT_CAPACITY_LENGTH);
     obj->SetElements(thread, newTaggedArray);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     return obj.GetTaggedValue();
 }

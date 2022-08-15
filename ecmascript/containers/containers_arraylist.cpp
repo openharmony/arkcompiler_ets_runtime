@@ -40,10 +40,9 @@ JSTaggedValue ContainersArrayList::ArrayListConstructor(EcmaRuntimeCallInfo *arg
     }
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<TaggedArray> newTaggedArray = factory->NewTaggedArray(JSAPIArrayList::DEFAULT_CAPACITY_LENGTH);
     obj->SetElements(thread, newTaggedArray);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     return obj.GetTaggedValue();
 }
 

@@ -1182,9 +1182,8 @@ JSTaggedValue SlowRuntimeStub::DefineAsyncGeneratorFunc(JSThread *thread, JSFunc
     // 26.3.4.3 prototype
     // Whenever a GeneratorFunction instance is created another ordinary object is also created and
     // is the initial value of the generator function's "prototype" property.
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> initialAsyncGeneratorFuncPrototype =
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> initialAsyncGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
     JSObject::SetPrototype(thread, initialAsyncGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     jsFunc->SetProtoOrDynClass(thread, initialAsyncGeneratorFuncPrototype);

@@ -1745,8 +1745,8 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // RegExp.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> regPrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> regPrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> regPrototypeValue(regPrototype);
 
     // RegExp.prototype_or_dynclass
@@ -3029,8 +3029,8 @@ void Builtins::InitializeDateTimeFormat(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // DateTimeFormat.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> dtfPrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> dtfPrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> dtfPrototypeValue(dtfPrototype);
 
     // DateTimeFormat.prototype_or_dynclass
@@ -3071,8 +3071,8 @@ void Builtins::InitializeRelativeTimeFormat(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // RelativeTimeFormat.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> rtfPrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> rtfPrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> rtfPrototypeValue(rtfPrototype);
 
     // RelativeTimeFormat.prototype_or_dynclass
@@ -3108,8 +3108,8 @@ void Builtins::InitializeNumberFormat(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // NumberFormat.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> nfPrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> nfPrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> nfPrototypeValue(nfPrototype);
 
     // NumberFormat.prototype_or_dynclass
@@ -3146,8 +3146,8 @@ void Builtins::InitializeLocale(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // Locale.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> localePrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> localePrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> localePrototypeValue(localePrototype);
 
     // Locale.prototype_or_dynclass
@@ -3207,8 +3207,8 @@ void Builtins::InitializeCollator(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // Collator.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> collatorPrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> collatorPrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> collatorPrototypeValue(collatorPrototype);
 
     // Collator.prototype_or_dynclass
@@ -3242,8 +3242,8 @@ void Builtins::InitializePluralRules(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // PluralRules.prototype
-    JSHandle<JSTaggedValue> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> prPrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> prPrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> prPrototypeValue(prPrototype);
 
     // PluralRules.prototype_or_dynclass
@@ -3275,8 +3275,8 @@ void Builtins::InitializeDisplayNames(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // DisplayNames.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> dnPrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> dnPrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> dnPrototypeValue(dnPrototype);
 
     // DisplayNames.prototype_or_dynclass
@@ -3308,8 +3308,8 @@ void Builtins::InitializeListFormat(const JSHandle<GlobalEnv> &env)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // JSListFormat.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> lfPrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> lfPrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> lfPrototypeValue(lfPrototype);
 
     // JSListFormat.prototype_or_dynclass
@@ -3395,8 +3395,8 @@ void Builtins::InitializeCjsModule(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // CjsModule.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> cjsModulePrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> cjsModulePrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> cjsModulePrototypeValue(cjsModulePrototype);
 
     // CjsModule.prototype_or_dynclass
@@ -3450,8 +3450,8 @@ void Builtins::InitializeCjsExports(const JSHandle<GlobalEnv> &env) const
     [[maybe_unused]] EcmaHandleScope scope(thread_);
 
     // CjsExports.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> cjsExportsPrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> cjsExportsPrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> cjsExportsPrototypeValue(cjsExportsPrototype);
 
     // CjsExports.prototype_or_dynclass
@@ -3472,8 +3472,8 @@ void Builtins::InitializeCjsRequire(const JSHandle<GlobalEnv> &env) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // CjsRequire.prototype
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> cjsRequirePrototype = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> cjsRequirePrototype = factory_->NewJSObjectByConstructor(objFun);
     JSHandle<JSTaggedValue> cjsRequirePrototypeValue(cjsRequirePrototype);
 
     // CjsExports.prototype_or_dynclass

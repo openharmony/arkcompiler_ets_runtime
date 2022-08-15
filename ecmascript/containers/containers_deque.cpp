@@ -40,10 +40,9 @@ JSTaggedValue ContainersDeque::DequeConstructor(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
-    JSHandle<TaggedArray> newElements = factory->NewTaggedArray(JSAPIDeque::DEFAULT_CAPACITY_LENGTH);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<TaggedArray> newElements = factory->NewTaggedArray(JSAPIDeque::DEFAULT_CAPACITY_LENGTH);
     obj->SetElements(thread, newElements);
-
     return obj.GetTaggedValue();
 }
 

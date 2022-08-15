@@ -73,7 +73,7 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
 
     // 8. Set the [[Prototype]] internal slot of A to proto.
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> arrayFunc = env->GetArrayFunction();
+    JSHandle<JSFunction> arrayFunc(env->GetArrayFunction());
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(arrayFunc), newTarget);
     // 9. Set the [[Extensible]] internal slot of A to true.
     obj->GetJSHClass()->SetExtensible(true);
@@ -342,8 +342,8 @@ JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<
     // 4. For each element e of elements
     auto env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> arrayFunc = env->GetArrayFunction();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(arrayFunc), arrayFunc);
+    JSHandle<JSFunction> arrayFunc(env->GetArrayFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(arrayFunc);
     obj->GetJSHClass()->SetExtensible(true);
     JSArray::Cast(*obj)->SetArrayLength(thread, length);
 

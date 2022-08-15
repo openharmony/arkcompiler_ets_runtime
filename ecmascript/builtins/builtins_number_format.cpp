@@ -171,8 +171,8 @@ JSTaggedValue BuiltinsNumberFormat::ResolvedOptions(EcmaRuntimeCallInfo *argv)
     auto ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSTaggedValue> ctor = env->GetObjectFunction();
-    JSHandle<JSObject> options(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    JSHandle<JSFunction> ctor(env->GetObjectFunction());
+    JSHandle<JSObject> options(factory->NewJSObjectByConstructor(ctor));
 
     // 5. For each row of Table 5, except the header row, in table order, do
     //  Let p be the Property value of the current row.

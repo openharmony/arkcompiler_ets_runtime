@@ -344,8 +344,7 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
     JSHandle<JSFunction> constructor(env->GetArrayBufferFunction());
-    JSHandle<JSTaggedValue> newTarget(constructor);
-    JSHandle<JSArrayBuffer> arrayBuffer(NewJSObjectByConstructor(constructor, newTarget));
+    JSHandle<JSArrayBuffer> arrayBuffer(NewJSObjectByConstructor(constructor));
     arrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
         auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(length);
@@ -367,8 +366,7 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(void *buffer, int32_t le
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
     JSHandle<JSFunction> constructor(env->GetArrayBufferFunction());
-    JSHandle<JSTaggedValue> newTarget(constructor);
-    JSHandle<JSArrayBuffer> arrayBuffer(NewJSObjectByConstructor(constructor, newTarget));
+    JSHandle<JSArrayBuffer> arrayBuffer(NewJSObjectByConstructor(constructor));
     length = buffer == nullptr ? 0 : length;
     arrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
@@ -389,8 +387,7 @@ JSHandle<JSDataView> ObjectFactory::NewJSDataView(JSHandle<JSArrayBuffer> buffer
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
     JSHandle<JSFunction> constructor(env->GetDataViewFunction());
-    JSHandle<JSTaggedValue> newTarget(constructor);
-    JSHandle<JSDataView> arrayBuffer(NewJSObjectByConstructor(constructor, newTarget));
+    JSHandle<JSDataView> arrayBuffer(NewJSObjectByConstructor(constructor));
     arrayBuffer->SetDataView(thread_, JSTaggedValue::True());
     arrayBuffer->SetViewedArrayBuffer(thread_, buffer.GetTaggedValue());
     arrayBuffer->SetByteLength(length);
@@ -403,8 +400,7 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSSharedArrayBuffer(int32_t length)
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
     JSHandle<JSFunction> constructor(env->GetSharedArrayBufferFunction());
-    JSHandle<JSTaggedValue> newTarget(constructor);
-    JSHandle<JSArrayBuffer> sharedArrayBuffer(NewJSObjectByConstructor(constructor, newTarget));
+    JSHandle<JSArrayBuffer> sharedArrayBuffer(NewJSObjectByConstructor(constructor));
     sharedArrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
         NewJSSharedArrayBufferData(sharedArrayBuffer, length);
@@ -418,8 +414,7 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSSharedArrayBuffer(void *buffer, int3
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
     JSHandle<JSFunction> constructor(env->GetSharedArrayBufferFunction());
-    JSHandle<JSTaggedValue> newTarget(constructor);
-    JSHandle<JSArrayBuffer> sharedArrayBuffer(NewJSObjectByConstructor(constructor, newTarget));
+    JSHandle<JSArrayBuffer> sharedArrayBuffer(NewJSObjectByConstructor(constructor));
     length = buffer == nullptr ? 0 : length;
     sharedArrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
@@ -608,9 +603,8 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> obj, Fun
     JSHandle<JSHClass> jshclass(thread_, obj->GetJSHClass());
     JSHandle<JSFunction> cloneFunc = NewJSFunctionByDynClass(obj->GetCallTarget(), jshclass, kind);
     if (kind == FunctionKind::GENERATOR_FUNCTION) {
-        JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-        JSHandle<JSObject> initialGeneratorFuncPrototype =
-            NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+        JSHandle<JSFunction> objFun(env->GetObjectFunction());
+        JSHandle<JSObject> initialGeneratorFuncPrototype = NewJSObjectByConstructor(objFun);
         JSObject::SetPrototype(thread_, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
         cloneFunc->SetProtoOrDynClass(thread_, initialGeneratorFuncPrototype);
     }
@@ -686,9 +680,8 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSHClas
 JSHandle<JSArray> ObjectFactory::NewJSArray()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSTaggedValue> function = env->GetArrayFunction();
-
-    return JSHandle<JSArray>(NewJSObjectByConstructor(JSHandle<JSFunction>(function), function));
+    JSHandle<JSFunction> function(env->GetArrayFunction());
+    return JSHandle<JSArray>(NewJSObjectByConstructor(function));
 }
 
 JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj)
@@ -902,8 +895,22 @@ JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSFunction> constructor(env->GetAggregateErrorFunction());
-    JSHandle<JSTaggedValue> newTarget(constructor);
-    return NewJSObjectByConstructor(constructor, newTarget);
+    return NewJSObjectByConstructor(constructor);
+}
+
+JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor)
+{
+    if (!constructor->HasFunctionPrototype() ||
+        (constructor->GetProtoOrDynClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
+        JSHandle<JSHClass> jshclass = JSFunction::GetInstanceJSHClass(thread_, constructor, JSHandle<JSTaggedValue>(constructor));
+        return NewJSObjectWithInit(jshclass);
+    }
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSObject> result = NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
+    if (thread_->HasPendingException()) {
+        LOG_FULL(FATAL) << "NewJSObjectByConstructor should not throw Exception! ";
+    }
+    return result;
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
@@ -1697,7 +1704,7 @@ JSHandle<GeneratorContext> ObjectFactory::NewGeneratorContext()
 JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSFunction> &function,
                                                           const JSHandle<JSTaggedValue> &object)
 {
-    JSHandle<JSPrimitiveRef> obj(NewJSObjectByConstructor(function, JSHandle<JSTaggedValue>(function)));
+    JSHandle<JSPrimitiveRef> obj(NewJSObjectByConstructor(function));
     obj->SetValue(thread_, object);
 
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -1744,10 +1751,8 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(PrimitiveType type, co
 JSHandle<JSPrimitiveRef> ObjectFactory::NewJSString(const JSHandle<JSTaggedValue> &str)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSTaggedValue> stringFunc = env->GetStringFunction();
-
-    JSHandle<JSPrimitiveRef> obj =
-        JSHandle<JSPrimitiveRef>::Cast(NewJSObjectByConstructor(JSHandle<JSFunction>(stringFunc), stringFunc));
+    JSHandle<JSFunction> stringFunc(env->GetStringFunction());
+    JSHandle<JSPrimitiveRef> obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObjectByConstructor(stringFunc));
     obj->SetValue(thread_, str);
     return obj;
 }
@@ -2293,10 +2298,8 @@ JSHandle<CjsModule> ObjectFactory::NewCjsModule()
 {
     NewObjectHook();
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-
-    JSHandle<JSTaggedValue> moduleObj(env->GetCjsModuleFunction());
-    JSHandle<CjsModule> cjsModule =
-        JSHandle<CjsModule>(NewJSObjectByConstructor(JSHandle<JSFunction>(moduleObj), moduleObj));
+    JSHandle<JSFunction> moduleObj(env->GetCjsModuleFunction());
+    JSHandle<CjsModule> cjsModule = JSHandle<CjsModule>(NewJSObjectByConstructor(moduleObj));
     return cjsModule;
 }
 
@@ -2304,10 +2307,8 @@ JSHandle<CjsExports> ObjectFactory::NewCjsExports()
 {
     NewObjectHook();
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-
-    JSHandle<JSTaggedValue> exportsObj(env->GetCjsExportsFunction());
-    JSHandle<CjsExports> cjsExports =
-        JSHandle<CjsExports>(NewJSObjectByConstructor(JSHandle<JSFunction>(exportsObj), exportsObj));
+    JSHandle<JSFunction> exportsObj(env->GetCjsExportsFunction());
+    JSHandle<CjsExports> cjsExports = JSHandle<CjsExports>(NewJSObjectByConstructor(exportsObj));
     return cjsExports;
 }
 
@@ -2315,11 +2316,8 @@ JSHandle<CjsRequire> ObjectFactory::NewCjsRequire()
 {
     NewObjectHook();
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-
-    JSHandle<JSTaggedValue> requireObj(env->GetCjsRequireFunction());
-    JSHandle<CjsRequire> cjsRequire =
-        JSHandle<CjsRequire>(NewJSObjectByConstructor(JSHandle<JSFunction>(requireObj), requireObj));
-
+    JSHandle<JSFunction> requireObj(env->GetCjsRequireFunction());
+    JSHandle<CjsRequire> cjsRequire = JSHandle<CjsRequire>(NewJSObjectByConstructor(requireObj));
     return cjsRequire;
 }
 
@@ -2924,8 +2922,8 @@ JSHandle<JSObject> ObjectFactory::NewOldSpaceObjLiteralByHClass(const JSHandle<T
 JSHandle<JSObject> ObjectFactory::NewEmptyJSObject()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSTaggedValue> builtinObj = env->GetObjectFunction();
-    return NewJSObjectByConstructor(JSHandle<JSFunction>(builtinObj), builtinObj);
+    JSHandle<JSFunction> builtinObj(env->GetObjectFunction());
+    return NewJSObjectByConstructor(builtinObj);
 }
 
 JSHandle<JSObject> ObjectFactory::CreateNullJSObject()
@@ -3258,9 +3256,8 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const JSHandle<Ecma
 JSHandle<JSAPIArrayList> ObjectFactory::NewJSAPIArrayList(uint32_t capacity)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> builtinObj(thread_, thread_->GlobalConstants()->GetArrayListFunction());
-    JSHandle<JSAPIArrayList> obj =
-        JSHandle<JSAPIArrayList>(NewJSObjectByConstructor(JSHandle<JSFunction>(builtinObj), builtinObj));
+    JSHandle<JSFunction> builtinObj(thread_, thread_->GlobalConstants()->GetArrayListFunction());
+    JSHandle<JSAPIArrayList> obj = JSHandle<JSAPIArrayList>(NewJSObjectByConstructor(builtinObj));
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> elements = factory->NewTaggedArray(capacity);
     obj->SetElements(thread_, elements);
@@ -3317,10 +3314,8 @@ JSHandle<JSAPILightWeightSetIterator> ObjectFactory::NewJSAPILightWeightSetItera
 JSHandle<JSAPIPlainArray> ObjectFactory::NewJSAPIPlainArray(uint32_t capacity)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> builtinObj(thread_, thread_->GlobalConstants()->GetPlainArrayFunction());
-
-    JSHandle<JSAPIPlainArray> obj =
-        JSHandle<JSAPIPlainArray>(NewJSObjectByConstructor(JSHandle<JSFunction>(builtinObj), builtinObj));
+    JSHandle<JSFunction> builtinObj(thread_, thread_->GlobalConstants()->GetPlainArrayFunction());
+    JSHandle<JSAPIPlainArray> obj = JSHandle<JSAPIPlainArray>(NewJSObjectByConstructor(builtinObj));
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(capacity);
     JSHandle<TaggedArray> valueArray = factory->NewTaggedArray(capacity);
@@ -3481,10 +3476,8 @@ JSHandle<JSAPITreeSetIterator> ObjectFactory::NewJSAPITreeSetIterator(const JSHa
 JSHandle<JSAPIVector> ObjectFactory::NewJSAPIVector(uint32_t capacity)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> builtinObj(thread_, thread_->GlobalConstants()->GetVectorFunction());
-
-    JSHandle<JSAPIVector> obj =
-        JSHandle<JSAPIVector>(NewJSObjectByConstructor(JSHandle<JSFunction>(builtinObj), builtinObj));
+    JSHandle<JSFunction> builtinObj(thread_, thread_->GlobalConstants()->GetVectorFunction());
+    JSHandle<JSAPIVector> obj = JSHandle<JSAPIVector>(NewJSObjectByConstructor(builtinObj));
     JSHandle<TaggedArray> newVector = NewTaggedArray(capacity);
     obj->SetElements(thread_, newVector);
 
@@ -3536,15 +3529,15 @@ JSHandle<JSAPIListIterator> ObjectFactory::NewJSAPIListIterator(const JSHandle<J
 JSHandle<JSAPIList> ObjectFactory::NewJSAPIList()
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> function(thread_, thread_->GlobalConstants()->GetListFunction());
-    return JSHandle<JSAPIList>::Cast(NewJSObjectByConstructor(JSHandle<JSFunction>(function), function));
+    JSHandle<JSFunction> function(thread_, thread_->GlobalConstants()->GetListFunction());
+    return JSHandle<JSAPIList>::Cast(NewJSObjectByConstructor(function));
 }
 
 JSHandle<JSAPILinkedList> ObjectFactory::NewJSAPILinkedList()
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> function(thread_, thread_->GlobalConstants()->GetLinkedListFunction());
-    return JSHandle<JSAPILinkedList>::Cast(NewJSObjectByConstructor(JSHandle<JSFunction>(function), function));
+    JSHandle<JSFunction> function(thread_, thread_->GlobalConstants()->GetLinkedListFunction());
+    return JSHandle<JSAPILinkedList>::Cast(NewJSObjectByConstructor(function));
 }
 
 JSHandle<ImportEntry> ObjectFactory::NewImportEntry()

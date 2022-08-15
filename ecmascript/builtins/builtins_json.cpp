@@ -62,8 +62,8 @@ JSTaggedValue BuiltinsJson::Parse(EcmaRuntimeCallInfo *argv)
             JSHandle<JSTaggedValue> callbackfnHandle(thread, reviver);
             // Let root be ! OrdinaryObjectCreate(%Object.prototype%).
             JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-            JSHandle<JSTaggedValue> constructor = env->GetObjectFunction();
-            JSHandle<JSObject> root = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor);
+            JSHandle<JSFunction> constructor(env->GetObjectFunction());
+            JSHandle<JSObject> root = factory->NewJSObjectByConstructor(constructor);
             // Let rootName be the empty String.
             JSHandle<JSTaggedValue> rootName(factory->GetEmptyString());
             // Perform ! CreateDataPropertyOrThrow(root, rootName, unfiltered).

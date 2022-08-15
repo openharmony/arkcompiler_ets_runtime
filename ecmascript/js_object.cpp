@@ -1126,10 +1126,8 @@ JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHan
 JSHandle<JSObject> JSObject::ObjectCreate(JSThread *thread, const JSHandle<JSObject> &proto)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetObjectFunction();
-    JSHandle<JSObject> objHandle =
-        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread);
+    JSHandle<JSFunction> constructor(env->GetObjectFunction());
+    JSHandle<JSObject> objHandle = thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(constructor);
     SetPrototype(thread, objHandle, JSHandle<JSTaggedValue>(proto));
     return objHandle;
 }
@@ -1561,9 +1559,8 @@ JSHandle<JSTaggedValue> JSObject::FromPropertyDescriptor(JSThread *thread, const
 
     // 2. Let obj be ObjectCreate(%ObjectPrototype%).
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> objFunc = env->GetObjectFunction();
-    JSHandle<JSObject> objHandle =
-        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+    JSHandle<JSFunction> objFunc(env->GetObjectFunction());
+    JSHandle<JSObject> objHandle = thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(objFunc);
 
     auto globalConst = thread->GlobalConstants();
     // 4. If Desc has a [[Value]] field, then Perform CreateDataProperty(obj, "value", Desc.[[Value]]).

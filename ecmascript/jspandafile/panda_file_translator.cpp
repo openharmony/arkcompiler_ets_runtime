@@ -178,9 +178,8 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             // 26.3.4.3 prototype
             // Whenever a GeneratorFunction instance is created another ordinary object is also created and
             // is the initial value of the generator function's "prototype" property.
-            JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-            JSHandle<JSObject> initialGeneratorFuncPrototype =
-                factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+            JSHandle<JSFunction> objFun(env->GetObjectFunction());
+            JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
             JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
             jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
 
