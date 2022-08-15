@@ -116,7 +116,6 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
 JSHandle<Program> JSPandaFileManager::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileManager::GenerateProgram");
-    LOG_ECMA(INFO) << "GenerateProgram " << jsPandaFile->GetJSPandaFileDesc();
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
 
     JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile);
@@ -151,7 +150,7 @@ const JSPandaFile *JSPandaFileManager::GetJSPandaFile(const panda_file::File *pf
 
 void JSPandaFileManager::InsertJSPandaFile(const JSPandaFile *jsPandaFile)
 {
-    LOG_ECMA(INFO) << "InsertJSPandaFile " << jsPandaFile->GetJSPandaFileDesc();
+    LOG_ECMA(DEBUG) << "InsertJSPandaFile " << jsPandaFile->GetJSPandaFileDesc();
 
     os::memory::LockHolder lock(jsPandaFileLock_);
     ASSERT(loadedJSPandaFiles_.find(jsPandaFile) == loadedJSPandaFiles_.end());
