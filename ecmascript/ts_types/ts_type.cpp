@@ -173,7 +173,7 @@ GlobalTSTypeRef TSObjectType::GetPropTypeGT(JSHandle<TSObjectType> objectType, J
             continue;
         }
 
-        uint32_t gtRawData = layout->GetTypeId(i).GetInt();
+        uint32_t gtRawData = static_cast<uint32_t>(layout->GetTypeId(i).GetInt());
         return GlobalTSTypeRef(gtRawData);
     }
 

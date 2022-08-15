@@ -117,7 +117,7 @@ JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSHandle<TaggedArray> &
 JSHandle<TSClassInstanceType> TSTypeParser::ParseClassInstanceType(const JSHandle<TaggedArray> &literal)
 {
     JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
-    uint32_t classTypeId = literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt();
+    int32_t classTypeId = literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt();
     classInstanceType->SetClassGT(CreateGT(moduleId_, classTypeId));
     return classInstanceType;
 }
@@ -184,25 +184,25 @@ JSHandle<TSFunctionType> TSTypeParser::ParseFunctionType(const JSHandle<TaggedAr
     ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::FUNCTION);
     index++;
 
-    uint32_t bitField = literal->Get(index++).GetInt();
+    int32_t bitField = literal->Get(index++).GetInt();
 
     JSHandle<JSTaggedValue> functionName(thread_, literal->Get(index++));
     bool hasThisType = static_cast<bool>(literal->Get(index++).GetInt());
-    uint32_t thisTypeId;
+    int32_t thisTypeId = 0;
     if (hasThisType) {
         thisTypeId = literal->Get(index++).GetInt();
     }
 
-    uint32_t length = literal->Get(index++).GetInt();
+    int32_t length = literal->Get(index++).GetInt();
     JSHandle<TSFunctionType> functionType = factory_->NewTSFunctionType(length);
     JSHandle<TaggedArray> parameterTypes(thread_, functionType->GetParameterTypes());
     JSMutableHandle<JSTaggedValue> parameterTypeRef(thread_, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < length; ++i) {
+    for (int32_t i = 0; i < length; ++i) {
         auto typeId = literal->Get(index++).GetInt();
         parameterTypeRef.Update(JSTaggedValue(CreateGT(moduleId_, typeId).GetType()));
         parameterTypes->Set(thread_, i, parameterTypeRef);
     }
-    uint32_t returntypeId = literal->Get(index++).GetInt();
+    int32_t returntypeId = literal->Get(index++).GetInt();
 
     functionType->SetName(thread_, functionName);
     if (hasThisType) {
