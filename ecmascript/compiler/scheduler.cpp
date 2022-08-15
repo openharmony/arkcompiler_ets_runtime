@@ -78,7 +78,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         };
         std::iota(semiDom.begin(), semiDom.end(), 0);
         semiDom[0] = semiDom.size();
-        for (size_t idx = bbGatesList.size() - 1; idx >= 1; idx --) {
+        for (size_t idx = bbGatesList.size() - 1; idx >= 1; idx--) {
             std::vector<GateRef> preGates;
             acc.GetInVector(bbGatesList[idx], preGates);
             for (const auto &predGate : preGates) {
@@ -141,21 +141,40 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit, [[maybe
     jumpUp.assign(result.size(), std::vector<size_t>(sizeLog + 1));
     {
         size_t timestamp = 0;
-        std::function<void(size_t, size_t)> dfs = [&](size_t cur, size_t prev) {
-            timeIn[cur] = timestamp;
-            timestamp++;
-            jumpUp[cur][0] = prev;
-            for (size_t stepSize = 1; stepSize <= sizeLog; stepSize++) {
-                jumpUp[cur][stepSize] = jumpUp[jumpUp[cur][stepSize - 1]][stepSize - 1];
-            }
-            for (const auto &succ : sonList[cur]) {
-                dfs(succ, cur);
-            }
-            timeOut[cur] = timestamp;
-            timestamp++;
+        struct DFSState {
+            size_t cur;
+            std::vector<size_t> &succList;
+            size_t idx;
         };
+        std::stack<DFSState> dfsStack;
         size_t root = 0;
-        dfs(root, root);
+        dfsStack.push({root, sonList[root], 0});
+        timeIn[root] = timestamp++;
+        jumpUp[root][0] = root;
+        for (size_t stepSize = 1; stepSize <= sizeLog; stepSize++) {
+            auto jumpUpHalf = jumpUp[root][stepSize - 1];
+            jumpUp[root][stepSize] = jumpUp[jumpUpHalf][stepSize - 1];
+        }
+        while (!dfsStack.empty()) {
+            auto &curState = dfsStack.top();
+            auto &cur = curState.cur;
+            auto &succList = curState.succList;
+            auto &idx = curState.idx;
+            if (idx == succList.size()) {
+                timeOut[cur] = timestamp++;
+                dfsStack.pop();
+                continue;
+            }
+            const auto &succ = succList[idx];
+            dfsStack.push({succ, sonList[succ], 0});
+            timeIn[succ] = timestamp++;
+            jumpUp[succ][0] = cur;
+            for (size_t stepSize = 1; stepSize <= sizeLog; stepSize++) {
+                auto jumpUpHalf = jumpUp[succ][stepSize - 1];
+                jumpUp[succ][stepSize] = jumpUp[jumpUpHalf][stepSize - 1];
+            }
+            idx++;
+        }
     }
     auto isAncestor = [&](size_t nodeA, size_t nodeB) -> bool {
         return (timeIn[nodeA] <= timeIn[nodeB]) && (timeOut[nodeA] >= timeOut[nodeB]);
