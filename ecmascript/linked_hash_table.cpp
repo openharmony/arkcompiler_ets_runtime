@@ -168,15 +168,14 @@ bool LinkedHashMap::Has(JSTaggedValue key) const
     return entry != -1;
 }
 
-void LinkedHashMap::Clear(const JSThread *thread)
+JSHandle<LinkedHashMap> LinkedHashMap::Clear(const JSThread *thread, const JSHandle<LinkedHashMap> &table)
 {
-    int numberOfElements = NumberOfElements() + NumberOfDeletedElements();
-    for (int entry = 0; entry < numberOfElements; entry++) {
-        SetKey(thread, entry, JSTaggedValue::Hole());
-        SetValue(thread, entry, JSTaggedValue::Hole());
+    JSHandle<LinkedHashMap> newMap = LinkedHashMap::Create(thread);
+    if (table->Capacity() > 0) {
+        table->SetNextTable(thread, newMap.GetTaggedValue());
+        table->SetNumberOfDeletedElements(thread, -1);
     }
-    SetNumberOfElements(thread, 0);
-    SetNumberOfDeletedElements(thread, numberOfElements);
+    return newMap;
 }
 
 JSHandle<LinkedHashMap> LinkedHashMap::Shrink(const JSThread *thread, const JSHandle<LinkedHashMap> &table,
@@ -215,14 +214,14 @@ bool LinkedHashSet::Has(JSTaggedValue key) const
     return entry != -1;
 }
 
-void LinkedHashSet::Clear(const JSThread *thread)
+JSHandle<LinkedHashSet> LinkedHashSet::Clear(const JSThread *thread, const JSHandle<LinkedHashSet> &table)
 {
-    int numberOfElements = NumberOfElements() + NumberOfDeletedElements();
-    for (int entry = 0; entry < numberOfElements; entry++) {
-        SetKey(thread, entry, JSTaggedValue::Hole());
+    JSHandle<LinkedHashSet> newSet = LinkedHashSet::Create(thread);
+    if (table->Capacity() > 0) {
+        table->SetNextTable(thread, newSet.GetTaggedValue());
+        table->SetNumberOfDeletedElements(thread, -1);
     }
-    SetNumberOfElements(thread, 0);
-    SetNumberOfDeletedElements(thread, numberOfElements);
+    return newSet;
 }
 
 JSHandle<LinkedHashSet> LinkedHashSet::Shrink(const JSThread *thread, const JSHandle<LinkedHashSet> &table,

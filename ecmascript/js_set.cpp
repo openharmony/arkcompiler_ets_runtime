@@ -40,15 +40,15 @@ bool JSSet::Delete(const JSThread *thread, const JSHandle<JSSet> &set, const JSH
         return false;
     }
     setHandle->RemoveEntry(thread, entry);
-    JSHandle<LinkedHashSet> newSet = LinkedHashSet::Shrink(thread, setHandle);
-    set->SetLinkedSet(thread, newSet);
     return true;
 }
 
 void JSSet::Clear(const JSThread *thread, const JSHandle<JSSet> &set)
 {
     LinkedHashSet *linkedSet = LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject());
-    linkedSet->Clear(thread);
+    JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject()));
+    JSHandle<LinkedHashSet> newSet = linkedSet->Clear(thread, setHandle);
+    set->SetLinkedSet(thread, newSet);
 }
 
 bool JSSet::Has(JSTaggedValue value) const
