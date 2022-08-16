@@ -58,10 +58,12 @@ DebuggerImpl::~DebuggerImpl()
 
 bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &fileName)
 {
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     if (fileName.substr(0, DATA_APP_PATH.length()) != DATA_APP_PATH) {
         LOG_DEBUGGER(DEBUG) << "NotifyScriptParsed: unsupport file: " << fileName;
         return false;
     }
+#endif
 
     const JSPandaFile *jsPandaFile = nullptr;
     JSPandaFileManager::GetInstance()->EnumerateJSPandaFiles([&jsPandaFile, &fileName](
@@ -1064,7 +1066,7 @@ std::optional<std::string> DebuggerImpl::CmptEvaluateValue(CallFrameId callFrame
     FrameHandler *frameHandler = callFrameHandlers_[callFrameId].get();
     if (varValue.empty()) {
         Local<JSValueRef> ret = DebuggerExecutor::GetValue(vm_, frameHandler, name);
-        if (!ret.IsEmpty() && !ret->IsException()) {
+        if (!ret.IsEmpty()) {
             *result = RemoteObject::FromTagged(vm_, ret);
             runtime_->CacheObjectIfNeeded(ret, (*result).get());
             return {};

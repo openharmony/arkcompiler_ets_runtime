@@ -255,7 +255,7 @@ public:
     void WaitRunningTaskFinished();
 
     void TryTriggerConcurrentMarking();
-
+    void AdjustBySurvivalRate(size_t originalNewSpaceSize);
     void TriggerConcurrentMarking();
 
     /*
@@ -408,6 +408,16 @@ public:
         return value.IsString() && !Region::ObjectAddressToRange(value.GetTaggedObject())->InHugeObjectSpace();
     }
 
+    bool IsFullMarkRequested() const
+    {
+        return fullMarkRequested_;
+    }
+
+    void SetFullMarkRequestedState(bool fullMarkRequested)
+    {
+        fullMarkRequested_ = fullMarkRequested;
+    }
+
 private:
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
@@ -513,9 +523,10 @@ private:
 
     bool parallelGC_ {true};
     bool fullGCRequested_ {false};
+    bool fullMarkRequested_ {false};
+    bool oldSpaceLimitAdjusted_ {false};
 
     size_t globalSpaceAllocLimit_ {0};
-    bool oldSpaceLimitAdjusted_ {false};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};

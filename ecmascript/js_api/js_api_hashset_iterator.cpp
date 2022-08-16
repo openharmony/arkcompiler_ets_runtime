@@ -61,7 +61,7 @@ JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
             if (itemKind == IterationKind::VALUE) {
                 return JSIterator::CreateIterResultObject(thread, valueHandle, false).GetTaggedValue();
             }
-            // Else
+
             array.Update(factory->NewTaggedArray(2));  // 2 means the length of array
             array->Set(thread, 0, JSTaggedValue(--index));
             array->Set(thread, 1, valueHandle);

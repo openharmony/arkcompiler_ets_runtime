@@ -172,5 +172,8 @@ void ConcurrentMarker::FinishMarking(float spendTime)
         heapObjectSize_ = heap_->GetHeapObjectSize();
     }
     SetDuration(spendTime);
+    if (heap_->IsFullMarkRequested()) {
+        heap_->SetFullMarkRequestedState(false);
+    }
 }
 }  // namespace panda::ecmascript

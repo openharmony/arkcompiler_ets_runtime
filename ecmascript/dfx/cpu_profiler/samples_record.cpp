@@ -16,6 +16,8 @@
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 
 #include <climits>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"

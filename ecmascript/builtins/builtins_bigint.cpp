@@ -91,9 +91,9 @@ JSTaggedValue BuiltinsBigInt::ToLocaleString(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 2. Let numberFormat be ? Construct(%NumberFormat%, « locales, options »).
-    JSHandle<JSTaggedValue> ctor = thread->GetEcmaVM()->GetGlobalEnv()->GetNumberFormatFunction();
+    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetNumberFormatFunction());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor);
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
     JSHandle<JSNumberFormat> numberFormat = JSHandle<JSNumberFormat>::Cast(obj);
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);

@@ -108,7 +108,7 @@ JSTaggedValue ContainersHashMap::ForEach(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
+        THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable", JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
     JSHandle<JSAPIHashMap> hashMap = JSHandle<JSAPIHashMap>::Cast(thisHandle);
@@ -172,9 +172,9 @@ JSTaggedValue ContainersHashMap::SetAll(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "Incorrect parameters, it should be HashMap", JSTaggedValue::Exception());
     }
 
-    JSHandle<JSAPIHashMap> dmap = JSHandle<JSAPIHashMap>::Cast(self);
-    JSHandle<JSAPIHashMap> smap = JSHandle<JSAPIHashMap>::Cast(obj);
-    JSAPIHashMap::SetAll(thread, dmap, smap);
+    JSHandle<JSAPIHashMap> targetMap = JSHandle<JSAPIHashMap>::Cast(self);
+    JSHandle<JSAPIHashMap> sourceMap = JSHandle<JSAPIHashMap>::Cast(obj);
+    JSAPIHashMap::SetAll(thread, targetMap, sourceMap);
     return self.GetTaggedValue();
 }
 

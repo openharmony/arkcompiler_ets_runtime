@@ -29,7 +29,7 @@ namespace OHOS {
         auto vm = JSNApi::CreateJSVM(option);
         [[maybe_unused]] LocalScope scope(vm);
         std::string message(data, data+size);
-        DispatchMessage(vm, std::move(message));
+        OnMessage(vm, std::move(message));
         JSNApi::DestroyJSVM(vm);
     }
 }

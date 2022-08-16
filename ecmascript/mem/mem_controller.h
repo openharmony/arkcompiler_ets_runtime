@@ -128,6 +128,12 @@ public:
         double result = recordedSurvivalRates_.Sum([](double x, double y) { return x + y;}, 0.0);
         return result / count;
     }
+
+    void ResetRecordedSurvivalRates()
+    {
+        recordedSurvivalRates_.Reset();
+    }
+
 private:
     static constexpr int LENGTH = 10;
     static double CalculateAverageSpeed(const base::GCRingBuffer<BytesAndDuration, LENGTH> &buffer);

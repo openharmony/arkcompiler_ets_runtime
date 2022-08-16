@@ -25,16 +25,8 @@
 #define RETURN_VALUE_IF_ABRUPT(thread, value) \
     do {                                      \
         if (thread->HasPendingException()) {  \
-            thread->ClearException();         \
             return value;                     \
         }                                     \
-    } while (false)
-
-#define RETURN_VALUE_IF_ABRUPT_NOT_CLEAR_EXCEPTION(thread, value) \
-    do {                                                          \
-        if (thread->HasPendingException()) {                      \
-            return value;                                         \
-        }                                                         \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

@@ -457,7 +457,7 @@ HWTEST_F_L0(JSNApiTests, DataView)
 
     // 5 : offset of byte, 11 : length
     dataView = DataViewRef::New(vm_, arrayBuffer, 5, 11);
-    ASSERT_TRUE(dataView->IsException());
+    ASSERT_TRUE(dataView->IsUndefined());
 }
 
 HWTEST_F_L0(JSNApiTests, Int8Array)
