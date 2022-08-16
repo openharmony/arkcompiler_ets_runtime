@@ -1178,6 +1178,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
     ASSERT(stringVector_.empty());
     auto oldSpace = const_cast<Heap *>(vm_->GetHeap())->GetOldSpace();
+    auto hugeSpace = const_cast<Heap *>(vm_->GetHeap())->GetHugeObjectSpace();
     auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
     auto stringClass = globalConst->GetStringClass();
     while (stringBegin < stringEnd) {
@@ -1188,7 +1189,12 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         if (strFromTable) {
             stringVector_.emplace_back(ToUintPtr(strFromTable));
         } else {
-            uintptr_t newObj = oldSpace->Allocate(strSize, false);
+            uintptr_t newObj = 0;
+            if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
+                newObj = hugeSpace->Allocate(strSize, vm_->GetJSThread());
+            } else {
+                newObj = oldSpace->Allocate(strSize, false);
+            }
             if (newObj == 0) {
                 LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldLocalSpace OOM";
             }
