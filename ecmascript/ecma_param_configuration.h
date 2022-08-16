@@ -159,7 +159,7 @@ private:
     static constexpr size_t MEDIUM_MEMORY = 128_MB;
     static constexpr size_t HIGH_MEMORY = 256_MB;
     static constexpr size_t DEFAULT_STACK_SIZE = 992_KB;
-    static constexpr size_t DEFAULT_RESERVED_STACK_SIZE = 1_KB;
+    static constexpr size_t DEFAULT_RESERVED_STACK_SIZE = 16_KB;
 
     size_t maxHeapSize_ {0};
     size_t minSemiSpaceSize_ {0};
