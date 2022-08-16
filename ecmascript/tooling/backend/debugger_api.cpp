@@ -264,7 +264,7 @@ Local<JSValueRef> DebuggerApi::GetGlobalValue(const EcmaVM *vm, Local<StringRef>
         return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, result));
     }
 
-    return JSValueRef::Exception(vm);
+    return Local<JSValueRef>();
 }
 
 bool DebuggerApi::SetGlobalValue(const EcmaVM *vm, Local<StringRef> name, Local<JSValueRef> value)

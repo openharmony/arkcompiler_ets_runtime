@@ -1391,11 +1391,10 @@ DEF_RUNTIME_STUBS(NewLexicalEnvDyn)
 DEF_RUNTIME_STUBS(NewThisObject)
 {
     RUNTIME_STUBS_HEADER(NewThisObject);
-    JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSFunction> ctor(GetHArg<JSTaggedValue>(argv, argc, 0));  // 0: means the zeroth parameter
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(
-        JSHandle<JSFunction>::Cast(ctor), ctor);
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return obj.GetTaggedType();  // state is not set here
 }

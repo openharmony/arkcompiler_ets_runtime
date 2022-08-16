@@ -110,16 +110,6 @@ public:
         return GetAddress() == nullptr;
     }
 
-    inline bool CheckException() const
-    {
-        return IsEmpty() || GetAddress()->IsException();
-    }
-
-    inline bool IsException() const
-    {
-        return !IsEmpty() && GetAddress()->IsException();
-    }
-
     inline bool IsNull() const
     {
         return IsEmpty() || GetAddress()->IsHole();
@@ -222,11 +212,6 @@ public:
         return GetAddress() == nullptr;
     }
 
-    inline bool CheckException() const
-    {
-        return IsEmpty() || GetAddress()->IsException();
-    }
-
     void SetWeak();
 
     void ClearWeak();
@@ -322,11 +307,6 @@ public:
         return GetAddress() == nullptr;
     }
 
-    inline bool CheckException() const
-    {
-        return IsEmpty() || GetAddress()->IsException();
-    }
-
     void SetWeak();
 
     void SetWeakCallback(void *ref, WeakRefClearCallBack callback);
@@ -401,7 +381,6 @@ public:
     static Local<PrimitiveRef> Null(const EcmaVM *vm);
     static Local<PrimitiveRef> True(const EcmaVM *vm);
     static Local<PrimitiveRef> False(const EcmaVM *vm);
-    static Local<JSValueRef> Exception(const EcmaVM *vm);
 
     bool BooleaValue();
     int64_t IntegerValue(const EcmaVM *vm);
@@ -431,7 +410,6 @@ public:
     bool IsConstructor();
     bool IsFunction();
     bool IsProxy();
-    bool IsException();
     bool IsPromise();
     bool IsDataView();
     bool IsTypedArray();
@@ -1138,6 +1116,7 @@ public:
     static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
     static Local<ObjectRef> GetAndClearUncaughtException(const EcmaVM *vm);
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
+    static bool HasPendingException(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
     static bool StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});

@@ -215,9 +215,8 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         factory->NewJSFunctionByDynClass(method, functionClass, kind, MemSpaceType::OLD_SPACE);
 
     if (kind == FunctionKind::GENERATOR_FUNCTION) {
-        JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-        JSHandle<JSObject> initialGeneratorFuncPrototype =
-            factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+        JSHandle<JSFunction> objFun(env->GetObjectFunction());
+        JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
         JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
         jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
     }

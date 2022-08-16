@@ -1064,7 +1064,7 @@ std::optional<std::string> DebuggerImpl::CmptEvaluateValue(CallFrameId callFrame
     FrameHandler *frameHandler = callFrameHandlers_[callFrameId].get();
     if (varValue.empty()) {
         Local<JSValueRef> ret = DebuggerExecutor::GetValue(vm_, frameHandler, name);
-        if (!ret.IsEmpty() && !ret->IsException()) {
+        if (!ret.IsEmpty()) {
             *result = RemoteObject::FromTagged(vm_, ret);
             runtime_->CacheObjectIfNeeded(ret, (*result).get());
             return {};

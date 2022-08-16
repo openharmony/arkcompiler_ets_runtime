@@ -344,8 +344,8 @@ private:
             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON", JSTaggedValue::Exception());
         }
 
-        JSHandle<JSTaggedValue> proto = env_->GetObjectFunction();
-        JSHandle<JSObject> result = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(proto), proto);
+        JSHandle<JSFunction> proto(env_->GetObjectFunction());
+        JSHandle<JSObject> result = factory_->NewJSObjectByConstructor(proto);
         current_++;
         if (*current_ == '}') {
             return result.GetTaggedValue();
