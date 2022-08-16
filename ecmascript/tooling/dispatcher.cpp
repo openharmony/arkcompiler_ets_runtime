@@ -17,8 +17,12 @@
 
 #include "ecmascript/tooling/agent/debugger_impl.h"
 #include "ecmascript/tooling/agent/runtime_impl.h"
+#ifdef ECMASCRIPT_SUPPORT_HEAPPROFILER
 #include "ecmascript/tooling/agent/heapprofiler_impl.h"
+#endif
+#ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #include "ecmascript/tooling/agent/profiler_impl.h"
+#endif
 #include "ecmascript/tooling/agent/tracing_impl.h"
 #include "ecmascript/tooling/protocol_channel.h"
 
@@ -60,9 +64,7 @@ DispatchRequest::DispatchRequest(const std::string &message)
     domain_ = wholeMethod.substr(0, indexPoint);
     method_ = wholeMethod.substr(indexPoint + 1, length);
 
-    LOG_DEBUGGER(DEBUG) << "id: " << callId_;
-    LOG_DEBUGGER(DEBUG) << "domain: " << domain_;
-    LOG_DEBUGGER(DEBUG) << "method: " << method_;
+    LOG_DEBUGGER(DEBUG) << "id: " << callId_ << ", domain: " << domain_ << ", method: " << method_;
 
     std::unique_ptr<PtJson> params;
     ret = json->GetObject("params", &params);
@@ -124,13 +126,17 @@ void DispatcherBase::SendResponse(const DispatchRequest &request, const Dispatch
 Dispatcher::Dispatcher(const EcmaVM *vm, ProtocolChannel *channel)
 {
     // profiler
+#ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
     auto profiler = std::make_unique<ProfilerImpl>(vm, channel);
-    auto heapProfiler = std::make_unique<HeapProfilerImpl>(vm, channel);
-    auto tracing = std::make_unique<TracingImpl>(vm, channel);
     dispatchers_["Profiler"] =
         std::make_unique<ProfilerImpl::DispatcherImpl>(channel, std::move(profiler));
+#endif
+#ifdef ECMASCRIPT_SUPPORT_HEAPPROFILER
+    auto heapProfiler = std::make_unique<HeapProfilerImpl>(vm, channel);
     dispatchers_["HeapProfiler"] =
         std::make_unique<HeapProfilerImpl::DispatcherImpl>(channel, std::move(heapProfiler));
+#endif
+    auto tracing = std::make_unique<TracingImpl>(vm, channel);
     dispatchers_["Tracing"] =
         std::make_unique<TracingImpl::DispatcherImpl>(channel, std::move(tracing));
 

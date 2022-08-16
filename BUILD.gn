@@ -138,6 +138,7 @@ config("ark_jsruntime_public_config") {
   if (!is_mingw && !is_mac) {
     defines += [
       "ECMASCRIPT_SUPPORT_CPUPROFILER",
+      "ECMASCRIPT_SUPPORT_HEAPPROFILER",
       "ECMASCRIPT_SUPPORT_SNAPSHOT",
       "ECMASCRIPT_SUPPORT_DEBUGGER",
     ]
@@ -569,13 +570,10 @@ if (is_ohos && is_standard_system && enable_hitrace) {
   hitrace_scope_source += [ "ecmascript/jobs/hitrace_scope.cpp" ]
 }
 
-ecma_debugger_source = []
-if (!is_mingw && !is_mac) {
-  ecma_debugger_source += [
-    "ecmascript/tooling/backend/debugger_api.cpp",
-    "ecmascript/tooling/backend/js_debugger.cpp",
-  ]
-}
+ecma_debugger_source = [
+  "ecmascript/tooling/backend/debugger_api.cpp",
+  "ecmascript/tooling/backend/js_debugger.cpp",
+]
 
 ecma_profiler_source = []
 if (!is_mingw && !is_mac) {
@@ -608,8 +606,21 @@ source_set("libark_jsruntime_set") {
     "$js_root:asm_interp_enable_config",
   ]
 
-  if (is_mingw) {
-    public_configs += [ ":ark_jsruntime_windows_config" ]
+  deps = []
+  if (is_mingw || is_mac) {
+    defines = [
+      "ECMASCRIPT_SUPPORT_DEBUGGER",
+      "ENABLE_HILOG",
+    ]
+    if (is_mingw) {
+      platform = "windows"
+      public_configs += [ ":ark_jsruntime_windows_config" ]
+    } else {
+      platform = "mac"
+    }
+    deps += [
+      "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_$platform",
+    ]
   }
 
   cflags_cc = []
@@ -617,7 +628,7 @@ source_set("libark_jsruntime_set") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
-  deps = [
+  deps += [
     "$ark_root/libpandafile:arkfile_header_deps",
     sdk_libc_secshared_dep,
   ]

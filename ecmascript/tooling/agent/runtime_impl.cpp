@@ -162,8 +162,13 @@ DispatchResponse RuntimeImpl::CallFunctionOn([[maybe_unused]] const CallFunction
 
 DispatchResponse RuntimeImpl::GetHeapUsage(double *usedSize, double *totalSize)
 {
+#ifdef ECMASCRIPT_SUPPORT_HEAPPROFILER
     *totalSize = static_cast<double>(DFXJSNApi::GetHeapTotalSize(vm_));
     *usedSize = static_cast<double>(DFXJSNApi::GetHeapUsedSize(vm_));
+#else
+    *totalSize = 0;
+    *usedSize = 0;
+#endif
     return DispatchResponse::Ok();
 }
 

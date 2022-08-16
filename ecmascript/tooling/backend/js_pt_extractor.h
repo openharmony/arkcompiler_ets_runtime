@@ -29,7 +29,7 @@ class JSPtExtractor : public DebugInfoExtractor {
 public:
     class SingleStepper {
     public:
-        enum class Type { INTO, OVER, OUT };
+        enum class Type { STEP_INTO, STEP_OVER, STEP_OUT };
         SingleStepper(const EcmaVM *ecmaVm, JSMethod *method, std::list<JSPtStepRange> stepRanges, Type type)
             : ecmaVm_(ecmaVm),
               method_(method),

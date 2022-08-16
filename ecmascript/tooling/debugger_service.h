@@ -37,7 +37,7 @@ PUBLIC_API void InitializeDebugger(::panda::ecmascript::EcmaVM *vm,
 
 PUBLIC_API void UninitializeDebugger(::panda::ecmascript::EcmaVM *vm);
 
-PUBLIC_API void DispatchMessage(const ::panda::ecmascript::EcmaVM *vm, std::string &&message);
+PUBLIC_API void OnMessage(const ::panda::ecmascript::EcmaVM *vm, std::string &&message);
 
 PUBLIC_API void WaitForDebugger(const ::panda::ecmascript::EcmaVM *vm);
 
