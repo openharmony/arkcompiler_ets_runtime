@@ -60,12 +60,12 @@ else
 	qemu=qemu-aarch64
 	compiler_args+= --target-triple=aarch64-unknown-linux-gnu
 	ifeq ($(debug), no)
-		export LD_LIBRARY_PATH=$(product_dir)/ark/ark/:$(product_dir)/ark/ark_js_runtime/:$(root_dir)/prebuilts/clang/ohos/linux-x86_64/llvm/lib/aarch64-linux-ohos/c++/:$(product_dir)/utils/utils_base/:$(product_dir)/thirdparty/icu:$(product_dir)/securec/thirdparty_bounds_checking_function/:$(product_dir)/hiviewdfx/hitrace_native/:$(product_dir)/clang_x64/ark/ark/:$(product_dir)/clang_x64/thirdparty/icu/:$(product_dir)/clang_x64/ark/ark_js_runtime
+		export LD_LIBRARY_PATH=$(product_dir)/ark/ark/:$(product_dir)/ark/ark_js_runtime/:$(root_dir)/prebuilts/clang/ohos/linux-x86_64/llvm/lib/aarch64-linux-ohos/c++/:$(product_dir)/commonlibrary/c_utils/:$(product_dir)/thirdparty/icu:$(product_dir)/securec/thirdparty_bounds_checking_function/:$(product_dir)/hiviewdfx/hitrace_native/:$(product_dir)/clang_x64/ark/ark/:$(product_dir)/clang_x64/thirdparty/icu/:$(product_dir)/clang_x64/ark/ark_js_runtime
 		compiler=$(product_dir)/clang_x64/ark/ark_js_runtime/ark_aot_compiler
 		stub_compiler=$(product_dir)/clang_x64/ark/ark_js_runtime/ark_stub_compiler
 		jsvm=$(product_dir)/ark/ark_js_runtime/ark_js_vm
 	else
-		export LD_LIBRARY_PATH=$(product_dir)/lib.unstripped/ark/ark/:$(product_dir)/lib.unstripped/ark/ark_js_runtime/:$(root_dir)/prebuilts/clang/ohos/linux-x86_64/llvm/lib/aarch64-linux-ohos/c++/:$(product_dir)/lib.unstripped/utils/utils_base/:$(product_dir)/lib.unstripped/thirdparty/icu:$(product_dir)/lib.unstripped/securec/thirdparty_bounds_checking_function/:$(product_dir)/lib.unstripped/hiviewdfx/hitrace_native/:$(product_dir)/lib.unstripped/clang_x64/ark/ark/:$(product_dir)/clang_x64/lib.unstripped/clang_x64/thirdparty/icu/:$(product_dir)/clang_x64/lib.unstripped/clang_x64/ark/ark/:$(product_dir)/clang_x64/lib.unstripped/clang_x64/ark/ark_js_runtime
+		export LD_LIBRARY_PATH=$(product_dir)/lib.unstripped/ark/ark/:$(product_dir)/lib.unstripped/ark/ark_js_runtime/:$(root_dir)/prebuilts/clang/ohos/linux-x86_64/llvm/lib/aarch64-linux-ohos/c++/:$(product_dir)/lib.unstripped/commonlibrary/c_utils/:$(product_dir)/lib.unstripped/thirdparty/icu:$(product_dir)/lib.unstripped/securec/thirdparty_bounds_checking_function/:$(product_dir)/lib.unstripped/hiviewdfx/hitrace_native/:$(product_dir)/lib.unstripped/clang_x64/ark/ark/:$(product_dir)/clang_x64/lib.unstripped/clang_x64/thirdparty/icu/:$(product_dir)/clang_x64/lib.unstripped/clang_x64/ark/ark/:$(product_dir)/clang_x64/lib.unstripped/clang_x64/ark/ark_js_runtime
 		compiler=$(product_dir)/clang_x64/exe.unstripped/clang_x64/ark/ark_js_runtime/ark_aot_compiler
 		stub_compiler=$(product_dir)/clang_x64/exe.unstripped/clang_x64/ark/ark_js_runtime/ark_stub_compiler
 		jsvm=$(product_dir)/exe.unstripped/ark/ark_js_runtime/ark_js_vm
