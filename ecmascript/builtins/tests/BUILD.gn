@@ -100,9 +100,14 @@ host_unittest_action("BuiltinsNaturalTest") {
     "builtins_weak_set_test.cpp",
   ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [
+    "//arkcompiler/ets_runtime:ecma_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
 
   deps = [
+    "$third_party_gn_path/icu/icu4c:shared_icui18n",
+    "$third_party_gn_path/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
