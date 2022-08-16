@@ -340,4 +340,19 @@ Local<JSValueRef> DebuggerApi::EvaluateViaFuncCall(EcmaVM *ecmaVm, Local<Functio
 
     return result;
 }
+
+bool DebuggerApi::IsExceptionCaught(const EcmaVM *ecmaVm)
+{
+    FrameHandler frameHandler(ecmaVm->GetJSThread());
+    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            return false;
+        }
+        auto method = frameHandler.GetMethod();
+        if (ecmaVm->FindCatchBlock(method, frameHandler.GetBytecodeOffset())) {
+            return true;
+        }
+    }
+    return false;
+}
 }  // namespace panda::ecmascript::tooling

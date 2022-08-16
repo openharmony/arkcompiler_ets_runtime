@@ -373,6 +373,17 @@ EcmaVM::CpuProfilingScope::~CpuProfilingScope()
 #endif
 }
 
+bool EcmaVM::FindCatchBlock(JSMethod *method, uint32_t pc) const
+{
+    uint32_t pcOffset = panda_file::INVALID_OFFSET;
+    if (thread_->IsAsmInterpreter()) {
+        pcOffset = InterpreterAssembly::FindCatchBlock(method, pc);
+    } else {
+        pcOffset = EcmaInterpreter::FindCatchBlock(method, pc);
+    }
+    return pcOffset != panda_file::INVALID_OFFSET;
+}
+
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                               const JSPandaFile *jsPandaFile)
 {

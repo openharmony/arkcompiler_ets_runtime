@@ -363,6 +363,8 @@ public:
     HeapProfilerInterface *GetOrNewHeapProfile();
 #endif
 
+    bool FindCatchBlock(JSMethod *method, uint32_t pc) const;
+
     void preFork();
     void postFork();
 protected:
