@@ -217,7 +217,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler *profiler = CpuProfiler::GetInstance();
+    CpuProfiler *profiler = thread->GetEcmaVM()->GetProfiler();
     if (profiler != nullptr) {
         profiler->IsNeedAndGetStack(thread);
     }

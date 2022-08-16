@@ -363,6 +363,18 @@ public:
     HeapProfilerInterface *GetOrNewHeapProfile();
 #endif
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    CpuProfiler *GetProfiler() const
+    {
+        return profiler_;
+    }
+
+    void SetProfiler(CpuProfiler *profiler)
+    {
+        profiler_ = profiler;
+    }
+#endif
+
     void preFork();
     void postFork();
 protected:
@@ -466,7 +478,9 @@ private:
 
     // vm parameter configurations
     EcmaParamConfiguration ecmaParamConfiguration_;
-
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    CpuProfiler *profiler_ {nullptr};
+#endif
     friend class Snapshot;
     friend class SnapshotProcessor;
     friend class ObjectFactory;

@@ -424,7 +424,7 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     state->function = info->GetFunctionValue();
     thread->SetCurrentSPFrame(newSp);
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler *profiler = CpuProfiler::GetInstance();
+    CpuProfiler *profiler = thread->GetEcmaVM()->GetProfiler();
     if (profiler != nullptr) {
         profiler->IsNeedAndGetStack(thread);
     }
@@ -545,7 +545,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     state->env = thisFunc->GetLexicalEnv();
     thread->SetCurrentSPFrame(newSp);
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler *profiler = CpuProfiler::GetInstance();
+    CpuProfiler *profiler = thread->GetEcmaVM()->GetProfiler();
     if (profiler != nullptr) {
         profiler->IsNeedAndGetStack(thread);
     }
