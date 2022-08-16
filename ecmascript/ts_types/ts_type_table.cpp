@@ -33,7 +33,7 @@ void TSTypeTable::Initialize(JSThread *thread, const JSPandaFile *jsPandaFile,
     TSManager *tsManager = vm->GetTSManager();
     ObjectFactory *factory = vm->GetFactory();
 
-    uint32_t moduleId = tsManager->GetNextModuleId();
+    uint32_t moduleId = static_cast<uint32_t>(tsManager->GetNextModuleId());
     JSHandle<TSTypeTable> tsTypeTable = GenerateTypeTable(thread, jsPandaFile, moduleId, recordImportModules);
 
     // Set TStypeTable -> GlobleModuleTable
