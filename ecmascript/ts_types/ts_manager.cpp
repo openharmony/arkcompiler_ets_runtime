@@ -553,6 +553,7 @@ void TSModuleTable::Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable)
         builtinsTable = factory->NewTSTypeTable(0);
     }
     mTable->Set(thread, GetTSTypeTableOffset(BUILTINS_TABLE_ID), builtinsTable);
+    TSTypeTable::LinkClassType(thread, builtinsTable);
 
     // set infer type table
     JSHandle<EcmaString> inferTableName = factory->NewFromASCII(TSTypeTable::INFER_TABLE_NAME);
