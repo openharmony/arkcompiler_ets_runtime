@@ -399,7 +399,19 @@ void OldSpace::SelectCSet()
     std::sort(collectRegionSet_.begin(), collectRegionSet_.end(), [](Region *first, Region *second) {
         return first->AliveObject() < second->AliveObject();
     });
-    unsigned long selectedRegionNumber = GetSelectedRegionNumber();
+    unsigned long selectedRegionNumber = 0;
+    int64_t evacuateSize = PARTIAL_GC_MAX_EVACUATION_SIZE;
+    EnumerateCollectRegionSet([&](Region *current) {
+        if (evacuateSize > 0) {
+            selectedRegionNumber++;
+            evacuateSize -= current->AliveObject();
+        } else {
+            return;
+        }
+    });
+    OPTIONAL_LOG(heap_->GetEcmaVM(), INFO) << "Max evacuation size is 4_MB. The CSet region number: "
+        << selectedRegionNumber;
+    selectedRegionNumber = std::max(selectedRegionNumber, GetSelectedRegionNumber());
     if (collectRegionSet_.size() > selectedRegionNumber) {
         collectRegionSet_.resize(selectedRegionNumber);
     }
@@ -411,7 +423,7 @@ void OldSpace::SelectCSet()
         current->SetGCFlag(RegionGCFlags::IN_COLLECT_SET);
     });
     sweepState_ = SweepState::NO_SWEEP;
-    LOG_ECMA_MEM(DEBUG) << "Select CSet success: number is " << collectRegionSet_.size();
+    OPTIONAL_LOG(heap_->GetEcmaVM(), INFO) << "Select CSet success: number is " << collectRegionSet_.size();
 }
 
 void OldSpace::CheckRegionSize()

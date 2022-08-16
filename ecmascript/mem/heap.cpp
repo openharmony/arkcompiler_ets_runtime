@@ -353,22 +353,16 @@ void Heap::CollectGarbage(TriggerGCType gcType)
             break;
     }
 
-    if (!oldSpaceLimitAdjusted_ && originalNewSpaceSize > 0) {
-        semiSpaceCopiedSize_ = activeSemiSpace_->GetHeapObjectSize();
-        double copiedRate = semiSpaceCopiedSize_ * 1.0 / originalNewSpaceSize;
-        promotedSize_ = GetEvacuator()->GetPromotedSize();
-        double promotedRate = promotedSize_ * 1.0 / originalNewSpaceSize;
-        memController_->AddSurvivalRate(std::min(copiedRate + promotedRate, 1.0));
-        AdjustOldSpaceLimit();
-    }
+    // Adjust the old space capacity and global limit for the first partial GC with full mark.
+    // Trigger the full mark next time if the current survival rate is much less than half the average survival rates.
+    AdjustBySurvivalRate(originalNewSpaceSize);
 
     memController_->StopCalculationAfterGC(gcType);
-
     if (gcType == TriggerGCType::FULL_GC || IsFullMark()) {
         // Only when the gc type is not semiGC and after the old space sweeping has been finished,
         // the limits of old space and global space can be recomputed.
         RecomputeLimits();
-        OPTIONAL_LOG(ecmaVm_, ERROR) << " GC after: is full mark" << IsFullMark()
+        OPTIONAL_LOG(ecmaVm_, INFO) << " GC after: is full mark" << IsFullMark()
                                      << " global object size " << GetHeapObjectSize()
                                      << " global committed size " << GetCommittedSize()
                                      << " global limit " << globalSpaceAllocLimit_;
@@ -400,6 +394,35 @@ void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName)
     GetEcmaVM()->GetEcmaGCStats()->PrintHeapStatisticResult(true);
     LOG_ECMA_MEM(FATAL) << "OOM when trying to allocate " << size << " bytes"
         << " function name: " << functionName.c_str();
+}
+
+void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
+{
+    if (originalNewSpaceSize <= 0) {
+        return;
+    }
+    semiSpaceCopiedSize_ = activeSemiSpace_->GetHeapObjectSize();
+    double copiedRate = semiSpaceCopiedSize_ * 1.0 / originalNewSpaceSize;
+    promotedSize_ = GetEvacuator()->GetPromotedSize();
+    double promotedRate = promotedSize_ * 1.0 / originalNewSpaceSize;
+    double survivalRate = std::min(copiedRate + promotedRate, 1.0);
+    OPTIONAL_LOG(ecmaVm_, INFO) << " copiedRate: " << copiedRate << " promotedRate: " << promotedRate
+                                << " survivalRate: " << survivalRate;
+    if (!oldSpaceLimitAdjusted_) {
+        memController_->AddSurvivalRate(survivalRate);
+        AdjustOldSpaceLimit();
+    } else {
+        double averageSurvivalRate = memController_->GetAverageSurvivalRate();
+        if ((averageSurvivalRate / 2) > survivalRate && averageSurvivalRate > growObjectSurvivalRate) {
+            fullMarkRequested_ = true;
+            OPTIONAL_LOG(ecmaVm_, INFO) << " Current survival rate: " << survivalRate
+                << " is less than half the average survival rates: " << averageSurvivalRate
+                << ". Trigger full mark next time.";
+            // Survival rate of full mark is precise. Reset recorded survival rates.
+            memController_->ResetRecordedSurvivalRates();
+        }
+        memController_->AddSurvivalRate(survivalRate);
+    }
 }
 
 size_t Heap::VerifyHeapObjects() const
@@ -465,8 +488,8 @@ void Heap::AdjustOldSpaceLimit()
     if (newGlobalSpaceAllocLimit < globalSpaceAllocLimit_) {
         globalSpaceAllocLimit_ = newGlobalSpaceAllocLimit;
     }
-    OPTIONAL_LOG(ecmaVm_, ERROR) << "AdjustOldSpaceLimit oldSpaceAllocLimit_" << oldSpaceAllocLimit
-        << " globalSpaceAllocLimit_" << globalSpaceAllocLimit_;
+    OPTIONAL_LOG(ecmaVm_, INFO) << "AdjustOldSpaceLimit oldSpaceAllocLimit_: " << oldSpaceAllocLimit
+        << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
 }
 
 void Heap::AddToKeptObjects(JSHandle<JSTaggedValue> value) const
@@ -504,8 +527,15 @@ void Heap::RecomputeLimits()
                                                                    maxGlobalSize, newSpaceCapacity, growingFactor);
     globalSpaceAllocLimit_ = newGlobalSpaceLimit;
     oldSpace_->SetInitialCapacity(newOldSpaceLimit);
-    OPTIONAL_LOG(ecmaVm_, ERROR) << "RecomputeLimits oldSpaceAllocLimit_" << newOldSpaceLimit
-        << " globalSpaceAllocLimit_" << globalSpaceAllocLimit_;
+    OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
+        << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
+    if ((oldSpace_->GetHeapObjectSize() * 1.0 / shrinkObjectSurvivalRate) < oldSpace_->GetCommittedSize()
+         && (oldSpace_->GetCommittedSize() / 2) > newOldSpaceLimit) {
+        OPTIONAL_LOG(ecmaVm_, INFO) << " Old space heap object size is too much lower than committed size"
+                                    << " heapObjectSize: "<< oldSpace_->GetHeapObjectSize()
+                                    << " Committed Size: " << oldSpace_->GetCommittedSize();
+        SetFullMarkRequestedState(true);
+    }
 }
 
 void Heap::CheckAndTriggerOldGC(size_t size)
@@ -546,6 +576,11 @@ void Heap::TryTriggerConcurrentMarking()
     if (!concurrentMarker_->IsEnabled() || !thread_->IsReadyToMark()) {
         return;
     }
+    if (fullMarkRequested_) {
+        markType_ = MarkType::MARK_FULL;
+        OPTIONAL_LOG(ecmaVm_, INFO) << " fullMarkRequested, trigger full mark.";
+        TriggerConcurrentMarking();
+    }
     bool isFullMarkNeeded = false;
     double oldSpaceMarkDuration = 0, newSpaceMarkDuration = 0, newSpaceRemainSize = 0, newSpaceAllocToLimitDuration = 0,
            oldSpaceAllocToLimitDuration = 0;
@@ -557,7 +592,7 @@ void Heap::TryTriggerConcurrentMarking()
     if (oldSpaceConcurrentMarkSpeed == 0 || oldSpaceAllocSpeed == 0) {
         if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit ||  globalHeapObjectSize >= globalSpaceAllocLimit_) {
             markType_ = MarkType::MARK_FULL;
-            OPTIONAL_LOG(ecmaVm_, ERROR) << "Trigger the first full mark";
+            OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first full mark";
             TriggerConcurrentMarking();
             return;
         }
@@ -582,7 +617,7 @@ void Heap::TryTriggerConcurrentMarking()
         if (activeSemiSpace_->GetCommittedSize() >= config.GetSemiSpaceTriggerConcurrentMark()) {
             markType_ = MarkType::MARK_YOUNG;
             TriggerConcurrentMarking();
-            OPTIONAL_LOG(ecmaVm_, ERROR) << "Trigger the first semi mark" << fullGCRequested_;
+            OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first semi mark" << fullGCRequested_;
         }
         return;
     }
@@ -597,18 +632,18 @@ void Heap::TryTriggerConcurrentMarking()
             && oldSpaceMarkDuration < oldSpaceAllocToLimitDuration) {
             markType_ = MarkType::MARK_FULL;
             TriggerConcurrentMarking();
-            OPTIONAL_LOG(ecmaVm_, ERROR) << "Trigger full mark by speed";
+            OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark by speed";
         } else {
             if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_) {
                 markType_ = MarkType::MARK_FULL;
                 TriggerConcurrentMarking();
-                OPTIONAL_LOG(ecmaVm_, ERROR) << "Trigger full mark by limit";
+                OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark by limit";
             }
         }
     } else if (newSpaceRemainSize < DEFAULT_REGION_SIZE) {
         markType_ = MarkType::MARK_YOUNG;
         TriggerConcurrentMarking();
-        OPTIONAL_LOG(ecmaVm_, ERROR) << "Trigger semi mark";
+        OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
     }
 }
 
