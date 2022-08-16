@@ -69,6 +69,8 @@ public:
                                                        JSHandle<EcmaString> fileName,
                                                        CVector<JSHandle<EcmaString>> &recordImportModules);
 
+    static void LinkClassType(JSThread *thread, JSHandle<TSTypeTable> table);
+
 private:
     static JSHandle<TaggedArray> GetExportTableFromPandFile(JSThread *thread, const panda_file::File &pf);
 
@@ -78,8 +80,6 @@ private:
                             CVector<JSHandle<EcmaString>> &recordImportModules);
 
     static int GetTypeKindFromFileByLocalId(JSThread *thread, const JSPandaFile *jsPandaFile, int localId);
-
-    static void LinkClassType(JSThread *thread, JSHandle<TSTypeTable> table);
 
     static void MergeClassFiled(JSThread *thread, JSHandle<TSClassType> classType,
                                 JSHandle<TSClassType> extendClassType);
