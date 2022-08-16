@@ -3778,7 +3778,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     }
     GateRef method = GetMethodFromJSFunction(func);
     GateRef callField = GetCallFieldFromMethod(method);
-    GateRef isNativeMask = Int64(static_cast<uint64_t>(1) << JSMethod::IsNativeBit::START_BIT);
+    GateRef isNativeMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);
 
     // 2. call dispatch
     Label methodIsNative(env);
@@ -3789,7 +3789,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Bind(&methodIsNative);
     {
         GateRef nativeCode = Load(VariableType::NATIVE_POINTER(), method,
-            IntPtr(JSMethod::GetBytecodeArrayOffset(env->IsArch32Bit())));
+            IntPtr(JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef newTarget = Undefined();
         GateRef thisValue = Undefined();
         GateRef numArgs = Int32Add(actualNumArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
@@ -3813,7 +3813,8 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 break;
             case JSCallMode::CALL_THIS_WITH_ARGV: {
                 thisValue = data[2]; // 2: this input
-                GateRef isFastBuiltinsMask = Int64(static_cast<uint64_t>(1) << JSMethod::IsFastBuiltinBit::START_BIT);
+                GateRef isFastBuiltinsMask =
+                    Int64(static_cast<uint64_t>(1) << MethodLiteral::IsFastBuiltinBit::START_BIT);
                 Branch(Int64NotEqual(Int64And(callField, isFastBuiltinsMask), Int64(0)),
                     &isFastBuiltins, &notFastBuiltins);
                 Bind(&isFastBuiltins);
@@ -3868,7 +3869,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label methodisAot(env);
     Label methodNotAot(env);
     {
-        GateRef isAotMask = Int64(static_cast<uint64_t>(1) << JSMethod::IsAotCodeBit::START_BIT);
+        GateRef isAotMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsAotCodeBit::START_BIT);
         Branch(Int64Equal(Int64And(callField, isAotMask), Int64(0)),  &methodNotAot, &methodisAot);
         Bind(&methodisAot);
         {

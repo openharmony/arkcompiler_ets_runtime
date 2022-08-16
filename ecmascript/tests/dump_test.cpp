@@ -429,6 +429,10 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsRealm)
                 break;
             }
+            case JSType::JS_METHOD: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSMethod::SIZE, 1U);
+                break;
+            }
             case JSType::JS_FUNCTION_BASE: {
 #ifdef PANDA_TARGET_64
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 2U);
@@ -438,7 +442,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 8U);
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 7U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc)
                 break;

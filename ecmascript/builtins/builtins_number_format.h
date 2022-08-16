@@ -37,7 +37,7 @@ public:
     static JSTaggedValue ResolvedOptions(EcmaRuntimeCallInfo *argv);
 
 private:
-    friend class panda::ecmascript::ObjectFactory;
+    friend class panda::ecmascript::EcmaVM;
     // Number Format Functions
     static JSTaggedValue NumberFormatInternalFormatNumber(EcmaRuntimeCallInfo *argv);
 };

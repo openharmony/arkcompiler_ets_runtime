@@ -145,7 +145,6 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     SnapshotProcessor processor(vm_);
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
-        processor.GeneratedNativeMethod();
     }
     auto readFile = ToUintPtr(mmap(nullptr, file_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
     auto hdr = *ToNativePtr<const Header>(readFile);

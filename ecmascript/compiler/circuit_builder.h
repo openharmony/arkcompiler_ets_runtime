@@ -364,6 +364,7 @@ public:
     inline GateRef LogicOr(GateRef x, GateRef y);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetFunctionBitFieldFromJSFunction(GateRef function);
+    GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
     GateRef FunctionIsResolved(GateRef function);
     void SetResolvedToFunction(GateRef glue, GateRef function, GateRef value);

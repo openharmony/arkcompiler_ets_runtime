@@ -17,11 +17,13 @@
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
 void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                            const JSHandle<TaggedArray> &literal)
+                                                            const JSHandle<TaggedArray> &literal,
+                                                            const JSPandaFile *jsPandaFile)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -44,7 +46,7 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
         ExtractContentsDetail nonStaticDetail {0, nonStaticNum * 2, NON_STATIC_RESERVED_LENGTH, nullptr};
 
         if (UNLIKELY(ExtractAndReturnWhetherWithElements(thread, literal, nonStaticDetail, nonStaticKeys,
-                                                         nonStaticProperties, nonStaticElements))) {
+                                                         nonStaticProperties, nonStaticElements, jsPandaFile))) {
             extractor->SetNonStaticWithElements(true);
             extractor->SetNonStaticElements(thread, nonStaticElements);
         }
@@ -77,13 +79,14 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
         };
 
         if (UNLIKELY(ExtractAndReturnWhetherWithElements(thread, literal, staticDetail, staticKeys,
-                                                         staticProperties, staticElements))) {
+                                                         staticProperties, staticElements, jsPandaFile))) {
             extractor->SetStaticWithElements(true);
             extractor->SetStaticElements(thread, staticElements);
         }
     } else {
         // without static properties, set class name
-        std::string clsName = extractor->GetConstructorMethod()->ParseFunctionName();
+        MethodLiteral *method = extractor->GetConstructorMethod();
+        std::string clsName = MethodLiteral::ParseFunctionName(jsPandaFile, method->GetMethodId());
         JSHandle<EcmaString> clsNameHandle = factory->NewFromStdString(clsName);
         staticProperties->Set(thread, NAME_INDEX, clsNameHandle);
     }
@@ -103,7 +106,8 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
                                                              const ExtractContentsDetail &detail,
                                                              JSHandle<TaggedArray> &keys,
                                                              JSHandle<TaggedArray> &properties,
-                                                             JSHandle<TaggedArray> &elements)
+                                                             JSHandle<TaggedArray> &elements,
+                                                             const JSPandaFile *jsPandaFile)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
@@ -152,7 +156,7 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
         if (LIKELY(!keysHasNameFlag)) {
             [[maybe_unused]] EcmaHandleScope handleScope(thread);
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            std::string clsName = detail.ctorMethod->ParseFunctionName();
+            std::string clsName = MethodLiteral::ParseFunctionName(jsPandaFile, detail.ctorMethod->GetMethodId());
             JSHandle<EcmaString> clsNameHandle = factory->NewFromStdString(clsName);
             properties->Set(thread, NAME_INDEX, clsNameHandle);
         } else {
@@ -283,9 +287,9 @@ JSHandle<JSFunction> ClassHelper::DefineClassTemplate(JSThread *thread, JSHandle
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
 
     JSHandle<JSHClass> constructorHClass(thread, extractor->GetConstructorHClass());
-    JSHandle<JSFunction> constructor =
-        factory->NewJSFunctionByDynClass(extractor->GetConstructorMethod(), constructorHClass,
-                                         FunctionKind::CLASS_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
+    JSHandle<JSMethod> method = factory->NewJSMethod(extractor->GetConstructorMethod());
+    JSHandle<JSFunction> constructor = factory->NewJSFunctionByDynClass(method,
+        constructorHClass, FunctionKind::CLASS_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
 
     // non-static
     JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
@@ -300,7 +304,8 @@ JSHandle<JSFunction> ClassHelper::DefineClassTemplate(JSThread *thread, JSHandle
             if (propValue->IsJSFunction()) {
                 JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
                 propFunc->SetHomeObject(thread, prototype);
-                propFunc->SetConstantPool(thread, constantpool);
+                JSHandle<JSMethod> propMethod(thread, propFunc->GetMethod());
+                propMethod->SetConstantPool(thread, constantpool.GetTaggedValue());
             }
             prototype->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
@@ -327,7 +332,8 @@ JSHandle<JSFunction> ClassHelper::DefineClassTemplate(JSThread *thread, JSHandle
             if (propValue->IsJSFunction()) {
                 JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
                 propFunc->SetHomeObject(thread, constructor);
-                propFunc->SetConstantPool(thread, constantpool);
+                JSHandle<JSMethod> propMethod(thread, propFunc->GetMethod());
+                propMethod->SetConstantPool(thread, constantpool.GetTaggedValue());
             }
             JSHandle<JSObject>::Cast(constructor)->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
@@ -394,7 +400,8 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
         if (propValue->IsJSFunction()) {
             JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
             propFunc->SetHomeObject(thread, object);
-            propFunc->SetConstantPool(thread, constantpool);
+            JSHandle<JSMethod> method(thread, propFunc->GetMethod());
+            method->SetConstantPool(thread, constantpool.GetTaggedValue());
         }
         JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attributes);
         dict.Update(newDict);
@@ -417,7 +424,8 @@ void ClassHelper::HandleElementsProperties(JSThread *thread, const JSHandle<JSOb
         if (elementsValue->IsJSFunction()) {
             JSHandle<JSFunction> elementsFunc = JSHandle<JSFunction>::Cast(elementsValue);
             elementsFunc->SetHomeObject(thread, object);
-            elementsFunc->SetConstantPool(thread, constantpool);
+            JSHandle<JSMethod> method(thread, elementsFunc->GetMethod());
+            method->SetConstantPool(thread, constantpool.GetTaggedValue());
         }
     }
 }

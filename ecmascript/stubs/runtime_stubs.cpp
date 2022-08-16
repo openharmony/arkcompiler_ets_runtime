@@ -800,8 +800,7 @@ DEF_RUNTIME_STUBS(ResolveClass)
     JSHandle<TaggedArray> literal = GetHArg<TaggedArray>(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
-    JSHandle<ConstantPool> constpool = GetHArg<ConstantPool>(argv, argc, 4);  // 4: means the fourth parameter
-    return RuntimeResolveClass(thread, ctor, literal, base, lexenv, constpool).GetRawData();
+    return RuntimeResolveClass(thread, ctor, literal, base, lexenv).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CloneClassFromTemplate)
@@ -810,8 +809,7 @@ DEF_RUNTIME_STUBS(CloneClassFromTemplate)
     JSHandle<JSFunction> ctor = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
-    return RuntimeCloneClassFromTemplate(thread, ctor, base, lexenv, constpool).GetRawData();
+    return RuntimeCloneClassFromTemplate(thread, ctor, base, lexenv).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
@@ -1438,10 +1436,9 @@ DEF_RUNTIME_STUBS(CreateObjectHavingMethod)
     RUNTIME_STUBS_HEADER(CreateObjectHavingMethod);
     JSHandle<JSObject> literal = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> env = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    return RuntimeCreateObjectHavingMethod(thread, factory, literal, env, constpool).GetRawData();
+    return RuntimeCreateObjectHavingMethod(thread, factory, literal, env).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateObjectWithExcludedKeys)

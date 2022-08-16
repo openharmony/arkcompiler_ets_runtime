@@ -847,7 +847,7 @@ JSTaggedValue FastRuntimeStub::NewThisObject(JSThread *thread, JSTaggedValue cto
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
 
     state->function = ctorHandle.GetTaggedValue();
-    state->constpool = ctorHandle->GetConstantPool();
+    state->constpool = JSMethod::Cast(ctorHandle->GetMethod().GetTaggedObject())->GetConstantPool();
     state->profileTypeInfo = ctorHandle->GetProfileTypeInfo();
     state->env = ctorHandle->GetLexicalEnv();
 

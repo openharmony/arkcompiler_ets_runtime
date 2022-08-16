@@ -60,10 +60,14 @@ JSMethod *ECMAObject::GetCallTarget() const
 {
     const TaggedObject *obj = this;
     ASSERT(JSTaggedValue(obj).IsJSFunctionBase() || JSTaggedValue(obj).IsJSProxy());
+
+    JSTaggedValue value;
     if (JSTaggedValue(obj).IsJSFunctionBase()) {
-        return JSFunctionBase::ConstCast(obj)->GetMethod();
+        value = JSFunctionBase::ConstCast(obj)->GetMethod();
+    } else {
+        value = JSProxy::ConstCast(obj)->GetMethod();
     }
-    return JSProxy::ConstCast(obj)->GetMethod();
+    return JSMethod::Cast(value.GetTaggedObject());
 }
 
 JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,

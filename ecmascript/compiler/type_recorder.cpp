@@ -16,14 +16,14 @@
 #include "ecmascript/compiler/type_recorder.h"
 
 namespace panda::ecmascript::kungfu {
-TypeRecorder::TypeRecorder(const JSMethod *method, TSManager *tsManager)
+TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *method, TSManager *tsManager)
 {
-    LoadTypes(method, tsManager);
+    LoadTypes(jsPandaFile, method, tsManager);
 }
 
-void TypeRecorder::LoadTypes(const JSMethod *method, TSManager *tsManager)
+void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *method, TSManager *tsManager)
 {
-    const panda_file::File *pf = method->GetJSPandaFile()->GetPandaFile();
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId fieldId = method->GetMethodId();
     panda_file::MethodDataAccessor mda(*pf, fieldId);
     mda.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {

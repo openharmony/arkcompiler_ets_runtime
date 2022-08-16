@@ -122,7 +122,7 @@ bool InvokeCache::SetMonoInlineCallCacheSlot(JSThread *thread, ProfileTypeInfo *
                                              JSTaggedValue callee)
 {
     ASSERT(callee.IsJSFunction());
-    JSMethod *calleeMethod = JSFunction::Cast(callee.GetTaggedObject())->GetMethod();
+    JSMethod *calleeMethod = JSFunction::Cast(callee.GetTaggedObject())->GetCallTarget();
     if (DecideCanBeInlined(calleeMethod)) {
         profileTypeInfo->Set(thread, slotId, callee);
         return true;
@@ -145,7 +145,7 @@ bool InvokeCache::SetPolyInlineCallCacheSlot(JSThread *thread, ProfileTypeInfo *
 
     for (uint8_t index = 0; index < length; ++index) {
         JSTaggedValue calleeElement = calleeArr->Get(index);
-        JSMethod *calleeMethod = JSFunction::Cast(calleeElement.GetTaggedObject())->GetMethod();
+        JSMethod *calleeMethod = JSFunction::Cast(calleeElement.GetTaggedObject())->GetCallTarget();
         if (DecideCanBeInlined(calleeMethod)) {
             newArray->Set(thread, index, calleeElement);
         } else {
@@ -160,7 +160,7 @@ bool InvokeCache::SetPolyInlineCallCacheSlot(JSThread *thread, ProfileTypeInfo *
 bool InvokeCache::DecideCanBeInlined(JSMethod *method)
 {
     constexpr uint32_t MAX_INLINED_BYTECODE_SIZE = 128;
-    uint32_t bcSize = method->GetBytecodeArraySize();
+    uint32_t bcSize = method->GetCodeSize();
     return (bcSize > 0 && bcSize < MAX_INLINED_BYTECODE_SIZE);  // 0 is invalid
 }
 }  // namespace panda::ecmascript

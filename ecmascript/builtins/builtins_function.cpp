@@ -262,7 +262,8 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
     if (thisValue->IsJSObject() && thisValue->IsCallable()) {
-        auto method = ECMAObject::Cast(thisValue->GetTaggedObject())->GetCallTarget();
+        JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(thisValue);
+        JSHandle<JSMethod> method(thread, func->GetMethod());
         if (method->IsNativeWithCallField()) {
             JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
             JSHandle<EcmaString> methodName(JSObject::GetProperty(thread, thisValue, nameKey).GetValue());

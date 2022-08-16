@@ -131,6 +131,7 @@ class ProtoChangeDetails;
         JS_PLURAL_RULES, /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_DISPLAYNAMES, /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_LIST_FORMAT,  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_METHOD,  /* ////////////////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         JS_ARRAY_BUFFER, /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SHARED_ARRAY_BUFFER, /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -742,6 +743,12 @@ public:
     {
         return GetObjectType() == JSType::JS_LIST_FORMAT;
     }
+
+    inline bool IsJSMethod() const
+    {
+        return GetObjectType() == JSType::JS_METHOD;
+    }
+
     // non ECMA standard jsapi containers.
     inline bool IsSpecialContainer() const
     {

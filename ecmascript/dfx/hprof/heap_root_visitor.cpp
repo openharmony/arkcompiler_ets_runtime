@@ -24,7 +24,7 @@ void HeapRootVisitor::VisitHeapRoots(JSThread *thread, const RootVisitor &visito
                                      const RootBaseAndDerivedVisitor &derivedVisitor)
 {
     auto ecma_vm = GetVMInstance(thread);
-    ecma_vm->Iterate(visitor);
+    ecma_vm->Iterate(visitor, rangeVisitor);
     thread->Iterate(visitor, rangeVisitor, derivedVisitor);
 }
 

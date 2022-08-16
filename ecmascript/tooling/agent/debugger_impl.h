@@ -18,6 +18,7 @@
 
 #include "ecmascript/tooling/agent/runtime_impl.h"
 #include "ecmascript/tooling/backend/js_pt_hooks.h"
+#include "ecmascript/tooling/base/pt_method.h"
 #include "ecmascript/tooling/base/pt_params.h"
 #include "ecmascript/tooling/backend/js_pt_extractor.h"
 #include "ecmascript/tooling/dispatcher.h"
@@ -140,8 +141,8 @@ private:
     std::unique_ptr<Scope> GetLocalScopeChain(const FrameHandler *frameHandler,
         std::unique_ptr<RemoteObject> *thisObj);
     std::unique_ptr<Scope> GetGlobalScopeChain();
-    void GetLocalVariables(const FrameHandler *frameHandler, const JSMethod *method,
-        Local<JSValueRef> &thisVal, Local<ObjectRef> &localObj);
+    void GetLocalVariables(const FrameHandler *frameHandler, panda_file::File::EntityId methodId,
+        const JSPandaFile *jsPandaFile, Local<JSValueRef> &thisVal, Local<ObjectRef> &localObj);
     void CleanUpOnPaused();
     void UpdateScopeObject(const FrameHandler *frameHandler, std::string_view varName, Local<JSValueRef> newVal);
     Local<JSValueRef> ConvertToLocal(const std::string &varValue);

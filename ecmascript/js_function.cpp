@@ -46,8 +46,8 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetConstantPool(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetFunctionExtraInfo(thread, JSTaggedValue::Undefined());
     func->SetFunctionKind(kind);
     func->SetStrict(strict);
@@ -152,7 +152,11 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
 
 JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> &self)
 {
-    JSMethod *target = JSHandle<JSFunction>::Cast(self)->GetCallTarget();
+    JSTaggedValue method = JSHandle<JSFunction>::Cast(self)->GetMethod();
+    if (method.IsUndefined()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<JSMethod> target = JSHandle<JSMethod>(thread, method);
     if (target->GetPandaFile() == nullptr) {
         return JSTaggedValue::Undefined();
     }

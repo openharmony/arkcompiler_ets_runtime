@@ -537,8 +537,9 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     state->pc = pc;
     state->function = info->GetFunctionValue();
     state->acc = JSTaggedValue::Hole();
+
+    state->constpool = method->GetConstantPool();
     JSHandle<JSFunction> thisFunc = JSHandle<JSFunction>::Cast(func);
-    state->constpool = thisFunc->GetConstantPool();
     state->profileTypeInfo = thisFunc->GetProfileTypeInfo();
     state->base.prev = sp;
     state->base.type = FrameType::INTERPRETER_FRAME;
@@ -618,7 +619,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
     InterpretedFrame *state = GET_FRAME(newSp);
     state->pc = resumePc;
     state->function = func.GetTaggedValue();
-    state->constpool = func->GetConstantPool();
+    state->constpool = method->GetConstantPool();
     state->profileTypeInfo = func->GetProfileTypeInfo();
     state->acc = context->GetAcc();
     state->base.prev = breakSp;
@@ -994,7 +995,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             sp = newSp;
             state->function = JSTaggedValue(funcTagged);
             state->acc = JSTaggedValue::Hole();
-            state->constpool = JSFunction::Cast(funcObject)->GetConstantPool();
+            state->constpool = method->GetConstantPool();
             state->profileTypeInfo = JSFunction::Cast(funcObject)->GetProfileTypeInfo();
             JSTaggedValue env = JSFunction::Cast(funcObject)->GetLexicalEnv();
             state->env = env;
@@ -1009,7 +1010,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         InterpretedFrame *state = GET_FRAME(sp);
         LOG_INST() << "Exit: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
                                 << std::hex << reinterpret_cast<uintptr_t>(state->pc);
-        JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetMethod();
+        JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
         [[maybe_unused]] auto fistPC = method->GetBytecodeArray();
         UPDATE_HOTNESS_COUNTER(-(pc - fistPC));
         JSTaggedType *currentSp = sp;
@@ -1056,7 +1057,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         InterpretedFrame *state = GET_FRAME(sp);
         LOG_INST() << "Exit: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
                                 << std::hex << reinterpret_cast<uintptr_t>(state->pc);
-        JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetMethod();
+        JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
         [[maybe_unused]] auto fistPC = method->GetBytecodeArray();
         UPDATE_HOTNESS_COUNTER_NON_ACC(-(pc - fistPC));
         JSTaggedType *currentSp = sp;
@@ -1891,7 +1892,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             auto res = SlowRuntimeStub::DefinefuncDyn(thread, result);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             result = JSFunction::Cast(res.GetTaggedObject());
-            result->SetConstantPool(thread, GetConstantPool(sp));
         } else {
             result->SetResolved(true);
         }
@@ -1921,7 +1921,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             auto res = SlowRuntimeStub::DefineNCFuncDyn(thread, result);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             result = JSFunction::Cast(res.GetTaggedObject());
-            result->SetConstantPool(thread, GetConstantPool(sp));
             RESTORE_ACC();
             homeObject = GET_ACC();
         } else {
@@ -1953,7 +1952,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             result = JSFunction::Cast(res.GetTaggedObject());
-            result->SetConstantPool(thread, GetConstantPool(sp));
         } else {
             result->SetHomeObject(thread, homeObject);
             result->SetResolved(true);
@@ -1977,7 +1975,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
-            JSMethod *ctorMethod = ctorFunc->GetMethod();
+            JSMethod *ctorMethod = JSMethod::Cast(ctorFunc->GetMethod().GetTaggedObject());
             if (ctorFunc->IsBuiltinConstructor()) {
                 ASSERT(ctorMethod->GetNumVregsWithCallField() == 0);
                 size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 3;  // 3: this & numArgs & thread
@@ -2066,7 +2064,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     newSp[index++] = thisObj.GetRawData();
 
                     state->function = ctor;
-                    state->constpool = ctorFunc->GetConstantPool();
+                    state->constpool = ctorMethod->GetConstantPool();
                     state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                     state->env = ctorFunc->GetLexicalEnv();
                 }
@@ -2365,7 +2363,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
 
         InterpretedFrame *state = GET_FRAME(sp);
-        JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetMethod();
+        JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
         [[maybe_unused]] auto fistPC = method->GetBytecodeArray();
         UPDATE_HOTNESS_COUNTER(-(pc - fistPC));
         LOG_INST() << "Exit: SuspendGenerator " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
@@ -2722,7 +2720,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             auto res = SlowRuntimeStub::DefineGeneratorFunc(thread, result);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             result = JSFunction::Cast(res.GetTaggedObject());
-            result->SetConstantPool(thread, GetConstantPool(sp));
         } else {
             result->SetResolved(true);
         }
@@ -2749,7 +2746,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             auto res = SlowRuntimeStub::DefineAsyncGeneratorFunc(thread, result);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             result = JSFunction::Cast(res.GetTaggedObject());
-            result->SetConstantPool(thread, GetConstantPool(sp));
         } else {
             result->SetResolved(true);
         }
@@ -2776,7 +2772,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             auto res = SlowRuntimeStub::DefineAsyncFunc(thread, result);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             result = JSFunction::Cast(res.GetTaggedObject());
-            result->SetConstantPool(thread, GetConstantPool(sp));
         } else {
             result->SetResolved(true);
         }
@@ -3501,8 +3496,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res;
         SAVE_PC();
-        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate),
-            proto, lexenv, ConstantPool::Cast(GetConstantPool(sp).GetTaggedObject()));
+        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
@@ -3592,7 +3586,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         if (superCtor.IsJSFunction() && superCtor.IsConstructor() && !newTarget.IsUndefined()) {
             JSFunction *superCtorFunc = JSFunction::Cast(superCtor.GetTaggedObject());
-            JSMethod *superCtorMethod = superCtorFunc->GetMethod();
+            JSMethod *superCtorMethod = superCtorFunc->GetCallTarget();
             if (superCtorFunc->IsBuiltinConstructor()) {
                 ASSERT(superCtorMethod->GetNumVregsWithCallField() == 0);
                 size_t frameSize =
@@ -3678,7 +3672,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     newSp[index++] = thisObj.GetRawData();
 
                     state->function = superCtor;
-                    state->constpool = superCtorFunc->GetConstantPool();
+                    state->constpool = superCtorMethod->GetConstantPool();
                     state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                     state->env = superCtorFunc->GetLexicalEnv();
                 }
@@ -3740,8 +3734,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue env = GET_ACC();
 
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, env,
-            ConstantPool::Cast(GetConstantPool(sp).GetTaggedObject()));
+        JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, env);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(BytecodeInstruction::Format::PREF_IMM16);
@@ -3872,7 +3865,7 @@ JSTaggedValue EcmaInterpreter::GetNewTarget(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
-    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetMethod();
+    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
     ASSERT(method->HaveNewTargetWithCallField());
     uint32_t numVregs = method->GetNumVregsWithCallField();
     bool haveFunc = method->HaveFuncWithCallField();
@@ -3883,7 +3876,7 @@ uint32_t EcmaInterpreter::GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
-    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetMethod();
+    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
     ASSERT(method->HaveExtraWithCallField());
 
     uint32_t numVregs = method->GetNumVregsWithCallField();
@@ -3960,7 +3953,7 @@ JSTaggedValue EcmaInterpreter::GetConstantPool(JSTaggedType *sp)
 bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset)
 {
     InterpretedFrame *state = GET_FRAME(sp);
-    auto method = JSFunction::Cast(state->function.GetTaggedObject())->GetMethod();
+    auto method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
     auto hotnessCounter = method->GetHotnessCounter();
 
     hotnessCounter += offset;
@@ -3969,6 +3962,7 @@ bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, J
         SAVE_ACC();
         needRestoreAcc = thread->CheckSafepoint();
         RESTORE_ACC();
+        method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
         if (state->profileTypeInfo == JSTaggedValue::Undefined()) {
             state->acc = acc;
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)

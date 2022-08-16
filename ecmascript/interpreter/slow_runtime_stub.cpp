@@ -670,15 +670,14 @@ JSTaggedValue SlowRuntimeStub::CreateObjectWithBuffer(JSThread *thread, ObjectFa
 }
 
 JSTaggedValue SlowRuntimeStub::CreateObjectHavingMethod(JSThread *thread, ObjectFactory *factory, JSObject *literal,
-                                                        JSTaggedValue env, ConstantPool *constpool)
+                                                        JSTaggedValue env)
 {
     INTERPRETER_TRACE(thread, CreateObjectHavingMethod);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSObject> obj(thread, literal);
     JSHandle<JSTaggedValue> envi(thread, env);
-    JSHandle<JSTaggedValue> pool(thread, constpool);
-    return RuntimeStubs::RuntimeCreateObjectHavingMethod(thread, factory, obj, envi, pool);
+    return RuntimeStubs::RuntimeCreateObjectHavingMethod(thread, factory, obj, envi);
 }
 
 JSTaggedValue SlowRuntimeStub::SetObjectWithProto(JSThread *thread, JSTaggedValue proto, JSTaggedValue obj)
@@ -1107,27 +1106,25 @@ JSTaggedValue SlowRuntimeStub::NotifyInlineCache(JSThread *thread, JSFunction *f
 }
 
 JSTaggedValue SlowRuntimeStub::ResolveClass(JSThread *thread, JSTaggedValue ctor, TaggedArray *literal,
-                                            JSTaggedValue base, JSTaggedValue lexenv, ConstantPool *constpool)
+                                            JSTaggedValue base, JSTaggedValue lexenv)
 {
     JSHandle<JSFunction> cls(thread, ctor);
     JSHandle<TaggedArray> literalBuffer(thread, literal);
     JSHandle<JSTaggedValue> baseHandle(thread, base);
     JSHandle<JSTaggedValue> lexicalEnv(thread, lexenv);
-    JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-    return RuntimeStubs::RuntimeResolveClass(thread, cls, literalBuffer, baseHandle, lexicalEnv, constpoolHandle);
+    return RuntimeStubs::RuntimeResolveClass(thread, cls, literalBuffer, baseHandle, lexicalEnv);
 }
 
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue SlowRuntimeStub::CloneClassFromTemplate(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base,
-                                                      JSTaggedValue lexenv, ConstantPool *constpool)
+                                                      JSTaggedValue lexenv)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> lexenvHandle(thread, lexenv);
-    JSHandle<JSTaggedValue> constpoolHandle(thread, JSTaggedValue(constpool));
     JSHandle<JSTaggedValue> baseHandle(thread, base);
     JSHandle<JSFunction> cls(thread, ctor);
-    return RuntimeStubs::RuntimeCloneClassFromTemplate(thread, cls, baseHandle, lexenvHandle, constpoolHandle);
+    return RuntimeStubs::RuntimeCloneClassFromTemplate(thread, cls, baseHandle, lexenvHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base)
@@ -1173,7 +1170,7 @@ JSTaggedValue SlowRuntimeStub::DefineAsyncGeneratorFunc(JSThread *thread, JSFunc
 {
     INTERPRETER_TRACE(thread, DefineAsyncGeneratorFunc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    auto method = func->GetCallTarget();
+    JSHandle<JSMethod> method(thread, func->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

@@ -48,13 +48,14 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
                                            std::vector<MethodPcInfo> &methodPcInfos)
 {
     ASSERT(jsPandaFile != nullptr && jsPandaFile->GetMethods() != nullptr);
-    JSMethod *methods = jsPandaFile->GetMethods();
+    MethodLiteral *methods = jsPandaFile->GetMethods();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     size_t methodIdx = 0;
     panda_file::File::StringData sd = {static_cast<uint32_t>(methodName.size()),
                                        reinterpret_cast<const uint8_t *>(methodName.c_str())};
     std::map<const uint8_t *, size_t> processedInsns;
     Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
+
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf->IsExternal(classId)) {
@@ -66,7 +67,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
             auto codeId = mda.GetCodeId();
             ASSERT(codeId.has_value());
 
-            JSMethod *method = methods + (methodIdx++);
+            MethodLiteral *method = methods + (methodIdx++);
             panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
             uint32_t codeSize = codeDataAccessor.GetCodeSize();
 
@@ -75,9 +76,9 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
                 jsPandaFile->UpdateMainMethodIndex(mda.GetMethodId().GetOffset());
             }
 
-            new (method) JSMethod(jsPandaFile, mda.GetMethodId());
+            new (method) MethodLiteral(jsPandaFile, mda.GetMethodId());
             method->SetHotnessCounter(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
-            method->InitializeCallField(codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
+            method->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             auto it = processedInsns.find(insns);
             if (it == processedInsns.end()) {
@@ -155,9 +156,9 @@ void BytecodeInfoCollector::FixOpcode(uint8_t *pc)
     }
 }
 
-void BytecodeInfoCollector::UpdateICOffset(JSMethod *method, uint8_t *pc)
+void BytecodeInfoCollector::UpdateICOffset(MethodLiteral* method, uint8_t *pc)
 {
-    uint8_t offset = JSMethod::MAX_SLOT_SIZE;
+    uint8_t offset = MethodLiteral::MAX_SLOT_SIZE;
     auto opcode = static_cast<EcmaOpcode>(*pc);
     switch (opcode) {
         case EcmaOpcode::TRYLDGLOBALBYNAME_PREF_ID32:
@@ -286,7 +287,7 @@ void BytecodeInfoCollector::FixInstructionId32(const BytecodeInstruction &inst, 
 }
 
 void BytecodeInfoCollector::TranslateBCIns(JSPandaFile *jsPandaFile, const panda::BytecodeInstruction &bcIns,
-                                           const JSMethod *method)
+                                           const MethodLiteral *method)
 {
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     if (bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
@@ -356,12 +357,12 @@ void BytecodeInfoCollector::TranslateBCIns(JSPandaFile *jsPandaFile, const panda
 }
 
 void BytecodeInfoCollector::CollectMethodPcs(JSPandaFile *jsPandaFile, const uint32_t insSz, const uint8_t *insArr,
-                                             const JSMethod *method, std::vector<MethodPcInfo> &methodPcInfos)
+                                             const MethodLiteral* method, std::vector<MethodPcInfo> &methodPcInfos)
 {
     auto bcIns = BytecodeInstruction(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
 
-    methodPcInfos.emplace_back(MethodPcInfo { std::vector<const JSMethod *>(1, method), {}, {}, {} });
+    methodPcInfos.emplace_back(MethodPcInfo { std::vector<const MethodLiteral *>(1, method), {}, {}, {} });
 
     int32_t offsetIndex = 1;
     uint8_t *curPc = nullptr;
@@ -373,7 +374,7 @@ void BytecodeInfoCollector::CollectMethodPcs(JSPandaFile *jsPandaFile, const uin
         bcIns = bcIns.GetNext();
 
         FixOpcode(pc);
-        UpdateICOffset(const_cast<JSMethod *>(method), pc);
+        UpdateICOffset(const_cast<MethodLiteral *>(method), pc);
 
         auto &bytecodeBlockInfos = methodPcInfos.back().bytecodeBlockInfos;
         auto &byteCodeCurPrePc = methodPcInfos.back().byteCodeCurPrePc;

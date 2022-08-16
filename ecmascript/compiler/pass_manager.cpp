@@ -46,7 +46,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         (const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> &constantPool,
         BytecodeInfoCollector::MethodPcInfo &methodPCInfo) {
         for (auto method : methodPCInfo.methods) {
-            const std::string methodName(method->GetMethodName());
+            const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
             if (log_->CertainMethod()) {
                 enableLog = logList_->IncludesMethod(fileName, methodName);
             }
@@ -67,7 +67,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg);
             pipeline.RunPass<VerifierPass>();
             pipeline.RunPass<SchedulingPass>();
-            pipeline.RunPass<LLVMIRGenPass>(aotModule, method);
+            pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);
         }
     });
 
@@ -101,8 +101,10 @@ bool PassManager::CollectBCInfo(const std::string &fileName, BytecodeInfoCollect
     }
 
     auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile);
-    JSHandle<JSFunction> mainFunc(vm_->GetJSThread(), program->GetMainFunction());
-    JSHandle<JSTaggedValue> constPool(vm_->GetJSThread(), mainFunc->GetConstantPool());
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
+    JSHandle<JSMethod> jsMethod(thread, mainFunc->GetMethod());
+    JSHandle<JSTaggedValue> constPool(thread, jsMethod->GetConstantPool());
     bytecodeInfo->constantPool = constPool;
     return true;
 }

@@ -61,7 +61,9 @@ JSHandle<TSTypeTable> TSTypeTable::GenerateTypeTable(JSThread *thread, const JSP
 
     // read type summary literal
     uint32_t summaryIndex = jsPandaFile->GetTypeSummaryIndex();
-    JSHandle<TaggedArray> summaryLiteral = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, summaryIndex);
+    JSHandle<JSTaggedValue> constpool(thread, JSTaggedValue::Undefined());
+    JSHandle<TaggedArray> summaryLiteral =
+        LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, summaryIndex, constpool);
     ASSERT_PRINT(summaryLiteral->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt() == 0, "can not read type summary literal");
 
     uint32_t numTypes = static_cast<uint32_t>(summaryLiteral->Get(NUM_OF_TYPES_INDEX_IN_SUMMARY_LITREAL).GetInt());
@@ -71,7 +73,7 @@ JSHandle<TSTypeTable> TSTypeTable::GenerateTypeTable(JSThread *thread, const JSP
     TSTypeParser typeParser(thread->GetEcmaVM(), moduleId, fileName, recordImportModules);
     for (uint32_t idx = 1; idx <= numTypes; ++idx) {
         JSHandle<TaggedArray> typeLiteral = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile,
-                                                                                     idx + summaryIndex);
+                                                                                     idx + summaryIndex, constpool);
         if (typeLiteral->GetLength() == 0) {  // typeLiteral maybe hole in d.abc
             continue;
         }
@@ -224,7 +226,8 @@ JSHandle<EcmaString> TSTypeTable::GenerateVarNameAndPath(JSThread *thread, JSHan
 
 int TSTypeTable::GetTypeKindFromFileByLocalId(JSThread *thread, const JSPandaFile *jsPandaFile, int localId)
 {
-    JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, localId);
+    JSHandle<JSTaggedValue> constpool(thread, JSTaggedValue::Undefined());
+    JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, localId, constpool);
     return literal->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt();
 }
 

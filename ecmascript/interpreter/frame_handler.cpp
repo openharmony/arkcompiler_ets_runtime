@@ -215,8 +215,8 @@ const uint8_t *FrameHandler::GetPc() const
 ConstantPool *FrameHandler::GetConstpool() const
 {
     ASSERT(IsInterpretedFrame());
-    auto function = GetFunction();
-    JSTaggedValue constpool = JSFunction::Cast(function.GetTaggedObject())->GetConstantPool();
+    auto method = GetMethod();
+    JSTaggedValue constpool = method->GetConstantPool();
     return ConstantPool::Cast(constpool.GetTaggedObject());
 }
 
@@ -426,7 +426,7 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
 std::string FrameBcCollector::GetAotExceptionFuncName(JSTaggedType* argv) const
 {
     JSTaggedValue func = JSTaggedValue(*(argv)); // 3: skip returnaddr and argc
-    JSMethod *method = JSFunction::Cast(func.GetTaggedObject())->GetMethod();
+    JSMethod *method = JSFunction::Cast(func.GetTaggedObject())->GetCallTarget();
     return method->GetMethodName();
 }
 

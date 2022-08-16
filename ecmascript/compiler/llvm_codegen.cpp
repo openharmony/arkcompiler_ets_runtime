@@ -83,9 +83,9 @@ void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlo
 }
 
 void LLVMIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-    const panda::ecmascript::JSMethod *method)
+    const panda::ecmascript::MethodLiteral *method, const JSPandaFile *jsPandaFile)
 {
-    auto function = module_->AddFunc(method);
+    auto function = module_->AddFunc(method, jsPandaFile);
     circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
     LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, CallSignature::CallConv::WebKitJSCallConv,
                           enableLog_);

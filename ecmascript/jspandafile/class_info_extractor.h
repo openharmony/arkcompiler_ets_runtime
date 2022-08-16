@@ -37,13 +37,14 @@ public:
         uint32_t extractBegin;
         uint32_t extractEnd;
         uint8_t fillStartLoc;
-        JSMethod *ctorMethod;
+        MethodLiteral *ctorMethod;
     };
 
     CAST_CHECK(ClassInfoExtractor, IsClassInfoExtractor);
 
     static void BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                   const JSHandle<TaggedArray> &literal);
+                                                   const JSHandle<TaggedArray> &literal,
+                                                   const JSPandaFile *jsPandaFile);
 
     static constexpr size_t PROTOTYPE_HCLASS_OFFSET = TaggedObjectSize();
     ACCESSORS(PrototypeHClass, PROTOTYPE_HCLASS_OFFSET, NON_STATIC_KEYS_OFFSET)
@@ -54,7 +55,7 @@ public:
     ACCESSORS(StaticKeys, STATIC_KEYS_OFFSET, STATIC_PROPERTIES_OFFSET)
     ACCESSORS(StaticProperties, STATIC_PROPERTIES_OFFSET, STATIC_ELEMENTS_OFFSET)
     ACCESSORS(StaticElements, STATIC_ELEMENTS_OFFSET, CONSTRUCTOR_METHOD_OFFSET)
-    ACCESSORS_NATIVE_FIELD(ConstructorMethod, JSMethod, CONSTRUCTOR_METHOD_OFFSET, BIT_FIELD_OFFSET)
+    ACCESSORS_NATIVE_FIELD(ConstructorMethod, MethodLiteral, CONSTRUCTOR_METHOD_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
@@ -73,7 +74,8 @@ private:
     static bool ExtractAndReturnWhetherWithElements(JSThread *thread, const JSHandle<TaggedArray> &literal,
                                                     const ExtractContentsDetail &detail,
                                                     JSHandle<TaggedArray> &keys, JSHandle<TaggedArray> &properties,
-                                                    JSHandle<TaggedArray> &elements);
+                                                    JSHandle<TaggedArray> &elements,
+                                                    const JSPandaFile *jsPandaFile);
 
     static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
                                                     JSHandle<TaggedArray> &properties);

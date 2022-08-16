@@ -330,7 +330,7 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex();
     auto fileHash = jsPandaFile->GetFileUniqId();
     auto mainEntry = GetAOTFuncEntry(fileHash, mainFuncMethodId);
-    JSMethod *mainMethod =  jsPandaFile->FindMethods(mainFuncMethodId);
+    MethodLiteral *mainMethod = jsPandaFile->FindMethods(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
     mainFunc->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
@@ -338,7 +338,7 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
 
 void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func)
 {
-    JSMethod *method = func->GetMethod();
+    JSMethod *method = func->GetCallTarget();
     uint32_t methodId = method->GetMethodId().GetOffset();
     auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
     func->SetCodeEntryAndMarkAOT(codeEntry);

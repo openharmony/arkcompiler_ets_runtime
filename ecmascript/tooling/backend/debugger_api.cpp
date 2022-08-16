@@ -76,9 +76,13 @@ uint32_t DebuggerApi::GetBytecodeOffset(const EcmaVM *ecmaVm)
     return FrameHandler(ecmaVm->GetJSThread()).GetBytecodeOffset();
 }
 
-JSMethod *DebuggerApi::GetMethod(const EcmaVM *ecmaVm)
+std::unique_ptr<PtMethod> DebuggerApi::GetMethod(const EcmaVM *ecmaVm)
 {
-    return FrameHandler(ecmaVm->GetJSThread()).GetMethod();
+    FrameHandler frameHandler(ecmaVm->GetJSThread());
+    JSMethod* jsMethod = frameHandler.GetMethod();
+    std::unique_ptr<PtMethod> ptMethod = std::make_unique<PtMethod>(
+        jsMethod->GetJSPandaFile(), jsMethod->GetMethodId(), jsMethod->IsNativeWithCallField());
+    return ptMethod;
 }
 
 void DebuggerApi::SetVRegValue(FrameHandler *frameHandler, size_t index, Local<JSValueRef> value)
@@ -96,6 +100,24 @@ JSMethod *DebuggerApi::GetMethod(const FrameHandler *frameHandler)
     return frameHandler->GetMethod();
 }
 
+bool DebuggerApi::IsNativeMethod(const EcmaVM *ecmaVm)
+{
+    FrameHandler frameHandler(ecmaVm->GetJSThread());
+    return DebuggerApi::IsNativeMethod(&frameHandler);
+}
+
+bool DebuggerApi::IsNativeMethod(const FrameHandler *frameHandler)
+{
+    JSMethod* jsMethod = frameHandler->GetMethod();
+    return jsMethod->IsNativeWithCallField();
+}
+
+JSPandaFile *DebuggerApi::GetJSPandaFile(const EcmaVM *ecmaVm)
+{
+    JSMethod *jsMethod = FrameHandler(ecmaVm->GetJSThread()).GetMethod();
+    return const_cast<JSPandaFile *>(jsMethod->GetJSPandaFile());
+}
+
 JSTaggedValue DebuggerApi::GetEnv(const FrameHandler *frameHandler)
 {
     return frameHandler->GetEnv();
@@ -108,7 +130,7 @@ JSTaggedType *DebuggerApi::GetSp(const FrameHandler *frameHandler)
 
 int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_view name)
 {
-    JSMethod *method = frameHandler->GetMethod();
+    JSMethod *method = DebuggerApi::GetMethod(frameHandler);
     if (method->IsNativeWithCallField()) {
         LOG_DEBUGGER(ERROR) << "GetVregIndex: native frame not support";
         return -1;
@@ -184,12 +206,6 @@ bool DebuggerApi::SetBreakpoint(JSDebugger *debugger, const JSPtLocation &locati
 bool DebuggerApi::RemoveBreakpoint(JSDebugger *debugger, const JSPtLocation &location)
 {
     return debugger->RemoveBreakpoint(location);
-}
-
-// JSMethod
-std::string DebuggerApi::ParseFunctionName(const JSMethod *method)
-{
-    return method->ParseFunctionName();
 }
 
 // ScopeInfo

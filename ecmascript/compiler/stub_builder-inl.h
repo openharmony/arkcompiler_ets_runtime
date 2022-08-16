@@ -1775,30 +1775,30 @@ inline GateRef StubBuilder::GetMethodFromJSFunction(GateRef object)
     Label subentry(env);
     env->SubCfgEntry(&subentry);
 
-    DEFVARIABLE(methodOffset, VariableType::INT32(), Int32(0));
+    GateRef methodOffset;
     Label funcIsJSFunctionBase(env);
     Label funcIsJSProxy(env);
     Label getMethod(env);
     Branch(IsJSFunctionBase(object), &funcIsJSFunctionBase, &funcIsJSProxy);
     Bind(&funcIsJSFunctionBase);
     {
-        methodOffset = Int32(JSFunctionBase::METHOD_OFFSET);
+        methodOffset = IntPtr(JSFunctionBase::METHOD_OFFSET);
         Jump(&getMethod);
     }
     Bind(&funcIsJSProxy);
     {
-        methodOffset = Int32(JSProxy::METHOD_OFFSET);
+        methodOffset = IntPtr(JSProxy::METHOD_OFFSET);
         Jump(&getMethod);
     }
     Bind(&getMethod);
-    GateRef method = Load(VariableType::NATIVE_POINTER(), object, ChangeInt32ToIntPtr(*methodOffset));
+    GateRef method = Load(VariableType::JS_ANY(), object, methodOffset);
     env->SubCfgExit();
     return method;
 }
 
 inline GateRef StubBuilder::GetCallFieldFromMethod(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::GetCallFieldOffset(env_->IsArch32Bit()));
+    GateRef callFieldOffset = IntPtr(JSMethod::CALL_FIELD_OFFSET);
     return Load(VariableType::INT64(), method, callFieldOffset);
 }
 
@@ -1858,33 +1858,33 @@ inline GateRef StubBuilder::IsBoundFunction(GateRef obj)
 
 inline GateRef StubBuilder::IsNativeMethod(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::GetCallFieldOffset(env_->Is32Bit()));
+    GateRef callFieldOffset = IntPtr(JSMethod::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int32(JSMethod::IsNativeBit::START_BIT)),
-            Int64((1LU << JSMethod::IsNativeBit::SIZE) - 1)),
+            Int64LSR(callfield, Int32(MethodLiteral::IsNativeBit::START_BIT)),
+            Int64((1LU << MethodLiteral::IsNativeBit::SIZE) - 1)),
         Int64(0));
 }
 
 inline GateRef StubBuilder::HasAotCode(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::GetCallFieldOffset(env_->Is32Bit()));
+    GateRef callFieldOffset = IntPtr(JSMethod::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int32(JSMethod::IsAotCodeBit::START_BIT)),
-            Int64((1LU << JSMethod::IsAotCodeBit::SIZE) - 1)),
+            Int64LSR(callfield, Int32(MethodLiteral::IsAotCodeBit::START_BIT)),
+            Int64((1LU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
         Int64(0));
 }
 
 inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::GetCallFieldOffset(env_->Is32Bit()));
+    GateRef callFieldOffset = IntPtr(JSMethod::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return TruncInt64ToInt32(Int64And(
-        Int64LSR(callfield, Int32(JSMethod::NumArgsBits::START_BIT)),
-        Int64((1LU << JSMethod::NumArgsBits::SIZE) - 1)));
+        Int64LSR(callfield, Int32(MethodLiteral::NumArgsBits::START_BIT)),
+        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1)));
 }
 
 inline GateRef StubBuilder::GetMethodFromJSProxy(GateRef proxy)
@@ -1942,7 +1942,7 @@ inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
 inline GateRef StubBuilder::GetBuiltinId(GateRef method)
 {
     // 7: builtinsIdOffset
-    GateRef builtinsIdOffset = PtrAdd(IntPtr(JSMethod::GetHotnessCounterOffset(env_->IsArch32Bit())), IntPtr(7));
+    GateRef builtinsIdOffset = PtrAdd(IntPtr(JSMethod::LITERAL_INFO_OFFSET), IntPtr(7));
     return Load(VariableType::INT8(), method, builtinsIdOffset);
 }
 } //  namespace panda::ecmascript::kungfu
