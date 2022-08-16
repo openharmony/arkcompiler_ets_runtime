@@ -219,15 +219,6 @@ DECLARE_ASM_HANDLER(HandleTypeofImm8)
     DISPATCH_WITH_ACC(TYPEOF_IMM8);
 }
 
-// TODO: Deprecated
-// DECLARE_ASM_HANDLER(HandleLdlexenv)
-// {
-//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-//     GateRef state = GetFrame(sp);
-//     varAcc = GetEnvFromFrame(state);
-//     DISPATCH_WITH_ACC(LDLEXENV);
-// }
-
 DECLARE_ASM_HANDLER(HandlePoplexenv)
 {
     GateRef state = GetFrame(sp);
@@ -278,27 +269,11 @@ DECLARE_ASM_HANDLER(HandleGetunmappedargs)
     }
 }
 
-DECLARE_ASM_HANDLER(HandleCopyrestargsImm16)
+DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
 {
-    GateRef restIdx = ZExtInt16ToInt32(ReadInst16_0(pc));
+    GateRef restIdx = ZExtInt8ToInt32(ReadInst8_0(pc));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CopyRestArgs), { IntToTaggedTypeNGC(restIdx) });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(COPYRESTARGS_IMM16));
-}
-
-DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm8Imm16)
-{
-    GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
-    GateRef result = GetObjectFromConstPool(constpool, imm);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { result });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM8_IMM16));
-}
-
-DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Imm16)
-{
-    GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
-    GateRef result = GetObjectFromConstPool(constpool, imm);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithBuffer), { result });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_IMM16));
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(COPYRESTARGS_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateobjectwithexcludedkeysImm8V8V8)
@@ -311,20 +286,12 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithexcludedkeysImm8V8V8)
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8));
 }
 
-DECLARE_ASM_HANDLER(HandleCreateobjecthavingmethodImm8Imm16)
-{
-    GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
-    GateRef result = GetObjectFromConstPool(constpool, imm);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, acc, constpool });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTHAVINGMETHOD_IMM8_IMM16));
-}
-
-DECLARE_ASM_HANDLER(HandleThrowifsupernotcorrectcallImm16)
+DECLARE_ASM_HANDLER(HandleThrowIfsupernotcorrectcallPrefImm16)
 {
     GateRef imm = ReadInst16_0(pc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
         { Int16ToTaggedTypeNGC(imm), acc }); // acc is thisValue
-    CHECK_EXCEPTION(res, INT_PTR(THROWIFSUPERNOTCORRECTCALL_IMM16));
+    CHECK_EXCEPTION(res, INT_PTR(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleNewlexenvImm8)
@@ -347,329 +314,6 @@ DECLARE_ASM_HANDLER(HandleNewlexenvImm8)
     SetEnvToFrame(glue, GetFrame(sp), *result);
     DISPATCH_WITH_ACC(NEWLEXENV_IMM8);
 }
-
-// TODO
-// DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm16V8)
-// {
-//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-//     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-//     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
-//     auto env = GetEnvironment();
-//     GateRef numArgs = ReadInst16_1(pc);
-//     GateRef firstArgRegIdx = ZExtInt8ToInt16(ReadInst8_3(pc));
-//     GateRef firstArgOffset = Int16(2);
-//     GateRef ctor = GetVregValue(sp, ZExtInt16ToPtr(firstArgRegIdx));
-//     GateRef actualNumArgs = ZExtInt16ToInt32(Int16Sub(numArgs, firstArgOffset));
-
-//     Label ctorIsHeapObject(env);
-//     Label ctorIsJSFunction(env);
-//     Label fastPath(env);
-//     Label slowPath(env);
-//     Label checkResult(env);
-//     Label threadCheck(env);
-//     Label dispatch(env);
-//     Label ctorIsBase(env);
-//     Label ctorNotBase(env);
-//     Label isException(env);
-//     Label callRuntime(env);
-//     Label newObject(env);
-//     Label newObjectCheckException(env);
-
-//     GateRef isBase = IsBase(ctor);
-//     Branch(TaggedIsHeapObject(ctor), &ctorIsHeapObject, &slowPath);
-//     Bind(&ctorIsHeapObject);
-//     Branch(IsJSFunction(ctor), &ctorIsJSFunction, &slowPath);
-//     Bind(&ctorIsJSFunction);
-//     Branch(IsConstructor(ctor), &fastPath, &slowPath);
-//     Bind(&fastPath);
-//     {
-//         Branch(isBase, &ctorIsBase, &ctorNotBase);
-//         Bind(&ctorIsBase);
-//         {
-//             Label isHeapObject(env);
-//             Label checkJSObject(env);
-//             auto protoOrHclass = Load(VariableType::JS_ANY(), ctor,
-//                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-//             Branch(TaggedIsHeapObject(protoOrHclass), &isHeapObject, &callRuntime);
-//             Bind(&isHeapObject);
-//             Branch(IsJSHClass(protoOrHclass), &checkJSObject, &callRuntime);
-//             Bind(&checkJSObject);
-//             auto objectType = GetObjectType(protoOrHclass);
-//             Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
-//                 &newObject, &callRuntime);
-//             Bind(&newObject);
-//             {
-//                 NewObjectStubBuilder newBuilder(this);
-//                 newBuilder.SetParameters(glue, 0);
-//                 Label afterNew(env);
-//                 newBuilder.NewJSObject(&thisObj, &afterNew, protoOrHclass);
-//                 Bind(&afterNew);
-//                 Jump(&newObjectCheckException);
-//             }
-//             Bind(&callRuntime);
-//             {
-//                 thisObj = CallRuntime(glue, RTSTUB_ID(NewThisObject), {ctor});
-//                 Jump(&newObjectCheckException);
-//             }
-//             Bind(&newObjectCheckException);
-//             Branch(TaggedIsException(*res), &isException, &ctorNotBase);
-//         }
-//         Bind(&ctorNotBase);
-//         GateRef argv = PtrAdd(sp, PtrMul(
-//             PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function&this
-//         res = JSCallDispatch(glue, ctor, actualNumArgs,
-//                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
-//                              { ChangeInt32ToIntPtr(actualNumArgs), argv, *thisObj });
-//         Jump(&threadCheck);
-//     }
-//     Bind(&slowPath);
-//     GateRef firstArgIdx = Int16Add(firstArgRegIdx, firstArgOffset);
-//     GateRef length = Int16Sub(numArgs, firstArgOffset);
-//     res = CallRuntime(glue, RTSTUB_ID(NewObjRange),
-//         { ctor, ctor, Int16ToTaggedTypeNGC(firstArgIdx), Int16ToTaggedTypeNGC(length) });
-//     Jump(&checkResult);
-//     Bind(&checkResult);
-//     {
-//         Branch(TaggedIsException(*res), &isException, &dispatch);
-//     }
-//     Bind(&threadCheck);
-//     {
-//         Branch(HasPendingException(glue), &isException, &dispatch);
-//     }
-//     Bind(&isException);
-//     {
-//         DISPATCH_LAST();
-//     }
-//     Bind(&dispatch);
-//     varAcc = *res;
-//     DISPATCH_WITH_ACC(NEWOBJRANGE_IMM8_IMM16_V8);
-// }
-
-DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm16V8)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
-    GateRef methodId = ReadInst16_1(pc);
-    GateRef length = ReadInst16_3(pc);
-    GateRef v0 = ReadInst8_5(pc);
-    DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-    Label isResolved(env);
-    Label notResolved(env);
-    Label defaultLabel(env);
-    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-    Bind(&isResolved);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
-        Label notException(env);
-        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-        Bind(&notException);
-        {
-            SetConstantPoolToFunction(glue, *result, constpool);
-            Jump(&defaultLabel);
-        }
-    }
-    Bind(&notResolved);
-    {
-        SetResolvedToFunction(glue, *result, Boolean(true));
-        Jump(&defaultLabel);
-    }
-    Bind(&defaultLabel);
-    {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef envHandle = GetVregValue(sp, ZExtInt8ToPtr(v0));
-        SetLexicalEnvToFunction(glue, *result, envHandle);
-        GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-        varAcc = *result;
-        DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM16_V8);
-    }
-}
-
-DECLARE_ASM_HANDLER(HandleDefinencfuncImm8Id16Imm16V8)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
-    GateRef methodId = ReadInst16_1(pc);
-    GateRef length = ReadInst16_3(pc);
-    GateRef v0 = ReadInst8_5(pc);
-    DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-    Label isResolved(env);
-    Label notResolved(env);
-    Label defaultLabel(env);
-    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-    Bind(&isResolved);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(DefineNCFunc), { *result });
-        Label notException(env);
-        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-        Bind(&notException);
-        {
-            SetConstantPoolToFunction(glue, *result, constpool);
-            Jump(&defaultLabel);
-        }
-    }
-    Bind(&notResolved);
-    {
-        SetResolvedToFunction(glue, *result, Boolean(true));
-        Jump(&defaultLabel);
-    }
-    Bind(&defaultLabel);
-    {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-        SetLexicalEnvToFunction(glue, *result, lexEnv);
-        SetHomeObjectToFunction(glue, *result, acc);
-        GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-        varAcc = *result;
-        DISPATCH_WITH_ACC(DEFINENCFUNC_IMM8_ID16_IMM16_V8);
-    }
-}
-
-DECLARE_ASM_HANDLER(HandleDefinegeneratorfuncImm8Id16Imm16V8)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
-    GateRef methodId = ReadInst16_1(pc);
-    GateRef length = ReadInst16_3(pc);
-    GateRef v0 = ReadInst8_5(pc);
-    DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-    Label isResolved(env);
-    Label notResolved(env);
-    Label defaultLabel(env);
-    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-    Bind(&isResolved);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(DefineGeneratorFunc), { *result });
-        Label notException(env);
-        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-        Bind(&notException);
-        {
-            SetConstantPoolToFunction(glue, *result, constpool);
-            Jump(&defaultLabel);
-        }
-    }
-    Bind(&notResolved);
-    {
-        SetResolvedToFunction(glue, *result, Boolean(true));
-        Jump(&defaultLabel);
-    }
-    Bind(&defaultLabel);
-    {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-        SetLexicalEnvToFunction(glue, *result, lexEnv);
-        GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-        varAcc = *result;
-        DISPATCH_WITH_ACC(DEFINEGENERATORFUNC_IMM8_ID16_IMM16_V8);
-    }
-}
-
-DECLARE_ASM_HANDLER(HandleDefineasyncfuncImm8Id16Imm16V8)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
-    GateRef methodId = ReadInst16_1(pc);
-    GateRef length = ReadInst16_3(pc);
-    GateRef v0 = ReadInst8_5(pc);
-    DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-    Label isResolved(env);
-    Label notResolved(env);
-    Label defaultLabel(env);
-    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-    Bind(&isResolved);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(DefineAsyncFunc), { *result });
-        Label notException(env);
-        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-        Bind(&notException);
-        {
-            SetConstantPoolToFunction(glue, *result, constpool);
-            Jump(&defaultLabel);
-        }
-    }
-    Bind(&notResolved);
-    {
-        SetResolvedToFunction(glue, *result, Boolean(true));
-        Jump(&defaultLabel);
-    }
-    Bind(&defaultLabel);
-    {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-        SetLexicalEnvToFunction(glue, *result, lexEnv);
-        GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-        varAcc = *result;
-        DISPATCH_WITH_ACC(DEFINEASYNCFUNC_IMM8_ID16_IMM16_V8);
-    }
-}
-
-// DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm16V8)
-// {
-//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-//     auto env = GetEnvironment();
-//     GateRef methodId = ReadInst16_1(pc);
-//     GateRef length = ReadInst16_3(pc);
-//     GateRef v0 = ReadInst8_5(pc);
-//     DEFVARIABLE(result, VariableType::JS_POINTER(),
-//         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-//     Label isResolved(env);
-//     Label notResolved(env);
-//     Label defaultLabel(env);
-//     Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-//     Bind(&isResolved);
-//     {
-//         result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc });
-//         Label notException(env);
-//         CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-//         Bind(&notException);
-//         {
-//             SetConstantPoolToFunction(glue, *result, constpool);
-//             Jump(&defaultLabel);
-//         }
-//     }
-//     Bind(&notResolved);
-//     {
-//         SetHomeObjectToFunction(glue, *result, acc);
-//         SetResolvedToFunction(glue, *result, Boolean(true));
-//         Jump(&defaultLabel);
-//     }
-//     Bind(&defaultLabel);
-//     {
-//         GateRef hclass = LoadHClass(*result);
-//         SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-//             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-//         GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-//         SetLexicalEnvToFunction(glue, *result, lexEnv);
-//         GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-//         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-//         varAcc = *result;
-//         DISPATCH_WITH_ACC(DEFINEMETHOD_IMM8_ID16_IMM16_V8);
-//     }
-// }
-
-// DECLARE_ASM_HANDLER(HandleCallspreadImm8V8V8V8)
-// {
-//     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-//     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
-//     GateRef array = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
-//     GateRef res = CallRuntime(glue, RTSTUB_ID(CallSpread), { func, obj, array });
-//     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLSPREAD_IMM8_V8_V8_V8));
-// }
 
 DECLARE_ASM_HANDLER(HandleAsyncfunctionresolveV8)
 {
@@ -698,16 +342,6 @@ DECLARE_ASM_HANDLER(HandleDefinegettersetterbyvalueV8V8V8V8)
     GateRef res = CallRuntime(glue, RTSTUB_ID(DefineGetterSetterByValue),
                               { obj, prop, getter, setter, acc }); // acc is flag
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8));
-}
-
-DECLARE_ASM_HANDLER(HandleSupercallImm8Imm16V8)
-{
-    GateRef range = ReadInst16_1(pc);
-    GateRef v0 = ZExtInt8ToInt16(ReadInst8_3(pc));
-    // acc is thisFunc
-    GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
-        { acc, Int16ToTaggedTypeNGC(v0), Int16ToTaggedTypeNGC(range) });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(SUPERCALL_IMM8_IMM16_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleGetpropiterator)
@@ -754,27 +388,13 @@ DECLARE_ASM_HANDLER(HandleGetiteratorImm8)
     CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(GETITERATOR_IMM8));
 }
 
-DECLARE_ASM_HANDLER(HandleThrowthrownotexists)
-{
-    CallRuntime(glue, RTSTUB_ID(ThrowThrowNotExists), {});
-    DISPATCH_LAST();
-}
-
 DECLARE_ASM_HANDLER(HandleThrowPatternnoncoerciblePrefNone)
 {
     CallRuntime(glue, RTSTUB_ID(ThrowPatternNonCoercible), {});
     DISPATCH_LAST();
 }
 
-DECLARE_ASM_HANDLER(HandleLdhomeobject)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef thisFunc = GetFunctionFromFrame(GetFrame(sp));
-    varAcc = GetHomeObjectFromJSFunction(thisFunc);
-    DISPATCH_WITH_ACC(LDHOMEOBJECT);
-}
-
-DECLARE_ASM_HANDLER(HandleThrowdeletesuperproperty)
+DECLARE_ASM_HANDLER(HandleThrowDeletesuperpropertyPrefNone)
 {
     CallRuntime(glue, RTSTUB_ID(ThrowDeleteSuperProperty), {});
     DISPATCH_LAST();
@@ -1429,35 +1049,7 @@ DECLARE_ASM_HANDLER(HandleLdlexvarImm8Imm8)
     DISPATCH_WITH_ACC(LDLEXVAR_IMM8_IMM8);
 }
 
-DECLARE_ASM_HANDLER(HandleLdlexvarImm16Imm16)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    GateRef level = ZExtInt16ToInt32(ReadInst16_0(pc));
-    GateRef slot = ZExtInt16ToInt32(ReadInst16_2(pc));
-
-    GateRef state = GetFrame(sp);
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(state));
-    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label afterLoop(env);
-    Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
-    LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
-    i = Int32Add(*i, Int32(1));
-    Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
-    Bind(&loopEnd);
-    LoopEnd(&loopHead);
-    Bind(&afterLoop);
-    GateRef variable = GetPropertiesFromLexicalEnv(*currentEnv, slot);
-    varAcc = variable;
-    DISPATCH_WITH_ACC(LDLEXVAR_IMM16_IMM16);
-}
-
-vvDECLARE_ASM_HANDLER(HandleStlexvarImm4Imm4)
+DECLARE_ASM_HANDLER(HandleStlexvarImm4Imm4)
 {
     auto env = GetEnvironment();
     GateRef level = ZExtInt8ToInt32(ReadInst4_0(pc));
@@ -1770,12 +1362,11 @@ DECLARE_ASM_HANDLER(HandleThrowConstassignmentPrefV8)
     DISPATCH_LAST();
 }
 
-DECLARE_ASM_HANDLER(HandleGettemplateobjectImm8V8)
+DECLARE_ASM_HANDLER(HandleGettemplateobjectImm8)
 {
-    GateRef v0 = ReadInst8_1(pc);
-    GateRef literal = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef literal = acc;
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetTemplateObject), { literal });
-    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(GETTEMPLATEOBJECT_IMM8_V8));
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(GETTEMPLATEOBJECT_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleGetnextpropnameV8)
@@ -1807,14 +1398,6 @@ DECLARE_ASM_HANDLER(HandleThrowIfnotobjectPrefV8)
     DISPATCH_LAST();
 }
 
-// DECLARE_ASM_HANDLER(HandleIternextImm8V8)
-// {
-//     GateRef v0 = ReadInst8_1(pc);
-//     GateRef iter = GetVregValue(sp, ZExtInt8ToPtr(v0));
-//     GateRef result = CallRuntime(glue, RTSTUB_ID(IterNext), { iter });
-//     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ITERNEXT_IMM8_V8));
-// }
-
 DECLARE_ASM_HANDLER(HandleCloseiteratorImm8V8)
 {
     GateRef v0 = ReadInst8_1(pc);
@@ -1831,14 +1414,13 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(SUPERCALLSPREAD_IMM8_V8));
 }
 
-DECLARE_ASM_HANDLER(HandleDelobjpropV8V8)
+DECLARE_ASM_HANDLER(HandleDelobjpropV8)
 {
     GateRef v0 = ReadInst8_0(pc);
-    GateRef v1 = ReadInst8_1(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef prop = acc;
     GateRef result = CallRuntime(glue, RTSTUB_ID(DelObjProp), { obj, prop });
-    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DELOBJPROP_V8_V8));
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DELOBJPROP_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleNewobjapplyImm8V8)
@@ -1846,7 +1428,7 @@ DECLARE_ASM_HANDLER(HandleNewobjapplyImm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef result = CallRuntime(glue, RTSTUB_ID(NewObjApply), { func, acc }); // acc is array
-    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NEWOBJSPREAD_IMM8_V8_V8));
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NEWOBJAPPLY_IMM8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateiterresultobjV8V8)
@@ -1889,14 +1471,13 @@ DECLARE_ASM_HANDLER(HandleThrowUndefinedifholePrefV8V8)
     DISPATCH_LAST();
 }
 
-DECLARE_ASM_HANDLER(HandleCopydatapropertiesV8V8)
+DECLARE_ASM_HANDLER(HandleCopydatapropertiesV8)
 {
     GateRef v0 = ReadInst8_0(pc);
-    GateRef v1 = ReadInst8_1(pc);
     GateRef dst = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef src = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef src = acc;
     GateRef result = CallRuntime(glue, RTSTUB_ID(CopyDataProperties), { dst, src });
-    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(COPYDATAPROPERTIES_V8_V8));
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(COPYDATAPROPERTIES_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleStarrayspreadV8V8)
@@ -1907,16 +1488,6 @@ DECLARE_ASM_HANDLER(HandleStarrayspreadV8V8)
     GateRef index = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef result = CallRuntime(glue, RTSTUB_ID(StArraySpread), { dst, index, acc }); // acc is res
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(STARRAYSPREAD_V8_V8));
-}
-
-DECLARE_ASM_HANDLER(HandleGetiteratornextV8V8)
-{
-    GateRef v0 = ReadInst8_0(pc);
-    GateRef v1 = ReadInst8_1(pc);
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef method = GetVregValue(sp, ZExtInt8ToPtr(v1));
-    GateRef result = CallRuntime(glue, RTSTUB_ID(GetIteratorNext), { obj, method });
-    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(GETITERATORNEXT_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleSetobjectwithprotoImm8V8)
@@ -1932,43 +1503,6 @@ DECLARE_ASM_HANDLER(HandleSetobjectwithprotoImm8V8)
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
     DISPATCH_WITH_ACC(SETOBJECTWITHPROTO_IMM8_V8);
-}
-
-DECLARE_ASM_HANDLER(HandleLdobjbyvalueImm8V8V8)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-
-    GateRef v0 = ReadInst8_1(pc);
-    GateRef v1 = ReadInst8_2(pc);
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v1));
-    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
-
-    Label checkException(env);
-    Label slowPath(env);
-    Label tryFastPath(env);
-
-    GateRef value = 0;
-    ICStubBuilder builder(this);
-    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, propKey);
-    builder.LoadICByValue(&result, &tryFastPath, &slowPath, &checkException);
-    Bind(&tryFastPath);
-    {
-        result = GetPropertyByValue(glue, receiver, propKey);
-        Branch(TaggedIsHole(*result), &slowPath, &checkException);
-    }
-    Bind(&slowPath);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
-            { profileTypeInfo, receiver, propKey, IntToTaggedTypeNGC(slotId) });
-        Jump(&checkException);
-    }
-    Bind(&checkException);
-    {
-        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDOBJBYVALUE_IMM8_V8_V8));
-    }
 }
 
 DECLARE_ASM_HANDLER(HandleStobjbyvalueImm8V8V8)
@@ -2041,16 +1575,6 @@ DECLARE_ASM_HANDLER(HandleStownbyvalueImm8V8V8)
     }
 }
 
-DECLARE_ASM_HANDLER(HandleLdsuperbyvalueImm8V8V8)
-{
-    GateRef v0 = ReadInst8_1(pc);
-    GateRef v1 = ReadInst8_2(pc);
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v1));
-    GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), {  receiver, propKey }); // sp for thisFunc
-    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDSUPERBYVALUE_IMM8_V8_V8));
-}
-
 DECLARE_ASM_HANDLER(HandleStsuperbyvalueImm8V8V8)
 {
     GateRef v0 = ReadInst8_1(pc);
@@ -2060,18 +1584,6 @@ DECLARE_ASM_HANDLER(HandleStsuperbyvalueImm8V8V8)
      // acc is value, sp for thisFunc
     GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
     CHECK_EXCEPTION(result, INT_PTR(STSUPERBYVALUE_IMM8_V8_V8));
-}
-
-DECLARE_ASM_HANDLER(HandleLdsuperbynameImm8Id16V8)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    GateRef stringId = ReadInst16_1(pc);
-    GateRef v0 = ReadInst8_3(pc);
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = GetObjectFromConstPool(constpool, stringId);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
-    CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDSUPERBYNAME_IMM8_ID16_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleStsuperbynameImm8Id16V8)
@@ -2084,39 +1596,13 @@ DECLARE_ASM_HANDLER(HandleStsuperbynameImm8Id16V8)
     CHECK_EXCEPTION(result, INT_PTR(STSUPERBYNAME_IMM8_ID16_V8));
 }
 
-DECLARE_ASM_HANDLER(HandleLdobjbyindexImm8V8Imm32)
+DECLARE_ASM_HANDLER(HandleStobjbyindexImm8V8Imm16)
 {
     auto env = GetEnvironment();
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef index = ReadInst32_2(pc);
-    Label fastPath(env);
-    Label slowPath(env);
-    Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
-    Bind(&fastPath);
-    {
-        GateRef result = GetPropertyByIndex(glue, receiver, index);
-        Label notHole(env);
-        Branch(TaggedIsHole(result), &slowPath, &notHole);
-        Bind(&notHole);
-        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDOBJBYINDEX_IMM8_V8_IMM32));
-    }
-    Bind(&slowPath);
-    {
-        GateRef result = CallRuntime(glue, RTSTUB_ID(LdObjByIndex),
-                                     { receiver, IntToTaggedTypeNGC(index), TaggedFalse(), Undefined() });
-        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDOBJBYINDEX_IMM8_V8_IMM32));
-    }
-}
-
-DECLARE_ASM_HANDLER(HandleStobjbyindexImm8V8Imm32)
-{
-    auto env = GetEnvironment();
-
-    GateRef v0 = ReadInst8_1(pc);
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef index = ReadInst32_2(pc);
+    GateRef index = ReadInst16_2(pc);
     Label fastPath(env);
     Label slowPath(env);
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
@@ -2126,23 +1612,23 @@ DECLARE_ASM_HANDLER(HandleStobjbyindexImm8V8Imm32)
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
-        CHECK_EXCEPTION(result, INT_PTR(STOBJBYINDEX_IMM8_V8_IMM32));
+        CHECK_EXCEPTION(result, INT_PTR(STOBJBYINDEX_IMM8_V8_IMM16));
     }
     Bind(&slowPath);
     {
         GateRef result = CallRuntime(glue, RTSTUB_ID(StObjByIndex),
                                      { receiver, IntToTaggedTypeNGC(index), acc });
-        CHECK_EXCEPTION(result, INT_PTR(STOBJBYINDEX_IMM8_V8_IMM32));
+        CHECK_EXCEPTION(result, INT_PTR(STOBJBYINDEX_IMM8_V8_IMM16));
     }
 }
 
-DECLARE_ASM_HANDLER(HandleStownbyindexImm8V8Imm32)
+DECLARE_ASM_HANDLER(HandleStownbyindexImm8V8Imm16)
 {
     auto env = GetEnvironment();
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef index = ReadInst32_2(pc);
+    GateRef index = ReadInst16_2(pc);
     Label isHeapObject(env);
     Label slowPath(env);
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
@@ -2159,46 +1645,14 @@ DECLARE_ASM_HANDLER(HandleStownbyindexImm8V8Imm32)
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
-        CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM8_V8_IMM32));
+        CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM8_V8_IMM16));
     }
     Bind(&slowPath);
     {
         GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex),
                                      { receiver, IntToTaggedTypeNGC(index), acc });
-        CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM8_V8_IMM32));
+        CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM8_V8_IMM16));
     }
-}
-
-DECLARE_ASM_HANDLER(HandleStconsttoglobalrecordId16)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    GateRef stringId = ReadInst16_0(pc);
-    GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
-                                 { propKey, *varAcc, TaggedTrue() });
-    CHECK_EXCEPTION_VARACC(result, INT_PTR(STCONSTTOGLOBALRECORD_ID16));
-}
-
-DECLARE_ASM_HANDLER(HandleStlettoglobalrecordId16)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    GateRef stringId = ReadInst16_0(pc);
-    GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
-                                 { propKey, *varAcc, TaggedFalse() });
-    CHECK_EXCEPTION_VARACC(result, INT_PTR(STLETTOGLOBALRECORD_ID16));
-}
-
-DECLARE_ASM_HANDLER(HandleStclasstoglobalrecordId16)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    GateRef stringId = ReadInst16_0(pc);
-    GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord), { propKey, *varAcc, TaggedFalse() });
-    CHECK_EXCEPTION_VARACC(result, INT_PTR(STCLASSTOGLOBALRECORD_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleNegImm8)
@@ -2791,74 +2245,6 @@ DECLARE_ASM_HANDLER(HandleShl2Imm8V8)
     }
 }
 
-DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Imm16Imm16V8V8)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    GateRef methodId = ReadInst16_1(pc);
-    GateRef length = ReadInst16_5(pc);
-    GateRef v0 = ReadInst8_7(pc);
-    GateRef v1 = ReadInst8_8(pc);
-
-    GateRef classTemplate = GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId));
-    GateRef lexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v1));
-
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), { classTemplate, proto, lexicalEnv, constpool });
-
-    Label isException(env);
-    Label isNotException(env);
-    Branch(TaggedIsException(res), &isException, &isNotException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&isNotException);
-    GateRef newLexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));  // slow runtime may gc
-    SetLexicalEnvToFunction(glue, res, newLexicalEnv);
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
-    CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedTypeNGC(length) });
-    varAcc = res;
-    DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM8_ID16_IMM16_IMM16_V8_V8);
-}
-
-DECLARE_ASM_HANDLER(HandleLdobjbynameImm8Id16V8)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-
-    Label checkException(env);
-    Label tryFastPath(env);
-    Label slowPath(env);
-
-    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
-    GateRef value = 0;
-    ICStubBuilder builder(this);
-    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
-    builder.LoadICByName(&result, &tryFastPath, &slowPath, &checkException);
-    Bind(&tryFastPath);
-    {
-        DispatchWithId(glue, sp, pc, constpool, profileTypeInfo, receiver, hotnessCounter,
-            BCSTUB_ID(InterpreterGetPropertyByName));
-    }
-    Bind(&slowPath);
-    {
-        GateRef stringId = ReadInst16_1(pc);
-        GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
-        result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
-                             { profileTypeInfo, receiver, propKey, IntToTaggedTypeNGC(slotId) });
-        Jump(&checkException);
-    }
-    Bind(&checkException);
-    {
-        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDOBJBYNAME_IMM8_ID16_V8));
-    }
-}
-
 DECLARE_ASM_HANDLER(HandleStobjbynameImm8Id16V8)
 {
     auto env = GetEnvironment();
@@ -3020,7 +2406,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
     }
 }
 
-DECLARE_ASM_HANDLER(HandleLdthisfunction)
+DECLARE_ASM_HANDLER(HandleLdfunction)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
@@ -3073,7 +2459,7 @@ DECLARE_ASM_HANDLER(HandleLdaiImm32)
     DISPATCH_WITH_ACC(LDAI_IMM32);
 }
 
-vDECLARE_ASM_HANDLER(HandleFldaiImm64)
+DECLARE_ASM_HANDLER(HandleFldaiImm64)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
@@ -3442,40 +2828,6 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
     }
 }
 
-DECLARE_ASM_HANDLER(HandleGetmodulenamespaceId16)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    GateRef stringId = ReadInst16_0(pc);
-    GateRef prop = GetObjectFromConstPool(constpool, stringId);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
-    varAcc = moduleRef;
-    DISPATCH_WITH_ACC(GETMODULENAMESPACE_ID16);
-}
-
-DECLARE_ASM_HANDLER(HandleStmodulevarId16)
-{
-    GateRef stringId = ReadInst16_0(pc);
-    GateRef prop = GetObjectFromConstPool(constpool, stringId);
-    GateRef value = acc;
-
-    CallRuntime(glue, RTSTUB_ID(StModuleVar), { prop, value });
-    DISPATCH(STMODULEVAR_ID16);
-}
-
-DECLARE_ASM_HANDLER(HandleLdmodulevarId16Imm8)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    GateRef stringId = ReadInst16_0(pc);
-    GateRef flag = ReadInst8_2(pc);
-    GateRef key = GetObjectFromConstPool(constpool, stringId);
-    GateRef innerFlag = ZExtInt8ToInt32(flag);
-    GateRef moduleVar = CallRuntime(glue, RTSTUB_ID(LdModuleVar), { key, IntToTaggedTypeNGC(innerFlag) });
-    varAcc = moduleVar;
-    DISPATCH_WITH_ACC(LDMODULEVAR_ID16_IMM8);
-}
-
 DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm8Id16)
 {
     auto env = GetEnvironment();
@@ -3623,12 +2975,12 @@ DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm8Id16)
     }
 }
 
-DECLARE_ASM_HANDLER(HandleLdglobalvarId16)
+DECLARE_ASM_HANDLER(HandleLdglobalvarImm16Id16)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
-    GateRef stringId = ReadInst16_0(pc);
+    GateRef stringId = ReadInst16_2(pc);
     GateRef propKey = GetObjectFromConstPool(constpool, stringId);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
@@ -3646,20 +2998,20 @@ DECLARE_ASM_HANDLER(HandleLdglobalvarId16)
     }
     Bind(&checkResult);
     {
-        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDGLOBALVAR_ID16));
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDGLOBALVAR_IMM16_ID16));
     }
     Bind(&dispatch);
     varAcc = *result;
-    DISPATCH_WITH_ACC(LDGLOBALVAR_ID16);
+    DISPATCH_WITH_ACC(LDGLOBALVAR_IMM16_ID16);
 }
 
-DECLARE_ASM_HANDLER(HandleStglobalvarId16)
+DECLARE_ASM_HANDLER(HandleStglobalvarImm16Id16)
 {
-    GateRef stringId = ReadInst16_0(pc);
+    GateRef stringId = ReadInst16_2(pc);
     GateRef propKey = GetObjectFromConstPool(constpool, stringId);
 
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalVar), { propKey, acc });
-    CHECK_EXCEPTION(result, INT_PTR(STGLOBALVAR_ID16));
+    CHECK_EXCEPTION(result, INT_PTR(STGLOBALVAR_IMM16_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateregexpwithliteralImm8Id16Imm8)
@@ -3782,6 +3134,439 @@ DECLARE_ASM_HANDLER(HandleSub2Imm8V8)
     DISPATCH_WITH_ACC(SUB2_IMM8_V8);
 }
 
+DECLARE_ASM_HANDLER(HandleLdbigintId16)
+{
+    GateRef stringId = ReadInst16_0(pc);
+    GateRef numberBigInt = GetObjectFromConstPool(constpool, stringId);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(LdBigInt), { numberBigInt });
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(LDBIGINT_ID16));
+}
+
+DECLARE_ASM_HANDLER(HandleTonumericImm8)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef value = *varAcc;
+    Label valueIsNumeric(env);
+    Label valueNotNumeric(env);
+    Branch(TaggedIsNumeric(value), &valueIsNumeric, &valueNotNumeric);
+    Bind(&valueIsNumeric);
+    {
+        varAcc = value;
+        DISPATCH_WITH_ACC(TONUMERIC_IMM8);
+    }
+    Bind(&valueNotNumeric);
+    {
+        GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumeric), { value });
+        CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(TONUMERIC_IMM8));
+    }
+}
+
+DECLARE_ASM_HANDLER(HandleCreateasyncgeneratorobjV8)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef v0 = ReadInst8_0(pc);
+    GateRef genFunc = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef result = CallRuntime(glue, RTSTUB_ID(CreateAsyncGeneratorObj), { genFunc });
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(result), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST();
+    }
+    Bind(&notException);
+    varAcc = result;
+    DISPATCH_WITH_ACC(CREATEASYNCGENERATOROBJ_V8);
+}
+
+DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    auto env = GetEnvironment();
+    GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
+    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
+    GateRef flag = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorResolve),
+                              { asyncGenerator, value, flag });
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(res), &isException, &notException);
+    Bind(&isException);
+    {
+        DISPATCH_LAST();
+    }
+    Bind(&notException);
+    {
+        varAcc = res;
+        DISPATCH_WITH_ACC(ASYNCGENERATORRESOLVE_V8_V8_V8);
+    }
+}
+
+// DECLARE_ASM_HANDLER(HandleCreateobjecthavingmethodImm8Imm16)
+// {
+//     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
+//     GateRef result = GetObjectFromConstPool(constpool, imm);
+//     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, acc, constpool });
+//     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTHAVINGMETHOD_IMM8_IMM16));
+// }
+
+// DECLARE_ASM_HANDLER(HandleSupercallImm8Imm16V8)
+// {
+//     GateRef range = ReadInst16_1(pc);
+//     GateRef v0 = ZExtInt8ToInt16(ReadInst8_3(pc));
+//     // acc is thisFunc
+//     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
+//         { acc, Int16ToTaggedTypeNGC(v0), Int16ToTaggedTypeNGC(range) });
+//     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(SUPERCALL_IMM8_IMM16_V8));
+// }
+
+// DECLARE_ASM_HANDLER(HandleThrowthrownotexistsPref)
+// {
+//     CallRuntime(glue, RTSTUB_ID(ThrowThrowNotExists), {});
+//     DISPATCH_LAST();
+// }
+
+// DECLARE_ASM_HANDLER(HandleLdhomeobject)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     GateRef thisFunc = GetFunctionFromFrame(GetFrame(sp));
+//     varAcc = GetHomeObjectFromJSFunction(thisFunc);
+//     DISPATCH_WITH_ACC(LDHOMEOBJECT);
+// }
+
+// DECLARE_ASM_HANDLER(HandleLdlexvarImm16Imm16)
+// {
+//     auto env = GetEnvironment();
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+//     GateRef level = ZExtInt16ToInt32(ReadInst16_0(pc));
+//     GateRef slot = ZExtInt16ToInt32(ReadInst16_2(pc));
+
+//     GateRef state = GetFrame(sp);
+//     DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(state));
+//     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+//     Label loopHead(env);
+//     Label loopEnd(env);
+//     Label afterLoop(env);
+//     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
+//     LoopBegin(&loopHead);
+//     currentEnv = GetParentEnv(*currentEnv);
+//     i = Int32Add(*i, Int32(1));
+//     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
+//     Bind(&loopEnd);
+//     LoopEnd(&loopHead);
+//     Bind(&afterLoop);
+//     GateRef variable = GetPropertiesFromLexicalEnv(*currentEnv, slot);
+//     varAcc = variable;
+//     DISPATCH_WITH_ACC(LDLEXVAR_IMM16_IMM16);
+// }
+
+// DECLARE_ASM_HANDLER(HandleIternextImm8V8)
+// {
+//     GateRef v0 = ReadInst8_1(pc);
+//     GateRef iter = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//     GateRef result = CallRuntime(glue, RTSTUB_ID(IterNext), { iter });
+//     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ITERNEXT_IMM8_V8));
+// }
+
+// DECLARE_ASM_HANDLER(HandleLdsuperbyvalueImm8V8V8)
+// {
+//     GateRef v0 = ReadInst8_1(pc);
+//     GateRef v1 = ReadInst8_2(pc);
+//     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//     GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v1));
+//     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), {  receiver, propKey }); // sp for thisFunc
+//     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDSUPERBYVALUE_IMM8_V8_V8));
+// }
+
+// DECLARE_ASM_HANDLER(HandleGetiteratornextV8V8)
+// {
+//     GateRef v0 = ReadInst8_0(pc);
+//     GateRef v1 = ReadInst8_1(pc);
+//     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//     GateRef method = GetVregValue(sp, ZExtInt8ToPtr(v1));
+//     GateRef result = CallRuntime(glue, RTSTUB_ID(GetIteratorNext), { obj, method });
+//     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(GETITERATORNEXT_V8_V8));
+// }
+
+// DECLARE_ASM_HANDLER(HandleLdobjbyvalueImm8V8V8)
+// {
+//     auto env = GetEnvironment();
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+//     GateRef v0 = ReadInst8_1(pc);
+//     GateRef v1 = ReadInst8_2(pc);
+//     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//     GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v1));
+//     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+
+//     Label checkException(env);
+//     Label slowPath(env);
+//     Label tryFastPath(env);
+
+//     GateRef value = 0;
+//     ICStubBuilder builder(this);
+//     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, propKey);
+//     builder.LoadICByValue(&result, &tryFastPath, &slowPath, &checkException);
+//     Bind(&tryFastPath);
+//     {
+//         result = GetPropertyByValue(glue, receiver, propKey);
+//         Branch(TaggedIsHole(*result), &slowPath, &checkException);
+//     }
+//     Bind(&slowPath);
+//     {
+//         result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
+//             { profileTypeInfo, receiver, propKey, IntToTaggedTypeNGC(slotId) });
+//         Jump(&checkException);
+//     }
+//     Bind(&checkException);
+//     {
+//         CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDOBJBYVALUE_IMM8_V8_V8));
+//     }
+// }
+
+// DECLARE_ASM_HANDLER(HandleLdsuperbynameImm8Id16V8)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+//     GateRef stringId = ReadInst16_1(pc);
+//     GateRef v0 = ReadInst8_3(pc);
+//     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//     GateRef propKey = GetObjectFromConstPool(constpool, stringId);
+//     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
+//     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDSUPERBYNAME_IMM8_ID16_V8));
+// }
+
+// DECLARE_ASM_HANDLER(HandleLdobjbyindexImm8V8Imm16)
+// {
+//     auto env = GetEnvironment();
+
+//     GateRef v0 = ReadInst8_1(pc);
+//     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//     GateRef index = ReadInst16_2(pc);
+//     Label fastPath(env);
+//     Label slowPath(env);
+//     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
+//     Bind(&fastPath);
+//     {
+//         GateRef result = GetPropertyByIndex(glue, receiver, index);
+//         Label notHole(env);
+//         Branch(TaggedIsHole(result), &slowPath, &notHole);
+//         Bind(&notHole);
+//         CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDOBJBYINDEX_IMM8_V8_IMM16));
+//     }
+//     Bind(&slowPath);
+//     {
+//         GateRef result = CallRuntime(glue, RTSTUB_ID(LdObjByIndex),
+//                                      { receiver, IntToTaggedTypeNGC(index), TaggedFalse(), Undefined() });
+//         CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDOBJBYINDEX_IMM8_V8_IMM16));
+//     }
+// }
+
+// DECLARE_ASM_HANDLER(HandleStconsttoglobalrecordId16)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+//     GateRef stringId = ReadInst16_0(pc);
+//     GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+//     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
+//                                  { propKey, *varAcc, TaggedTrue() });
+//     CHECK_EXCEPTION_VARACC(result, INT_PTR(STCONSTTOGLOBALRECORD_ID16));
+// }
+
+// DECLARE_ASM_HANDLER(HandleStlettoglobalrecordId16)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+//     GateRef stringId = ReadInst16_0(pc);
+//     GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+//     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
+//                                  { propKey, *varAcc, TaggedFalse() });
+//     CHECK_EXCEPTION_VARACC(result, INT_PTR(STLETTOGLOBALRECORD_ID16));
+// }
+
+// DECLARE_ASM_HANDLER(HandleStclasstoglobalrecordId16)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+//     GateRef stringId = ReadInst16_0(pc);
+//     GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+//     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord), { propKey, *varAcc, TaggedFalse() });
+//     CHECK_EXCEPTION_VARACC(result, INT_PTR(STCLASSTOGLOBALRECORD_ID16));
+// }
+
+// DECLARE_ASM_HANDLER(HandleGetmodulenamespaceId16)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+//     GateRef stringId = ReadInst16_0(pc);
+//     GateRef prop = GetObjectFromConstPool(constpool, stringId);
+//     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
+//     varAcc = moduleRef;
+//     DISPATCH_WITH_ACC(GETMODULENAMESPACE_ID16);
+// }
+
+// DECLARE_ASM_HANDLER(HandleStmodulevarId16)
+// {
+//     GateRef stringId = ReadInst16_0(pc);
+//     GateRef prop = GetObjectFromConstPool(constpool, stringId);
+//     GateRef value = acc;
+
+//     CallRuntime(glue, RTSTUB_ID(StModuleVar), { prop, value });
+//     DISPATCH(STMODULEVAR_ID16);
+// }
+
+// DECLARE_ASM_HANDLER(HandleLdmodulevarId16Imm8)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+//     GateRef stringId = ReadInst16_0(pc);
+//     GateRef flag = ReadInst8_2(pc);
+//     GateRef key = GetObjectFromConstPool(constpool, stringId);
+//     GateRef innerFlag = ZExtInt8ToInt32(flag);
+//     GateRef moduleVar = CallRuntime(glue, RTSTUB_ID(LdModuleVar), { key, IntToTaggedTypeNGC(innerFlag) });
+//     varAcc = moduleVar;
+//     DISPATCH_WITH_ACC(LDMODULEVAR_ID16_IMM8);
+// }
+
+// DECLARE_ASM_HANDLER(HandleNewlexenvwithnameImm16Imm16)
+// {
+//     auto env = GetEnvironment();
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     GateRef numVars = ReadInst16_0(pc);
+//     GateRef scopeId = ReadInst16_2(pc);
+//     GateRef res = CallRuntime(glue, RTSTUB_ID(NewLexicalEnvWithName),
+//                               { Int16ToTaggedTypeNGC(numVars), Int16ToTaggedTypeNGC(scopeId) });
+//     Label notException(env);
+//     CHECK_EXCEPTION_WITH_JUMP(res, &notException);
+//     Bind(&notException);
+//     varAcc = res;
+//     GateRef state = GetFrame(sp);
+//     SetEnvToFrame(glue, state, res);
+//     DISPATCH_WITH_ACC(NEWLEXENVWITHNAME_IMM16_IMM16);
+// }
+
+// DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Imm16Imm16V8V8)
+// {
+//     auto env = GetEnvironment();
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+//     GateRef methodId = ReadInst16_1(pc);
+//     GateRef length = ReadInst16_5(pc);
+//     GateRef v0 = ReadInst8_7(pc);
+//     GateRef v1 = ReadInst8_8(pc);
+
+//     GateRef classTemplate = GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId));
+//     GateRef lexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v1));
+
+//     GateRef res = CallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), { classTemplate, proto, lexicalEnv, constpool });
+
+//     Label isException(env);
+//     Label isNotException(env);
+//     Branch(TaggedIsException(res), &isException, &isNotException);
+//     Bind(&isException);
+//     {
+//         DISPATCH_LAST_WITH_ACC();
+//     }
+//     Bind(&isNotException);
+//     GateRef newLexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));  // slow runtime may gc
+//     SetLexicalEnvToFunction(glue, res, newLexicalEnv);
+//     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+//     SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
+//     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedTypeNGC(length) });
+//     varAcc = res;
+//     DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM8_ID16_IMM16_IMM16_V8_V8);
+// }
+
+// DECLARE_ASM_HANDLER(HandleLdobjbynameImm8Id16V8)
+// {
+//     auto env = GetEnvironment();
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+//     Label checkException(env);
+//     Label tryFastPath(env);
+//     Label slowPath(env);
+
+//     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+//     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+//     GateRef value = 0;
+//     ICStubBuilder builder(this);
+//     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
+//     builder.LoadICByName(&result, &tryFastPath, &slowPath, &checkException);
+//     Bind(&tryFastPath);
+//     {
+//         DispatchWithId(glue, sp, pc, constpool, profileTypeInfo, receiver, hotnessCounter,
+//             BCSTUB_ID(InterpreterGetPropertyByName));
+//     }
+//     Bind(&slowPath);
+//     {
+//         GateRef stringId = ReadInst16_1(pc);
+//         GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+//         result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
+//                              { profileTypeInfo, receiver, propKey, IntToTaggedTypeNGC(slotId) });
+//         Jump(&checkException);
+//     }
+//     Bind(&checkException);
+//     {
+//         CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDOBJBYNAME_IMM8_ID16));
+//     }
+// }
+
+// DECLARE_ASM_HANDLER(HandleDefineasyncgeneratorfuncImm8Id16Imm16V8)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     auto env = GetEnvironment();
+//     GateRef methodId = ReadInst16_1(pc);
+//     GateRef length = ReadInst16_3(pc);
+//     GateRef v0 = ReadInst8_5(pc);
+//     DEFVARIABLE(result, VariableType::JS_POINTER(),
+//         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
+//     Label isResolved(env);
+//     Label notResolved(env);
+//     Label defaultLabel(env);
+//     Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
+//     Bind(&isResolved);
+//     {
+//         result = CallRuntime(glue, RTSTUB_ID(DefineAsyncGeneratorFunc), { *result });
+//         Label isException(env);
+//         Label notException(env);
+//         Branch(TaggedIsException(*result), &isException, &notException);
+//         Bind(&isException);
+//         {
+//             DISPATCH_LAST();
+//         }
+//         Bind(&notException);
+//         {
+//             SetConstantPoolToFunction(glue, *result, constpool);
+//             Jump(&defaultLabel);
+//         }
+//     }
+//     Bind(&notResolved);
+//     {
+//         SetResolvedToFunction(glue, *result, Boolean(true));
+//         Jump(&defaultLabel);
+//     }
+//     Bind(&defaultLabel);
+//     {
+//         GateRef hclass = LoadHClass(*result);
+//         SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+//             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+//         GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//         SetLexicalEnvToFunction(glue, *result, lexEnv);
+//         GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+//         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+//         varAcc = *result;
+//         DISPATCH_WITH_ACC(DEFINEASYNCGENERATORFUNC_IMM8_ID16_IMM16_V8);
+//     }
+// }
+
 // DECLARE_ASM_HANDLER(HandleCallarg0Imm8V8)
 // {
 //     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG0);
@@ -3866,141 +3651,353 @@ DECLARE_ASM_HANDLER(HandleSub2Imm8V8)
 //     CHECK_PENDING_EXCEPTION(res, jumpSize);
 // }
 
-DECLARE_ASM_HANDLER(HandleLdbigintId16)
-{
-    GateRef stringId = ReadInst16_0(pc);
-    GateRef numberBigInt = GetObjectFromConstPool(constpool, stringId);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(LdBigInt), { numberBigInt });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(LDBIGINT_ID16));
-}
+// TODO: Deprecated
+// DECLARE_ASM_HANDLER(HandleLdlexenv)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     GateRef state = GetFrame(sp);
+//     varAcc = GetEnvFromFrame(state);
+//     DISPATCH_WITH_ACC(LDLEXENV);
+// }
 
-DECLARE_ASM_HANDLER(HandleTonumericImm8)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef value = *varAcc;
-    Label valueIsNumeric(env);
-    Label valueNotNumeric(env);
-    Branch(TaggedIsNumeric(value), &valueIsNumeric, &valueNotNumeric);
-    Bind(&valueIsNumeric);
-    {
-        varAcc = value;
-        DISPATCH_WITH_ACC(TONUMERIC_IMM8);
-    }
-    Bind(&valueNotNumeric);
-    {
-        GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumeric), { value });
-        CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(TONUMERIC_IMM8));
-    }
-}
+// DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm8Imm16)
+// {
+//     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
+//     GateRef result = GetObjectFromConstPool(constpool, imm);
+//     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { result });
+//     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM8_IMM16));
+// }
 
-DECLARE_ASM_HANDLER(HandleDefineasyncgeneratorfuncImm8Id16Imm16V8)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
-    GateRef methodId = ReadInst16_1(pc);
-    GateRef length = ReadInst16_3(pc);
-    GateRef v0 = ReadInst8_5(pc);
-    DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-    Label isResolved(env);
-    Label notResolved(env);
-    Label defaultLabel(env);
-    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-    Bind(&isResolved);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(DefineAsyncGeneratorFunc), { *result });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            SetConstantPoolToFunction(glue, *result, constpool);
-            Jump(&defaultLabel);
-        }
-    }
-    Bind(&notResolved);
-    {
-        SetResolvedToFunction(glue, *result, Boolean(true));
-        Jump(&defaultLabel);
-    }
-    Bind(&defaultLabel);
-    {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-        SetLexicalEnvToFunction(glue, *result, lexEnv);
-        GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-        varAcc = *result;
-        DISPATCH_WITH_ACC(DEFINEASYNCGENERATORFUNC_IMM8_ID16_IMM16_V8);
-    }
-}
+// DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Imm16)
+// {
+//     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
+//     GateRef result = GetObjectFromConstPool(constpool, imm);
+//     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithBuffer), { result });
+//     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_IMM16));
+// }
 
-DECLARE_ASM_HANDLER(HandleCreateasyncgeneratorobjV8)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+// TODO
+// DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm16V8)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+//     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
+//     auto env = GetEnvironment();
+//     GateRef numArgs = ReadInst16_1(pc);
+//     GateRef firstArgRegIdx = ZExtInt8ToInt16(ReadInst8_3(pc));
+//     GateRef firstArgOffset = Int16(2);
+//     GateRef ctor = GetVregValue(sp, ZExtInt16ToPtr(firstArgRegIdx));
+//     GateRef actualNumArgs = ZExtInt16ToInt32(Int16Sub(numArgs, firstArgOffset));
 
-    GateRef v0 = ReadInst8_0(pc);
-    GateRef genFunc = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef result = CallRuntime(glue, RTSTUB_ID(CreateAsyncGeneratorObj), { genFunc });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(CREATEASYNCGENERATOROBJ_V8);
-}
+//     Label ctorIsHeapObject(env);
+//     Label ctorIsJSFunction(env);
+//     Label fastPath(env);
+//     Label slowPath(env);
+//     Label checkResult(env);
+//     Label threadCheck(env);
+//     Label dispatch(env);
+//     Label ctorIsBase(env);
+//     Label ctorNotBase(env);
+//     Label isException(env);
+//     Label callRuntime(env);
+//     Label newObject(env);
+//     Label newObjectCheckException(env);
 
-DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
-    GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    GateRef flag = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorResolve),
-                              { asyncGenerator, value, flag });
-    Label isException(env);
-    Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
-    }
-    Bind(&notException);
-    {
-        varAcc = res;
-        DISPATCH_WITH_ACC(ASYNCGENERATORRESOLVE_V8_V8_V8);
-    }
-}
+//     GateRef isBase = IsBase(ctor);
+//     Branch(TaggedIsHeapObject(ctor), &ctorIsHeapObject, &slowPath);
+//     Bind(&ctorIsHeapObject);
+//     Branch(IsJSFunction(ctor), &ctorIsJSFunction, &slowPath);
+//     Bind(&ctorIsJSFunction);
+//     Branch(IsConstructor(ctor), &fastPath, &slowPath);
+//     Bind(&fastPath);
+//     {
+//         Branch(isBase, &ctorIsBase, &ctorNotBase);
+//         Bind(&ctorIsBase);
+//         {
+//             Label isHeapObject(env);
+//             Label checkJSObject(env);
+//             auto protoOrHclass = Load(VariableType::JS_ANY(), ctor,
+//                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+//             Branch(TaggedIsHeapObject(protoOrHclass), &isHeapObject, &callRuntime);
+//             Bind(&isHeapObject);
+//             Branch(IsJSHClass(protoOrHclass), &checkJSObject, &callRuntime);
+//             Bind(&checkJSObject);
+//             auto objectType = GetObjectType(protoOrHclass);
+//             Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
+//                 &newObject, &callRuntime);
+//             Bind(&newObject);
+//             {
+//                 NewObjectStubBuilder newBuilder(this);
+//                 newBuilder.SetParameters(glue, 0);
+//                 Label afterNew(env);
+//                 newBuilder.NewJSObject(&thisObj, &afterNew, protoOrHclass);
+//                 Bind(&afterNew);
+//                 Jump(&newObjectCheckException);
+//             }
+//             Bind(&callRuntime);
+//             {
+//                 thisObj = CallRuntime(glue, RTSTUB_ID(NewThisObject), {ctor});
+//                 Jump(&newObjectCheckException);
+//             }
+//             Bind(&newObjectCheckException);
+//             Branch(TaggedIsException(*res), &isException, &ctorNotBase);
+//         }
+//         Bind(&ctorNotBase);
+//         GateRef argv = PtrAdd(sp, PtrMul(
+//             PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function&this
+//         res = JSCallDispatch(glue, ctor, actualNumArgs,
+//                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
+//                              { ChangeInt32ToIntPtr(actualNumArgs), argv, *thisObj });
+//         Jump(&threadCheck);
+//     }
+//     Bind(&slowPath);
+//     GateRef firstArgIdx = Int16Add(firstArgRegIdx, firstArgOffset);
+//     GateRef length = Int16Sub(numArgs, firstArgOffset);
+//     res = CallRuntime(glue, RTSTUB_ID(NewObjRange),
+//         { ctor, ctor, Int16ToTaggedTypeNGC(firstArgIdx), Int16ToTaggedTypeNGC(length) });
+//     Jump(&checkResult);
+//     Bind(&checkResult);
+//     {
+//         Branch(TaggedIsException(*res), &isException, &dispatch);
+//     }
+//     Bind(&threadCheck);
+//     {
+//         Branch(HasPendingException(glue), &isException, &dispatch);
+//     }
+//     Bind(&isException);
+//     {
+//         DISPATCH_LAST();
+//     }
+//     Bind(&dispatch);
+//     varAcc = *res;
+//     DISPATCH_WITH_ACC(NEWOBJRANGE_IMM8_IMM16_V8);
+// }
 
-DECLARE_ASM_HANDLER(HandleNewlexenvwithnameImm16Imm16)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef numVars = ReadInst16_0(pc);
-    GateRef scopeId = ReadInst16_2(pc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(NewLexicalEnvWithName),
-                              { Int16ToTaggedTypeNGC(numVars), Int16ToTaggedTypeNGC(scopeId) });
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
-    Bind(&notException);
-    varAcc = res;
-    GateRef state = GetFrame(sp);
-    SetEnvToFrame(glue, state, res);
-    DISPATCH_WITH_ACC(NEWLEXENVWITHNAME_IMM16_IMM16);
-}
+// DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm16V8)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     auto env = GetEnvironment();
+//     GateRef methodId = ReadInst16_1(pc);
+//     GateRef length = ReadInst16_3(pc);
+//     GateRef v0 = ReadInst8_5(pc);
+//     DEFVARIABLE(result, VariableType::JS_POINTER(),
+//         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
+//     Label isResolved(env);
+//     Label notResolved(env);
+//     Label defaultLabel(env);
+//     Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
+//     Bind(&isResolved);
+//     {
+//         result = CallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
+//         Label notException(env);
+//         CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
+//         Bind(&notException);
+//         {
+//             SetConstantPoolToFunction(glue, *result, constpool);
+//             Jump(&defaultLabel);
+//         }
+//     }
+//     Bind(&notResolved);
+//     {
+//         SetResolvedToFunction(glue, *result, Boolean(true));
+//         Jump(&defaultLabel);
+//     }
+//     Bind(&defaultLabel);
+//     {
+//         GateRef hclass = LoadHClass(*result);
+//         SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+//             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+//         GateRef envHandle = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//         SetLexicalEnvToFunction(glue, *result, envHandle);
+//         GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+//         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+//         varAcc = *result;
+//         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM16_V8);
+//     }
+// }
+
+// DECLARE_ASM_HANDLER(HandleDefinencfuncImm8Id16Imm16V8)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     auto env = GetEnvironment();
+//     GateRef methodId = ReadInst16_1(pc);
+//     GateRef length = ReadInst16_3(pc);
+//     GateRef v0 = ReadInst8_5(pc);
+//     DEFVARIABLE(result, VariableType::JS_POINTER(),
+//         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
+//     Label isResolved(env);
+//     Label notResolved(env);
+//     Label defaultLabel(env);
+//     Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
+//     Bind(&isResolved);
+//     {
+//         result = CallRuntime(glue, RTSTUB_ID(DefineNCFunc), { *result });
+//         Label notException(env);
+//         CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
+//         Bind(&notException);
+//         {
+//             SetConstantPoolToFunction(glue, *result, constpool);
+//             Jump(&defaultLabel);
+//         }
+//     }
+//     Bind(&notResolved);
+//     {
+//         SetResolvedToFunction(glue, *result, Boolean(true));
+//         Jump(&defaultLabel);
+//     }
+//     Bind(&defaultLabel);
+//     {
+//         GateRef hclass = LoadHClass(*result);
+//         SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+//             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+//         GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//         SetLexicalEnvToFunction(glue, *result, lexEnv);
+//         SetHomeObjectToFunction(glue, *result, acc);
+//         GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+//         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+//         varAcc = *result;
+//         DISPATCH_WITH_ACC(DEFINENCFUNC_IMM8_ID16_IMM16_V8);
+//     }
+// }
+
+// DECLARE_ASM_HANDLER(HandleDefinegeneratorfuncImm8Id16Imm16V8)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     auto env = GetEnvironment();
+//     GateRef methodId = ReadInst16_1(pc);
+//     GateRef length = ReadInst16_3(pc);
+//     GateRef v0 = ReadInst8_5(pc);
+//     DEFVARIABLE(result, VariableType::JS_POINTER(),
+//         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
+//     Label isResolved(env);
+//     Label notResolved(env);
+//     Label defaultLabel(env);
+//     Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
+//     Bind(&isResolved);
+//     {
+//         result = CallRuntime(glue, RTSTUB_ID(DefineGeneratorFunc), { *result });
+//         Label notException(env);
+//         CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
+//         Bind(&notException);
+//         {
+//             SetConstantPoolToFunction(glue, *result, constpool);
+//             Jump(&defaultLabel);
+//         }
+//     }
+//     Bind(&notResolved);
+//     {
+//         SetResolvedToFunction(glue, *result, Boolean(true));
+//         Jump(&defaultLabel);
+//     }
+//     Bind(&defaultLabel);
+//     {
+//         GateRef hclass = LoadHClass(*result);
+//         SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+//             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+//         GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//         SetLexicalEnvToFunction(glue, *result, lexEnv);
+//         GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+//         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+//         varAcc = *result;
+//         DISPATCH_WITH_ACC(DEFINEGENERATORFUNC_IMM8_ID16_IMM16_V8);
+//     }
+// }
+
+// DECLARE_ASM_HANDLER(HandleDefineasyncfuncImm8Id16Imm16V8)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     auto env = GetEnvironment();
+//     GateRef methodId = ReadInst16_1(pc);
+//     GateRef length = ReadInst16_3(pc);
+//     GateRef v0 = ReadInst8_5(pc);
+//     DEFVARIABLE(result, VariableType::JS_POINTER(),
+//         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
+//     Label isResolved(env);
+//     Label notResolved(env);
+//     Label defaultLabel(env);
+//     Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
+//     Bind(&isResolved);
+//     {
+//         result = CallRuntime(glue, RTSTUB_ID(DefineAsyncFunc), { *result });
+//         Label notException(env);
+//         CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
+//         Bind(&notException);
+//         {
+//             SetConstantPoolToFunction(glue, *result, constpool);
+//             Jump(&defaultLabel);
+//         }
+//     }
+//     Bind(&notResolved);
+//     {
+//         SetResolvedToFunction(glue, *result, Boolean(true));
+//         Jump(&defaultLabel);
+//     }
+//     Bind(&defaultLabel);
+//     {
+//         GateRef hclass = LoadHClass(*result);
+//         SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+//             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+//         GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//         SetLexicalEnvToFunction(glue, *result, lexEnv);
+//         GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+//         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+//         varAcc = *result;
+//         DISPATCH_WITH_ACC(DEFINEASYNCFUNC_IMM8_ID16_IMM16_V8);
+//     }
+// }
+
+// DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm16V8)
+// {
+//     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+//     auto env = GetEnvironment();
+//     GateRef methodId = ReadInst16_1(pc);
+//     GateRef length = ReadInst16_3(pc);
+//     GateRef v0 = ReadInst8_5(pc);
+//     DEFVARIABLE(result, VariableType::JS_POINTER(),
+//         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
+//     Label isResolved(env);
+//     Label notResolved(env);
+//     Label defaultLabel(env);
+//     Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
+//     Bind(&isResolved);
+//     {
+//         result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc });
+//         Label notException(env);
+//         CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
+//         Bind(&notException);
+//         {
+//             SetConstantPoolToFunction(glue, *result, constpool);
+//             Jump(&defaultLabel);
+//         }
+//     }
+//     Bind(&notResolved);
+//     {
+//         SetHomeObjectToFunction(glue, *result, acc);
+//         SetResolvedToFunction(glue, *result, Boolean(true));
+//         Jump(&defaultLabel);
+//     }
+//     Bind(&defaultLabel);
+//     {
+//         GateRef hclass = LoadHClass(*result);
+//         SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+//             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+//         GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+//         SetLexicalEnvToFunction(glue, *result, lexEnv);
+//         GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+//         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+//         varAcc = *result;
+//         DISPATCH_WITH_ACC(DEFINEMETHOD_IMM8_ID16_IMM16_V8);
+//     }
+// }
+
+// DECLARE_ASM_HANDLER(HandleCallspreadImm8V8V8V8)
+// {
+//     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
+//     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
+//     GateRef array = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+//     GateRef res = CallRuntime(glue, RTSTUB_ID(CallSpread), { func, obj, array });
+//     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLSPREAD_IMM8_V8_V8_V8));
+// }
 
 // TODO: implement it
 DECLARE_ASM_HANDLER(HandleTypeofImm16)
@@ -4018,9 +4015,9 @@ DECLARE_ASM_HANDLER(HandleGetiteratorImm16)
     DISPATCH(GETITERATOR_IMM16);
 }
 
-DECLARE_ASM_HANDLER(HandleGettemplateobjectImm16V8)
+DECLARE_ASM_HANDLER(HandleGettemplateobjectImm16)
 {
-    DISPATCH(GETTEMPLATEOBJECT_IMM16_V8);
+    DISPATCH(GETTEMPLATEOBJECT_IMM16);
 }
 
 DECLARE_ASM_HANDLER(HandleCloseiteratorImm16V8)
@@ -4028,19 +4025,9 @@ DECLARE_ASM_HANDLER(HandleCloseiteratorImm16V8)
     DISPATCH(CLOSEITERATOR_IMM16_V8);
 }
 
-DECLARE_ASM_HANDLER(HandleNewobjspreadImm16V8V8)
+DECLARE_ASM_HANDLER(HandleSetobjectwithprotoImm16V8)
 {
-    DISPATCH(NEWOBJSPREAD_IMM16_V8_V8);
-}
-
-DECLARE_ASM_HANDLER(HandleSetobjectwithprotoImm16V8V8)
-{
-    DISPATCH(SETOBJECTWITHPROTO_IMM16_V8_V8);
-}
-
-DECLARE_ASM_HANDLER(HandleLdobjbyvalueImm16V8V8)
-{
-    DISPATCH(LDOBJBYVALUE_IMM16_V8_V8);
+    DISPATCH(SETOBJECTWITHPROTO_IMM16_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleStobjbyvalueImm16V8V8)
@@ -4053,129 +4040,681 @@ DECLARE_ASM_HANDLER(HandleStownbyvalueImm16V8V8)
     DISPATCH(STOWNBYVALUE_IMM16_V8_V8);
 }
 
-DECLARE_ASM_HANDLER(HandleLdsuperbyvalueImm16V8V8)
+DECLARE_ASM_HANDLER(HandleStobjbyindexImm16V8Imm16)
 {
-    DISPATCH(LDSUPERBYVALUE_IMM16_V8_V8);
+    DISPATCH(STOBJBYINDEX_IMM16_V8_IMM16);
 }
 
-DECLARE_ASM_HANDLER(HandleStsuperbyvalueImm16V8V8)
+DECLARE_ASM_HANDLER(HandleStownbyindexImm16V8Imm16)
 {
-    DISPATCH(STSUPERBYVALUE_IMM16_V8_V8);
+    DISPATCH(STOWNBYINDEX_IMM16_V8_IMM16);
 }
 
-DECLARE_ASM_HANDLER(HandleLdobjbyindexImm16V8Imm32)
+DECLARE_ASM_HANDLER(HandleThrowIfsupernotcorrectcallPrefImm8)
 {
-    DISPATCH(LDOBJBYINDEX_IMM16_V8_IMM32);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleStobjbyindexImm16V8Imm32)
+DECLARE_ASM_HANDLER(HandleThrowNotexistsPrefNone)
 {
-    DISPATCH(STOBJBYINDEX_IMM16_V8_IMM32);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleStownbyindexImm16V8Imm32)
+DECLARE_ASM_HANDLER(HandleThrowPrefNone)
 {
-    DISPATCH(STOWNBYINDEX_IMM16_V8_IMM32);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm16V8)
+DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
 {
-    DISPATCH(NEWOBJRANGE_IMM16_IMM16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm16V8)
+DECLARE_ASM_HANDLER(HandleWideLdlocalmodulevarPrefImm16)
 {
-    DISPATCH(DEFINEFUNC_IMM16_ID16_IMM16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleDefinencfuncImm16Id16Imm16V8)
+DECLARE_ASM_HANDLER(HandleWideStmodulevarPrefImm16)
 {
-    DISPATCH(DEFINENCFUNC_IMM16_ID16_IMM16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleDefinegeneratorfuncImm16Id16Imm16V8)
+DECLARE_ASM_HANDLER(HandleWideGetmodulenamespacePrefImm16)
 {
-    DISPATCH(DEFINEGENERATORFUNC_IMM16_ID16_IMM16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleDefineasyncfuncImm16Id16Imm16V8)
+DECLARE_ASM_HANDLER(HandleWideLdlexvarPrefImm16Imm16)
 {
-    DISPATCH(DEFINEASYNCFUNC_IMM16_ID16_IMM16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm16V8)
+DECLARE_ASM_HANDLER(HandleWideCopyrestargsPrefImm16)
 {
-    DISPATCH(DEFINEMETHOD_IMM16_ID16_IMM16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm16Imm16)
+DECLARE_ASM_HANDLER(HandleWideStownbyindexPrefV8Imm32)
 {
-    DISPATCH(CREATEARRAYWITHBUFFER_IMM16_IMM16);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleCreateobjecthavingmethodImm16Imm16)
+DECLARE_ASM_HANDLER(HandleWideStobjbyindexPrefV8Imm32)
 {
-    DISPATCH(CREATEOBJECTHAVINGMETHOD_IMM16_IMM16);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Imm16)
+DECLARE_ASM_HANDLER(HandleWideLdobjbyindexPrefImm32)
 {
-    DISPATCH(CREATEOBJECTWITHBUFFER_IMM16_IMM16);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Imm16Imm16V8V8)
+DECLARE_ASM_HANDLER(HandleWideSupercallarrowrangePrefImm16V8)
 {
-    DISPATCH(DEFINECLASSWITHBUFFER_IMM16_ID16_IMM16_IMM16_V8_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm16Id16)
+DECLARE_ASM_HANDLER(HandleWideSupercallthisrangePrefImm16V8)
 {
-    DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm16Id16)
+DECLARE_ASM_HANDLER(HandleWideCallthisrangePrefImm16V8)
 {
-    DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleLdobjbynameImm16Id16V8)
+DECLARE_ASM_HANDLER(HandleWideCallrangePrefImm16V8)
 {
-    DISPATCH(LDOBJBYNAME_IMM16_ID16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleStobjbynameImm16Id16V8)
+DECLARE_ASM_HANDLER(HandleWideNewlexenvwithnamePrefImm16Id16)
 {
-    DISPATCH(STOBJBYNAME_IMM16_ID16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
+DECLARE_ASM_HANDLER(HandleWideNewlexenvPrefImm16)
 {
-    DISPATCH(STOWNBYNAME_IMM16_ID16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleLdsuperbynameImm16Id16V8)
+DECLARE_ASM_HANDLER(HandleWideNewobjrangePrefImm16V8)
 {
-    DISPATCH(LDSUPERBYNAME_IMM16_ID16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleStsuperbynameImm16Id16V8)
+DECLARE_ASM_HANDLER(HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8)
 {
-    DISPATCH(STSUPERBYNAME_IMM16_ID16_V8);
+    DISPATCH(NOP);
 }
-
-DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm16V8V8)
+DECLARE_ASM_HANDLER(HandleDeprecatedDefineasyncgeneratorfuncPrefId16Imm16V8)
 {
-    DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
+    DISPATCH(NOP);
 }
-
+DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjecthavingmethodPrefImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedLdhomeobjectPrefNone)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedStclasstoglobalrecordPrefId32)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedStlettoglobalrecordPrefId32)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedStconsttoglobalrecordPrefId32)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedLdmodulevarPrefId32Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedLdsuperbynamePrefId32V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedLdobjbynamePrefId32V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedStmodulevarPrefId32)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedGetmodulenamespacePrefId32)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedStlexvarPrefImm16Imm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedStlexvarPrefImm8Imm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedStlexvarPrefImm4Imm4V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedAsyncfunctionrejectPrefV8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedAsyncfunctionresolvePrefV8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedLdobjbyindexPrefV8Imm32)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedLdsuperbyvaluePrefV8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedLdobjbyvaluePrefV8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedSetobjectwithprotoPrefV8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCopydatapropertiesPrefV8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedAsyncfunctionawaituncaughtPrefV8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedDelobjpropPrefV8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedGettemplateobjectPrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedGetresumemodePrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedResumegeneratorPrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedDefinemethodPrefId16Imm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedDefineasyncfuncPrefId16Imm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedDefinegeneratorfuncPrefId16Imm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedDefinencfuncPrefId16Imm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedDefinefuncPrefId16Imm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCallspreadPrefV8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCallargs3PrefV8V8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCallargs2PrefV8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCallarg1PrefV8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCallarg0PrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedDecPrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedIncPrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedNotPrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedNegPrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedTonumericPrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCallthisrangePrefImm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedTonumberPrefV8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjectwithbufferPrefImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedGetiteratornextPrefV8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedPoplexenvPrefNone)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedLdlexenvPrefNone)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleWide)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecated)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleException)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJnstricteqV8Imm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJnstricteqV8Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJstricteqV8Imm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJstricteqV8Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJneV8Imm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJneV8Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJeqV8Imm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJeqV8Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJnstrictequndefinedImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJnstrictequndefinedImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJstrictequndefinedImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJstrictequndefinedImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJneundefinedImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJneundefinedImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJequndefinedImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJequndefinedImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJnstricteqnullImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJnstricteqnullImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallarg1Imm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJstricteqnullImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJstricteqnullImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJnenullImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJnenullImm8)
+{
+    DISPATCH(NOP);
+}
 DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
 {
-    DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm16V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJeqnullImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJeqnullImm8)
+{
+    DISPATCH(NOP);
 }
 
-DECLARE_ASM_HANDLER(HandleDefineasyncgeneratorfuncImm16Id16Imm16V8)
+DECLARE_ASM_HANDLER(HandleJnstricteqzImm16)
 {
-    DISPATCH(DEFINEASYNCGENERATORFUNC_IMM16_ID16_IMM16_V8);
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJnstricteqzImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleSttoglobalrecordImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStconsttoglobalrecordImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdlocalmodulevarImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStsuperbynameImm16Id16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdsuperbynameImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdsuperbynameImm8Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStobjbynameImm16Id16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdobjbynameImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdobjbynameImm8Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStmodulevarImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleGetmodulenamespaceImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdobjbyindexImm16Imm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdobjbyindexImm8Imm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStsuperbyvalueImm16V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdsuperbyvalueImm16V8)
+{
+    DISPATCH(NOP);
+}
+
+DECLARE_ASM_HANDLER(HandleLdsuperbyvalueImm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdobjbyvalueImm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdobjbyvalueImm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJstricteqzImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleJstricteqzImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStpatchvarImm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdpatchvarImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStthisbyvalueImm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStthisbyvalueImm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdthisbyvalueImm16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdthisbyvalueImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStthisbynameImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleStthisbynameImm8Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdthisbynameImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdthisbynameImm8Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDeprecatedCallrangePrefImm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallrangeImm8Imm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallargs3Imm8V8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallargs2Imm8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleApplyImm8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallarg0Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleSupercallarrowrangeImm8Imm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleSupercallthisrangeImm8Imm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallthisrangeImm8Imm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallthis3Imm8V8V8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallthis2Imm8V8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleNewlexenvwithnameImm8Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleNewobjapplyImm16V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCreateregexpwithliteralImm16Id16Imm8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallthis1Imm8V8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCallthis0Imm8V8)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm16Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm8Id16)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdthis)
+{
+    DISPATCH(NOP);
+}
+DECLARE_ASM_HANDLER(HandleLdnewtarget)
+{
+    DISPATCH(NOP);
 }
 
 DECLARE_ASM_HANDLER(InterpreterGetPropertyByName)
@@ -4203,7 +4742,7 @@ DECLARE_ASM_HANDLER(InterpreterGetPropertyByName)
     }
     Bind(&checkResult);
     {
-        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDOBJBYNAME_IMM8_ID16_V8));
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDOBJBYNAME_IMM8_ID16));
     }
 }
 

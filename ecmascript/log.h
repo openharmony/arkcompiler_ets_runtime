@@ -149,5 +149,6 @@ private:
 #else
 #define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog<(level)>()
 #endif
+#endif
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LOG_H
