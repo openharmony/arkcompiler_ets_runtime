@@ -960,14 +960,10 @@ void InterpreterAssembly::HandleGetIteratorPref(
 {
     LOG_INST() << "intrinsics::getiterator";
     JSTaggedValue obj = GET_ACC();
-
-    // fast path: Generator obj is already store in acc
-    if (!obj.IsGeneratorObject()) {
-        // slow path
-        JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        SET_ACC(res);
-    }
+    // slow path
+    JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
     DISPATCH(BytecodeInstruction::Format::PREF_NONE);
 }
 

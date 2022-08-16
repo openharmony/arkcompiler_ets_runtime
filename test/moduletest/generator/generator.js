@@ -13,9 +13,25 @@
  * limitations under the License.
  */
 
+
+function* gen(){
+    yield 1;
+    yield 2;
+}
+
+var g = gen();
+g[Symbol.iterator] = function*(){
+    yield 1;
+    yield 2;
+    yield 3;
+};
+for (var i of g){
+    print(i);//1,2,3
+}
+
 function *foo() {
-    yield 1
-    yield 2
+    yield 1;
+    yield 2;
 }
 
 var p = foo()
