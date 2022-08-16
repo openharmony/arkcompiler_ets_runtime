@@ -184,18 +184,18 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
         JSMutableHandle<LinkedNode> root(thread, JSTaggedValue::Undefined());
         uint32_t count = 0;
         JSMutableHandle<JSTaggedValue> currentKey(thread, JSTaggedValue::Undefined());
-        JSMutableHandle<JSTaggedValue> nextVa(thread, node.GetTaggedValue());
+        JSMutableHandle<JSTaggedValue> nextVal(thread, node.GetTaggedValue());
         do {
-            root.Update(nextVa);
+            root.Update(nextVal);
             currentKey.Update(root->GetKey());
             if (root->GetHash().GetInt() == hash && (!key->IsHole() &&
                 JSTaggedValue::Equal(thread, key, currentKey))) {
                 root->SetValue(thread, value.GetTaggedValue());
                 return JSTaggedValue::Undefined();
             }
-            nextVa.Update(root->GetNext());
+            nextVal.Update(root->GetNext());
             count++;
-        } while (!nextVa->IsHole());
+        } while (!nextVal->IsHole());
         JSHandle<LinkedNode> newNode = TaggedHashArray::NewLinkedNode(thread, hash, key, value);
         root->SetNext(thread, newNode);
         table->Set(thread, index, node.GetTaggedValue());

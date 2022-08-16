@@ -27,7 +27,7 @@ class TaggedHashArray : public TaggedArray {
 public:
     static constexpr uint32_t MAXIMUM_CAPACITY = 1 << 30;
     static constexpr uint32_t UNTREEIFY_THRESHOLD = 6;
-    static constexpr uint32_t DEFAULT_INITIAL_CAPACITY = 1 << 4; // 16
+    static constexpr uint32_t DEFAULT_INITIAL_CAPACITY = 1 << 4;
     static constexpr float DEFAULT_LOAD_FACTOR = 0.75f;
     static constexpr uint32_t TREEIFY_THRESHOLD = 8;
 

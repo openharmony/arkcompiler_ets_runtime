@@ -1077,7 +1077,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
     // HashMap.prototype_or_dynclass
     JSHandle<JSHClass> hashMapInstanceDynclass =
         factory->NewEcmaDynClass(JSAPIHashMap::SIZE, JSType::JS_API_HASH_MAP, hashMapFuncPrototypeValue);
-    // HashMap() = new Function()
+
     JSHandle<JSTaggedValue> hashMapFunction(NewContainerConstructor(
         thread, hashMapFuncPrototype, ContainersHashMap::HashMapConstructor, "HashMap", FuncLength::ZERO));
     JSHandle<JSFunction>::Cast(hashMapFunction)->SetFunctionPrototype(thread, hashMapInstanceDynclass.GetTaggedValue());
@@ -1157,7 +1157,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
     // HashSet.prototype_or_dynclass
     JSHandle<JSHClass> hashSetInstanceDynclass =
         factory->NewEcmaDynClass(JSAPIHashSet::SIZE, JSType::JS_API_HASH_SET, hashSetFuncPrototypeValue);
-    // HashSet() = new Function()
+
     JSHandle<JSTaggedValue> hashSetFunction(NewContainerConstructor(
         thread, hashSetFuncPrototype, ContainersHashSet::HashSetConstructor, "HashSet", FuncLength::ZERO));
     JSHandle<JSFunction>::Cast(hashSetFunction)->SetFunctionPrototype(thread, hashSetInstanceDynclass.GetTaggedValue());

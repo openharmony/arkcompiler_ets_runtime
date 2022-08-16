@@ -188,7 +188,7 @@ JSTaggedValue ContainersHashSet::ForEach(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
+        THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable", JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
     JSHandle<JSAPIHashSet> hashSet = JSHandle<JSAPIHashSet>::Cast(thisHandle);
