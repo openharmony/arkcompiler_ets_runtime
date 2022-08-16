@@ -256,7 +256,7 @@ struct BytecodeInfo {
     std::vector<VRegIDType> vregOut {}; // write register
     bool accIn {false}; // read acc
     bool accOut {false}; // write acc
-    uint8_t opcode {0};
+    uint16_t opcode {0};
     uint16_t offset {0};
 
     bool IsOut(VRegIDType reg, uint32_t index) const
@@ -270,10 +270,10 @@ struct BytecodeInfo {
         auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
         switch (ecmaOpcode) {
             case EcmaOpcode::MOV_V4_V4:
-            case EcmaOpcode::MOV_DYN_V8_V8:
-            case EcmaOpcode::MOV_DYN_V16_V16:
-            case EcmaOpcode::LDA_DYN_V8:
-            case EcmaOpcode::STA_DYN_V8:
+            case EcmaOpcode::MOV_V8_V8:
+            case EcmaOpcode::MOV_V16_V16:
+            case EcmaOpcode::LDA_V8:
+            case EcmaOpcode::STA_V8:
                 return true;
             default:
                 return false;
@@ -315,8 +315,8 @@ struct BytecodeInfo {
     {
         auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::RETURN_DYN:
-            case EcmaOpcode::RETURNUNDEFINED_PREF:
+            case EcmaOpcode::RETURN:
+            case EcmaOpcode::RETURNUNDEFINED:
                 return true;
             default:
                 return false;
@@ -327,11 +327,11 @@ struct BytecodeInfo {
     {
         auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::THROWDYN_PREF:
-            case EcmaOpcode::THROWCONSTASSIGNMENT_PREF_V8:
-            case EcmaOpcode::THROWTHROWNOTEXISTS_PREF:
-            case EcmaOpcode::THROWPATTERNNONCOERCIBLE_PREF:
-            case EcmaOpcode::THROWDELETESUPERPROPERTY_PREF:
+            case EcmaOpcode::THROW_PREF_NONE:
+            case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
+            case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
+            case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
+            case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
                 return true;
             default:
                 return false;
@@ -342,8 +342,8 @@ struct BytecodeInfo {
     {
         auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::COPYMODULE_PREF_V8:
-            case EcmaOpcode::DEBUGGER_PREF:
+            case EcmaOpcode::DEBUGGER:
+            case EcmaOpcode::NOP:
                 return true;
             default:
                 return false;
@@ -354,16 +354,16 @@ struct BytecodeInfo {
     {
         auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::LDNAN_PREF:
-            case EcmaOpcode::LDINFINITY_PREF:
-            case EcmaOpcode::LDUNDEFINED_PREF:
-            case EcmaOpcode::LDNULL_PREF:
-            case EcmaOpcode::LDTRUE_PREF:
-            case EcmaOpcode::LDFALSE_PREF:
-            case EcmaOpcode::LDHOLE_PREF:
-            case EcmaOpcode::LDAI_DYN_IMM32:
-            case EcmaOpcode::FLDAI_DYN_IMM64:
-            case EcmaOpcode::LDFUNCTION_PREF:
+            case EcmaOpcode::LDNAN:
+            case EcmaOpcode::LDINFINITY:
+            case EcmaOpcode::LDUNDEFINED:
+            case EcmaOpcode::LDNULL:
+            case EcmaOpcode::LDTRUE:
+            case EcmaOpcode::LDFALSE:
+            case EcmaOpcode::LDHOLE:
+            case EcmaOpcode::LDAI_IMM32:
+            case EcmaOpcode::FLDAI_IMM64:
+            case EcmaOpcode::LDFUNCTION:
                 return true;
             default:
                 return false;
@@ -379,12 +379,12 @@ struct BytecodeInfo {
     {
         auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::CALLARG0DYN_PREF_V8:
-            case EcmaOpcode::CALLARG1DYN_PREF_V8_V8:
-            case EcmaOpcode::CALLARGS2DYN_PREF_V8_V8_V8:
-            case EcmaOpcode::CALLARGS3DYN_PREF_V8_V8_V8_V8:
-            case EcmaOpcode::CALLITHISRANGEDYN_PREF_IMM16_V8:
-            case EcmaOpcode::CALLIRANGEDYN_PREF_IMM16_V8:
+            case EcmaOpcode::CALLARG0_IMM8:
+            case EcmaOpcode::CALLARG1_IMM8_V8:
+            case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+            case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
                 return true;
             default:
                 return false;
@@ -415,8 +415,8 @@ struct BytecodeInfo {
     {
         auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::SUSPENDGENERATOR_PREF_V8_V8:
-            case EcmaOpcode::RESUMEGENERATOR_PREF_V8:
+            case EcmaOpcode::SUSPENDGENERATOR_V8:
+            case EcmaOpcode::RESUMEGENERATOR:
                 return true;
             default:
                 return false;
@@ -425,21 +425,8 @@ struct BytecodeInfo {
 
     bool IsBc(EcmaOpcode ecmaOpcode) const
     {
-        return opcode == ecmaOpcode;
+        return static_cast<EcmaOpcode>(opcode) == ecmaOpcode;
     }
-};
-
-enum BytecodeOffset {
-    ONE = 1,
-    TWO,
-    THREE,
-    FOUR,
-    FIVE,
-    SIX,
-    SEVEN,
-    EIGHT,
-    NINE,
-    TEN
 };
 
 class BytecodeCircuitBuilder {
@@ -480,14 +467,13 @@ public:
 
     [[nodiscard]] std::string GetBytecodeStr(kungfu::GateRef gate) const
     {
-        auto pc = jsgateToBytecode_.at(gate).second;
-        return GetEcmaOpcodeStr(static_cast<EcmaOpcode>(*pc));
+        return GetEcmaOpcodeStr(GetByteCodeOpcode(gate));
     }
 
     [[nodiscard]] EcmaOpcode GetByteCodeOpcode(kungfu::GateRef gate) const
     {
         auto pc = jsgateToBytecode_.at(gate).second;
-        return static_cast<EcmaOpcode>(*pc);
+        return BytecodeInstruction(pc).GetOpcode();
     }
 
     [[nodiscard]] const uint8_t* GetJSBytecode(GateRef gate) const

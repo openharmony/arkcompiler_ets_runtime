@@ -407,9 +407,9 @@ GateRef CircuitBuilder::IsCallableFromBitField(GateRef bitfield)
 
 GateRef CircuitBuilder::IsCallable(GateRef obj)
 {
-    GateRef hclass = LoadHClass(obj);
+    GateRef hClass = LoadHClass(obj);
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hclass, bitfieldOffset);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     return IsCallableFromBitField(bitfield);
 }
 

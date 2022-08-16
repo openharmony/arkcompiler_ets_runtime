@@ -48,7 +48,7 @@ private:
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
 
-    void LowerTypeNewObjDynRange(GateRef gate, GateRef glue);
+    void LowerTypeNewObjRange(GateRef gate, GateRef glue);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

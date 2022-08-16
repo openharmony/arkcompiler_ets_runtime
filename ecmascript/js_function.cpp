@@ -42,7 +42,7 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
         thisMode = FunctionMode::GLOBAL;
     }
 
-    func->SetProtoOrDynClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
+    func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
@@ -70,7 +70,7 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
                 JSHandle<JSObject> initialGeneratorFuncPrototype =
                     factory->NewJSObjectByConstructor(objFun);
                 JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
-                func->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
+                func->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
             }
         } else if (!JSFunction::IsClassConstructor(kind)) {  // class ctor do nothing
             PropertyDescriptor desc(thread, accessor, kind != FunctionKind::BUILTIN_CONSTRUCTOR, false, false);
@@ -103,9 +103,9 @@ JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, ObjectFa
 
 JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandle<JSFunction> &fun)
 {
-    JSTaggedValue protoOrDyn(fun->GetProtoOrDynClass());
-    if (protoOrDyn.IsJSHClass()) {
-        return reinterpret_cast<JSHClass *>(protoOrDyn.GetTaggedObject());
+    JSTaggedValue protoOrHClass(fun->GetProtoOrHClass());
+    if (protoOrHClass.IsJSHClass()) {
+        return reinterpret_cast<JSHClass *>(protoOrHClass.GetTaggedObject());
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -113,12 +113,12 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
     if (!fun->HasFunctionPrototype()) {
         proto = JSHandle<JSTaggedValue>::Cast(NewJSFunctionPrototype(thread, factory, fun));
     } else {
-        proto = JSHandle<JSTaggedValue>(thread, fun->GetProtoOrDynClass());
+        proto = JSHandle<JSTaggedValue>(thread, fun->GetProtoOrHClass());
     }
 
-    JSHandle<JSHClass> dynclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
-    fun->SetProtoOrDynClass(thread, dynclass);
-    return *dynclass;
+    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
+    fun->SetProtoOrHClass(thread, hclass);
+    return *hclass;
 }
 
 JSTaggedValue JSFunction::PrototypeGetter(JSThread *thread, const JSHandle<JSObject> &self)
@@ -135,15 +135,15 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
                                  [[maybe_unused]] bool mayThrow)
 {
     JSHandle<JSFunction> func(self);
-    JSTaggedValue protoOrDyn = func->GetProtoOrDynClass();
-    if (protoOrDyn.IsJSHClass()) {
+    JSTaggedValue protoOrHClass = func->GetProtoOrHClass();
+    if (protoOrHClass.IsJSHClass()) {
         // need transition
-        JSHandle<JSHClass> dynclass(thread, protoOrDyn);
-        JSHandle<JSHClass> newDynclass = JSHClass::TransitionProto(thread, dynclass, value);
+        JSHandle<JSHClass> hclass(thread, protoOrHClass);
+        JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, value);
         if (value->IsECMAObject()) {
             JSObject::Cast(value->GetTaggedObject())->GetJSHClass()->SetIsPrototype(true);
         }
-        func->SetProtoOrDynClass(thread, newDynclass);
+        func->SetProtoOrHClass(thread, newClass);
     } else {
         func->SetFunctionPrototype(thread, value.GetTaggedValue());
     }
@@ -235,7 +235,7 @@ bool JSFunction::MakeConstructor(JSThread *thread, const JSHandle<JSFunction> &f
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
 
-    ASSERT_PRINT(func->GetProtoOrDynClass().IsHole() && func->IsExtensible(),
+    ASSERT_PRINT(func->GetProtoOrHClass().IsHole() && func->IsExtensible(),
                  "function doesn't has proto_type property and is extensible object");
     ASSERT_PRINT(JSObject::HasProperty(thread, JSHandle<JSObject>(func), constructorKey),
                  "function must have constructor");
@@ -590,18 +590,18 @@ JSHandle<JSHClass> JSFunction::GetInstanceJSHClass(JSThread *thread, JSHandle<JS
 JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHandle<JSFunction> derived,
                                                           JSHandle<JSHClass> ctorInitialJSHClass)
 {
-    JSTaggedValue protoOrDyn(derived->GetProtoOrDynClass());
+    JSTaggedValue protoOrHClass(derived->GetProtoOrHClass());
     // has cached JSHClass, return directly
-    if (protoOrDyn.IsJSHClass()) {
-        return JSHandle<JSHClass>(thread, protoOrDyn);
+    if (protoOrHClass.IsJSHClass()) {
+        return JSHandle<JSHClass>(thread, protoOrHClass);
     }
 
     JSHandle<JSHClass> newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
     // guarante derived has function prototype
-    JSHandle<JSTaggedValue> prototype(thread, derived->GetProtoOrDynClass());
+    JSHandle<JSTaggedValue> prototype(thread, derived->GetProtoOrHClass());
     ASSERT(!prototype->IsHole());
     newJSHClass->SetPrototype(thread, prototype);
-    derived->SetProtoOrDynClass(thread, newJSHClass);
+    derived->SetProtoOrHClass(thread, newJSHClass);
     return newJSHClass;
 }
 

@@ -82,8 +82,8 @@ HWTEST_F_L0(WeakVectorTest, SetAndGet)
     JSHandle<WeakVector> weakVector = WeakVector::Create(thread, weakVectorCapacity);
 
     JSHandle<JSObject> weakObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> weakObjDynclassVal(thread, weakObj->GetJSHClass());
-    JSTaggedValue weakValue = JSTaggedValue(weakObjDynclassVal.GetTaggedValue().CreateAndGetWeakRef());
+    JSHandle<JSTaggedValue> weakObjclassVal(thread, weakObj->GetJSHClass());
+    JSTaggedValue weakValue = JSTaggedValue(weakObjclassVal.GetTaggedValue().CreateAndGetWeakRef());
     // set weak value
     for (uint32_t i = 0; i < weakVectorCapacity; i++) {
         weakVector->Set(thread, i, weakValue);
@@ -106,8 +106,8 @@ HWTEST_F_L0(WeakVectorTest, Grow)
     JSHandle<JSTaggedValue> objFun = env->GetStringFunction();
 
     JSHandle<JSObject> weakObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> weakObjDynclassVal(thread, weakObj->GetJSHClass());
-    JSTaggedValue weakValue = JSTaggedValue(weakObjDynclassVal.GetTaggedValue().CreateAndGetWeakRef());
+    JSHandle<JSTaggedValue> weakObjclassVal(thread, weakObj->GetJSHClass());
+    JSTaggedValue weakValue = JSTaggedValue(weakObjclassVal.GetTaggedValue().CreateAndGetWeakRef());
     // test growing vector with null value
     uint32_t oldWeakVectorCapacity = 0;
     uint32_t newWeakVectorCapacity = 100;
@@ -147,8 +147,8 @@ HWTEST_F_L0(WeakVectorTest, PushBack)
     JSHandle<WeakVector> weakVector = WeakVector::Create(thread, weakVectorCapacity);
 
     JSHandle<JSObject> weakObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> weakObjDynclassVal(thread, weakObj->GetJSHClass());
-    JSTaggedValue weakValue = JSTaggedValue(weakObjDynclassVal.GetTaggedValue().CreateAndGetWeakRef());
+    JSHandle<JSTaggedValue> weakObjclassVal(thread, weakObj->GetJSHClass());
+    JSTaggedValue weakValue = JSTaggedValue(weakObjclassVal.GetTaggedValue().CreateAndGetWeakRef());
     // fill the value into the vector
     for (uint32_t i = 0; i < weakVectorCapacity; i++) {
         weakVector->Set(thread, i, weakValue);
@@ -183,8 +183,8 @@ HWTEST_F_L0(WeakVectorTest, Delete)
     JSHandle<WeakVector> weakVector = WeakVector::Create(thread, weakVectorCapacity);
 
     JSHandle<JSObject> weakObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> weakObjDynclassVal(thread, weakObj->GetJSHClass());
-    JSTaggedValue weakValue = JSTaggedValue(weakObjDynclassVal.GetTaggedValue().CreateAndGetWeakRef());
+    JSHandle<JSTaggedValue> weakObjclassVal(thread, weakObj->GetJSHClass());
+    JSTaggedValue weakValue = JSTaggedValue(weakObjclassVal.GetTaggedValue().CreateAndGetWeakRef());
 
     for (uint32_t i = 0; i < weakVectorCapacity; i++) {
         weakVector->PushBack(thread, weakValue);

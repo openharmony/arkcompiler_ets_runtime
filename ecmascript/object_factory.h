@@ -335,11 +335,11 @@ public:
 
     FreeObject *FillFreeObject(uintptr_t address, size_t size, RemoveSlots removeSlots = RemoveSlots::NO);
 
-    TaggedObject *NewDynObject(const JSHandle<JSHClass> &dynclass);
+    TaggedObject *NewObject(const JSHandle<JSHClass> &hclass);
 
-    TaggedObject *NewNonMovableDynObject(const JSHandle<JSHClass> &dynclass, int inobjPropCount = 0);
+    TaggedObject *NewNonMovableObject(const JSHandle<JSHClass> &hclass, int inobjPropCount = 0);
 
-    void InitializeExtraProperties(const JSHandle<JSHClass> &dynclass, TaggedObject *obj, int inobjPropCount);
+    void InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, int inobjPropCount);
 
     JSHandle<TaggedQueue> NewTaggedQueue(uint32_t length);
 
@@ -423,10 +423,10 @@ public:
                                             const JSHandle<JSHClass> &objClass);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
-    JSHandle<JSFunction> NewJSFunctionByDynClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
+    JSHandle<JSFunction> NewJSFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                                  MemSpaceType type = MemSpaceType::SEMI_SPACE);
-    JSHandle<JSFunction> NewJSFunctionByDynClass(const void *func, const JSHandle<JSHClass> &clazz,
+    JSHandle<JSFunction> NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     JSHandle<Method> NewJSMethod(const MethodLiteral *methodLiteral);
 
@@ -479,7 +479,7 @@ public:
     JSHandle<JSObject> NewJSObject(const JSHandle<JSHClass> &jshclass);
 
     // used for creating jshclass in Builtins, Function, Class_Linker
-    JSHandle<JSHClass> NewEcmaDynClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);
+    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);
 
     // It is used to provide iterators for non ECMA standard jsapi containers.
     JSHandle<JSAPIPlainArray> NewJSAPIPlainArray(uint32_t capacity);
@@ -545,7 +545,7 @@ public:
 
     // --------------------------------------old space object--------------------------------------------
     JSHandle<JSObject> NewOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
-    TaggedObject *NewOldSpaceDynObject(const JSHandle<JSHClass> &dynclass);
+    TaggedObject *NewOldSpaceObject(const JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> NewOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
 
     // ---------------------------------New objects used internally--------------------------------------
@@ -571,13 +571,13 @@ private:
     void NewObjectHook() const;
 
     // used for creating jshclass in Builtins, Function, Class_Linker
-    JSHandle<JSHClass> NewEcmaDynClass(uint32_t size, JSType type,
+    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type,
                                        uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     // used for creating jshclass in GlobalEnv, EcmaVM
-    JSHandle<JSHClass> NewEcmaDynClassClass(JSHClass *hclass, uint32_t size, JSType type);
-    JSHandle<JSHClass> NewEcmaDynClass(JSHClass *hclass, uint32_t size, JSType type,
+    JSHandle<JSHClass> NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
+    JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
                                        uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSHandle<JSHClass> NewEcmaReadOnlyDynClass(JSHClass *hclass, uint32_t size, JSType type,
+    JSHandle<JSHClass> NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                                uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<JSHClass> InitClassClass();
 
@@ -588,14 +588,14 @@ private:
     JSHandle<EcmaString> NewFromASCIINonMovable(const CString &data);
 
     // used for creating Function
-    JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &dynKlass);
+    JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &hclass);
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &keys, const JSHandle<TaggedArray> &values);
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
                                            const JSHandle<JSTaggedValue> &prototype);
 
     // used for creating ref.prototype in buildins, such as Number.prototype
-    JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(const JSHandle<JSHClass> &dynKlass,
+    JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(const JSHandle<JSHClass> &hclass,
                                                const JSHandle<JSTaggedValue> &object);
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
@@ -623,9 +623,9 @@ private:
 
     inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type);
 
-    friend class Builtins;    // create builtins object need dynclass
-    friend class JSFunction;  // create prototype_or_dynclass need dynclass
-    friend class JSHClass;    // HC transition need dynclass
+    friend class Builtins;    // create builtins object need hclass
+    friend class JSFunction;  // create prototype_or_hclass need hclass
+    friend class JSHClass;    // HC transition need hclass
     friend class EcmaVM;      // hold the factory instance
     friend class JsVerificationTest;
     friend class PandaFileTranslator;
@@ -639,8 +639,8 @@ private:
 
 class ClassLinkerFactory {
 private:
-    friend class GlobalEnv;  // root class in class_linker need dynclass
-    friend class EcmaVM;     // root class in class_linker need dynclass
+    friend class GlobalEnv;  // root class in class_linker need hclass
+    friend class EcmaVM;     // root class in class_linker need hclass
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_OBJECT_FACTORY_H

@@ -50,7 +50,9 @@ public:
     inline GateRef ReadInst16_1(GateRef pc);
     inline GateRef ReadInst16_2(GateRef pc);
     inline GateRef ReadInst16_3(GateRef pc);
+    inline GateRef ReadInst16_4(GateRef pc);
     inline GateRef ReadInst16_5(GateRef pc);
+    inline GateRef ReadInst16_6(GateRef pc);
     inline GateRef ReadInstSigned8_0(GateRef pc);
     inline GateRef ReadInstSigned16_0(GateRef pc);
     inline GateRef ReadInstSigned32_0(GateRef pc);

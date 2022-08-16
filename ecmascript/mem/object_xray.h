@@ -312,7 +312,7 @@ public:
                 break;
             }
             case JSType::HCLASS:
-                // semi gc is not needed to visit dyn class
+                // semi gc is not needed to visit hclass
                 if (visitType != VisitType::SEMI_GC_VISIT) {
                     JSHClass::Cast(object)->VisitRangeSlot(visitor);
                 }

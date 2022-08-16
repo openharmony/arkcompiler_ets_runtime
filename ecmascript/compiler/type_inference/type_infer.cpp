@@ -95,100 +95,105 @@ bool TypeInfer::ShouldInfer(const GateRef gate) const
 
 bool TypeInfer::Infer(GateRef gate)
 {
+    // TODO
     if (!ShouldInfer(gate)) {
         return false;
     }
     if (gateAccessor_.GetOpCode(gate) == OpCode::VALUE_SELECTOR) {
         return InferPhiGate(gate);
     }
+    /*
     // infer ecma.* bytecode gates
     EcmaOpcode op = builder_->GetByteCodeOpcode(gate);
     switch (op) {
-        case EcmaOpcode::LDNAN_PREF:
-        case EcmaOpcode::LDINFINITY_PREF:
-        case EcmaOpcode::SUB2DYN_PREF_V8:
-        case EcmaOpcode::MUL2DYN_PREF_V8:
-        case EcmaOpcode::DIV2DYN_PREF_V8:
-        case EcmaOpcode::MOD2DYN_PREF_V8:
-        case EcmaOpcode::SHL2DYN_PREF_V8:
-        case EcmaOpcode::ASHR2DYN_PREF_V8:
-        case EcmaOpcode::SHR2DYN_PREF_V8:
-        case EcmaOpcode::AND2DYN_PREF_V8:
-        case EcmaOpcode::OR2DYN_PREF_V8:
-        case EcmaOpcode::XOR2DYN_PREF_V8:
-        case EcmaOpcode::TONUMBER_PREF_V8:
-        case EcmaOpcode::TONUMERIC_PREF_V8:
-        case EcmaOpcode::NEGDYN_PREF_V8:
-        case EcmaOpcode::NOTDYN_PREF_V8:
-        case EcmaOpcode::INCDYN_PREF_V8:
-        case EcmaOpcode::DECDYN_PREF_V8:
-        case EcmaOpcode::EXPDYN_PREF_V8:
-        case EcmaOpcode::STARRAYSPREAD_PREF_V8_V8:
+        case EcmaOpcode::LDNAN:
+        case EcmaOpcode::LDINFINITY:
+        case EcmaOpcode::SUB2_IMM8_V8:
+        case EcmaOpcode::MUL2_IMM8_V8:
+        case EcmaOpcode::DIV2_IMM8_V8:
+        case EcmaOpcode::MOD2_IMM8_V8:
+        case EcmaOpcode::SHL2_IMM8_V8:
+        case EcmaOpcode::ASHR2_IMM8_V8:
+        case EcmaOpcode::SHR2_IMM8_V8:
+        case EcmaOpcode::AND2_IMM8_V8:
+        case EcmaOpcode::OR2_IMM8_V8:
+        case EcmaOpcode::XOR2_IMM8_V8:
+        case EcmaOpcode::TONUMBER_IMM8:
+        case EcmaOpcode::TONUMERIC_IMM8:
+        case EcmaOpcode::NEG_IMM8:
+        case EcmaOpcode::NOT_IMM8:
+        case EcmaOpcode::INC_IMM8:
+        case EcmaOpcode::DEC_IMM8:
+        case EcmaOpcode::EXP_IMM8_V8:
+        case EcmaOpcode::STARRAYSPREAD_V8_V8:
             return SetNumberType(gate);
-        case EcmaOpcode::LDTRUE_PREF:
-        case EcmaOpcode::LDFALSE_PREF:
-        case EcmaOpcode::EQDYN_PREF_V8:
-        case EcmaOpcode::NOTEQDYN_PREF_V8:
-        case EcmaOpcode::LESSDYN_PREF_V8:
-        case EcmaOpcode::LESSEQDYN_PREF_V8:
-        case EcmaOpcode::GREATERDYN_PREF_V8:
-        case EcmaOpcode::GREATEREQDYN_PREF_V8:
-        case EcmaOpcode::ISINDYN_PREF_V8:
-        case EcmaOpcode::INSTANCEOFDYN_PREF_V8:
-        case EcmaOpcode::STRICTNOTEQDYN_PREF_V8:
-        case EcmaOpcode::STRICTEQDYN_PREF_V8:
-        case EcmaOpcode::ISTRUE_PREF:
-        case EcmaOpcode::ISFALSE_PREF:
-        case EcmaOpcode::SETOBJECTWITHPROTO_PREF_V8_V8:
-        case EcmaOpcode::DELOBJPROP_PREF_V8_V8:
+        case EcmaOpcode::LDTRUE:
+        case EcmaOpcode::LDFALSE:
+        case EcmaOpcode::EQ_IMM8_V8:
+        case EcmaOpcode::NOTEQ_IMM8_V8:
+        case EcmaOpcode::LESS_IMM8_V8:
+        case EcmaOpcode::LESSEQ_IMM8_V8:
+        case EcmaOpcode::GREATER_IMM8_V8:
+        case EcmaOpcode::GREATEREQ_IMM8_V8:
+        case EcmaOpcode::ISIN_IMM8_V8:
+        case EcmaOpcode::INSTANCEOF_IMM8_V8:
+        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
+        case EcmaOpcode::STRICTEQ_IMM8_V8:
+        case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::SETOBJECTWITHPROTO_IMM8_V8:
+        case EcmaOpcode::DELOBJPROP_V8_V8:
             return SetBooleanType(gate);
-        case EcmaOpcode::LDUNDEFINED_PREF:
+        case EcmaOpcode::LDUNDEFINED:
             return InferLdUndefined(gate);
-        case EcmaOpcode::LDNULL_PREF:
+        case EcmaOpcode::LDNULL:
             return InferLdNull(gate);
-        case EcmaOpcode::LDAI_DYN_IMM32:
-            return InferLdaiDyn(gate);
-        case EcmaOpcode::FLDAI_DYN_IMM64:
-            return InferFLdaiDyn(gate);
-        case EcmaOpcode::LDSYMBOL_PREF:
+        case EcmaOpcode::LDAI_IMM32:
+            return InferLdai(gate);
+        case EcmaOpcode::FLDAI_IMM64:
+            return InferFLdai(gate);
+        case EcmaOpcode::LDSYMBOL:
             return InferLdSymbol(gate);
-        case EcmaOpcode::THROWDYN_PREF:
-            return InferThrowDyn(gate);
-        case EcmaOpcode::TYPEOFDYN_PREF:
-            return InferTypeOfDyn(gate);
-        case EcmaOpcode::ADD2DYN_PREF_V8:
-            return InferAdd2Dyn(gate);
-        case EcmaOpcode::LDOBJBYINDEX_PREF_V8_IMM32:
+        case EcmaOpcode::THROW:
+            return InferThrow(gate);
+        case EcmaOpcode::TYPEOF_IMM8:
+            return InferTypeOf(gate);
+        case EcmaOpcode::ADD2_IMM8_V8:
+            return InferAdd2(gate);
+        case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
+        case EcmaOpcode::DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32:
             return InferLdObjByIndex(gate);
-        case EcmaOpcode::STGLOBALVAR_PREF_ID32:
-        case EcmaOpcode::STCONSTTOGLOBALRECORD_PREF_ID32:
-        case EcmaOpcode::TRYSTGLOBALBYNAME_PREF_ID32:
-        case EcmaOpcode::STLETTOGLOBALRECORD_PREF_ID32:
-        case EcmaOpcode::STCLASSTOGLOBALRECORD_PREF_ID32:
+        case EcmaOpcode::STGLOBALVAR_ID16:
+        case EcmaOpcode::STCONSTTOGLOBALRECORD_ID16:
+        case EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
+        case EcmaOpcode::STLETTOGLOBALRECORD_ID16:
+        case EcmaOpcode::STCLASSTOGLOBALRECORD_ID16:
             return SetStGlobalBcType(gate);
-        case EcmaOpcode::LDGLOBALVAR_PREF_ID32:
+        case EcmaOpcode::LDGLOBALVAR_ID16:
             return InferLdGlobalVar(gate);
-        case EcmaOpcode::RETURNUNDEFINED_PREF:
+        case EcmaOpcode::RETURNUNDEFINED:
             return InferReturnUndefined(gate);
-        case EcmaOpcode::RETURN_DYN:
-            return InferReturnDyn(gate);
-        case EcmaOpcode::LDOBJBYNAME_PREF_ID32_V8:
+        case EcmaOpcode::RETURN:
+            return InferReturn(gate);
+        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16_V8:
             return InferLdObjByName(gate);
-        case EcmaOpcode::LDA_STR_ID32:
+        case EcmaOpcode::LDA_STR_ID16:
             return InferLdStr(gate);
-        case EcmaOpcode::CALLARG0DYN_PREF_V8:
-        case EcmaOpcode::CALLARG1DYN_PREF_V8_V8:
-        case EcmaOpcode::CALLARGS2DYN_PREF_V8_V8_V8:
-        case EcmaOpcode::CALLARGS3DYN_PREF_V8_V8_V8_V8:
-        case EcmaOpcode::CALLSPREADDYN_PREF_V8_V8_V8:
-        case EcmaOpcode::CALLIRANGEDYN_PREF_IMM16_V8:
-        case EcmaOpcode::CALLITHISRANGEDYN_PREF_IMM16_V8:
+        case EcmaOpcode::CALLARG0_IMM8_V8:
+        case EcmaOpcode::CALLARG1_IMM8_V8_V8:
+        case EcmaOpcode::CALLARGS2_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8_V8:
+        case EcmaOpcode::CALLSPREAD_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLRANGE_IMM8_IMM16_V8:
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM16_V8:
             return InferCallFunction(gate);
-        case EcmaOpcode::LDOBJBYVALUE_PREF_V8_V8:
+        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8_V8:
             return InferLdObjByValue(gate);
-        case EcmaOpcode::GETNEXTPROPNAME_PREF_V8:
+        case EcmaOpcode::GETNEXTPROPNAME_V8:
             return InferGetNextPropName(gate);
-        case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_PREF_V8_V8_V8_V8:
+        case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
             return InferDefineGetterSetterByValue(gate);
         case EcmaOpcode::NEWOBJDYNRANGE_PREF_IMM16_V8:
         case EcmaOpcode::NEWOBJSPREADDYN_PREF_V8_V8:
@@ -196,11 +201,12 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::SUPERCALL_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLSPREAD_PREF_V8:
             return InferSuperCall(gate);
-        case EcmaOpcode::TRYLDGLOBALBYNAME_PREF_ID32:
+        case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
             return InferTryLdGlobalByName(gate);
         default:
             break;
     }
+    */
     return false;
 }
 
@@ -256,13 +262,13 @@ bool TypeInfer::InferLdNull(GateRef gate)
     return UpdateType(gate, nullType);
 }
 
-bool TypeInfer::InferLdaiDyn(GateRef gate)
+bool TypeInfer::InferLdai(GateRef gate)
 {
     auto numberType = GateType::NumberType();
     return UpdateType(gate, numberType);
 }
 
-bool TypeInfer::InferFLdaiDyn(GateRef gate)
+bool TypeInfer::InferFLdai(GateRef gate)
 {
     auto numberType = GateType::NumberType();
     return UpdateType(gate, numberType);
@@ -274,21 +280,21 @@ bool TypeInfer::InferLdSymbol(GateRef gate)
     return UpdateType(gate, symbolType);
 }
 
-bool TypeInfer::InferThrowDyn(GateRef gate)
+bool TypeInfer::InferThrow(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto gateType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, gateType);
 }
 
-bool TypeInfer::InferTypeOfDyn(GateRef gate)
+bool TypeInfer::InferTypeOf(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto gateType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, gateType);
 }
 
-bool TypeInfer::InferAdd2Dyn(GateRef gate)
+bool TypeInfer::InferAdd2(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
@@ -349,7 +355,7 @@ bool TypeInfer::InferReturnUndefined(GateRef gate)
     return UpdateType(gate, undefinedType);
 }
 
-bool TypeInfer::InferReturnDyn(GateRef gate)
+bool TypeInfer::InferReturn(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto gateType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
@@ -363,7 +369,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
     if (objType.IsTSType()) {
         // If this object has no gt type, we cannot get its internal property type
-        if (IsObjectOrClass(objType)) {
+        if (IsObjectOrHClass(objType)) {
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
             auto name = tsManager_->GetStringById(index);
             auto type = GetPropType(objType, name);
@@ -413,7 +419,7 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
             return UpdateType(gate, elementType);
         }
         // handle object
-        if (IsObjectOrClass(objType)) {
+        if (IsObjectOrHClass(objType)) {
             auto valueGate = gateAccessor_.GetValueIn(gate, 1);
             if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
                 auto value = gateAccessor_.GetBitField(valueGate);
@@ -436,6 +442,16 @@ bool TypeInfer::InferDefineGetterSetterByValue(GateRef gate)
     // 0 : the index of obj
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, objType);
+}
+
+bool TypeInfer::InferNewObjApply(GateRef gate)
+{
+    if (gateAccessor_.GetGateType(gate).IsAnyType()) {
+        // 0 : the index of func
+        auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+        return UpdateType(gate, funcType);
+    }
+    return false;
 }
 
 bool TypeInfer::InferSuperCall(GateRef gate)
@@ -487,12 +503,12 @@ void TypeInfer::Verify() const
 void TypeInfer::TypeCheck(GateRef gate) const
 {
     auto info = builder_->GetByteCodeInfo(gate);
-    if (!info.IsBc(EcmaOpcode::CALLARGS2DYN_PREF_V8_V8_V8)) {
+    if (!info.IsBc(EcmaOpcode::CALLARGS2_IMM8_V8_V8)) {
         return;
     }
     auto func = gateAccessor_.GetValueIn(gate, 0);
     auto funcInfo = builder_->GetByteCodeInfo(func);
-    if (!funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_PREF_ID32)) {
+    if (!funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16)) {
         return;
     }
     auto funcName = gateAccessor_.GetValueIn(func, 0);

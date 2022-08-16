@@ -62,25 +62,25 @@ HWTEST_F_L0(PropertiesCacheTest, SetAndGet)
     JSHandle<JSTaggedValue> handleFunction(factory->NewJSFunction(env));
     JSHandle<JSSymbol> handleSymbol(factory->NewJSSymbol());
     JSHandle<JSTaggedValue> handleKey10(factory->NewFromASCII("10"));
-    JSHClass *FuncClass = JSObject::Cast(handleFunction->GetTaggedObject())->GetJSHClass();
+    JSHClass *FuncHClass = JSObject::Cast(handleFunction->GetTaggedObject())->GetJSHClass();
 
     PropertiesCache *handleProCache = thread->GetPropertiesCache();
     // key is string
     for (int i = 0; i < 10; i++) {
         JSHandle<JSTaggedValue> handleNumKey(thread, JSTaggedValue(1));
         JSHandle<JSTaggedValue> handleStrKey(JSTaggedValue::ToString(thread, handleNumKey));
-        handleProCache->Set(FuncClass, handleStrKey.GetTaggedValue(), i);
-        EXPECT_EQ(handleProCache->Get(FuncClass, handleStrKey.GetTaggedValue()), i);
+        handleProCache->Set(FuncHClass, handleStrKey.GetTaggedValue(), i);
+        EXPECT_EQ(handleProCache->Get(FuncHClass, handleStrKey.GetTaggedValue()), i);
     }
-    EXPECT_EQ(handleProCache->Get(FuncClass, handleKey10.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
+    EXPECT_EQ(handleProCache->Get(FuncHClass, handleKey10.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
     // key is symbol
     for (int i = 0; i < 10; i++) {
         handleSymbol->SetHashField(static_cast<uint32_t>(i));
-        handleProCache->Set(FuncClass, handleSymbol.GetTaggedValue(), i);
-        EXPECT_EQ(handleProCache->Get(FuncClass, handleSymbol.GetTaggedValue()), i);
+        handleProCache->Set(FuncHClass, handleSymbol.GetTaggedValue(), i);
+        EXPECT_EQ(handleProCache->Get(FuncHClass, handleSymbol.GetTaggedValue()), i);
     }
     handleSymbol->SetHashField(static_cast<uint32_t>(10));
-    EXPECT_EQ(handleProCache->Get(FuncClass, handleSymbol.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
+    EXPECT_EQ(handleProCache->Get(FuncHClass, handleSymbol.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
     handleProCache->Clear();
 }
 
@@ -98,12 +98,12 @@ HWTEST_F_L0(PropertiesCacheTest, Clear)
     
     JSHandle<JSTaggedValue> handleKey(factory->NewFromASCII("10"));
     JSHandle<JSTaggedValue> handleFunction(factory->NewJSFunction(env));
-    JSHClass *FuncClass = JSObject::Cast(handleFunction->GetTaggedObject())->GetJSHClass();
+    JSHClass *FuncHClass = JSObject::Cast(handleFunction->GetTaggedObject())->GetJSHClass();
     PropertiesCache *handleProCache = thread->GetPropertiesCache();
 
-    handleProCache->Set(FuncClass, handleKey.GetTaggedValue(), 10);
-    EXPECT_EQ(handleProCache->Get(FuncClass, handleKey.GetTaggedValue()), 10);
+    handleProCache->Set(FuncHClass, handleKey.GetTaggedValue(), 10);
+    EXPECT_EQ(handleProCache->Get(FuncHClass, handleKey.GetTaggedValue()), 10);
     handleProCache->Clear();
-    EXPECT_EQ(handleProCache->Get(FuncClass, handleKey.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
+    EXPECT_EQ(handleProCache->Get(FuncHClass, handleKey.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
 }
 } // namespace panda::test

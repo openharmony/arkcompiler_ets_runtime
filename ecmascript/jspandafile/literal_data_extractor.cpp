@@ -220,13 +220,13 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
     }
     JSHandle<JSFunction> jsFunc =
-        factory->NewJSFunctionByDynClass(method, functionClass, kind, MemSpaceType::OLD_SPACE);
+        factory->NewJSFunctionByHClass(method, functionClass, kind, MemSpaceType::OLD_SPACE);
 
     if (kind == FunctionKind::GENERATOR_FUNCTION) {
         JSHandle<JSFunction> objFun(env->GetObjectFunction());
         JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
         JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
-        jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
+        jsFunc->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
     }
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
     if (jsPandaFile->IsModule()) {

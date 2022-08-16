@@ -99,17 +99,17 @@ public:
     inline JSTaggedValue GetFunctionPrototype() const
     {
         ASSERT(HasFunctionPrototype());
-        JSTaggedValue protoOrDyn = GetProtoOrDynClass();
-        if (protoOrDyn.IsJSHClass()) {
-            return JSHClass::Cast(protoOrDyn.GetTaggedObject())->GetPrototype();
+        JSTaggedValue protoOrHClass = GetProtoOrHClass();
+        if (protoOrHClass.IsJSHClass()) {
+            return JSHClass::Cast(protoOrHClass.GetTaggedObject())->GetPrototype();
         }
 
-        return protoOrDyn;
+        return protoOrHClass;
     }
 
     inline void SetFunctionPrototype(const JSThread *thread, JSTaggedValue proto)
     {
-        SetProtoOrDynClass(thread, proto);
+        SetProtoOrHClass(thread, proto);
         if (proto.IsJSHClass()) {
             proto = JSHClass::Cast(proto.GetTaggedObject())->GetPrototype();
         }
@@ -118,16 +118,16 @@ public:
         }
     }
 
-    inline bool HasInitialDynClass() const
+    inline bool HasInitialClass() const
     {
-        JSTaggedValue protoOrDyn = GetProtoOrDynClass();
-        return protoOrDyn.IsJSHClass();
+        JSTaggedValue protoOrHClass = GetProtoOrHClass();
+        return protoOrHClass.IsJSHClass();
     }
 
     inline bool HasFunctionPrototype() const
     {
-        JSTaggedValue protoOrDyn = GetProtoOrDynClass();
-        return !protoOrDyn.IsHole();
+        JSTaggedValue protoOrHClass = GetProtoOrHClass();
+        return !protoOrHClass.IsHole();
     }
 
     inline void SetFunctionLength(const JSThread *thread, JSTaggedValue length)
@@ -206,7 +206,7 @@ public:
                                                   JSHandle<JSTaggedValue> newTarget);
 
     static constexpr size_t PROTO_OR_DYNCLASS_OFFSET = JSFunctionBase::SIZE;
-    ACCESSORS(ProtoOrDynClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
+    ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, HOME_OBJECT_OFFSET)
     ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, FUNCTION_EXTRA_INFO_OFFSET)
     ACCESSORS(FunctionExtraInfo, FUNCTION_EXTRA_INFO_OFFSET, PROFILE_TYPE_INFO_OFFSET)
@@ -232,7 +232,7 @@ public:
 
 private:
     static JSHandle<JSHClass> GetOrCreateDerivedJSHClass(JSThread *thread, JSHandle<JSFunction> derived,
-                                                         JSHandle<JSHClass> ctorInitialDynClass);
+                                                         JSHandle<JSHClass> ctorInitialClass);
 };
 
 class JSGeneratorFunction : public JSFunction {

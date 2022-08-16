@@ -27,8 +27,6 @@
 #include "ecmascript/method.h"
 #include "ecmascript/runtime_call_id.h"
 
-#include "libpandafile/bytecode_instruction-inl.h"
-
 namespace panda::ecmascript::x64 {
 #define __ assembler->
 
@@ -198,7 +196,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     __ Movq(Operand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), pcRegister);
     __ Movl(Operand(contextRegister, GeneratorContext::GENERATOR_BC_OFFSET_OFFSET), operatorRegister);
     __ Addq(operatorRegister, pcRegister);
-    __ Addq(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8), pcRegister);
+    __ Addq(BytecodeInstruction::Size(BytecodeInstruction::Format::V8_V8), pcRegister);
     __ Pushq(pcRegister);                                              // pc
     __ Pushq(fpRegister);                                              // fp
     __ Pushq(0);                                                       // jumpSizeAfterCall
@@ -370,15 +368,15 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
 // %rsi - arg0                        // %rsi - actualArgc
 // %rdi - arg1                        // %rdi - argv
 // %r8  - arg2
-void AsmInterpreterCall::PushCallIThisRangeAndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallThisRangeAndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallIThisRangeAndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisRangeAndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_WITH_ARGV);
 }
 
-void AsmInterpreterCall::PushCallIRangeAndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallRangeAndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallIRangeAndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallRangeAndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_WITH_ARGV);
 }
 
@@ -705,7 +703,7 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     __ Jmp(tempRegister);
 }
 
-// uint64_t PushCallIRangeAndDispatchNative(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
+// uint64_t PushCallRangeAndDispatchNative(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
 // c++ calling convention call js function
 // Input: %rdi - glue
 //        %rsi - nativeCode
@@ -713,9 +711,9 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
 //        %rcx - thisValue
 //        %r8  - argc
 //        %r9  - argV (...)
-void AsmInterpreterCall::PushCallIRangeAndDispatchNative(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallRangeAndDispatchNative(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallIRangeAndDispatchNative));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallRangeAndDispatchNative));
     CallNativeWithArgv(assembler, false);
 }
 
@@ -915,9 +913,9 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     __ Subq(AsmInterpretedFrame::GetSize(false), frameStateBaseRegister);
 
     Label dispatch;
-    Label newObjectDynRangeReturn;
+    Label newObjectRangeReturn;
     __ Cmpq(0, jumpSizeRegister);
-    __ Je(&newObjectDynRangeReturn);
+    __ Je(&newObjectRangeReturn);
 
     __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetBaseOffset(false)), spRegister);  // update sp
     __ Addq(jumpSizeRegister, pcRegister);  // newPc
@@ -938,7 +936,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
     Label getHiddenThis;
     Label notUndefined;
-    __ Bind(&newObjectDynRangeReturn);
+    __ Bind(&newObjectRangeReturn);
     __ Cmpq(JSTaggedValue::Undefined().GetRawData(), ret);
     __ Jne(&notUndefined);
 
@@ -990,7 +988,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         // exception branch
         {
             __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetBaseOffset(false)), spRegister);
-            __ Movq(kungfu::BytecodeStubCSigns::ID_NewObjectDynRangeThrowException, opcodeRegister);
+            __ Movq(kungfu::BytecodeStubCSigns::ID_NewObjectRangeThrowException, opcodeRegister);
             __ Jmp(&dispatch);
         }
     }

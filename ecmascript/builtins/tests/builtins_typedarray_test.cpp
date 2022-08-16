@@ -175,10 +175,10 @@ JSTaggedValue CreateBuiltinsTypeArrayJSObject(JSThread *thread, const CString ke
 {
     auto ecmaVM = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
-    JSHandle<JSTaggedValue> dynclass = env->GetObjectFunction();
+    JSHandle<JSTaggedValue> hclass = env->GetObjectFunction();
     ObjectFactory *factory = ecmaVM->GetFactory();
 
-    JSHandle<JSTaggedValue> obj(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass), dynclass));
+    JSHandle<JSTaggedValue> obj(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
     JSHandle<JSTaggedValue> key(factory->NewFromASCII(&keyCStr[0]));
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
     JSObject::SetProperty(thread, obj, key, value);

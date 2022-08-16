@@ -57,19 +57,19 @@ HWTEST_F_L0(JSHClassTest, InitializeClass)
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
-    // Call NewEcmaDynClass function set object properties
-    JSHandle<JSHClass> objectDynclass =
-        factory->NewEcmaDynClass(TaggedArray::SIZE, JSType::TAGGED_ARRAY, nullHandle);
+    // Call NewEcmaHClass function set object properties
+    JSHandle<JSHClass> objectClass =
+        factory->NewEcmaHClass(TaggedArray::SIZE, JSType::TAGGED_ARRAY, nullHandle);
     // Get object properties
-    EXPECT_EQ(objectDynclass->GetLayout(), JSTaggedValue::Null());
-    EXPECT_EQ(objectDynclass->GetPrototype(), JSTaggedValue::Null());
-    EXPECT_EQ(objectDynclass->GetObjectType(), JSType::TAGGED_ARRAY);
-    EXPECT_TRUE(objectDynclass->IsExtensible());
-    EXPECT_TRUE(!objectDynclass->IsPrototype());
-    EXPECT_EQ(objectDynclass->GetTransitions(), JSTaggedValue::Undefined());
-    EXPECT_EQ(objectDynclass->GetProtoChangeMarker(), JSTaggedValue::Null());
-    EXPECT_EQ(objectDynclass->GetProtoChangeDetails(), JSTaggedValue::Null());
-    EXPECT_EQ(objectDynclass->GetEnumCache(), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetLayout(), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetPrototype(), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetObjectType(), JSType::TAGGED_ARRAY);
+    EXPECT_TRUE(objectClass->IsExtensible());
+    EXPECT_TRUE(!objectClass->IsPrototype());
+    EXPECT_EQ(objectClass->GetTransitions(), JSTaggedValue::Undefined());
+    EXPECT_EQ(objectClass->GetProtoChangeMarker(), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetProtoChangeDetails(), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetEnumCache(), JSTaggedValue::Null());
 }
 
 HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
@@ -78,31 +78,31 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
 
-    JSHandle<JSHClass> objectDynclass = factory->NewEcmaDynClass(TaggedArray::SIZE, JSType::TAGGED_ARRAY, nullHandle);
-    EXPECT_TRUE(*objectDynclass != nullptr);
+    JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::TAGGED_ARRAY, nullHandle);
+    EXPECT_TRUE(*objectClass != nullptr);
     size_t objectSize;
 #ifndef PANDA_TARGET_32
-    objectSize = objectDynclass->SizeFromJSHClass(*objectDynclass);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 40U);
 #endif
-    objectDynclass = factory->NewEcmaDynClass(EcmaString::SIZE, JSType::STRING, nullHandle);
-    objectSize = objectDynclass->SizeFromJSHClass(*objectDynclass);
+    objectClass = factory->NewEcmaHClass(EcmaString::SIZE, JSType::STRING, nullHandle);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 16U);
 
-    objectDynclass = factory->NewEcmaDynClass(MachineCode::SIZE, JSType::MACHINE_CODE_OBJECT, nullHandle);
-    objectSize = objectDynclass->SizeFromJSHClass(*objectDynclass);
+    objectClass = factory->NewEcmaHClass(MachineCode::SIZE, JSType::MACHINE_CODE_OBJECT, nullHandle);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 24U);
     // size is an integral multiple of eight
-    objectDynclass = factory->NewEcmaDynClass(JSObject::SIZE - 1, JSType::JS_OBJECT, nullHandle);
-    objectSize = objectDynclass->SizeFromJSHClass(*objectDynclass);
+    objectClass = factory->NewEcmaHClass(JSObject::SIZE - 1, JSType::JS_OBJECT, nullHandle);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 56U);
     
-    objectDynclass = factory->NewEcmaDynClass(JSObject::SIZE + 1, JSType::JS_OBJECT, nullHandle);
-    objectSize = objectDynclass->SizeFromJSHClass(*objectDynclass);
+    objectClass = factory->NewEcmaHClass(JSObject::SIZE + 1, JSType::JS_OBJECT, nullHandle);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 64U);
 
-    objectDynclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
-    objectSize = objectDynclass->SizeFromJSHClass(*objectDynclass);
+    objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 64U);
 }
 
@@ -112,13 +112,13 @@ HWTEST_F_L0(JSHClassTest, HasReferenceField)
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
 
-    JSHandle<JSHClass> obj1Dynclass = factory->NewEcmaDynClass(TaggedArray::SIZE, JSType::STRING, nullHandle);
-    JSHandle<JSHClass> obj2Dynclass =
-        factory->NewEcmaDynClass(TaggedArray::SIZE, JSType::JS_NATIVE_POINTER, nullHandle);
-    JSHandle<JSHClass> obj3Dynclass = factory->NewEcmaDynClass(TaggedArray::SIZE, JSType::JS_OBJECT, nullHandle);
-    EXPECT_FALSE(obj1Dynclass->HasReferenceField());
-    EXPECT_FALSE(obj2Dynclass->HasReferenceField());
-    EXPECT_TRUE(obj3Dynclass->HasReferenceField());
+    JSHandle<JSHClass> obj1Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::STRING, nullHandle);
+    JSHandle<JSHClass> obj2Class =
+        factory->NewEcmaHClass(TaggedArray::SIZE, JSType::JS_NATIVE_POINTER, nullHandle);
+    JSHandle<JSHClass> obj3Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::JS_OBJECT, nullHandle);
+    EXPECT_FALSE(obj1Class->HasReferenceField());
+    EXPECT_FALSE(obj2Class->HasReferenceField());
+    EXPECT_TRUE(obj3Class->HasReferenceField());
 }
 
 HWTEST_F_L0(JSHClassTest, Clone)
@@ -127,29 +127,29 @@ HWTEST_F_L0(JSHClassTest, Clone)
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
   
-    JSHandle<JSHClass> objectDynclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
+    JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
     // withoutInlinedProperties is false
-    JSHandle<JSHClass> cloneDynclass = JSHClass::Clone(thread, objectDynclass, false);
-    EXPECT_TRUE(*cloneDynclass != nullptr);
-    EXPECT_TRUE(objectDynclass->GetObjectSize() == cloneDynclass->GetObjectSize());
-    EXPECT_EQ(cloneDynclass->GetObjectSize(), 64U); // 64 : 64 not missing the size of inlinedproperties
-    EXPECT_TRUE(objectDynclass->GetLayout() == cloneDynclass->GetLayout());
-    EXPECT_EQ(JSTaggedValue::SameValue(objectDynclass->GetPrototype(), cloneDynclass->GetPrototype()), true);
-    EXPECT_TRUE(objectDynclass->GetBitField() == cloneDynclass->GetBitField());
-    EXPECT_TRUE(objectDynclass->GetBitField1() == cloneDynclass->GetBitField1());
-    EXPECT_TRUE(objectDynclass->NumberOfProps() == cloneDynclass->NumberOfProps());
-    EXPECT_EQ(cloneDynclass->GetNextInlinedPropsIndex(), 0); // 0 : 0 mean index
+    JSHandle<JSHClass> cloneClass = JSHClass::Clone(thread, objectClass, false);
+    EXPECT_TRUE(*cloneClass != nullptr);
+    EXPECT_TRUE(objectClass->GetObjectSize() == cloneClass->GetObjectSize());
+    EXPECT_EQ(cloneClass->GetObjectSize(), 64U); // 64 : 64 not missing the size of inlinedproperties
+    EXPECT_TRUE(objectClass->GetLayout() == cloneClass->GetLayout());
+    EXPECT_EQ(JSTaggedValue::SameValue(objectClass->GetPrototype(), cloneClass->GetPrototype()), true);
+    EXPECT_TRUE(objectClass->GetBitField() == cloneClass->GetBitField());
+    EXPECT_TRUE(objectClass->GetBitField1() == cloneClass->GetBitField1());
+    EXPECT_TRUE(objectClass->NumberOfProps() == cloneClass->NumberOfProps());
+    EXPECT_EQ(cloneClass->GetNextInlinedPropsIndex(), 0); // 0 : 0 mean index
     // withoutInlinedProperties is true
-    cloneDynclass = JSHClass::Clone(thread, objectDynclass, true);
-    EXPECT_TRUE(*cloneDynclass != nullptr);
-    EXPECT_TRUE(objectDynclass->GetObjectSize() > cloneDynclass->GetObjectSize());
-    EXPECT_EQ(cloneDynclass->GetObjectSize(), 32U); // 32 : 32 missing the size of inlinedproperties
-    EXPECT_TRUE(objectDynclass->GetLayout() == cloneDynclass->GetLayout());
-    EXPECT_EQ(JSTaggedValue::SameValue(objectDynclass->GetPrototype(), cloneDynclass->GetPrototype()), true);
-    EXPECT_TRUE(objectDynclass->GetBitField() == cloneDynclass->GetBitField());
-    EXPECT_TRUE(objectDynclass->GetBitField1() > cloneDynclass->GetBitField1());
-    EXPECT_TRUE(objectDynclass->NumberOfProps() == cloneDynclass->NumberOfProps());
-    EXPECT_EQ(cloneDynclass->GetNextNonInlinedPropsIndex(), 0); // 0 : 0 mean index
+    cloneClass = JSHClass::Clone(thread, objectClass, true);
+    EXPECT_TRUE(*cloneClass != nullptr);
+    EXPECT_TRUE(objectClass->GetObjectSize() > cloneClass->GetObjectSize());
+    EXPECT_EQ(cloneClass->GetObjectSize(), 32U); // 32 : 32 missing the size of inlinedproperties
+    EXPECT_TRUE(objectClass->GetLayout() == cloneClass->GetLayout());
+    EXPECT_EQ(JSTaggedValue::SameValue(objectClass->GetPrototype(), cloneClass->GetPrototype()), true);
+    EXPECT_TRUE(objectClass->GetBitField() == cloneClass->GetBitField());
+    EXPECT_TRUE(objectClass->GetBitField1() > cloneClass->GetBitField1());
+    EXPECT_TRUE(objectClass->NumberOfProps() == cloneClass->NumberOfProps());
+    EXPECT_EQ(cloneClass->GetNextNonInlinedPropsIndex(), 0); // 0 : 0 mean index
 }
 
 HWTEST_F_L0(JSHClassTest, TransitionElementsToDictionary)
@@ -191,7 +191,7 @@ static JSHandle<JSHClass> CreateJSHClass(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> objectFuncPrototype = env->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> hclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, objectFuncPrototype);
+    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objectFuncPrototype);
     return hclass;
 }
 
@@ -205,7 +205,7 @@ HWTEST_F_L0(JSHClassTest, SetPropertyOfObjHClass_001)
     JSHandle<JSTaggedValue> keyHandle2(factory->NewFromASCII("key2"));
     JSHandle<JSTaggedValue> keyHandle4(factory->NewFromASCII("key4"));
     // empty layoutInfo
-    JSHandle<JSHClass> parentsDynclass = CreateJSHClass(thread);
+    JSHandle<JSHClass> parentsClass = CreateJSHClass(thread);
 
     uint32_t length = 6;
     JSHandle<TaggedArray> properties = factory->NewTaggedArray(length);
@@ -219,8 +219,8 @@ HWTEST_F_L0(JSHClassTest, SetPropertyOfObjHClass_001)
         }
         properties->Set(thread, i, accessorData.GetTaggedValue());
     }
-    JSHandle<JSHClass> childDynclass = factory->SetLayoutInObjHClass(properties, 3, parentsDynclass);
-    JSHandle<JSObject> childObj = factory->NewJSObject(childDynclass);
+    JSHandle<JSHClass> childClass = factory->SetLayoutInObjHClass(properties, 3, parentsClass);
+    JSHandle<JSObject> childObj = factory->NewJSObject(childClass);
 
     std::vector<JSTaggedValue> keyVector;
     JSObject::GetAllKeys(childObj, keyVector);
@@ -234,9 +234,9 @@ HWTEST_F_L0(JSHClassTest, SetPropertyOfObjHClass_002)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSHClass> objDynclass = CreateJSHClass(thread);
-    JSHandle<JSObject> Obj1 = factory->NewJSObject(objDynclass);
-    JSHandle<JSObject> Obj2 = factory->NewJSObject(objDynclass);
+    JSHandle<JSHClass> objClass = CreateJSHClass(thread);
+    JSHandle<JSObject> Obj1 = factory->NewJSObject(objClass);
+    JSHandle<JSObject> Obj2 = factory->NewJSObject(objClass);
     PropertyAttributes attr = PropertyAttributes::Default();
 
     JSHandle<JSTaggedValue> keyE(factory->NewFromASCII("e"));
@@ -245,11 +245,11 @@ HWTEST_F_L0(JSHClassTest, SetPropertyOfObjHClass_002)
     JSObject::SetProperty(thread, Obj1, keyE, JSHandle<JSTaggedValue>(thread, JSTaggedValue(7)));
     JSObject::SetProperty(thread, Obj2, keyF, JSHandle<JSTaggedValue>(thread, JSTaggedValue(8)));
 
-    JSHandle<JSHClass> propertyHclass = JSHClass::SetPropertyOfObjHClass(thread, objDynclass, keyE, attr);
+    JSHandle<JSHClass> propertyHclass = JSHClass::SetPropertyOfObjHClass(thread, objClass, keyE, attr);
     JSHandle<JSHClass> obj1Class(thread, Obj1->GetClass());
     EXPECT_TRUE(propertyHclass == obj1Class);
 
-    propertyHclass = JSHClass::SetPropertyOfObjHClass(thread, objDynclass, keyF, attr);
+    propertyHclass = JSHClass::SetPropertyOfObjHClass(thread, objClass, keyF, attr);
     JSHandle<JSHClass> obj2Class(thread, Obj2->GetClass());
     EXPECT_TRUE(propertyHclass == obj2Class);
 }
@@ -265,10 +265,10 @@ HWTEST_F_L0(JSHClassTest, AddProperty)
     PropertyAttributes attr = PropertyAttributes::Default();
     attr.SetIsInlinedProps(true);
     // empty layoutInfo
-    JSHandle<JSHClass> objDynclass = CreateJSHClass(thread);
-    JSHandle<JSObject> Obj = factory->NewJSObject(objDynclass);
+    JSHandle<JSHClass> objClass1 = CreateJSHClass(thread);
+    JSHandle<JSObject> Obj = factory->NewJSObject(objClass1);
     JSHandle<JSHClass> objClass(thread, Obj->GetClass());
-    EXPECT_FALSE(objDynclass != objClass);
+    EXPECT_FALSE(objClass1 != objClass);
     int keyLength = 3;
     for (int i = 0; i <keyLength; i++) {
         JSHandle<JSTaggedValue> keyValue(thread, JSTaggedValue(i));
@@ -277,7 +277,7 @@ HWTEST_F_L0(JSHClassTest, AddProperty)
         attr.SetOffset(i);
         JSHClass::AddProperty(thread, Obj, keyHandleI, attr);
     }
-    EXPECT_TRUE(objDynclass == objClass);
+    EXPECT_TRUE(objClass1 == objClass);
     std::vector<JSTaggedValue> keyVector;
     JSObject::GetAllKeys(Obj, keyVector);
     EXPECT_EQ(keyVector.size(), 3U);
@@ -296,23 +296,23 @@ HWTEST_F_L0(JSHClassTest, TransitionExtension)
     JSHandle<JSTaggedValue> keyHandle2(factory->NewFromASCII("key2"));
     PropertyAttributes attr = PropertyAttributes(0);
     attr.SetIsInlinedProps(true);
-    JSHandle<JSHClass> obj1DynClass = CreateJSHClass(thread);
-    JSHandle<JSHClass> obj2DynClass = CreateJSHClass(thread);
-    obj2DynClass->SetExtensible(true);
-    JSHandle<JSObject> Obj1 = factory->NewJSObject(obj1DynClass);
-    JSHandle<JSObject> Obj2 = factory->NewJSObject(obj2DynClass);
+    JSHandle<JSHClass> obj1Class = CreateJSHClass(thread);
+    JSHandle<JSHClass> obj2Class = CreateJSHClass(thread);
+    obj2Class->SetExtensible(true);
+    JSHandle<JSObject> Obj1 = factory->NewJSObject(obj1Class);
+    JSHandle<JSObject> Obj2 = factory->NewJSObject(obj2Class);
     JSObject::SetProperty(thread, Obj2, keyHandle0, JSHandle<JSTaggedValue>(thread, JSTaggedValue(7)));
     JSObject::SetProperty(thread, Obj2, keyHandle1, JSHandle<JSTaggedValue>(thread, JSTaggedValue(8)));
     JSObject::SetProperty(thread, Obj2, keyHandle2, JSHandle<JSTaggedValue>(thread, JSTaggedValue(9)));
     // obj has key "PreventExtensions"
     JSHClass::AddProperty(thread, Obj1, preExtensionsKey, attr);
-    JSHandle<JSHClass> newDynClass1 = JSHClass::TransitionExtension(thread, obj1DynClass);
+    JSHandle<JSHClass> newClass1 = JSHClass::TransitionExtension(thread, obj1Class);
     JSHandle<JSHClass> objClass(thread, Obj1->GetClass());
-    EXPECT_TRUE(newDynClass1 == objClass);
+    EXPECT_TRUE(newClass1 == objClass);
     // obj has no key "PreventExtensions"
-    JSHandle<JSHClass> newDynClass2 = JSHClass::TransitionExtension(thread, obj2DynClass);
-    EXPECT_FALSE(newDynClass2->IsExtensible());
-    JSHandle<TransitionsDictionary> dictionary(thread, obj2DynClass->GetTransitions());
+    JSHandle<JSHClass> newClass2 = JSHClass::TransitionExtension(thread, obj2Class);
+    EXPECT_FALSE(newClass2->IsExtensible());
+    JSHandle<TransitionsDictionary> dictionary(thread, obj2Class->GetTransitions());
     // find key
     std::vector<JSTaggedValue> keyVector;
     dictionary->GetAllKeysIntoVector(keyVector);
@@ -332,15 +332,15 @@ HWTEST_F_L0(JSHClassTest, TransitionProto)
     JSHandle<JSTaggedValue> obj3Key(factory->NewFromASCII("key2"));
     PropertyAttributes attr = PropertyAttributes(0);
     attr.SetIsInlinedProps(true);
-    JSHandle<JSHClass> objDynClass = CreateJSHClass(thread);
-    JSHandle<JSObject> Obj = factory->NewJSObject(objDynClass);
+    JSHandle<JSHClass> objClass = CreateJSHClass(thread);
+    JSHandle<JSObject> Obj = factory->NewJSObject(objClass);
     // obj has no key "prototype"
     JSHClass::AddProperty(thread, Obj, obj1Key, attr);
     JSHClass::AddProperty(thread, Obj, obj2Key, attr);
     JSHClass::AddProperty(thread, Obj, obj3Key, attr);
-    JSHandle<JSHClass> newDynClass = JSHClass::TransitionProto(thread, objDynClass, funcPrototype);
-    EXPECT_EQ(newDynClass->GetPrototype(), funcPrototype.GetTaggedValue());
-    JSHandle<TransitionsDictionary> transitionDictionary(thread, objDynClass->GetTransitions());
+    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, objClass, funcPrototype);
+    EXPECT_EQ(newClass->GetPrototype(), funcPrototype.GetTaggedValue());
+    JSHandle<TransitionsDictionary> transitionDictionary(thread, objClass->GetTransitions());
     // find key
     std::vector<JSTaggedValue> keyVector;
     transitionDictionary->GetAllKeysIntoVector(keyVector);
@@ -357,13 +357,13 @@ HWTEST_F_L0(JSHClassTest, TransitionToDictionary)
     JSHandle<JSTaggedValue> obj2Key(factory->NewFromASCII("key2"));
     JSHandle<JSTaggedValue> obj3Key(factory->NewFromASCII("key3"));
     JSHandle<JSObject> nullHandle(thread, JSTaggedValue::Null());
-    JSHandle<JSHClass> objDynclass = CreateJSHClass(thread);
-    objDynclass->SetIsPrototype(true);
-    JSHandle<JSObject> Obj0 = factory->NewJSObject(objDynclass);
-    JSHandle<JSHClass> obj0Dynclass(thread, Obj0->GetJSHClass());
+    JSHandle<JSHClass> objClass = CreateJSHClass(thread);
+    objClass->SetIsPrototype(true);
+    JSHandle<JSObject> Obj0 = factory->NewJSObject(objClass);
+    JSHandle<JSHClass> obj0Class1(thread, Obj0->GetJSHClass());
     JSHandle<JSObject> Obj1 = JSObject::ObjectCreate(thread, nullHandle);
     JSHandle<JSObject> Obj2 = JSObject::ObjectCreate(thread, Obj1);
-    JSHandle<JSHClass> obj2Dynclass(thread, Obj2->GetJSHClass());
+    JSHandle<JSHClass> obj2Class(thread, Obj2->GetJSHClass());
     JSHandle<JSObject> Obj3 = JSObject::ObjectCreate(thread, Obj2);
     JSObject::SetProperty(thread, Obj1, obj1Key, JSHandle<JSTaggedValue>(thread, JSTaggedValue(100)));
     JSObject::SetProperty(thread, Obj2, obj2Key, JSHandle<JSTaggedValue>(thread, JSTaggedValue(101)));
@@ -371,17 +371,17 @@ HWTEST_F_L0(JSHClassTest, TransitionToDictionary)
     // empty object
     JSHClass::TransitionToDictionary(thread, Obj0);
     JSHandle<JSHClass> obj0Class(thread, Obj0->GetClass());
-    EXPECT_TRUE(obj0Class->GetObjectSize() < obj0Dynclass->GetObjectSize());
+    EXPECT_TRUE(obj0Class->GetObjectSize() < obj0Class1->GetObjectSize());
     EXPECT_EQ(obj0Class->NumberOfProps(), 0U);
     EXPECT_TRUE(obj0Class->IsDictionaryMode());
     EXPECT_TRUE(obj0Class->IsPrototype());
     // not empty object
-    JSHandle<JSHClass> obj3Dynclass(thread, Obj3->GetJSHClass());
-    JSHClass::EnableProtoChangeMarker(thread, obj3Dynclass);
+    JSHandle<JSHClass> obj3Class(thread, Obj3->GetJSHClass());
+    JSHClass::EnableProtoChangeMarker(thread, obj3Class);
     JSHClass::TransitionToDictionary(thread, Obj2);
     // refresh users
-    JSHandle<JSHClass> obj1Dynclass(thread, Obj1->GetJSHClass());
-    JSTaggedValue protoDetails = obj1Dynclass->GetProtoChangeDetails();
+    JSHandle<JSHClass> obj1Class(thread, Obj1->GetJSHClass());
+    JSTaggedValue protoDetails = obj1Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails.IsProtoChangeDetails());
     JSTaggedValue listenersValue = ProtoChangeDetails::Cast(protoDetails.GetTaggedObject())->GetChangeListener();
     JSHandle<ChangeListener> listeners(thread, listenersValue.GetTaggedObject());
@@ -389,7 +389,7 @@ HWTEST_F_L0(JSHClassTest, TransitionToDictionary)
     EXPECT_TRUE(holeIndex == 0U);
     // new class
     JSHandle<JSHClass> newClass(thread, Obj2->GetClass());
-    EXPECT_TRUE(newClass->GetObjectSize() < obj2Dynclass->GetObjectSize());
+    EXPECT_TRUE(newClass->GetObjectSize() < obj2Class->GetObjectSize());
     EXPECT_EQ(newClass->NumberOfProps(), 0U);
     EXPECT_TRUE(newClass->IsDictionaryMode());
     EXPECT_TRUE(newClass->IsPrototype());
@@ -403,13 +403,13 @@ HWTEST_F_L0(JSHClassTest, UpdatePropertyMetaData)
     PropertyAttributes oldAttr = PropertyAttributes(0);
     PropertyAttributes newAttr = PropertyAttributes(1);
     oldAttr.SetIsInlinedProps(true);
-    JSHandle<JSHClass> objDynClass = CreateJSHClass(thread);
-    JSHandle<JSObject> Obj = factory->NewJSObject(objDynClass);
+    JSHandle<JSHClass> objClass = CreateJSHClass(thread);
+    JSHandle<JSObject> Obj = factory->NewJSObject(objClass);
     // Set Transitions
     JSHClass::AddProperty(thread, Obj, objKey, oldAttr);
     // update metaData
-    objDynClass->UpdatePropertyMetaData(thread, objKey.GetTaggedValue(), newAttr);
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(objDynClass->GetLayout().GetTaggedObject());
+    objClass->UpdatePropertyMetaData(thread, objKey.GetTaggedValue(), newAttr);
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(objClass->GetLayout().GetTaggedObject());
     EXPECT_EQ(layoutInfo->GetAttr(oldAttr.GetOffset()).GetPropertyMetaData(), newAttr.GetPropertyMetaData());
 }
 
@@ -421,9 +421,9 @@ HWTEST_F_L0(JSHClassTest, SetPrototype)
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
     JSHandle<JSTaggedValue> objectFuncPrototype = env->GetObjectFunctionPrototype();
   
-    JSHandle<JSHClass> objectDynclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
-    EXPECT_EQ(objectDynclass->GetPrototype(), nullHandle.GetTaggedValue());
-    objectDynclass->SetPrototype(thread, objectFuncPrototype);
-    EXPECT_EQ(objectDynclass->GetPrototype(), objectFuncPrototype.GetTaggedValue());
+    JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
+    EXPECT_EQ(objectClass->GetPrototype(), nullHandle.GetTaggedValue());
+    objectClass->SetPrototype(thread, objectFuncPrototype);
+    EXPECT_EQ(objectClass->GetPrototype(), objectFuncPrototype.GetTaggedValue());
 }
 }  // namespace panda::test

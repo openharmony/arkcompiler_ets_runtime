@@ -28,8 +28,6 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/runtime_call_id.h"
 
-#include "libpandafile/bytecode_instruction-inl.h"
-
 namespace panda::ecmascript::aarch64 {
 using Label = panda::ecmascript::Label;
 #define __ assembler->
@@ -384,15 +382,15 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
 // X23 - arg0                        // X23 - actualArgc
 // X24 - arg1                        // X24 - argv
 // X25 - arg2
-void AsmInterpreterCall::PushCallIThisRangeAndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallThisRangeAndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallIThisRangeAndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisRangeAndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_WITH_ARGV);
 }
 
-void AsmInterpreterCall::PushCallIRangeAndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallRangeAndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallIRangeAndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallRangeAndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_WITH_ARGV);
 }
 
@@ -426,7 +424,7 @@ void AsmInterpreterCall::PushCallArgs0AndDispatch(ExtendedAssembler *assembler)
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0);
 }
 
-// uint64_t PushCallIRangeAndDispatchNative(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
+// uint64_t PushCallRangeAndDispatchNative(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
 // c++ calling convention call js function
 // Input: X0 - glue
 //        X1 - nativeCode
@@ -434,9 +432,9 @@ void AsmInterpreterCall::PushCallArgs0AndDispatch(ExtendedAssembler *assembler)
 //        X3 - thisValue
 //        X4  - argc
 //        X5  - argV (...)
-void AsmInterpreterCall::PushCallIRangeAndDispatchNative(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallRangeAndDispatchNative(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallIRangeAndDispatchNative));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallRangeAndDispatchNative));
     CallNativeWithArgv(assembler, false);
 }
 
@@ -641,11 +639,11 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     ASSERT(fpOffset < 0);
     ASSERT(spOffset < 0);
 
-    Label newObjectDynRangeReturn;
+    Label newObjectRangeReturn;
     Label dispatch;
     __ Ldur(fp, MemoryOperand(sp, fpOffset));  // store fp for temporary
     __ Cmp(jumpSizeRegister, Immediate(0));
-    __ B(Condition::EQ, &newObjectDynRangeReturn);
+    __ B(Condition::EQ, &newObjectRangeReturn);
     __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
 
     __ Add(pc, pc, Operand(jumpSizeRegister, LSL, 0));
@@ -661,7 +659,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     auto jumpSize = kungfu::AssemblerModule::GetJumpSizeFromJSCallMode(JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
     Label getHiddenThis;
     Label notUndefined;
-    __ Bind(&newObjectDynRangeReturn);
+    __ Bind(&newObjectRangeReturn);
     {
         __ Cmp(ret, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         __ B(Condition::NE, &notUndefined);
@@ -713,7 +711,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
             __ B(Condition::LS, &getHiddenThis);  // constructor is base
             // exception branch
             {
-                __ Mov(opcode, kungfu::BytecodeStubCSigns::ID_NewObjectDynRangeThrowException);
+                __ Mov(opcode, kungfu::BytecodeStubCSigns::ID_NewObjectRangeThrowException);
                 __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
                 __ B(&dispatch);
             }
@@ -1111,7 +1109,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     // 32: get high 32bit
     __ Lsr(operatorRegister, operatorRegister, 32);
     __ Add(pcRegister, operatorRegister, pcRegister);
-    __ Add(pcRegister, pcRegister, Immediate(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8)));
+    __ Add(pcRegister, pcRegister, Immediate(BytecodeInstruction::Size(BytecodeInstruction::Format::V8_V8)));
     // 2 : pc and fp
     __ Stp(fpRegister, pcRegister, MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // jumpSizeAfterCall

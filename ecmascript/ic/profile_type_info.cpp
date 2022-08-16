@@ -20,26 +20,26 @@
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
-void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> dynclass, JSHandle<JSTaggedValue> handler) const
+void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
     auto profileData = profileTypeInfo_->Get(slotId_);
     ASSERT(!profileData.IsHole());
     auto index = slotId_;
     if (profileData.IsUndefined()) {
-        profileTypeInfo_->Set(thread_, index, GetWeakRef(dynclass.GetTaggedValue()));
+        profileTypeInfo_->Set(thread_, index, GetWeakRef(hclass.GetTaggedValue()));
         profileTypeInfo_->Set(thread_, index + 1, handler.GetTaggedValue());
         return;
     }
     // clear key ic
     if (!profileData.IsWeak() && (profileData.IsString() || profileData.IsSymbol())) {
-        profileTypeInfo_->Set(thread_, index, GetWeakRef(dynclass.GetTaggedValue()));
+        profileTypeInfo_->Set(thread_, index, GetWeakRef(hclass.GetTaggedValue()));
         profileTypeInfo_->Set(thread_, index + 1, handler.GetTaggedValue());
         return;
     }
-    AddHandlerWithoutKey(dynclass, handler);
+    AddHandlerWithoutKey(hclass, handler);
 }
 
-void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> dynclass, JSHandle<JSTaggedValue> handler) const
+void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
     auto index = slotId_;
     if (IsNamedGlobalIC(GetKind())) {
@@ -49,7 +49,7 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> dynclass,
     auto profileData = profileTypeInfo_->Get(slotId_);
     ASSERT(!profileData.IsHole());
     if (profileData.IsUndefined()) {
-        profileTypeInfo_->Set(thread_, index, GetWeakRef(dynclass.GetTaggedValue()));
+        profileTypeInfo_->Set(thread_, index, GetWeakRef(hclass.GetTaggedValue()));
         profileTypeInfo_->Set(thread_, index + 1, handler.GetTaggedValue());
         return;
     }
@@ -70,7 +70,7 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> dynclass,
             newArr->Set(thread_, i, arr->Get(i));
             newArr->Set(thread_, i + 1, arr->Get(i + 1));
         }
-        newArr->Set(thread_, i, GetWeakRef(dynclass.GetTaggedValue()));
+        newArr->Set(thread_, i, GetWeakRef(hclass.GetTaggedValue()));
         newArr->Set(thread_, i + 1, handler.GetTaggedValue());
         profileTypeInfo_->Set(thread_, index, newArr.GetTaggedValue());
         profileTypeInfo_->Set(thread_, index + 1, JSTaggedValue::Hole());
@@ -82,14 +82,14 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> dynclass,
     uint32_t arrIndex = 0;
     newArr->Set(thread_, arrIndex++, profileTypeInfo_->Get(index));
     newArr->Set(thread_, arrIndex++, profileTypeInfo_->Get(index + 1));
-    newArr->Set(thread_, arrIndex++, GetWeakRef(dynclass.GetTaggedValue()));
+    newArr->Set(thread_, arrIndex++, GetWeakRef(hclass.GetTaggedValue()));
     newArr->Set(thread_, arrIndex, handler.GetTaggedValue());
 
     profileTypeInfo_->Set(thread_, index, newArr.GetTaggedValue());
     profileTypeInfo_->Set(thread_, index + 1, JSTaggedValue::Hole());
 }
 
-void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> dynclass,
+void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
                                             JSHandle<JSTaggedValue> handler) const
 {
     if (IsValueGlobalIC(GetKind())) {
@@ -104,12 +104,12 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
         profileTypeInfo_->Set(thread_, index, key.GetTaggedValue());
         const int arrayLength = 2;
         JSHandle<TaggedArray> newArr = thread_->GetEcmaVM()->GetFactory()->NewTaggedArray(arrayLength);
-        newArr->Set(thread_, 0, GetWeakRef(dynclass.GetTaggedValue()));
+        newArr->Set(thread_, 0, GetWeakRef(hclass.GetTaggedValue()));
         newArr->Set(thread_, 1, handler.GetTaggedValue());
         profileTypeInfo_->Set(thread_, index + 1, newArr.GetTaggedValue());
         return;
     }
-    // for element ic, profileData may dynclass or taggedarray
+    // for element ic, profileData may hclass or taggedarray
     if (key.GetTaggedValue() != profileData) {
         profileTypeInfo_->Set(thread_, index, JSTaggedValue::Hole());
         profileTypeInfo_->Set(thread_, index + 1, JSTaggedValue::Hole());
@@ -128,7 +128,7 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
         }
         auto factory = thread_->GetEcmaVM()->GetFactory();
         JSHandle<TaggedArray> newArr = factory->NewTaggedArray(newLen);
-        newArr->Set(thread_, 0, GetWeakRef(dynclass.GetTaggedValue()));
+        newArr->Set(thread_, 0, GetWeakRef(hclass.GetTaggedValue()));
         newArr->Set(thread_, 1, handler.GetTaggedValue());
         for (uint32_t i = 0; i < arr->GetLength(); i += step) {
             newArr->Set(thread_, i + step, arr->Get(i));
@@ -143,7 +143,7 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
     uint32_t arrIndex = 0;
     newArr->Set(thread_, arrIndex++, arr->Get(0));
     newArr->Set(thread_, arrIndex++, arr->Get(1));
-    newArr->Set(thread_, arrIndex++, GetWeakRef(dynclass.GetTaggedValue()));
+    newArr->Set(thread_, arrIndex++, GetWeakRef(hclass.GetTaggedValue()));
     newArr->Set(thread_, arrIndex++, handler.GetTaggedValue());
 
     profileTypeInfo_->Set(thread_, index + 1, newArr.GetTaggedValue());

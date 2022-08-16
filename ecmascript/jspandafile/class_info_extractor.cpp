@@ -201,13 +201,13 @@ JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, J
             layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
         }
 
-        hclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, length);
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, length);
         // Not need set proto here
         hclass->SetLayout(thread, layout);
         hclass->SetNumberOfProps(length);
     } else {
         // dictionary mode
-        hclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, 0);  // without in-obj
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, 0);  // without in-obj
         hclass->SetIsDictionaryMode(true);
         hclass->SetNumberOfProps(0);
     }
@@ -261,13 +261,13 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
             layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
         }
 
-        hclass = factory->NewEcmaDynClass(JSFunction::SIZE, JSType::JS_FUNCTION, length);
+        hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, length);
         // Not need set proto here
         hclass->SetLayout(thread, layout);
         hclass->SetNumberOfProps(length);
     } else {
         // dictionary mode
-        hclass = factory->NewEcmaDynClass(JSFunction::SIZE, JSType::JS_FUNCTION, 0);  // without in-obj
+        hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, 0);  // without in-obj
         hclass->SetIsDictionaryMode(true);
         hclass->SetNumberOfProps(0);
     }
@@ -288,7 +288,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassTemplate(JSThread *thread, JSHandle
 
     JSHandle<JSHClass> constructorHClass(thread, extractor->GetConstructorHClass());
     JSHandle<Method> method = factory->NewJSMethod(extractor->GetConstructorMethod());
-    JSHandle<JSFunction> constructor = factory->NewJSFunctionByDynClass(method,
+    JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method,
         constructorHClass, FunctionKind::CLASS_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
 
     // non-static
@@ -351,7 +351,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassTemplate(JSThread *thread, JSHandle
         ClassHelper::HandleElementsProperties(thread, JSHandle<JSObject>(constructor), staticElements, constantpool);
     }
 
-    constructor->SetProtoOrDynClass(thread, prototype);
+    constructor->SetProtoOrHClass(thread, prototype);
 
     return constructor;
 }

@@ -116,9 +116,9 @@ public:
 
     static void GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallIThisRangeAndDispatch(ExtendedAssembler *assembler);
+    static void PushCallThisRangeAndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallIRangeAndDispatch(ExtendedAssembler *assembler);
+    static void PushCallRangeAndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallArgs3AndDispatch(ExtendedAssembler *assembler);
 
@@ -128,9 +128,9 @@ public:
 
     static void PushCallArgs0AndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallIThisRangeAndDispatchNative(ExtendedAssembler *assembler);
+    static void PushCallThisRangeAndDispatchNative(ExtendedAssembler *assembler);
 
-    static void PushCallIRangeAndDispatchNative(ExtendedAssembler *assembler);
+    static void PushCallRangeAndDispatchNative(ExtendedAssembler *assembler);
 
     static void PushCallNewAndDispatchNative(ExtendedAssembler *assembler);
 

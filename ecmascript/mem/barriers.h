@@ -26,7 +26,7 @@ class Region;
 class Barriers {
 public:
     template<class T>
-    static inline void SetDynPrimitive(void *obj, size_t offset, T value)
+    static inline void SetPrimitive(void *obj, size_t offset, T value)
     {
         auto *addr = reinterpret_cast<T *>(ToUintPtr(obj) + offset);
         // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
@@ -34,7 +34,7 @@ public:
     }
 
     template<class T>
-    static inline bool AtomicSetDynPrimitive(volatile void *obj, size_t offset, T oldValue, T value)
+    static inline bool AtomicSetPrimitive(volatile void *obj, size_t offset, T oldValue, T value)
     {
         volatile auto atomicField = reinterpret_cast<volatile std::atomic<T> *>(ToUintPtr(obj) + offset);
         return std::atomic_compare_exchange_strong_explicit(atomicField, &oldValue, value, std::memory_order_release,
@@ -42,10 +42,10 @@ public:
     }
 
     template<bool need_write_barrier = true>
-    static void SetDynObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
+    static void SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
 
     template<class T>
-    static inline T GetDynValue(const void *obj, size_t offset)
+    static inline T GetValue(const void *obj, size_t offset)
     {
         auto *addr = reinterpret_cast<T *>(ToUintPtr(obj) + offset);
         return *addr;

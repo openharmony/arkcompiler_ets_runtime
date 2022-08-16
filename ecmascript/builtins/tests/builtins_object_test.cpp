@@ -80,10 +80,10 @@ JSFunction *BuiltinsObjectTestCreate(JSThread *thread)
     return globalEnv->GetObjectFunction().GetObject<JSFunction>();
 }
 
-JSObject *TestNewJSObject(JSThread *thread, const JSHandle<JSHClass> &dynClass)
+JSObject *TestNewJSObject(JSThread *thread, const JSHandle<JSHClass> &hclass)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSObject *obj = JSObject::Cast(factory->NewDynObject(dynClass));
+    JSObject *obj = JSObject::Cast(factory->NewObject(hclass));
 
     obj->SetElements(thread, factory->EmptyArray().GetTaggedValue(), SKIP_BARRIER);
     return obj;

@@ -59,7 +59,7 @@ JSHClass *TSObjectType::CreateHClassByProps(JSThread *thread, JSHandle<TSObjLayo
         attributes.SetOffset(index);
         layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
     }
-    JSHandle<JSHClass> hclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, numOfProps);
+    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, numOfProps);
     hclass->SetLayout(thread, layout);
     hclass->SetNumberOfProps(numOfProps);
     hclass->SetAOT(true);

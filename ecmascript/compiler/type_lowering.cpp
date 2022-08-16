@@ -43,8 +43,8 @@ void TypeLowering::Lower(GateRef gate)
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case NEWOBJDYNRANGE_PREF_IMM16_V8:
-            LowerTypeNewObjDynRange(gate, glue);
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM16_V8:
+            LowerTypeNewObjRange(gate, glue);
             break;
         default:
             break;
@@ -101,7 +101,7 @@ GateRef TypeLowering::LowerCallRuntime(GateRef glue, int index, const std::vecto
     }
 }
 
-void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
+void TypeLowering::LowerTypeNewObjRange(GateRef gate, GateRef glue)
 {
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);

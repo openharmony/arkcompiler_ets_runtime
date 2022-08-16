@@ -927,9 +927,9 @@ inline GateRef StubBuilder::LoadHClass(GateRef object)
     return Load(VariableType::JS_POINTER(), object);
 }
 
-inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hclass)
+inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
 {
-    Store(VariableType::JS_POINTER(), glue, object, IntPtr(0), hclass);
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(0), hClass);
 }
 
 inline GateRef StubBuilder::GetObjectType(GateRef hClass)
@@ -1112,21 +1112,21 @@ inline GateRef StubBuilder::GetHasChanged(GateRef object)
     return Int32NotEqual(Int32And(bitfield, mask), Int32(0));
 }
 
-inline GateRef StubBuilder::HclassIsPrototypeHandler(GateRef hclass)
+inline GateRef StubBuilder::HclassIsPrototypeHandler(GateRef hClass)
 {
-    return Int32Equal(GetObjectType(hclass),
+    return Int32Equal(GetObjectType(hClass),
         Int32(static_cast<int32_t>(JSType::PROTOTYPE_HANDLER)));
 }
 
-inline GateRef StubBuilder::HclassIsTransitionHandler(GateRef hclass)
+inline GateRef StubBuilder::HclassIsTransitionHandler(GateRef hClass)
 {
-    return Int32Equal(GetObjectType(hclass),
+    return Int32Equal(GetObjectType(hClass),
         Int32(static_cast<int32_t>(JSType::TRANSITION_HANDLER)));
 }
 
-inline GateRef StubBuilder::HclassIsPropertyBox(GateRef hclass)
+inline GateRef StubBuilder::HclassIsPropertyBox(GateRef hClass)
 {
-    return Int32Equal(GetObjectType(hclass),
+    return Int32Equal(GetObjectType(hClass),
         Int32(static_cast<int32_t>(JSType::PROPERTY_BOX)));
 }
 

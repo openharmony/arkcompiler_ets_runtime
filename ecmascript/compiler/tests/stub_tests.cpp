@@ -143,7 +143,7 @@ HWTEST_F_L0(StubTest, FastAddTest)
     int x1 = 2147483647;
     int y1 = 15;
     auto resG = fn(thread->GetGlueAddr(), JSTaggedValue(x1).GetRawData(), JSTaggedValue(y1).GetRawData());
-    auto expectedG = SlowRuntimeStub::Add2Dyn(thread, JSTaggedValue(x1), JSTaggedValue(y1));
+    auto expectedG = SlowRuntimeStub::Add2(thread, JSTaggedValue(x1), JSTaggedValue(y1));
     EXPECT_EQ(resG, expectedG);
 }
 

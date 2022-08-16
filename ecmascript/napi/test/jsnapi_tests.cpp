@@ -799,12 +799,12 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_003)
     JSHandle<Method> invokeSelf =
         factory->NewMethodForNativeFunction(reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf));
     // father type
-    JSHandle<JSHClass> protoDynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-    JSHandle<JSFunction> protoFunc = factory->NewJSFunctionByDynClass(invokeSelf, protoDynclass);
+    JSHandle<JSHClass> protoClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
+    JSHandle<JSFunction> protoFunc = factory->NewJSFunctionByHClass(invokeSelf, protoClass);
     Local<FunctionRef> protoLocal = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(protoFunc));
     // son type
-    JSHandle<JSHClass> noProtoDynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> noProtoFunc = factory->NewJSFunctionByDynClass(invokeSelf, noProtoDynclass);
+    JSHandle<JSHClass> noProtoClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+    JSHandle<JSFunction> noProtoFunc = factory->NewJSFunctionByHClass(invokeSelf, noProtoClass);
     Local<FunctionRef> noProtoLocal = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(noProtoFunc));
 
     JSHandle<JSFunction> sonHandle = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(noProtoLocal));
@@ -847,18 +847,18 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
     JSHandle<Method> ctor =
         factory->NewMethodForNativeFunction(reinterpret_cast<void *>(BuiltinsFunction::FunctionConstructor));
 
-    JSHandle<JSHClass> protoDynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-    JSHandle<JSFunction> funcFuncPrototype = factory->NewJSFunctionByDynClass(invokeSelf, protoDynclass);
+    JSHandle<JSHClass> protoClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
+    JSHandle<JSFunction> funcFuncPrototype = factory->NewJSFunctionByHClass(invokeSelf, protoClass);
     // add method in funcPrototype
     PropertyDescriptor desc = PropertyDescriptor(thread_, deleteMethod);
     JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>::Cast(funcFuncPrototype), deleteString, desc);
     JSHandle<JSTaggedValue> funcFuncPrototypeValue(funcFuncPrototype);
 
-    JSHandle<JSHClass> funcFuncProtoIntanceDynclass =
-       factory->NewEcmaDynClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncPrototypeValue);
-    // new with NewJSFunctionByDynClass::function DynClass
+    JSHandle<JSHClass> funcFuncProtoIntanceClass =
+       factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncPrototypeValue);
+    // new with NewJSFunctionByHClass::function Class
     JSHandle<JSFunction> protoFunc =
-       factory->NewJSFunctionByDynClass(ctor, funcFuncProtoIntanceDynclass, FunctionKind::BUILTIN_CONSTRUCTOR);
+       factory->NewJSFunctionByHClass(ctor, funcFuncProtoIntanceClass, FunctionKind::BUILTIN_CONSTRUCTOR);
     EXPECT_TRUE(*protoFunc != nullptr);
     // add method in funcnction
     PropertyDescriptor desc1 = PropertyDescriptor(thread_, addMethod);
@@ -867,15 +867,15 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
     // father type
     Local<FunctionRef> protoLocal = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(protoFunc));
 
-    JSHandle<JSHClass> noProtoDynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> funcFuncNoProtoPrototype = factory->NewJSFunctionByDynClass(invokeSelf, noProtoDynclass);
+    JSHandle<JSHClass> noProtoClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+    JSHandle<JSFunction> funcFuncNoProtoPrototype = factory->NewJSFunctionByHClass(invokeSelf, noProtoClass);
     JSHandle<JSTaggedValue> funcFuncNoProtoPrototypeValue(funcFuncNoProtoPrototype);
 
-    JSHandle<JSHClass> funcFuncNoProtoProtoIntanceDynclass =
-       factory->NewEcmaDynClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncNoProtoPrototypeValue);
-    // new with NewJSFunctionByDynClass::function DynClass
-    JSHandle<JSFunction> noProtoFunc = factory->NewJSFunctionByDynClass(ctor,
-        funcFuncNoProtoProtoIntanceDynclass, FunctionKind::BUILTIN_CONSTRUCTOR);
+    JSHandle<JSHClass> funcFuncNoProtoProtoIntanceClass =
+       factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncNoProtoPrototypeValue);
+    // new with NewJSFunctionByHClass::function Class
+    JSHandle<JSFunction> noProtoFunc = factory->NewJSFunctionByHClass(ctor,
+        funcFuncNoProtoProtoIntanceClass, FunctionKind::BUILTIN_CONSTRUCTOR);
     EXPECT_TRUE(*noProtoFunc != nullptr);
     // set property that has same key with fater type
     PropertyDescriptor desc2 = PropertyDescriptor(thread_, defaultString);

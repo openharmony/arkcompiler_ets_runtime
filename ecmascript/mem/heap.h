@@ -216,7 +216,7 @@ public:
     // Non-movable
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size);
-    inline TaggedObject *AllocateDynClassClass(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
     // Huge
     inline TaggedObject *AllocateHugeObject(JSHClass *hclass, size_t size);
     inline TaggedObject *AllocateHugeObject(size_t size);

@@ -227,7 +227,7 @@ public:
     // object operation
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
-    void StoreHClass(GateRef glue, GateRef object, GateRef hclass);
+    void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
     GateRef GetObjectType(GateRef hClass);
     GateRef IsDictionaryMode(GateRef object);
@@ -268,9 +268,9 @@ public:
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
     GateRef GetHasChanged(GateRef object);
-    GateRef HclassIsPrototypeHandler(GateRef hclass);
-    GateRef HclassIsTransitionHandler(GateRef hclass);
-    GateRef HclassIsPropertyBox(GateRef hclass);
+    GateRef HclassIsPrototypeHandler(GateRef hClass);
+    GateRef HclassIsTransitionHandler(GateRef hClass);
+    GateRef HclassIsPropertyBox(GateRef hClass);
     GateRef PropAttrGetOffset(GateRef attr);
     // SetDictionaryOrder func in property_attribute.h
     GateRef SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value);
@@ -335,13 +335,13 @@ public:
     GateRef StringToElementIndex(GateRef string);
     GateRef TryToElementsIndex(GateRef key);
     GateRef ComputePropertyCapacityInJSObj(GateRef oldLength);
-    GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hclass, GateRef key, GateRef attr);
+    GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
     GateRef TaggedToRepresentation(GateRef value);
     GateRef LoadFromField(GateRef receiver, GateRef handlerInfo);
     GateRef LoadGlobal(GateRef cell);
     GateRef LoadElement(GateRef receiver, GateRef key);
     GateRef TryToElementsIndex(GateRef glue, GateRef key);
-    GateRef CheckPolyHClass(GateRef cachedValue, GateRef hclass);
+    GateRef CheckPolyHClass(GateRef cachedValue, GateRef hClass);
     GateRef LoadICWithHandler(GateRef glue, GateRef receiver, GateRef holder, GateRef handler);
     GateRef StoreICWithHandler(GateRef glue, GateRef receiver, GateRef holder,
                                  GateRef value, GateRef handler);
