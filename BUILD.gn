@@ -192,6 +192,8 @@ config("ark_jsruntime_common_config") {
     "-Wno-gnu-statement-expression",
     "-pipe",
     "-Wdate-time",
+    "-funwind-tables",
+    "-fasynchronous-unwind-tables",
     "-Wformat=2",
   ]
   if (defined(ark_standalone_build)) {

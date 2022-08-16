@@ -316,6 +316,15 @@ struct OptimizedFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
 public:
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor) const;
+
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(OptimizedFrame, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(OptimizedFrame, prevFp);
+    }
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -351,6 +360,15 @@ struct OptimizedJSFunctionUnfoldArgVFrame : public base::AlignedStruct<base::Ali
                                                                        base::AlignedPointer,
                                                                        base::AlignedPointer,
                                                                        base::AlignedPointer> {
+public:
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, prevFp);
+    }
 private:
     enum class Index : size_t {
         CallSiteSpIndex = 0,
@@ -390,6 +408,15 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, Optimi
 struct OptimizedJSFunctionArgConfigFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                    base::AlignedPointer,
                                                    base::AlignedPointer> {
+public:
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(OptimizedJSFunctionArgConfigFrame, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(OptimizedJSFunctionArgConfigFrame, prevFp);
+    }
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -469,6 +496,14 @@ public:
     {
         const size_t offset = 2;  // 2: skip prevFp and return address.
         return reinterpret_cast<uintptr_t>(fp) + offset * sizeof(uintptr_t);
+    }
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(OptimizedJSFunctionFrame, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(OptimizedJSFunctionFrame, prevFp);
     }
     friend class FrameIterator;
 
@@ -925,6 +960,14 @@ public:
         return returnAddr;
     }
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, callsiteFp);
+    }
 
 private:
     [[maybe_unused]] FrameType type;
@@ -1136,4 +1179,6 @@ private:
     int fpDeltaPrevFrameSp_ {0};
 };
 }  // namespace panda::ecmascript
+extern "C" int step_ark_managed_native_frame(
+    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz);
 #endif // ECMASCRIPT_FRAMES_H
