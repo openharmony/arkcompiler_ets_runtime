@@ -46,7 +46,17 @@ public:
 
     void SetUp() override
     {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
+        JSRuntimeOptions options;
+#if PANDA_TARGET_LINUX
+        // for consistency requirement, use ohos_icu4j/data as icu-data-path
+        options.SetIcuDataPath(ICU_PATH);
+#endif
+        options.SetEnableForceGC(true);
+        instance = JSNApi::CreateEcmaVM(options);
+        instance->SetEnableForceGC(true);
+        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
+        thread = instance->GetJSThread();
+        scope = new EcmaHandleScope(thread);
     }
 
     void TearDown() override
@@ -667,6 +677,29 @@ HWTEST_F_L0(BuiltinsStringTest, localecompare3)
     JSTaggedValue result = BuiltinsString::LocaleCompare(ecmaRuntimeCallInfo);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(1).GetRawData());
+}
+
+// "你好".localecompare('辅助')
+HWTEST_F_L0(BuiltinsStringTest, localecompare4)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    std::string referenceStr = "你好";
+    std::string compareStr = "辅助";
+    JSHandle<EcmaString> thisStr = factory->NewFromStdString(referenceStr);
+    JSHandle<EcmaString> val = factory->NewFromStdString(compareStr);
+    JSHandle<EcmaString> locale = factory->NewFromASCII("zh-Hans");
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, locale.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsString::LocaleCompare(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    ASSERT_GT(result.GetRawData(), JSTaggedValue(0).GetRawData());
 }
 
 // "abc".normalize('NFC')
