@@ -262,6 +262,8 @@ public:
         return &vmAllocator_;
     }
 
+    MemMap Allocate(size_t size, size_t alignment, bool isRegular, int prot);
+
     MemMap Allocate(size_t size, size_t alignment, bool isRegular);
 
     void Free(void *mem, size_t size, bool isRegular);

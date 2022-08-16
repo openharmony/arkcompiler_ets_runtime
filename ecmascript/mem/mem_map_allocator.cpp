@@ -46,6 +46,15 @@ void *mmap(size_t size, int fd, off_t offset)
 #endif
 
 namespace panda::ecmascript {
+MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool isRegular, [[maybe_unused]] int prot)
+{
+    MemMap pool = Allocate(size, alignment, isRegular);
+#ifndef PANDA_TARGET_WINDOWS
+    mprotect(pool.GetMem(), pool.GetSize(), prot);
+#endif
+    return pool;
+}
+
 MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool isRegular)
 {
     if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
