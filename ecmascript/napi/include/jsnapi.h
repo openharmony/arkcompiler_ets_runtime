@@ -418,6 +418,7 @@ public:
     bool IsError();
     bool IsMap();
     bool IsSet();
+    bool IsWeakRef();
     bool IsWeakMap();
     bool IsWeakSet();
     bool IsRegExp();
@@ -449,6 +450,14 @@ public:
     bool IsArgumentsObject();
     bool IsGeneratorFunction();
     bool IsAsyncFunction();
+    bool IsJSLocale();
+    bool IsJSDateTimeFormat();
+    bool IsJSRelativeTimeFormat();
+    bool IsJSIntl();
+    bool IsJSNumberFormat();
+    bool IsJSCollator();
+    bool IsJSPluralRules();
+    bool IsJSListFormat();
     bool IsAsyncGeneratorFunction();
     bool IsAsyncGeneratorObject();
 
@@ -855,6 +864,33 @@ class PUBLIC_API SetIteratorRef : public ObjectRef {
 public:
     int32_t GetIndex();
     Local<JSValueRef> GetKind(const EcmaVM *vm);
+};
+
+class PUBLIC_API GeneratorFunctionRef : public ObjectRef {
+public:
+    bool IsGenerator();
+};
+
+class PUBLIC_API GeneratorObjectRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetGeneratorState(const EcmaVM *vm);
+    Local<JSValueRef> GetGeneratorFunction(const EcmaVM *vm);
+    Local<JSValueRef> GetGeneratorReceiver(const EcmaVM *vm);
+};
+
+class PUBLIC_API CollatorRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetCompareFunction(const EcmaVM *vm);
+};
+
+class PUBLIC_API DataTimeFormatRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetFormatFunction(const EcmaVM *vm);
+};
+
+class PUBLIC_API NumberFormatRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetFormatFunction(const EcmaVM *vm);
 };
 
 class PUBLIC_API JSON {

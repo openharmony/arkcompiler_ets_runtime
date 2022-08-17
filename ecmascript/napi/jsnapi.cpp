@@ -39,11 +39,15 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
+#include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
+#include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
+#include "ecmascript/js_number_format.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_regexp.h"
@@ -121,7 +125,14 @@ using ecmascript::MemMapAllocator;
 using ecmascript::JSMapIterator;
 using ecmascript::JSSetIterator;
 using ecmascript::IterationKind;
+using ecmascript::JSGeneratorState;
 using ecmascript::JSIterator;
+using ecmascript::JSGeneratorFunction;
+using ecmascript::JSGeneratorObject;
+using ecmascript::GeneratorContext;
+using ecmascript::JSCollator;
+using ecmascript::JSDateTimeFormat;
+using ecmascript::JSNumberFormat;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -1694,6 +1705,62 @@ Local<JSValueRef> SetIteratorRef::GetKind(const EcmaVM *vm)
     return result;
 }
 
+bool GeneratorFunctionRef::IsGenerator()
+{
+    return IsGeneratorFunction();
+}
+
+Local<JSValueRef> GeneratorObjectRef::GetGeneratorState(const EcmaVM *vm)
+{
+    JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
+    if (jsGenerator->GetGeneratorState() == JSGeneratorState::COMPLETED) {
+        return StringRef::NewFromUtf8(vm, "closed");
+    }
+    return StringRef::NewFromUtf8(vm, "suspended");
+}
+
+Local<JSValueRef> GeneratorObjectRef::GetGeneratorFunction(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
+    JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext());
+    JSTaggedValue jsTagValue = generatorContext->GetMethod();
+    return JSNApiHelper::ToLocal<GeneratorFunctionRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+}
+
+Local<JSValueRef> GeneratorObjectRef::GetGeneratorReceiver(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
+    JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext());
+    JSTaggedValue jsTagValue = generatorContext->GetAcc();
+    return JSNApiHelper::ToLocal<GeneratorObjectRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+}
+
+Local<JSValueRef> CollatorRef::GetCompareFunction(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSCollator> jsCollator(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue jsTagValue = jsCollator->GetBoundCompare();
+    return JSNApiHelper::ToLocal<CollatorRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+}
+
+Local<JSValueRef> DataTimeFormatRef::GetFormatFunction(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSDateTimeFormat> jsDateTimeFormat(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue jsTagValue = jsDateTimeFormat->GetBoundFormat();
+    return JSNApiHelper::ToLocal<DataTimeFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+}
+
+Local<JSValueRef> NumberFormatRef::GetFormatFunction(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSNumberFormat> jsNumberFormat(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue jsTagValue = jsNumberFormat->GetBoundFormat();
+    return JSNApiHelper::ToLocal<NumberFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+}
+
 // ----------------------------------- FunctionCallback ---------------------------------
 JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo)
 {
@@ -1982,6 +2049,11 @@ bool JSValueRef::IsSet()
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSet();
 }
 
+bool JSValueRef::IsWeakRef()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSWeakRef();
+}
+
 bool JSValueRef::IsWeakMap()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSWeakMap();
@@ -2117,6 +2189,46 @@ bool JSValueRef::IsGeneratorObject()
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     bool rst = obj->IsGeneratorObject();
     return rst;
+}
+
+bool JSValueRef::IsJSLocale()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSLocale();
+}
+
+bool JSValueRef::IsJSDateTimeFormat()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSDateTimeFormat();
+}
+
+bool JSValueRef::IsJSRelativeTimeFormat()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSRelativeTimeFormat();
+}
+
+bool JSValueRef::IsJSIntl()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSIntl();
+}
+
+bool JSValueRef::IsJSNumberFormat()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSNumberFormat();
+}
+
+bool JSValueRef::IsJSCollator()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSCollator();
+}
+
+bool JSValueRef::IsJSPluralRules()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSPluralRules();
+}
+
+bool JSValueRef::IsJSListFormat()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSListFormat();
 }
 
 bool JSValueRef::IsAsyncGeneratorObject()

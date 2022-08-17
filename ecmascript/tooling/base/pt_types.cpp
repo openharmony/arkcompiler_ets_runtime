@@ -74,6 +74,7 @@ const std::string ObjectClassName::Promise = "Promise";                // NOLINT
 const std::string ObjectClassName::Typedarray = "Typedarray";          // NOLINT (readability-identifier-naming)
 const std::string ObjectClassName::Arraybuffer = "Arraybuffer";        // NOLINT (readability-identifier-naming)
 const std::string ObjectClassName::Global = "global";                  // NOLINT (readability-identifier-naming)
+const std::string ObjectClassName::Generator = "Generator";            // NOLINT (readability-identifier-naming)
 
 const std::string RemoteObject::ObjectDescription = "Object";    // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::GlobalDescription = "global";    // NOLINT (readability-identifier-naming)
@@ -85,6 +86,7 @@ const std::string RemoteObject::StringIteratorDescription =  // NOLINT (readabil
     "StringIterator";
 const std::string RemoteObject::SetIteratorDescription = "SetIterator";  // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::MapIteratorDescription = "MapIterator";  // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::WeakRefDescription = "WeakRef";          // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::WeakMapDescription = "WeakMap";          // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::WeakSetDescription = "WeakSet";          // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::JSPrimitiveNumberDescription =           // NOLINT (readability-identifier-naming)
@@ -95,6 +97,16 @@ const std::string RemoteObject::JSPrimitiveStringDescription =           // NOLI
     "String";
 const std::string RemoteObject::JSPrimitiveSymbolDescription =           // NOLINT (readability-identifier-naming)
     "Symbol";
+const std::string RemoteObject::DateTimeFormatDescription =                // NOLINT (readability-identifier-naming)
+    "DateTimeFormat";
+const std::string RemoteObject::JSIntlDescription = "Intl";                // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::NumberFormatDescription = "NumberFormat";  // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::CollatorDescription = "Collator";          // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::PluralRulesDescription = "PluralRules";    // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::JSLocaleDescription = "Locale";            // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::JSListFormatDescription = "ListFormat";    // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::JSRelativeTimeFormatDescription =          // NOLINT (readability-identifier-naming)
+    "RelativeTimeFormat";
 
 std::unique_ptr<RemoteObject> RemoteObject::FromTagged(const EcmaVM *ecmaVm, Local<JSValueRef> tagged)
 {
@@ -108,6 +120,9 @@ std::unique_ptr<RemoteObject> RemoteObject::FromTagged(const EcmaVM *ecmaVm, Loc
     }
     if (tagged->IsSymbol()) {
         return std::make_unique<SymbolRemoteObject>(ecmaVm, Local<SymbolRef>(tagged));
+    }
+    if (tagged->IsGeneratorFunction()) {
+        return std::make_unique<GeneratorFunctionRemoteObject>(ecmaVm, Local<SymbolRef>(tagged));
     }
     if (tagged->IsFunction()) {
         return std::make_unique<FunctionRemoteObject>(ecmaVm, tagged);
@@ -223,6 +238,16 @@ FunctionRemoteObject::FunctionRemoteObject(const EcmaVM *ecmaVm, Local<JSValueRe
         .SetDescription(description);
 }
 
+GeneratorFunctionRemoteObject::GeneratorFunctionRemoteObject(const EcmaVM *ecmaVm, Local<JSValueRef> tagged)
+{
+    std::string description = DescriptionForGeneratorFunction(ecmaVm, tagged);
+    SetType(RemoteObject::TypeName::Function)
+        .SetClassName(RemoteObject::ClassName::Generator)
+        .SetValue(tagged)
+        .SetUnserializableValue(description)
+        .SetDescription(description);
+}
+
 ObjectRemoteObject::ObjectRemoteObject(const EcmaVM *ecmaVm, Local<JSValueRef> tagged,
                                        const std::string &classname)
 {
@@ -301,6 +326,36 @@ std::string ObjectRemoteObject::DescriptionForObject(const EcmaVM *ecmaVm, Local
     }
     if (tagged->IsJSPrimitiveRef() && tagged->IsJSPrimitiveBoolean()) {
         return DescriptionForPrimitiveBoolean(ecmaVm, tagged);
+    }
+    if (tagged->IsGeneratorObject()) {
+        return DescriptionForGeneratorObject(ecmaVm, tagged);
+    }
+    if (tagged->IsWeakRef()) {
+        return DescriptionForWeakRef();
+    }
+    if (tagged->IsJSLocale()) {
+        return DescriptionForJSLocale();
+    }
+    if (tagged->IsJSDateTimeFormat()) {
+        return DescriptionForDateTimeFormat();
+    }
+    if (tagged->IsJSRelativeTimeFormat()) {
+        return DescriptionForJSRelativeTimeFormat();
+    }
+    if (tagged->IsJSIntl()) {
+        return RemoteObject::JSIntlDescription;
+    }
+    if (tagged->IsJSNumberFormat()) {
+        return DescriptionForNumberFormat();
+    }
+    if (tagged->IsJSCollator()) {
+        return DescriptionForCollator();
+    }
+    if (tagged->IsJSPluralRules()) {
+        return DescriptionForPluralRules();
+    }
+    if (tagged->IsJSListFormat()) {
+        return DescriptionForJSListFormat();
     }
     return RemoteObject::ObjectDescription;
 }
@@ -397,6 +452,69 @@ std::string ObjectRemoteObject::DescriptionForPrimitiveBoolean(const EcmaVM *ecm
     return description;
 }
 
+std::string ObjectRemoteObject::DescriptionForGeneratorObject(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged)
+{
+    Local<GeneratorObjectRef> genObjectRef = tagged->ToObject(ecmaVm);
+    // add Status
+    Local<JSValueRef> jsValueRef = genObjectRef->GetGeneratorState(ecmaVm);
+    std::string strState = genObjectRef->GetGeneratorState(ecmaVm)->ToString(ecmaVm)->ToString();
+    // add FuncName
+    jsValueRef = genObjectRef->GetGeneratorFunction(ecmaVm);
+    Local<JSValueRef> name = StringRef::NewFromUtf8(ecmaVm, "name");
+    std::string strFuncName = Local<ObjectRef>(jsValueRef)->Get(ecmaVm, name)->ToString(ecmaVm)->ToString();
+
+    std::string description = strFuncName + " {<" + strState + ">}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForWeakRef()
+{
+    std::string description = RemoteObject::WeakRefDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForDateTimeFormat()
+{
+    std::string description = RemoteObject::DateTimeFormatDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForNumberFormat()
+{
+    std::string description = RemoteObject::NumberFormatDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForCollator()
+{
+    std::string description = RemoteObject::CollatorDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForPluralRules()
+{
+    std::string description = RemoteObject::PluralRulesDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForJSLocale()
+{
+    std::string description = RemoteObject::JSLocaleDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForJSRelativeTimeFormat()
+{
+    std::string description = RemoteObject::JSRelativeTimeFormatDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForJSListFormat()
+{
+    std::string description = RemoteObject::JSListFormatDescription + " {}";
+    return description;
+}
+
 std::string SymbolRemoteObject::DescriptionForSymbol(const EcmaVM *ecmaVm, Local<SymbolRef> tagged) const
 {
     std::string description = "Symbol(" + tagged->GetDescription(ecmaVm)->ToString() + ")";
@@ -413,6 +531,20 @@ std::string FunctionRemoteObject::DescriptionForFunction(const EcmaVM *ecmaVm, L
     }
     Local<StringRef> name = tagged->GetName(ecmaVm);
     std::string description = "function " + name->ToString() + "( { " + sourceCode + " }";
+    return description;
+}
+
+std::string GeneratorFunctionRemoteObject::DescriptionForGeneratorFunction(const EcmaVM *ecmaVm,
+    Local<FunctionRef> tagged) const
+{
+    std::string sourceCode;
+    if (tagged->IsNative(ecmaVm)) {
+        sourceCode = "[native code]";
+    } else {
+        sourceCode = "[js code]";
+    }
+    Local<StringRef> name = tagged->GetName(ecmaVm);
+    std::string description = "function* " + name->ToString() + "( { " + sourceCode + " }";
     return description;
 }
 
