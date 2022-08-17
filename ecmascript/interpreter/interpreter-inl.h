@@ -1335,15 +1335,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(HANDLE_GETITERATOR_PREF) {
         LOG_INST() << "intrinsics::getiterator";
         JSTaggedValue obj = GET_ACC();
-
-        // fast path: Generator obj is already store in acc
-        if (!obj.IsGeneratorObject()) {
-            // slow path
-            SAVE_PC();
-            JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            SET_ACC(res);
-        }
+        // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
         DISPATCH(BytecodeInstruction::Format::PREF_NONE);
     }
     HANDLE_OPCODE(HANDLE_THROWCONSTASSIGNMENT_PREF_V8) {

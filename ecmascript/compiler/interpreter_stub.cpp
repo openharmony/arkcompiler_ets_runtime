@@ -750,23 +750,8 @@ DECLARE_ASM_HANDLER(HandleCreateEmptyArrayPref)
 DECLARE_ASM_HANDLER(HandleGetIteratorPref)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    auto env = GetEnvironment();
-
-    Label isGeneratorObj(env);
-    Label notGeneratorObj(env);
-    Label dispatch(env);
-    Branch(TaggedIsGeneratorObject(*varAcc), &isGeneratorObj, &notGeneratorObj);
-    Bind(&isGeneratorObj);
-    {
-        Jump(&dispatch);
-    }
-    Bind(&notGeneratorObj);
-    {
-        GateRef res = CallRuntime(glue, RTSTUB_ID(GetIterator), { *varAcc });
-        CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(PREF_NONE));
-    }
-    Bind(&dispatch);
-    DISPATCH_WITH_ACC(PREF_NONE);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(GetIterator), { *varAcc });
+    CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(PREF_NONE));
 }
 
 DECLARE_ASM_HANDLER(HandleThrowThrowNotExistsPref)
