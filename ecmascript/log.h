@@ -21,7 +21,6 @@
 #include <sstream>
 
 #include "ecmascript/common.h"
-#include "generated/base_options.h"
 
 #ifdef ENABLE_HILOG
 #include "hilog/log.h"
@@ -48,9 +47,10 @@ enum Level {
 };
 
 namespace panda::ecmascript {
+class JSRuntimeOptions;
 class PUBLIC_API Log {
 public:
-    static void Initialize(const panda::base_options::Options &options);
+    static void Initialize(const JSRuntimeOptions &options);
     static Level GetLevel()
     {
         return level_;

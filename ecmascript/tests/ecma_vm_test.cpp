@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/tests/test_helper.h"
-#include "generated/base_options.h"
 
 using namespace panda::ecmascript;
 

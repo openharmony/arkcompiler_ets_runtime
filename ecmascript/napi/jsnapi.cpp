@@ -149,19 +149,18 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetAsmOpcodeDisableRange(option.GetAsmOpcodeDisableRange());
 
     // Dfx
-    base_options::Options baseOptions("");
-    baseOptions.SetLogLevel(option.GetLogLevel());
+    runtimeOptions.SetLogLevel(option.GetLogLevel());
     runtimeOptions.SetEnableArkTools(option.GetEnableArkTools());
-    return CreateEcmaVM(runtimeOptions, baseOptions);
+    return CreateEcmaVM(runtimeOptions);
 }
 
-EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options, const base_options::Options &baseOption)
+EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
 {
     {
         os::memory::LockHolder lock(mutex);
         vmCount_++;
         if (!initialize_) {
-            ecmascript::Log::Initialize(baseOption);
+            ecmascript::Log::Initialize(options);
             InitializeIcuData(options);
             InitializeMemMapAllocator();
             initialize_ = true;
