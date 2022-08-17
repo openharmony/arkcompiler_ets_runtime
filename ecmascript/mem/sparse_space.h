@@ -19,11 +19,14 @@
 #include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/mem_common.h"
 
-#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size) \
-    if (object != 0) {                      \
-        IncreaseLiveObjectSize(size);      \
-        return object;                      \
-    }
+#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
+    if (object != 0) {                                                        \
+        IncreaseLiveObjectSize(size);                                         \
+        if (!heap_->IsFullMark() || heap_->GetJSThread()->IsReadyToMark()) {  \
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
+        }                                                                     \
+        return object;                                                        \
+    }                                                                         \
 
 enum class SweepState : uint8_t {
     NO_SWEEP,
