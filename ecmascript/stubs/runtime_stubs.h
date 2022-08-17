@@ -26,7 +26,6 @@
 
 namespace panda::ecmascript {
 using kungfu::CallSignature;
-class ConstantPool;
 class EcmaVM;
 class GlobalEnv;
 class JSThread;
@@ -381,12 +380,10 @@ private:
     static inline JSTaggedValue RuntimeResolveClass(JSThread *thread, const JSHandle<JSFunction> &ctor,
                                                     const JSHandle<TaggedArray> &literal,
                                                     const JSHandle<JSTaggedValue> &base,
-                                                    const JSHandle<JSTaggedValue> &lexenv,
-                                                    const JSHandle<ConstantPool> &constpool);
+                                                    const JSHandle<JSTaggedValue> &lexenv);
     static inline JSTaggedValue RuntimeCloneClassFromTemplate(JSThread *thread, const JSHandle<JSFunction> &ctor,
                                                               const JSHandle<JSTaggedValue> &base,
-                                                              const JSHandle<JSTaggedValue> &lexenv,
-                                                              const JSHandle<JSTaggedValue> &constpool);
+                                                              const JSHandle<JSTaggedValue> &lexenv);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base);
@@ -503,8 +500,7 @@ private:
                                                                   JSTaggedValue thisValue);
     static inline JSTaggedValue RuntimeCreateObjectHavingMethod(JSThread *thread, ObjectFactory *factory,
                                                                 const JSHandle<JSObject> &literal,
-                                                                const JSHandle<JSTaggedValue> &env,
-                                                                const JSHandle<JSTaggedValue> &constpool);
+                                                                const JSHandle<JSTaggedValue> &env);
     static inline JSTaggedValue RuntimeCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
                                                                     const JSHandle<JSTaggedValue> &objVal,
                                                                     uint16_t firstArgRegIdx);

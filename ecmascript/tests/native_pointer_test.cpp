@@ -66,10 +66,10 @@ HWTEST_F_L0(NativePointerTest, Print)
     JSHandle<JSFunction> jsFunction = factory->NewJSFunction(env);
     EXPECT_TRUE(*jsFunction != nullptr);
 
-    JSMethod *target = factory->NewMethodForNativeFunction(nullptr);
-    jsFunction->SetMethod(target);
+    JSHandle<JSMethod> target = factory->NewMethodForNativeFunction(nullptr);
+    jsFunction->SetMethod(thread, target.GetTaggedValue());
 
     // run cpp methed 'Print'
-    ASSERT_EQ(target, jsFunction->GetCallTarget());
+    ASSERT_EQ(JSMethod::Cast(target.GetTaggedValue().GetTaggedObject()), jsFunction->GetCallTarget());
 }
 }  // namespace panda::test

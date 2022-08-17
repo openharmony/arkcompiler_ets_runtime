@@ -16,130 +16,60 @@
 #include "ecmascript/js_method.h"
 
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/program_object.h"
 
 #include "libpandafile/code_data_accessor-inl.h"
 #include "libpandafile/method_data_accessor-inl.h"
 
 namespace panda::ecmascript {
-JSMethod::JSMethod(const JSPandaFile *jsPandaFile, panda_file::File::EntityId methodId)
-{
-    jsPandaFile_ = jsPandaFile;
-    if (jsPandaFile_ != nullptr) {
-        panda_file::MethodDataAccessor mda(*(jsPandaFile_->GetPandaFile()), methodId);
-        auto codeId = mda.GetCodeId().value();
-        if (!codeId.IsValid()) {
-            nativePointerOrBytecodeArray_ = nullptr;
-        }
-        panda_file::CodeDataAccessor cda(*(jsPandaFile_->GetPandaFile()), codeId);
-        nativePointerOrBytecodeArray_ = cda.GetInstructions();
-    }
-    SetHotnessCounter(static_cast<int16_t>(0));
-    SetMethodId(methodId);
-    UpdateSlotSize(static_cast<uint8_t>(0));
-}
-
 // It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.
 std::string JSMethod::ParseFunctionName() const
 {
-    std::string methodName(utf::Mutf8AsCString(GetName().data));
-    if (LIKELY(methodName[0] != '#')) {
-        return methodName;
-    }
-    size_t index = methodName.find_last_of('#');
-    return methodName.substr(index + 1);
-}
-
-void JSMethod::InitializeCallField(uint32_t numVregs, uint32_t numArgs)
-{
-    uint32_t callType = UINT32_MAX;  // UINT32_MAX means not found
-    const panda_file::File *pandaFile = jsPandaFile_->GetPandaFile();
-    panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
-    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {
-        panda_file::AnnotationDataAccessor ada(*pandaFile, annotation_id);
-        auto *annotation_name = reinterpret_cast<const char *>(pandaFile->GetStringData(ada.GetClassId()).data);
-        if (::strcmp("L_ESCallTypeAnnotation;", annotation_name) == 0) {
-            uint32_t elem_count = ada.GetCount();
-            for (uint32_t i = 0; i < elem_count; i++) {
-                panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-                auto *elem_name = reinterpret_cast<const char *>(pandaFile->GetStringData(adae.GetNameId()).data);
-                if (::strcmp("callType", elem_name) == 0) {
-                    callType = adae.GetScalarValue().GetValue();
-                }
-            }
-        }
-    });
-    // Needed info for call can be got by loading callField only once.
-    // Native bit will be set in NewMethodForNativeFunction();
-    callField_ = (callType & CALL_TYPE_MASK) |
-                 NumVregsBits::Encode(numVregs) |
-                 NumArgsBits::Encode(numArgs - HaveFuncBit::Decode(callType)  // exclude func
-                                             - HaveNewTargetBit::Decode(callType)  // exclude new target
-                                             - HaveThisBit::Decode(callType));  // exclude this
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    return MethodLiteral::ParseFunctionName(jsPandaFile, GetMethodId());
 }
 
 const char *JSMethod::GetMethodName() const
 {
-    return utf::Mutf8AsCString(GetName().data);
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    return MethodLiteral::GetMethodName(jsPandaFile, GetMethodId());
 }
 
 panda_file::File::StringData JSMethod::GetName() const
 {
-    panda_file::MethodDataAccessor mda(*(jsPandaFile_->GetPandaFile()), GetMethodId());
-    return jsPandaFile_->GetPandaFile()->GetStringData(mda.GetNameId());
-}
-
-uint32_t JSMethod::GetNumVregs() const
-{
-    if (jsPandaFile_ == nullptr) {
-        return 0;
-    }
-    panda_file::MethodDataAccessor mda(*(jsPandaFile_->GetPandaFile()), GetMethodId());
-    auto codeId = mda.GetCodeId().value();
-    if (!codeId.IsValid()) {
-        return 0;
-    }
-    panda_file::CodeDataAccessor cda(*(jsPandaFile_->GetPandaFile()), codeId);
-    return cda.GetNumVregs();
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    return MethodLiteral::GetName(jsPandaFile, GetMethodId());
 }
 
 uint32_t JSMethod::GetCodeSize() const
 {
-    if (jsPandaFile_ == nullptr) {
-        return 0;
-    }
-    panda_file::MethodDataAccessor mda(*(jsPandaFile_->GetPandaFile()), GetMethodId());
-    auto codeId = mda.GetCodeId().value();
-    if (!codeId.IsValid()) {
-        return 0;
-    }
-    panda_file::CodeDataAccessor cda(*(jsPandaFile_->GetPandaFile()), codeId);
-    return cda.GetCodeSize();
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    return MethodLiteral::GetCodeSize(jsPandaFile, GetMethodId());
 }
 
-uint32_t JSMethod::GetCodeSize(panda_file::File::EntityId methodId) const
+const JSPandaFile *JSMethod::GetJSPandaFile() const
 {
-    if (jsPandaFile_ == nullptr) {
-        return 0;
+    JSTaggedValue constpool = GetConstantPool();
+    if (constpool.IsUndefined()) {
+        return nullptr;
     }
-    panda_file::MethodDataAccessor mda(*(jsPandaFile_->GetPandaFile()), methodId);
-    auto codeId = mda.GetCodeId().value();
-    if (!codeId.IsValid()) {
-        return 0;
+
+    // JSPandaFile is located at the first index of constPool.
+    JSTaggedValue fileValue = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(0);
+    if (fileValue.IsUndefined()) {
+        return nullptr;
     }
-    panda_file::CodeDataAccessor cda(*(jsPandaFile_->GetPandaFile()), codeId);
-    return cda.GetCodeSize();
+
+    void *nativePointer = JSNativePointer::Cast(fileValue.GetTaggedObject())->GetExternalPointer();
+    return reinterpret_cast<JSPandaFile *>(nativePointer);
 }
 
 const panda_file::File *JSMethod::GetPandaFile() const
 {
-    if (jsPandaFile_ == nullptr) {
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    if (jsPandaFile == nullptr) {
         return nullptr;
     }
-    return jsPandaFile_->GetPandaFile();
-}
-
-uint32_t JSMethod::GetBytecodeArraySize() const
-{
-    return GetCodeSize(GetMethodId());
+    return jsPandaFile->GetPandaFile();
 }
 } // namespace panda::ecmascript

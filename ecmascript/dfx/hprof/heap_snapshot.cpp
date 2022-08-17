@@ -479,6 +479,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("CJS Module");
         case JSType::JS_CJS_REQUIRE:
             return GetString("CJS Require");
+        case JSType::JS_METHOD:
+            return GetString("MethodLiteral");
         default:
             break;
     }

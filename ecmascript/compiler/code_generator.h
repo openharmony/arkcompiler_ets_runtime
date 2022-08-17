@@ -18,7 +18,7 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/stub_builder.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript::kungfu {
 using ControlFlowGraph = std::vector<std::vector<GateRef>>;
@@ -29,7 +29,7 @@ public:
     virtual void GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, size_t index,
         const CompilationConfig *cfg) = 0;
     virtual void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-        const JSMethod *method) = 0;
+        const MethodLiteral *method, const JSPandaFile *jsPandaFile) = 0;
 };
 
 class CodeGenerator {
@@ -40,9 +40,10 @@ public:
     {
         impl_->GenerateCodeForStub(circuit, graph, index, cfg);
     }
-    void Run(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg, const JSMethod *method)
+    void Run(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg, const MethodLiteral *method,
+             const JSPandaFile *jsPandaFile)
     {
-        impl_->GenerateCode(circuit, graph, cfg, method);
+        impl_->GenerateCode(circuit, graph, cfg, method, jsPandaFile);
     }
 private:
     std::unique_ptr<CodeGeneratorImpl> impl_{nullptr};

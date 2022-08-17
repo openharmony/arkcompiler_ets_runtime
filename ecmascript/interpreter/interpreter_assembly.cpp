@@ -105,7 +105,7 @@ using panda::ecmascript::kungfu::CommonStubCSigns;
 #define INTERPRETER_HANDLE_RETURN()                                                     \
     do {                                                                                \
         JSFunction* prevFunc = JSFunction::Cast(prevState->function.GetTaggedObject()); \
-        method = prevFunc->GetMethod();                                                 \
+        method = prevFunc->GetCallTarget();                                             \
         hotnessCounter = static_cast<int32_t>(method->GetHotnessCounter());             \
         ASSERT(prevState->callSize == GetJumpSizeAfterCall(pc));                        \
         DISPATCH_OFFSET(prevState->callSize);                                           \
@@ -1621,7 +1621,6 @@ void InterpreterAssembly::HandleDefineFuncDynPrefId16Imm16V8(
         auto res = SlowRuntimeStub::DefinefuncDyn(thread, result);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         result = JSFunction::Cast(res.GetTaggedObject());
-        result->SetConstantPool(thread, JSTaggedValue(constpool));
     } else {
         result->SetResolved(thread);
     }
@@ -1655,7 +1654,6 @@ void InterpreterAssembly::HandleDefineNCFuncDynPrefId16Imm16V8(
         auto res = SlowRuntimeStub::DefineNCFuncDyn(thread, result);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         result = JSFunction::Cast(res.GetTaggedObject());
-        result->SetConstantPool(thread, JSTaggedValue(constpool));
         RESTORE_ACC();
         homeObject = GET_ACC();
     } else {
@@ -1691,7 +1689,6 @@ void InterpreterAssembly::HandleDefineMethodPrefId16Imm16V8(
         auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         result = JSFunction::Cast(res.GetTaggedObject());
-        result->SetConstantPool(thread, JSTaggedValue(constpool));
     } else {
         result->SetHomeObject(thread, homeObject);
         result->SetResolved(thread);
@@ -2465,7 +2462,6 @@ void InterpreterAssembly::HandleDefineGeneratorFuncPrefId16Imm16V8(
         auto res = SlowRuntimeStub::DefineGeneratorFunc(thread, result);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         result = JSFunction::Cast(res.GetTaggedObject());
-        result->SetConstantPool(thread, JSTaggedValue(constpool));
     } else {
         result->SetResolved(thread);
     }
@@ -2496,7 +2492,6 @@ void InterpreterAssembly::HandleDefineAsyncGeneratorFuncPrefId16Imm16V8(
         auto res = SlowRuntimeStub::DefineAsyncGeneratorFunc(thread, result);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         result = JSFunction::Cast(res.GetTaggedObject());
-        result->SetConstantPool(thread, JSTaggedValue(constpool));
     } else {
         result->SetResolved(thread);
     }
@@ -2527,7 +2522,6 @@ void InterpreterAssembly::HandleDefineAsyncFuncPrefId16Imm16V8(
         auto res = SlowRuntimeStub::DefineAsyncFunc(thread, result);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         result = JSFunction::Cast(res.GetTaggedObject());
-        result->SetConstantPool(thread, JSTaggedValue(constpool));
     } else {
         result->SetResolved(thread);
     }
@@ -3362,8 +3356,7 @@ void InterpreterAssembly::HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8(
     JSTaggedValue proto = GET_VREG_VALUE(v1);
 
     SAVE_PC();
-    JSTaggedValue res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate),
-        proto, lexenv, ConstantPool::Cast(constpool.GetTaggedObject()));
+    JSTaggedValue res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
     ASSERT(res.IsClassConstructor());
@@ -3491,8 +3484,7 @@ void InterpreterAssembly::HandleCreateObjectHavingMethodPrefImm16(
     JSTaggedValue env = GET_ACC();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(
-        thread, factory, result, env, ConstantPool::Cast(constpool.GetTaggedObject()));
+    JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, env);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
     DISPATCH(BytecodeInstruction::Format::PREF_IMM16);
@@ -3653,11 +3645,10 @@ JSTaggedValue InterpreterAssembly::GetNewTarget(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
-    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetMethod();
-    uint64_t callField = method->GetCallField();
-    ASSERT(JSMethod::HaveNewTargetBit::Decode(callField));
-    uint32_t numVregs = JSMethod::NumVregsBits::Decode(callField);
-    bool haveFunc = JSMethod::HaveFuncBit::Decode(callField);
+    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    ASSERT(method->HaveNewTargetWithCallField());
+    uint32_t numVregs = method->GetNumVregsWithCallField();
+    bool haveFunc = method->HaveFuncWithCallField();
     return JSTaggedValue(sp[numVregs + haveFunc]);
 }
 
@@ -3670,16 +3661,15 @@ uint32_t InterpreterAssembly::GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uin
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
-    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetMethod();
-    uint64_t callField = method->GetCallField();
-    ASSERT(JSMethod::HaveExtraBit::Decode(callField));
+    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    ASSERT(method->HaveExtraWithCallField());
 
-    uint32_t numVregs = JSMethod::NumVregsBits::Decode(callField);
-    bool haveFunc = JSMethod::HaveFuncBit::Decode(callField);
-    bool haveNewTarget = JSMethod::HaveNewTargetBit::Decode(callField);
-    bool haveThis = JSMethod::HaveThisBit::Decode(callField);
+    uint32_t numVregs = method->GetNumVregsWithCallField();
+    bool haveFunc = method->HaveFuncWithCallField();
+    bool haveNewTarget = method->HaveNewTargetWithCallField();
+    bool haveThis = method->HaveThisWithCallField();
     uint32_t copyArgs = haveFunc + haveNewTarget + haveThis;
-    uint32_t numArgs = JSMethod::NumArgsBits::Decode(callField);
+    uint32_t numArgs = method->GetNumArgsWithCallField();
 
     JSTaggedType *fp = GetAsmInterpreterFramePointer(state);
     if (static_cast<uint32_t>(fp - sp) > numVregs + copyArgs + numArgs) {
@@ -3732,7 +3722,7 @@ inline JSTaggedValue InterpreterAssembly::UpdateHotnessCounter(JSThread* thread,
     JSFunction* function = JSFunction::Cast(state->function.GetTaggedObject());
     JSTaggedValue profileTypeInfo = function->GetProfileTypeInfo();
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
-        auto method = function->GetMethod();
+        auto method = function->GetCallTarget();
         auto res = SlowRuntimeStub::NotifyInlineCache(thread, function, method);
         return res;
     }

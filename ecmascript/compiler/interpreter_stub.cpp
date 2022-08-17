@@ -1345,7 +1345,7 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
         GateRef function = GetFunctionFromFrame(frame);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varConstpool = GetConstpoolFromFunction(function);
-        GateRef method = Load(VariableType::NATIVE_POINTER(), function,
+        GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         varHotnessCounter = GetHotnessCounterFromMethod(method);
     }
@@ -3366,10 +3366,10 @@ DECLARE_ASM_HANDLER(HandleReturnDyn)
     Bind(&updateHotness);
     {
         GateRef function = GetFunctionFromFrame(frame);
-        GateRef method = Load(VariableType::NATIVE_POINTER(), function,
+        GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
-            IntPtr(JSMethod::GetBytecodeArrayOffset(env->IsArch32Bit())));
+            IntPtr(JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
         UPDATE_HOTNESS(*varSp);
         SetHotnessCounter(glue, method, *varHotnessCounter);
@@ -3392,7 +3392,7 @@ DECLARE_ASM_HANDLER(HandleReturnDyn)
         GateRef function = GetFunctionFromFrame(prevState);
         varConstpool = GetConstpoolFromFunction(function);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
-        GateRef method = Load(VariableType::NATIVE_POINTER(), function,
+        GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
@@ -3425,10 +3425,10 @@ DECLARE_ASM_HANDLER(HandleReturnUndefinedPref)
     Bind(&updateHotness);
     {
         GateRef function = GetFunctionFromFrame(frame);
-        GateRef method = Load(VariableType::NATIVE_POINTER(), function,
+        GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
-            IntPtr(JSMethod::GetBytecodeArrayOffset(env->IsArch32Bit())));
+            IntPtr(JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
         UPDATE_HOTNESS(*varSp);
         SetHotnessCounter(glue, method, *varHotnessCounter);
@@ -3453,7 +3453,7 @@ DECLARE_ASM_HANDLER(HandleReturnUndefinedPref)
         GateRef function = GetFunctionFromFrame(prevState);
         varConstpool = GetConstpoolFromFunction(function);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
-        GateRef method = Load(VariableType::NATIVE_POINTER(), function,
+        GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
@@ -3498,10 +3498,10 @@ DECLARE_ASM_HANDLER(HandleSuspendGeneratorPrefV8V8)
     Bind(&updateHotness);
     {
         GateRef function = GetFunctionFromFrame(frame);
-        GateRef method = Load(VariableType::NATIVE_POINTER(), function,
+        GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
-            IntPtr(JSMethod::GetBytecodeArrayOffset(env->IsArch32Bit())));
+            IntPtr(JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
         UPDATE_HOTNESS(*varSp);
         SetHotnessCounter(glue, method, *varHotnessCounter);
@@ -3525,7 +3525,7 @@ DECLARE_ASM_HANDLER(HandleSuspendGeneratorPrefV8V8)
         GateRef function = GetFunctionFromFrame(prevState);
         varConstpool = GetConstpoolFromFunction(function);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
-        GateRef method = Load(VariableType::NATIVE_POINTER(), function,
+        GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
@@ -3566,7 +3566,7 @@ DECLARE_ASM_HANDLER(ExceptionHandler)
         GateRef function = GetFunctionFromFrame(GetFrame(*varSp));
         varConstpool = GetConstpoolFromFunction(function);
         varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
-        GateRef method = Load(VariableType::NATIVE_POINTER(), function,
+        GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeCaughtFrameAndDispatch), {

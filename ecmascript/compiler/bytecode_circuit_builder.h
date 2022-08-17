@@ -27,8 +27,8 @@
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript::kungfu {
 using VRegIDType = uint16_t;
@@ -446,12 +446,12 @@ class BytecodeCircuitBuilder {
 public:
     explicit BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
                                     JSHandle<JSTaggedValue> &constantPool,
-                                    const JSMethod *method,
+                                    const MethodLiteral *method,
                                     BytecodeInfoCollector::MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager, bool enableLog)
         : tsManager_(tsManager), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
-          method_(method), constantPool_(constantPool), gateAcc_(&circuit_), argAcc_(&circuit_, method_),
-          typeRecorder_(method_, tsManager), hasTypes_(file_->HasTSTypes()),
+          method_(method), constantPool_(constantPool), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
+          typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)
     {
@@ -494,9 +494,14 @@ public:
         return jsgateToBytecode_.at(gate).second;
     }
 
-    [[nodiscard]] const JSMethod* GetMethod() const
+    [[nodiscard]] const MethodLiteral* GetMethod() const
     {
         return method_;
+    }
+
+    [[nodiscard]] const JSPandaFile* GetJSPandaFile() const
+    {
+        return file_;
     }
 
     BytecodeInfo GetBytecodeInfo(const uint8_t *pc);
@@ -584,7 +589,7 @@ private:
     TSManager *tsManager_ {nullptr};
     const JSPandaFile *file_ {nullptr};
     const panda_file::File *pf_ {nullptr};
-    const JSMethod *method_ {nullptr};
+    const MethodLiteral *method_ {nullptr};
     JSHandle<JSTaggedValue> constantPool_;
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;

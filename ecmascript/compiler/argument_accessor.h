@@ -35,9 +35,11 @@ enum class CommonArgIdx : uint8_t {
 
 class ArgumentAccessor {
 public:
-    explicit ArgumentAccessor(Circuit *circuit, const JSMethod *method = nullptr)
+    explicit ArgumentAccessor(
+        Circuit *circuit, const MethodLiteral *method = nullptr, const JSPandaFile *jsPandaFile = nullptr)
         : circuit_(circuit),
           method_(method),
+          jsPandaFile_(jsPandaFile),
           argRoot_(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))),
           args_(0)
     {
@@ -60,7 +62,8 @@ private:
                                const bool haveNewTarget, const bool haveThis) const;
 
     Circuit *circuit_ {nullptr};
-    const JSMethod *method_ {nullptr};
+    const MethodLiteral *method_ {nullptr};
+    const JSPandaFile *jsPandaFile_ {nullptr};
     GateRef argRoot_;
     std::vector<GateRef> args_;
 };

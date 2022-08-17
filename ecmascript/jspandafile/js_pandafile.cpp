@@ -88,10 +88,10 @@ void JSPandaFile::Initialize()
             });
         }
     }
-    methods_ = static_cast<JSMethod *>(JSPandaFileManager::AllocateBuffer(sizeof(JSMethod) * numMethods_));
+    methods_ = static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
 }
 
-JSMethod *JSPandaFile::FindMethods(uint32_t offset) const
+MethodLiteral *JSPandaFile::FindMethods(uint32_t offset) const
 {
     return methodMap_.at(offset);
 }

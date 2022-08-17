@@ -1994,7 +1994,7 @@ LLVMTypeRef LLVMModule::ConvertLLVMTypeFromVariableType(VariableType type)
     return machineTypeMap[type];
 }
 
-LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::JSMethod *method)
+LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *method, const JSPandaFile *jsPandaFile)
 {
     LLVMTypeRef returnType = NewLType(MachineType::I64, GateType::TaggedValue());  // possibly get it for circuit
     LLVMTypeRef glue = NewLType(MachineType::I64, GateType::NJSValue());
@@ -2007,8 +2007,8 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::JSMethod *method)
     auto numOfRestArgs = paramCount - funcIndex;
     paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
     auto funcType = LLVMFunctionType(returnType, paramTys.data(), paramCount, false); // not variable args
-    CString name = method->GetMethodName();
-    auto function = LLVMAddFunction(module_, name.c_str(), funcType);
+    const char *name = MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId());
+    auto function = LLVMAddFunction(module_, name, funcType);
     auto offsetInPandaFile = method->GetMethodId().GetOffset();
     SetFunction(offsetInPandaFile, function);
     return function;

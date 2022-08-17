@@ -18,8 +18,8 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/constpool_value.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 
 #include "libpandafile/file.h"
@@ -49,12 +49,12 @@ public:
         return pf_;
     }
 
-    JSMethod *GetMethods() const
+    MethodLiteral* GetMethods() const
     {
         return methods_;
     }
 
-    void SetMethodToMap(JSMethod *method)
+    void SetMethodToMap(MethodLiteral *method)
     {
         if (method != nullptr) {
             methodMap_.emplace(method->GetMethodId().GetOffset(), method);
@@ -88,7 +88,7 @@ public:
         mainMethodIndex_ = mainMethodIndex;
     }
 
-    JSMethod *FindMethods(uint32_t offset) const;
+    MethodLiteral *FindMethods(uint32_t offset) const;
 
     Span<const uint32_t> GetClasses() const
     {
@@ -126,12 +126,12 @@ public:
 
 private:
     void Initialize();
-    uint32_t constpoolIndex_ {0};
+    uint32_t constpoolIndex_ {1}; // Index 0 is JSPandaFile NativePointer.
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     uint32_t mainMethodIndex_ {0};
-    JSMethod *methods_ {nullptr};
-    CUnorderedMap<uint32_t, JSMethod *> methodMap_;
+    MethodLiteral *methods_ {nullptr};
+    CUnorderedMap<uint32_t, MethodLiteral *> methodMap_;
     const panda_file::File *pf_ {nullptr};
     CString desc_;
     bool isModule_ {false};

@@ -430,6 +430,12 @@ GateRef CircuitBuilder::GetFunctionBitFieldFromJSFunction(GateRef function)
     return Load(VariableType::INT32(), function, offset);
 }
 
+GateRef CircuitBuilder::GetMethodFromFunction(GateRef function)
+{
+    GateRef offset = IntPtr(JSFunctionBase::METHOD_OFFSET);
+    return Load(VariableType::JS_POINTER(), function, offset);
+}
+
 GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
 {
     GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
@@ -475,8 +481,9 @@ void CircuitBuilder::SetResolvedToFunction(GateRef glue, GateRef function, GateR
 
 void CircuitBuilder::SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value)
 {
-    GateRef offset = IntPtr(JSFunction::CONSTANT_POOL_OFFSET);
-    Store(VariableType::JS_ANY(), glue, function, offset, value);
+    GateRef method = GetMethodFromFunction(function);
+    GateRef offset = IntPtr(JSMethod::CONSTANT_POOL_OFFSET);
+    Store(VariableType::INT64(), glue, method, offset, value);
 }
 
 void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value)

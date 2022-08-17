@@ -103,7 +103,7 @@ public:
     static JSTaggedValue CreateEmptyObject(JSThread *thread, ObjectFactory *factory, JSHandle<GlobalEnv> globalEnv);
     static JSTaggedValue CreateObjectWithBuffer(JSThread *thread, ObjectFactory *factory, JSObject *literal);
     static JSTaggedValue CreateObjectHavingMethod(JSThread *thread, ObjectFactory *factory, JSObject *literal,
-                                                  JSTaggedValue env, ConstantPool *constpool);
+                                                  JSTaggedValue env);
     static JSTaggedValue SetObjectWithProto(JSThread *thread, JSTaggedValue proto, JSTaggedValue obj);
     static JSTaggedValue CreateArrayWithBuffer(JSThread *thread, ObjectFactory *factory, JSArray *literal);
 
@@ -160,9 +160,9 @@ public:
     static JSTaggedValue ThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);
 
     static JSTaggedValue ResolveClass(JSThread *thread, JSTaggedValue ctor, TaggedArray *literal, JSTaggedValue base,
-                                      JSTaggedValue lexenv, ConstantPool *constpool);
+                                      JSTaggedValue lexenv);
     static JSTaggedValue CloneClassFromTemplate(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base,
-                                                JSTaggedValue lexenv, ConstantPool *constpool);
+                                                JSTaggedValue lexenv);
     static JSTaggedValue SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length);
     static JSTaggedValue GetModuleNamespace(JSThread *thread, JSTaggedValue localName);
     static JSTaggedValue LdBigInt(JSThread *thread, JSTaggedValue numberBigInt);

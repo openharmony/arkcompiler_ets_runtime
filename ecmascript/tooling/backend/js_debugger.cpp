@@ -27,18 +27,18 @@ using panda::ecmascript::base::BuiltinsBase;
 
 bool JSDebugger::SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> condFuncRef)
 {
-    JSMethod *method = FindMethod(location);
-    if (method == nullptr) {
-        LOG_DEBUGGER(ERROR) << "SetBreakpoint: Cannot find JSMethod";
+    std::unique_ptr<PtMethod> ptMethod = FindMethod(location);
+    if (ptMethod == nullptr) {
+        LOG_DEBUGGER(ERROR) << "SetBreakpoint: Cannot find MethodLiteral";
         return false;
     }
 
-    if (location.GetBytecodeOffset() >= method->GetCodeSize()) {
+    if (location.GetBytecodeOffset() >= ptMethod->GetCodeSize()) {
         LOG_DEBUGGER(ERROR) << "SetBreakpoint: Invalid breakpoint location";
         return false;
     }
 
-    auto [_, success] = breakpoints_.emplace(method, location.GetBytecodeOffset(),
+    auto [_, success] = breakpoints_.emplace(ptMethod.release(), location.GetBytecodeOffset(),
         Global<FunctionRef>(ecmaVm_, condFuncRef));
     if (!success) {
         // also return true
@@ -50,13 +50,13 @@ bool JSDebugger::SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> 
 
 bool JSDebugger::RemoveBreakpoint(const JSPtLocation &location)
 {
-    JSMethod *method = FindMethod(location);
-    if (method == nullptr) {
-        LOG_DEBUGGER(ERROR) << "RemoveBreakpoint: Cannot find JSMethod";
+    std::unique_ptr<PtMethod> ptMethod = FindMethod(location);
+    if (ptMethod == nullptr) {
+        LOG_DEBUGGER(ERROR) << "RemoveBreakpoint: Cannot find MethodLiteral";
         return false;
     }
 
-    if (!RemoveBreakpoint(method, location.GetBytecodeOffset())) {
+    if (!RemoveBreakpoint(ptMethod, location.GetBytecodeOffset())) {
         LOG_DEBUGGER(ERROR) << "RemoveBreakpoint: Breakpoint not found";
         return false;
     }
@@ -64,10 +64,9 @@ bool JSDebugger::RemoveBreakpoint(const JSPtLocation &location)
     return true;
 }
 
-void JSDebugger::BytecodePcChanged(JSThread *thread, JSMethod *method, uint32_t bcOffset)
+void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<JSMethod> method, uint32_t bcOffset)
 {
     ASSERT(bcOffset < method->GetCodeSize() && "code size of current JSMethod less then bcOffset");
-
     HandleExceptionThrowEvent(thread, method, bcOffset);
 
     // Step event is reported before breakpoint, according to the spec.
@@ -76,7 +75,7 @@ void JSDebugger::BytecodePcChanged(JSThread *thread, JSMethod *method, uint32_t 
     }
 }
 
-bool JSDebugger::HandleBreakpoint(const JSMethod *method, uint32_t bcOffset)
+bool JSDebugger::HandleBreakpoint(JSHandle<JSMethod> method, uint32_t bcOffset)
 {
     auto breakpoint = FindBreakpoint(method, bcOffset);
     if (hooks_ == nullptr || !breakpoint.has_value()) {
@@ -109,7 +108,7 @@ bool JSDebugger::HandleBreakpoint(const JSMethod *method, uint32_t bcOffset)
     return true;
 }
 
-void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, const JSMethod *method, uint32_t bcOffset)
+void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, JSHandle<JSMethod> method, uint32_t bcOffset)
 {
     if (hooks_ == nullptr || !thread->HasPendingException()) {
         return;
@@ -121,7 +120,7 @@ void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, const JSMetho
     hooks_->Exception(throwLocation);
 }
 
-bool JSDebugger::HandleStep(const JSMethod *method, uint32_t bcOffset)
+bool JSDebugger::HandleStep(JSHandle<JSMethod> method, uint32_t bcOffset)
 {
     if (hooks_ == nullptr) {
         return false;
@@ -133,23 +132,25 @@ bool JSDebugger::HandleStep(const JSMethod *method, uint32_t bcOffset)
     return hooks_->SingleStep(location);
 }
 
-std::optional<JSBreakpoint> JSDebugger::FindBreakpoint(const JSMethod *method, uint32_t bcOffset) const
+std::optional<JSBreakpoint> JSDebugger::FindBreakpoint(JSHandle<JSMethod> method, uint32_t bcOffset) const
 {
     for (const auto &bp : breakpoints_) {
-        if (bp.GetBytecodeOffset() == bcOffset &&
-            bp.GetMethod()->GetJSPandaFile()->GetJSPandaFileDesc() == method->GetJSPandaFile()->GetJSPandaFileDesc() &&
-            bp.GetMethod()->GetMethodId() == method->GetMethodId()) {
+        if ((bp.GetBytecodeOffset() == bcOffset) &&
+            (bp.GetPtMethod()->GetJSPandaFile() == method->GetJSPandaFile()) &&
+            (bp.GetPtMethod()->GetMethodId() == method->GetMethodId())) {
             return bp;
         }
     }
     return {};
 }
 
-bool JSDebugger::RemoveBreakpoint(const JSMethod *method, uint32_t bcOffset)
+bool JSDebugger::RemoveBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset)
 {
     for (auto it = breakpoints_.begin(); it != breakpoints_.end(); ++it) {
         const auto &bp = *it;
-        if (bp.GetBytecodeOffset() == bcOffset && bp.GetMethod() == method) {
+        if ((bp.GetBytecodeOffset() == bcOffset) &&
+            (bp.GetPtMethod()->GetJSPandaFile() == ptMethod->GetJSPandaFile()) &&
+            (bp.GetPtMethod()->GetMethodId() == ptMethod->GetMethodId())) {
             it = breakpoints_.erase(it);
             return true;
         }
@@ -158,23 +159,25 @@ bool JSDebugger::RemoveBreakpoint(const JSMethod *method, uint32_t bcOffset)
     return false;
 }
 
-JSMethod *JSDebugger::FindMethod(const JSPtLocation &location) const
+std::unique_ptr<PtMethod> JSDebugger::FindMethod(const JSPtLocation &location) const
 {
-    JSMethod *method = nullptr;
-    ::panda::ecmascript::JSPandaFileManager::GetInstance()->EnumerateJSPandaFiles([&method, location](
+    std::unique_ptr<PtMethod> ptMethod {nullptr};
+    ::panda::ecmascript::JSPandaFileManager::GetInstance()->EnumerateJSPandaFiles([&ptMethod, location](
         const panda::ecmascript::JSPandaFile *jsPandaFile) {
         if (jsPandaFile->GetJSPandaFileDesc() == location.GetPandaFile()) {
-            JSMethod *methodsData = jsPandaFile->GetMethods();
+            MethodLiteral *methodsData = jsPandaFile->GetMethods();
             uint32_t numberMethods = jsPandaFile->GetNumMethods();
             for (uint32_t i = 0; i < numberMethods; ++i) {
                 if (methodsData[i].GetMethodId() == location.GetMethodId()) {
-                    method = methodsData + i;
+                    MethodLiteral *method = methodsData + i;
+                    ptMethod = std::make_unique<PtMethod>(jsPandaFile,
+                        method->GetMethodId(), method->IsNativeWithCallField());
                     return false;
                 }
             }
         }
         return true;
     });
-    return method;
+    return ptMethod;
 }
 }  // namespace panda::tooling::ecmascript

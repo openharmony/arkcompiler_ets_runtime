@@ -243,7 +243,8 @@ void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate)
 // labelmanager must be initialized
 GateRef SlowPathLowering::GetConstPool(GateRef jsFunc)
 {
-    return builder_.Load(VariableType::JS_ANY(), jsFunc, builder_.IntPtr(JSFunction::CONSTANT_POOL_OFFSET));
+    GateRef method = builder_.GetMethodFromFunction(jsFunc);
+    return builder_.Load(VariableType::JS_ANY(), method, builder_.IntPtr(JSMethod::CONSTANT_POOL_OFFSET));
 }
 
 // labelmanager must be initialized
@@ -728,7 +729,8 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
         builder_.Load(VariableType::JS_POINTER(), genObj, builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET));
     // new tagged array
     auto method = bcBuilder_->GetMethod();
-    const size_t arrLength = method->GetNumVregs() + method->GetNumArgs();
+    auto jsPandaFile = bcBuilder_->GetJSPandaFile();
+    const size_t arrLength = MethodLiteral::GetNumVregs(jsPandaFile, method) + method->GetNumArgs();
     GateRef length = builder_.Int32((arrLength));
     GateRef taggedLength = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(length));
     const int arrayId = RTSTUB_ID(NewTaggedArray);

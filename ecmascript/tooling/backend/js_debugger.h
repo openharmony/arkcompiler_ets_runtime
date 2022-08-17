@@ -17,8 +17,9 @@
 #define ECMASCRIPT_TOOLING_BACKEND_JS_DEBUGGER_H
 
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/tooling/backend/debugger_api.h"
+#include "ecmascript/tooling/base/pt_method.h"
 #include "ecmascript/tooling/interface/notification_manager.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
 
@@ -26,13 +27,13 @@ namespace panda::ecmascript::tooling {
 class JSBreakpoint {
 public:
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-    JSBreakpoint(JSMethod *method, uint32_t bcOffset, const Global<FunctionRef> &condFuncRef)
-        : method_(method), bcOffset_(bcOffset), condFuncRef_(condFuncRef) {}
+    JSBreakpoint(PtMethod *ptMethod, uint32_t bcOffset, const Global<FunctionRef> &condFuncRef)
+        : ptMethod_(ptMethod), bcOffset_(bcOffset), condFuncRef_(condFuncRef) {}
     ~JSBreakpoint() = default;
 
-    JSMethod *GetMethod() const
+    PtMethod *GetPtMethod() const
     {
-        return method_;
+        return ptMethod_;
     }
 
     uint32_t GetBytecodeOffset() const
@@ -42,7 +43,9 @@ public:
 
     bool operator==(const JSBreakpoint &bpoint) const
     {
-        return GetMethod() == bpoint.GetMethod() && GetBytecodeOffset() == bpoint.GetBytecodeOffset();
+        return ptMethod_->GetMethodId() == bpoint.GetPtMethod()->GetMethodId() &&
+            ptMethod_->GetJSPandaFile() == bpoint.GetPtMethod()->GetJSPandaFile() &&
+            GetBytecodeOffset() == bpoint.GetBytecodeOffset();
     }
 
     const Global<FunctionRef> &GetConditionFunction()
@@ -54,7 +57,7 @@ public:
     DEFAULT_MOVE_SEMANTIC(JSBreakpoint);
 
 private:
-    JSMethod *method_;
+    PtMethod *ptMethod_ {nullptr};
     uint32_t bcOffset_;
     Global<FunctionRef> condFuncRef_;
 };
@@ -63,7 +66,7 @@ class HashJSBreakpoint {
 public:
     size_t operator()(const JSBreakpoint &bpoint) const
     {
-        return (std::hash<JSMethod *>()(bpoint.GetMethod())) ^ (std::hash<uint32_t>()(bpoint.GetBytecodeOffset()));
+        return (std::hash<PtMethod *>()(bpoint.GetPtMethod())) ^ (std::hash<uint32_t>()(bpoint.GetBytecodeOffset()));
     }
 };
 
@@ -94,7 +97,7 @@ public:
 
     bool SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> condFuncRef) override;
     bool RemoveBreakpoint(const JSPtLocation &location) override;
-    void BytecodePcChanged(JSThread *thread, JSMethod *method, uint32_t bcOffset) override;
+    void BytecodePcChanged(JSThread *thread, JSHandle<JSMethod> jsMethod, uint32_t bcOffset) override;
     void LoadModule(std::string_view filename) override
     {
         if (hooks_ == nullptr) {
@@ -125,12 +128,12 @@ public:
     }
 
 private:
-    JSMethod *FindMethod(const JSPtLocation &location) const;
-    std::optional<JSBreakpoint> FindBreakpoint(const JSMethod *method, uint32_t bcOffset) const;
-    bool RemoveBreakpoint(const JSMethod *method, uint32_t bcOffset);
-    void HandleExceptionThrowEvent(const JSThread *thread, const JSMethod *method, uint32_t bcOffset);
-    bool HandleStep(const JSMethod *method, uint32_t bcOffset);
-    bool HandleBreakpoint(const JSMethod *method, uint32_t bcOffset);
+    std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
+    std::optional<JSBreakpoint> FindBreakpoint(JSHandle<JSMethod> method, uint32_t bcOffset) const;
+    bool RemoveBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset);
+    void HandleExceptionThrowEvent(const JSThread *thread, JSHandle<JSMethod> method, uint32_t bcOffset);
+    bool HandleStep(JSHandle<JSMethod> method, uint32_t bcOffset);
+    bool HandleBreakpoint(JSHandle<JSMethod> method, uint32_t bcOffset);
 
     const EcmaVM *ecmaVm_;
     PtHooks *hooks_ {nullptr};

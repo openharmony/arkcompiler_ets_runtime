@@ -32,7 +32,8 @@ using LiteralValue = panda_file::LiteralDataAccessor::LiteralValue;
 
 void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                               JSMutableHandle<TaggedArray> elements,
-                                              JSMutableHandle<TaggedArray> properties)
+                                              JSMutableHandle<TaggedArray> properties,
+                                              JSHandle<JSTaggedValue> constpool)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
@@ -50,7 +51,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
     uint32_t methodId;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        index, [elements, properties, &epos, &ppos, factory, thread, jsPandaFile, pf, &methodId, &kind]
+        index, [elements, properties, &epos, &ppos, factory, thread, jsPandaFile, pf, &methodId, &kind, &constpool]
         (const LiteralValue &value, const LiteralTag &tag) {
         JSTaggedValue jt = JSTaggedValue::Null();
         bool flag = false;
@@ -91,7 +92,11 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             case LiteralTag::METHODAFFILIATE: {
                 uint16_t length = std::get<uint16_t>(value);
                 auto method = jsPandaFile->FindMethods(methodId);
-                JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
+                ASSERT(method != nullptr);
+
+                JSHandle<JSMethod> jsMethod = factory->NewJSMethod(method);
+                jsMethod->SetConstantPool(thread, constpool.GetTaggedValue());
+                JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, jsMethod, kind, length);
                 jt = jsFunc.GetTaggedValue();
                 break;
             }
@@ -119,7 +124,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
 }
 
 JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                               size_t index)
+                                                               size_t index, JSHandle<JSTaggedValue> constpool)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
@@ -134,7 +139,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     uint32_t methodId;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        index, [literals, &pos, factory, thread, jsPandaFile, &methodId, &kind]
+        index, [literals, &pos, factory, thread, jsPandaFile, &methodId, &kind, &constpool]
         (const panda_file::LiteralDataAccessor::LiteralValue &value, const LiteralTag &tag) {
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
@@ -171,7 +176,11 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 case LiteralTag::METHODAFFILIATE: {
                     uint16_t length = std::get<uint16_t>(value);
                     auto method = jsPandaFile->FindMethods(methodId);
-                    JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
+                    ASSERT(method != nullptr);
+
+                    JSHandle<JSMethod> jsMethod = factory->NewJSMethod(method);
+                    jsMethod->SetConstantPool(thread, constpool.GetTaggedValue());
+                    JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, jsMethod, kind, length);
                     jt = jsFunc.GetTaggedValue();
                     break;
                 }
@@ -199,10 +208,9 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
 }
 
 JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                                 JSMethod *method, FunctionKind kind, uint16_t length)
+                                                                 JSHandle<JSMethod> method,
+                                                                 FunctionKind kind, uint16_t length)
 {
-    ASSERT(method != nullptr);
-
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSHClass> functionClass;

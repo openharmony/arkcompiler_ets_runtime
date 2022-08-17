@@ -16,154 +16,108 @@
 #ifndef ECMASCRIPT_JS_METHOD_H
 #define ECMASCRIPT_JS_METHOD_H
 
-#include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/mem/visitor.h"
 
 #include "libpandafile/file.h"
 
-static constexpr uint32_t CALL_TYPE_MASK = 0xF;  // 0xF: the last 4 bits are used as callType
-
 namespace panda::ecmascript {
 class JSPandaFile;
-struct PUBLIC_API JSMethod : public base::AlignedStruct<sizeof(uint64_t),
-                                                        base::AlignedUint64,
-                                                        base::AlignedPointer,
-                                                        base::AlignedPointer,
-                                                        base::AlignedUint64> {
-    enum class Index : size_t {
-        CALL_FIELD_INDEX = 0,
-        NATIVE_POINTER_OR_BYTECODE_ARRAY_INDEX,
-        JS_PANDA_FILE_INDEX,
-        LITERAL_INFO_INDEX,
-        NUM_OF_MEMBERS
-    };
-
-    static_assert(static_cast<size_t>(Index::NUM_OF_MEMBERS) == NumOfTypes);
-
-    static constexpr uint8_t MAX_SLOT_SIZE = 0xFF;
-
-    JSMethod(const JSPandaFile *jsPandaFile, panda_file::File::EntityId fileId);
-    JSMethod() = delete;
-    ~JSMethod() = default;
-    JSMethod(const JSMethod &) = delete;
-    JSMethod(JSMethod &&) = delete;
-    JSMethod &operator=(const JSMethod &) = delete;
-    JSMethod &operator=(JSMethod &&) = delete;
-
-    static size_t GetBytecodeArrayOffset(bool isArch32)
-    {
-        return GetOffset<static_cast<size_t>(Index::NATIVE_POINTER_OR_BYTECODE_ARRAY_INDEX)>(isArch32);
-    }
-
-    const uint8_t *GetBytecodeArray() const
-    {
-        return reinterpret_cast<const uint8_t *>(nativePointerOrBytecodeArray_);
-    }
-
-    void SetBytecodeArray(const uint8_t *bc)
-    {
-        nativePointerOrBytecodeArray_ = reinterpret_cast<const void *>(bc);
-    }
-
-    static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455
-    using HaveThisBit = BitField<bool, 0, 1>;  // offset 0
-    using HaveNewTargetBit = HaveThisBit::NextFlag;  // offset 1
-    using HaveExtraBit = HaveNewTargetBit::NextFlag;  // offset 2
-    using HaveFuncBit = HaveExtraBit::NextFlag;  // offset 3
-    using NumVregsBits = HaveFuncBit::NextField<uint32_t, VREGS_ARGS_NUM_BITS>;  // offset 4-31
-    using NumArgsBits = NumVregsBits::NextField<uint32_t, VREGS_ARGS_NUM_BITS>;  // offset 32-59
-    using IsNativeBit = NumArgsBits::NextFlag;  // offset 60
-    using IsAotCodeBit = IsNativeBit::NextFlag; // offset 61
-    using IsFastBuiltinBit = IsAotCodeBit::NextFlag; // offset 62
-
-    uint64_t GetCallField() const
-    {
-        return callField_;
-    }
-
-    static size_t GetCallFieldOffset(bool isArch32)
-    {
-        return GetOffset<static_cast<size_t>(Index::CALL_FIELD_INDEX)>(isArch32);
-    }
+using EntityId = panda_file::File::EntityId;
+class JSMethod : public TaggedObject {
+public:
+    CAST_CHECK(JSMethod, IsJSMethod);
 
     void SetNumArgsWithCallField(uint32_t numargs)
     {
-        callField_ = NumArgsBits::Update(callField_, numargs);
+        uint64_t callField = GetCallField();
+        uint64_t newValue = MethodLiteral::SetNumArgsWithCallField(callField, numargs);
+        SetCallField(newValue);
     }
 
     void SetNativeBit(bool isNative)
     {
-        callField_ = IsNativeBit::Update(callField_, isNative);
+        uint64_t callField = GetCallField();
+        uint64_t newValue = MethodLiteral::SetNativeBit(callField, isNative);
+        SetCallField(newValue);
     }
 
     void SetAotCodeBit(bool isCompiled)
     {
-        callField_ = IsAotCodeBit::Update(callField_, isCompiled);
+        uint64_t callField = GetCallField();
+        uint64_t newValue = MethodLiteral::SetAotCodeBit(callField, isCompiled);
+        SetCallField(newValue);
     }
 
     void SetFastBuiltinBit(bool isFastBuiltin)
     {
-        callField_ = IsFastBuiltinBit::Update(callField_, isFastBuiltin);
+        uint64_t callField = GetCallField();
+        uint64_t newValue = MethodLiteral::SetFastBuiltinBit(callField, isFastBuiltin);
+        SetCallField(newValue);
     }
-
-    std::string PUBLIC_API ParseFunctionName() const;
-
-    void InitializeCallField(uint32_t numVregs, uint32_t numArgs);
 
     bool HaveThisWithCallField() const
     {
-        return HaveThisBit::Decode(callField_);
+        uint64_t callField = GetCallField();
+        return MethodLiteral::HaveThisWithCallField(callField);
     }
 
     bool HaveNewTargetWithCallField() const
     {
-        return HaveNewTargetBit::Decode(callField_);
+        uint64_t callField = GetCallField();
+        return MethodLiteral::HaveNewTargetWithCallField(callField);
     }
 
     bool HaveExtraWithCallField() const
     {
-        return HaveExtraBit::Decode(callField_);
+        uint64_t callField = GetCallField();
+        return MethodLiteral::HaveExtraWithCallField(callField);
     }
 
     bool HaveFuncWithCallField() const
     {
-        return HaveFuncBit::Decode(callField_);
+        uint64_t callField = GetCallField();
+        return MethodLiteral::HaveFuncWithCallField(callField);
     }
 
     bool IsNativeWithCallField() const
     {
-        return IsNativeBit::Decode(callField_);
+        uint64_t callField = GetCallField();
+        return MethodLiteral::IsNativeWithCallField(callField);
     }
 
     bool IsAotWithCallField() const
     {
-        return IsAotCodeBit::Decode(callField_);
-    }
-
-    bool IsFastBuiltinWithCallField() const
-    {
-        return IsFastBuiltinBit::Decode(callField_);
+        uint64_t callField = GetCallField();
+        return MethodLiteral::IsAotWithCallField(callField);
     }
 
     bool OnlyHaveThisWithCallField() const
     {
-        return (callField_ & CALL_TYPE_MASK) == 1;  // 1: the first bit of callFiled is HaveThisBit
+        uint64_t callField = GetCallField();
+        return MethodLiteral::OnlyHaveThisWithCallField(callField);
     }
 
     bool OnlyHaveNewTagetAndThisWithCallField() const
     {
-        return (callField_ & CALL_TYPE_MASK) == 0b11;  // the first two bit of callFiled is `This` and `NewTarget`
+        uint64_t callField = GetCallField();
+        return MethodLiteral::OnlyHaveNewTagetAndThisWithCallField(callField);
     }
 
     uint32_t GetNumVregsWithCallField() const
     {
-        return NumVregsBits::Decode(callField_);
+        uint64_t callField = GetCallField();
+        return MethodLiteral::GetNumVregsWithCallField(callField);
     }
 
     uint32_t GetNumArgsWithCallField() const
     {
-        return NumArgsBits::Decode(callField_);
+        uint64_t callField = GetCallField();
+        return MethodLiteral::GetNumArgsWithCallField(callField);
     }
 
     uint32_t GetNumArgs() const
@@ -172,126 +126,83 @@ struct PUBLIC_API JSMethod : public base::AlignedStruct<sizeof(uint64_t),
             HaveNewTargetWithCallField() + HaveThisWithCallField();
     }
 
-    const JSPandaFile *GetJSPandaFile() const
-    {
-        return jsPandaFile_;
-    }
-
-    const char * PUBLIC_API GetMethodName() const;
-
-    static constexpr size_t METHOD_ARGS_NUM_BYTES = 8;
-    static constexpr size_t METHOD_ARGS_NUM_BITS = 16;
-    static constexpr size_t METHOD_ARGS_METHODID_BITS = 32;
-    using HotnessCounterBits = BitField<int16_t, 0, METHOD_ARGS_NUM_BITS>; // offset 0-15
-    using MethodIdBits = HotnessCounterBits::NextField<uint32_t, METHOD_ARGS_METHODID_BITS>; // offset 16-47
-    using SlotSizeBits = MethodIdBits::NextField<uint8_t, METHOD_ARGS_NUM_BYTES>; // offset 48-55
-    using BuiiltinIdBits = SlotSizeBits::NextField<uint8_t, METHOD_ARGS_NUM_BYTES>; // offset 56-63
-
-    uint32_t GetBytecodeArraySize() const;
-
     inline int16_t GetHotnessCounter() const
     {
-        return HotnessCounterBits::Decode(literalInfo_);
-    }
-
-    static size_t GetHotnessCounterOffset(bool isArch32)
-    {
-        // hotness counter is encoded in a js method field, the first uint16_t in a uint64_t.
-        return GetOffset<static_cast<size_t>(Index::LITERAL_INFO_INDEX)>(isArch32);
-    }
-
-    inline NO_THREAD_SANITIZE void IncreaseHotnessCounter()
-    {
-        auto hotnessCounter = HotnessCounterBits::Decode(literalInfo_);
-        literalInfo_ = HotnessCounterBits::Update(literalInfo_, ++hotnessCounter);
-    }
-
-    NO_THREAD_SANITIZE void ResetHotnessCounter()
-    {
-        literalInfo_ = HotnessCounterBits::Update(literalInfo_, 0);
+        uint64_t literalInfo = GetLiteralInfo();
+        return MethodLiteral::GetHotnessCounter(literalInfo);
     }
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
     {
-        literalInfo_ = HotnessCounterBits::Update(literalInfo_, counter);
+        uint64_t literalInfo = GetLiteralInfo();
+        uint64_t newValue = MethodLiteral::SetHotnessCounter(literalInfo, counter);
+        SetLiteralInfo(newValue);
     }
 
-    panda_file::File::EntityId GetMethodId() const
+    EntityId GetMethodId() const
     {
-        return panda_file::File::EntityId(MethodIdBits::Decode(literalInfo_));
-    }
-
-    void SetMethodId(panda_file::File::EntityId methodId)
-    {
-        literalInfo_ = MethodIdBits::Update(literalInfo_, methodId.GetOffset());
+        uint64_t literalInfo = GetLiteralInfo();
+        return MethodLiteral::GetMethodId(literalInfo);
     }
 
     uint8_t GetSlotSize() const
     {
-        return SlotSizeBits::Decode(literalInfo_);;
+        uint64_t literalInfo = GetLiteralInfo();
+        return MethodLiteral::GetSlotSize(literalInfo);
     }
 
-    uint8_t GetBuiiltinId() const
+    uint8_t GetBuiltinId() const
     {
-        return BuiiltinIdBits::Decode(literalInfo_);;
+        uint64_t literalInfo = GetLiteralInfo();
+        return MethodLiteral::GetBuiltinId(literalInfo);
     }
 
-    
-    void SetBuiiltinId(uint8_t id)
+    void SetBuiltinId(uint8_t id)
     {
-        literalInfo_ = BuiiltinIdBits::Update(literalInfo_, id);
+        uint64_t literalInfo = GetLiteralInfo();
+        uint64_t newValue = MethodLiteral::SetBuiltinId(literalInfo, id);
+        SetLiteralInfo(newValue);
     }
-
-    uint8_t UpdateSlotSize(uint8_t size)
-    {
-        uint8_t start = GetSlotSize();
-        uint16_t end = start + size;
-        if (end >= MAX_SLOT_SIZE) {
-            literalInfo_ = SlotSizeBits::Update(literalInfo_, MAX_SLOT_SIZE);
-            return MAX_SLOT_SIZE - 1; // prevent solt + 1 overflow
-        }
-        literalInfo_ = SlotSizeBits::Update(literalInfo_, static_cast<uint8_t>(end));
-        return start;
-    }
-
-    uint32_t PUBLIC_API GetNumVregs() const;
-
-    uint32_t GetCodeSize() const;
-
-    uint32_t GetCodeSize(panda_file::File::EntityId methodId) const;
-
-    panda_file::File::StringData GetName() const;
 
     const void* GetNativePointer() const
     {
-        return nativePointerOrBytecodeArray_;
+        return GetNativePointerOrBytecodeArray();
     }
 
-    void SetNativePointer(const void *nativePointer)
+    void SetNativePointer(void *nativePointer)
     {
-        nativePointerOrBytecodeArray_ = nativePointer;
+        SetNativePointerOrBytecodeArray(nativePointer);
     }
 
-    static constexpr size_t GetNativePointerOffset()
+    const uint8_t *GetBytecodeArray() const
     {
-        return MEMBER_OFFSET(JSMethod, nativePointerOrBytecodeArray_);
+        return reinterpret_cast<const uint8_t *>(GetNativePointerOrBytecodeArray());
     }
 
+    const JSPandaFile *PUBLIC_API GetJSPandaFile() const;
     const panda_file::File *GetPandaFile() const;
+    uint32_t GetCodeSize() const;
 
-    uint64_t GetLiteralInfo() const
-    {
-        return literalInfo_;
-    }
+    panda_file::File::StringData GetName() const;
+    const char *PUBLIC_API GetMethodName() const;
+    std::string PUBLIC_API ParseFunctionName() const;
 
-    alignas(EAS) uint64_t callField_ {0};
+    static constexpr size_t CALL_FIELD_OFFSET = TaggedObjectSize();
+    ACCESSORS_PRIMITIVE_FIELD(CallField, uint64_t, CALL_FIELD_OFFSET, LITERAL_INFO_OFFSET)
+    // hotnessCounter, methodId and slotSize are encoded in literalInfo.
+    // hotness counter is encoded in a js method field, the first uint16_t in a uint64_t.
+    ACCESSORS_PRIMITIVE_FIELD(LiteralInfo, uint64_t, LITERAL_INFO_OFFSET, CONSTANT_POOL_OFFSET)
+    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
-    alignas(EAS) const void *nativePointerOrBytecodeArray_ {nullptr};
-    alignas(EAS) const JSPandaFile *jsPandaFile_ {nullptr};
-    // hotnessCounter, methodId and slotSize are encoded in literalInfo_.
-    alignas(EAS) uint64_t literalInfo_ {0};
+    ACCESSORS_NATIVE_FIELD(
+        NativePointerOrBytecodeArray, void, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+
+    DECL_VISIT_OBJECT(CONSTANT_POOL_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET);
+    DECL_VISIT_NATIVE_FIELD(NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, LAST_OFFSET);
+
+    DECL_DUMP()
 };
-STATIC_ASSERT_EQ_ARCH(sizeof(JSMethod), JSMethod::SizeArch32, JSMethod::SizeArch64);
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JS_METHOD_H

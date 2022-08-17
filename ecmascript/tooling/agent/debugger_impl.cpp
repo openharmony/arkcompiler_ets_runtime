@@ -723,8 +723,7 @@ DispatchResponse DebuggerImpl::SetPauseOnExceptions(const SetPauseOnExceptionsPa
 
 DispatchResponse DebuggerImpl::StepInto([[maybe_unused]] const StepIntoParams &params)
 {
-    JSMethod *method = DebuggerApi::GetMethod(vm_);
-    JSPtExtractor *extractor = GetExtractor(method->GetJSPandaFile());
+    JSPtExtractor *extractor = GetExtractor(DebuggerApi::GetJSPandaFile(vm_));
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "StepOver: extractor is null";
         return DispatchResponse::Fail("Unknown file name.");
@@ -737,8 +736,7 @@ DispatchResponse DebuggerImpl::StepInto([[maybe_unused]] const StepIntoParams &p
 
 DispatchResponse DebuggerImpl::StepOut()
 {
-    JSMethod *method = DebuggerApi::GetMethod(vm_);
-    JSPtExtractor *extractor = GetExtractor(method->GetJSPandaFile());
+    JSPtExtractor *extractor = GetExtractor(DebuggerApi::GetJSPandaFile(vm_));
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "StepOut: extractor is null";
         return DispatchResponse::Fail("Unknown file name.");
@@ -751,8 +749,7 @@ DispatchResponse DebuggerImpl::StepOut()
 
 DispatchResponse DebuggerImpl::StepOver([[maybe_unused]] const StepOverParams &params)
 {
-    JSMethod *method = DebuggerApi::GetMethod(vm_);
-    JSPtExtractor *extractor = GetExtractor(method->GetJSPandaFile());
+    JSPtExtractor *extractor = GetExtractor(DebuggerApi::GetJSPandaFile(vm_));
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "StepOver: extractor is null";
         return DispatchResponse::Fail("Unknown file name.");
@@ -806,8 +803,7 @@ bool DebuggerImpl::GenerateCallFrames(std::vector<std::unique_ptr<CallFrame>> *c
 {
     CallFrameId callFrameId = 0;
     auto walkerFunc = [this, &callFrameId, &callFrames](const FrameHandler *frameHandler) -> StackState {
-        JSMethod *method = DebuggerApi::GetMethod(frameHandler);
-        if (method->IsNativeWithCallField()) {
+        if (DebuggerApi::IsNativeMethod(frameHandler)) {
             LOG_DEBUGGER(INFO) << "GenerateCallFrames: Skip CFrame and Native method";
             return StackState::CONTINUE;
         }
@@ -837,15 +833,19 @@ bool DebuggerImpl::GenerateCallFrame(CallFrame *callFrame,
     const FrameHandler *frameHandler, CallFrameId callFrameId)
 {
     JSMethod *method = DebuggerApi::GetMethod(frameHandler);
+    auto methodId = method->GetMethodId();
     JSPtExtractor *extractor = GetExtractor(method->GetJSPandaFile());
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "GenerateCallFrame: extractor is null";
         return false;
     }
 
+    // functionName
+    std::string functionName = method->ParseFunctionName();
+
     // location
     std::unique_ptr<Location> location = std::make_unique<Location>();
-    std::string url = extractor->GetSourceFile(method->GetMethodId());
+    std::string url = extractor->GetSourceFile(methodId);
     auto scriptFunc = [&location](PtScript *script) -> bool {
         location->SetScriptId(script->GetScriptId());
         return true;
@@ -862,7 +862,6 @@ bool DebuggerImpl::GenerateCallFrame(CallFrame *callFrame,
         location->SetColumn(column);
         return true;
     };
-    File::EntityId methodId = method->GetMethodId();
     if (!extractor->MatchLineWithOffset(callbackLineFunc, methodId, DebuggerApi::GetBytecodeOffset(frameHandler)) ||
         !extractor->MatchColumnWithOffset(callbackColumnFunc, methodId, DebuggerApi::GetBytecodeOffset(frameHandler))) {
         LOG_DEBUGGER(ERROR) << "GenerateCallFrame: unknown offset: " << DebuggerApi::GetBytecodeOffset(frameHandler);
@@ -876,9 +875,6 @@ bool DebuggerImpl::GenerateCallFrame(CallFrame *callFrame,
     std::vector<std::unique_ptr<Scope>> scopeChain;
     scopeChain.emplace_back(GetLocalScopeChain(frameHandler, &thisObj));
     scopeChain.emplace_back(GetGlobalScopeChain());
-
-    // functionName
-    std::string functionName = DebuggerApi::ParseFunctionName(method);
 
     callFrame->SetCallFrameId(callFrameId)
         .SetFunctionName(functionName)
@@ -895,7 +891,9 @@ std::unique_ptr<Scope> DebuggerImpl::GetLocalScopeChain(const FrameHandler *fram
     auto localScope = std::make_unique<Scope>();
 
     JSMethod *method = DebuggerApi::GetMethod(frameHandler);
-    JSPtExtractor *extractor = GetExtractor(method->GetJSPandaFile());
+    auto methodId = method->GetMethodId();
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    JSPtExtractor *extractor = GetExtractor(jsPandaFile);
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "GetScopeChain: extractor is null";
         return localScope;
@@ -912,11 +910,10 @@ std::unique_ptr<Scope> DebuggerImpl::GetLocalScopeChain(const FrameHandler *fram
     runtime_->properties_[runtime_->curObjectId_++] = Global<JSValueRef>(vm_, localObj);
 
     Local<JSValueRef> thisVal = JSValueRef::Undefined(vm_);
-    GetLocalVariables(frameHandler, method, thisVal, localObj);
+    GetLocalVariables(frameHandler, methodId, jsPandaFile, thisVal, localObj);
     *thisObj = RemoteObject::FromTagged(vm_, thisVal);
     runtime_->CacheObjectIfNeeded(thisVal, (*thisObj).get());
 
-    auto methodId = method->GetMethodId();
     const LineNumberTable &lines = extractor->GetLineNumberTable(methodId);
     std::unique_ptr<Location> startLoc = std::make_unique<Location>();
     std::unique_ptr<Location> endLoc = std::make_unique<Location>();
@@ -939,11 +936,10 @@ std::unique_ptr<Scope> DebuggerImpl::GetLocalScopeChain(const FrameHandler *fram
     return localScope;
 }
 
-void DebuggerImpl::GetLocalVariables(const FrameHandler *frameHandler, const JSMethod *method,
-    Local<JSValueRef> &thisVal, Local<ObjectRef> &localObj)
+void DebuggerImpl::GetLocalVariables(const FrameHandler *frameHandler, panda_file::File::EntityId methodId,
+    const JSPandaFile *jsPandaFile, Local<JSValueRef> &thisVal, Local<ObjectRef> &localObj)
 {
-    auto methodId = method->GetMethodId();
-    auto *extractor = GetExtractor(method->GetJSPandaFile());
+    auto *extractor = GetExtractor(jsPandaFile);
     Local<JSValueRef> value = JSValueRef::Undefined(vm_);
     // in case of arrow function, which doesn't have this in local variable table
     bool hasThis = false;
@@ -1042,13 +1038,12 @@ void DebuggerImpl::UpdateScopeObject(const FrameHandler *frameHandler,
 std::optional<std::string> DebuggerImpl::CmptEvaluateValue(CallFrameId callFrameId, const std::string &expression,
     std::unique_ptr<RemoteObject> *result)
 {
-    JSMethod *method = DebuggerApi::GetMethod(vm_);
-    if (method->IsNativeWithCallField()) {
+    if (DebuggerApi::IsNativeMethod(vm_)) {
         *result = RemoteObject::FromTagged(vm_,
             Exception::EvalError(vm_, StringRef::NewFromUtf8(vm_, "Native Frame not support.")));
         return "Native Frame not support.";
     }
-    JSPtExtractor *extractor = GetExtractor(method->GetJSPandaFile());
+    JSPtExtractor *extractor = GetExtractor(DebuggerApi::GetJSPandaFile(vm_));
     if (extractor == nullptr) {
         *result = RemoteObject::FromTagged(vm_,
             Exception::EvalError(vm_, StringRef::NewFromUtf8(vm_, "Internal error.")));

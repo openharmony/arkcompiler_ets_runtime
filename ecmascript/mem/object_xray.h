@@ -113,7 +113,7 @@ public:
     inline void VisitVMRoots(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor) const
     {
-        ecmaVm_->Iterate(visitor);
+        ecmaVm_->Iterate(visitor, rangeVisitor);
         ecmaVm_->GetJSThread()->Iterate(visitor, rangeVisitor, derivedVisitor);
     }
     template<VisitType visitType>
@@ -140,121 +140,76 @@ public:
             case JSType::JS_FUNCTION_BASE: {
                 auto jsFunctionBase = JSFunctionBase::Cast(object);
                 jsFunctionBase->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsFunctionBase->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_FUNCTION: {
                 auto jsFunction = JSFunction::Cast(object);
                 jsFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_GENERATOR_FUNCTION: {
                 auto jsGeneratorFunction = JSGeneratorFunction::Cast(object);
                 jsGeneratorFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsGeneratorFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_ASYNC_GENERATOR_FUNCTION: {
                 auto jsGeneratorFunction = JSAsyncGeneratorFunction::Cast(object);
                 jsGeneratorFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsGeneratorFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_PROXY_REVOC_FUNCTION: {
                 auto jsProxyRevocFunction = JSProxyRevocFunction::Cast(object);
                 jsProxyRevocFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsProxyRevocFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_PROMISE_REACTIONS_FUNCTION: {
                 auto jsPromiseReactionsFunction = JSPromiseReactionsFunction::Cast(object);
                 jsPromiseReactionsFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsPromiseReactionsFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_PROMISE_EXECUTOR_FUNCTION: {
                 auto jsPromiseExecutorFunction = JSPromiseExecutorFunction::Cast(object);
                 jsPromiseExecutorFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsPromiseExecutorFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION: {
                 auto jsPromiseAllResolveElementFunction = JSPromiseAllResolveElementFunction::Cast(object);
                 jsPromiseAllResolveElementFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsPromiseAllResolveElementFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN: {
                 auto jsAsyGeneratorRseNextRtnProRstFtn = JSAsyncGeneratorResNextRetProRstFtn::Cast(object);
                 jsAsyGeneratorRseNextRtnProRstFtn->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsAsyGeneratorRseNextRtnProRstFtn->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION: {
                 auto jsPromiseAnyRejectElementFunction = JSPromiseAnyRejectElementFunction::Cast(object);
                 jsPromiseAnyRejectElementFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsPromiseAnyRejectElementFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION: {
                 auto jsPromiseAllSettledElementFunction = JSPromiseAllSettledElementFunction::Cast(object);
                 jsPromiseAllSettledElementFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsPromiseAllSettledElementFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_PROMISE_FINALLY_FUNCTION: {
                 auto jsPromiseFinallyFunction = JSPromiseFinallyFunction::Cast(object);
                 jsPromiseFinallyFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsPromiseFinallyFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION: {
                 auto jsPromiseValueThunkOrThrowerFunction = JSPromiseValueThunkOrThrowerFunction::Cast(object);
                 jsPromiseValueThunkOrThrowerFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsPromiseValueThunkOrThrowerFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_ASYNC_FUNCTION: {
                 auto jsAsyncFunction = JSAsyncFunction::Cast(object);
                 jsAsyncFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsAsyncFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION: {
                 auto jsAsyncAwaitStatusFunction = JSAsyncAwaitStatusFunction::Cast(object);
                 jsAsyncAwaitStatusFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsAsyncAwaitStatusFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_REG_EXP:
@@ -317,9 +272,6 @@ public:
             case JSType::JS_BOUND_FUNCTION: {
                 auto jsBoundFunction = JSBoundFunction::Cast(object);
                 jsBoundFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsBoundFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_ARGUMENTS:
@@ -357,9 +309,6 @@ public:
             case JSType::JS_PROXY: {
                 auto jsProxy = JSProxy::Cast(object);
                 jsProxy->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsProxy->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::HCLASS:
@@ -456,9 +405,6 @@ public:
             case JSType::JS_INTL_BOUND_FUNCTION: {
                 auto jsIntlBoundFunction = JSIntlBoundFunction::Cast(object);
                 jsIntlBoundFunction->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    jsIntlBoundFunction->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_REALM:
@@ -482,9 +428,6 @@ public:
             case JSType::CLASS_INFO_EXTRACTOR: {
                 auto classInfoExtractor = ClassInfoExtractor::Cast(object);
                 classInfoExtractor->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    classInfoExtractor->VisitRangeSlotForNative(visitor);
-                }
                 break;
             }
             case JSType::JS_API_QUEUE:
@@ -624,6 +567,12 @@ public:
                 break;
             case JSType::JS_CJS_REQUIRE:
                 CjsRequire::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::JS_METHOD:
+                JSMethod::Cast(object)->VisitRangeSlot(visitor);
+                if (visitType == VisitType::SNAPSHOT_VISIT) {
+                    JSMethod::Cast(object)->VisitRangeSlotForNative(visitor);
+                }
                 break;
             default:
                 UNREACHABLE();

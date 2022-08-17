@@ -1212,7 +1212,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     }
 }
 
-void SnapshotProcessor::DeserializePandaMethod(uintptr_t begin, uintptr_t end, JSMethod *methods,
+void SnapshotProcessor::DeserializePandaMethod(uintptr_t begin, uintptr_t end, MethodLiteral *methods,
                                                size_t &methodNums, size_t &others)
 {
     for (size_t i = 0; i < others; i++) {
@@ -1306,7 +1306,7 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
 void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFile, uint64_t rootObjSize)
 {
     size_t methodNums = 0;
-    JSMethod *methods = nullptr;
+    MethodLiteral *methods = nullptr;
     if (jsPandaFile) {
         methodNums = jsPandaFile->GetNumMethods();
         methods = jsPandaFile->GetMethods();
@@ -1324,7 +1324,7 @@ void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFi
     RelocateSpaceObject(snapshotSpace, type, methods, methodNums, rootObjSize);
 }
 
-void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, JSMethod* methods,
+void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
                                             size_t methodNums, size_t rootObjSize)
 {
     size_t others = 0;
@@ -1494,21 +1494,6 @@ EncodeBit SnapshotProcessor::NativePointerToEncodeBit(void *nativePointer)
     return native;
 }
 
-void *SnapshotProcessor::NativePointerEncodeBitToAddr(EncodeBit nativeBit)
-{
-    size_t index = nativeBit.GetNativePointerOrObjectIndex();
-    void *addr = nullptr;
-    size_t nativeTableSize = GetNativeTableSize();
-    if (index < nativeTableSize - Constants::PROGRAM_NATIVE_METHOD_BEGIN) {
-        addr = reinterpret_cast<void *>(vm_->GetFactory()->nativeMethods_.at(index));
-    } else if (index < nativeTableSize) {
-        addr = reinterpret_cast<void *>(g_nativeTable[index]);
-    } else {
-        addr = ToVoidPtr(pandaMethod_.at(index - nativeTableSize));
-    }
-    return addr;
-}
-
 size_t SnapshotProcessor::SearchNativeMethodIndex(void *nativePointer)
 {
     size_t nativeMethodSize = GetNativeTableSize() - Constants::PROGRAM_NATIVE_METHOD_BEGIN;
@@ -1519,9 +1504,8 @@ size_t SnapshotProcessor::SearchNativeMethodIndex(void *nativePointer)
     }
 
     // not found
-    auto nativeMethod = reinterpret_cast<JSMethod *>(nativePointer)->GetNativePointer();
     for (size_t i = 0; i < nativeMethodSize; i++) {
-        if (nativeMethod == reinterpret_cast<void *>(g_nativeTable[i])) {
+        if (nativePointer == reinterpret_cast<void *>(g_nativeTable[i])) {
             return i;
         }
     }
@@ -1552,9 +1536,7 @@ void SnapshotProcessor::DeserializeNativePointer(uint64_t *value)
     size_t index = native.GetNativePointerOrObjectIndex();
     uintptr_t addr = 0U;
     size_t nativeTableSize = GetNativeTableSize();
-    if (index < nativeTableSize - Constants::PROGRAM_NATIVE_METHOD_BEGIN) {
-        addr = reinterpret_cast<uintptr_t>(vm_->GetFactory()->nativeMethods_.at(index));
-    } else if (index < nativeTableSize) {
+    if (index < nativeTableSize) {
         addr = g_nativeTable[index];
     } else {
         addr = pandaMethod_.at(index - nativeTableSize);
@@ -1669,14 +1651,6 @@ void SnapshotProcessor::EncodeTaggedObjectRange(ObjectSlot start, ObjectSlot end
                 encodeBit = EncodeTaggedObject(object.GetTaggedObject(), queue, data);
             }
         }
-    }
-}
-
-void SnapshotProcessor::GeneratedNativeMethod()  // NOLINT(readability-function-size)
-{
-    size_t nativeMethodSize = GetNativeTableSize() - Constants::PROGRAM_NATIVE_METHOD_BEGIN;
-    for (size_t i = 0; i < nativeMethodSize; i++) {
-        vm_->GetFactory()->NewMethodForNativeFunction(reinterpret_cast<void *>(g_nativeTable[i]));
     }
 }
 

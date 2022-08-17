@@ -436,6 +436,7 @@ ecma_source = [
   "ecmascript/jspandafile/panda_file_translator.cpp",
   "ecmascript/jspandafile/js_pandafile_executor.cpp",
   "ecmascript/jspandafile/scope_info_extractor.cpp",
+  "ecmascript/jspandafile/method_literal.cpp",
   "ecmascript/js_api/js_api_arraylist.cpp",
   "ecmascript/js_api/js_api_arraylist_iterator.cpp",
   "ecmascript/js_api/js_api_deque.cpp",

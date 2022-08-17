@@ -398,10 +398,10 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     __ Ldr(Register(X5), MemoryOperand(Register(X5), JSHClass::BIT_FIELD_OFFSET));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(actualArgC, MemoryOperand(sp, FRAME_SLOT_SIZE));
-    __ Ldr(callField, MemoryOperand(method, JSMethod::GetCallFieldOffset(false)));
-    __ Tbnz(callField, JSMethod::IsNativeBit::START_BIT, &callNativeMethod);
+    __ Ldr(callField, MemoryOperand(method, JSMethod::CALL_FIELD_OFFSET));
+    __ Tbnz(callField, MethodLiteral::IsNativeBit::START_BIT, &callNativeMethod);
     __ Tbnz(Register(X5), JSHClass::ClassConstructorBit::START_BIT, &lCallConstructor);
-    __ Tbnz(callField, JSMethod::IsAotCodeBit::START_BIT, &callOptimizedMethod);
+    __ Tbnz(callField, MethodLiteral::IsAotCodeBit::START_BIT, &callOptimizedMethod);
     {
         Register argV(X5);
         // argV = sp + 16
@@ -412,7 +412,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     __ Bind(&callNativeMethod);
     {
         Register nativeFuncAddr(X4);
-        __ Ldr(nativeFuncAddr, MemoryOperand(method, JSMethod::GetNativePointerOffset()));
+        __ Ldr(nativeFuncAddr, MemoryOperand(method, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         // -8 : -8 means sp increase step
         __ Str(nativeFuncAddr, MemoryOperand(sp, -8, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
@@ -499,9 +499,9 @@ void OptimizedCall::ConstructorJSCallInternal(ExtendedAssembler *assembler, Regi
     __ Ldr(Register(X5), MemoryOperand(Register(X5), JSHClass::BIT_FIELD_OFFSET));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(actualArgC, MemoryOperand(sp, FRAME_SLOT_SIZE));
-    __ Ldr(callField, MemoryOperand(method, JSMethod::GetCallFieldOffset(false)));
-    __ Tbnz(callField, JSMethod::IsNativeBit::START_BIT, &callNativeMethod);
-    __ Tbnz(callField, JSMethod::IsAotCodeBit::START_BIT, &callOptimizedMethod);
+    __ Ldr(callField, MemoryOperand(method, JSMethod::CALL_FIELD_OFFSET));
+    __ Tbnz(callField, MethodLiteral::IsNativeBit::START_BIT, &callNativeMethod);
+    __ Tbnz(callField, MethodLiteral::IsAotCodeBit::START_BIT, &callOptimizedMethod);
     {
         Register argV(X5);
         // argV = sp + 16
@@ -512,7 +512,7 @@ void OptimizedCall::ConstructorJSCallInternal(ExtendedAssembler *assembler, Regi
     __ Bind(&callNativeMethod);
     {
         Register nativeFuncAddr(X4);
-        __ Ldr(nativeFuncAddr, MemoryOperand(method, JSMethod::GetNativePointerOffset()));
+        __ Ldr(nativeFuncAddr, MemoryOperand(method, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         // -8 : -8 means sp increase step
         __ Str(nativeFuncAddr, MemoryOperand(sp, -8, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
@@ -613,9 +613,10 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
     const int64_t argoffsetSlot = static_cast<int64_t>(CommonArgIdx::FUNC) - 1;
     __ Mov(Register(X5), jsfunc);
     __ Mov(arg2, actualArgC);
-    __ Lsr(callField, callField, JSMethod::NumArgsBits::START_BIT);
+    __ Lsr(callField, callField, MethodLiteral::NumArgsBits::START_BIT);
     __ And(callField.W(), callField.W(),
-        LogicalImmediate::Create(JSMethod::NumArgsBits::Mask() >> JSMethod::NumArgsBits::START_BIT, RegWSize));
+        LogicalImmediate::Create(
+            MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegWSize));
     __ Add(expectedNumArgs, callField.W(), Immediate(NUM_MANDATORY_JSFUNC_ARGS));
     __ Cmp(arg2.W(), expectedNumArgs);
     __ Add(argV, sp, Immediate(argoffsetSlot * FRAME_SLOT_SIZE));  // skip env and numArgs

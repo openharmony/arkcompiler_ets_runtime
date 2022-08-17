@@ -28,7 +28,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/jspandafile/method_literal.h"
 
 #include "llvm-c/Core.h"
 
@@ -117,7 +117,7 @@ public:
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();
     void SetUpForBuiltinsStubs();
-    LLVMValueRef AddFunc(const panda::ecmascript::JSMethod *method);
+    LLVMValueRef AddFunc(const panda::ecmascript::MethodLiteral *method, const JSPandaFile *jsPandaFile);
     LLVMModuleRef GetModule() const
     {
         return module_;

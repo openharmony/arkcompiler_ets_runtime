@@ -40,12 +40,12 @@ public:
     static JSHandle<JSTaggedValue> GetFunctionName(JSThread *thread, const JSHandle<JSFunctionBase> &func);
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
-    ACCESSORS_NATIVE_FIELD(Method, JSMethod, METHOD_OFFSET, CODE_ENTRY_OFFSET)
+    ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
-    DECL_VISIT_NATIVE_FIELD(METHOD_OFFSET, CODE_ENTRY_OFFSET);
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, CODE_ENTRY_OFFSET)
+    DECL_DUMP()
 };
 
 static_assert((JSFunctionBase::SIZE % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
@@ -193,8 +193,7 @@ public:
     // add for AOT
     inline void SetCodeEntryAndMarkAOT(const uintptr_t codeEntry)
     {
-        auto method = GetMethod();
-        ASSERT(method != nullptr);
+        JSMethod *method = JSMethod::Cast(GetMethod().GetTaggedObject());
         method->SetAotCodeBit(true);
         method->SetNativeBit(false);
         SetCodeEntry(codeEntry);
@@ -210,8 +209,7 @@ public:
     ACCESSORS(ProtoOrDynClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, HOME_OBJECT_OFFSET)
     ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, FUNCTION_EXTRA_INFO_OFFSET)
-    ACCESSORS(FunctionExtraInfo, FUNCTION_EXTRA_INFO_OFFSET, CONSTANT_POOL_OFFSET)
-    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, PROFILE_TYPE_INFO_OFFSET)
+    ACCESSORS(FunctionExtraInfo, FUNCTION_EXTRA_INFO_OFFSET, PROFILE_TYPE_INFO_OFFSET)
     ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, ECMA_MODULE_OFFSET)
     ACCESSORS(Module, ECMA_MODULE_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)

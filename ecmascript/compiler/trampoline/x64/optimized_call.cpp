@@ -428,10 +428,10 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Movq(rdx, Operand(rsp, FRAME_SLOT_SIZE));
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // get method
         __ Movl(Operand(rsp, DOUBLE_SLOT_SIZE), argc); // sp + 16 actual argc
-        __ Mov(Operand(jsMethod, JSMethod::GetCallFieldOffset(false)), methodCallField); // get call field
-        __ Btq(JSMethod::IsNativeBit::START_BIT, methodCallField); // is native
+        __ Mov(Operand(jsMethod, JSMethod::CALL_FIELD_OFFSET), methodCallField); // get call field
+        __ Btq(MethodLiteral::IsNativeBit::START_BIT, methodCallField); // is native
         __ Jb(&lCallNativeMethod);
-        __ Btq(JSMethod::IsAotCodeBit::START_BIT, methodCallField); // is aot
+        __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
         __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 argv
@@ -443,8 +443,8 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     Register expectedNumArgsReg = rcx;
     {
         __ Movq(argc, rdx);  // argc -> rdx
-        __ Shr(JSMethod::NumArgsBits::START_BIT, methodCallField);
-        __ Andl(((1LU <<  JSMethod::NumArgsBits::SIZE) - 1), methodCallField);
+        __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
+        __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), methodCallField);
         __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argument
         __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
         __ Movq(rsp, r8);
@@ -466,9 +466,9 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     __ Bind(&lCallNativeMethod);
     {
         __ Pop(rax); // pc
-        __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // Get Method
+        __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // Get MethodLiteral
         Register nativePointer = rsi;
-        __ Mov(Operand(jsMethod, JSMethod::GetBytecodeArrayOffset(false)), nativePointer); // get native pointer
+        __ Mov(Operand(jsMethod, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativePointer); // native pointer
         __ Push(nativePointer); // native code address
         __ Push(rax); // pc
         __ Movq(glueReg, rax);
@@ -653,12 +653,12 @@ void OptimizedCall::JSCall(ExtendedAssembler *assembler)
         __ Movq(rdx, Operand(rsp, FRAME_SLOT_SIZE));
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // get method
         __ Movl(Operand(rsp, DOUBLE_SLOT_SIZE), argc); // sp + 16 actual argc
-        __ Mov(Operand(jsMethod, JSMethod::GetCallFieldOffset(false)), methodCallField); // get call field
-        __ Btq(JSMethod::IsNativeBit::START_BIT, methodCallField); // is native
+        __ Mov(Operand(jsMethod, JSMethod::CALL_FIELD_OFFSET), methodCallField); // get call field
+        __ Btq(MethodLiteral::IsNativeBit::START_BIT, methodCallField); // is native
         __ Jb(&lCallNativeMethod);
         __ Btq(JSHClass::ClassConstructorBit::START_BIT, rax); // is CallConstructor
         __ Jb(&lCallConstructor);
-        __ Btq(JSMethod::IsAotCodeBit::START_BIT, methodCallField); // is aot
+        __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
         __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 argv
@@ -692,9 +692,9 @@ void OptimizedCall::JSCall(ExtendedAssembler *assembler)
     __ Bind(&lCallNativeMethod);
     {
         __ Pop(rax); // pc
-        __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // Get Method
+        __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // Get MethodLiteral
         Register nativePointer = rsi;
-        __ Mov(Operand(jsMethod, JSMethod::GetBytecodeArrayOffset(false)), nativePointer); // get native pointer
+        __ Mov(Operand(jsMethod, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativePointer); // native pointer
         __ Push(nativePointer); // native code address
         __ Push(rax); // pc
         __ Movq(glueReg, rax);
@@ -758,10 +758,10 @@ void OptimizedCall::ConstructorJSCall(ExtendedAssembler *assembler)
         __ Movq(rdx, Operand(rsp, FRAME_SLOT_SIZE));
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // get method
         __ Movl(Operand(rsp, DOUBLE_SLOT_SIZE), argc); // sp + 16 actual argc
-        __ Mov(Operand(jsMethod, JSMethod::GetCallFieldOffset(false)), methodCallField); // get call field
-        __ Btq(JSMethod::IsNativeBit::START_BIT, methodCallField); // is native
+        __ Mov(Operand(jsMethod, JSMethod::CALL_FIELD_OFFSET), methodCallField); // get call field
+        __ Btq(MethodLiteral::IsNativeBit::START_BIT, methodCallField); // is native
         __ Jb(&lCallNativeMethod);
-        __ Btq(JSMethod::IsAotCodeBit::START_BIT, methodCallField); // is aot
+        __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
         __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 argv
@@ -779,9 +779,9 @@ void OptimizedCall::ConstructorJSCall(ExtendedAssembler *assembler)
     __ Bind(&lCallNativeMethod);
     {
         __ Pop(rax); // pc
-        __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // Get Method
+        __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), jsMethod); // Get MethodLiteral
         Register nativePointer = rsi;
-        __ Mov(Operand(jsMethod, JSMethod::GetBytecodeArrayOffset(false)), nativePointer); // get native pointer
+        __ Mov(Operand(jsMethod, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativePointer); // native pointer
         __ Push(nativePointer); // native code address
         __ Push(rax); // pc
         __ Movq(glueReg, rax);
@@ -850,8 +850,8 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
 {
     Label lDirectCallCodeEntry;
     __ Movq(argc, rdx);  // argc -> rdx
-    __ Shr(JSMethod::NumArgsBits::START_BIT, methodCallField);
-    __ Andl(((1LU <<  JSMethod::NumArgsBits::SIZE) - 1), methodCallField);
+    __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
+    __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), methodCallField);
     __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argumentr
     __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
     __ Movq(rsp, r8);
@@ -1055,9 +1055,9 @@ void OptimizedCall::PushArgsWithArgV(ExtendedAssembler *assembler, Register jsfu
     Label copyArguments;
     // get expected num Args
     __ Movq(Operand(jsfunc, JSFunctionBase::METHOD_OFFSET), tmp);
-    __ Movq(Operand(tmp, JSMethod::GetCallFieldOffset(false)), tmp);
-    __ Shr(JSMethod::NumArgsBits::START_BIT, tmp);
-    __ Andl(((1LU <<  JSMethod::NumArgsBits::SIZE) - 1), tmp);
+    __ Movq(Operand(tmp, JSMethod::CALL_FIELD_OFFSET), tmp);
+    __ Shr(MethodLiteral::NumArgsBits::START_BIT, tmp);
+    __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), tmp);
 
     __ Mov(tmp, expectedNumArgs);
     __ Testb(1, expectedNumArgs);
