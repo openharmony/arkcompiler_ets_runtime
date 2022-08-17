@@ -15,7 +15,7 @@
 
 import { Car } from './B.js';   // Test direct Export & use after import
 import { Star } from './C.js';  // Test indirect Export & use after import
-
+import * as ns from './A.js';
 let A = Car;
 
 var myCar = {
@@ -44,3 +44,11 @@ if (infoA != "HWCar_Test:HW_Test:CNY:XXW_Test" ) {
     print("Pass!!");
 }
 
+class Test {
+    constructor(a) {
+        this.a = a
+    }
+}
+
+var test = new Test(ns.a)
+print(test.a)
