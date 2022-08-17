@@ -607,22 +607,12 @@ source_set("libark_jsruntime_set") {
   ]
 
   deps = []
-  if (is_mingw || is_mac) {
-    defines = [
-      "ECMASCRIPT_SUPPORT_DEBUGGER",
-      "ENABLE_HILOG",
-    ]
-    if (is_mingw) {
-      platform = "windows"
-      public_configs += [ ":ark_jsruntime_windows_config" ]
-    } else {
-      platform = "mac"
-    }
-    deps += [
-      "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_$platform",
-    ]
+  if (is_mingw) {
+    public_configs += [ ":ark_jsruntime_windows_config" ]
   }
-
+  if (is_mingw || is_mac) {
+    defines = [ "ECMASCRIPT_SUPPORT_DEBUGGER" ]
+  }
   cflags_cc = []
   if (is_standard_system) {
     cflags_cc += [ "-fvisibility=hidden" ]
