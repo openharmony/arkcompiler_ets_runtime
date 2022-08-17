@@ -3271,7 +3271,7 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
     GateRef resumeModeBits = builder_.Int32And(bitfieldlsr,
                                                builder_.Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
     auto resumeMode = builder_.SExtInt32ToInt64(resumeModeBits);
-    GateRef result = builder_.TaggedTypeNGC(resumeMode);
+    GateRef result = builder_.TaggedNGC(resumeMode);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
