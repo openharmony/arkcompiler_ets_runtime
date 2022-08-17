@@ -151,6 +151,7 @@ host_unittest_action("EcmaVm_003_Test") {
     "tagged_value_test.cpp",
     "template_map_test.cpp",
     "template_string_test.cpp",
+    "transitions_dictionary_test.cpp",
     "weak_ref_old_gc_test.cpp",
     "weak_ref_semi_gc_test.cpp",
     "weak_vector_test.cpp",

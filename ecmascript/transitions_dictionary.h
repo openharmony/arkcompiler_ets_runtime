@@ -103,7 +103,7 @@ public:
         HashTableT::Set(thread, index, metaData);
     }
 
-    inline void SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, JSTaggedValue &value,
+    inline void SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, const JSTaggedValue &value,
                          const JSTaggedValue &metaData)
     {
         SetKey(thread, entry, key);
