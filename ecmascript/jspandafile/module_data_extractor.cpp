@@ -88,7 +88,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
 
     mda.EnumerateModuleRecord([factory, thread, pf, requestModuleArray, moduleRecord]
         (const ModuleTag &tag, uint32_t exportNameOffset,
-         uint32_t moduleRequestIdx, uint32_t importNameOffset, uint32_t localNameOffset) {
+         uint32_t moduleRequestIdx, uint32_t importNameOffset, uint32_t localNameOffset, size_t idx, uint32_t len) {
         size_t requestArraySize = requestModuleArray->GetLength();
         ASSERT((requestArraySize == 0 || moduleRequestIdx < requestArraySize));
         JSHandle<JSTaggedValue> defaultValue = thread->GlobalConstants()->GetHandledUndefined();
@@ -107,7 +107,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
                     moduleRequest = JSHandle<JSTaggedValue>(thread, requestModuleArray->Get(moduleRequestIdx));
                 }
                 JSHandle<ImportEntry> importEntry = factory->NewImportEntry(moduleRequest, importName, localName);
-                SourceTextModule::AddImportEntry(thread, moduleRecord, importEntry);
+                SourceTextModule::AddImportEntry(thread, moduleRecord, importEntry, idx, len);
                 break;
             }
             case ModuleTag::NAMESPACE_IMPORT: {
@@ -121,7 +121,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
                 }
                 JSHandle<JSTaggedValue> importName = thread->GlobalConstants()->GetHandledStarString();
                 JSHandle<ImportEntry> importEntry = factory->NewImportEntry(moduleRequest, importName, localName);
-                SourceTextModule::AddImportEntry(thread, moduleRecord, importEntry);
+                SourceTextModule::AddImportEntry(thread, moduleRecord, importEntry, idx, len);
                 break;
             }
             case ModuleTag::LOCAL_EXPORT: {
@@ -135,7 +135,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
 
                 JSHandle<ExportEntry> exportEntry =
                     factory->NewExportEntry(exportName, defaultValue, defaultValue, localName);
-                SourceTextModule::AddLocalExportEntry(thread, moduleRecord, exportEntry);
+                SourceTextModule::AddLocalExportEntry(thread, moduleRecord, exportEntry, idx, len);
                 break;
             }
             case ModuleTag::INDIRECT_EXPORT: {
@@ -154,7 +154,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
 
                 JSHandle<ExportEntry> exportEntry =
                     factory->NewExportEntry(exportName, moduleRequest, importName, defaultValue);
-                SourceTextModule::AddIndirectExportEntry(thread, moduleRecord, exportEntry);
+                SourceTextModule::AddIndirectExportEntry(thread, moduleRecord, exportEntry, idx, len);
                 break;
             }
             case ModuleTag::STAR_EXPORT: {
@@ -165,7 +165,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
 
                 JSHandle<ExportEntry> exportEntry =
                     factory->NewExportEntry(defaultValue, moduleRequest, defaultValue, defaultValue);
-                SourceTextModule::AddStarExportEntry(thread, moduleRecord, exportEntry);
+                SourceTextModule::AddStarExportEntry(thread, moduleRecord, exportEntry, idx, len);
                 break;
             }
             default: {
@@ -190,7 +190,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<ExportEntry> exportEntry =
         factory->NewExportEntry(defaultName, defaultValue, defaultValue, defaultName);
-    SourceTextModule::AddLocalExportEntry(thread, moduleRecord, exportEntry);
+    SourceTextModule::AddLocalExportEntry(thread, moduleRecord, exportEntry, 0, 1); // 1 means len
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::CJSMODULE);
 

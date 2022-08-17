@@ -90,13 +90,13 @@ public:
     static JSHandle<JSTaggedValue> GetModuleNamespace(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     static void AddImportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                               const JSHandle<ImportEntry> &importEntry);
+                               const JSHandle<ImportEntry> &importEntry, size_t idx, uint32_t len);
     static void AddLocalExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                    const JSHandle<ExportEntry> &exportEntry);
+                                    const JSHandle<ExportEntry> &exportEntry, size_t idx, uint32_t len);
     static void AddIndirectExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                       const JSHandle<ExportEntry> &exportEntry);
+                                       const JSHandle<ExportEntry> &exportEntry, size_t idx, uint32_t len);
     static void AddStarExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                   const JSHandle<ExportEntry> &exportEntry);
+                                   const JSHandle<ExportEntry> &exportEntry, size_t idx, uint32_t len);
 
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);

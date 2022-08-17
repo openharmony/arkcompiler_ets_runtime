@@ -23,8 +23,14 @@ host_moduletest_action("C") {
   is_module = true
 }
 
+host_moduletest_action("A") {
+  deps = []
+  is_module = true
+}
+
 host_moduletest_action("module") {
   deps = [
+    ":gen_A_abc",
     ":gen_B_abc",
     ":gen_C_abc",
   ]

@@ -690,74 +690,66 @@ void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTe
 }
 
 void SourceTextModule::AddImportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                      const JSHandle<ImportEntry> &importEntry)
+                                      const JSHandle<ImportEntry> &importEntry, size_t idx, uint32_t len)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSTaggedValue importEntries = module->GetImportEntries();
     if (importEntries.IsUndefined()) {
-        JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
-        array->Set(thread, 0, importEntry.GetTaggedValue());
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
+        array->Set(thread, idx, importEntry.GetTaggedValue());
         module->SetImportEntries(thread, array);
     } else {
         JSHandle<TaggedArray> entries(thread, importEntries);
-        size_t len = entries->GetLength();
-        JSHandle<TaggedArray> newEntries = TaggedArray::SetCapacity(thread, entries, len + 1);
-        newEntries->Set(thread, len, importEntry.GetTaggedValue());
-        module->SetImportEntries(thread, newEntries);
+        if (len > entries->GetLength()) {
+            entries = TaggedArray::SetCapacity(thread, entries, len);
+        }
+        entries->Set(thread, idx, importEntry.GetTaggedValue());
+        module->SetImportEntries(thread, entries);
     }
 }
 
 void SourceTextModule::AddLocalExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                           const JSHandle<ExportEntry> &exportEntry)
+                                           const JSHandle<ExportEntry> &exportEntry, size_t idx, uint32_t len)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSTaggedValue localExportEntries = module->GetLocalExportEntries();
     if (localExportEntries.IsUndefined()) {
-        JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
-        array->Set(thread, 0, exportEntry.GetTaggedValue());
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
+        array->Set(thread, idx, exportEntry.GetTaggedValue());
         module->SetLocalExportEntries(thread, array);
     } else {
         JSHandle<TaggedArray> entries(thread, localExportEntries);
-        size_t len = entries->GetLength();
-        JSHandle<TaggedArray> newEntries = TaggedArray::SetCapacity(thread, entries, len + 1);
-        newEntries->Set(thread, len, exportEntry.GetTaggedValue());
-        module->SetLocalExportEntries(thread, newEntries);
+        entries->Set(thread, idx, exportEntry.GetTaggedValue());
     }
 }
 
 void SourceTextModule::AddIndirectExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                              const JSHandle<ExportEntry> &exportEntry)
+                                              const JSHandle<ExportEntry> &exportEntry, size_t idx, uint32_t len)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSTaggedValue indirectExportEntries = module->GetIndirectExportEntries();
     if (indirectExportEntries.IsUndefined()) {
-        JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
-        array->Set(thread, 0, exportEntry.GetTaggedValue());
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
+        array->Set(thread, idx, exportEntry.GetTaggedValue());
         module->SetIndirectExportEntries(thread, array);
     } else {
         JSHandle<TaggedArray> entries(thread, indirectExportEntries);
-        size_t len = entries->GetLength();
-        JSHandle<TaggedArray> newEntries = TaggedArray::SetCapacity(thread, entries, len + 1);
-        newEntries->Set(thread, len, exportEntry.GetTaggedValue());
-        module->SetIndirectExportEntries(thread, newEntries);
+        entries->Set(thread, idx, exportEntry.GetTaggedValue());
     }
 }
 
 void SourceTextModule::AddStarExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                          const JSHandle<ExportEntry> &exportEntry)
+                                          const JSHandle<ExportEntry> &exportEntry, size_t idx, uint32_t len)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSTaggedValue starExportEntries = module->GetStarExportEntries();
     if (starExportEntries.IsUndefined()) {
-        JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
-        array->Set(thread, 0, exportEntry.GetTaggedValue());
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
+        array->Set(thread, idx, exportEntry.GetTaggedValue());
         module->SetStarExportEntries(thread, array);
     } else {
         JSHandle<TaggedArray> entries(thread, starExportEntries);
-        size_t len = entries->GetLength();
-        JSHandle<TaggedArray> newEntries = TaggedArray::SetCapacity(thread, entries, len + 1);
-        newEntries->Set(thread, len, exportEntry.GetTaggedValue());
-        module->SetStarExportEntries(thread, newEntries);
+        entries->Set(thread, idx, exportEntry.GetTaggedValue());
     }
 }
 
