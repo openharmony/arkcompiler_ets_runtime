@@ -46,7 +46,6 @@ JSPandaFileManager::~JSPandaFileManager()
 const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
     std::string_view entryPoint)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileManager::LoadJSPandaFile");
     {
         os::memory::LockHolder lock(jsPandaFileLock_);
         const JSPandaFile *jsPandaFile = FindJSPandaFileUnlocked(filename);
@@ -92,7 +91,6 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
 
 JSHandle<Program> JSPandaFileManager::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileManager::GenerateProgram");
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
 
     JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile);
@@ -126,7 +124,6 @@ const JSPandaFile *JSPandaFileManager::GetJSPandaFile(const panda_file::File *pf
 void JSPandaFileManager::InsertJSPandaFile(const JSPandaFile *jsPandaFile)
 {
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
-    LOG_ECMA(DEBUG) << "InsertJSPandaFile " << filename;
     std::pair<const JSPandaFile *, uint32_t> pandaFileRecord = std::make_pair(jsPandaFile, 1);
     os::memory::LockHolder lock(jsPandaFileLock_);
     ASSERT(loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end());

@@ -19,7 +19,6 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/sparse_space.h"

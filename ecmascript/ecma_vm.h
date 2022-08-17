@@ -22,7 +22,6 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/waiter_list.h"
 
@@ -430,8 +429,7 @@ private:
     Chunk chunk_;
     Heap *heap_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    ChunkVector<JSNativePointer *> nativePointerList_;
-
+    CVector<JSNativePointer *> nativePointerList_;
     // VM execution states.
     JSThread *thread_ {nullptr};
     RegExpParserCache *regExpParserCache_ {nullptr};

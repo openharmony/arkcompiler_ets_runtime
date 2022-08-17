@@ -23,7 +23,6 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/native_area_allocator.h"
@@ -199,7 +198,7 @@ constexpr uint8_t INVALID_BUILTINS_ID = 0xFF;
 
 class ObjectFactory {
 public:
-    explicit ObjectFactory(JSThread *thread, Heap *heap, Chunk *chunk);
+    ObjectFactory(JSThread *thread, Heap *heap);
     ~ObjectFactory();
     void GenerateInternalNativeMethods();
     JSMethod *GetMethodByIndex(MethodIndex idx);
@@ -587,8 +586,8 @@ private:
 
     EcmaVM *vm_ {nullptr};
     Heap *heap_ {nullptr};
-    ChunkVector<JSMethod *> nativeMethods_;
-    ChunkVector<JSMethod *> internalNativeMethods_;
+    CVector<JSMethod *> nativeMethods_;
+    CVector<JSMethod *> internalNativeMethods_;
 
     NO_COPY_SEMANTIC(ObjectFactory);
     NO_MOVE_SEMANTIC(ObjectFactory);

@@ -247,7 +247,6 @@
 
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/llvm_stackmap_type.h"
-#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {

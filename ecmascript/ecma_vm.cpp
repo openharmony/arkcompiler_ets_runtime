@@ -129,7 +129,6 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
       nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
       heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
       chunk_(nativeAreaAllocator_.get()),
-      nativePointerList_(&chunk_),
       ecmaParamConfiguration_(std::move(config))
 {
     options_ = std::move(options);
@@ -156,7 +155,7 @@ bool EcmaVM::Initialize()
     heap_ = new Heap(this);
     heap_->Initialize();
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
-    factory_ = chunk_.New<ObjectFactory>(thread_, heap_, &chunk_);
+    factory_ = chunk_.New<ObjectFactory>(thread_, heap_);
     if (UNLIKELY(factory_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc factory_ failed";
         UNREACHABLE();
