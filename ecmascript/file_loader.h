@@ -370,11 +370,11 @@ public:
     virtual ~FileLoader();
     void LoadStubFile();
     void LoadAOTFile(const std::string &fileName);
-    void SetAOTmmap(void *addr, uint32_t totalCodeSize)
+    void SetAOTmmap(void *addr, size_t totalCodeSize)
     {
         aotAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
     }
-    void SetStubmmap(void *addr, uint32_t totalCodeSize)
+    void SetStubmmap(void *addr, size_t totalCodeSize)
     {
         stubAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
     }
@@ -424,8 +424,8 @@ public:
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void RuntimeRelocate();
 private:
-    std::vector<std::pair<void *, uint32_t>> aotAddrs_;
-    std::vector<std::pair<void *, uint32_t>> stubAddrs_;
+    std::vector<std::pair<void *, size_t>> aotAddrs_;
+    std::vector<std::pair<void *, size_t>> stubAddrs_;
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     StubModulePackInfo stubPackInfo_ {};

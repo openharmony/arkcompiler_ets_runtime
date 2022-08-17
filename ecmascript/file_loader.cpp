@@ -175,13 +175,10 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
     des_.resize(moduleNum_);
     uint32_t totalCodeSize = 0;
     binBufparser.ParseBuffer(&totalCodeSize, sizeof(totalCodeSize_));
-    void *addr = base::MemMmap::Mmap(totalCodeSize);
-    if (addr == nullptr) {
-        LOG_FULL(FATAL) << "mmap fail";
-        return false;
-    }
-    vm->GetFileLoader()->SetStubmmap(addr, totalCodeSize);
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(addr);
+    int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+    auto pool = MemMapAllocator::GetInstance()->Allocate(AlignUp(totalCodeSize, 256_KB), 0, false, prot);
+    vm->GetFileLoader()->SetStubmmap(pool.GetMem(), pool.GetSize());
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
     uint32_t curUnitOffset = 0;
     uint32_t asmStubSize;
     binBufparser.ParseBuffer(&asmStubSize, sizeof(asmStubSize));
@@ -245,13 +242,10 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
     uint32_t totalCodeSize = 0;
     file.read(reinterpret_cast<char *>(&totalCodeSize), sizeof(totalCodeSize_));
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetAssociatedJSThread());
-    void *addr = base::MemMmap::Mmap(totalCodeSize);
-    if (addr == nullptr) {
-        LOG_FULL(FATAL) << "mmap fail";
-        return false;
-    }
-    vm->GetFileLoader()->SetAOTmmap(addr, totalCodeSize);
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(addr);
+    int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+    auto pool = MemMapAllocator::GetInstance()->Allocate(AlignUp(totalCodeSize, 256_KB), 0, false, prot);
+    vm->GetFileLoader()->SetAOTmmap(pool.GetMem(), pool.GetSize());
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
     file.read(reinterpret_cast<char *>(aotFileHashs_.data()), sizeof(uint32_t) * moduleNum_);
     uint32_t curUnitOffset = 0;
     for (size_t i = 0; i < moduleNum_; i++) {
@@ -454,10 +448,10 @@ FileLoader::~FileLoader()
         arkStackMapParser_ = nullptr;
     }
     for (size_t i = 0; i < aotAddrs_.size(); i++) {
-        base::MemMmap::Munmap(aotAddrs_[i].first, aotAddrs_[i].second);
+        MemMapAllocator::GetInstance()->Free(aotAddrs_[i].first, aotAddrs_[i].second, false);
     }
     for (size_t i = 0; i < stubAddrs_.size(); i++) {
-        base::MemMmap::Munmap(stubAddrs_[i].first, stubAddrs_[i].second);
+        MemMapAllocator::GetInstance()->Free(stubAddrs_[i].first, stubAddrs_[i].second, false);
     }
 }
 
