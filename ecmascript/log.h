@@ -26,9 +26,9 @@
 #ifdef ENABLE_HILOG
 #include "hilog/log.h"
 
-constexpr static unsigned int DOMAIN = 0xD003F00;
+constexpr static unsigned int ARK_DOMAIN = 0xD003F00;
 constexpr static auto TAG = "ArkCompiler";
-constexpr static OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, DOMAIN, TAG};
+constexpr static OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, ARK_DOMAIN, TAG};
 
 #if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
 // print Debug level log if enable Verbose log
@@ -123,7 +123,7 @@ private:
 };
 
 #ifdef ENABLE_HILOG
-#define LOG_ECMA(level) HiLogIsLoggable(DOMAIN, TAG, LOG_##level) && panda::ecmascript::HiLog<LOG_##level>()
+#define LOG_ECMA(level) HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_##level) && panda::ecmascript::HiLog<LOG_##level>()
 #else // ENABLE_HILOG
 #define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog<(level)>()
 #endif // ENABLE_HILOG
