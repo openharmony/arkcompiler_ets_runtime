@@ -204,6 +204,16 @@ DispatchResponse RuntimeImpl::GetProperties(const GetPropertiesParams &params,
         GetPrimitiveStringValue(value, outPropertyDesc);
     } else if (value->IsJSPrimitiveRef() && value->IsJSPrimitiveBoolean()) {
         GetPrimitiveBooleanValue(value, outPropertyDesc);
+    } else if (value->IsGeneratorFunction()) {
+        GetGeneratorFunctionValue(value, outPropertyDesc);
+    } else if (value->IsGeneratorObject()) {
+        GetGeneratorObjectValue(value, outPropertyDesc);
+    } else if (value->IsJSNumberFormat()) {
+        GetNumberFormatValue(value, outPropertyDesc);
+    } else if (value->IsJSCollator()) {
+        GetCollatorValue(value, outPropertyDesc);
+    } else if (value->IsJSDateTimeFormat()) {
+        GetDateTimeFormatValue(value, outPropertyDesc);
     }
     Local<ArrayRef> keys = Local<ObjectRef>(value)->GetOwnPropertyNames(vm_);
     int32_t length = keys->Length(vm_);
@@ -439,5 +449,55 @@ void RuntimeImpl::GetSetIteratorValue(Local<JSValueRef> value,
         jsValueRef = iterRef->GetKind(vm_);
         SetKeyValue(jsValueRef, outPropertyDesc, "[[IteratorKind]]");
     }
+}
+
+void RuntimeImpl::GetGeneratorFunctionValue(Local<JSValueRef> value,
+    std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
+{
+    Local<JSValueRef> jsValueRef;
+    Local<GeneratorFunctionRef> genFuncRef = value->ToObject(vm_);
+    if (!genFuncRef.IsEmpty()) {
+        jsValueRef = BooleanRef::New(vm_, genFuncRef->IsGenerator());
+        SetKeyValue(jsValueRef, outPropertyDesc, "[[IsGenerator]]");
+    }
+}
+
+void RuntimeImpl::GetGeneratorObjectValue(Local<JSValueRef> value,
+    std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
+{
+    Local<JSValueRef> jsValueRef;
+    Local<GeneratorObjectRef> genObjRef = value->ToObject(vm_);
+    if (!genObjRef.IsEmpty()) {
+        jsValueRef = genObjRef->GetGeneratorState(vm_);
+        SetKeyValue(jsValueRef, outPropertyDesc, "[[GeneratorState]]");
+        jsValueRef = genObjRef->GetGeneratorFunction(vm_);
+        SetKeyValue(jsValueRef, outPropertyDesc, "[[GeneratorFunction]]");
+        jsValueRef = JSNApi::GetGlobalObject(vm_);
+        SetKeyValue(jsValueRef, outPropertyDesc, "[[GeneratorReceiver]]");
+    }
+}
+
+void RuntimeImpl::GetNumberFormatValue(Local<JSValueRef> value,
+    std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
+{
+    Local<NumberFormatRef> numberFormatRef = value->ToObject(vm_);
+    Local<JSValueRef> jsValueRef = numberFormatRef->GetFormatFunction(vm_);
+    SetKeyValue(jsValueRef, outPropertyDesc, "format");
+}
+
+void RuntimeImpl::GetCollatorValue(Local<JSValueRef> value,
+    std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
+{
+    Local<CollatorRef> collatorRef = value->ToObject(vm_);
+    Local<JSValueRef> jsValueRef = collatorRef->GetCompareFunction(vm_);
+    SetKeyValue(jsValueRef, outPropertyDesc, "compare");
+}
+
+void RuntimeImpl::GetDateTimeFormatValue(Local<JSValueRef> value,
+    std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
+{
+    Local<DataTimeFormatRef> dtFormatRef = value->ToObject(vm_);
+    Local<JSValueRef> jsValueRef = dtFormatRef->GetFormatFunction(vm_);
+    SetKeyValue(jsValueRef, outPropertyDesc, "format");
 }
 }  // namespace panda::ecmascript::tooling
