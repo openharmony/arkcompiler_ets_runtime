@@ -358,8 +358,9 @@ EcmaVM::CpuProfilingScope::CpuProfilingScope(EcmaVM* vm) : vm_(vm), profiler_(nu
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (vm_->GetJSOptions().EnableCpuProfiler()) {
-        profiler_ = CpuProfiler::GetInstance();
-        profiler_->CpuProfiler::StartCpuProfilerForFile(vm, "");
+        profiler_ = new CpuProfiler(vm);
+        vm->SetProfiler(profiler_);
+        profiler_->CpuProfiler::StartCpuProfilerForFile("");
     }
 #endif
 }
@@ -369,6 +370,8 @@ EcmaVM::CpuProfilingScope::~CpuProfilingScope()
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (profiler_ != nullptr) {
         profiler_->CpuProfiler::StopCpuProfilerForFile();
+        delete profiler_;
+        profiler_ = nullptr;
     }
 #endif
 }
