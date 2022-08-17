@@ -90,7 +90,7 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
             JSHandle<JSObject> from = JSTaggedValue::ToObject(thread, source);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-            JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, source);
+            JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, JSHandle<JSTaggedValue>::Cast(from));
             // ReturnIfAbrupt(keys)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -106,7 +106,7 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
             for (uint32_t j = 0; j < keysLen; j++) {
                 PropertyDescriptor desc(thread);
                 key.Update(keys->Get(j));
-                bool success = JSTaggedValue::GetOwnProperty(thread, source, key, desc);
+                bool success = JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(from), key, desc);
                 // ReturnIfAbrupt(desc)
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
