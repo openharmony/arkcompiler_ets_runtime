@@ -55,6 +55,7 @@ public:
         parser->Add(&maxNonmovableSpaceCapacity_);
         parser->Add(&enableAsmInterpreter_);
         parser->Add(&asmOpcodeDisableRange_);
+        parser->Add(&enableForceGc_);
         parser->Add(&stubFile_);
         parser->Add(&aotOutputFile_);
         parser->Add(&targetTriple_);
