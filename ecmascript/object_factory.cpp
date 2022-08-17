@@ -142,9 +142,8 @@ using EvalError = builtins::BuiltinsEvalError;
 using ErrorType = base::ErrorType;
 using ErrorHelper = base::ErrorHelper;
 
-ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap, Chunk *chunk)
-    : thread_(thread), vm_(thread->GetEcmaVM()), heap_(heap),
-      nativeMethods_(chunk), internalNativeMethods_(chunk)
+ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap)
+    : thread_(thread), vm_(thread->GetEcmaVM()), heap_(heap)
 {
 }
 

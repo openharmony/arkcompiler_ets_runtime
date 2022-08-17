@@ -31,7 +31,6 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/tagged_array-inl.h"

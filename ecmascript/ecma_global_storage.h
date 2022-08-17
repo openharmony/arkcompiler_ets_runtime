@@ -16,11 +16,11 @@
 #ifndef ECMASCRIPT_ECMA_GLOBAL_STORAGE_H
 #define ECMASCRIPT_ECMA_GLOBAL_STORAGE_H
 
+#include "ecmascript/mem/native_area_allocator.h"
 #if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
 #include "ecmascript/dfx/native_dfx/backtrace.h"
 #endif
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/chunk.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {
@@ -29,11 +29,11 @@ public:
     static const int32_t GLOBAL_BLOCK_SIZE = 256;
     using WeakClearCallback = void (*)(void *);
 
-    explicit EcmaGlobalStorage(JSThread *thread, Chunk *chunk) : thread_(thread), chunk_(chunk)
+    explicit EcmaGlobalStorage(JSThread *thread, NativeAreaAllocator *allocator)
+        : thread_(thread), allocator_(allocator)
     {
-        ASSERT(chunk != nullptr);
-        topGlobalNodes_ = lastGlobalNodes_ = chunk_->New<NodeList<Node>>();
-        topWeakGlobalNodes_ = lastWeakGlobalNodes_ = chunk_->New<NodeList<WeakNode>>();
+        topGlobalNodes_ = lastGlobalNodes_ = allocator_->New<NodeList<Node>>();
+        topWeakGlobalNodes_ = lastWeakGlobalNodes_ = allocator_->New<NodeList<WeakNode>>();
     }
 
     ~EcmaGlobalStorage()
@@ -47,7 +47,7 @@ public:
                 node->SetUsing(false);
                 node->SetObject(JSTaggedValue::Undefined().GetRawData());
             });
-            chunk_->Delete(current);
+            allocator_->Delete(current);
         }
 
         auto *weakNext = topWeakGlobalNodes_;
@@ -60,7 +60,7 @@ public:
                 node->SetObject(JSTaggedValue::Undefined().GetRawData());
                 reinterpret_cast<WeakNode *>(node)->CallWeakCallback();
             });
-            chunk_->Delete(weakCurrent);
+            allocator_->Delete(weakCurrent);
         }
     }
 
@@ -478,7 +478,7 @@ private:
             if (*lastNodes == list) {
                 *lastNodes = list->GetPrev();
             }
-            chunk_->Delete(list);
+            allocator_->Delete(list);
         } else {
             // Add to freeList
             if (list != *freeList && list->GetFreeNext() == nullptr && list->GetFreePrev() == nullptr) {
@@ -518,7 +518,7 @@ private:
             }
             return node->GetObjectAddress();
         }
-        auto block = chunk_->New<NodeList<T>>();
+        auto block = allocator_->New<NodeList<T>>();
         block->LinkTo(*storage);
         *storage = block;
 
@@ -529,7 +529,7 @@ private:
     }
 
     [[maybe_unused]] JSThread *thread_ {nullptr};
-    Chunk *chunk_ {nullptr};
+    NativeAreaAllocator *allocator_ {nullptr};
     NodeList<Node> *topGlobalNodes_ {nullptr};
     NodeList<Node> *lastGlobalNodes_ {nullptr};
     NodeList<Node> *freeListNodes_ {nullptr};

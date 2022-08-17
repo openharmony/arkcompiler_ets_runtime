@@ -56,7 +56,7 @@ public:
             semiSpaceOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 2_MB;
             minGrowingStep_ = 4_MB;
-            maxStackSize_ = 512_KB;
+            maxStackSize_ = 128_KB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
@@ -68,7 +68,7 @@ public:
             semiSpaceOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 4_MB;
             minGrowingStep_ = 8_MB;
-            maxStackSize_ = 512_KB;
+            maxStackSize_ = 128_KB;
         }  else { // 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
@@ -80,7 +80,7 @@ public:
             semiSpaceOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 8_MB;
             minGrowingStep_ = 16_MB;
-            maxStackSize_ = 512_KB;
+            maxStackSize_ = 128_KB;
         }
     }
 

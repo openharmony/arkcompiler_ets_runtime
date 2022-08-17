@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <cmath>
+#include <stack>
 
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
