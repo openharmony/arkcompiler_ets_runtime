@@ -39,12 +39,18 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         LOptions(optLevel_, true, relocMode_));
     CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
     TSManager *tsManager = vm_->GetTSManager();
-
+    uint32_t mainMethodIndex = bytecodeInfo.jsPandaFile->GetMainMethodIndex();
+    uint32_t skipMethodNum = 0;
+    auto mainMethod = bytecodeInfo.jsPandaFile->FindMethods(mainMethodIndex);
     bool enableLog = !log_->NoneMethod();
 
-    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableLog, aotModule, &cmpCfg, tsManager]
-        (const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> &constantPool,
+    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableLog, aotModule, &cmpCfg, tsManager,
+        &mainMethod, &skipMethodNum](const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> &constantPool,
         BytecodeInfoCollector::MethodPcInfo &methodPCInfo) {
+        if (methodPCInfo.methodsSize > maxAotMethodSize_ && methodPCInfo.methods[0] != mainMethod) {
+            skipMethodNum += methodPCInfo.methods.size();
+            return;
+        }
         for (auto method : methodPCInfo.methods) {
             const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
             if (log_->CertainMethod()) {
@@ -70,7 +76,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);
         }
     });
-
+    LOG_COMPILER(INFO) << skipMethodNum << " large methods in '" << fileName << "' have been skipped";
     generator.AddModule(aotModule, aotModuleAssembler, bytecodeInfo.jsPandaFile);
     return true;
 }

@@ -56,6 +56,10 @@ public:
     GateRef GetCommonArgGate(const CommonArgIdx arg) const;
     void FillArgsGateType(const TypeRecorder *typeRecorder);
     void CollectArgs();
+    static size_t GetFixArgsNum()
+    {
+        return static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS) - static_cast<size_t>(CommonArgIdx::FUNC);
+    }
 
 private:
     size_t GetFunctionArgIndex(const size_t currentVreg, const bool haveFunc,

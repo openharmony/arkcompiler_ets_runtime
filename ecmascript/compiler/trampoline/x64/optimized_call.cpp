@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
@@ -434,7 +435,9 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
-        __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 argv
+        __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 get aot argv
+        // argv + 24 get asm interpreter argv
+        __ Addq(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE, argV);
         OptimizedCallAsmInterpreter(assembler);
     }
 
@@ -661,7 +664,9 @@ void OptimizedCall::JSCall(ExtendedAssembler *assembler)
         __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
-        __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 argv
+        __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 get aot argv
+        // argv + 24 get asm interpreter argv
+        __ Addq(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE, argV);
         OptimizedCallAsmInterpreter(assembler);
         __ Bind(&lCallConstructor);
         {
@@ -764,7 +769,9 @@ void OptimizedCall::ConstructorJSCall(ExtendedAssembler *assembler)
         __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
-        __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 argv
+        __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 get aot argv
+        // argv + 24 get asm interpreter argv
+        __ Addq(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE, argV);
         OptimizedCallAsmInterpreter(assembler);
     }
 

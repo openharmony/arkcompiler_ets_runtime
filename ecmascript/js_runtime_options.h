@@ -84,6 +84,7 @@ public:
         parser->Add(&logError_);
         parser->Add(&logFatal_);
         parser->Add(&logComponents_);
+        parser->Add(&maxAotMethodSize_);
     }
 
     bool EnableArkTools() const
@@ -619,6 +620,11 @@ public:
         return logFatal_.WasSet();
     }
 
+    size_t GetMaxAotMethodSize() const
+    {
+        return maxAotMethodSize_.GetValue();
+    }
+
 private:
     PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
@@ -723,6 +729,8 @@ private:
         "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler", "pandafile",
         "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue", "jvmti", "aot",
         "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+    PandArg<uint32_t> maxAotMethodSize_ {"maxAotMethodSize", 32_KB,
+        R"(enable aot to skip too large method. Default size: 32 KB)"};
 };
 }  // namespace panda::ecmascript
 

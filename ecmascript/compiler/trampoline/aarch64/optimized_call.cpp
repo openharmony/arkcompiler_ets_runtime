@@ -404,8 +404,10 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     __ Tbnz(callField, MethodLiteral::IsAotCodeBit::START_BIT, &callOptimizedMethod);
     {
         Register argV(X5);
-        // argV = sp + 16
+        // aot argV = sp + 16
         __ Add(argV, sp, Immediate(DOUBLE_SLOT_SIZE));
+        // asm interpreter argV = argv + 24
+        __ Add(argV, argV, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE));
         OptimizedCallAsmInterpreter(assembler);
     }
 
@@ -504,8 +506,10 @@ void OptimizedCall::ConstructorJSCallInternal(ExtendedAssembler *assembler, Regi
     __ Tbnz(callField, MethodLiteral::IsAotCodeBit::START_BIT, &callOptimizedMethod);
     {
         Register argV(X5);
-        // argV = sp + 16
+        // aot argV = sp + 16
         __ Add(argV, sp, Immediate(DOUBLE_SLOT_SIZE));
+        // asm interpreter argV = argv + 24
+        __ Add(argV, argV, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE));
         OptimizedCallAsmInterpreter(assembler);
     }
 
