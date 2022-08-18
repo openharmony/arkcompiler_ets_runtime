@@ -170,11 +170,25 @@ bool DebuggerImpl::IsSkipLine(const JSPtLocation &location)
     return false;
 }
 
+bool DebuggerImpl::CheckPauseOnException()
+{
+    if (pauseOnException_ == PauseOnExceptionsState::NONE) {
+        return false;
+    }
+    if (pauseOnException_ == PauseOnExceptionsState::UNCAUGHT) {
+        if (DebuggerApi::IsExceptionCaught(vm_)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void DebuggerImpl::NotifyPaused(std::optional<JSPtLocation> location, PauseReason reason)
 {
-    if (!pauseOnException_ && reason == EXCEPTION) {
+    if (reason == EXCEPTION && !CheckPauseOnException()) {
         return;
     }
+
     Local<JSValueRef> exception = DebuggerApi::GetAndClearException(vm_);
 
     std::vector<std::string> hitBreakpoints;
@@ -715,9 +729,7 @@ DispatchResponse DebuggerImpl::SetBreakpointByUrl(const SetBreakpointByUrlParams
 
 DispatchResponse DebuggerImpl::SetPauseOnExceptions(const SetPauseOnExceptionsParams &params)
 {
-    PauseOnExceptionsState state = params.GetState();
-    pauseOnException_ = (state != PauseOnExceptionsState::UNCAUGHT);
-
+    pauseOnException_ = params.GetState();
     return DispatchResponse::Ok();
 }
 
