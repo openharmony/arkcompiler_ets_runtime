@@ -187,7 +187,7 @@ public:
         value_ = value_ & (~TAG_WEAK);
     }
 
-    inline JSTaggedValue CreateAndGetWeakRef()
+    inline JSTaggedValue CreateAndGetWeakRef() const
     {
         ASSERT_PRINT(IsHeapObject() && ((value_ & TAG_WEAK) == 0U),
                      "The least significant two bits of JSTaggedValue are not zero.");
