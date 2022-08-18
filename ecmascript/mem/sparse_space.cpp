@@ -106,7 +106,6 @@ uintptr_t SparseSpace::AllocateAfterSweepingCompleted(size_t size)
     if (TryFillSweptRegion()) {
         auto object = allocator_->Allocate(size);
         if (object != 0) {
-            liveObjectSize_ += size;
             return object;
         }
     }
@@ -437,7 +436,7 @@ void OldSpace::CheckRegionSize()
         LOG_GC(DEBUG) << "Actual live object size:" << GetHeapObjectSize()
                             << ", free object size:" << available
                             << ", wasted size:" << wasted
-                            << ", but exception totoal size:" << objectSize_;
+                            << ", but exception total size:" << objectSize_;
     }
 #endif
 }
@@ -519,6 +518,9 @@ uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
         if (isExpand && Expand()) {
             object = allocator_->Allocate(size);
         }
+    }
+    if (object != 0) {
+        Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);
     }
     return object;
 }
