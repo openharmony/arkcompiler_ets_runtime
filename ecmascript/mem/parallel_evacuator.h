@@ -140,8 +140,9 @@ private:
     void UpdateAndSweepNewRegionReference(Region *region);
     void UpdateNewObjectField(TaggedObject *object, JSHClass *cls);
 
-    inline bool UpdateObjectSlot(ObjectSlot &slot);
-    inline bool UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);
+    inline bool UpdateOldToNewObjectSlot(ObjectSlot &slot);
+    inline void UpdateObjectSlot(ObjectSlot &slot);
+    inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);
 
     inline std::unique_ptr<Workload> GetWorkloadSafe();
     inline void AddWorkload(std::unique_ptr<Workload> region);
