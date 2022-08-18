@@ -181,7 +181,7 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValue)
     JSHandle<ExportEntry> exportEntry =
         objFactory->NewExportEntry(exportNameHandle, defaultValue, defaultValue, exportLocalNameHandle);
     JSHandle<SourceTextModule> moduleExport = objFactory->NewSourceTextModule();
-    SourceTextModule::AddLocalExportEntry(thread, moduleExport, exportEntry,0, 1);
+    SourceTextModule::AddLocalExportEntry(thread, moduleExport, exportEntry, 0, 1);
     // store module value
     JSHandle<JSTaggedValue> exportValueHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportValue));
     moduleExport->StoreModuleValue(thread, exportLocalNameHandle, exportValueHandle);
