@@ -84,6 +84,12 @@ if (defined(ark_standalone_build)) {
     }
   }
 
+  group("ark_js_perform") {
+    testonly = true
+    deps = []
+    deps += [ "//arkcompiler/ets_runtime/test/perform:perform" ]
+  }
+
   group("ark_js_host_unittest") {
     testonly = true
     deps = []
