@@ -135,7 +135,7 @@ config("ark_jsruntime_public_config") {
   ]
 
   defines = []
-  if (!is_mingw && !is_mac) {
+  if (!is_mingw && !is_mac && target_os != "android") {
     defines += [
       "ECMASCRIPT_SUPPORT_CPUPROFILER",
       "ECMASCRIPT_SUPPORT_HEAPPROFILER",
