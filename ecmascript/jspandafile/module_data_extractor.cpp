@@ -25,7 +25,6 @@
 #include "libpandafile/literal_data_accessor-inl.h"
 
 namespace panda::ecmascript {
-using ModuleTag = jspandafile::ModuleTag;
 using StringData = panda_file::StringData;
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
@@ -76,7 +75,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
 {
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    jspandafile::ModuleDataAccessor mda(*pf, moduleId);
+    ModuleDataAccessor mda(*pf, moduleId);
     const std::vector<uint32_t> &requestModules = mda.getRequestModules();
     JSHandle<TaggedArray> requestModuleArray = factory->NewTaggedArray(requestModules.size());
     for (size_t idx = 0; idx < requestModules.size(); idx++) {
@@ -84,113 +83,32 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
         JSTaggedValue value(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
         requestModuleArray->Set(thread, idx, value);
     }
-    moduleRecord->SetRequestedModules(thread, requestModuleArray);
+    if (requestModules.size()) {
+        moduleRecord->SetRequestedModules(thread, requestModuleArray);
+    }
 
-    mda.EnumerateModuleRecord([factory, thread, pf, requestModuleArray, moduleRecord]
-        (const ModuleTag &tag, uint32_t exportNameOffset,
-         uint32_t moduleRequestIdx, uint32_t importNameOffset, uint32_t localNameOffset, size_t idx, uint32_t len) {
-        size_t requestArraySize = requestModuleArray->GetLength();
-        ASSERT((requestArraySize == 0 || moduleRequestIdx < requestArraySize));
-        JSHandle<JSTaggedValue> defaultValue = thread->GlobalConstants()->GetHandledUndefined();
-        switch (tag) {
-            case ModuleTag::REGULAR_IMPORT: {
-                StringData sd = pf->GetStringData(panda_file::File::EntityId(localNameOffset));
-                JSHandle<JSTaggedValue> localName(thread,
-                    factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
+    // note the order can't change
+    mda.EnumerateImportEntry(thread, requestModuleArray, moduleRecord);
+    mda.EnumerateLocalExportEntry(thread, moduleRecord);
+    mda.EnumerateIndirectExportEntry(thread, requestModuleArray, moduleRecord);
+    mda.EnumerateStarExportEntry(thread, requestModuleArray, moduleRecord);
 
-                sd = pf->GetStringData(panda_file::File::EntityId(importNameOffset));
-                JSHandle<JSTaggedValue> importName(thread,
-                    factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
-
-                JSHandle<JSTaggedValue> moduleRequest = thread->GlobalConstants()->GetHandledUndefined();
-                if (requestArraySize != 0) {
-                    moduleRequest = JSHandle<JSTaggedValue>(thread, requestModuleArray->Get(moduleRequestIdx));
-                }
-                JSHandle<ImportEntry> importEntry = factory->NewImportEntry(moduleRequest, importName, localName);
-                SourceTextModule::AddImportEntry(thread, moduleRecord, importEntry, idx, len);
-                break;
-            }
-            case ModuleTag::NAMESPACE_IMPORT: {
-                StringData sd = pf->GetStringData(panda_file::File::EntityId(localNameOffset));
-                JSHandle<JSTaggedValue> localName(thread,
-                    factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
-
-                JSHandle<JSTaggedValue> moduleRequest = thread->GlobalConstants()->GetHandledUndefined();
-                if (requestArraySize != 0) {
-                    moduleRequest = JSHandle<JSTaggedValue>(thread, requestModuleArray->Get(moduleRequestIdx));
-                }
-                JSHandle<JSTaggedValue> importName = thread->GlobalConstants()->GetHandledStarString();
-                JSHandle<ImportEntry> importEntry = factory->NewImportEntry(moduleRequest, importName, localName);
-                SourceTextModule::AddImportEntry(thread, moduleRecord, importEntry, idx, len);
-                break;
-            }
-            case ModuleTag::LOCAL_EXPORT: {
-                StringData sd = pf->GetStringData(panda_file::File::EntityId(localNameOffset));
-                JSHandle<JSTaggedValue> localName(thread,
-                    factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
-
-                sd = pf->GetStringData(panda_file::File::EntityId(exportNameOffset));
-                JSHandle<JSTaggedValue> exportName(thread,
-                    factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
-
-                JSHandle<ExportEntry> exportEntry =
-                    factory->NewExportEntry(exportName, defaultValue, defaultValue, localName);
-                SourceTextModule::AddLocalExportEntry(thread, moduleRecord, exportEntry, idx, len);
-                break;
-            }
-            case ModuleTag::INDIRECT_EXPORT: {
-                StringData sd = pf->GetStringData(panda_file::File::EntityId(exportNameOffset));
-                JSHandle<JSTaggedValue> exportName(thread,
-                    factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
-
-                sd = pf->GetStringData(panda_file::File::EntityId(importNameOffset));
-                JSHandle<JSTaggedValue> importName(thread,
-                    factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
-
-                JSHandle<JSTaggedValue> moduleRequest = thread->GlobalConstants()->GetHandledUndefined();
-                if (requestArraySize != 0) {
-                    moduleRequest = JSHandle<JSTaggedValue>(thread, requestModuleArray->Get(moduleRequestIdx));
-                }
-
-                JSHandle<ExportEntry> exportEntry =
-                    factory->NewExportEntry(exportName, moduleRequest, importName, defaultValue);
-                SourceTextModule::AddIndirectExportEntry(thread, moduleRecord, exportEntry, idx, len);
-                break;
-            }
-            case ModuleTag::STAR_EXPORT: {
-                JSHandle<JSTaggedValue> moduleRequest = thread->GlobalConstants()->GetHandledUndefined();
-                if (requestArraySize != 0) {
-                    moduleRequest = JSHandle<JSTaggedValue>(thread, requestModuleArray->Get(moduleRequestIdx));
-                }
-
-                JSHandle<ExportEntry> exportEntry =
-                    factory->NewExportEntry(defaultValue, moduleRequest, defaultValue, defaultValue);
-                SourceTextModule::AddStarExportEntry(thread, moduleRecord, exportEntry, idx, len);
-                break;
-            }
-            default: {
-                UNREACHABLE();
-                break;
-            }
-        }
-    });
+    if (mda.GetNumExportEntry() <= SourceTextModule::DEFAULT_ARRAY_CAPACITY) {
+        moduleRecord->SetModes(ModuleModes::ARRAYMODE);
+    }
 }
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, const CString &descriptor)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> defaultValue = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
 
     JSHandle<EcmaString> cjsModuleFilename = factory->NewFromUtf8(descriptor);
     moduleRecord->SetEcmaModuleFilename(thread, cjsModuleFilename);
-    JSHandle<TaggedArray> requestModuleArray = factory->EmptyArray();
-    moduleRecord->SetRequestedModules(thread, requestModuleArray);
 
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
-    JSHandle<ExportEntry> exportEntry =
-        factory->NewExportEntry(defaultName, defaultValue, defaultValue, defaultName);
-    SourceTextModule::AddLocalExportEntry(thread, moduleRecord, exportEntry, 0, 1); // 1 means len
+    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName, defaultName);
+    SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::CJSMODULE);
 

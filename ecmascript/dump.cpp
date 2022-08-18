@@ -911,8 +911,14 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::IMPORTENTRY_RECORD:
             ImportEntry::Cast(obj)->Dump(os);
             break;
-        case JSType::EXPORTENTRY_RECORD:
-            ExportEntry::Cast(obj)->Dump(os);
+        case JSType::LOCAL_EXPORTENTRY_RECORD:
+            LocalExportEntry::Cast(obj)->Dump(os);
+            break;
+        case JSType::INDIRECT_EXPORTENTRY_RECORD:
+            IndirectExportEntry::Cast(obj)->Dump(os);
+            break;
+        case JSType::STAR_EXPORTENTRY_RECORD:
+            StarExportEntry::Cast(obj)->Dump(os);
             break;
         case JSType::RESOLVEDBINDING_RECORD:
             ResolvedBinding::Cast(obj)->Dump(os);
@@ -3204,7 +3210,17 @@ void ImportEntry::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void ExportEntry::Dump(std::ostream &os) const
+void LocalExportEntry::Dump(std::ostream &os) const
+{
+    os << " - ExportName: ";
+    GetExportName().Dump(os);
+    os << "\n";
+    os << " - LocalName: ";
+    GetLocalName().Dump(os);
+    os << "\n";
+}
+
+void IndirectExportEntry::Dump(std::ostream &os) const
 {
     os << " - ExportName: ";
     GetExportName().Dump(os);
@@ -3215,8 +3231,12 @@ void ExportEntry::Dump(std::ostream &os) const
     os << " - ImportName: ";
     GetImportName().Dump(os);
     os << "\n";
-    os << " - LocalName: ";
-    GetLocalName().Dump(os);
+}
+
+void StarExportEntry::Dump(std::ostream &os) const
+{
+    os << " - ModuleRequest: ";
+    GetModuleRequest().Dump(os);
     os << "\n";
 }
 
@@ -3671,8 +3691,14 @@ static void DumpObject(TaggedObject *obj,
         case JSType::IMPORTENTRY_RECORD:
             ImportEntry::Cast(obj)->DumpForSnapshot(vec);
             return;
-        case JSType::EXPORTENTRY_RECORD:
-            ExportEntry::Cast(obj)->DumpForSnapshot(vec);
+        case JSType::LOCAL_EXPORTENTRY_RECORD:
+            LocalExportEntry::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::INDIRECT_EXPORTENTRY_RECORD:
+            IndirectExportEntry::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::STAR_EXPORTENTRY_RECORD:
+            StarExportEntry::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::RESOLVEDBINDING_RECORD:
             ResolvedBinding::Cast(obj)->DumpForSnapshot(vec);
@@ -4883,12 +4909,22 @@ void ImportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>>
     vec.push_back(std::make_pair(CString("LocalName"), GetLocalName()));
 }
 
-void ExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+void LocalExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("ExportName"), GetExportName()));
+    vec.push_back(std::make_pair(CString("LocalName"), GetLocalName()));
+}
+
+void IndirectExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("ExportName"), GetExportName()));
     vec.push_back(std::make_pair(CString("ModuleRequest"), GetModuleRequest()));
     vec.push_back(std::make_pair(CString("ImportName"), GetImportName()));
-    vec.push_back(std::make_pair(CString("LocalName"), GetLocalName()));
+}
+
+void StarExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("ModuleRequest"), GetModuleRequest()));
 }
 
 void ResolvedBinding::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

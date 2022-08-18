@@ -136,7 +136,9 @@ class JSAPILinkedListIterator;
 class JSAPIListIterator;
 class ModuleNamespace;
 class ImportEntry;
-class ExportEntry;
+class LocalExportEntry;
+class IndirectExportEntry;
+class StarExportEntry;
 class SourceTextModule;
 class CjsModule;
 class CjsRequire;
@@ -519,11 +521,15 @@ public:
     JSHandle<ImportEntry> NewImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                          const JSHandle<JSTaggedValue> &importName,
                                          const JSHandle<JSTaggedValue> &localName);
-    JSHandle<ExportEntry> NewExportEntry();
-    JSHandle<ExportEntry> NewExportEntry(const JSHandle<JSTaggedValue> &exportName,
-                                         const JSHandle<JSTaggedValue> &moduleRequest,
-                                         const JSHandle<JSTaggedValue> &importName,
-                                         const JSHandle<JSTaggedValue> &localName);
+    JSHandle<LocalExportEntry> NewLocalExportEntry();
+    JSHandle<LocalExportEntry> NewLocalExportEntry(const JSHandle<JSTaggedValue> &exportName,
+                                                   const JSHandle<JSTaggedValue> &localName);
+    JSHandle<IndirectExportEntry> NewIndirectExportEntry();
+    JSHandle<IndirectExportEntry> NewIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
+                                                         const JSHandle<JSTaggedValue> &moduleRequest,
+                                                         const JSHandle<JSTaggedValue> &importName);
+    JSHandle<StarExportEntry> NewStarExportEntry();
+    JSHandle<StarExportEntry> NewStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest);
     JSHandle<SourceTextModule> NewSourceTextModule();
     JSHandle<ResolvedBinding> NewResolvedBindingRecord();
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
@@ -628,6 +634,7 @@ private:
     friend class ClassInfoExtractor;
     friend class TSObjectType;
     friend class ModuleDataExtractor;
+    friend class ModuleDataAccessor;
 };
 
 class ClassLinkerFactory {

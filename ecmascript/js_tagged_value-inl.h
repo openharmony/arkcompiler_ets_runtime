@@ -1231,9 +1231,20 @@ inline bool JSTaggedValue::IsImportEntry() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsImportEntry();
 }
 
-inline bool JSTaggedValue::IsExportEntry() const
+
+inline bool JSTaggedValue::IsLocalExportEntry() const
 {
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsExportEntry();
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsLocalExportEntry();
+}
+
+inline bool JSTaggedValue::IsIndirectExportEntry() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsIndirectExportEntry();
+}
+
+inline bool JSTaggedValue::IsStarExportEntry() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStarExportEntry();
 }
 
 inline bool JSTaggedValue::IsResolvedBinding() const
