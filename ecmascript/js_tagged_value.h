@@ -636,7 +636,9 @@ public:
     bool IsModuleRecord() const;
     bool IsSourceTextModule() const;
     bool IsImportEntry() const;
-    bool IsExportEntry() const;
+    bool IsLocalExportEntry() const;
+    bool IsIndirectExportEntry() const;
+    bool IsStarExportEntry() const;
     bool IsResolvedBinding() const;
     bool IsModuleNamespace() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);

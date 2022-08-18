@@ -550,8 +550,14 @@ public:
             case JSType::IMPORTENTRY_RECORD:
                 ImportEntry::Cast(object)->VisitRangeSlot(visitor);
                 break;
-            case JSType::EXPORTENTRY_RECORD:
-                ExportEntry::Cast(object)->VisitRangeSlot(visitor);
+            case JSType::LOCAL_EXPORTENTRY_RECORD:
+                LocalExportEntry::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::INDIRECT_EXPORTENTRY_RECORD:
+                IndirectExportEntry::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::STAR_EXPORTENTRY_RECORD:
+                StarExportEntry::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::RESOLVEDBINDING_RECORD:
                 ResolvedBinding::Cast(object)->VisitRangeSlot(visitor);

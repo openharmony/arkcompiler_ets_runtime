@@ -62,7 +62,9 @@ class JSThread;
     V(JSTaggedValue, PropertyBoxClass, PROPERTY_BOX_CLASS_INDEX, ecma_roots_class)                                    \
     V(JSTaggedValue, ProgramClass, PROGRAM_CLASS_INDEX, ecma_roots_class)                                             \
     V(JSTaggedValue, ImportEntryClass, IMPORT_ENTRY_CLASS_INDEX, ecma_roots_class)                                    \
-    V(JSTaggedValue, ExportEntryClass, EXPORT_ENTRY_CLASS_INDEX, ecma_roots_class)                                    \
+    V(JSTaggedValue, LocalExportEntryClass, LOCAL_EXPORT_ENTRY_CLASS_INDEX, ecma_roots_class)                         \
+    V(JSTaggedValue, IndirectExportEntryClass, INDIRECT_EXPORT_ENTRY_CLASS_INDEX, ecma_roots_class)                   \
+    V(JSTaggedValue, StarExportEntryClass, STAR_EXPORT_ENTRY_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, SourceTextModuleClass, SOURCE_TEXT_MODULE_CLASS_INDEX, ecma_roots_class)                         \
     V(JSTaggedValue, ResolvedBindingClass, RESOLVED_BINDING_CLASS_INDEX, ecma_roots_class)                            \
     V(JSTaggedValue, JSProxyCallableClass, JS_PROXY_CALLABLE_CLASS_INDEX, ecma_roots_class)                           \

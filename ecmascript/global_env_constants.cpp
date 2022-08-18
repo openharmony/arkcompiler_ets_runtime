@@ -150,8 +150,14 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
         ConstantIndex::IMPORT_ENTRY_CLASS_INDEX,
         factory->NewEcmaReadOnlyDynClass(dynClassClass, ImportEntry::SIZE, JSType::IMPORTENTRY_RECORD));
     SetConstant(
-        ConstantIndex::EXPORT_ENTRY_CLASS_INDEX,
-        factory->NewEcmaReadOnlyDynClass(dynClassClass, ExportEntry::SIZE, JSType::EXPORTENTRY_RECORD));
+        ConstantIndex::LOCAL_EXPORT_ENTRY_CLASS_INDEX,
+        factory->NewEcmaReadOnlyDynClass(dynClassClass, LocalExportEntry::SIZE, JSType::LOCAL_EXPORTENTRY_RECORD));
+    SetConstant(
+        ConstantIndex::INDIRECT_EXPORT_ENTRY_CLASS_INDEX,
+        factory->NewEcmaReadOnlyDynClass(dynClassClass, IndirectExportEntry::SIZE, JSType::INDIRECT_EXPORTENTRY_RECORD));
+    SetConstant(
+        ConstantIndex::STAR_EXPORT_ENTRY_CLASS_INDEX,
+        factory->NewEcmaReadOnlyDynClass(dynClassClass, StarExportEntry::SIZE, JSType::STAR_EXPORTENTRY_RECORD));
     SetConstant(
         ConstantIndex::SOURCE_TEXT_MODULE_CLASS_INDEX,
         factory->NewEcmaReadOnlyDynClass(dynClassClass, SourceTextModule::SIZE, JSType::SOURCE_TEXT_MODULE_RECORD));
