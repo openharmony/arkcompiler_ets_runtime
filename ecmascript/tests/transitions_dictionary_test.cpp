@@ -222,6 +222,7 @@ HWTEST_F_L0(TransitionsDictionaryTest, PutIfAbsent)
     int numberOfElements = 8;
     JSHandle<TransitionsDictionary> transDic = TransitionsDictionary::Create(thread, numberOfElements);
     JSHandle<JSTaggedValue> metaData(thread, JSTaggedValue::Undefined());
+    vm->SetEnableForceGC(false);
     for (int index = 0; index < numberOfElements; index++) {
         std::string keyStr = "key" + std::to_string(index);
         std::string valueStr = "value" + std::to_string(index);
@@ -233,9 +234,9 @@ HWTEST_F_L0(TransitionsDictionaryTest, PutIfAbsent)
 
         JSHandle<JSTaggedValue> foundValue(thread, transDic->GetValue(foundEntry));
         JSHandle<JSTaggedValue> weakValue(thread, value->CreateAndGetWeakRef());
-        vm->SetEnableForceGC(false);
         EXPECT_EQ(foundValue.GetTaggedValue(), weakValue.GetTaggedValue());
     }
+    vm->SetEnableForceGC(true);
 }
 
 HWTEST_F_L0(TransitionsDictionaryTest, Remove)
