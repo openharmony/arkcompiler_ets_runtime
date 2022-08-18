@@ -122,10 +122,31 @@ private:
     std::ostringstream stream_;
 };
 
+#ifdef PANDA_TARGET_ANDROID
+template<Level level>
+class PUBLIC_API AndroidLog {
+public:
+    AndroidLog() = default;
+    ~AndroidLog();
+
+    template<class type>
+    std::ostream &operator <<(type input)
+    {
+        stream_ << input;
+        return stream_;
+    }
+
+private:
+    std::ostringstream stream_;
+};
+#endif
+
 #ifdef ENABLE_HILOG
 #define LOG_ECMA(level) HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_##level) && panda::ecmascript::HiLog<LOG_##level>()
-#else // ENABLE_HILOG
+#elif defined(PANDA_TARGET_ANDROID)
+#define LOG_ECMA(level) panda::ecmascript::AndroidLog<(level)>()
+#else
 #define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog<(level)>()
-#endif // ENABLE_HILOG
+#endif
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LOG_H
