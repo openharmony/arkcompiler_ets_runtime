@@ -46,14 +46,19 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.currentFrame_ = jsThread->glueData_.frameBase_ + maxStackSize;
     EcmaInterpreter::InitStackFrame(jsThread);
 
-    // init stack limit of asm interpreter
-    ASSERT(GetCurrentStackPosition() >
-        (EcmaParamConfiguration::GetDefalutStackSize() - EcmaParamConfiguration::GetDefalutReservedStackSize()));
-    // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
-    // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
-    // when push other data.
-    jsThread->glueData_.stackLimit_ = GetCurrentStackPosition() -
-        (EcmaParamConfiguration::GetDefalutStackSize() - EcmaParamConfiguration::GetDefalutReservedStackSize());
+    if (jsThread->IsAsmInterpreter()) {
+        size_t stackSize = GetAsmStackSize();
+        if (stackSize <= EcmaParamConfiguration::GetDefalutReservedStackSize()) {
+            LOG_ECMA(FATAL) << "Too small stackSize to run jsvm:" << stackSize;
+        }
+        // init stack limit of asm interpreter
+        ASSERT(GetCurrentStackPosition() > (stackSize - EcmaParamConfiguration::GetDefalutReservedStackSize()));
+        // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
+        // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
+        // when push other data.
+        jsThread->glueData_.stackLimit_ =
+            GetCurrentStackPosition() - (stackSize - EcmaParamConfiguration::GetDefalutReservedStackSize());
+    }
     return jsThread;
 }
 
@@ -391,5 +396,33 @@ void JSThread::CollectBCOffsetInfo()
 {
     FrameBcCollector collector(this);
     collector.CollectBCOffsetInfo();
+}
+
+// static
+size_t JSThread::GetAsmStackSize()
+{
+    size_t result = EcmaParamConfiguration::GetDefalutStackSize();
+    pthread_attr_t attr;
+    int ret = pthread_attr_init(&attr);
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "Get current thread attr failed";
+        return result;
+    }
+    size_t size = 0;
+    ret = pthread_attr_getstacksize(&attr, &size);
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "Get current thread stack size failed";
+        return result;
+    }
+
+    if (size < result) {
+        result = size;
+    }
+    LOG_ECMA(INFO) << "Current thread asm stack size:" << result;
+    ret = pthread_attr_destroy(&attr);
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "Destroy current thread attr failed";
+    }
+    return result;
 }
 }  // namespace panda::ecmascript
