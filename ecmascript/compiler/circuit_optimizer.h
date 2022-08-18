@@ -18,10 +18,13 @@
 
 #include <cstdint>
 #include <deque>
+#include <vector>
+#include <queue>
 #include <map>
 #include <optional>
 #include <random>
 #include <stdexcept>
+#include <memory>
 
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/compiler/circuit.h"
@@ -242,6 +245,77 @@ private:
     Circuit *circuit_;
     GateAccessor acc_;
     SubgraphRewriteRule *subgraphRewriteRule_;
+};
+
+class Partition;
+
+class PartitionNode {
+public:
+    PartitionNode();
+    PartitionNode(GateRef gate);
+    ~PartitionNode() = default;
+    std::shared_ptr<PartitionNode> GetPrev() const;
+    std::shared_ptr<PartitionNode> GetNext() const;
+    std::shared_ptr<Partition> GetBelong() const;
+    GateRef GetGate() const;
+    void SetPrev(std::shared_ptr<PartitionNode> prev);
+    void SetNext(std::shared_ptr<PartitionNode> next);
+    void SetBelong(std::shared_ptr<Partition> belong);
+    bool ExistUseByIndex(uint32_t index) const;
+    void SetUseByIndex(uint32_t index, std::shared_ptr<PartitionNode> node);
+    void GetUsesVector(std::vector<std::pair<uint32_t, std::vector<std::shared_ptr<PartitionNode>>>> &uses) const;
+private:
+    std::weak_ptr<PartitionNode> prev_;
+    std::weak_ptr<PartitionNode> next_;
+    std::weak_ptr<Partition> belong_;
+    GateRef gate_;
+    std::map<uint32_t, std::vector<std::shared_ptr<PartitionNode>>> indexToUses_;
+};
+
+class Partition {
+public:
+    Partition();
+    ~Partition() = default;
+    std::shared_ptr<PartitionNode> GetHead() const;
+    void SetHead(std::shared_ptr<PartitionNode> head);
+    void SetTouched();
+    void SetNotTouched();
+    void SetOnWorkList();
+    void SetNotOnWorkList();
+    bool IsTouched() const;
+    bool IsOnWorkList() const;
+    uint32_t GetSize() const;
+    void SizeUp();
+    void SizeDown();
+    void AddTouchedNode(std::shared_ptr<PartitionNode> node);
+    void CleanTouchedNode();
+    size_t GetTouchedSize() const;
+    void Insert(std::shared_ptr<PartitionNode> node);
+    void Delete(std::shared_ptr<PartitionNode> node);
+    std::shared_ptr<Partition> SplitByTouched();
+    void MergeUses(std::map<uint32_t, std::vector<std::shared_ptr<PartitionNode>>> &indexToUses) const;
+private:
+    std::weak_ptr<PartitionNode> head_;
+    bool isTouched_;
+    bool onWorkList_;
+    uint32_t size_;
+    std::vector<std::shared_ptr<PartitionNode>> touched_;
+};
+
+class GlobalValueNumbering {
+public:
+    GlobalValueNumbering(Circuit *circuit);
+    ~GlobalValueNumbering() = default;
+    void GetPartitionNodes(std::vector<std::shared_ptr<PartitionNode>> &nodes);
+    void SplitByOpCode(const std::vector<std::shared_ptr<PartitionNode>> &nodes,
+                       std::vector<std::shared_ptr<Partition>> &partitions);
+    uint32_t GetMaxIndex(std::shared_ptr<Partition> partition) const;
+    void TrySplit(std::queue<std::shared_ptr<Partition>> &workList,
+                  std::vector<std::shared_ptr<Partition>> &partitions);
+    void EliminateRedundantGates(const std::vector<std::shared_ptr<Partition>> &partitions);
+    void Run();
+private:
+    GateAccessor acc_;
 };
 }  // namespace panda::ecmascript::kungfu
 

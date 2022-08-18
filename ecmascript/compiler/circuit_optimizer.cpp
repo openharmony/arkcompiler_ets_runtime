@@ -1335,4 +1335,324 @@ bool SubGraphRewriteFramework::Run(Circuit *circuit, bool enableLogging)
     }
     return true;
 }
+
+PartitionNode::PartitionNode() : gate_(Circuit::NullGate())
+{
+}
+
+PartitionNode::PartitionNode(GateRef gate) : gate_(gate)
+{
+}
+
+std::shared_ptr<PartitionNode> PartitionNode::GetPrev() const
+{
+    return prev_.lock();
+}
+
+std::shared_ptr<PartitionNode> PartitionNode::GetNext() const
+{
+    return next_.lock();
+}
+
+std::shared_ptr<Partition> PartitionNode::GetBelong() const
+{
+    return belong_.lock();
+}
+
+GateRef PartitionNode::GetGate() const
+{
+    return gate_;
+}
+
+void PartitionNode::SetPrev(std::shared_ptr<PartitionNode> prev)
+{
+    prev_ = prev;
+}
+
+void PartitionNode::SetNext(std::shared_ptr<PartitionNode> next)
+{
+    next_ = next;
+}
+
+void PartitionNode::SetBelong(std::shared_ptr<Partition> belong)
+{
+    belong_ = belong;
+}
+
+bool PartitionNode::ExistUseByIndex(uint32_t index) const
+{
+    return indexToUses_.count(index) > 0;
+}
+
+void PartitionNode::SetUseByIndex(uint32_t index, std::shared_ptr<PartitionNode> node)
+{
+    if (!ExistUseByIndex(index)) {
+        indexToUses_.emplace(index, std::vector<std::shared_ptr<PartitionNode>>(0));
+    }
+    indexToUses_[index].emplace_back(node);
+}
+
+void PartitionNode::GetUsesVector(std::vector<std::pair<uint32_t,
+                                  std::vector<std::shared_ptr<PartitionNode>>>> &uses) const
+{
+    for (const auto &p : indexToUses_) {
+        uses.emplace_back(p);
+    }
+}
+
+Partition::Partition() : isTouched_(false), onWorkList_(false), size_(0)
+{
+}
+
+std::shared_ptr<PartitionNode> Partition::GetHead() const
+{
+    return head_.lock();
+}
+
+void Partition::SetHead(std::shared_ptr<PartitionNode> head)
+{
+    head_ = head;
+}
+
+void Partition::SetTouched()
+{
+    isTouched_ = true;
+}
+
+void Partition::SetNotTouched()
+{
+    isTouched_ = false;
+}
+
+void Partition::SetOnWorkList()
+{
+    onWorkList_ = true;
+}
+
+void Partition::SetNotOnWorkList()
+{
+    onWorkList_ = false;
+}
+
+bool Partition::IsTouched() const
+{
+    return isTouched_;
+}
+
+bool Partition::IsOnWorkList() const
+{
+    return onWorkList_;
+}
+
+uint32_t Partition::GetSize() const
+{
+    return size_;
+}
+
+void Partition::SizeUp()
+{
+    ++size_;
+}
+
+void Partition::SizeDown()
+{
+    --size_;
+}
+
+void Partition::AddTouchedNode(std::shared_ptr<PartitionNode> node)
+{
+    touched_.emplace_back(node);
+}
+
+void Partition::CleanTouchedNode()
+{
+    touched_.clear();
+}
+
+size_t Partition::GetTouchedSize() const
+{
+    return touched_.size();
+}
+
+void Partition::Insert(std::shared_ptr<PartitionNode> node)
+{
+    if (this->GetHead() != nullptr) {
+        this->GetHead()->SetPrev(node);
+    }
+    node->SetPrev(nullptr);
+    node->SetNext(this->GetHead());
+    this->SetHead(node);
+    this->SizeUp();
+}
+
+void Partition::Delete(std::shared_ptr<PartitionNode> node)
+{
+    if (node->GetPrev() != nullptr) {
+        node->GetPrev()->SetNext(node->GetNext());
+    } else {
+        this->SetHead(node->GetNext());
+    }
+    if (node->GetNext() != nullptr) {
+        node->GetNext()->SetPrev(node->GetPrev());
+    }
+    node->SetPrev(nullptr);
+    node->SetNext(nullptr);
+    this->SizeDown();
+}
+
+std::shared_ptr<Partition> Partition::SplitByTouched()
+{
+    for (auto node : touched_) {
+        this->Delete(node);
+    }
+    auto newPartition = std::make_shared<Partition>(Partition());
+    for (auto node : touched_) {
+        newPartition->Insert(node);
+        node->SetBelong(newPartition);
+    }
+    return newPartition;
+}
+
+void Partition::MergeUses(std::map<uint32_t, std::vector<std::shared_ptr<PartitionNode>>> &indexToUses) const
+{
+    std::vector<std::pair<uint32_t, std::vector<std::shared_ptr<PartitionNode>>>> uses;
+    for (auto defNode = this->GetHead(); defNode != nullptr; defNode = defNode->GetNext()) {
+        uses.clear();
+        defNode->GetUsesVector(uses);
+        for (const auto &use : uses) {
+            auto index = use.first;
+            const auto &useNodes = use.second;
+            if (indexToUses.count(index) == 0) {
+                indexToUses.emplace(index, std::vector<std::shared_ptr<PartitionNode>>(0));
+            }
+            for (auto useNode : useNodes) {
+                indexToUses[index].emplace_back(useNode);
+            }
+        }
+    }
+}
+
+GlobalValueNumbering::GlobalValueNumbering(Circuit *circuit) : acc_(GateAccessor(circuit))
+{
+}
+
+void GlobalValueNumbering::GetPartitionNodes(std::vector<std::shared_ptr<PartitionNode>> &pNodes)
+{
+    std::vector<GateRef> gates;
+    std::map<GateRef, std::shared_ptr<PartitionNode>> gateToNode;
+    acc_.GetAllGates(gates);
+    for (auto gate : gates) {
+        auto node = std::make_shared<PartitionNode>(PartitionNode(gate));
+        pNodes.emplace_back(node);
+        gateToNode[gate] = node;
+    }
+    for (auto gate : gates) {
+        std::vector<GateRef> ins;
+        acc_.GetInVector(gate, ins);
+        auto node = gateToNode[gate];
+        for (size_t i = 0; i < ins.size(); ++i) {
+            auto defNode = gateToNode[ins[i]];
+            defNode->SetUseByIndex(i, node);
+        }
+    }
+}
+
+void GlobalValueNumbering::SplitByOpCode(const std::vector<std::shared_ptr<PartitionNode>> &nodes,
+                                         std::vector<std::shared_ptr<Partition>> &partitions)
+{
+    std::map<std::tuple<OpCode::Op, BitField, MachineType, uint32_t>, std::shared_ptr<Partition>> opToPartition;
+    for (auto node : nodes) {
+        auto op = OpCode::Op(acc_.GetOpCode(node->GetGate()));
+        auto bit = acc_.GetBitField(node->GetGate());
+        auto mt = acc_.GetMachineType(node->GetGate());
+        auto gt = acc_.GetGateType(node->GetGate()).GetType();
+        auto tp = std::make_tuple(op, bit, mt, gt);
+        if (opToPartition.count(tp) == 0) {
+            auto p = std::make_shared<Partition>(Partition());
+            opToPartition[tp] = p;
+            partitions.emplace_back(p);
+        }
+        auto p = opToPartition[tp];
+        node->SetBelong(p);
+        p->Insert(node);
+    }
+}
+
+void GlobalValueNumbering::TrySplit(std::queue<std::shared_ptr<Partition>> &workList,
+                                    std::vector<std::shared_ptr<Partition>> &partitions)
+{
+    auto curPartition = workList.front();
+    workList.pop();
+    curPartition->SetNotOnWorkList();
+    std::vector<std::shared_ptr<Partition>> touchedPartition;
+    std::map<uint32_t, std::vector<std::shared_ptr<PartitionNode>>> indexToUses;
+    curPartition->MergeUses(indexToUses);
+    for (const auto &use : indexToUses) {
+        const auto &useNodes = use.second;
+        for (auto useNode : useNodes) {
+            if (!useNode->GetBelong()->IsTouched()) {
+                useNode->GetBelong()->SetTouched();
+                touchedPartition.emplace_back(useNode->GetBelong());
+            }
+            useNode->GetBelong()->AddTouchedNode(useNode);
+        }
+        for (auto partition : touchedPartition) {
+            if (partition->GetSize() != static_cast<uint32_t>(partition->GetTouchedSize())) {
+                auto newPartition = partition->SplitByTouched();
+                if (partition->IsOnWorkList() || partition->GetSize() > newPartition->GetSize()) {
+                    workList.push(newPartition);
+                    newPartition->SetOnWorkList();
+                } else {
+                    workList.push(partition);
+                    partition->SetOnWorkList();
+                }
+                partitions.emplace_back(newPartition);
+            }
+            partition->CleanTouchedNode();
+        }
+        for (auto partition : touchedPartition) {
+            partition->SetNotTouched();
+        }
+        touchedPartition.clear();
+    }
+}
+
+void GlobalValueNumbering::EliminateRedundantGates(const std::vector<std::shared_ptr<Partition>> &partitions)
+{
+    for (auto partition : partitions) {
+        std::map<uint32_t, std::vector<std::shared_ptr<PartitionNode>>> indexToUses;
+        partition->MergeUses(indexToUses);
+        auto kingNode = partition->GetHead();
+        for (const auto &uses : indexToUses) {
+            auto index = uses.first;
+            const auto &useNodes = uses.second;
+            for (auto useNode : useNodes) {
+                acc_.ReplaceIn(useNode->GetGate(), index, kingNode->GetGate());
+            }
+        }
+    }
+    for (auto partition : partitions) {
+        auto kingNode = partition->GetHead();
+        for (auto node = kingNode->GetNext(); node != nullptr; node = node->GetNext()) {
+            acc_.DeleteGate(node->GetGate());
+        }
+    }
+}
+
+void GlobalValueNumbering::Run()
+{
+    std::vector<std::shared_ptr<PartitionNode>> pNodes;
+    GetPartitionNodes(pNodes);
+    std::vector<std::shared_ptr<Partition>> partitions;
+    SplitByOpCode(pNodes, partitions);
+    std::queue<std::shared_ptr<Partition>> workList;
+    for (auto p : partitions) {
+        workList.push(p);
+        p->SetOnWorkList();
+    }
+    while (!workList.empty()) {
+        TrySplit(workList, partitions);
+    }
+    EliminateRedundantGates(partitions);
+}
 }  // namespace panda::ecmascript::kungfu
