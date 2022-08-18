@@ -25,7 +25,6 @@
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
-#include "generated/base_options.h"
 #include "libpandabase/utils/pandargs.h"
 
 namespace panda::ecmascript::kungfu {
@@ -36,7 +35,6 @@ int Main(const int argc, const char **argv)
                     .count();
     Span<const char *> sp(argv, argc);
     JSRuntimeOptions runtimeOptions;
-    base_options::Options baseOptions(sp[0]);
 
     panda::PandArg<bool> help("help", false, "Print this message and exit");
     panda::PandArg<bool> options("options", false, "Print options");
@@ -47,7 +45,6 @@ int Main(const int argc, const char **argv)
     panda::PandArgParser paParser;
 
     runtimeOptions.AddOptions(&paParser);
-    baseOptions.AddOptions(&paParser);
 
     paParser.Add(&help);
     paParser.Add(&options);
@@ -76,7 +73,7 @@ int Main(const int argc, const char **argv)
     bool ret = true;
     // ark_aot_compiler running need disable asm interpreter
     runtimeOptions.SetEnableAsmInterpreter(false);
-    EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions, baseOptions);
+    EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot Create vm";
         return -1;

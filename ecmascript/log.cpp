@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 
 namespace panda::ecmascript {
@@ -36,7 +37,7 @@ void Log::SetLogLevelFromString(const std::string& level)
     }
 }
 
-void Log::Initialize(const panda::base_options::Options &options)
+void Log::Initialize(const JSRuntimeOptions &options)
 {
     if (options.WasSetLogFatal()) {
         SetLevel(FATAL);

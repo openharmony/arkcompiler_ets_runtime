@@ -16,6 +16,9 @@
 #ifndef ECMASCRIPT_JS_RUNTIME_OPTIONS_H_
 #define ECMASCRIPT_JS_RUNTIME_OPTIONS_H_
 
+#include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/mem/mem_common.h"
+
 #include "libpandabase/utils/pandargs.h"
 
 // namespace panda {
@@ -73,6 +76,13 @@ public:
         parser->Add(&typeInferVerify_);
         parser->Add(&builtinsDTS_);
         parser->Add(&enablebcTrace_);
+        parser->Add(&logLevel_);
+        parser->Add(&logDebug_);
+        parser->Add(&logInfo_);
+        parser->Add(&logWarning_);
+        parser->Add(&logError_);
+        parser->Add(&logFatal_);
+        parser->Add(&logComponents_);
     }
 
     bool EnableArkTools() const
@@ -503,6 +513,111 @@ public:
         return enablebcTrace_.WasSet();
     }
 
+    std::string GetLogLevel([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logLevel_.GetValue();
+    }
+
+    void SetLogLevel(std::string value)
+    {
+        logLevel_.SetValue(std::move(value));
+    }
+
+    bool WasSetLogLevel([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logLevel_.WasSet();
+    }
+
+    arg_list_t GetLogComponents([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logComponents_.GetValue();
+    }
+
+    void SetLogComponents(arg_list_t value)
+    {
+        logComponents_.SetValue(std::move(value));
+    }
+
+    bool WasSetLogComponents([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logComponents_.WasSet();
+    }
+
+    arg_list_t GetLogDebug([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logDebug_.GetValue();
+    }
+
+    void SetLogDebug(arg_list_t value)
+    {
+        logDebug_.SetValue(std::move(value));
+    }
+
+    bool WasSetLogDebug([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logDebug_.WasSet();
+    }
+
+    arg_list_t GetLogInfo([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logInfo_.GetValue();
+    }
+
+    void SetLogInfo(arg_list_t value)
+    {
+        logInfo_.SetValue(std::move(value));
+    }
+
+    bool WasSetLogInfo([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logInfo_.WasSet();
+    }
+
+    arg_list_t GetLogWarning([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logWarning_.GetValue();
+    }
+
+    void SetLogWarning(arg_list_t value)
+    {
+        logWarning_.SetValue(std::move(value));
+    }
+
+    bool WasSetLogWarning([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logWarning_.WasSet();
+    }
+
+    arg_list_t GetLogError([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logError_.GetValue();
+    }
+
+    void SetLogError(arg_list_t value)
+    {
+        logError_.SetValue(std::move(value));
+    }
+
+    bool WasSetLogError([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logError_.WasSet();
+    }
+
+    arg_list_t GetLogFatal([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logFatal_.GetValue();
+    }
+
+    void SetLogFatal(arg_list_t value)
+    {
+        logFatal_.SetValue(std::move(value));
+    }
+
+    bool WasSetLogFatal([[maybe_unused]] std::string_view lang = "") const
+    {
+        return logFatal_.WasSet();
+    }
+
 private:
     PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
@@ -575,6 +690,38 @@ private:
         R"(builtins.d.abc file path for AOT.)"};
     PandArg<bool> enablebcTrace_ {"enable-bytecode-trace", false,
         R"(enable tracing bytecode for aot runtime. Default: false)"};
+    PandArg<std::string> logLevel_ {"log-level", R"(error)", R"(Log level. Possible values: ["debug", "info", "warning",
+        "error", "fatal"]. Default: "error")"};
+    PandArg<arg_list_t> logDebug_ {"log-debug", {R"(all)"},
+        R"(Enable debug or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
+        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
+        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
+        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+    PandArg<arg_list_t> logInfo_ {"log-info", {R"(all)"},
+        R"(Enable info or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
+        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
+        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
+        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+    PandArg<arg_list_t> logWarning_ {"log-warning", {R"(all)"},
+        R"(Enable warning or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
+        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
+        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
+        "jvmti", "aot","events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+    PandArg<arg_list_t> logError_ {"log-error", {R"(all)"},
+        R"(Enable error or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
+        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
+        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
+        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+    PandArg<arg_list_t> logFatal_ {"log-fatal", {R"(all)"},
+        R"(Enable fatal logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
+        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
+        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
+        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+    PandArg<arg_list_t> logComponents_ {"log-components", {R"(all)"},
+        R"(Enable logs from specified components. Possible values: ["all", "alloc", "mm-obj-events", "classlinker",
+        "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler", "pandafile",
+        "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue", "jvmti", "aot",
+        "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
 };
 }  // namespace panda::ecmascript
 

@@ -27,7 +27,6 @@
 #include "ecmascript/log.cpp"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "generated/base_options.h"
 #include "libpandabase/utils/pandargs.h"
 #include "libpandabase/utils/span.h"
 
@@ -58,7 +57,6 @@ int Main(const int argc, const char **argv)
     BlockSignals();
     Span<const char *> sp(argv, argc);
     JSRuntimeOptions runtimeOptions;
-    base_options::Options baseOptions(sp[0]);
 
     panda::PandArg<bool> help("help", false, "Print this message and exit");
     panda::PandArg<bool> options("options", false, "Print compiler and runtime options");
@@ -73,7 +71,6 @@ int Main(const int argc, const char **argv)
     panda::PandArgParser paParser;
 
     runtimeOptions.AddOptions(&paParser);
-    baseOptions.AddOptions(&paParser);
 
     paParser.Add(&help);
     paParser.Add(&options);
@@ -100,7 +97,7 @@ int Main(const int argc, const char **argv)
                   << "Startup start time: " << startTime << std::endl;
     }
     bool ret = true;
-    EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions, baseOptions);
+    EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
         std::cerr << "Cannot Create vm" << std::endl;
         return -1;
