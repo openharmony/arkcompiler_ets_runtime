@@ -1236,7 +1236,7 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
             break;
         }
         case SnapshotType::BUILTINS: {
-            JSTaggedValue result(rootObjectAddr);
+            JSTaggedValue result(static_cast<JSTaggedType>(rootObjectAddr));
             auto constants = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
             size_t constCount = constants->GetConstantCount();
             while (constants->IsSpecialOrUndefined(constSpecialIndex)) {
