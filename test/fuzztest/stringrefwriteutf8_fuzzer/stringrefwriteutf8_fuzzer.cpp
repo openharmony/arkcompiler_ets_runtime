@@ -36,7 +36,7 @@ namespace OHOS {
             return;
         }
         std::vector<uint8_t> vec;
-        for (size_t i = 0; i<size; i++) {
+        for (size_t i = 0; i < size; i++) {
             vec.push_back(data[i]);
         }
 

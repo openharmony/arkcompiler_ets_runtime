@@ -40,6 +40,10 @@ namespace OHOS {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
+        const int32_t MaxMenory = 1073741824;
+        if (input > MaxMenory) {
+            input = MaxMenory;
+        }
         Local<ArrayBufferRef> ref = ArrayBufferRef::New(vm, input);
         DataViewRef::New(vm, ref, (uint32_t)size, (uint32_t)size);
         JSNApi::DestroyJSVM(vm);

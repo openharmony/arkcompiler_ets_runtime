@@ -24,6 +24,7 @@ using namespace panda::ecmascript;
 
 #define MAXBYTELEN sizeof(int32_t)
 
+
 namespace OHOS {
     void Float32ArrayRefNewFuzzTest(const uint8_t* data, size_t size)
     {
@@ -39,6 +40,10 @@ namespace OHOS {
         if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
+        }
+        const int32_t MaxMenory = 1073741824;
+        if (input > MaxMenory) {
+            input = MaxMenory;
         }
         Local<ArrayBufferRef> ref = ArrayBufferRef::New(vm, input);
         Float32ArrayRef::New(vm, ref, (int32_t)size, (int32_t)size);
