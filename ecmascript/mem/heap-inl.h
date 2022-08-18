@@ -34,6 +34,7 @@ template<class Callback>
 void Heap::EnumerateOldSpaceRegions(const Callback &cb, Region *region) const
 {
     oldSpace_->EnumerateRegions(cb, region);
+    appSpawnSpace_->EnumerateRegions(cb);
     nonMovableSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
     machineCodeSpace_->EnumerateRegions(cb);
@@ -50,6 +51,7 @@ void Heap::EnumerateNonNewSpaceRegions(const Callback &cb) const
 {
     oldSpace_->EnumerateRegions(cb);
     oldSpace_->EnumerateCollectRegionSet(cb);
+    appSpawnSpace_->EnumerateRegions(cb);
     snapshotSpace_->EnumerateRegions(cb);
     nonMovableSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
@@ -76,6 +78,7 @@ template<class Callback>
 void Heap::EnumerateNonMovableRegions(const Callback &cb) const
 {
     snapshotSpace_->EnumerateRegions(cb);
+    appSpawnSpace_->EnumerateRegions(cb);
     nonMovableSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
     machineCodeSpace_->EnumerateRegions(cb);
@@ -87,6 +90,7 @@ void Heap::EnumerateRegions(const Callback &cb) const
     activeSemiSpace_->EnumerateRegions(cb);
     oldSpace_->EnumerateRegions(cb);
     oldSpace_->EnumerateCollectRegionSet(cb);
+    appSpawnSpace_->EnumerateRegions(cb);
     snapshotSpace_->EnumerateRegions(cb);
     nonMovableSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
@@ -98,6 +102,7 @@ void Heap::IterateOverObjects(const Callback &cb) const
 {
     activeSemiSpace_->IterateOverObjects(cb);
     oldSpace_->IterateOverObjects(cb);
+    appSpawnSpace_->IterateOverMarkedObjects(cb);
     nonMovableSpace_->IterateOverObjects(cb);
     hugeObjectSpace_->IterateOverObjects(cb);
 }

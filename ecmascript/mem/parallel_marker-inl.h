@@ -253,7 +253,7 @@ inline void SemiGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedType *r
 inline SlotStatus CompressGCMarker::MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot slot)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
-    if (!objectRegion->InYoungOrOldSpace()) {
+    if (!NeedEvacuate(objectRegion)) {
         if (objectRegion->AtomicMark(object)) {
             workManager_->Push(threadId, object);
         }
@@ -281,23 +281,24 @@ inline uintptr_t CompressGCMarker::AllocateReadOnlySpace(size_t size)
     return forwardAddress;
 }
 
+inline uintptr_t CompressGCMarker::AllocateAppSpawnSpace(size_t size)
+{
+    os::memory::LockHolder lock(mutex_);
+    uintptr_t forwardAddress = heap_->GetAppSpawnSpace()->Allocate(size);
+    if (UNLIKELY(forwardAddress == 0)) {
+        LOG_ECMA_MEM(FATAL) << "Evacuate AppSpawn Object: alloc failed: "
+                            << " size: " << size;
+        UNREACHABLE();
+    }
+    return forwardAddress;
+}
+
 inline SlotStatus CompressGCMarker::EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,
     ObjectSlot slot)
 {
     JSHClass *klass = markWord.GetJSHClass();
     size_t size = klass->SizeFromJSHClass(object);
-    bool isPromoted = true;
-    uintptr_t forwardAddress = 0;
-    if (isAppSpawn_ && Heap::ShouldMoveToRoSpace(JSTaggedValue(object))) {
-        forwardAddress = AllocateReadOnlySpace(size);
-        if (JSTaggedValue(object).IsString()) {
-            // calculate and set hashcode for read-only ecmastring in advance
-            EcmaString::Cast(object)->GetHashcode();
-        }
-    } else {
-        forwardAddress = AllocateDstSpace(threadId, size, isPromoted);
-    }
-    ASSERT(isPromoted);
+    uintptr_t forwardAddress = AllocateForwardAddress(threadId, size, object);
     bool result = Barriers::AtomicSetDynPrimitive(object, 0, markWord.GetValue(),
                                                   MarkWord::FromForwardingAddress(forwardAddress));
     if (result) {
@@ -312,6 +313,14 @@ inline void CompressGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedTyp
                                                   [[maybe_unused]] Region *objectRegion)
 {
     workManager_->PushWeakReference(threadId, ref);
+}
+
+inline bool CompressGCMarker::NeedEvacuate(Region *region)
+{
+    if (isAppSpawn_) {
+        return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace();
+    }
+    return region->InYoungOrOldSpace();
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_MARKER_INL_H

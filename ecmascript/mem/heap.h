@@ -59,6 +59,7 @@ public:
     void Destroy();
     void Prepare();
     void Resume(TriggerGCType gcType);
+    void ResumeForAppSpawn();
     void CompactHeapBeforeFork();
     void DisableParallelGC();
     // fixme: Rename NewSpace to YoungSpace.
@@ -107,6 +108,11 @@ public:
     ReadOnlySpace *GetReadOnlySpace() const
     {
         return readOnlySpace_;
+    }
+
+    AppSpawnSpace *GetAppSpawnSpace() const
+    {
+        return appSpawnSpace_;
     }
 
     SparseSpace *GetSpaceWithType(MemSpaceType type) const
@@ -282,17 +288,6 @@ public:
     inline bool MoveYoungRegionSync(Region *region);
     inline void MergeToOldSpaceSync(LocalSpace *localSpace);
 
-    // record lastRegion for each space, which will be used in ReclaimRegions()
-    void PrepareRecordRegionsForReclaim()
-    {
-        activeSemiSpace_->SetRecordRegion();
-        oldSpace_->SetRecordRegion();
-        snapshotSpace_->SetRecordRegion();
-        nonMovableSpace_->SetRecordRegion();
-        hugeObjectSpace_->SetRecordRegion();
-        machineCodeSpace_->SetRecordRegion();
-    }
-
     template<class Callback>
     void EnumerateOldSpaceRegions(const Callback &cb, Region *region = nullptr) const;
 
@@ -396,6 +391,7 @@ public:
         return totalSize >= oldSpace_->GetInitialCapacity();
     }
 
+    void AdjustSpaceSizeForAppSpawn();
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool IsVerifying() const
     {
@@ -421,6 +417,8 @@ private:
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
+    // record lastRegion for each space, which will be used in ReclaimRegions()
+    void PrepareRecordRegionsForReclaim();
     TriggerGCType SelectGCType() const;
     void IncreaseTaskCount();
     void ReduceTaskCount();
@@ -472,6 +470,7 @@ private:
     OldSpace *oldSpace_ {nullptr};
     OldSpace *compressSpace_ {nullptr};
     ReadOnlySpace *readOnlySpace_ {nullptr};
+    AppSpawnSpace *appSpawnSpace_ {nullptr};
     // Spaces used for special kinds of objects.
     NonMovableSpace *nonMovableSpace_ {nullptr};
     MachineCodeSpace *machineCodeSpace_ {nullptr};

@@ -65,8 +65,9 @@ void Heap::Initialize()
     inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
     // not set up from space
 
-    size_t readOnlySpaceCpacity = config.GetDefaultReadOnlySpaceSize();
-    readOnlySpace_ = new ReadOnlySpace(this, readOnlySpaceCpacity, readOnlySpaceCpacity);
+    size_t readOnlySpaceCapacity = config.GetDefaultReadOnlySpaceSize();
+    readOnlySpace_ = new ReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
+    appSpawnSpace_ = new AppSpawnSpace(this, maxHeapSize);
     size_t nonmovableSpaceCapacity = config.GetDefaultNonMovableSpaceSize();
     if (ecmaVm_->GetJSOptions().WasSetMaxNonmovableSpaceCapacity()) {
         nonmovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
@@ -80,7 +81,7 @@ void Heap::Initialize()
     machineCodeSpace_->Initialize();
 
     size_t capacities = minSemiSpaceCapacity * 2 + nonmovableSpaceCapacity + snapshotSpaceCapacity +
-        machineCodeSpaceCapacity + readOnlySpaceCpacity;
+        machineCodeSpaceCapacity + readOnlySpaceCapacity;
     if (maxHeapSize < capacities || maxHeapSize - capacities < MIN_OLD_SPACE_LIMIT) {
         LOG_ECMA_MEM(FATAL) << "HeapSize is too small to initialize oldspace, heapSize = " << maxHeapSize;
     }
@@ -171,12 +172,15 @@ void Heap::Destroy()
         delete hugeObjectSpace_;
         hugeObjectSpace_ = nullptr;
     }
-
     if (readOnlySpace_ != nullptr) {
         readOnlySpace_->ClearReadOnly();
         readOnlySpace_->Destroy();
         delete readOnlySpace_;
         readOnlySpace_ = nullptr;
+    }
+    if (appSpawnSpace_ != nullptr) {
+        delete appSpawnSpace_;
+        appSpawnSpace_ = nullptr;
     }
     if (stwYoungGC_ != nullptr) {
         delete stwYoungGC_;
@@ -257,7 +261,7 @@ void Heap::Resume(TriggerGCType gcType)
 
     activeSemiSpace_->SetWaterLine();
     PrepareRecordRegionsForReclaim();
-    hugeObjectSpace_->RecliamHugeRegion();
+    hugeObjectSpace_->ReclaimHugeRegion();
     if (parallelGC_) {
         clearTaskFinished_ = false;
         Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<AsyncClearTask>(this, gcType));
@@ -266,9 +270,23 @@ void Heap::Resume(TriggerGCType gcType)
     }
 }
 
+void Heap::ResumeForAppSpawn()
+{
+    sweeper_->WaitAllTaskFinished();
+    hugeObjectSpace_->ReclaimHugeRegion();
+    inactiveSemiSpace_->ReclaimRegions();
+    oldSpace_->Reset();
+    auto cb = [] (Region *region) {
+        region->ClearMarkGCBitset();
+    };
+    nonMovableSpace_->EnumerateRegions(cb);
+    machineCodeSpace_->EnumerateRegions(cb);
+    hugeObjectSpace_->EnumerateRegions(cb);
+}
+
 void Heap::CompactHeapBeforeFork()
 {
-    fullGC_->RunPhasesForAppSpawn();
+    CollectGarbage(TriggerGCType::APPSPAWN_FULL_GC);
 }
 
 void Heap::DisableParallelGC()
@@ -343,10 +361,15 @@ void Heap::CollectGarbage(TriggerGCType gcType)
             partialGC_->RunPhases();
             break;
         case TriggerGCType::FULL_GC:
+            fullGC_->SetForAppSpawn(false);
             fullGC_->RunPhases();
             if (fullGCRequested_) {
                 fullGCRequested_ = false;
             }
+            break;
+        case TriggerGCType::APPSPAWN_FULL_GC:
+            fullGC_->SetForAppSpawn(true);
+            fullGC_->RunPhasesForAppSpawn();
             break;
         default:
             UNREACHABLE();
@@ -440,6 +463,11 @@ size_t Heap::VerifyHeapObjects() const
 
     {
         VerifyObjectVisitor verifier(this, &failCount);
+        appSpawnSpace_->IterateOverMarkedObjects(verifier);
+    }
+
+    {
+        VerifyObjectVisitor verifier(this, &failCount);
         nonMovableSpace_->IterateOverObjects(verifier);
     }
 
@@ -463,6 +491,7 @@ size_t Heap::VerifyOldToNewRSet() const
     size_t failCount = 0;
     VerifyObjectVisitor verifier(this, &failCount);
     oldSpace_->IterateOldToNewOverObjects(verifier);
+    appSpawnSpace_->IterateOldToNewOverObjects(verifier);
     nonMovableSpace_->IterateOldToNewOverObjects(verifier);
     machineCodeSpace_->IterateOldToNewOverObjects(verifier);
     return failCount;
@@ -504,6 +533,15 @@ void Heap::AddToKeptObjects(JSHandle<JSTaggedValue> value) const
     }
     linkedSet = LinkedHashSet::Add(thread_, linkedSet, value);
     env->SetWeakRefKeepObjects(thread_, linkedSet);
+}
+
+void Heap::AdjustSpaceSizeForAppSpawn()
+{
+    auto committedSize = appSpawnSpace_->GetCommittedSize();
+    appSpawnSpace_->SetInitialCapacity(committedSize);
+    appSpawnSpace_->SetMaximumCapacity(committedSize);
+    oldSpace_->SetInitialCapacity(oldSpace_->GetInitialCapacity() - committedSize);
+    oldSpace_->SetMaximumCapacity(oldSpace_->GetMaximumCapacity() - committedSize);
 }
 
 void Heap::ClearKeptObjects() const
@@ -645,6 +683,16 @@ void Heap::TryTriggerConcurrentMarking()
         TriggerConcurrentMarking();
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
     }
+}
+
+void Heap::PrepareRecordRegionsForReclaim()
+{
+    activeSemiSpace_->SetRecordRegion();
+    oldSpace_->SetRecordRegion();
+    snapshotSpace_->SetRecordRegion();
+    nonMovableSpace_->SetRecordRegion();
+    hugeObjectSpace_->SetRecordRegion();
+    machineCodeSpace_->SetRecordRegion();
 }
 
 void Heap::TriggerConcurrentMarking()

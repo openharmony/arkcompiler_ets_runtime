@@ -150,7 +150,6 @@ void SparseSpace::AsyncSweep(bool isMain)
 void SparseSpace::Sweep()
 {
     liveObjectSize_ = 0;
-    sweepState_ = SweepState::SWEEPING;
     allocator_->RebuildFreeList();
     EnumerateRegions([this](Region *current) {
         if (!current->InCollectSet()) {
@@ -496,6 +495,21 @@ void LocalSpace::Stop()
 NonMovableSpace::NonMovableSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, MemSpaceType::NON_MOVABLE, initialCapacity, maximumCapacity)
 {
+}
+
+AppSpawnSpace::AppSpawnSpace(Heap *heap, size_t initialCapacity)
+    : SparseSpace(heap, MemSpaceType::APPSPAWN_SPACE, initialCapacity, initialCapacity)
+{
+}
+
+void AppSpawnSpace::IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const
+{
+    EnumerateRegions([&](Region *current) {
+        current->IterateAllMarkedBits([&](void *mem) {
+            ASSERT(current->InRange(ToUintPtr(mem)));
+            visitor(reinterpret_cast<TaggedObject *>(mem));
+        });
+    });
 }
 
 uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)

@@ -137,6 +137,10 @@ void ConcurrentMarker::InitializeMarking()
     if (heap_->IsFullMark()) {
         heapObjectSize_ = heap_->GetHeapObjectSize();
         heap_->GetOldSpace()->SelectCSet();
+        heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
+            current->ClearMarkGCBitset();
+            current->ClearCrossRegionRSet();
+        });
         // The alive object size of Region in OldSpace will be recalculated.
         heap_->EnumerateNonNewSpaceRegions([](Region *current) {
             current->ResetAliveObject();

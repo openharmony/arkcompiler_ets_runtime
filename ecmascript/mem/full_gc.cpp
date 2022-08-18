@@ -67,6 +67,10 @@ void FullGC::Initialize()
         current->ClearOldToNewRSet();
     };
     heap_->EnumerateNonMovableRegions(callback);
+    heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
+        current->ClearMarkGCBitset();
+        current->ClearCrossRegionRSet();
+    });
     youngSpaceCommitSize_ = heap_->GetNewSpace()->GetCommittedSize();
     heap_->SwapNewSpace();
     workManager_->Initialize(TriggerGCType::FULL_GC, ParallelGCTaskPhase::COMPRESS_HANDLE_GLOBAL_POOL_TASK);
@@ -107,7 +111,7 @@ void FullGC::Sweep()
             auto header = value.GetTaggedWeakRef();
 
             Region *objectRegion = Region::ObjectAddressToRange(header);
-            if (!objectRegion->InYoungOrOldSpace()) {
+            if (!HasEvacuated(objectRegion)) {
                 if (!objectRegion->Test(header)) {
                     slot.Update(static_cast<JSTaggedType>(JSTaggedValue::Undefined().GetRawData()));
                 }
@@ -125,9 +129,9 @@ void FullGC::Sweep()
     }
 
     auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
-    WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
+    WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(header);
-        if (!objectRegion->InYoungOrOldSpace()) {
+        if (!HasEvacuated(objectRegion)) {
             if (objectRegion->Test(header)) {
                 return header;
             }
@@ -150,8 +154,23 @@ void FullGC::Sweep()
 void FullGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Finish");
-    heap_->Resume(FULL_GC);
+    if (forAppSpawn_) {
+        heap_->ResumeForAppSpawn();
+    } else {
+        heap_->Resume(FULL_GC);
+    }
     youngAndOldAliveSize_ = workManager_->Finish();
     heap_->GetSweeper()->TryFillSweptRegion();
+}
+
+bool FullGC::HasEvacuated(Region *region)
+{
+    auto marker = reinterpret_cast<CompressGCMarker*>(heap_->GetCompressGCMarker());
+    return marker->NeedEvacuate(region);
+}
+
+void FullGC::SetForAppSpawn(bool flag)
+{
+    forAppSpawn_ = flag;
 }
 }  // namespace panda::ecmascript
