@@ -25,6 +25,7 @@ namespace panda::ecmascript::kungfu {
 #define BUILTINS_STUB_LIST(V)                       \
     V(CharCodeAt)                                   \
     V(IndexOf)                                      \
+    V(Substring)                                    \
 
 class BuiltinsStubCSigns {
 public:
