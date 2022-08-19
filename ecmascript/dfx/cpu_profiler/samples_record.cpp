@@ -108,7 +108,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
         (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
     if (outToFile) {
         sampleInfo.id = sampleNodeId;
-        sampleInfo.line = stackTopLines_[methodNode.id];
+        sampleInfo.line = stackTopLines_[methodNode.id - 1];
         sampleInfo.timeStamp = timeDelta;
         samples_.push_back(sampleInfo);
     } else {
@@ -188,11 +188,10 @@ void SamplesRecord::WriteMethodsAndSampleInfo(bool timeEnd)
                     "\"0x2\",\"name\":\"ProfileChunk\",\"ph\":\"P\",\"pid\":";
     pid_t pid = getpid();
     int64_t tid = syscall(SYS_gettid);
-    uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
     uint64_t tts = SamplingProcessor::GetMicrosecondsTimeStamp();
     sampleData_ += std::to_string(pid) + ",\"tid\":" +
                    std::to_string(tid) + ",\"ts\":" +
-                   std::to_string(ts) + ",\"tts\":" +
+                   std::to_string(threadStartTime_) + ",\"tts\":" +
                    std::to_string(tts) + "},\n";
 }
 
