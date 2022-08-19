@@ -246,6 +246,9 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
 
 HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
 {
+    // remove builtins.snapshot file first if exist
+    CString fileName = "builtins.snapshot";
+    std::remove(fileName.c_str());
     // generate builtins.snapshot file
     JSRuntimeOptions options1;
     options1.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_SERIALIZE);
@@ -274,7 +277,6 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
     });
     EcmaVM::Destroy(ecmaVm2);
 
-    CString fileName = "builtins.snapshot";
     std::remove(fileName.c_str());
 }
 }  // namespace panda::test
