@@ -228,45 +228,91 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
 {
     GateAccessor acc(const_cast<Circuit*>(circuit));
     std::unordered_map<GateRef, size_t> upperBound;
-    std::function<std::optional<size_t>(GateRef)> dfs = [&](GateRef curGate) -> std::optional<size_t> {
-        if (upperBound.count(curGate) > 0) {
-            return upperBound[curGate];
-        }
-        if (acc.GetOpCode(curGate).IsProlog() || acc.GetOpCode(curGate).IsRoot()) {
-            return 0;
-        }
-        if (acc.GetOpCode(curGate).IsFixed()) {
-            return bbGatesAddrToIdx.at(acc.GetIn(curGate, 0));
-        }
-        if (acc.GetOpCode(curGate).IsState()) {
-            return bbGatesAddrToIdx.at(curGate);
-        }
-        // then cur is schedulable
-        size_t curUpperBound = 0;
+    struct DFSState {
+        GateRef curGate = Circuit::NullGate();
         std::vector<GateRef> predGates;
-        acc.GetInVector(curGate, predGates);
-        for (const auto &predGate : predGates) {
-            auto predResult = dfs(predGate);
-            if (!predResult.has_value()) {
-                return std::nullopt;
-            }
-            auto predUpperBound = predResult.value();
-            if (!isAncestor(curUpperBound, predUpperBound) && !isAncestor(predUpperBound, curUpperBound)) {
-                LOG_COMPILER(ERROR) << "[Verifier][Error] Scheduling upper bound of gate (id="
-                                    << GateAccessor(const_cast<Circuit*>(circuit)).GetId(curGate) << ") does not exist";
-                return std::nullopt;
-            }
-            if (isAncestor(curUpperBound, predUpperBound)) {
-                curUpperBound = predUpperBound;
-            }
+        size_t idx = 0;
+        size_t curUpperBound = 0;
+    };
+    DFSState emptyState = {Circuit::NullGate(), std::vector<GateRef>(0), 0, 0};
+    bool getReturn = false;
+    std::optional<size_t> returnValue = 0;
+    std::stack<DFSState> dfsStack;
+    auto CheckUnschedulable = [&](GateRef gate) -> void {
+        if (upperBound.count(gate) > 0) {
+            returnValue = upperBound[gate];
+            getReturn = true;
+        } else if (acc.GetOpCode(gate).IsProlog() || acc.GetOpCode(gate).IsRoot()) {
+            returnValue = 0;
+            getReturn = true;
+        } else if (acc.GetOpCode(gate).IsFixed()) {
+            returnValue = bbGatesAddrToIdx.at(acc.GetIn(gate, 0));
+            getReturn = true;
+        } else if (acc.GetOpCode(gate).IsState()) {
+            returnValue = bbGatesAddrToIdx.at(gate);
+            getReturn = true;
         }
-        return (upperBound[curGate] = curUpperBound);
+        // then gate is schedulable
     };
     for (const auto &schedulableGate : schedulableGatesList) {
-        if (upperBound.count(schedulableGate) == 0) {
-            if (!dfs(schedulableGate).has_value()) {
-                return std::nullopt;
+        if (upperBound.count(schedulableGate) != 0) {
+            continue;
+        }
+        getReturn = false;
+        CheckUnschedulable(schedulableGate);
+        if (getReturn) {
+            continue;
+        }
+        dfsStack.push(emptyState);
+        auto &rootState = dfsStack.top();
+        auto &rootPredGates = rootState.predGates;
+        rootState.curGate = schedulableGate;
+        acc.GetInVector(schedulableGate, rootPredGates);
+        while (!dfsStack.empty()) {
+            auto &curState = dfsStack.top();
+            auto &curGate = curState.curGate;
+            auto &predGates = curState.predGates;
+            auto &idx = curState.idx;
+            auto &curUpperBound = curState.curUpperBound;
+            if (idx == predGates.size()) {
+                upperBound[curGate] = curUpperBound;
+                returnValue = curUpperBound;
+                dfsStack.pop();
+                getReturn = true;
+                continue;
             }
+            if (getReturn) {
+                if (!returnValue.has_value()) {
+                    break;
+                }
+                auto predUpperBound = returnValue.value();
+                if (!isAncestor(curUpperBound, predUpperBound) && !isAncestor(predUpperBound, curUpperBound)) {
+                    LOG_COMPILER(ERROR) << "[Verifier][Error] Scheduling upper bound of gate (id="
+                                        << GateAccessor(const_cast<Circuit*>(circuit)).GetId(curGate)
+                                        << ") does not exist";
+                    returnValue = std::nullopt;
+                    break;
+                }
+                if (isAncestor(curUpperBound, predUpperBound)) {
+                    curUpperBound = predUpperBound;
+                }
+                getReturn = false;
+                idx++;
+            } else {
+                const auto &predGate = predGates[idx];
+                CheckUnschedulable(predGate);
+                if (getReturn) {
+                    continue;
+                }
+                dfsStack.push(emptyState);
+                auto &newState = dfsStack.top();
+                auto &newPredGates = newState.predGates;
+                newState.curGate = predGate;
+                acc.GetInVector(predGate, newPredGates);
+            }
+        }
+        if (!returnValue.has_value()) {
+            return std::nullopt;
         }
     }
     return upperBound;
@@ -291,54 +337,94 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
             }
         }
     }
-    std::function<void(GateRef)> dfsVisit = [&](GateRef curGate) {
+    struct DFSVisitState {
         std::vector<GateRef> prevGates;
-        acc.GetInVector(curGate, prevGates);
-        for (const auto &prevGate : prevGates) {
-            if (acc.GetOpCode(prevGate).IsSchedulable()) {
-                useCount[prevGate]++;
-                if (useCount[prevGate] == 1) {
-                    dfsVisit(prevGate);
-                }
-            }
-        }
+        size_t idx = 0;
     };
+    DFSVisitState emptyVisitState = {std::vector<GateRef>(0), 0};
+    std::stack<DFSVisitState> dfsVisitStack;
     for (const auto &gate : bbAndFixedGatesList) {
-        dfsVisit(gate);
+        dfsVisitStack.push(emptyVisitState);
+        auto &rootState = dfsVisitStack.top();
+        auto &rootPrevGates = rootState.prevGates;
+        acc.GetInVector(gate, rootPrevGates);
+        while (!dfsVisitStack.empty()) {
+            auto &curState = dfsVisitStack.top();
+            auto &prevGates = curState.prevGates;
+            auto &idx = curState.idx;
+            if (idx == prevGates.size()) {
+                dfsVisitStack.pop();
+                continue;
+            }
+            const auto &prevGate = prevGates[idx];
+            if (!acc.GetOpCode(prevGate).IsSchedulable()) {
+                ++idx;
+                continue;
+            }
+            useCount[prevGate]++;
+            if (useCount[prevGate] == 1) {
+                dfsVisitStack.push(emptyVisitState);
+                auto &newState = dfsVisitStack.top();
+                auto &newPrevGates = newState.prevGates;
+                acc.GetInVector(prevGate, newPrevGates);
+            }
+            ++idx;
+        }
     }
-    std::function<void(GateRef)> dfsFinish = [&](GateRef curGate) {
-        size_t cnt = 0;
+    struct DFSFinishState {
+        GateRef curGate = Circuit::NullGate();
         std::vector<GateRef> prevGates;
-        acc.GetInVector(curGate, prevGates);
-        for (const auto &prevGate : prevGates) {
-            if (acc.GetOpCode(prevGate).IsSchedulable()) {
-                useCount[prevGate]--;
-                size_t curLowerBound;
-                if (acc.GetOpCode(curGate).IsState()) {  // cur_opcode would not be STATE_ENTRY
-                    curLowerBound = bbGatesAddrToIdx.at(curGate);
-                } else if (acc.GetOpCode(curGate).IsFixed()) {
-                    ASSERT(cnt > 0);
-                    curLowerBound = bbGatesAddrToIdx.at(acc.GetIn(acc.GetIn(curGate, 0), cnt - 1));
-                } else {
-                    curLowerBound = lowerBound.at(curGate);
-                }
-                if (lowerBound.count(prevGate) == 0) {
-                    lowerBound[prevGate] = curLowerBound;
-                } else {
-                    lowerBound[prevGate] = lowestCommonAncestor(lowerBound[prevGate], curLowerBound);
-                }
-                if (useCount[prevGate] == 0) {
-                    if (order != nullptr) {
-                        order->push_back(prevGate);
-                    }
-                    dfsFinish(prevGate);
-                }
-            }
-            cnt++;
-        }
+        size_t idx = 0;
     };
+    DFSFinishState emptyFinishState = {Circuit::NullGate(), std::vector<GateRef>(0), 0};
+    std::stack<DFSFinishState> dfsFinishStack;
     for (const auto &gate : bbAndFixedGatesList) {
-        dfsFinish(gate);
+        dfsFinishStack.push(emptyFinishState);
+        auto &rootState = dfsFinishStack.top();
+        auto &rootPrevGates = rootState.prevGates;
+        rootState.curGate = gate;
+        acc.GetInVector(gate, rootPrevGates);
+        while (!dfsFinishStack.empty()) {
+            auto &curState = dfsFinishStack.top();
+            auto &curGate = curState.curGate;
+            auto &prevGates = curState.prevGates;
+            auto &idx = curState.idx;
+            if (idx == prevGates.size()) {
+                dfsFinishStack.pop();
+                continue;
+            }
+            const auto &prevGate = prevGates[idx];
+            if (!acc.GetOpCode(prevGate).IsSchedulable()) {
+                ++idx;
+                continue;
+            }
+            useCount[prevGate]--;
+            size_t curLowerBound;
+            if (acc.GetOpCode(curGate).IsState()) {  // cur_opcode would not be STATE_ENTRY
+                curLowerBound = bbGatesAddrToIdx.at(curGate);
+            } else if (acc.GetOpCode(curGate).IsFixed()) {
+                ASSERT(idx > 0);
+                curLowerBound = bbGatesAddrToIdx.at(acc.GetIn(acc.GetIn(curGate, 0), idx - 1));
+            } else {
+                curLowerBound = lowerBound.at(curGate);
+            }
+            if (lowerBound.count(prevGate) == 0) {
+                lowerBound[prevGate] = curLowerBound;
+            } else {
+                lowerBound[prevGate] = lowestCommonAncestor(lowerBound[prevGate], curLowerBound);
+            }
+            if (useCount[prevGate] == 0) {
+                if (order != nullptr) {
+                    order->push_back(prevGate);
+                }
+                dfsFinishStack.push(emptyFinishState);
+                auto &newState = dfsFinishStack.top();
+                auto &newPrevGates = newState.prevGates;
+                newState.curGate = prevGate;
+                acc.GetInVector(prevGate, newPrevGates);
+            }
+            ++idx;
+        }
     }
     return lowerBound;
 }
