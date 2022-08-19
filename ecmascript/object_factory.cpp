@@ -1446,7 +1446,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(const void *func, co
 JSHandle<JSMethod> ObjectFactory::NewJSMethod(const MethodLiteral *method)
 {
     NewObjectHook();
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+    TaggedObject *header = heap_->AllocateOldOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetJSMethodClass().GetTaggedObject()));
     JSHandle<JSMethod> jsMethod(thread_, header);
     if (method != nullptr) {

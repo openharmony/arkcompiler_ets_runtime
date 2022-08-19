@@ -828,8 +828,8 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     thread->CheckSafepoint();
     auto profileTypeInfo = thisFunc->GetProfileTypeInfo();
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
-        auto method = thisFunc->GetCallTarget();
-        auto res = RuntimeNotifyInlineCache(thread, thisFunc, method);
+        uint32_t slotSize = thisFunc->GetCallTarget()->GetSlotSize();
+        auto res = RuntimeNotifyInlineCache(thread, thisFunc, slotSize);
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
