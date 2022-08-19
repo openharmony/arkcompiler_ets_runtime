@@ -214,7 +214,9 @@ class ProtoChangeDetails;
         MODULE_RECORD, /* //////////////////////////////////////////////////////////////////////////////-PADDING */    \
         SOURCE_TEXT_MODULE_RECORD, /* //////////////////////////////////////////////////////////////////-PADDING */    \
         IMPORTENTRY_RECORD, /* /////////////////////////////////////////////////////////////////////////-PADDING */    \
-        EXPORTENTRY_RECORD, /* /////////////////////////////////////////////////////////////////////////-PADDING */    \
+        LOCAL_EXPORTENTRY_RECORD, /* ///////////////////////////////////////////////////////////////////-PADDING */    \
+        INDIRECT_EXPORTENTRY_RECORD, /* ////////////////////////////////////////////////////////////////-PADDING */    \
+        STAR_EXPORTENTRY_RECORD, /* ////////////////////////////////////////////////////////////////////-PADDING */    \
         RESOLVEDBINDING_RECORD, /* /////////////////////////////////////////////////////////////////////-PADDING */    \
         CELL_RECORD,          /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         COMPLETION_RECORD, /* JS_RECORD_LAST /////////////////////////////////////////////////////////////////////// */\
@@ -1256,9 +1258,19 @@ public:
         return GetObjectType() == JSType::IMPORTENTRY_RECORD;
     }
 
-    inline bool IsExportEntry() const
+    inline bool IsLocalExportEntry() const
     {
-        return GetObjectType() == JSType::EXPORTENTRY_RECORD;
+        return GetObjectType() == JSType::LOCAL_EXPORTENTRY_RECORD;
+    }
+
+    inline bool IsIndirectExportEntry() const
+    {
+        return GetObjectType() == JSType::INDIRECT_EXPORTENTRY_RECORD;
+    }
+
+    inline bool IsStarExportEntry() const
+    {
+        return GetObjectType() == JSType::STAR_EXPORTENTRY_RECORD;
     }
 
     inline bool IsResolvedBinding() const

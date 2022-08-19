@@ -3508,25 +3508,57 @@ JSHandle<ImportEntry> ObjectFactory::NewImportEntry(const JSHandle<JSTaggedValue
     return obj;
 }
 
-JSHandle<ExportEntry> ObjectFactory::NewExportEntry()
+JSHandle<LocalExportEntry> ObjectFactory::NewLocalExportEntry()
 {
     JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
-    return NewExportEntry(defautValue, defautValue, defautValue, defautValue);
+    return NewLocalExportEntry(defautValue, defautValue);
 }
 
-JSHandle<ExportEntry> ObjectFactory::NewExportEntry(const JSHandle<JSTaggedValue> &exportName,
-                                                    const JSHandle<JSTaggedValue> &moduleRequest,
-                                                    const JSHandle<JSTaggedValue> &importName,
-                                                    const JSHandle<JSTaggedValue> &localName)
+JSHandle<LocalExportEntry> ObjectFactory::NewLocalExportEntry(const JSHandle<JSTaggedValue> &exportName,
+                                                              const JSHandle<JSTaggedValue> &localName)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetExportEntryClass().GetTaggedObject()));
-    JSHandle<ExportEntry> obj(thread_, header);
+        JSHClass::Cast(thread_->GlobalConstants()->GetLocalExportEntryClass().GetTaggedObject()));
+    JSHandle<LocalExportEntry> obj(thread_, header);
+    obj->SetExportName(thread_, exportName);
+    obj->SetLocalName(thread_, localName);
+    return obj;
+}
+
+JSHandle<IndirectExportEntry> ObjectFactory::NewIndirectExportEntry()
+{
+    JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
+    return NewIndirectExportEntry(defautValue, defautValue, defautValue);
+}
+
+JSHandle<IndirectExportEntry> ObjectFactory::NewIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
+                                                                    const JSHandle<JSTaggedValue> &moduleRequest,
+                                                                    const JSHandle<JSTaggedValue> &importName)
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetIndirectExportEntryClass().GetTaggedObject()));
+    JSHandle<IndirectExportEntry> obj(thread_, header);
     obj->SetExportName(thread_, exportName);
     obj->SetModuleRequest(thread_, moduleRequest);
     obj->SetImportName(thread_, importName);
-    obj->SetLocalName(thread_, localName);
+    return obj;
+}
+
+JSHandle<StarExportEntry> ObjectFactory::NewStarExportEntry()
+{
+    JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
+    return NewStarExportEntry(defautValue);
+}
+
+JSHandle<StarExportEntry> ObjectFactory::NewStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest)
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetStarExportEntryClass().GetTaggedObject()));
+    JSHandle<StarExportEntry> obj(thread_, header);
+    obj->SetModuleRequest(thread_, moduleRequest);
     return obj;
 }
 
@@ -3551,6 +3583,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetEvaluationError(SourceTextModule::UNDEFINED_INDEX);
     obj->SetStatus(ModuleStatus::UNINSTANTIATED);
     obj->SetTypes(ModuleTypes::UNKNOWN);
+    obj->SetModes(ModuleModes::DICTIONARYMODE);
     return obj;
 }
 

@@ -136,6 +136,23 @@ JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(const CString &r
                                       NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
 }
 
+JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(JSTaggedValue referencingModule)
+{
+    int entry =
+        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencingModule);
+    LOG_ECMA_IF(entry == -1, FATAL) << "cannot get module: " << ConvertToString(referencingModule);
+
+    return JSHandle<SourceTextModule>(vm_->GetJSThread(),
+                                      NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
+}
+
+bool ModuleManager::resolveImportedModule(JSTaggedValue referencingModule)
+{
+    int entry =
+        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencingModule);
+    return entry != -1;
+}
+
 JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CString &referencingModule)
 {
     JSThread *thread = vm_->GetJSThread();

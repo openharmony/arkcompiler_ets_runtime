@@ -32,10 +32,12 @@ public:
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value);
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value, JSTaggedValue jsFunc);
     JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
+    JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencingModule);
     JSHandle<SourceTextModule> PUBLIC_API HostResolveImportedModule(const CString &referencingModule);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName, JSTaggedValue currentFunc);
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
+    bool resolveImportedModule(JSTaggedValue referencingModule);
     void Iterate(const RootVisitor &v);
 
 private:

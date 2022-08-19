@@ -22,7 +22,7 @@
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/interpreter/frame_handler.h"
 
-#if defined(PANDA_TARGET_UNIX)
+#if defined(PANDA_TARGET_UNIX) && !defined(PANDA_TARGET_MACOS)
 #include <sys/ptrace.h>
 #else
 #define ptrace(PTRACE_PEEKTEXT, pid, addr, NULL) static_cast<long>(-1)

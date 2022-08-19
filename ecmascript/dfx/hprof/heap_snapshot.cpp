@@ -463,8 +463,12 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("SourceTextModule");
         case JSType::IMPORTENTRY_RECORD:
             return GetString("ImportEntry");
-        case JSType::EXPORTENTRY_RECORD:
-            return GetString("ExportEntry");
+        case JSType::LOCAL_EXPORTENTRY_RECORD:
+            return GetString("LocalExportEntry");
+        case JSType::INDIRECT_EXPORTENTRY_RECORD:
+            return GetString("IndirectExportEntry");
+        case JSType::STAR_EXPORTENTRY_RECORD:
+            return GetString("StarExportEntry");
         case JSType::RESOLVEDBINDING_RECORD:
             return GetString("ResolvedBinding");
         case JSType::JS_MODULE_NAMESPACE:

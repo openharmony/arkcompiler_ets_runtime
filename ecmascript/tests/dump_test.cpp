@@ -1215,10 +1215,22 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(importEntry);
                 break;
             }
-            case JSType::EXPORTENTRY_RECORD: {
-                CHECK_DUMP_FIELDS(Record::SIZE, ExportEntry::SIZE, 4U);
-                JSHandle<ExportEntry> exportEntry = factory->NewExportEntry();
-                DUMP_FOR_HANDLE(exportEntry);
+            case JSType::LOCAL_EXPORTENTRY_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, LocalExportEntry::SIZE, 2U);
+                JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry();
+                DUMP_FOR_HANDLE(localExportEntry);
+                break;
+            }
+            case JSType::INDIRECT_EXPORTENTRY_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, IndirectExportEntry::SIZE, 3U);
+                JSHandle<IndirectExportEntry> indirectExportEntry = factory->NewIndirectExportEntry();
+                DUMP_FOR_HANDLE(indirectExportEntry);
+                break;
+            }
+            case JSType::STAR_EXPORTENTRY_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, StarExportEntry::SIZE, 1U);
+                JSHandle<StarExportEntry> starExportEntry = factory->NewStarExportEntry();
+                DUMP_FOR_HANDLE(starExportEntry);
                 break;
             }
             case JSType::RESOLVEDBINDING_RECORD: {
