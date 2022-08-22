@@ -38,7 +38,9 @@ void TSManager::DecodeTSTypes(const JSPandaFile *jsPandaFile)
     }
 }
 
-TSManager::TSManager(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory())
+TSManager::TSManager(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),
+                                   assertTypes_(vm_->GetJSOptions().AssertTypes()),
+                                   printAnyTypes_(vm_->GetJSOptions().PrintAnyTypes())
 {
     JSHandle<TSModuleTable> mTable = factory_->NewTSModuleTable(TSModuleTable::DEFAULT_TABLE_CAPACITY);
     SetTSModuleTable(mTable);
@@ -424,11 +426,6 @@ size_t TSManager::GetStringIdx(JSHandle<JSTaggedValue> constPool, const uint16_t
     JSHandle<ConstantPool> newConstPool(thread_, constPool.GetTaggedValue());
     auto str = newConstPool->GetObjectFromCache(id);
     return AddConstString(str);
-}
-
-bool TSManager::IsTypeVerifyEnabled() const
-{
-    return vm_->GetJSOptions().EnableTypeInferVerify();
 }
 
 std::string TSManager::GetStdStringById(size_t index) const

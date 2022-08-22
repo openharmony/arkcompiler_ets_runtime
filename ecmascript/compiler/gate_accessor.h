@@ -261,7 +261,7 @@ public:
         }
     };
 
-    ConstInWrapper ConstIns(GateRef gate)
+    ConstInWrapper ConstIns(GateRef gate) const
     {
         return { circuit_, gate };
     }

@@ -542,7 +542,7 @@ template("host_typeinfer_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    _aot_compile_options_ = " --typeinfer-verify=true"
+    _aot_compile_options_ = " --assert-types=true"
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {

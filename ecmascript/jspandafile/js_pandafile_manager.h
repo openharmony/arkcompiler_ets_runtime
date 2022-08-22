@@ -61,6 +61,8 @@ public:
         }
     }
 
+    void InsertJSPandaFile(const JSPandaFile *jsPandaFile);
+
 private:
     JSPandaFileManager() = default;
 
@@ -75,7 +77,6 @@ private:
     void ReleaseJSPandaFile(const JSPandaFile *jsPandaFile);
     const JSPandaFile *GetJSPandaFile(const panda_file::File *pf);
     const JSPandaFile *FindJSPandaFileUnlocked(const CString &filename);
-    void InsertJSPandaFile(const JSPandaFile *jsPandaFile);
     void IncreaseRefJSPandaFileUnlocked(const JSPandaFile *jsPandaFile);
     void DecreaseRefJSPandaFile(const JSPandaFile *jsPandaFile);
 

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/type_inference/type_infer.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript::kungfu {
 void TypeInfer::TraverseCircuit()
@@ -47,8 +48,13 @@ void TypeInfer::TraverseCircuit()
         circuit_->PrintAllGates(*builder_);
     }
 
-    if (tsManager_->IsTypeVerifyEnabled()) {
+    if (tsManager_->AssertTypes()) {
         Verify();
+    }
+
+    if (tsManager_->PrintAnyTypes()) {
+        TypeFilter filter(this);
+        filter.Run();
     }
 }
 
@@ -527,6 +533,61 @@ void TypeInfer::PrintType(GateRef gate) const
     auto typeRef = GlobalTSTypeRef(type.GetType());
     log += "moduleId: " + std::to_string(typeRef.GetModuleId()) + ", ";
     log += "localId: " + std::to_string(typeRef.GetLocalId());
+    LOG_COMPILER(INFO) << log;
+}
+
+void TypeFilter::Run() const
+{
+    LOG_COMPILER(INFO) << "================== filter any types outputs ==================";
+    const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+    EntityId methodId = methodLiteral_->GetMethodId();
+
+    JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
+    const std::string functionName = methodLiteral_->ParseFunctionName(jsPandaFile, methodId);
+
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+    for (const auto &gate : gateList) {
+        GateType type = gateAccessor_.GetGateType(gate);
+        if (infer_->ShouldInfer(gate) && type.IsAnyType()) {
+            PrintAnyTypeGate(gate, debugExtractor, sourceFileName, functionName);
+        }
+    }
+}
+
+void TypeFilter::PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, const std::string &sourceFileName,
+                                  const std::string &functionName) const
+{
+    std::string log("[TypeFilter] ");
+    log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
+    OpCode op = gateAccessor_.GetOpCode(gate);
+    if (op != OpCode::VALUE_SELECTOR) {
+    // handle ByteCode gate: print gate id, bytecode and line number in source code.
+        log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
+
+        int32_t lineNumber = 0;
+        auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
+            lineNumber = line + 1;
+            return true;
+        };
+
+        const auto &gateToBytecode = builder_->GetGateToBytecode();
+        const uint8_t *pc = gateToBytecode.at(gate).second;
+
+        uint32_t offset = pc - methodLiteral_->GetBytecodeArray();
+        debugExtractor->MatchLineWithOffset(callbackLineFunc, methodLiteral_->GetMethodId(), offset);
+
+        log += "at " + functionName + " (" + sourceFileName +  ":" + std::to_string(lineNumber) + ")";
+    } else {
+    // handle phi gate: print gate id and input gates id list.
+        log += "phi gate, ins: ";
+        auto ins = gateAccessor_.ConstIns(gate);
+        for (auto it =  ins.begin(); it != ins.end(); it++) {
+            log += std::to_string(gateAccessor_.GetId(*it)) + " ";
+        }
+    }
+
     LOG_COMPILER(INFO) << log;
 }
 }  // namespace panda::ecmascript
