@@ -125,7 +125,9 @@ using panda::ecmascript::kungfu::CommonStubCSigns;
     do {                                                                    \
         hotnessCounter += offset;                                           \
         if (UNLIKELY(hotnessCounter <= 0)) {                                \
+            SAVE_ACC();                                                     \
             profileTypeInfo = UpdateHotnessCounter(thread, sp);             \
+            RESTORE_ACC();                                                  \
             hotnessCounter = EcmaInterpreter::METHOD_HOTNESS_THRESHOLD;     \
         }                                                                   \
     } while (false)
