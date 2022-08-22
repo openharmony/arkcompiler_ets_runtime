@@ -114,6 +114,7 @@ using PromiseRejectCallback = void (*)(void* info);
 using NativePtrGetter = void* (*)(void* info);
 
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
+using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)>;
 
 class EcmaVM {
 public:
@@ -364,6 +365,16 @@ public:
         return resolvePathCallback_;
     }
 
+    void SetResolveBufferCallback(ResolveBufferCallback cb)
+    {
+        resolveBufferCallback_ = cb;
+    }
+
+    ResolveBufferCallback GetResolveBufferCallback() const
+    {
+        return resolveBufferCallback_;
+    }
+
     void SetConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool);
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile);
@@ -507,6 +518,7 @@ private:
 
     // CJS resolve path Callbacks
     ResolvePathCallback resolvePathCallback_ {nullptr};
+    ResolveBufferCallback resolveBufferCallback_ {nullptr};
 
     // vm parameter configurations
     EcmaParamConfiguration ecmaParamConfiguration_;
