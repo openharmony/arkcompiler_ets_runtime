@@ -31,7 +31,8 @@ class GeneratorContext;
 
 class EcmaInterpreter {
 public:
-    static const int16_t METHOD_HOTNESS_THRESHOLD = 512;
+    static const int16_t METHOD_HOTNESS_THRESHOLD = 0x700;
+    static const int16_t METHOD_HOTNESS_THRESHOLD_FACTOR = 10;
     enum ActualNumArgsOfCall : uint8_t { CALLARG0 = 0, CALLARG1, CALLARGS2, CALLARGS3 };
 
     static inline JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
@@ -57,6 +58,7 @@ public:
     static inline JSTaggedValue GetThisObjectFromFastNewFrame(JSTaggedType *sp);
     static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<JSMethod> method);
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
+    static inline int16_t GetHotnessCounter(uint32_t codeSize);
 };
 
 enum EcmaOpcode {

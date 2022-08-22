@@ -17,7 +17,7 @@
 
 #include "ecmascript/file_loader.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -71,7 +71,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             }
 
             InitializeMemory(method, jsPandaFile, mda.GetMethodId());
-            method->SetHotnessCounter(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
+            method->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
             method->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (translatedCode.find(insns) == translatedCode.end()) {

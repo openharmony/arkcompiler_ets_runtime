@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
 
+#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "libpandafile/class_data_accessor-inl.h"
@@ -77,7 +78,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
             }
 
             new (method) MethodLiteral(jsPandaFile, mda.GetMethodId());
-            method->SetHotnessCounter(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
+            method->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
             method->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             auto it = processedInsns.find(insns);
