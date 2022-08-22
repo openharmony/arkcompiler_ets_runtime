@@ -122,7 +122,7 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     ObjectFactory *factory = vm->GetFactory();
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
-    JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex + 1);
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex);
 
     // Put JSPandaFile at the first index of constpool.
     JSHandle<JSNativePointer> jsPandaFilePointer = factory->NewJSNativePointer(

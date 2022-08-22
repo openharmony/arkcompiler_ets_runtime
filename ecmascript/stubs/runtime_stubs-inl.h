@@ -771,9 +771,8 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassConstructorLength(JSThread *thread, J
 }
 
 JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<JSFunction> &func,
-                                                     JSMethod *method)
+                                                     uint32_t icSlotSize)
 {
-    uint32_t icSlotSize = method->GetSlotSize();
     if (icSlotSize == 0) {
         return JSTaggedValue::Undefined();
     }

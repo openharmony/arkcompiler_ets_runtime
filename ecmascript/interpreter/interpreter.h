@@ -55,7 +55,7 @@ public:
     static inline JSTaggedValue GetNewTarget(JSTaggedType *sp);
     static inline uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static inline JSTaggedValue GetThisObjectFromFastNewFrame(JSTaggedType *sp);
-    static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSMethod *method);
+    static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<JSMethod> method);
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
 };
 

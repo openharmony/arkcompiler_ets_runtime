@@ -1102,7 +1102,8 @@ JSTaggedValue SlowRuntimeStub::NotifyInlineCache(JSThread *thread, JSFunction *f
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSFunction> funcHandle(thread, func);
-    return RuntimeStubs::RuntimeNotifyInlineCache(thread, funcHandle, method);
+    uint32_t slotSize = method->GetSlotSize();
+    return RuntimeStubs::RuntimeNotifyInlineCache(thread, funcHandle, slotSize);
 }
 
 JSTaggedValue SlowRuntimeStub::ResolveClass(JSThread *thread, JSTaggedValue ctor, TaggedArray *literal,
