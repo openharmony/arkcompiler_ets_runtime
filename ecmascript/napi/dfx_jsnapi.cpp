@@ -83,13 +83,13 @@ bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackT
     std::vector<JsFrameInfo> jf = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
     LOG_ECMA(INFO) <<"BuildJsStackInfoList JsFrameInfo";
     for (uint32_t i = 0; i < jf.size(); ++i) {
-        std::string functionname = jf[i].functionname;
-        std::string filename = jf[i].filename;
-        std::string lines = jf[i].lines;
-        std::string nativepointer = jf[i].nativepointer;
+        std::string functionname = jf[i].functionName;
+        std::string filename = jf[i].fileName;
+        std::string pos = jf[i].pos;
+        uintptr_t *nativepointer = jf[i].nativePointer;
         LOG_ECMA(INFO) << "BuildJsStackInfoList functionname: " << functionname;
         LOG_ECMA(INFO) << "BuildJsStackInfoList filenaem: " << filename;
-        LOG_ECMA(INFO) << "BuildJsStackInfoList lines: " << lines;
+        LOG_ECMA(INFO) << "BuildJsStackInfoList pos: " << pos;
         LOG_ECMA(INFO) << "BuildJsStackInfoList nativepointer: " << nativepointer;
     }
     stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(vm->GetAssociatedJSThread(), true);
@@ -272,9 +272,12 @@ bool DFXJSNApi::CheckSafepoint(const EcmaVM *vm)
     return  thread->CheckSafepoint();
 }
 
-std::vector<JsFrameInfo> DFXJSNApi::BuildJsStackInfoList(const EcmaVM *vm)
+bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *vm, std::vector<JsFrameInfo>& jsFrames)
 {
-    std::vector<JsFrameInfo> jsframeinfo = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
-    return jsframeinfo;
+    jsFrames = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
+    if (jsFrames.size() > 0) {
+        return true;
+    }
+    return false;
 }
 } // namespace panda

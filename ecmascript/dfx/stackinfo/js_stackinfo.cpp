@@ -85,7 +85,7 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
     std::vector<struct JsFrameInfo> jsframe;
-    std::string native;
+    uintptr_t *native = nullptr;
     for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
         if (!frameHandler.IsInterpretedFrame()) {
             continue;
@@ -94,56 +94,53 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
         if (method == nullptr) {
             continue;
         }
-        struct JsFrameInfo jf;
-        if (!native.empty()) {
-            jf.nativepointer = native;
-            native = "";
+        struct JsFrameInfo frameInfo;
+        if (native != nullptr) {
+            frameInfo.nativePointer = native;
+            native = nullptr;
         }
         if (!method->IsNativeWithCallField()) {
             std::string name = method->ParseFunctionName();
             if (name.empty()) {
-                jf.functionname = "anonymous";
+                frameInfo.functionName = "anonymous";
             } else {
-                jf.functionname = name;
+                frameInfo.functionName = name;
             }
             // source file
             tooling::JSPtExtractor *debugExtractor =
                 JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
             const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
             if (sourceFile.empty()) {
-                jf.filename = "?";
+                frameInfo.fileName = "?";
             } else {
-                jf.filename = sourceFile;
+                frameInfo.fileName = sourceFile;
             }
             // line number and column number
             int lineNumber = 0;
-            auto callbackLineFunc = [&jf, &lineNumber](int32_t line) -> bool {
+            auto callbackLineFunc = [&frameInfo, &lineNumber](int32_t line) -> bool {
                 lineNumber = line + 1;
-                jf.lines = std::to_string(lineNumber) + ":";
+                frameInfo.pos = std::to_string(lineNumber) + ":";
                 return true;
             };
-            auto callbackColumnFunc = [&jf](int32_t column) -> bool {
-                jf.lines += std::to_string(column + 1);
+            auto callbackColumnFunc = [&frameInfo](int32_t column) -> bool {
+                frameInfo.pos += std::to_string(column + 1);
                 return true;
             };
             panda_file::File::EntityId methodId = method->GetMethodId();
             uint32_t offset = frameHandler.GetBytecodeOffset();
             if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
                 !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-                jf.lines = "?";
+                frameInfo.pos = "?";
             }
-            jsframe.push_back(jf);
+            jsframe.push_back(frameInfo);
         } else {
-            std::stringstream stream;
             JSTaggedValue function = frameHandler.GetFunction();
             JSHandle<JSTaggedValue> extraInfoValue(
                 thread, JSFunction::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
             if (extraInfoValue->IsJSNativePointer()) {
                 JSHandle<JSNativePointer> extraInfo(extraInfoValue);
-                auto addr = reinterpret_cast<void *>(extraInfo->GetExternalPointer());
-                stream << addr;
+                native = reinterpret_cast<uintptr_t *>(extraInfo->GetExternalPointer());
             }
-            native = stream.str();
         }
     }
     return jsframe;

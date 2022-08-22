@@ -20,10 +20,10 @@
 
 namespace panda::ecmascript {
 struct JsFrameInfo {
-    std::string functionname;
-    std::string filename;
-    std::string lines;
-    std::string nativepointer;
+    std::string functionName;
+    std::string fileName;
+    std::string pos;
+    uintptr_t *nativePointer = nullptr;
 };
 class JsStackInfo {
 public:
