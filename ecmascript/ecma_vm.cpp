@@ -510,7 +510,7 @@ JSHandle<JSTaggedValue> EcmaVM::GetAndClearEcmaUncaughtException() const
 
 JSHandle<JSTaggedValue> EcmaVM::GetEcmaUncaughtException() const
 {
-    if (thread_->HasPendingException()) {
+    if (!thread_->HasPendingException()) {
         return JSHandle<JSTaggedValue>();
     }
     JSHandle<JSTaggedValue> exceptionHandle(thread_, thread_->GetException());
