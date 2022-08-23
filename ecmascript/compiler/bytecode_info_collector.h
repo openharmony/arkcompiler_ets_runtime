@@ -33,6 +33,7 @@ public:
         std::map<uint8_t *, uint8_t *> byteCodeCurPrePc {};
         std::vector<CfgInfo> bytecodeBlockInfos {};
         std::map<const uint8_t *, int32_t> pcToBCOffset {};
+        uint32_t methodsSize {0};
     };
 
     struct BCInfo {

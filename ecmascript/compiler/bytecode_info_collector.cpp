@@ -92,6 +92,8 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
             jsPandaFile->SetMethodToMap(methodLiteral);
         });
     }
+    LOG_COMPILER(INFO) << "Total number of methods in file: " << jsPandaFile->GetJSPandaFileDesc()
+        << " is: " << methodIdx;
 }
 
 void BytecodeInfoCollector::FixOpcode(uint8_t *pc)
@@ -364,7 +366,7 @@ void BytecodeInfoCollector::CollectMethodPcs(JSPandaFile *jsPandaFile, const uin
     auto bcIns = BytecodeInstruction(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
 
-    methodPcInfos.emplace_back(MethodPcInfo { std::vector<const MethodLiteral *>(1, method), {}, {}, {} });
+    methodPcInfos.emplace_back(MethodPcInfo { std::vector<const MethodLiteral *>(1, method), {}, {}, {}, insSz});
 
     int32_t offsetIndex = 1;
     uint8_t *curPc = nullptr;

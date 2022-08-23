@@ -401,7 +401,12 @@ public:
 
     uintptr_t GetAOTFuncEntry(uint32_t hash, uint32_t methodId)
     {
-        return static_cast<uintptr_t>(hashToEntryMap_[hash][methodId]);
+        auto m = hashToEntryMap_[hash];
+        auto it = m.find(methodId);
+        if (it == m.end()) {
+            return 0;
+        }
+        return static_cast<uintptr_t>(it->second);
     }
 
     const StubModulePackInfo& GetStubPackInfo() const

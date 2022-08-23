@@ -88,7 +88,7 @@ public:
         mainMethodIndex_ = mainMethodIndex;
     }
 
-    MethodLiteral *FindMethods(uint32_t offset) const;
+    MethodLiteral* PUBLIC_API FindMethods(uint32_t offset) const;
 
     Span<const uint32_t> GetClasses() const
     {

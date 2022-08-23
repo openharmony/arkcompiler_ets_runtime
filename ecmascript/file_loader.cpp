@@ -341,6 +341,9 @@ void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<
     Method *method = func->GetCallTarget();
     uint32_t methodId = method->GetMethodId().GetOffset();
     auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
+    if (!codeEntry) {
+        return;
+    }
     func->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
