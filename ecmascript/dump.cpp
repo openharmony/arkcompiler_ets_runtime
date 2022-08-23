@@ -412,7 +412,7 @@ CString JSHClass::DumpJSType(JSType type)
             return "CommonJSModule";
         case JSType::JS_CJS_REQUIRE:
             return "CommonJSRequire";
-        case JSType::JS_METHOD:
+        case JSType::METHOD:
             return "Method";
         default: {
             CString ret = "unknown type ";
@@ -941,8 +941,8 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_CJS_EXPORTS:
             CjsExports::Cast(obj)->Dump(os);
             break;
-        case JSType::JS_METHOD:
-            JSMethod::Cast(obj)->Dump(os);
+        case JSType::METHOD:
+            Method::Cast(obj)->Dump(os);
             break;
         default:
             UNREACHABLE();
@@ -3329,7 +3329,7 @@ void JSFunctionBase::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void JSMethod::Dump(std::ostream &os) const
+void Method::Dump(std::ostream &os) const
 {
     os << " - ConstantPool: ";
     GetConstantPool().Dump(os);
@@ -3771,8 +3771,8 @@ static void DumpObject(TaggedObject *obj,
             case JSType::TS_ARRAY_TYPE:
                 TSArrayType::Cast(obj)->DumpForSnapshot(vec);
                 return;
-            case JSType::JS_METHOD:
-                JSMethod::Cast(obj)->DumpForSnapshot(vec);
+            case JSType::METHOD:
+                Method::Cast(obj)->DumpForSnapshot(vec);
                 return;
             default:
                 UNREACHABLE();
@@ -4020,7 +4020,7 @@ void JSFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> 
     JSObject::DumpForSnapshot(vec);
 }
 
-void JSMethod::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+void Method::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("ConstantPool"), GetConstantPool()));
 }

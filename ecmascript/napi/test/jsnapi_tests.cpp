@@ -796,7 +796,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_003)
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     auto factory = vm_->GetFactory();
 
-    JSHandle<JSMethod> invokeSelf =
+    JSHandle<Method> invokeSelf =
         factory->NewMethodForNativeFunction(reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf));
     // father type
     JSHandle<JSHClass> protoDynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
@@ -842,9 +842,9 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
     JSHandle<JSTaggedValue> deleteMethod = JSObject::GetMethod(thread_, weakSet, deleteString);
     JSHandle<JSTaggedValue> addMethod = JSObject::GetMethod(thread_, weakSet, addString);
 
-    JSHandle<JSMethod> invokeSelf =
+    JSHandle<Method> invokeSelf =
         factory->NewMethodForNativeFunction(reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf));
-    JSHandle<JSMethod> ctor =
+    JSHandle<Method> ctor =
         factory->NewMethodForNativeFunction(reinterpret_cast<void *>(BuiltinsFunction::FunctionConstructor));
 
     JSHandle<JSHClass> protoDynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());

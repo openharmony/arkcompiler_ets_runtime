@@ -259,7 +259,7 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
         return BuiltinIdBits::Update(literalInfo, id);
     }
 
-    static uint32_t PUBLIC_API GetNumVregs(const JSPandaFile *jsPandaFile, const MethodLiteral *method);
+    static uint32_t PUBLIC_API GetNumVregs(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral);
     static panda_file::File::StringData GetName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static const char * PUBLIC_API GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static std::string PUBLIC_API ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId);

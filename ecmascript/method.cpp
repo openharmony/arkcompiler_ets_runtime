@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,41 +13,38 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
 
-#include "libpandafile/code_data_accessor-inl.h"
-#include "libpandafile/method_data_accessor-inl.h"
-
 namespace panda::ecmascript {
 // It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.
-std::string JSMethod::ParseFunctionName() const
+std::string Method::ParseFunctionName() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
     return MethodLiteral::ParseFunctionName(jsPandaFile, GetMethodId());
 }
 
-const char *JSMethod::GetMethodName() const
+const char *Method::GetMethodName() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
     return MethodLiteral::GetMethodName(jsPandaFile, GetMethodId());
 }
 
-panda_file::File::StringData JSMethod::GetName() const
+panda_file::File::StringData Method::GetName() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
     return MethodLiteral::GetName(jsPandaFile, GetMethodId());
 }
 
-uint32_t JSMethod::GetCodeSize() const
+uint32_t Method::GetCodeSize() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
     return MethodLiteral::GetCodeSize(jsPandaFile, GetMethodId());
 }
 
-const JSPandaFile *JSMethod::GetJSPandaFile() const
+const JSPandaFile *Method::GetJSPandaFile() const
 {
     JSTaggedValue constpool = GetConstantPool();
     if (constpool.IsUndefined()) {
@@ -64,7 +61,7 @@ const JSPandaFile *JSMethod::GetJSPandaFile() const
     return reinterpret_cast<JSPandaFile *>(nativePointer);
 }
 
-const panda_file::File *JSMethod::GetPandaFile() const
+const panda_file::File *Method::GetPandaFile() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
     if (jsPandaFile == nullptr) {

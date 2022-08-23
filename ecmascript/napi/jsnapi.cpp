@@ -90,7 +90,7 @@ using ecmascript::JSFunction;
 using ecmascript::JSFunctionBase;
 using ecmascript::JSHClass;
 using ecmascript::JSMap;
-using ecmascript::JSMethod;
+using ecmascript::Method;
 using ecmascript::JSNativePointer;
 using ecmascript::JSObject;
 using ecmascript::JSPandaFile;
@@ -1201,7 +1201,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     [[maybe_unused]] LocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
-    JSHandle<JSMethod> method = JSHandle<JSMethod>(thread, func->GetMethod());
+    JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     ecmascript::tooling::JSPtExtractor *debugExtractor =
                                         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
@@ -1225,7 +1225,7 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
-    JSHandle<JSMethod> method = JSHandle<JSMethod>(thread, func->GetMethod());
+    JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
     return method->IsNativeWithCallField();
 }
 

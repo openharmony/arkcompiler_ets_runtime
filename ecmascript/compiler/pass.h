@@ -128,11 +128,12 @@ public:
         llvmImpl_ = std::make_unique<LLVMIRGeneratorImpl>(module, enableLog);
     }
     bool Run(PassData *data, bool enableLog, LLVMModule *module,
-             const MethodLiteral *method, const JSPandaFile *jsPandaFile)
+             const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)
     {
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(llvmImpl_);
-        codegen.Run(data->GetCircuit(), data->GetScheduleResult(), module->GetCompilationConfig(), method, jsPandaFile);
+        codegen.Run(data->GetCircuit(), data->GetScheduleResult(), module->GetCompilationConfig(),
+                    methodLiteral, jsPandaFile);
         return true;
     }
 private:

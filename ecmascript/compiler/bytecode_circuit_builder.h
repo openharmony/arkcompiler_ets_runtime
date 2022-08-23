@@ -446,11 +446,12 @@ class BytecodeCircuitBuilder {
 public:
     explicit BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
                                     JSHandle<JSTaggedValue> &constantPool,
-                                    const MethodLiteral *method,
+                                    const MethodLiteral *methodLiteral,
                                     BytecodeInfoCollector::MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager, bool enableLog)
         : tsManager_(tsManager), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
-          method_(method), constantPool_(constantPool), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
+          method_(methodLiteral), constantPool_(constantPool), gateAcc_(&circuit_),
+          argAcc_(&circuit_, method_, jsPandaFile),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)

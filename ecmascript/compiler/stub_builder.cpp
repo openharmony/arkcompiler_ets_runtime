@@ -3789,7 +3789,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Bind(&methodIsNative);
     {
         GateRef nativeCode = Load(VariableType::NATIVE_POINTER(), method,
-            IntPtr(JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+            IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef newTarget = Undefined();
         GateRef thisValue = Undefined();
         GateRef numArgs = Int32Add(actualNumArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));

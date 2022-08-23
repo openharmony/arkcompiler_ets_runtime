@@ -93,12 +93,12 @@ panda_file::File::StringData MethodLiteral::GetName(const JSPandaFile *jsPandaFi
     return jsPandaFile->GetPandaFile()->GetStringData(mda.GetNameId());
 }
 
-uint32_t MethodLiteral::GetNumVregs(const JSPandaFile *jsPandaFile, const MethodLiteral *method)
+uint32_t MethodLiteral::GetNumVregs(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral)
 {
     if (jsPandaFile == nullptr) {
         return 0;
     }
-    panda_file::MethodDataAccessor mda(*(jsPandaFile->GetPandaFile()), method->GetMethodId());
+    panda_file::MethodDataAccessor mda(*(jsPandaFile->GetPandaFile()), methodLiteral->GetMethodId());
     auto codeId = mda.GetCodeId().value();
     if (!codeId.IsValid()) {
         return 0;

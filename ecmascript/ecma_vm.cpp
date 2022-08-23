@@ -384,7 +384,7 @@ EcmaVM::CpuProfilingScope::~CpuProfilingScope()
 #endif
 }
 
-bool EcmaVM::FindCatchBlock(JSMethod *method, uint32_t pc) const
+bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
 {
     uint32_t pcOffset = panda_file::INVALID_OFFSET;
     if (thread_->IsAsmInterpreter()) {

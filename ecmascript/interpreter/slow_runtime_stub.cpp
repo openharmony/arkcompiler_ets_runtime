@@ -1096,7 +1096,7 @@ void SlowRuntimeStub::ThrowDeleteSuperProperty(JSThread *thread)
     return RuntimeStubs::RuntimeThrowDeleteSuperProperty(thread);
 }
 
-JSTaggedValue SlowRuntimeStub::NotifyInlineCache(JSThread *thread, JSFunction *func, JSMethod *method)
+JSTaggedValue SlowRuntimeStub::NotifyInlineCache(JSThread *thread, JSFunction *func, Method *method)
 {
     INTERPRETER_TRACE(thread, NotifyInlineCache);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -1171,7 +1171,7 @@ JSTaggedValue SlowRuntimeStub::DefineAsyncGeneratorFunc(JSThread *thread, JSFunc
 {
     INTERPRETER_TRACE(thread, DefineAsyncGeneratorFunc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSMethod> method(thread, func->GetMethod());
+    JSHandle<Method> method(thread, func->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

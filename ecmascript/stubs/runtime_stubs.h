@@ -21,7 +21,7 @@
 #include "ecmascript/stubs/test_runtime_stubs.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 #include "ecmascript/mem/region.h"
 
 namespace panda::ecmascript {

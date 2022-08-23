@@ -844,7 +844,7 @@ void DebuggerImpl::SaveCallFrameHandler(const FrameHandler *frameHandler)
 bool DebuggerImpl::GenerateCallFrame(CallFrame *callFrame,
     const FrameHandler *frameHandler, CallFrameId callFrameId)
 {
-    JSMethod *method = DebuggerApi::GetMethod(frameHandler);
+    Method *method = DebuggerApi::GetMethod(frameHandler);
     auto methodId = method->GetMethodId();
     JSPtExtractor *extractor = GetExtractor(method->GetJSPandaFile());
     if (extractor == nullptr) {
@@ -902,7 +902,7 @@ std::unique_ptr<Scope> DebuggerImpl::GetLocalScopeChain(const FrameHandler *fram
 {
     auto localScope = std::make_unique<Scope>();
 
-    JSMethod *method = DebuggerApi::GetMethod(frameHandler);
+    Method *method = DebuggerApi::GetMethod(frameHandler);
     auto methodId = method->GetMethodId();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     JSPtExtractor *extractor = GetExtractor(jsPandaFile);

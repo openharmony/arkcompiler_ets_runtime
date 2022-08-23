@@ -28,7 +28,6 @@
 namespace panda::ecmascript {
 class JSThread;
 class Program;
-class JSPandaFileManager;
 class JSPandaFile;
 
 class PUBLIC_API PandaFileTranslator {
@@ -44,7 +43,7 @@ public:
 
 private:
     static void TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t insSz, const uint8_t *insArr,
-        const MethodLiteral *method);
+        const MethodLiteral *methodLiteral);
     static void FixInstructionId32(const BytecodeInstruction &inst, uint32_t index, uint32_t fixOrder = 0);
     static void FixOpcode(uint8_t *pc);
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);

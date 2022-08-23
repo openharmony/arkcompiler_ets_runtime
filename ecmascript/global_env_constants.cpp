@@ -55,7 +55,6 @@
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_proxy.h"
@@ -67,6 +66,7 @@
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/method.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_node.h"
@@ -249,7 +249,7 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, CellRecord::SIZE, JSType::CELL_RECORD));
     SetConstant(ConstantIndex::OBJECT_DYN_CLASS_INDEX, factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT));
     SetConstant(ConstantIndex::JS_METHOD_CLASS_INDEX,
-                factory->NewEcmaDynClass(dynClassClass, JSMethod::SIZE, JSType::JS_METHOD));
+                factory->NewEcmaDynClass(dynClassClass, Method::SIZE, JSType::METHOD));
 }
 
 void GlobalEnvConstants::InitGlobalConstantSpecial(JSThread *thread)

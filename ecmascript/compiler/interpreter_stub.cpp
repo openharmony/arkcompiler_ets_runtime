@@ -3369,7 +3369,7 @@ DECLARE_ASM_HANDLER(HandleReturnDyn)
         GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
-            IntPtr(JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+            IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
         UPDATE_HOTNESS(*varSp);
         SetHotnessCounter(glue, method, *varHotnessCounter);
@@ -3428,7 +3428,7 @@ DECLARE_ASM_HANDLER(HandleReturnUndefinedPref)
         GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
-            IntPtr(JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+            IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
         UPDATE_HOTNESS(*varSp);
         SetHotnessCounter(glue, method, *varHotnessCounter);
@@ -3501,7 +3501,7 @@ DECLARE_ASM_HANDLER(HandleSuspendGeneratorPrefV8V8)
         GateRef method = Load(VariableType::JS_ANY(), function,
             IntPtr(JSFunctionBase::METHOD_OFFSET));
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
-            IntPtr(JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+            IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
         UPDATE_HOTNESS(*varSp);
         SetHotnessCounter(glue, method, *varHotnessCounter);

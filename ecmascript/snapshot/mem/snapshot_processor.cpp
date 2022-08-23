@@ -187,8 +187,6 @@ using Deque = containers::ContainersDeque;
 using ContainerStack = panda::ecmascript::containers::ContainersStack;
 using ContainersPrivate = containers::ContainersPrivate;
 
-constexpr int METHOD_SIZE = sizeof(JSMethod);
-
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(nullptr),
@@ -1217,12 +1215,12 @@ void SnapshotProcessor::DeserializePandaMethod(uintptr_t begin, uintptr_t end, M
 {
     for (size_t i = 0; i < others; i++) {
         pandaMethod_.emplace_back(begin);
-        auto method = reinterpret_cast<JSMethod *>(begin);
-        if (memcpy_s(methods + (--methodNums), METHOD_SIZE, method, METHOD_SIZE) != EOK) {
+        auto method = reinterpret_cast<Method *>(begin);
+        if (memcpy_s(methods + (--methodNums), Method::Size(), method, Method::Size()) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
-        begin += METHOD_SIZE;
+        begin += Method::Size();
         if (begin >= end) {
             others = others - i - 1;
         }
@@ -1309,7 +1307,7 @@ void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFi
     MethodLiteral *methods = nullptr;
     if (jsPandaFile) {
         methodNums = jsPandaFile->GetNumMethods();
-        methods = jsPandaFile->GetMethods();
+        methods = jsPandaFile->GetMethodLiterals();
     }
 
     auto heap = vm_->GetHeap();
@@ -1561,13 +1559,13 @@ void SnapshotProcessor::SerializePandaFileMethod()
     // panda methods
     for (auto &it : pandaMethod_) {
         // write method
-        size_t methodObjSize = METHOD_SIZE;
+        size_t methodObjSize = Method::Size();
         uintptr_t methodObj = factory->NewSpaceBySnapshotAllocator(methodObjSize);
         if (methodObj == 0) {
             LOG_ECMA(ERROR) << "SnapshotAllocator OOM";
             return;
         }
-        if (memcpy_s(ToVoidPtr(methodObj), methodObjSize, ToVoidPtr(it), METHOD_SIZE) != EOK) {
+        if (memcpy_s(ToVoidPtr(methodObj), methodObjSize, ToVoidPtr(it), Method::Size()) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }

@@ -56,7 +56,7 @@ PropertyAttributes::PropertyAttributes(const PropertyDescriptor &desc)
     }
 }
 
-JSMethod *ECMAObject::GetCallTarget() const
+Method *ECMAObject::GetCallTarget() const
 {
     const TaggedObject *obj = this;
     ASSERT(JSTaggedValue(obj).IsJSFunctionBase() || JSTaggedValue(obj).IsJSProxy());
@@ -67,7 +67,7 @@ JSMethod *ECMAObject::GetCallTarget() const
     } else {
         value = JSProxy::ConstCast(obj)->GetMethod();
     }
-    return JSMethod::Cast(value.GetTaggedObject());
+    return Method::Cast(value.GetTaggedObject());
 }
 
 JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,

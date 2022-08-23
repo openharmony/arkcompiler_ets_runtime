@@ -483,8 +483,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("CJS Module");
         case JSType::JS_CJS_REQUIRE:
             return GetString("CJS Require");
-        case JSType::JS_METHOD:
-            return GetString("MethodLiteral");
+        case JSType::METHOD:
+            return GetString("Method");
         default:
             break;
     }
@@ -692,7 +692,7 @@ TraceNode* TraceNode::FindChild(uint32_t nodeIndex)
     return nullptr;
 }
 
-void HeapSnapshot::AddTraceNodeId(JSMethod *method)
+void HeapSnapshot::AddTraceNodeId(Method *method)
 {
     uint32_t traceNodeId = 0;
     auto result = methodToTraceNodeId_.find(method);
@@ -735,7 +735,7 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
     return topNode->GetId();
 }
 
-void HeapSnapshot::AddMethodInfo(JSMethod *method, const FrameHandler &frameHandler, int sequenceId)
+void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandler, int sequenceId)
 {
     struct FunctionInfo codeEntry;
     codeEntry.functionId = sequenceId;

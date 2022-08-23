@@ -22,7 +22,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
@@ -193,10 +193,10 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
         // Reload pc to make sure stack trace is right
         __ Mov(temp, callTargetRegister);
-        __ Ldr(Register(X20), MemoryOperand(methodRegister, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        __ Ldr(Register(X20), MemoryOperand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         // Reload constpool and profileInfo to make sure gc map work normally
         __ Ldr(Register(X22), MemoryOperand(temp, JSFunction::PROFILE_TYPE_INFO_OFFSET));
-        __ Ldr(Register(X21), MemoryOperand(methodRegister, JSMethod::CONSTANT_POOL_OFFSET));
+        __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
 
         __ Mov(temp, kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException);
         __ Add(temp, glueRegister, Operand(temp, UXTW, 3));  // 3： bc * 8
@@ -1006,10 +1006,10 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     if (glueRegister.GetId() != X19) {
         __ Mov(Register(X19), glueRegister);
     }
-    __ Ldrh(Register(X24, W), MemoryOperand(methodRegister, JSMethod::LITERAL_INFO_OFFSET));
+    __ Ldrh(Register(X24, W), MemoryOperand(methodRegister, Method::LITERAL_INFO_OFFSET));
     __ Mov(Register(X23), Immediate(JSTaggedValue::VALUE_HOLE));
     __ Ldr(Register(X22), MemoryOperand(callTargetRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET));
-    __ Ldr(Register(X21), MemoryOperand(methodRegister, JSMethod::CONSTANT_POOL_OFFSET));
+    __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
     __ Mov(Register(X20), pcRegister);
     __ Mov(Register(FP), newSpRegister);
 
@@ -1026,7 +1026,7 @@ void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register p
 {
     __ Mov(op, Immediate(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME)));
     __ Stp(prevSp, op, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));            // -16: frame type & prevSp
-    __ Ldr(pc, MemoryOperand(method, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    __ Ldr(pc, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     __ Stp(fp, pc, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));                // -16: pc & fp
     __ Ldr(op, MemoryOperand(callTarget, JSFunction::LEXICAL_ENV_OFFSET));
     __ Stp(op, Register(Zero), MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));    // -16: jumpSizeAfterCall & env
@@ -1105,7 +1105,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     __ Mov(operatorRegister, Immediate(static_cast<int64_t>(FrameType::ASM_INTERPRETER_FRAME)));
     __ Stp(prevSpRegister, operatorRegister,
         MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));  // 2 : frameType and prevSp
-    __ Ldr(pcRegister, MemoryOperand(methodRegister, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    __ Ldr(pcRegister, MemoryOperand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     // offset need 8 align, GENERATOR_NREGS_OFFSET instead of GENERATOR_BC_OFFSET_OFFSET
     __ Ldr(operatorRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_NREGS_OFFSET));
     // 32: get high 32bit
@@ -1131,10 +1131,10 @@ void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newS
     __ Mov(Register(X19), glue);    // X19 - glue
     __ Mov(Register(FP), newSp);    // FP - sp
     __ Mov(Register(X20), pc);      // X20 - pc
-    __ Ldr(Register(X21), MemoryOperand(method, JSMethod::CONSTANT_POOL_OFFSET));   // X21 - constantpool
+    __ Ldr(Register(X21), MemoryOperand(method, Method::CONSTANT_POOL_OFFSET));   // X21 - constantpool
     __ Ldr(Register(X22), MemoryOperand(callTarget, JSFunction::PROFILE_TYPE_INFO_OFFSET)); // X22 - profileTypeInfo
     __ Mov(Register(X23), Immediate(JSTaggedValue::Hole().GetRawData()));                   // X23 - acc
-    __ Ldr(Register(X24), MemoryOperand(method, JSMethod::LITERAL_INFO_OFFSET)); // X24 - hotnessCounter
+    __ Ldr(Register(X24), MemoryOperand(method, Method::LITERAL_INFO_OFFSET)); // X24 - hotnessCounter
 
     // call the first bytecode handler
     __ Ldrb(temp.W(), MemoryOperand(pc, 0));
@@ -1160,7 +1160,7 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
     __ Sub(sp, sp, Immediate(2 * FRAME_SLOT_SIZE));
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_ENTRY_FRAME, temp, argv);
     // get native pointer
-    __ Ldr(nativeCode, MemoryOperand(method, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    __ Ldr(nativeCode, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     __ Mov(temp, argv);
     __ Sub(Register(X0), temp, Immediate(2 * FRAME_SLOT_SIZE));  // 2: skip argc & thread
     CallNativeInternal(assembler, nativeCode);

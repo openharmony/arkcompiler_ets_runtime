@@ -1798,7 +1798,7 @@ inline GateRef StubBuilder::GetMethodFromJSFunction(GateRef object)
 
 inline GateRef StubBuilder::GetCallFieldFromMethod(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::CALL_FIELD_OFFSET);
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     return Load(VariableType::INT64(), method, callFieldOffset);
 }
 
@@ -1858,7 +1858,7 @@ inline GateRef StubBuilder::IsBoundFunction(GateRef obj)
 
 inline GateRef StubBuilder::IsNativeMethod(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::CALL_FIELD_OFFSET);
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
@@ -1869,7 +1869,7 @@ inline GateRef StubBuilder::IsNativeMethod(GateRef method)
 
 inline GateRef StubBuilder::HasAotCode(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::CALL_FIELD_OFFSET);
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
@@ -1880,7 +1880,7 @@ inline GateRef StubBuilder::HasAotCode(GateRef method)
 
 inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::CALL_FIELD_OFFSET);
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return TruncInt64ToInt32(Int64And(
         Int64LSR(callfield, Int32(MethodLiteral::NumArgsBits::START_BIT)),
@@ -1942,7 +1942,7 @@ inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
 inline GateRef StubBuilder::GetBuiltinId(GateRef method)
 {
     // 7: builtinsIdOffset
-    GateRef builtinsIdOffset = PtrAdd(IntPtr(JSMethod::LITERAL_INFO_OFFSET), IntPtr(7));
+    GateRef builtinsIdOffset = PtrAdd(IntPtr(Method::LITERAL_INFO_OFFSET), IntPtr(7));
     return Load(VariableType::INT8(), method, builtinsIdOffset);
 }
 } //  namespace panda::ecmascript::kungfu

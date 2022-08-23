@@ -429,8 +429,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsRealm)
                 break;
             }
-            case JSType::JS_METHOD: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSMethod::SIZE, 1U);
+            case JSType::METHOD: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, Method::SIZE, 1U);
                 break;
             }
             case JSType::JS_FUNCTION_BASE: {

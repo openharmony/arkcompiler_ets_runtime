@@ -230,7 +230,7 @@ GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
 GateRef InterpreterStubBuilder::GetConstpoolFromFunction(GateRef function)
 {
     GateRef method = GetMethodFromJSFunction(function);
-    GateRef offset = IntPtr(JSMethod::CONSTANT_POOL_OFFSET);
+    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
     return Load(VariableType::JS_POINTER(), method, offset);
 }
 
@@ -292,7 +292,7 @@ void InterpreterStubBuilder::SetFunctionToFrame(GateRef glue, GateRef frame, Gat
 void InterpreterStubBuilder::SetConstantPoolToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef method = GetMethodFromJSFunction(function);
-    GateRef offset = IntPtr(JSMethod::CONSTANT_POOL_OFFSET);
+    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
     Store(VariableType::INT64(), glue, method, offset, value);
 }
 
@@ -600,7 +600,7 @@ GateRef InterpreterStubBuilder::FunctionIsResolved(GateRef object)
 
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
 {
-    GateRef x = Load(VariableType::INT16(), method, IntPtr(JSMethod::LITERAL_INFO_OFFSET));
+    GateRef x = Load(VariableType::INT16(), method, IntPtr(Method::LITERAL_INFO_OFFSET));
     return GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
 }
 
@@ -608,7 +608,7 @@ void InterpreterStubBuilder::SetHotnessCounter(GateRef glue, GateRef method, Gat
 {
     auto env = GetEnvironment();
     GateRef newValue = env->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT16), value);
-    Store(VariableType::INT16(), glue, method, IntPtr(JSMethod::LITERAL_INFO_OFFSET), newValue);
+    Store(VariableType::INT16(), glue, method, IntPtr(Method::LITERAL_INFO_OFFSET), newValue);
 }
 
 void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,

@@ -574,10 +574,10 @@ public:
             case JSType::JS_CJS_REQUIRE:
                 CjsRequire::Cast(object)->VisitRangeSlot(visitor);
                 break;
-            case JSType::JS_METHOD:
-                JSMethod::Cast(object)->VisitRangeSlot(visitor);
+            case JSType::METHOD:
+                Method::Cast(object)->VisitRangeSlot(visitor);
                 if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    JSMethod::Cast(object)->VisitRangeSlotForNative(visitor);
+                    Method::Cast(object)->VisitRangeSlotForNative(visitor);
                 }
                 break;
             default:

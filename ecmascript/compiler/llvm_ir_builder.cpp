@@ -28,7 +28,7 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 
 #if defined(__clang__)
@@ -1994,7 +1994,7 @@ LLVMTypeRef LLVMModule::ConvertLLVMTypeFromVariableType(VariableType type)
     return machineTypeMap[type];
 }
 
-LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *method, const JSPandaFile *jsPandaFile)
+LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)
 {
     LLVMTypeRef returnType = NewLType(MachineType::I64, GateType::TaggedValue());  // possibly get it for circuit
     LLVMTypeRef glue = NewLType(MachineType::I64, GateType::NJSValue());
@@ -2003,13 +2003,13 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *method,
     std::vector<LLVMTypeRef> paramTys = { glue, lexEnv, actualArgc };
     auto funcIndex = static_cast<uint32_t>(CommonArgIdx::FUNC);
     auto numOfComArgs = static_cast<uint32_t>(CommonArgIdx::NUM_OF_ARGS);
-    auto paramCount = method->GetNumArgs() + numOfComArgs;
+    auto paramCount = methodLiteral->GetNumArgs() + numOfComArgs;
     auto numOfRestArgs = paramCount - funcIndex;
     paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
     auto funcType = LLVMFunctionType(returnType, paramTys.data(), paramCount, false); // not variable args
-    const char *name = MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId());
+    const char *name = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
     auto function = LLVMAddFunction(module_, name, funcType);
-    auto offsetInPandaFile = method->GetMethodId().GetOffset();
+    auto offsetInPandaFile = methodLiteral->GetMethodId().GetOffset();
     SetFunction(offsetInPandaFile, function);
     return function;
 }

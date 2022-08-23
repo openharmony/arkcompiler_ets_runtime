@@ -21,10 +21,10 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/method.h"
 #include "ecmascript/runtime_call_id.h"
 
 #include "libpandafile/bytecode_instruction-inl.h"
@@ -179,7 +179,7 @@ void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register p
 {
     __ Pushq(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME));  // frame type
     __ Pushq(prevSpRegister);                                          // prevSp
-    __ Movq(Operand(methodRegister, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), pcRegister);
+    __ Movq(Operand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), pcRegister);
     __ Pushq(pcRegister);                                              // pc
     __ Pushq(fpRegister);                                              // fp
     __ Pushq(0);                                                       // jumpSizeAfterCall
@@ -195,7 +195,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
 {
     __ Pushq(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME));  // frame type
     __ Pushq(prevSpRegister);                                          // prevSp
-    __ Movq(Operand(methodRegister, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), pcRegister);
+    __ Movq(Operand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), pcRegister);
     __ Movl(Operand(contextRegister, GeneratorContext::GENERATOR_BC_OFFSET_OFFSET), operatorRegister);
     __ Addq(operatorRegister, pcRegister);
     __ Addq(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8), pcRegister);
@@ -255,10 +255,10 @@ void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register newSp
         __ Movq(glueRegister, r13);  // %r13 - glue
         __ Movq(newSpRegister, rbp); // %rbp - sp
                                      // %r12 - pc
-        __ Movq(Operand(methodRegister, JSMethod::CONSTANT_POOL_OFFSET), rbx);     // rbx - constantpool
+        __ Movq(Operand(methodRegister, Method::CONSTANT_POOL_OFFSET), rbx);     // rbx - constantpool
         __ Movq(Operand(callTargetRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);   // r14 - profileTypeInfo
         __ Movq(JSTaggedValue::Hole().GetRawData(), rsi);                                  // rsi - acc
-        __ Movzwq(Operand(methodRegister, JSMethod::LITERAL_INFO_OFFSET), rdi); // rdi - hotnessCounter
+        __ Movzwq(Operand(methodRegister, Method::LITERAL_INFO_OFFSET), rdi); // rdi - hotnessCounter
 
         // call the first bytecode handler
         __ Movzbq(Operand(pcRegister, 0), rax);
@@ -342,10 +342,10 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
         // Reload pc to make sure stack trace is right
         __ Movq(callTargetRegister, tempRegister);
-        __ Movq(Operand(methodRegister, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), r12);  // pc: r12
+        __ Movq(Operand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), r12);  // pc: r12
         // Reload constpool and profileInfo to make sure gc map work normally
         __ Movq(Operand(tempRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);       // profileTypeInfo: r14
-        __ Movq(Operand(methodRegister, JSMethod::CONSTANT_POOL_OFFSET), rbx);           // constantPool: rbx
+        __ Movq(Operand(methodRegister, Method::CONSTANT_POOL_OFFSET), rbx);           // constantPool: rbx
         
         __ Movq(kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException, tempRegister);
         __ Movq(Operand(glueRegister, tempRegister, Times8, JSThread::GlueData::GetBCStubEntriesOffset(false)),
@@ -692,8 +692,8 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
         __ Movq(glueRegister, r13);
     }
     __ Movq(newSpRegister, rbp);                                                        // sp: rbp
-    __ Movzwq(Operand(methodRegister, JSMethod::LITERAL_INFO_OFFSET), rdi);  // hotnessCounter: rdi
-    __ Movq(Operand(methodRegister, JSMethod::CONSTANT_POOL_OFFSET), rbx);      // constantPool: rbx
+    __ Movzwq(Operand(methodRegister, Method::LITERAL_INFO_OFFSET), rdi);  // hotnessCounter: rdi
+    __ Movq(Operand(methodRegister, Method::CONSTANT_POOL_OFFSET), rbx);      // constantPool: rbx
     __ Movq(pcRegister, r12);                                                           // pc: r12
 
     Register bcIndexRegister = rax;
@@ -820,7 +820,7 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
     // 24: skip thread & argc & returnAddr
     __ Subq(24, rsp);
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_ENTRY_FRAME);
-    __ Movq(Operand(method, JSMethod::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode); // get native pointer
+    __ Movq(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode); // get native pointer
     __ Movq(argv, r11);
     // 16: skip numArgs & thread
     __ Subq(16, r11);

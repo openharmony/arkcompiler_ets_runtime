@@ -239,7 +239,7 @@ void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProces
 
 void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
 {
-    const CMap<JSMethod *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
+    const CMap<Method *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->SetGcState(vm_->GetAssociatedJSThread()->GetGcState());
     if (!generator_->GetGcState()) {
         int methodCount = 0;
@@ -261,7 +261,7 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
     }
 }
 
-void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler, int *index)
+void CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler, int *index)
 {
     struct FrameInfoTemp codeEntry;
     codeEntry.method = method;

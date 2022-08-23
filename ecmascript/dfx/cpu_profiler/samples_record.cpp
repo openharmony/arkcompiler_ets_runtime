@@ -23,7 +23,7 @@
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 
 namespace panda::ecmascript {
 SamplesRecord::SamplesRecord()
@@ -31,7 +31,7 @@ SamplesRecord::SamplesRecord()
     stackTopLines_.push_back(0);
     struct MethodKey methodkey;
     struct CpuProfileNode methodNode;
-    methodkey.method = reinterpret_cast<JSMethod*>(INT_MAX - 1);
+    methodkey.method = reinterpret_cast<Method*>(INT_MAX - 1);
     methodMap_.insert(std::make_pair(methodkey, methodMap_.size() + 1));
     methodNode.parentId = 0;
     methodNode.codeEntry.codeType = "JS";
@@ -57,7 +57,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
     struct MethodKey methodkey;
     struct CpuProfileNode methodNode;
     if (gcState_.load()) {
-        methodkey.method = reinterpret_cast<JSMethod*>(INT_MAX);
+        methodkey.method = reinterpret_cast<Method*>(INT_MAX);
         methodNode.parentId = methodkey.parentId = previousId_;
         auto result = methodMap_.find(methodkey);
         if (result == methodMap_.end()) {
@@ -210,7 +210,7 @@ std::string SamplesRecord::GetSampleData() const
     return sampleData_;
 }
 
-struct FrameInfo SamplesRecord::GetMethodInfo(JSMethod *method)
+struct FrameInfo SamplesRecord::GetMethodInfo(Method *method)
 {
     struct FrameInfo entry;
     auto iter = stackInfoMap_.find(method);
@@ -288,17 +288,17 @@ int SamplesRecord::SemDestroy(int index)
     return sem_destroy(&sem_[index]);
 }
 
-const CMap<JSMethod *, struct FrameInfo> &SamplesRecord::GetStackInfo() const
+const CMap<Method *, struct FrameInfo> &SamplesRecord::GetStackInfo() const
 {
     return stackInfoMap_;
 }
 
-void SamplesRecord::InsertStackInfo(JSMethod *method, struct FrameInfo &codeEntry)
+void SamplesRecord::InsertStackInfo(Method *method, struct FrameInfo &codeEntry)
 {
     stackInfoMap_.insert(std::make_pair(method, codeEntry));
 }
 
-void SamplesRecord::PushFrameStack(JSMethod *method, int count)
+void SamplesRecord::PushFrameStack(Method *method, int count)
 {
     if (count >= MAX_ARRAY_COUNT) {
         SetSampleFlag(false);

@@ -117,7 +117,7 @@ public:
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();
     void SetUpForBuiltinsStubs();
-    LLVMValueRef AddFunc(const panda::ecmascript::MethodLiteral *method, const JSPandaFile *jsPandaFile);
+    LLVMValueRef AddFunc(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile);
     LLVMModuleRef GetModule() const
     {
         return module_;

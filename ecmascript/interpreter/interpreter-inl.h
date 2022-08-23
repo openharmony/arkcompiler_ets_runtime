@@ -431,7 +431,7 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
 #endif
     thread->CheckSafepoint();
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
-    JSMethod *method = callTarget->GetCallTarget();
+    Method *method = callTarget->GetCallTarget();
     LOG_INST() << "Entry: Runtime Call.";
     JSTaggedValue tagged =
         reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
@@ -463,7 +463,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> func = info->GetFunction();
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(func.GetTaggedValue().GetTaggedObject());
     ASSERT(callTarget != nullptr);
-    JSMethod *method = callTarget->GetCallTarget();
+    Method *method = callTarget->GetCallTarget();
     if (method->IsNativeWithCallField()) {
         return EcmaInterpreter::ExecuteNative(info);
     }
@@ -575,7 +575,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(JSHandle<JSTaggedValue>(thread, context->GetMethod()));
-    JSMethod *method = func->GetCallTarget();
+    Method *method = func->GetCallTarget();
     if (method->IsAotWithCallField()) {
         return GeneratorReEnterAot(thread, context);
     }
@@ -640,7 +640,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
 JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context)
 {
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(JSHandle<JSTaggedValue>(thread, context->GetMethod()));
-    JSMethod *method = func->GetCallTarget();
+    Method *method = func->GetCallTarget();
     JSTaggedValue genObject = context->GetGeneratorObject();
     std::vector<JSTaggedType> args(method->GetNumArgs() + NUM_MANDATORY_JSFUNC_ARGS + 1,
                                    JSTaggedValue::Undefined().GetRawData());
@@ -665,7 +665,7 @@ void EcmaInterpreter::NotifyBytecodePcChanged(JSThread *thread)
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
-        JSMethod *method = frameHandler.GetMethod();
+        Method *method = frameHandler.GetMethod();
         // Skip builtins method
         if (method->IsNativeWithCallField()) {
             continue;
@@ -684,7 +684,7 @@ const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
-        JSMethod *method = frameHandler.GetMethod();
+        Method *method = frameHandler.GetMethod();
         // Skip builtins method
         if (method->IsNativeWithCallField()) {
             continue;
@@ -705,7 +705,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
     JSTaggedValue globalObj = globalEnv->GetGlobalObject();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSMutableHandle<JSMethod> methodHandle(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
 
     constexpr size_t numOps = 0x100;
     static std::array<const void *, numOps> instDispatchTable {
@@ -3832,7 +3832,7 @@ void EcmaInterpreter::InitStackFrame(JSThread *thread)
     state->base.prev = nullptr;
 }
 
-uint32_t EcmaInterpreter::FindCatchBlock(JSMethod *caller, uint32_t pc)
+uint32_t EcmaInterpreter::FindCatchBlock(Method *caller, uint32_t pc)
 {
     auto *pandaFile = caller->GetPandaFile();
     panda_file::MethodDataAccessor mda(*pandaFile, caller->GetMethodId());
@@ -3862,7 +3862,7 @@ JSTaggedValue EcmaInterpreter::GetNewTarget(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
-    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
     ASSERT(method->HaveNewTargetWithCallField());
     uint32_t numVregs = method->GetNumVregsWithCallField();
     bool haveFunc = method->HaveFuncWithCallField();
@@ -3873,7 +3873,7 @@ uint32_t EcmaInterpreter::GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
-    JSMethod *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
     ASSERT(method->HaveExtraWithCallField());
 
     uint32_t numVregs = method->GetNumVregsWithCallField();
@@ -3983,7 +3983,7 @@ JSTaggedValue EcmaInterpreter::GetThisObjectFromFastNewFrame(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
-    JSMethod *method = ECMAObject::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    Method *method = ECMAObject::Cast(state->function.GetTaggedObject())->GetCallTarget();
     ASSERT(method->OnlyHaveThisWithCallField() || method->OnlyHaveNewTagetAndThisWithCallField());
     uint32_t numVregs = method->GetNumVregsWithCallField();
     uint32_t numDeclaredArgs;
@@ -3996,7 +3996,7 @@ JSTaggedValue EcmaInterpreter::GetThisObjectFromFastNewFrame(JSTaggedType *sp)
     return JSTaggedValue(sp[hiddenThisObjectIndex]);
 }
 
-bool EcmaInterpreter::IsFastNewFrameEnter(JSFunction *ctor, JSHandle<JSMethod> method)
+bool EcmaInterpreter::IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method)
 {
     if (method->IsNativeWithCallField()) {
         return false;
