@@ -434,11 +434,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_FUNCTION_BASE: {
-#ifdef PANDA_TARGET_64
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 2U);
-#else
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 1U);
-#endif
                 break;
             }
             case JSType::JS_FUNCTION: {
@@ -1156,7 +1152,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_VECTOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIVector::SIZE, 1);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIVector::SIZE, 1U);
                 JSHandle<JSAPIVector> jsVector = NewJSAPIVector(factory, proto);
                 DUMP_FOR_HANDLE(jsVector)
                 break;
