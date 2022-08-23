@@ -2190,6 +2190,20 @@ bool JSValueRef::IsGeneratorObject()
     return rst;
 }
 
+bool JSValueRef::IsModuleNamespaceObject()
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    bool rst = obj->IsModuleNamespace();
+    return rst;
+}
+
+bool JSValueRef::IsSharedArrayBuffer()
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    bool rst = obj->IsSharedArrayBuffer();
+    return rst;
+}
+
 bool JSValueRef::IsJSLocale()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSLocale();
