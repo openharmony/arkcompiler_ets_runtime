@@ -199,7 +199,15 @@ public:
 
     size_t PUBLIC_API AddConstString(JSTaggedValue string);
 
-    bool PUBLIC_API IsTypeVerifyEnabled() const;
+    bool PUBLIC_API AssertTypes() const
+    {
+        return assertTypes_;
+    }
+
+    bool PUBLIC_API PrintAnyTypes() const
+    {
+        return printAnyTypes_;
+    }
 
     bool IsBuiltinsDTSEnabled() const
     {
@@ -307,6 +315,8 @@ private:
     CVector<JSTaggedType> constantStringTable_ {};
     CVector<JSTaggedType> staticHClassTable_ {};  // store hclass which produced from static type info
     std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap_ {};  // record gt and static hclass index mapping relation
+    bool assertTypes_ {false};
+    bool printAnyTypes_ {false};
     friend class EcmaVM;
 };
 }  // namespace panda::ecmascript

@@ -31,6 +31,8 @@ const JSPandaFile *BytecodeInfoCollector::LoadInfoFromPf(const CString &filename
         return nullptr;
     }
 
+    JSPandaFileManager::GetInstance()->InsertJSPandaFile(jsPandaFile);
+
     CString methodName;
     auto pos = entryPoint.find_last_of("::");
     if (pos != std::string_view::npos) {

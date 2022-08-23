@@ -74,7 +74,8 @@ public:
         parser->Add(&icuDataPath_);
         parser->Add(&startupTime_);
         parser->Add(&enableRuntimeStat_);
-        parser->Add(&typeInferVerify_);
+        parser->Add(&assertTypes_);
+        parser->Add(&printAnyTypes_);
         parser->Add(&builtinsDTS_);
         parser->Add(&enablebcTrace_);
         parser->Add(&logLevel_);
@@ -481,14 +482,24 @@ public:
         return startupTime_.WasSet();
     }
 
-    bool EnableTypeInferVerify() const
+    bool AssertTypes() const
     {
-        return typeInferVerify_.GetValue();
+        return assertTypes_.GetValue();
     }
 
-    void SetEnableTypeInferVerify(bool value)
+    void SetAssertTypes(bool value)
     {
-        typeInferVerify_.SetValue(value);
+        assertTypes_.SetValue(value);
+    }
+
+    bool PrintAnyTypes() const
+    {
+        return printAnyTypes_.GetValue();
+    }
+
+    void SetPrintAnyTypes(bool value)
+    {
+        printAnyTypes_.SetValue(value);
     }
 
     bool WasSetBuiltinsDTS() const
@@ -721,8 +732,10 @@ private:
         R"(specific method list for compiler log output, only used when compiler-log)"};
     PandArg<bool> enableRuntimeStat_ {"enable-runtime-stat", false,
         R"(enable statistics of runtime state. Default: false)"};
-    PandArg<bool> typeInferVerify_ {"typeinfer-verify", false,
-        R"(Enable type verify for type inference tests. Default: false)"};
+    PandArg<bool> assertTypes_ {"assert-types", false,
+        R"(Enable type assertion for type inference tests. Default: false)"};
+    PandArg<bool> printAnyTypes_ {"print-any-types", false,
+        R"(Enable TypeFilter to print any types after type inference. Default: false)"};
     PandArg<bool> isWorker_ {"IsWorker", false,
         R"(whether is worker vm)"};
     PandArg<std::string> builtinsDTS_ {"builtins-dts",

@@ -3066,7 +3066,6 @@ void TSClassInstanceType::Dump(std::ostream &os) const
     os << localTypeId;
     os << "\n";
 
-    os << " -------------------------------------------- ";
     os << " - createClassType GT: ";
     GlobalTSTypeRef createClassTypeGT = GetClassGT();
     os << createClassTypeGT.GetType();
@@ -3114,6 +3113,7 @@ void TSFunctionType::Dump(std::ostream &os) const
     if (name.IsString()) {
         os << ConvertToString(EcmaString::Cast(name.GetTaggedObject()));
     }
+    os << "\n";
     os << " - TSFunctionType ParameterTypeIds: " << "\n";
     DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), os);
     os << " - TSFunctionType ReturnType: " << GetReturnGT().GetType() << "\n";
@@ -3141,16 +3141,10 @@ void TSArrayType::Dump(std::ostream &os) const
     os << " - Dump TSArrayType - " << "\n";
     os << " - TSArrayType globalTSTypeRef: ";
     GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
+    os << gt.GetType();
     os << "\n";
-    os << " - TSArrayType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSArrayType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
+    os << " - TSArrayType ElementGT: ";
+    os <<  GetElementGT().GetType();
     os << "\n";
 }
 
