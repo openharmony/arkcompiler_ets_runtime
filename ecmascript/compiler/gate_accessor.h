@@ -296,6 +296,7 @@ public:
     void GetOutVector(GateRef gate, std::vector<GateRef>& outs) const;
     size_t GetNumIns(GateRef gate) const;
     OpCode GetOpCode(GateRef gate) const;
+    bool IsGCRelated(GateRef gate) const;
     void SetOpCode(GateRef gate, OpCode::Op opcode);
     BitField GetBitField(GateRef gate) const;
     void SetBitField(GateRef gate, BitField bitField);
