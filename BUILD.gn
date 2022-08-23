@@ -255,14 +255,7 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  if (is_debug) {
-    cflags_cc += [
-      "-O0",
-      "-ggdb3",
-    ]
-  } else {
-    defines += [ "NDEBUG" ]
-  }
+  defines += [ "NDEBUG" ]
 
   if (run_with_asan) {
     defines += [ "RUN_WITH_ASAN" ]
