@@ -15,6 +15,8 @@
 
 #include "ecmascript/compiler/type_lowering.h"
 
+#include <limits.h>
+
 namespace panda::ecmascript::kungfu {
 void TypeLowering::RunTypeLowering()
 {
@@ -28,7 +30,7 @@ void TypeLowering::RunTypeLowering()
     }
 
     if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "================== type lowering print all gates ==================";
+        LOG_COMPILER(INFO) << "================== type lowering print all gates Start==================";
         circuit_->PrintAllGates(*bcBuilder_);
     }
 }
@@ -45,6 +47,9 @@ void TypeLowering::Lower(GateRef gate)
     switch (op) {
         case NEWOBJDYNRANGE_PREF_IMM16_V8:
             LowerTypeNewObjDynRange(gate, glue);
+            break;
+        case ADD2DYN_PREF_V8:
+            LowerTypeAdd2Dyn(gate, glue);
             break;
         default:
             break;
@@ -88,6 +93,30 @@ void TypeLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noTh
     acc_.DeleteGate(hirGate);
 }
 
+// depends on the construction of JSgates in BytecodeCircuitBuilder
+void TypeLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl)
+{
+    auto uses = acc_.Uses(hir);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        const OpCode op = acc_.GetOpCode(*useIt);
+        if (op == OpCode::JS_BYTECODE && useIt.GetIndex() == 1) {
+            acc_.ReplaceStateIn(*useIt, successControl[0]);
+            useIt = acc_.ReplaceIn(useIt, successControl[1]);
+        } else if (op == OpCode::RETURN) {
+            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_SUCCESS) {
+                acc_.ReplaceStateIn(*useIt, successControl[0]);
+                acc_.ReplaceDependIn(*useIt, successControl[1]);
+                acc_.ReplaceValueIn(*useIt, outir);
+            }
+            ++useIt;
+        } else if (op == OpCode::IF_SUCCESS || op == OpCode::IF_EXCEPTION || op == OpCode::VALUE_SELECTOR || op == OpCode::DEPEND_SELECTOR) {
+            ++useIt;
+        } else {
+            useIt = acc_.ReplaceIn(useIt, outir);
+        }
+    }
+}
+
 GateRef TypeLowering::LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel)
 {
     if (useLabel) {
@@ -129,5 +158,173 @@ void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
     const int id = RTSTUB_ID(OptNewObjWithIHClass);
     GateRef newGate = LowerCallRuntime(glue, id, args);
     ReplaceHirToCall(gate, newGate);
+}
+
+void TypeLowering::LowerTypeAdd2Dyn(GateRef gate, [[maybe_unused]]GateRef glue)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateType leftType = acc_.GetGateType(left);
+
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType rightType = acc_.GetGateType(right);
+    if (!leftType.IsTSType() || !rightType.IsTSType()) {
+        return;
+    }
+    if (!leftType.IsNumberType() || !rightType.IsNumberType()) {
+        return;
+    }
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    std::vector<GateRef> successControl;
+    result = FastAddAndSub<OpCode::ADD>(left, right);
+    Label successExit(&builder_);
+    Label slowPath(&builder_);
+    builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE),
+                    &slowPath, &successExit);
+    builder_.Bind(&slowPath);
+    {
+        // slow path
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+        result = gate;
+        auto uses = acc_.Uses(gate);
+        for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+            const OpCode op = acc_.GetOpCode(*useIt);
+            if (op == OpCode::IF_SUCCESS) {
+                builder_.SetState(*useIt);
+                break;
+            }
+        }
+        builder_.SetDepend(gate);
+        builder_.Jump(&successExit);
+    }
+    builder_.Bind(&successExit);
+    {
+        successControl.emplace_back(builder_.GetState());
+        successControl.emplace_back(builder_.GetDepend());
+    }
+    ReplaceHirToSubCfg(gate, *result, successControl);
+}
+
+template<OpCode::Op Op>
+GateRef TypeLowering::FastAddAndSub(GateRef left, GateRef right)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+    DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+
+    Label exit(&builder_);
+    Label doFloatOp(&builder_);
+    Label doIntOp(&builder_);
+    Label leftIsNumber(&builder_);
+    Label rightIsNumber(&builder_);
+    Label leftIsIntRightIsDouble(&builder_);
+    Label rightIsInt(&builder_);
+    Label rightIsDouble(&builder_);
+    builder_.Branch(builder_.TaggedIsNumber(left), &leftIsNumber, &exit);
+    builder_.Bind(&leftIsNumber);
+    {
+        builder_.Branch(builder_.TaggedIsNumber(right), &rightIsNumber, &exit);
+        builder_.Bind(&rightIsNumber);
+        {
+            Label leftIsInt(&builder_);
+            Label leftIsDouble(&builder_);
+            builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            builder_.Bind(&leftIsInt);
+            {
+                builder_.Branch(builder_.TaggedIsInt(right), &doIntOp, &leftIsIntRightIsDouble);
+                builder_.Bind(&leftIsIntRightIsDouble);
+                {
+                    doubleLeft = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+                    doubleRight = builder_.TaggedCastToDouble(right);
+                    builder_.Jump(&doFloatOp);
+                }
+            }
+            builder_.Bind(&leftIsDouble);
+            {
+                builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                builder_.Bind(&rightIsInt);
+                {
+                    doubleLeft = builder_.TaggedCastToDouble(left);
+                    doubleRight = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+                    builder_.Jump(&doFloatOp);
+                }
+                builder_.Bind(&rightIsDouble);
+                {
+                    doubleLeft = builder_.TaggedCastToDouble(left);
+                    doubleRight = builder_.TaggedCastToDouble(right);
+                    builder_.Jump(&doFloatOp);
+                }
+            }
+        }
+    }
+    builder_.Bind(&doIntOp);
+    {
+        Label overflow(&builder_);
+        Label notOverflow(&builder_);
+        // handle left is int and right is int
+        GateRef res = BinaryOp<Op, MachineType::I64>(builder_.TaggedCastToInt64(left),
+                                                              builder_.TaggedCastToInt64(right));
+        GateRef max = builder_.Int64(INT32_MAX);
+        GateRef min = builder_.Int64(INT32_MIN);
+        Label greaterZero(&builder_);
+        Label notGreaterZero(&builder_);
+        builder_.Branch(builder_.Int32GreaterThan(builder_.TaggedCastToInt32(left), builder_.Int32(0)),
+                        &greaterZero, &notGreaterZero);
+        builder_.Bind(&greaterZero);
+        {
+            builder_.Branch(builder_.Int64GreaterThan(res, max), &overflow, &notOverflow);
+        }
+        builder_.Bind(&notGreaterZero);
+        {
+            Label lessZero(&builder_);
+            builder_.Branch(builder_.Int32LessThan(builder_.TaggedCastToInt32(left), builder_.Int32(0)),
+                            &lessZero, &notOverflow);
+            builder_.Bind(&lessZero);
+            builder_.Branch(builder_.Int64LessThan(res, min), &overflow, &notOverflow);
+        }
+        builder_.Bind(&overflow);
+        {
+            GateRef newDoubleLeft = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+            GateRef newDoubleRight = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+            GateRef middleRet = BinaryOp<Op, MachineType::F64>(newDoubleLeft, newDoubleRight);
+            result = DoubleBuildTaggedWithNoGC(middleRet);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&notOverflow);
+        {
+            result = builder_.TaggedNGC(res);
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&doFloatOp);
+    {
+        // Other situations
+        auto res = BinaryOp<Op, MachineType::F64>(*doubleLeft, *doubleRight);
+        result = DoubleBuildTaggedWithNoGC(res);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+template<OpCode::Op Op, MachineType Type>
+GateRef TypeLowering::BinaryOp(GateRef x, GateRef y)
+{
+    return builder_.BinaryArithmetic(OpCode(Op), Type, x, y);
+}
+
+GateRef TypeLowering::DoubleBuildTaggedWithNoGC(GateRef gate)
+{
+    return builder_.DoubleToTaggedNGC(gate);
+}
+
+GateRef TypeLowering::ChangeInt32ToFloat64(GateRef gate)
+{
+    return builder_.UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F64, gate);
 }
 }  // namespace panda::ecmascript

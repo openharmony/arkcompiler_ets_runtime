@@ -227,8 +227,7 @@ GateRef CircuitBuilder::TaggedNGC(GateRef x)
 GateRef CircuitBuilder::DoubleToTaggedNGC(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
-    return ChangeInt64ToTagged(Int64Add(val,
-        Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
+    return ChangeInt64ToTagged(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
 GateRef CircuitBuilder::DoubleToTaggedTypeNGC(GateRef x)
@@ -542,6 +541,11 @@ GateRef CircuitBuilder::GetDepend() const
 void CircuitBuilder::SetDepend(GateRef depend)
 {
     GetCurrentLabel()->SetDepend(depend);
+}
+
+void CircuitBuilder::SetState(GateRef state)
+{
+    GetCurrentLabel()->SetControl(state);
 }
 
 void Label::Seal()

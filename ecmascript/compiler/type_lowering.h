@@ -45,10 +45,20 @@ private:
     void Lower(GateRef gate);
 
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
+    void ReplaceHirToSubCfg(GateRef hir, GateRef outir,
+                            const std::vector<GateRef> &successControl);
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
 
     void LowerTypeNewObjDynRange(GateRef gate, GateRef glue);
+    void LowerTypeAdd2Dyn(GateRef gate, GateRef glue);
+
+    template<OpCode::Op Op>
+    GateRef FastAddAndSub(GateRef left, GateRef right);
+    template<OpCode::Op Op, MachineType Type>
+    GateRef BinaryOp(GateRef x, GateRef y);
+    GateRef DoubleBuildTaggedWithNoGC(GateRef gate);
+    GateRef ChangeInt32ToFloat64(GateRef gate);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
