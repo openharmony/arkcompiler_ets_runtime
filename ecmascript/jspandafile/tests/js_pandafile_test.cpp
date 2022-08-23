@@ -100,7 +100,7 @@ HWTEST_F_L0(JSPandaFileTest, GetPandaFile)
     EXPECT_TRUE(file != nullptr);
 }
 
-HWTEST_F_L0(JSPandaFileTest, GetMethods_GetNumMethods)
+HWTEST_F_L0(JSPandaFileTest, GetMethodLiterals_GetNumMethods)
 {
     const char *source = R"(
         .function void foo1() {}
@@ -109,7 +109,7 @@ HWTEST_F_L0(JSPandaFileTest, GetMethods_GetNumMethods)
     )";
     const CString fileName = "test.pa";
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
-    MethodLiteral *method = pf->GetMethods();
+    MethodLiteral *method = pf->GetMethodLiterals();
     EXPECT_TRUE(method != nullptr);
 
     uint32_t methodNum = pf->GetNumMethods();

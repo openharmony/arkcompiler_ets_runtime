@@ -31,7 +31,7 @@
 
 namespace panda::ecmascript {
 struct MethodLiteral;
-class JSMethod;
+class Method;
 class JSObject;
 class JSArray;
 class JSAPIPlainArray;
@@ -179,7 +179,7 @@ class ObjectFactory {
 public:
     ObjectFactory(JSThread *thread, Heap *heap);
     ~ObjectFactory() = default;
-    JSHandle<JSMethod> NewMethodForNativeFunction(const void *func, uint8_t builtinId = INVALID_BUILTINS_ID);
+    JSHandle<Method> NewMethodForNativeFunction(const void *func, uint8_t builtinId = INVALID_BUILTINS_ID);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
@@ -204,7 +204,7 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        uint8_t builtinId = INVALID_BUILTINS_ID);
     // use for method
-    JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSMethod> &method,
+    JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method,
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
 
     JSHandle<JSFunction> NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr);
@@ -227,9 +227,9 @@ public:
     JSHandle<JSProxyRevocFunction> NewJSProxyRevocFunction(const JSHandle<JSProxy> &proxy);
 
     JSHandle<JSAsyncAwaitStatusFunction> NewJSAsyncAwaitStatusFunction(MethodIndex idx);
-    JSHandle<JSFunction> NewJSGeneratorFunction(const JSHandle<JSMethod> &method);
+    JSHandle<JSFunction> NewJSGeneratorFunction(const JSHandle<Method> &method);
 
-    JSHandle<JSAsyncFunction> NewAsyncFunction(const JSHandle<JSMethod> &method);
+    JSHandle<JSAsyncFunction> NewAsyncFunction(const JSHandle<Method> &method);
 
     JSHandle<JSGeneratorObject> NewJSGeneratorObject(JSHandle<JSTaggedValue> generatorFunction);
 
@@ -423,12 +423,12 @@ public:
                                             const JSHandle<JSHClass> &objClass);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
-    JSHandle<JSFunction> NewJSFunctionByDynClass(const JSHandle<JSMethod> &method, const JSHandle<JSHClass> &clazz,
+    JSHandle<JSFunction> NewJSFunctionByDynClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                                  MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSFunctionByDynClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
-    JSHandle<JSMethod> NewJSMethod(const MethodLiteral *method);
+    JSHandle<Method> NewJSMethod(const MethodLiteral *methodLiteral);
 
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
@@ -535,7 +535,7 @@ public:
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &bindingName);
     JSHandle<CellRecord> NewCellRecord();
-    JSHandle<JSFunction> NewJSAsyncGeneratorFunction(const JSHandle<JSMethod> &method);
+    JSHandle<JSFunction> NewJSAsyncGeneratorFunction(const JSHandle<Method> &method);
     // --------------------------------------require--------------------------------------------
     JSHandle<CjsModule> NewCjsModule();
     JSHandle<CjsExports> NewCjsExports();

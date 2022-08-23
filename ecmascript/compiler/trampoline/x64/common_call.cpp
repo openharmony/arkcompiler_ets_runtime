@@ -21,7 +21,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"

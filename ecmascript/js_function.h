@@ -193,7 +193,7 @@ public:
     // add for AOT
     inline void SetCodeEntryAndMarkAOT(const uintptr_t codeEntry)
     {
-        JSMethod *method = JSMethod::Cast(GetMethod().GetTaggedObject());
+        Method *method = Method::Cast(GetMethod().GetTaggedObject());
         method->SetAotCodeBit(true);
         method->SetNativeBit(false);
         SetCodeEntry(codeEntry);

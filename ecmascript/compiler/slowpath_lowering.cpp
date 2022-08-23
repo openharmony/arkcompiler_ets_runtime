@@ -244,7 +244,7 @@ void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate)
 GateRef SlowPathLowering::GetConstPool(GateRef jsFunc)
 {
     GateRef method = builder_.GetMethodFromFunction(jsFunc);
-    return builder_.Load(VariableType::JS_ANY(), method, builder_.IntPtr(JSMethod::CONSTANT_POOL_OFFSET));
+    return builder_.Load(VariableType::JS_ANY(), method, builder_.IntPtr(Method::CONSTANT_POOL_OFFSET));
 }
 
 // labelmanager must be initialized

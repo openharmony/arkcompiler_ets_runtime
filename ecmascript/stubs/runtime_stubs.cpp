@@ -1302,7 +1302,7 @@ DEF_RUNTIME_STUBS(NotifyBytecodePcChanged)
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             continue;
         }
-        JSMethod *method = frameHandler.GetMethod();
+        Method *method = frameHandler.GetMethod();
         // Skip builtins method
         if (method->IsNativeWithCallField()) {
             continue;
@@ -1604,7 +1604,7 @@ DEF_RUNTIME_STUBS(CallNative)
     auto cachedFpValue = frame->callsiteFp;
     frame->callsiteFp = reinterpret_cast<uintptr_t>(sp);
 
-    JSMethod *method = ECMAObject::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    Method *method = ECMAObject::Cast(state->function.GetTaggedObject())->GetCallTarget();
     EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(sp);
     JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
         const_cast<void *>(method->GetNativePointer()))(ecmaRuntimeCallInfo);

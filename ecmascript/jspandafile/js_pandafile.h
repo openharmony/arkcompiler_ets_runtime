@@ -49,15 +49,15 @@ public:
         return pf_;
     }
 
-    MethodLiteral* GetMethods() const
+    MethodLiteral* GetMethodLiterals() const
     {
-        return methods_;
+        return methodLiterals_;
     }
 
-    void SetMethodToMap(MethodLiteral *method)
+    void SetMethodToMap(MethodLiteral *methodLiteral)
     {
-        if (method != nullptr) {
-            methodMap_.emplace(method->GetMethodId().GetOffset(), method);
+        if (methodLiteral != nullptr) {
+            methodMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
         }
     }
 
@@ -130,7 +130,7 @@ private:
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     uint32_t mainMethodIndex_ {0};
-    MethodLiteral *methods_ {nullptr};
+    MethodLiteral *methodLiterals_ {nullptr};
     CUnorderedMap<uint32_t, MethodLiteral *> methodMap_;
     const panda_file::File *pf_ {nullptr};
     CString desc_;

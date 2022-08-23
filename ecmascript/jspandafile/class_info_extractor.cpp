@@ -85,8 +85,8 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
         }
     } else {
         // without static properties, set class name
-        MethodLiteral *method = extractor->GetConstructorMethod();
-        std::string clsName = MethodLiteral::ParseFunctionName(jsPandaFile, method->GetMethodId());
+        MethodLiteral *methodLiteral = extractor->GetConstructorMethod();
+        std::string clsName = MethodLiteral::ParseFunctionName(jsPandaFile, methodLiteral->GetMethodId());
         JSHandle<EcmaString> clsNameHandle = factory->NewFromStdString(clsName);
         staticProperties->Set(thread, NAME_INDEX, clsNameHandle);
     }
@@ -287,7 +287,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassTemplate(JSThread *thread, JSHandle
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
 
     JSHandle<JSHClass> constructorHClass(thread, extractor->GetConstructorHClass());
-    JSHandle<JSMethod> method = factory->NewJSMethod(extractor->GetConstructorMethod());
+    JSHandle<Method> method = factory->NewJSMethod(extractor->GetConstructorMethod());
     JSHandle<JSFunction> constructor = factory->NewJSFunctionByDynClass(method,
         constructorHClass, FunctionKind::CLASS_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
 
@@ -304,7 +304,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassTemplate(JSThread *thread, JSHandle
             if (propValue->IsJSFunction()) {
                 JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
                 propFunc->SetHomeObject(thread, prototype);
-                JSHandle<JSMethod> propMethod(thread, propFunc->GetMethod());
+                JSHandle<Method> propMethod(thread, propFunc->GetMethod());
                 propMethod->SetConstantPool(thread, constantpool.GetTaggedValue());
             }
             prototype->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
@@ -332,7 +332,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassTemplate(JSThread *thread, JSHandle
             if (propValue->IsJSFunction()) {
                 JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
                 propFunc->SetHomeObject(thread, constructor);
-                JSHandle<JSMethod> propMethod(thread, propFunc->GetMethod());
+                JSHandle<Method> propMethod(thread, propFunc->GetMethod());
                 propMethod->SetConstantPool(thread, constantpool.GetTaggedValue());
             }
             JSHandle<JSObject>::Cast(constructor)->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
@@ -400,7 +400,7 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
         if (propValue->IsJSFunction()) {
             JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
             propFunc->SetHomeObject(thread, object);
-            JSHandle<JSMethod> method(thread, propFunc->GetMethod());
+            JSHandle<Method> method(thread, propFunc->GetMethod());
             method->SetConstantPool(thread, constantpool.GetTaggedValue());
         }
         JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attributes);
@@ -424,7 +424,7 @@ void ClassHelper::HandleElementsProperties(JSThread *thread, const JSHandle<JSOb
         if (elementsValue->IsJSFunction()) {
             JSHandle<JSFunction> elementsFunc = JSHandle<JSFunction>::Cast(elementsValue);
             elementsFunc->SetHomeObject(thread, object);
-            JSHandle<JSMethod> method(thread, elementsFunc->GetMethod());
+            JSHandle<Method> method(thread, elementsFunc->GetMethod());
             method->SetConstantPool(thread, constantpool.GetTaggedValue());
         }
     }

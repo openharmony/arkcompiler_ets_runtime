@@ -203,7 +203,7 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
 
         auto function = frameHandler.GetFunction();
         if (function.IsJSFunctionBase() || function.IsJSProxy()) {
-            JSMethod *method = ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
+            Method *method = ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
             if (!method->IsNativeWithCallField()) {
                 return JSHandle<JSTaggedValue>(thread, function);
             }

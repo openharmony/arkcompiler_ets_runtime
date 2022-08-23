@@ -16,8 +16,8 @@
 #define ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_INL_H
 
 #include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/mem/region.h"
+#include "ecmascript/method.h"
 
 namespace panda::ecmascript::kungfu {
 // constant

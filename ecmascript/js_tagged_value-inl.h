@@ -603,9 +603,9 @@ inline bool JSTaggedValue::IsJSListFormat() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSListFormat();
 }
 
-inline bool JSTaggedValue::IsJSMethod() const
+inline bool JSTaggedValue::IsMethod() const
 {
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSMethod();
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsMethod();
 }
 
 inline bool JSTaggedValue::IsJSAPIArrayList() const

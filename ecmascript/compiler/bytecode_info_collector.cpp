@@ -48,8 +48,8 @@ const JSPandaFile *BytecodeInfoCollector::LoadInfoFromPf(const CString &filename
 void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CString &methodName,
                                            std::vector<MethodPcInfo> &methodPcInfos)
 {
-    ASSERT(jsPandaFile != nullptr && jsPandaFile->GetMethods() != nullptr);
-    MethodLiteral *methods = jsPandaFile->GetMethods();
+    ASSERT(jsPandaFile != nullptr && jsPandaFile->GetMethodLiterals() != nullptr);
+    MethodLiteral *methods = jsPandaFile->GetMethodLiterals();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     size_t methodIdx = 0;
     panda_file::File::StringData sd = {static_cast<uint32_t>(methodName.size()),
@@ -68,7 +68,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
             auto codeId = mda.GetCodeId();
             ASSERT(codeId.has_value());
 
-            MethodLiteral *method = methods + (methodIdx++);
+            MethodLiteral *methodLiteral = methods + (methodIdx++);
             panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
             uint32_t codeSize = codeDataAccessor.GetCodeSize();
 
@@ -77,18 +77,19 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
                 jsPandaFile->UpdateMainMethodIndex(mda.GetMethodId().GetOffset());
             }
 
-            new (method) MethodLiteral(jsPandaFile, mda.GetMethodId());
-            method->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
-            method->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
+            new (methodLiteral) MethodLiteral(jsPandaFile, mda.GetMethodId());
+            methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
+            methodLiteral->InitializeCallField(
+                jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             auto it = processedInsns.find(insns);
             if (it == processedInsns.end()) {
-                CollectMethodPcs(jsPandaFile, codeSize, insns, method, methodPcInfos);
+                CollectMethodPcs(jsPandaFile, codeSize, insns, methodLiteral, methodPcInfos);
                 processedInsns[insns] = methodPcInfos.size() - 1;
             } else {
-                methodPcInfos[it->second].methods.emplace_back(method);
+                methodPcInfos[it->second].methods.emplace_back(methodLiteral);
             }
-            jsPandaFile->SetMethodToMap(method);
+            jsPandaFile->SetMethodToMap(methodLiteral);
         });
     }
 }

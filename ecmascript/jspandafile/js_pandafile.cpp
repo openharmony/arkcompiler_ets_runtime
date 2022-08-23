@@ -36,9 +36,9 @@ JSPandaFile::~JSPandaFile()
         pf_ = nullptr;
     }
     methodMap_.clear();
-    if (methods_ != nullptr) {
-        JSPandaFileManager::FreeBuffer(methods_);
-        methods_ = nullptr;
+    if (methodLiterals_ != nullptr) {
+        JSPandaFileManager::FreeBuffer(methodLiterals_);
+        methodLiterals_ = nullptr;
     }
 }
 
@@ -88,7 +88,8 @@ void JSPandaFile::Initialize()
             });
         }
     }
-    methods_ = static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
+    methodLiterals_ =
+        static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
 }
 
 MethodLiteral *JSPandaFile::FindMethods(uint32_t offset) const

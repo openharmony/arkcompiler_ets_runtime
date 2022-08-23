@@ -580,7 +580,7 @@ public:
     bool IsJSPluralRules() const;
     bool IsJSDisplayNames() const;
     bool IsJSListFormat() const;
-    bool IsJSMethod() const;
+    bool IsMethod() const;
 
     // non ECMA standard jsapis
     bool IsJSAPIArrayList() const;

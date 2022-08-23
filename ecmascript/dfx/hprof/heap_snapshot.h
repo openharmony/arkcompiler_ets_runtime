@@ -365,8 +365,8 @@ public:
     bool FinishSnapshot();
     void PushHeapStat(Stream* stream);
     int AddTraceNode(int sequenceId, int size);
-    void AddMethodInfo(JSMethod *method, const FrameHandler &frameHandler, int sequenceId);
-    void AddTraceNodeId(JSMethod *method);
+    void AddMethodInfo(Method *method, const FrameHandler &frameHandler, int sequenceId);
+    void AddTraceNodeId(Method *method);
 
     const CVector<TimeStamp> &GetTimeStamps() const
     {
@@ -475,10 +475,10 @@ private:
     Node* privateStringNode_ {nullptr};
     bool trackAllocations_ {false};
     CVector<FunctionInfo> traceInfoStack_ {};
-    CMap<JSMethod *, struct FunctionInfo> stackInfo_;
+    CMap<Method *, struct FunctionInfo> stackInfo_;
     CMap<std::string, int> scriptIdMap_;
     TraceTree traceTree_;
-    CMap<JSMethod *, uint32_t> methodToTraceNodeId_;
+    CMap<Method *, uint32_t> methodToTraceNodeId_;
     CVector<uint32_t> traceNodeIndex_;
 };
 

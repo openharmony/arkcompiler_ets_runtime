@@ -1575,7 +1575,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjDynRange(JSThread *thread, const JSHand
 
 JSTaggedValue RuntimeStubs::RuntimeDefinefuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    JSHandle<JSMethod> method(thread, funcHandle->GetMethod());
+    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1671,7 +1671,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
 
 JSTaggedValue RuntimeStubs::RuntimeDefineNCFuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    JSHandle<JSMethod> method(thread, funcHandle->GetMethod());
+    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1684,7 +1684,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineNCFuncDyn(JSThread *thread, const JSHan
 
 JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    auto method = JSHandle<JSMethod>(thread, funcHandle->GetMethod());
+    auto method = JSHandle<Method>(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1705,7 +1705,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, const J
 
 JSTaggedValue RuntimeStubs::RuntimeDefineAsyncGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    auto method = JSHandle<JSMethod>(thread, funcHandle->GetMethod());
+    auto method = JSHandle<Method>(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1726,7 +1726,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineAsyncGeneratorFunc(JSThread *thread, co
 
 JSTaggedValue RuntimeStubs::RuntimeDefineAsyncFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    JSHandle<JSMethod> method(thread, funcHandle->GetMethod());
+    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1741,7 +1741,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
                                                 const JSHandle<JSTaggedValue> &homeObject)
 {
     ASSERT(homeObject->IsECMAObject());
-    JSHandle<JSMethod> method(thread, funcHandle->GetMethod());
+    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -2282,7 +2282,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSMethod *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
+    Method *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     JSHandle<JSTaggedValue> constpool(thread, JSTaggedValue::Undefined());
     JSHandle<TaggedArray> elementsLiteral =

@@ -29,7 +29,7 @@ namespace panda {
 namespace ecmascript {
 class FrameHandler;
 class EcmaVM;
-class JSMethod;
+class Method;
 class JSThread;
 namespace tooling {
 class JSDebugger;
@@ -54,7 +54,7 @@ public:
     static uint32_t GetBytecodeOffset(const EcmaVM *ecmaVm);
     static uint32_t GetBytecodeOffset(const FrameHandler *frameHandler);
     static std::unique_ptr<PtMethod> GetMethod(const EcmaVM *ecmaVm);
-    static JSMethod *GetMethod(const FrameHandler *frameHandler);
+    static Method *GetMethod(const FrameHandler *frameHandler);
     static bool IsNativeMethod(const EcmaVM *ecmaVm);
     static bool IsNativeMethod(const FrameHandler *frameHandler);
     static JSPandaFile *GetJSPandaFile(const EcmaVM *ecmaVm);

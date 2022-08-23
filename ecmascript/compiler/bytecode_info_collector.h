@@ -66,7 +66,8 @@ private:
     static void FixInstructionId32(const BytecodeInstruction &inst, uint32_t index, uint32_t fixOrder = 0);
 
     // need to remove in the future
-    static void TranslateBCIns(JSPandaFile *jsPandaFile, const BytecodeInstruction &bcIns, const MethodLiteral *method);
+    static void TranslateBCIns(JSPandaFile *jsPandaFile, const BytecodeInstruction &bcIns,
+                               const MethodLiteral *method);
 
     static void CollectMethodPcs(JSPandaFile *jsPandaFile, const uint32_t insSz, const uint8_t *insArr,
                                  const MethodLiteral *method, std::vector<MethodPcInfo> &methodPcInfos);

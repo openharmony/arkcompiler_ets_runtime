@@ -62,10 +62,10 @@ struct FrameInfoTemp {
     int lineNumber = 0;
     int scriptId = 0;
     char url[500] = {0}; // 500:the maximum size of the url
-    JSMethod *method = nullptr;
+    Method *method = nullptr;
 };
 struct MethodKey {
-    JSMethod *method = nullptr;
+    Method *method = nullptr;
     int parentId = 0;
     bool operator< (const MethodKey &methodKey) const
     {
@@ -99,15 +99,15 @@ public:
     int SemPost(int index);
     int SemWait(int index);
     int SemDestroy(int index);
-    const CMap<JSMethod *, struct FrameInfo> &GetStackInfo() const;
-    void InsertStackInfo(JSMethod *method, struct FrameInfo &codeEntry);
-    void PushFrameStack(JSMethod *method, int count);
+    const CMap<Method *, struct FrameInfo> &GetStackInfo() const;
+    void InsertStackInfo(Method *method, struct FrameInfo &codeEntry);
+    void PushFrameStack(Method *method, int count);
     void PushStackInfo(const FrameInfoTemp &frameInfoTemp, int index);
     std::ofstream fileHandle_;
 private:
     void WriteAddNodes();
     void WriteAddSamples();
-    struct FrameInfo GetMethodInfo(JSMethod *method);
+    struct FrameInfo GetMethodInfo(Method *method);
     struct FrameInfo GetGcInfo();
     void FrameInfoTempToMap();
 
@@ -123,8 +123,8 @@ private:
     std::string sampleData_ = "";
     std::string fileName_ = "";
     sem_t sem_[2]; // 2 : sem_ size is two.
-    CMap<JSMethod *, struct FrameInfo> stackInfoMap_;
-    JSMethod *frameStack_[MAX_ARRAY_COUNT] = {};
+    CMap<Method *, struct FrameInfo> stackInfoMap_;
+    Method *frameStack_[MAX_ARRAY_COUNT] = {};
     int frameStackLength_ = 0;
     CMap<std::string, int> scriptIdMap_;
     FrameInfoTemp frameInfoTemps_[MAX_ARRAY_COUNT] = {};

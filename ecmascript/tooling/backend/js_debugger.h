@@ -97,7 +97,7 @@ public:
 
     bool SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> condFuncRef) override;
     bool RemoveBreakpoint(const JSPtLocation &location) override;
-    void BytecodePcChanged(JSThread *thread, JSHandle<JSMethod> jsMethod, uint32_t bcOffset) override;
+    void BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset) override;
     void LoadModule(std::string_view filename) override
     {
         if (hooks_ == nullptr) {
@@ -129,11 +129,11 @@ public:
 
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
-    std::optional<JSBreakpoint> FindBreakpoint(JSHandle<JSMethod> method, uint32_t bcOffset) const;
+    std::optional<JSBreakpoint> FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;
     bool RemoveBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset);
-    void HandleExceptionThrowEvent(const JSThread *thread, JSHandle<JSMethod> method, uint32_t bcOffset);
-    bool HandleStep(JSHandle<JSMethod> method, uint32_t bcOffset);
-    bool HandleBreakpoint(JSHandle<JSMethod> method, uint32_t bcOffset);
+    void HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Method> method, uint32_t bcOffset);
+    bool HandleStep(JSHandle<Method> method, uint32_t bcOffset);
+    bool HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset);
 
     const EcmaVM *ecmaVm_;
     PtHooks *hooks_ {nullptr};

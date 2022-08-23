@@ -17,11 +17,11 @@
 #define ECMASCRIPT_INTERPRETER_INTERPRETER_H
 
 #include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/method.h"
 #include "ecmascript/require/js_cjs_module.h"
 
 namespace panda::ecmascript {
@@ -44,7 +44,7 @@ public:
     static inline JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline void RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp);
     static inline void InitStackFrame(JSThread *thread);
-    static inline uint32_t FindCatchBlock(JSMethod *caller, uint32_t pc);
+    static inline uint32_t FindCatchBlock(Method *caller, uint32_t pc);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
 
     static inline JSTaggedValue GetRuntimeProfileTypeInfo(JSTaggedType *sp);
@@ -56,7 +56,7 @@ public:
     static inline JSTaggedValue GetNewTarget(JSTaggedType *sp);
     static inline uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static inline JSTaggedValue GetThisObjectFromFastNewFrame(JSTaggedType *sp);
-    static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<JSMethod> method);
+    static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
     static inline int16_t GetHotnessCounter(uint32_t codeSize);
 };
