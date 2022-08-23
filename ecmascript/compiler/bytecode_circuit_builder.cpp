@@ -146,6 +146,10 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(std::map<std::pair<uint8_t
         auto tryEndOffset = try_block.GetStartPc() + try_block.GetLength();
         auto tryStartPc = const_cast<uint8_t *>(method_->GetBytecodeArray() + tryStartOffset);
         auto tryEndPc = const_cast<uint8_t *>(method_->GetBytecodeArray() + tryEndOffset);
+        // skip try blocks with same pc in start and end label
+        if (tryStartPc == tryEndPc) {
+            return true;
+        }
         byteCodeException[std::make_pair(tryStartPc, tryEndPc)] = {};
         uint32_t pcOffset = panda_file::INVALID_OFFSET;
         try_block.EnumerateCatchBlocks([&](panda_file::CodeDataAccessor::CatchBlock &catch_block) {
