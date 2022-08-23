@@ -347,7 +347,7 @@ void CpuProfiler::GetNativeStack(JSThread *thread, FrameHandler &frameHandler, c
     if (function->GetCallNative()) {
         JSNativePointer *extraInfo = JSNativePointer::Cast(function->GetFunctionExtraInfo().GetTaggedObject());
         auto cb = thread->GetEcmaVM()->GetNativePtrGetter();
-        if (cb != nullptr) {
+        if (cb != nullptr  && extraInfo != nullptr) {
             auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
             stream << "napi(" << addr << ")";
             CheckAndCopy(functionName, size, stream.str().c_str());
