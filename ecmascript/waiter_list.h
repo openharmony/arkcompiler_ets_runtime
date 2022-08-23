@@ -30,7 +30,6 @@ public:
     WaiterListNode() = default;
     ~WaiterListNode() = default;
 
-public:
     NO_COPY_SEMANTIC(WaiterListNode);
     NO_MOVE_SEMANTIC(WaiterListNode);
 
@@ -97,12 +96,12 @@ public:
     {
         mutex_->Unlock();
     }
+    
     void Lock() ACQUIRE()
     {
         mutex_->Lock();
     }
 
-public:
     Mutex *mutex_;
     LockHolder lockHolder_;
 };
