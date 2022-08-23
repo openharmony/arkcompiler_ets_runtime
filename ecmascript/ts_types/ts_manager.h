@@ -161,6 +161,14 @@ public:
         return GetPropType(gt, key);
     }
 
+    inline GlobalTSTypeRef PUBLIC_API CreateClassInstanceType(kungfu::GateType gateType)
+    {
+        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());
+        return CreateClassInstanceType(gt);
+    }
+
+    GlobalTSTypeRef PUBLIC_API CreateClassInstanceType(GlobalTSTypeRef gt);
+
     GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, const uint64_t key) const;
 
     uint32_t PUBLIC_API GetUnionTypeLength(GlobalTSTypeRef gt) const;

@@ -59,14 +59,13 @@ private:
     bool InferReturnUndefined(GateRef gate);
     bool InferReturnDyn(GateRef gate);
     bool InferLdObjByName(GateRef gate);
-    bool InferLdNewObjDynRange(GateRef gate);
+    bool InferNewObject(GateRef gate);
     bool SetStGlobalBcType(GateRef gate);
     bool InferLdStr(GateRef gate);
     bool InferCallFunction(GateRef gate);
     bool InferLdObjByValue(GateRef gate);
     bool InferGetNextPropName(GateRef gate);
     bool InferDefineGetterSetterByValue(GateRef gate);
-    bool InferNewObjSpread(GateRef gate);
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
 

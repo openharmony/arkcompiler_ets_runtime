@@ -279,8 +279,7 @@ GlobalTSTypeRef TSManager::AddUnionToInferTable(JSHandle<TSUnionType> unionType)
                                                                             JSHandle<TSType>(unionType));
     SetInferTypeTable(newITable);
 
-    int localId = newITable->GetNumberOfTypes() - 1;
-    GlobalTSTypeRef gt = GlobalTSTypeRef(TSModuleTable::INFER_TABLE_ID, localId);
+    GlobalTSTypeRef gt = GlobalTSTypeRef(TSModuleTable::INFER_TABLE_ID, newITable->GetNumberOfTypes());
     unionType->SetGT(gt);
     return gt;
 }
@@ -396,6 +395,27 @@ GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
     return functionType->GetReturnGT();
+}
+
+GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
+{
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    // handle buintin types if builtins.dts is not enabled
+    if (tsType->IsUndefined()) {
+        return GlobalTSTypeRef::Default();
+    }
+
+    ASSERT(tsType->IsTSClassType());
+    JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
+    classInstanceType->SetClassGT(gt);
+    JSHandle<TSTypeTable> iTable = GetInferTypeTable();
+    JSHandle<TSTypeTable> newITable = TSTypeTable::PushBackTypeToInferTable(thread_, iTable,
+                                                                            JSHandle<TSType>(classInstanceType));
+    SetInferTypeTable(newITable);
+    auto instanceGT = GlobalTSTypeRef(TSModuleTable::INFER_TABLE_ID, newITable->GetNumberOfTypes());
+    classInstanceType->SetGT(instanceGT);
+    ASSERT(GetTypeKind(instanceGT) == TSTypeKind::CLASS_INSTANCE);
+    return instanceGT;
 }
 
 GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const

@@ -4846,7 +4846,7 @@ void TSClassType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>>
     vec.push_back(std::make_pair(CString("InstanceType"), GetInstanceType()));
     vec.push_back(std::make_pair(CString("ConstructorType"), GetConstructorType()));
     vec.push_back(std::make_pair(CString("PrototypeType"), GetPrototypeType()));
-    vec.push_back(std::make_pair(CString("ExtensionGTRawData"), JSTaggedValue(GetExtensionGT().GetType())));
+    vec.push_back(std::make_pair(CString("ExtensionGT"), JSTaggedValue(GetExtensionGT().GetType())));
     vec.push_back(std::make_pair(CString("HasLinked"), JSTaggedValue(GetHasLinked())));
 }
 
@@ -4858,7 +4858,7 @@ void TSInterfaceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 
 void TSClassInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("classTypeIndex"), JSTaggedValue(GetClassGT().GetType())));
+    vec.push_back(std::make_pair(CString("ClassGT"), JSTaggedValue(GetClassGT().GetType())));
 }
 
 void TSImportType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

@@ -224,13 +224,6 @@ JSHandle<EcmaString> TSTypeTable::GenerateVarNameAndPath(JSThread *thread, JSHan
     return targetNameAndPathEcmaStr;
 }
 
-int TSTypeTable::GetTypeKindFromFileByLocalId(JSThread *thread, const JSPandaFile *jsPandaFile, int localId)
-{
-    JSHandle<JSTaggedValue> constpool(thread, JSTaggedValue::Undefined());
-    JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, localId, constpool);
-    return literal->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt();
-}
-
 JSHandle<TSTypeTable> TSTypeTable::PushBackTypeToInferTable(JSThread *thread, JSHandle<TSTypeTable> &table,
                                                             const JSHandle<TSType> &type)
 {

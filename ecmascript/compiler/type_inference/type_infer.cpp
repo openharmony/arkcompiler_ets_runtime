@@ -55,7 +55,7 @@ void TypeInfer::TraverseCircuit()
 bool TypeInfer::UpdateType(GateRef gate, const GateType type)
 {
     auto preType = gateAccessor_.GetGateType(gate);
-    if (type.IsTSType() && type != preType) {
+    if (type.IsTSType() && !type.IsAnyType() && type != preType) {
         gateAccessor_.SetGateType(gate, type);
         return true;
     }
@@ -111,6 +111,7 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::OR2DYN_PREF_V8:
         case EcmaOpcode::XOR2DYN_PREF_V8:
         case EcmaOpcode::TONUMBER_PREF_V8:
+        case EcmaOpcode::TONUMERIC_PREF_V8:
         case EcmaOpcode::NEGDYN_PREF_V8:
         case EcmaOpcode::NOTDYN_PREF_V8:
         case EcmaOpcode::INCDYN_PREF_V8:
@@ -183,8 +184,9 @@ bool TypeInfer::Infer(GateRef gate)
             return InferGetNextPropName(gate);
         case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_PREF_V8_V8_V8_V8:
             return InferDefineGetterSetterByValue(gate);
+        case EcmaOpcode::NEWOBJDYNRANGE_PREF_IMM16_V8:
         case EcmaOpcode::NEWOBJSPREADDYN_PREF_V8_V8:
-            return InferNewObjSpread(gate);
+            return InferNewObject(gate);
         case EcmaOpcode::SUPERCALL_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLSPREAD_PREF_V8:
             return InferSuperCall(gate);
@@ -365,14 +367,15 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     return false;
 }
 
-bool TypeInfer::InferLdNewObjDynRange(GateRef gate)
+bool TypeInfer::InferNewObject(GateRef gate)
 {
-    // If the instance does not allocate a local register, there is no type.
-    // We assign the type of the class to it.
     if (gateAccessor_.GetGateType(gate).IsAnyType()) {
         ASSERT(gateAccessor_.GetNumValueIn(gate) > 0);
-        auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
-        return UpdateType(gate, objType);
+        auto classType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+        if (tsManager_->IsClassTypeKind(classType)) {
+            auto classInstanceType = tsManager_->CreateClassInstanceType(classType);
+            return UpdateType(gate, classInstanceType);
+        }
     }
     return false;
 }
@@ -427,16 +430,6 @@ bool TypeInfer::InferDefineGetterSetterByValue(GateRef gate)
     // 0 : the index of obj
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, objType);
-}
-
-bool TypeInfer::InferNewObjSpread(GateRef gate)
-{
-    if (gateAccessor_.GetGateType(gate).IsAnyType()) {
-        // 0 : the index of func
-        auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
-        return UpdateType(gate, funcType);
-    }
-    return false;
 }
 
 bool TypeInfer::InferSuperCall(GateRef gate)
