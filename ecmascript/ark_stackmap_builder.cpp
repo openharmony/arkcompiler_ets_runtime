@@ -127,7 +127,6 @@ void ArkStackMapParser::ParseArkStackMap(const CallsiteHead& callsiteHead, Binar
         offset += sizeof(OffsetType);
         LOG_COMPILER(DEBUG) << " reg: " << std::dec << reg << " offset:" <<  offsetType;
         arkStackMaps.emplace_back(std::make_pair(reg, offsetType));
-        ASSERT(reg == GCStackMapRegisters::SP || reg == GCStackMapRegisters::FP);
     }
 }
 

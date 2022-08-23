@@ -85,6 +85,7 @@ public:
         parser->Add(&logFatal_);
         parser->Add(&logComponents_);
         parser->Add(&maxAotMethodSize_);
+        parser->Add(&abcFilelist_);
     }
 
     bool EnableArkTools() const
@@ -625,6 +626,38 @@ public:
         return maxAotMethodSize_.GetValue();
     }
 
+    std::string GetAbcListFile() const
+    {
+        return abcFilelist_.GetValue();
+    }
+
+    void SetAbcListFile(std::string value)
+    {
+        abcFilelist_.SetValue(std::move(value));
+    }
+
+    bool WasSetAbcListFile() const
+    {
+        return abcFilelist_.WasSet();
+    }
+
+    void ParseAbcListFile(std::vector<std::string> &moduleList) const
+    {
+        std::ifstream moduleFile(abcFilelist_.GetValue());
+        if (moduleFile.is_open()) {
+            char moduleName[FILENAME_MAX];
+            while (!moduleFile.eof()) {
+                moduleFile.getline(moduleName, FILENAME_MAX);
+                if (moduleName[0] != '\0') {
+                    moduleList.emplace_back(std::string(moduleName));
+                }
+            }
+            moduleFile.close();
+        } else {
+            std::cerr << "failed to open abc's list file " << abcFilelist_.GetValue() << std::endl;
+        }
+    }
+
 private:
     PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
@@ -731,6 +764,8 @@ private:
         "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
     PandArg<uint32_t> maxAotMethodSize_ {"maxAotMethodSize", 32_KB,
         R"(enable aot to skip too large method. Default size: 32 KB)"};
+    PandArg<std::string> abcFilelist_ {"abc-list-file",  R"(none)",
+        R"(abc's list file. )"};
 };
 }  // namespace panda::ecmascript
 

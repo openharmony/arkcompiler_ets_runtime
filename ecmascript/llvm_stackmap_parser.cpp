@@ -76,7 +76,6 @@ void LLVMStackMapParser::CalcCallSite()
                     instructionOffset << " callsite:" << "  patchPointID :" << std::hex << patchPointID <<
                     callsite;
                 DwarfRegAndOffsetType info(loc.DwarfRegNum, loc.OffsetOrSmallConstant);
-                ASSERT(loc.DwarfRegNum == GCStackMapRegisters::SP || loc.DwarfRegNum == GCStackMapRegisters::FP);
                 auto it = pc2CallSiteInfo.find(callsite);
                 if (j > lastDeoptIndex) {
                     if (pc2CallSiteInfo.find(callsite) == pc2CallSiteInfo.end()) {
