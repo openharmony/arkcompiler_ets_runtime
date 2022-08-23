@@ -58,15 +58,6 @@ public:
 
     ~GlobalTSTypeRef() = default;
 
-    static constexpr int LOCAL_ID_BITS = 16;
-    static constexpr int MODULE_ID_BITS = 13;
-    static constexpr int GC_TYPE_BITS = 2;
-    static constexpr int FLAG_BITS = 1;
-    FIRST_BIT_FIELD(Type, LocalId, uint16_t, LOCAL_ID_BITS);            // 0 ~ 15
-    NEXT_BIT_FIELD(Type, ModuleId, uint16_t, MODULE_ID_BITS, LocalId);  // 16 ~ 28
-    NEXT_BIT_FIELD(Type, GCType, uint8_t, GC_TYPE_BITS, ModuleId);      // 29 ~ 30
-    NEXT_BIT_FIELD(Type, Flag, bool, FLAG_BITS, GCType);                // 31: 0: TS type, 1: MIR type
-
     static GlobalTSTypeRef Default()
     {
         return GlobalTSTypeRef(0u);
@@ -109,16 +100,26 @@ public:
 
     void Dump() const
     {
-        uint32_t gcType = GetGCType();
         uint32_t moduleId = GetModuleId();
         uint32_t localId = GetLocalId();
-        LOG_ECMA(ERROR) << " gcType: " << gcType
-                        << " moduleId: " << moduleId
+        LOG_ECMA(ERROR) << " moduleId: " << moduleId
                         << " localId: " << localId;
     }
 
+    static constexpr int GetSizeBits()
+    {
+        return SIZE_BITS;
+    }
+
+    static constexpr int LOCAL_ID_BITS = 16;
+    static constexpr int MODULE_ID_BITS = 12;
+    static constexpr int SIZE_BITS = LOCAL_ID_BITS + MODULE_ID_BITS;
+
+    FIRST_BIT_FIELD(Type, LocalId, uint32_t, LOCAL_ID_BITS);
+    NEXT_BIT_FIELD(Type, ModuleId, uint32_t, MODULE_ID_BITS, LocalId);
+
 private:
-     uint32_t type_ {0};
+    uint32_t type_ {0};
 };
 }  // namespace panda::ecmascript
 

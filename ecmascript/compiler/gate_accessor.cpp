@@ -109,6 +109,11 @@ size_t GateAccessor::GetNumValueIn(GateRef gate) const
     return gatePtr->GetInValueCount();
 }
 
+bool GateAccessor::IsGCRelated(GateRef gate) const
+{
+    return GetGateType(gate).IsGCRelated();
+}
+
 GateRef GateAccessor::GetIn(GateRef gate, size_t idx) const
 {
     return circuit_->GetIn(gate, idx);

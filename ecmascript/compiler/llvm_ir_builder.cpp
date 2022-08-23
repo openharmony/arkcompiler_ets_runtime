@@ -15,10 +15,6 @@
 
 #include "ecmascript/compiler/llvm_ir_builder.h"
 
-#include <cstring>
-#include <iostream>
-#include <set>
-
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
@@ -1321,17 +1317,9 @@ LLVMValueRef LLVMIRBuilder::VectorAdd(LLVMValueRef baseAddr, LLVMValueRef offset
     return result;
 }
 
-bool LLVMIRBuilder::IsGCRelated(GateType typeCode) const
-{
-    if ((typeCode.GetType() & (~GateType::GC_MASK)) == 0) {
-        return true;
-    }
-    return false;
-}
-
 LLVMTypeRef LLVMIRBuilder::ConvertLLVMTypeFromGate(GateRef gate) const
 {
-    if (IsGCRelated(acc_.GetGateType(gate))) {
+    if (acc_.IsGCRelated(gate)) {
         if (compCfg_->Is32Bit()) {
             return LLVMVectorType(LLVMPointerType(LLVMInt8Type(), 1), 2);
         } else {

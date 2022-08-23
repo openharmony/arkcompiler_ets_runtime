@@ -278,7 +278,6 @@ public:
     bool inline PUBLIC_API Is##NAME##TypeKind(const kungfu::GateType &gateType) const  \
     {                                                                                  \
         GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());                      \
-        ASSERT(gt.GetFlag() == 0);                                                     \
         return GetTypeKind(gt) == (TSTYPEKIND);                                        \
     }
 

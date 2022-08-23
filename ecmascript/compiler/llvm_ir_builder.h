@@ -286,7 +286,6 @@ private:
     LLVMValueRef CanonicalizeToInt(LLVMValueRef value);
     LLVMValueRef CanonicalizeToPtr(LLVMValueRef value);
     LLVMValueRef GetCurrentFrameType(LLVMValueRef currentSpFrameAddr);
-    bool IsGCRelated(GateType typeCode) const;
     void SetFunctionCallConv();
 
     bool IsLogEnabled() const
