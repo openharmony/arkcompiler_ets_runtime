@@ -483,6 +483,11 @@ public:
         return (JSType::JS_TYPED_ARRAY_FIRST < jsType && jsType <= JSType::JS_TYPED_ARRAY_LAST);
     }
 
+    inline bool HasOrdinaryGet() const
+    {
+        return (IsTypedArray() || IsSpecialContainer() || IsModuleNamespace());
+    }
+
     inline bool IsJSTypedArray() const
     {
         return GetObjectType() == JSType::JS_TYPED_ARRAY;

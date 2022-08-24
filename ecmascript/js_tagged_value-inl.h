@@ -693,6 +693,11 @@ inline bool JSTaggedValue::IsSpecialContainer() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsSpecialContainer();
 }
 
+inline bool JSTaggedValue::HasOrdinaryGet() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->HasOrdinaryGet();
+}
+
 inline bool JSTaggedValue::IsPromiseIteratorRecord() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsPromiseIteratorRecord();
