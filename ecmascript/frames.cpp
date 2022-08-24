@@ -22,6 +22,12 @@
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/interpreter/frame_handler.h"
 
+#if defined(PANDA_TARGET_UNIX) && !defined(PANDA_TARGET_MACOS)
+#include <sys/ptrace.h>
+#else
+#define ptrace(PTRACE_PEEKTEXT, pid, addr, NULL) static_cast<long>(-1)
+#endif
+
 namespace panda::ecmascript {
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
@@ -569,4 +575,156 @@ ARK_INLINE void InterpretedEntryFrame::GCIterate(const FrameIterator &it,
     uintptr_t end = prevIt.GetPrevFrame();
     rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
 }
+
+bool ReadUintptrFromAddr(int pid, uintptr_t addr, uintptr_t &value)
+{
+    if (pid == getpid()) {
+        value = *(reinterpret_cast<uintptr_t *>(addr));
+        return true;
+    }
+    long *retAddr = reinterpret_cast<long *>(&value);
+    // note: big endian
+    for (size_t i = 0; i < sizeof(uintptr_t) / sizeof(long); i++) {
+        *retAddr = ptrace(PTRACE_PEEKTEXT, pid, addr, NULL);
+        if (*retAddr == -1) {
+            LOG_ECMA(ERROR) << "ReadFromAddr ERROR, addr: " << addr;
+            return false;
+        }
+        addr += sizeof(long);
+        retAddr++;
+    }
+    return true;
+}
+
+bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typeOffset, uintptr_t &prevOffset)
+{
+    switch (frameType) {
+        case (uintptr_t)(FrameType::OPTIMIZED_FRAME):
+            typeOffset = OptimizedFrame::GetTypeOffset();
+            prevOffset = OptimizedFrame::GetPrevOffset();
+            break;
+        case (uintptr_t)(FrameType::OPTIMIZED_ENTRY_FRAME):
+            typeOffset = MEMBER_OFFSET(OptimizedEntryFrame, type);
+            prevOffset = MEMBER_OFFSET(OptimizedEntryFrame, preLeaveFrameFp);
+            break;
+        case (uintptr_t)(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME):
+            typeOffset = OptimizedJSFunctionUnfoldArgVFrame::GetTypeOffset();
+            prevOffset = OptimizedJSFunctionUnfoldArgVFrame::GetPrevOffset();
+            break;
+        case (uintptr_t)(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME):
+        case (uintptr_t)(FrameType::OPTIMIZED_JS_FUNCTION_FRAME):
+            typeOffset = OptimizedJSFunctionFrame::GetTypeOffset();
+            prevOffset = OptimizedJSFunctionFrame::GetPrevOffset();
+            break;
+        case (uintptr_t)(FrameType::LEAVE_FRAME):
+            typeOffset = MEMBER_OFFSET(OptimizedLeaveFrame, type);
+            prevOffset = MEMBER_OFFSET(OptimizedLeaveFrame, callsiteFp);
+            break;
+        case (uintptr_t)(FrameType::LEAVE_FRAME_WITH_ARGV):
+            typeOffset = MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, type);
+            prevOffset = MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, callsiteFp);
+            break;
+        case (uintptr_t)(FrameType::BUILTIN_CALL_LEAVE_FRAME):
+            typeOffset = OptimizedBuiltinLeaveFrame::GetTypeOffset();
+            prevOffset = OptimizedBuiltinLeaveFrame::GetPrevOffset();
+            break;
+        case (uintptr_t)(FrameType::INTERPRETER_FRAME):
+        case (uintptr_t)(FrameType::INTERPRETER_FAST_NEW_FRAME):
+            typeOffset = MEMBER_OFFSET(InterpretedFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, type);
+            prevOffset = MEMBER_OFFSET(InterpretedFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, prev);
+            break;
+        case (uintptr_t)(FrameType::INTERPRETER_BUILTIN_FRAME):
+            typeOffset = MEMBER_OFFSET(InterpretedBuiltinFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, type);
+            prevOffset = MEMBER_OFFSET(InterpretedBuiltinFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, prev);
+            break;
+        case (uintptr_t)(FrameType::INTERPRETER_CONSTRUCTOR_FRAME):
+        case (uintptr_t)(FrameType::ASM_INTERPRETER_FRAME):
+            typeOffset = MEMBER_OFFSET(AsmInterpretedFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, type);
+            prevOffset = MEMBER_OFFSET(AsmInterpretedFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, prev);
+            break;
+        case (uintptr_t)(FrameType::BUILTIN_FRAME):
+        case (uintptr_t)(FrameType::BUILTIN_ENTRY_FRAME):
+            typeOffset = MEMBER_OFFSET(BuiltinFrame, type);
+            prevOffset = MEMBER_OFFSET(BuiltinFrame, prevFp);
+            break;
+        case (uintptr_t)(FrameType::BUILTIN_FRAME_WITH_ARGV):
+            typeOffset = MEMBER_OFFSET(BuiltinWithArgvFrame, type);
+            prevOffset = MEMBER_OFFSET(BuiltinWithArgvFrame, prevFp);
+            break;
+        case (uintptr_t)(FrameType::INTERPRETER_ENTRY_FRAME):
+            typeOffset = MEMBER_OFFSET(InterpretedEntryFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, type);
+            prevOffset = MEMBER_OFFSET(InterpretedEntryFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, prev);
+            break;
+        case (uintptr_t)(FrameType::ASM_INTERPRETER_ENTRY_FRAME):
+            typeOffset = MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, type);
+            prevOffset = MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, prev);
+            break;
+        case (uintptr_t)(FrameType::ASM_INTERPRETER_BRIDGE_FRAME):
+            typeOffset = MEMBER_OFFSET(AsmInterpretedBridgeFrame, entry) +
+                         MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, type);
+            prevOffset = MEMBER_OFFSET(AsmInterpretedBridgeFrame, entry) +
+                         MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
+                         MEMBER_OFFSET(InterpretedFrameBase, prev);
+            break;
+        default:
+            return false;
+    }
+    return true;
+}
+
+bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
+                               [[maybe_unused]] char *buf, [[maybe_unused]] size_t bufSize)
+{
+    uintptr_t currentPtr = *fp;
+    while (true) {
+        currentPtr -= sizeof(FrameType);
+        uintptr_t frameType = 0;
+        if (!ReadUintptrFromAddr(pid, currentPtr, frameType)) {
+            return false;
+        }
+        uintptr_t typeOffset = 0;
+        uintptr_t prevOffset = 0;
+        if (!GetTypeOffsetAndPrevOffsetFromFrameType(frameType, typeOffset, prevOffset)) {
+            LOG_ECMA(ERROR) << "FrameType ERROR, addr: " << currentPtr << ", frameType: " << frameType;
+            return false;
+        }
+        if (frameType == (uintptr_t)(FrameType::ASM_INTERPRETER_ENTRY_FRAME)) {
+            break;
+        }
+        currentPtr -= typeOffset;
+        currentPtr += prevOffset;
+        if (!ReadUintptrFromAddr(pid, currentPtr, currentPtr)) {
+            return false;
+        }
+    }
+    currentPtr += sizeof(FrameType);
+    *fp = currentPtr;
+    currentPtr += 8;  // 8: size of fp
+    if (!ReadUintptrFromAddr(pid, currentPtr, *pc)) {
+        return false;
+    }
+    currentPtr += 8;  // 8: size of lr
+    *sp = currentPtr;
+    return true;
+}
 }  // namespace panda::ecmascript
+
+__attribute__((visibility("default"))) int step_ark_managed_native_frame(
+    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz)
+{
+    if (panda::ecmascript::StepArkManagedNativeFrame(pid, pc, fp, sp, buf, buf_sz)) {
+        return 1;
+    }
+    return -1;
+}
