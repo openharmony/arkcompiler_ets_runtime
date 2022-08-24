@@ -902,11 +902,13 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
 {
     if (!constructor->HasFunctionPrototype() ||
         (constructor->GetProtoOrDynClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
-        JSHandle<JSHClass> jshclass = JSFunction::GetInstanceJSHClass(thread_, constructor, JSHandle<JSTaggedValue>(constructor));
+        JSHandle<JSHClass> jshclass = JSFunction::GetInstanceJSHClass(thread_, constructor,
+                                                                      JSHandle<JSTaggedValue>(constructor));
         return NewJSObjectWithInit(jshclass);
     }
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSObject> result = NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
+    JSHandle<JSObject> result =
+        NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
     if (thread_->HasPendingException()) {
         LOG_FULL(FATAL) << "NewJSObjectByConstructor should not throw Exception! ";
     }
