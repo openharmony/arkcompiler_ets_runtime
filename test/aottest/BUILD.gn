@@ -138,6 +138,7 @@ group("ark_aot_test") {
     "tonumeric:tonumericAotAction",
     "try_catch_finally:try_catch_finallyAotAction",
     "trystglobalbynameprefid32:trystglobalbynameprefid32AotAction",
+    "typeadd:typeaddAotAction",
     "typeof:typeofAotAction",
     "xor:xorAotAction",
   ]

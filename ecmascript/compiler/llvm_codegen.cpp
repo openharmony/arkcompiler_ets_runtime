@@ -144,14 +144,11 @@ void LLVMAssembler::BuildAndRunPasses()
     // pass manager creation:rs4gc pass is the only pass in modPass, other opt module-based pass are in modPass1
     LLVMPassManagerRef funcPass = LLVMCreateFunctionPassManagerForModule(module_);
     LLVMPassManagerRef modPass = LLVMCreatePassManager();
-//    LLVMPassManagerRef modPass1 = LLVMCreatePassManager();
 
     // add pass into pass managers
     LLVMPassManagerBuilderPopulateFunctionPassManager(pmBuilder, funcPass);
     llvm::unwrap(modPass)->add(llvm::createRewriteStatepointsForGCLegacyPass()); // rs4gc pass added
-//    LLVMPassManagerBuilderPopulateModulePassManager(pmBuilder, modPass1);
-//
-//    LLVMRunPassManager(modPass, module_); // make sure rs4gc pass run first
+
     LLVMInitializeFunctionPassManager(funcPass);
     for (LLVMValueRef fn = LLVMGetFirstFunction(module_); fn; fn = LLVMGetNextFunction(fn)) {
         LLVMRunFunctionPassManager(funcPass, fn);
@@ -162,7 +159,6 @@ void LLVMAssembler::BuildAndRunPasses()
     LLVMPassManagerBuilderDispose(pmBuilder);
     LLVMDisposePassManager(funcPass);
     LLVMDisposePassManager(modPass);
-//    LLVMDisposePassManager(modPass1);
 }
 
 LLVMAssembler::LLVMAssembler(LLVMModuleRef module, LOptions option) : module_(module)

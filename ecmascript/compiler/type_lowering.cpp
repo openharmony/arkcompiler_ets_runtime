@@ -15,8 +15,6 @@
 
 #include "ecmascript/compiler/type_lowering.h"
 
-#include <limits.h>
-
 namespace panda::ecmascript::kungfu {
 void TypeLowering::RunTypeLowering()
 {
@@ -53,6 +51,53 @@ void TypeLowering::Lower(GateRef gate)
             break;
         default:
             break;
+    }
+}
+
+void TypeLowering::RebuildSlowpathCfg(GateRef hir)
+{
+    acc_.ReplaceStateIn(hir, builder_.GetState());
+    acc_.ReplaceDependIn(hir, builder_.GetDepend());
+    auto uses = acc_.Uses(hir);
+    for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+        const OpCode op = acc_.GetOpCode(*useIt);
+        if (op == OpCode::IF_SUCCESS) {
+            builder_.SetState(*useIt);
+            break;
+        }
+    }
+    builder_.SetDepend(hir);
+}
+
+void TypeLowering::GenerateSuccessMerge(std::vector<GateRef> &successControl)
+{
+    GateRef stateMerge = builder_.GetState();
+    GateRef dependSelect = builder_.GetDepend();
+    successControl.emplace_back(stateMerge);
+    successControl.emplace_back(dependSelect);
+}
+
+void TypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl)
+{
+    auto uses = acc_.Uses(hir);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        const OpCode op = acc_.GetOpCode(*useIt);
+        if (op == OpCode::JS_BYTECODE && useIt.GetIndex() == 1) {
+            acc_.ReplaceStateIn(*useIt, successControl[0]);
+            useIt = acc_.ReplaceIn(useIt, successControl[1]);
+        } else if (op == OpCode::RETURN) {
+            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_SUCCESS) {
+                acc_.ReplaceStateIn(*useIt, successControl[0]);
+                acc_.ReplaceDependIn(*useIt, successControl[1]);
+                acc_.ReplaceValueIn(*useIt, outir);
+            }
+            ++useIt;
+        } else if (op == OpCode::IF_SUCCESS || op == OpCode::IF_EXCEPTION || op == OpCode::VALUE_SELECTOR ||
+                   op == OpCode::DEPEND_SELECTOR) {
+            ++useIt;
+        } else {
+            useIt = acc_.ReplaceIn(useIt, outir);
+        }
     }
 }
 
@@ -93,30 +138,6 @@ void TypeLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noTh
     acc_.DeleteGate(hirGate);
 }
 
-// depends on the construction of JSgates in BytecodeCircuitBuilder
-void TypeLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl)
-{
-    auto uses = acc_.Uses(hir);
-    for (auto useIt = uses.begin(); useIt != uses.end();) {
-        const OpCode op = acc_.GetOpCode(*useIt);
-        if (op == OpCode::JS_BYTECODE && useIt.GetIndex() == 1) {
-            acc_.ReplaceStateIn(*useIt, successControl[0]);
-            useIt = acc_.ReplaceIn(useIt, successControl[1]);
-        } else if (op == OpCode::RETURN) {
-            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_SUCCESS) {
-                acc_.ReplaceStateIn(*useIt, successControl[0]);
-                acc_.ReplaceDependIn(*useIt, successControl[1]);
-                acc_.ReplaceValueIn(*useIt, outir);
-            }
-            ++useIt;
-        } else if (op == OpCode::IF_SUCCESS || op == OpCode::IF_EXCEPTION || op == OpCode::VALUE_SELECTOR || op == OpCode::DEPEND_SELECTOR) {
-            ++useIt;
-        } else {
-            useIt = acc_.ReplaceIn(useIt, outir);
-        }
-    }
-}
-
 GateRef TypeLowering::LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel)
 {
     if (useLabel) {
@@ -130,83 +151,8 @@ GateRef TypeLowering::LowerCallRuntime(GateRef glue, int index, const std::vecto
     }
 }
 
-void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
-{
-    GateRef ctor = acc_.GetValueIn(gate, 0);
-    GateType ctorType = acc_.GetGateType(ctor);
-    if (!ctorType.IsTSType()) {
-        return;
-    }
-
-    if (!tsManager_->IsClassTypeKind(ctorType)) {
-        return;
-    }
-
-    GlobalTSTypeRef gt = GlobalTSTypeRef(ctorType.GetType());
-    std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap = tsManager_->GetGtHClassIndexMap();
-    int64_t index = gtHClassIndexMap[gt];
-    GateRef ihcIndex = builder_.TaggedTypeNGC(builder_.Int64(index));
-
-    size_t range = acc_.GetNumValueIn(gate);
-    std::vector<GateRef> args(range + 1);
-
-    for (size_t i = 0; i < range; ++i) {
-        args[i] = acc_.GetValueIn(gate, i);
-    }
-    args[range] = ihcIndex;
-
-    const int id = RTSTUB_ID(OptNewObjWithIHClass);
-    GateRef newGate = LowerCallRuntime(glue, id, args);
-    ReplaceHirToCall(gate, newGate);
-}
-
-void TypeLowering::LowerTypeAdd2Dyn(GateRef gate, [[maybe_unused]]GateRef glue)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateType leftType = acc_.GetGateType(left);
-
-    GateRef right = acc_.GetValueIn(gate, 1);
-    GateType rightType = acc_.GetGateType(right);
-    if (!leftType.IsTSType() || !rightType.IsTSType()) {
-        return;
-    }
-    if (!leftType.IsNumberType() || !rightType.IsNumberType()) {
-        return;
-    }
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    std::vector<GateRef> successControl;
-    result = FastAddAndSub<OpCode::ADD>(left, right);
-    Label successExit(&builder_);
-    Label slowPath(&builder_);
-    builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE),
-                    &slowPath, &successExit);
-    builder_.Bind(&slowPath);
-    {
-        // slow path
-        acc_.ReplaceStateIn(gate, builder_.GetState());
-        acc_.ReplaceDependIn(gate, builder_.GetDepend());
-        result = gate;
-        auto uses = acc_.Uses(gate);
-        for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
-            const OpCode op = acc_.GetOpCode(*useIt);
-            if (op == OpCode::IF_SUCCESS) {
-                builder_.SetState(*useIt);
-                break;
-            }
-        }
-        builder_.SetDepend(gate);
-        builder_.Jump(&successExit);
-    }
-    builder_.Bind(&successExit);
-    {
-        successControl.emplace_back(builder_.GetState());
-        successControl.emplace_back(builder_.GetDepend());
-    }
-    ReplaceHirToSubCfg(gate, *result, successControl);
-}
-
 template<OpCode::Op Op>
-GateRef TypeLowering::FastAddAndSub(GateRef left, GateRef right)
+GateRef TypeLowering::FastAddOrSubOrMul(GateRef left, GateRef right)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
@@ -266,7 +212,7 @@ GateRef TypeLowering::FastAddAndSub(GateRef left, GateRef right)
         Label notOverflow(&builder_);
         // handle left is int and right is int
         GateRef res = BinaryOp<Op, MachineType::I64>(builder_.TaggedCastToInt64(left),
-                                                              builder_.TaggedCastToInt64(right));
+                                                     builder_.TaggedCastToInt64(right));
         GateRef max = builder_.Int64(INT32_MAX);
         GateRef min = builder_.Int64(INT32_MIN);
         Label greaterZero(&builder_);
@@ -326,5 +272,67 @@ GateRef TypeLowering::DoubleBuildTaggedWithNoGC(GateRef gate)
 GateRef TypeLowering::ChangeInt32ToFloat64(GateRef gate)
 {
     return builder_.UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F64, gate);
+}
+
+void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
+{
+    GateRef ctor = acc_.GetValueIn(gate, 0);
+    GateType ctorType = acc_.GetGateType(ctor);
+    if (!ctorType.IsTSType()) {
+        return;
+    }
+
+    if (!tsManager_->IsClassTypeKind(ctorType)) {
+        return;
+    }
+
+    GlobalTSTypeRef gt = GlobalTSTypeRef(ctorType.GetType());
+    std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap = tsManager_->GetGtHClassIndexMap();
+    int64_t index = gtHClassIndexMap[gt];
+    GateRef ihcIndex = builder_.TaggedTypeNGC(builder_.Int64(index));
+
+    size_t range = acc_.GetNumValueIn(gate);
+    std::vector<GateRef> args(range + 1);
+
+    for (size_t i = 0; i < range; ++i) {
+        args[i] = acc_.GetValueIn(gate, i);
+    }
+    args[range] = ihcIndex;
+
+    const int id = RTSTUB_ID(OptNewObjWithIHClass);
+    GateRef newGate = LowerCallRuntime(glue, id, args);
+    ReplaceHirToCall(gate, newGate);
+}
+
+void TypeLowering::LowerTypeAdd2Dyn(GateRef gate, [[maybe_unused]]GateRef glue)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateType leftType = acc_.GetGateType(left);
+
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType rightType = acc_.GetGateType(right);
+    if (!leftType.IsTSType() || !rightType.IsTSType()) {
+        return;
+    }
+    if (!leftType.IsNumberType() || !rightType.IsNumberType()) {
+        return;
+    }
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = FastAddOrSubOrMul<OpCode::ADD>(left, right);
+    Label successExit(&builder_);
+    Label slowPath(&builder_);
+    builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE),
+                    &slowPath, &successExit);
+    builder_.Bind(&slowPath);
+    {
+        // slow path
+        result = gate;
+        RebuildSlowpathCfg(gate);
+        builder_.Jump(&successExit);
+    }
+    builder_.Bind(&successExit);
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 }  // namespace panda::ecmascript
