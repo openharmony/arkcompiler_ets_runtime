@@ -29,7 +29,6 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] LocalScope scope(vm);
         int32_t input = 0;
         if (size > INT32_BETY_SIZE) {
             size = INT32_BETY_SIZE;

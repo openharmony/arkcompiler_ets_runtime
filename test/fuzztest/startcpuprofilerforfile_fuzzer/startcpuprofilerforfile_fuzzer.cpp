@@ -27,7 +27,6 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] LocalScope scope(vm);
         std::string fileName(data, data + size);
 #ifndef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define ECMASCRIPT_SUPPORT_CPUPROFILER
