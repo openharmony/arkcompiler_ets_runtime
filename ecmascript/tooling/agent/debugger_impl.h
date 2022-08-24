@@ -147,6 +147,7 @@ private:
     Local<JSValueRef> ConvertToLocal(const std::string &varValue);
     bool DecodeAndCheckBase64(const std::string &src, std::string &dest);
     bool IsSkipLine(const JSPtLocation &location);
+    bool CheckPauseOnException();
 
     class Frontend {
     public:
@@ -175,7 +176,7 @@ private:
 
     std::unordered_map<std::string, JSPtExtractor *> extractors_ {};
     std::unordered_map<ScriptId, std::unique_ptr<PtScript>> scripts_ {};
-    bool pauseOnException_ {false};
+    PauseOnExceptionsState pauseOnException_ {PauseOnExceptionsState::NONE};
     bool pauseOnNextByteCode_ {false};
     std::unique_ptr<JSPtExtractor::SingleStepper> singleStepper_ {nullptr};
 
