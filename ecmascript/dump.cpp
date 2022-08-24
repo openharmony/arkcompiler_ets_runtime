@@ -164,6 +164,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Uri Error";
         case JSType::JS_SYNTAX_ERROR:
             return "Syntax Error";
+        case JSType::JS_OOM_ERROR:
+            return "OutOfMemory Error";
         case JSType::JS_REG_EXP:
             return "Regexp";
         case JSType::JS_SET:
@@ -560,6 +562,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_REFERENCE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
             JSObject::Cast(obj)->Dump(os);
             break;
@@ -2141,6 +2144,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetSyntaxErrorFunction().GetTaggedValue().Dump(os);
     os << " - EvalErrorFunction: ";
     GetEvalErrorFunction().GetTaggedValue().Dump(os);
+    os << " - OOMErrorFunction: ";
+    GetOOMErrorFunction().GetTaggedValue().Dump(os);
     os << " - RegExpFunction: ";
     GetRegExpFunction().GetTaggedValue().Dump(os);
     os << " - BuiltinsSetFunction: ";
@@ -3388,6 +3393,7 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_REFERENCE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
         case JSType::JS_GLOBAL_OBJECT:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
@@ -4338,6 +4344,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString("URIErrorFunction"), GetURIErrorFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("SyntaxErrorFunction"), GetSyntaxErrorFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("EvalErrorFunction"), GetEvalErrorFunction().GetTaggedValue()));
+    vec.push_back(std::make_pair(CString("OOMErrorFunction"), GetOOMErrorFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("RegExpFunction"), GetRegExpFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("BuiltinsSetFunction"), GetBuiltinsSetFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("BuiltinsMapFunction"), GetBuiltinsMapFunction().GetTaggedValue()));

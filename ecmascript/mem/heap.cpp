@@ -376,6 +376,13 @@ void Heap::CollectGarbage(TriggerGCType gcType)
             break;
     }
 
+    // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
+    if (shouldThrowOOMError_) {
+        ThrowOutOfMemoryError(oldSpace_->GetMergeSize(), " OldSpace::Merge");
+        oldSpace_->ResetMergeSize();
+        shouldThrowOOMError_ = false;
+    }
+
     // Adjust the old space capacity and global limit for the first partial GC with full mark.
     // Trigger the full mark next time if the current survival rate is much less than half the average survival rates.
     AdjustBySurvivalRate(originalNewSpaceSize);
@@ -415,8 +422,17 @@ void Heap::CollectGarbage(TriggerGCType gcType)
 void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName)
 {
     GetEcmaVM()->GetEcmaGCStats()->PrintHeapStatisticResult(true);
-    LOG_ECMA_MEM(FATAL) << "OOM when trying to allocate " << size << " bytes"
-        << " function name: " << functionName.c_str();
+    std::ostringstream oss;
+    oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: " << functionName.c_str();
+    LOG_ECMA_MEM(ERROR) << oss.str().c_str();
+    THROW_OOM_ERROR(thread_, oss.str().c_str());
+}
+
+void Heap::FatalOutOfMemoryError(size_t size, std::string functionName)
+{
+    GetEcmaVM()->GetEcmaGCStats()->PrintHeapStatisticResult(true);
+    LOG_ECMA_MEM(FATAL) << "OOM fatal when trying to allocate " << size << " bytes"
+                        << " function name: " << functionName.c_str();
 }
 
 void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)

@@ -51,7 +51,8 @@
     V(ReferenceError, REFERENCE_ERROR) \
     V(TypeError, TYPE_ERROR)           \
     V(AggregateError, AGGREGATE_ERROR) \
-    V(EvalError, EVAL_ERROR)
+    V(EvalError, EVAL_ERROR)           \
+    V(OOMError, OOM_ERROR)
 
 namespace panda {
 class JSNApiHelper {

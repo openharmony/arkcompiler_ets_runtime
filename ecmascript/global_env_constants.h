@@ -225,6 +225,7 @@ class JSThread;
     V(JSTaggedValue, URIErrorString, URI_ERROR_STRING_INDEX, URIError)                                                \
     V(JSTaggedValue, SyntaxErrorString, SYNTAX_ERROR_STRING_INDEX, SyntaxError)                                       \
     V(JSTaggedValue, EvalErrorString, EVAL_ERROR_STRING_INDEX, EvalError)                                             \
+    V(JSTaggedValue, OOMErrorString, OOM_ERROR_STRING_INDEX, OOMError)                                                \
     V(JSTaggedValue, ErrorFuncString, ERROR_FUNC_STRING_INDEX, errorfunc)                                             \
     V(JSTaggedValue, StackString, STACK_STRING_INDEX, stack)                                                          \
     V(JSTaggedValue, StackEmptyString, STACK_EMPTY_STRING_INDEX, stackisempty)                                        \

@@ -129,6 +129,21 @@ public:
         return std::max(committedSize_ / PARTIAL_GC_MAX_COLLECT_REGION_RATE, PARTIAL_GC_INITIAL_COLLECT_REGION_SIZE);
     }
 
+    size_t GetMergeSize() const
+    {
+        return mergeSize_;
+    }
+
+    void IncreaseMergeSize(size_t size)
+    {
+        mergeSize_ += size;
+    }
+
+    void ResetMergeSize()
+    {
+        mergeSize_ = 0;
+    }
+
     template<class Callback>
     void EnumerateCollectRegionSet(const Callback &cb) const
     {
@@ -148,6 +163,7 @@ private:
 
     CVector<Region *> collectRegionSet_;
     os::memory::Mutex lock_;
+    size_t mergeSize_ {0};
 };
 
 class NonMovableSpace : public SparseSpace {

@@ -30,6 +30,14 @@
 #include "ecmascript/mem/mem_map_allocator.h"
 
 namespace panda::ecmascript {
+#define CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, space, message)                                         \
+    if (UNLIKELY((object) == nullptr)) {                                                                    \
+        size_t oomOvershootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();   \
+        (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
+        object = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                                 \
+        ThrowOutOfMemoryError(size, message);                                                               \
+    }                                                                                                       \
+
 template<class Callback>
 void Heap::EnumerateOldSpaceRegions(const Callback &cb, Region *region) const
 {
@@ -127,10 +135,7 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
         if (object == nullptr) {
             CollectGarbage(SelectGCType());
             object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
-            if  (UNLIKELY(object == nullptr)) {
-                ThrowOutOfMemoryError(size, "AllocateYoungObject");
-                UNREACHABLE();
-            }
+            CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, activeSemiSpace_, "Heap::AllocateYoungOrHugeObject");
         }
     }
     return object;
@@ -185,10 +190,7 @@ TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass, size_t size)
         return AllocateHugeObject(hclass, size);
     }
     auto object = reinterpret_cast<TaggedObject *>(oldSpace_->Allocate(size));
-    if (UNLIKELY(object == 0)) {
-        ThrowOutOfMemoryError(size, "AllocateOldGenerationOrHugeObject");
-        UNREACHABLE();
-    }
+    CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
     object->SetClass(hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
     return object;
@@ -207,10 +209,7 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
         return AllocateHugeObject(hclass, size);
     }
     auto object = reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
-    if (UNLIKELY(object == 0)) {
-        ThrowOutOfMemoryError(size, "AllocateReadOnlyOrHugeObject");
-        UNREACHABLE();
-    }
+    CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_, "Heap::AllocateReadOnlyOrHugeObject");
     object->SetClass(hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
     return object;
@@ -229,10 +228,7 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
         return AllocateHugeObject(hclass, size);
     }
     auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->Allocate(size));
-    if (UNLIKELY(object == nullptr)) {
-        ThrowOutOfMemoryError(size, "AllocateNonMovableOrHugeObject");
-        UNREACHABLE();
-    }
+    CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
     object->SetClass(hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
     return object;
@@ -260,6 +256,13 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
         CollectGarbage(TriggerGCType::OLD_GC);
         object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
         if (UNLIKELY(object == nullptr)) {
+            // if allocate huge object OOM, temporarily increase space size to avoid vm crash
+            size_t oomOvershootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();
+            oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
+            object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
+            if (UNLIKELY(object == nullptr)) {
+                FatalOutOfMemoryError(size, "Heap::AllocateHugeObject");
+            }
             ThrowOutOfMemoryError(size, "Heap::AllocateHugeObject");
         }
     }
@@ -280,10 +283,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     auto object = reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
-    if (UNLIKELY(object == nullptr)) {
-        ThrowOutOfMemoryError(size, "Heap::AllocateMachineCodeObject");
-        return nullptr;
-    }
+    CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
     object->SetClass(hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
     return object;
@@ -294,8 +294,7 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     uintptr_t object = snapshotSpace_->Allocate(size);
     if (UNLIKELY(object == 0)) {
-        LOG_ECMA_MEM(FATAL) << "alloc failed";
-        UNREACHABLE();
+        FatalOutOfMemoryError(size, "Heap::AllocateSnapshotSpaceObject");
     }
     return object;
 }

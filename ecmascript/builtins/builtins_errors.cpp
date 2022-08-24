@@ -160,4 +160,15 @@ JSTaggedValue BuiltinsAggregateError::ToString(EcmaRuntimeCallInfo *argv)
 {
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::AGGREGATE_ERROR);
 }
+
+// OOMError
+JSTaggedValue BuiltinsOOMError::OOMErrorConstructor(EcmaRuntimeCallInfo *argv)
+{
+    return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::OOM_ERROR);
+}
+
+JSTaggedValue BuiltinsOOMError::ToString(EcmaRuntimeCallInfo *argv)
+{
+    return ErrorHelper::ErrorCommonToString(argv, ErrorType::OOM_ERROR);
+}
 }  // namespace panda::ecmascript::builtins

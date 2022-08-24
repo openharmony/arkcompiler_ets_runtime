@@ -910,6 +910,7 @@ public:
     static Local<JSValueRef> TypeError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> AggregateError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> EvalError(const EcmaVM *vm, Local<StringRef> message);
+    static Local<JSValueRef> OOMError(const EcmaVM *vm, Local<StringRef> message);
 };
 
 using LOG_PRINT = int (*)(int id, int level, const char *tag, const char *fmt, const char *message);
