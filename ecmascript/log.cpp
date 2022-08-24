@@ -16,6 +16,10 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 
+#ifdef PANDA_TARGET_ANDROID
+#include <android/log.h>
+#endif
+
 namespace panda::ecmascript {
 Level Log::level_ = Level::ERROR;
 void Log::SetLogLevelFromString(const std::string& level)
@@ -53,4 +57,44 @@ void Log::Initialize(const JSRuntimeOptions &options)
         SetLogLevelFromString(options.GetLogLevel());
     }
 }
+
+#ifdef PANDA_TARGET_ANDROID
+const char *tag = "ArkCompiler";
+template<>
+AndroidLog<VERBOSE>::~AndroidLog()
+{
+    __android_log_write(ANDROID_LOG_VERBOSE, tag, stream_.str().c_str());
+}
+
+template<>
+AndroidLog<DEBUG>::~AndroidLog()
+{
+    __android_log_write(ANDROID_LOG_DEBUG, tag, stream_.str().c_str());
+}
+
+template<>
+AndroidLog<INFO>::~AndroidLog()
+{
+    __android_log_write(ANDROID_LOG_INFO, tag, stream_.str().c_str());
+}
+
+template<>
+AndroidLog<WARN>::~AndroidLog()
+{
+    __android_log_write(ANDROID_LOG_WARN, tag, stream_.str().c_str());
+}
+
+template<>
+AndroidLog<ERROR>::~AndroidLog()
+{
+    __android_log_write(ANDROID_LOG_ERROR, tag, stream_.str().c_str());
+}
+
+template<>
+AndroidLog<FATAL>::~AndroidLog()
+{
+    __android_log_write(ANDROID_LOG_FATAL, tag, stream_.str().c_str());
+    std::abort();
+}
+#endif
 }  // namespace panda::ecmascript
