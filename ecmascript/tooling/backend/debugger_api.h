@@ -72,6 +72,7 @@ public:
     static Local<JSValueRef> GetAndClearException(const EcmaVM *ecmaVm);
     static void SetException(const EcmaVM *ecmaVm, Local<JSValueRef> exception);
     static void ClearException(const EcmaVM *ecmaVm);
+    static bool IsExceptionCaught(const EcmaVM *ecmaVm);
 
     // NumberHelper
     static double StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix);
