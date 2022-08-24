@@ -329,9 +329,9 @@ private:
     V(PushCallArgs1AndDispatch)             \
     V(PushCallArgs2AndDispatch)             \
     V(PushCallArgs3AndDispatch)             \
-    V(PushCallIRangeAndDispatch)            \
-    V(PushCallIRangeAndDispatchNative)      \
-    V(PushCallIThisRangeAndDispatch)        \
+    V(PushCallRangeAndDispatch)            \
+    V(PushCallRangeAndDispatchNative)      \
+    V(PushCallThisRangeAndDispatch)        \
     V(PushCallNewAndDispatchNative)         \
     V(PushCallNewAndDispatch)               \
     V(CallGetter)                           \
@@ -351,12 +351,12 @@ private:
     V(FloatMod)                             \
     V(FindElementWithCache)                 \
     V(MarkingBarrier)                       \
-    V(CallArg0Dyn)                          \
-    V(CallArg1Dyn)                          \
-    V(CallArgs2Dyn)                         \
-    V(CallArgs3Dyn)                         \
-    V(CallIThisRangeDyn)                    \
-    V(CallIRangeDyn)                        \
+    V(CallArg0)                          \
+    V(CallArg1)                          \
+    V(CallArgs2)                         \
+    V(CallArgs3)                         \
+    V(CallThisRange)                    \
+    V(CallRange)                        \
     V(JSCall)                               \
     V(ConstructorJSCall)                    \
     V(JSFunctionEntry)                      \

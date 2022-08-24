@@ -23,7 +23,8 @@
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 
-#include "libpandafile/bytecode_instruction-inl.h"
+// TODO
+#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
 
 namespace panda::ecmascript::kungfu {
 void AssemblerModule::Run(const CompilationConfig *cfg, Chunk* chunk)
@@ -111,18 +112,18 @@ int AssemblerModule::GetJumpSizeFromJSCallMode(JSCallMode mode)
 {
     switch (mode) {
         case JSCallMode::CALL_ARG0:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8);
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8);
         case JSCallMode::CALL_ARG1:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8);
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8);
         case JSCallMode::CALL_ARG2:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8_V8);
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8);
         case JSCallMode::CALL_ARG3:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8_V8_V8);
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8);
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8);
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8);
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
         case JSCallMode::CALL_ENTRY:

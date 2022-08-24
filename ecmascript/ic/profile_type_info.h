@@ -112,9 +112,9 @@ public:
 
     ICState GetICState() const;
     static std::string ICStateToString(ICState state);
-    void AddHandlerWithoutKey(JSHandle<JSTaggedValue> dynclass, JSHandle<JSTaggedValue> handler) const;
-    void AddElementHandler(JSHandle<JSTaggedValue> dynclass, JSHandle<JSTaggedValue> handler) const;
-    void AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> dynclass,
+    void AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
+    void AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
+    void AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
                            JSHandle<JSTaggedValue> handler) const;
     void AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> handler) const;
     void AddGlobalRecordHandler(JSHandle<JSTaggedValue> handler) const;

@@ -152,11 +152,11 @@ JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, uin
     return method;
 }
 
-JSHandle<JSHClass> ObjectFactory::NewEcmaDynClassClass(JSHClass *hclass, uint32_t size, JSType type)
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type)
 {
     NewObjectHook();
     uint32_t classSize = JSHClass::SIZE;
-    auto *newClass = static_cast<JSHClass *>(heap_->AllocateDynClassClass(hclass, classSize));
+    auto *newClass = static_cast<JSHClass *>(heap_->AllocateClassClass(hclass, classSize));
     newClass->Initialize(thread_, size, type, 0);
 
     return JSHandle<JSHClass>(thread_, newClass);
@@ -164,13 +164,13 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaDynClassClass(JSHClass *hclass, uint32_
 
 JSHandle<JSHClass> ObjectFactory::InitClassClass()
 {
-    JSHandle<JSHClass> dynClassClassHandle = NewEcmaDynClassClass(nullptr, JSHClass::SIZE, JSType::HCLASS);
-    JSHClass *dynclass = reinterpret_cast<JSHClass *>(dynClassClassHandle.GetTaggedValue().GetTaggedObject());
-    dynclass->SetClass(dynclass);
-    return dynClassClassHandle;
+    JSHandle<JSHClass> hClassHandle = NewEcmaHClassClass(nullptr, JSHClass::SIZE, JSType::HCLASS);
+    JSHClass *hclass = reinterpret_cast<JSHClass *>(hClassHandle.GetTaggedValue().GetTaggedObject());
+    hclass->SetClass(hclass);
+    return hClassHandle;
 }
 
-JSHandle<JSHClass> ObjectFactory::NewEcmaDynClass(JSHClass *hclass, uint32_t size, JSType type, uint32_t inlinedProps)
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type, uint32_t inlinedProps)
 {
     NewObjectHook();
     uint32_t classSize = JSHClass::SIZE;
@@ -180,7 +180,7 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaDynClass(JSHClass *hclass, uint32_t siz
     return JSHandle<JSHClass>(thread_, newClass);
 }
 
-JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyDynClass(JSHClass *hclass, uint32_t size, JSType type,
+JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                                           uint32_t inlinedProps)
 {
     NewObjectHook();
@@ -191,9 +191,9 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyDynClass(JSHClass *hclass, uint
     return JSHandle<JSHClass>(thread_, newClass);
 }
 
-JSHandle<JSHClass> ObjectFactory::NewEcmaDynClass(uint32_t size, JSType type, uint32_t inlinedProps)
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps)
 {
-    return NewEcmaDynClass(JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()),
+    return NewEcmaHClass(JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()),
                            size, type, inlinedProps);
 }
 
@@ -364,16 +364,16 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
     regexp->SetLength(static_cast<uint32_t>(size));
 }
 
-JSHandle<JSHClass> ObjectFactory::NewEcmaDynClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype)
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype)
 {
-    JSHandle<JSHClass> newClass = NewEcmaDynClass(size, type);
+    JSHandle<JSHClass> newClass = NewEcmaHClass(size, type);
     newClass->SetPrototype(thread_, prototype.GetTaggedValue());
     return newClass;
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSObject(const JSHandle<JSHClass> &jshclass)
 {
-    JSHandle<JSObject> obj(thread_, JSObject::Cast(NewDynObject(jshclass)));
+    JSHandle<JSObject> obj(thread_, JSObject::Cast(NewObject(jshclass)));
     JSHandle<TaggedArray> emptyArray = EmptyArray();
     obj->InitializeHash();
     obj->SetElements(thread_, emptyArray, SKIP_BARRIER);
@@ -514,12 +514,12 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> obj, Fun
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSHClass> jshclass(thread_, obj->GetJSHClass());
     JSHandle<Method> method(thread_, obj->GetMethod());
-    JSHandle<JSFunction> cloneFunc = NewJSFunctionByDynClass(method, jshclass, kind);
+    JSHandle<JSFunction> cloneFunc = NewJSFunctionByHClass(method, jshclass, kind);
     if (kind == FunctionKind::GENERATOR_FUNCTION) {
         JSHandle<JSFunction> objFun(env->GetObjectFunction());
         JSHandle<JSObject> initialGeneratorFuncPrototype = NewJSObjectByConstructor(objFun);
         JSObject::SetPrototype(thread_, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
-        cloneFunc->SetProtoOrDynClass(thread_, initialGeneratorFuncPrototype);
+        cloneFunc->SetProtoOrHClass(thread_, initialGeneratorFuncPrototype);
     }
 
     JSTaggedValue length = obj->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
@@ -544,7 +544,7 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
                  "cloned function is not class");
 
     JSHandle<Method> method(thread_, ctor->GetMethod());
-    JSHandle<JSFunction> cloneCtor = NewJSFunctionByDynClass(method, hclass, kind);
+    JSHandle<JSFunction> cloneCtor = NewJSFunctionByHClass(method, hclass, kind);
 
     for (uint32_t i = 0; i < hclass->GetInlinedProperties(); i++) {
         JSTaggedValue value = ctor->GetPropertyInlinedProps(i);
@@ -573,17 +573,17 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
 JSHandle<JSObject> ObjectFactory::NewNonMovableJSObject(const JSHandle<JSHClass> &jshclass)
 {
     JSHandle<JSObject> obj(thread_,
-                           JSObject::Cast(NewNonMovableDynObject(jshclass, jshclass->GetInlinedProperties())));
+                           JSObject::Cast(NewNonMovableObject(jshclass, jshclass->GetInlinedProperties())));
     obj->InitializeHash();
     obj->SetElements(thread_, EmptyArray(), SKIP_BARRIER);
     obj->SetProperties(thread_, EmptyArray(), SKIP_BARRIER);
     return obj;
 }
 
-JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSHClass> &dynKlass,
+JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSHClass> &hclass,
                                                           const JSHandle<JSTaggedValue> &object)
 {
-    JSHandle<JSPrimitiveRef> obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObject(dynKlass));
+    JSHandle<JSPrimitiveRef> obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObject(hclass));
     obj->SetValue(thread_, object);
     return obj;
 }
@@ -598,9 +598,9 @@ JSHandle<JSArray> ObjectFactory::NewJSArray()
 JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass(env->GetForinIteratorClass());
+    JSHandle<JSHClass> hclass(env->GetForinIteratorClass());
 
-    JSHandle<JSForInIterator> it = JSHandle<JSForInIterator>::Cast(NewJSObject(dynclass));
+    JSHandle<JSForInIterator> it = JSHandle<JSForInIterator>::Cast(NewJSObject(hclass));
     it->SetObject(thread_, obj);
     it->SetVisitedKeys(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
     it->SetRemainingKeys(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
@@ -611,7 +611,7 @@ JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTag
 JSHandle<JSHClass> ObjectFactory::CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> regexpDynclass = NewEcmaDynClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+    JSHandle<JSHClass> regexpClass = NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
 
     uint32_t fieldOrder = 0;
     JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(1);
@@ -624,17 +624,17 @@ JSHandle<JSHClass> ObjectFactory::CreateJSRegExpInstanceClass(JSHandle<JSTaggedV
     }
 
     {
-        regexpDynclass->SetLayout(thread_, layoutInfoHandle);
-        regexpDynclass->SetNumberOfProps(fieldOrder);
+        regexpClass->SetLayout(thread_, layoutInfoHandle);
+        regexpClass->SetNumberOfProps(fieldOrder);
     }
 
-    return regexpDynclass;
+    return regexpClass;
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> arrayDynclass = NewEcmaDynClass(JSArray::SIZE, JSType::JS_ARRAY, proto);
+    JSHandle<JSHClass> arrayClass = NewEcmaHClass(JSArray::SIZE, JSType::JS_ARRAY, proto);
 
     uint32_t fieldOrder = 0;
     ASSERT(JSArray::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
@@ -648,13 +648,13 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedVa
     }
 
     {
-        arrayDynclass->SetLayout(thread_, layoutInfoHandle);
-        arrayDynclass->SetNumberOfProps(fieldOrder);
+        arrayClass->SetLayout(thread_, layoutInfoHandle);
+        arrayClass->SetNumberOfProps(fieldOrder);
     }
-    arrayDynclass->SetIsStableElements(true);
-    arrayDynclass->SetHasConstructor(false);
+    arrayClass->SetIsStableElements(true);
+    arrayClass->SetHasConstructor(false);
 
-    return arrayDynclass;
+    return arrayClass;
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateJSArguments()
@@ -663,7 +663,7 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArguments()
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSTaggedValue> proto = env->GetObjectFunctionPrototype();
 
-    JSHandle<JSHClass> argumentsDynclass = NewEcmaDynClass(JSArguments::SIZE, JSType::JS_ARGUMENTS, proto);
+    JSHandle<JSHClass> argumentsClass = NewEcmaHClass(JSArguments::SIZE, JSType::JS_ARGUMENTS, proto);
 
     uint32_t fieldOrder = 0;
     ASSERT(JSArguments::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
@@ -710,18 +710,18 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArguments()
     }
 
     {
-        argumentsDynclass->SetLayout(thread_, layoutInfoHandle);
-        argumentsDynclass->SetNumberOfProps(fieldOrder);
+        argumentsClass->SetLayout(thread_, layoutInfoHandle);
+        argumentsClass->SetNumberOfProps(fieldOrder);
     }
-    argumentsDynclass->SetIsStableElements(true);
-    return argumentsDynclass;
+    argumentsClass->SetIsStableElements(true);
+    return argumentsClass;
 }
 
 JSHandle<JSArguments> ObjectFactory::NewJSArguments()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetArgumentsClass());
-    JSHandle<JSArguments> obj = JSHandle<JSArguments>::Cast(NewJSObject(dynclass));
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetArgumentsClass());
+    JSHandle<JSArguments> obj = JSHandle<JSArguments>::Cast(NewJSObject(hclass));
     return obj;
 }
 
@@ -812,7 +812,7 @@ JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
 JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor)
 {
     if (!constructor->HasFunctionPrototype() ||
-        (constructor->GetProtoOrDynClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
+        (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
         JSHandle<JSHClass> jshclass = JSFunction::GetInstanceJSHClass(thread_, constructor,
                                                                       JSHandle<JSTaggedValue>(constructor));
         return NewJSObjectWithInit(jshclass);
@@ -831,7 +831,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
 {
     JSHandle<JSHClass> jshclass;
     if (!constructor->HasFunctionPrototype() ||
-        (constructor->GetProtoOrDynClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
+        (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
         jshclass = JSFunction::GetInstanceJSHClass(thread_, constructor, newTarget);
     } else {
         JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -1281,32 +1281,32 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
     return object;
 }
 
-TaggedObject *ObjectFactory::NewDynObject(const JSHandle<JSHClass> &dynclass)
+TaggedObject *ObjectFactory::NewObject(const JSHandle<JSHClass> &hclass)
 {
     NewObjectHook();
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(*dynclass);
-    uint32_t inobjPropCount = dynclass->GetInlinedProperties();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(*hclass);
+    uint32_t inobjPropCount = hclass->GetInlinedProperties();
     if (inobjPropCount > 0) {
-        InitializeExtraProperties(dynclass, header, inobjPropCount);
+        InitializeExtraProperties(hclass, header, inobjPropCount);
     }
     return header;
 }
 
-TaggedObject *ObjectFactory::NewNonMovableDynObject(const JSHandle<JSHClass> &dynclass, int inobjPropCount)
+TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclass, int inobjPropCount)
 {
     NewObjectHook();
-    TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(*dynclass);
+    TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(*hclass);
     if (inobjPropCount > 0) {
-        InitializeExtraProperties(dynclass, header, inobjPropCount);
+        InitializeExtraProperties(hclass, header, inobjPropCount);
     }
     return header;
 }
 
-void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &dynclass, TaggedObject *obj, int inobjPropCount)
+void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, int inobjPropCount)
 {
-    ASSERT(inobjPropCount * JSTaggedValue::TaggedTypeSize() < dynclass->GetObjectSize());
-    auto paddr = reinterpret_cast<uintptr_t>(obj) + dynclass->GetObjectSize();
-    JSTaggedType initVal = dynclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
+    ASSERT(inobjPropCount * JSTaggedValue::TaggedTypeSize() < hclass->GetObjectSize());
+    auto paddr = reinterpret_cast<uintptr_t>(obj) + hclass->GetObjectSize();
+    JSTaggedType initVal = hclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
     for (int i = 0; i < inobjPropCount; ++i) {
         paddr -= JSTaggedValue::TaggedTypeSize();
         *reinterpret_cast<JSTaggedType *>(paddr) = initVal;
@@ -1316,9 +1316,9 @@ void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &dynclass
 JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTaggedValue> &proto)
 {
     JSHandle<JSTaggedValue> protoValue(proto);
-    JSHandle<JSHClass> dynclass(thread_, thread_->GlobalConstants()->GetObjectDynClass().GetTaggedObject());
-    JSHandle<JSHClass> newDynclass = JSHClass::TransProtoWithoutLayout(thread_, dynclass, protoValue);
-    JSHandle<JSObject> newObj = NewJSObject(newDynclass);
+    JSHandle<JSHClass> hclass(thread_, thread_->GlobalConstants()->GetObjectClass().GetTaggedObject());
+    JSHandle<JSHClass> newClass = JSHClass::TransProtoWithoutLayout(thread_, hclass, protoValue);
+    JSHandle<JSObject> newObj = NewJSObject(newClass);
     newObj->GetJSHClass()->SetExtensible(true);
     return newObj;
 }
@@ -1333,23 +1333,23 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env,
                                                   const JSHandle<Method> &method, FunctionKind kind)
 {
-    JSHandle<JSHClass> dynclass;
+    JSHandle<JSHClass> hclass;
     if (kind == FunctionKind::BASE_CONSTRUCTOR) {
-        dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
+        hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
     } else if (JSFunction::IsConstructorKind(kind)) {
-        dynclass = JSHandle<JSHClass>::Cast(env->GetConstructorFunctionClass());
+        hclass = JSHandle<JSHClass>::Cast(env->GetConstructorFunctionClass());
     } else {
-        dynclass = JSHandle<JSHClass>::Cast(env->GetNormalFunctionClass());
+        hclass = JSHandle<JSHClass>::Cast(env->GetNormalFunctionClass());
     }
 
-    return NewJSFunctionByDynClass(method, dynclass, kind);
+    return NewJSFunctionByHClass(method, hclass, kind);
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
                                                       const JSHandle<JSTaggedValue> &prototype)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> functionClass = NewEcmaDynClass(size, type, prototype);
+    JSHandle<JSHClass> functionClass = NewEcmaHClass(size, type, prototype);
     {
         functionClass->SetCallable(true);
         // FunctionKind = BASE_CONSTRUCTOR
@@ -1408,9 +1408,9 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     return functionClass;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(const JSHandle<Method> &method,
-                                                            const JSHandle<JSHClass> &clazz,
-                                                            FunctionKind kind, MemSpaceType type)
+JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
+                                                          const JSHandle<JSHClass> &clazz,
+                                                          FunctionKind kind, MemSpaceType type)
 {
     JSHandle<JSFunction> function;
     switch (type) {
@@ -1433,7 +1433,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(const JSHandle<Metho
     return function;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(const void *func, const JSHandle<JSHClass> &clazz,
+JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                             FunctionKind kind)
 {
     JSHandle<Method> method = NewMethodForNativeFunction(func);
@@ -1463,16 +1463,16 @@ JSHandle<Method> ObjectFactory::NewJSMethod(const MethodLiteral *methodLiteral)
 JSHandle<JSFunction> ObjectFactory::NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc)
 {
     JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc);
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetNativeErrorFunctionClass());
-    return NewJSFunctionByDynClass(target, dynclass, FunctionKind::BUILTIN_CONSTRUCTOR);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNativeErrorFunctionClass());
+    return NewJSFunctionByHClass(target, hclass, FunctionKind::BUILTIN_CONSTRUCTOR);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
                                                                   const void *nativeFunc)
 {
     JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc);
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetSpecificTypedArrayFunctionClass());
-    return NewJSFunctionByDynClass(target, dynclass, FunctionKind::BUILTIN_CONSTRUCTOR);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSpecificTypedArrayFunctionClass());
+    return NewJSFunctionByHClass(target, hclass, FunctionKind::BUILTIN_CONSTRUCTOR);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t codeEntry)
@@ -1493,13 +1493,13 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSFun
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
-    JSHandle<JSHClass> dynclass = NewEcmaDynClass(JSBoundFunction::SIZE, JSType::JS_BOUND_FUNCTION, proto);
+    JSHandle<JSHClass> hclass = NewEcmaHClass(JSBoundFunction::SIZE, JSType::JS_BOUND_FUNCTION, proto);
 
-    JSHandle<JSBoundFunction> bundleFunction = JSHandle<JSBoundFunction>::Cast(NewJSObject(dynclass));
+    JSHandle<JSBoundFunction> bundleFunction = JSHandle<JSBoundFunction>::Cast(NewJSObject(hclass));
     bundleFunction->SetBoundTarget(thread_, target);
     bundleFunction->SetBoundThis(thread_, boundThis);
     bundleFunction->SetBoundArguments(thread_, args);
-    dynclass->SetCallable(true);
+    hclass->SetCallable(true);
     if (target.GetTaggedValue().IsConstructor()) {
         bundleFunction->SetConstructor(true);
     }
@@ -1510,9 +1510,9 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSFun
 JSHandle<JSIntlBoundFunction> ObjectFactory::NewJSIntlBoundFunction(MethodIndex idx, int functionLength)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetJSIntlBoundFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetJSIntlBoundFunctionClass());
 
-    JSHandle<JSIntlBoundFunction> intlBoundFunc = JSHandle<JSIntlBoundFunction>::Cast(NewJSObject(dynclass));
+    JSHandle<JSIntlBoundFunction> intlBoundFunc = JSHandle<JSIntlBoundFunction>::Cast(NewJSObject(hclass));
     intlBoundFunc->SetNumberFormat(thread_, JSTaggedValue::Undefined());
     intlBoundFunc->SetDateTimeFormat(thread_, JSTaggedValue::Undefined());
     intlBoundFunc->SetCollator(thread_, JSTaggedValue::Undefined());
@@ -1532,9 +1532,9 @@ JSHandle<JSProxyRevocFunction> ObjectFactory::NewJSProxyRevocFunction(const JSHa
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetProxyRevocFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetProxyRevocFunctionClass());
 
-    JSHandle<JSProxyRevocFunction> revocFunction = JSHandle<JSProxyRevocFunction>::Cast(NewJSObject(dynclass));
+    JSHandle<JSProxyRevocFunction> revocFunction = JSHandle<JSProxyRevocFunction>::Cast(NewJSObject(hclass));
     revocFunction->SetRevocableProxy(thread_, JSTaggedValue::Undefined());
     revocFunction->SetRevocableProxy(thread_, proxy);
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(revocFunction);
@@ -1551,10 +1551,10 @@ JSHandle<JSProxyRevocFunction> ObjectFactory::NewJSProxyRevocFunction(const JSHa
 JSHandle<JSAsyncAwaitStatusFunction> ObjectFactory::NewJSAsyncAwaitStatusFunction(MethodIndex idx)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetAsyncAwaitStatusFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncAwaitStatusFunctionClass());
 
     JSHandle<JSAsyncAwaitStatusFunction> awaitFunction =
-        JSHandle<JSAsyncAwaitStatusFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSAsyncAwaitStatusFunction>::Cast(NewJSObject(hclass));
     awaitFunction->SetAsyncContext(thread_, JSTaggedValue::Undefined());
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(awaitFunction));
     awaitFunction->SetMethod(thread_, vm_->GetMethodByIndex(idx));
@@ -1565,8 +1565,8 @@ JSHandle<JSFunction> ObjectFactory::NewJSGeneratorFunction(const JSHandle<Method
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(NewJSObject(dynclass));
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
     generatorFunc->SetMethod(thread_, method);
     return generatorFunc;
@@ -1574,13 +1574,13 @@ JSHandle<JSFunction> ObjectFactory::NewJSGeneratorFunction(const JSHandle<Method
 
 JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTaggedValue> generatorFunction)
 {
-    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrDynClass());
+    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrHClass());
     if (!proto->IsECMAObject()) {
         JSHandle<GlobalEnv> realmHandle = JSObject::GetFunctionRealm(thread_, generatorFunction);
         proto = realmHandle->GetGeneratorPrototype();
     }
-    JSHandle<JSHClass> dynclass = NewEcmaDynClass(JSGeneratorObject::SIZE, JSType::JS_GENERATOR_OBJECT, proto);
-    JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObject(dynclass));
+    JSHandle<JSHClass> hclass = NewEcmaHClass(JSGeneratorObject::SIZE, JSType::JS_GENERATOR_OBJECT, proto);
+    JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObject(hclass));
     generatorObject->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
     generatorObject->SetResumeResult(thread_, JSTaggedValue::Undefined());
     return generatorObject;
@@ -1588,23 +1588,23 @@ JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTagge
 
 JSHandle<JSAsyncGeneratorObject> ObjectFactory::NewJSAsyncGeneratorObject(JSHandle<JSTaggedValue> generatorFunction)
 {
-    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrDynClass());
+    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrHClass());
     if (!proto->IsECMAObject()) {
         JSHandle<GlobalEnv> realmHandle = JSObject::GetFunctionRealm(thread_, generatorFunction);
         proto = realmHandle->GetAsyncGeneratorPrototype();
     }
-    JSHandle<JSHClass> dynclass = NewEcmaDynClass(JSAsyncGeneratorObject::SIZE,
+    JSHandle<JSHClass> hclass = NewEcmaHClass(JSAsyncGeneratorObject::SIZE,
                                                   JSType::JS_ASYNC_GENERATOR_OBJECT, proto);
     JSHandle<JSAsyncGeneratorObject> generatorObject =
-        JSHandle<JSAsyncGeneratorObject>::Cast(NewJSObjectWithInit(dynclass));
+        JSHandle<JSAsyncGeneratorObject>::Cast(NewJSObjectWithInit(hclass));
     return generatorObject;
 }
 
 JSHandle<JSAsyncFunction> ObjectFactory::NewAsyncFunction(const JSHandle<Method> &method)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-    JSHandle<JSAsyncFunction> asyncFunction = JSHandle<JSAsyncFunction>::Cast(NewJSObject(dynclass));
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+    JSHandle<JSAsyncFunction> asyncFunction = JSHandle<JSAsyncFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(asyncFunction));
     asyncFunction->SetMethod(thread_, method);
     return asyncFunction;
@@ -1614,8 +1614,8 @@ JSHandle<JSAsyncFuncObject> ObjectFactory::NewJSAsyncFuncObject()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> proto = env->GetInitialGenerator();
-    JSHandle<JSHClass> dynclass = NewEcmaDynClass(JSAsyncFuncObject::SIZE, JSType::JS_ASYNC_FUNC_OBJECT, proto);
-    JSHandle<JSAsyncFuncObject> asyncFuncObject = JSHandle<JSAsyncFuncObject>::Cast(NewJSObjectWithInit(dynclass));
+    JSHandle<JSHClass> hclass = NewEcmaHClass(JSAsyncFuncObject::SIZE, JSType::JS_ASYNC_FUNC_OBJECT, proto);
+    JSHandle<JSAsyncFuncObject> asyncFuncObject = JSHandle<JSAsyncFuncObject>::Cast(NewJSObjectWithInit(hclass));
     return asyncFuncObject;
 }
 
@@ -1943,10 +1943,10 @@ JSHandle<JSProxy> ObjectFactory::NewJSProxy(const JSHandle<JSTaggedValue> &targe
 
 JSHandle<JSRealm> ObjectFactory::NewJSRealm()
 {
-    JSHandle<JSHClass> dynClassClassHandle = NewEcmaDynClassClass(nullptr, JSHClass::SIZE, JSType::HCLASS);
-    JSHClass *dynclass = reinterpret_cast<JSHClass *>(dynClassClassHandle.GetTaggedValue().GetTaggedObject());
-    dynclass->SetClass(dynclass);
-    JSHandle<JSHClass> realmEnvClass = NewEcmaDynClass(*dynClassClassHandle, GlobalEnv::SIZE, JSType::GLOBAL_ENV);
+    JSHandle<JSHClass> hClassHandle = NewEcmaHClassClass(nullptr, JSHClass::SIZE, JSType::HCLASS);
+    JSHClass *hclass = reinterpret_cast<JSHClass *>(hClassHandle.GetTaggedValue().GetTaggedObject());
+    hclass->SetClass(hclass);
+    JSHandle<JSHClass> realmEnvClass = NewEcmaHClass(*hClassHandle, GlobalEnv::SIZE, JSType::GLOBAL_ENV);
     JSHandle<GlobalEnv> realmEnvHandle = NewGlobalEnv(*realmEnvClass);
 
     auto result = TemplateMap::Create(thread_);
@@ -1955,8 +1955,8 @@ JSHandle<JSRealm> ObjectFactory::NewJSRealm()
     Builtins builtins;
     builtins.Initialize(realmEnvHandle, thread_);
     JSHandle<JSTaggedValue> protoValue = thread_->GlobalConstants()->GetHandledJSRealmClass();
-    JSHandle<JSHClass> dynHandle = NewEcmaDynClass(JSRealm::SIZE, JSType::JS_REALM, protoValue);
-    JSHandle<JSRealm> realm(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle = NewEcmaHClass(JSRealm::SIZE, JSType::JS_REALM, protoValue);
+    JSHandle<JSRealm> realm(NewJSObject(hclassHandle));
     realm->SetGlobalEnv(thread_, realmEnvHandle.GetTaggedValue());
     realm->SetValue(thread_, JSTaggedValue::Undefined());
 
@@ -2228,8 +2228,8 @@ JSHandle<ModuleNamespace> ObjectFactory::NewModuleNamespace()
 {
     NewObjectHook();
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetModuleNamespaceClass());
-    JSHandle<JSObject> obj = NewJSObject(dynclass);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetModuleNamespaceClass());
+    JSHandle<JSObject> obj = NewJSObject(hclass);
 
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
     moduleNamespace->SetModule(thread_, JSTaggedValue::Undefined());
@@ -2431,9 +2431,9 @@ JSHandle<JSSetIterator> ObjectFactory::NewJSSetIterator(const JSHandle<JSSet> &s
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> protoValue = env->GetSetIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSSetIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSSetIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSetIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedSet(thread_, set->GetLinkedSet());
     iter->SetNextIndex(0);
@@ -2448,9 +2448,9 @@ JSHandle<JSRegExpIterator> ObjectFactory::NewJSRegExpIterator(const JSHandle<JST
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> protoValue = env->GetRegExpIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSRegExpIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSRegExpIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSRegExpIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSRegExpIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratingRegExp(thread_, matcher.GetTaggedValue());
     iter->SetIteratedString(thread_, inputStr.GetTaggedValue());
@@ -2465,9 +2465,9 @@ JSHandle<JSMapIterator> ObjectFactory::NewJSMapIterator(const JSHandle<JSMap> &m
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> protoValue = env->GetMapIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSMapIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSMapIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSMapIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedMap(thread_, map->GetLinkedMap());
     iter->SetNextIndex(0);
@@ -2481,9 +2481,9 @@ JSHandle<JSAPIHashMapIterator> ObjectFactory::NewJSAPIHashMapIterator(const JSHa
     NewObjectHook();
     JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetHashMapIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIHashMapIteratorClass());
-    dynHandle->SetPrototype(thread_, proto);
-    JSHandle<JSAPIHashMapIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIHashMapIteratorClass());
+    hclassHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPIHashMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedHashMap(thread_, hashMap);
     iter->SetNextIndex(0);
@@ -2500,9 +2500,9 @@ JSHandle<JSAPIHashSetIterator> ObjectFactory::NewJSAPIHashSetIterator(const JSHa
     NewObjectHook();
     JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetHashSetIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIHashSetIteratorClass());
-    dynHandle->SetPrototype(thread_, proto);
-    JSHandle<JSAPIHashSetIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIHashSetIteratorClass());
+    hclassHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPIHashSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedHashSet(thread_, hashSet);
     iter->SetNextIndex(0);
@@ -2519,9 +2519,9 @@ JSHandle<JSArrayIterator> ObjectFactory::NewJSArrayIterator(const JSHandle<JSObj
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> protoValue = env->GetArrayIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSArrayIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSArrayIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSArrayIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSArrayIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedArray(thread_, array);
     iter->SetNextIndex(0);
@@ -2532,10 +2532,10 @@ JSHandle<JSArrayIterator> ObjectFactory::NewJSArrayIterator(const JSHandle<JSObj
 JSHandle<JSPromiseReactionsFunction> ObjectFactory::CreateJSPromiseReactionsFunction(MethodIndex idx)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseReactionFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseReactionFunctionClass());
 
     JSHandle<JSPromiseReactionsFunction> reactionsFunction =
-        JSHandle<JSPromiseReactionsFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseReactionsFunction>::Cast(NewJSObject(hclass));
     reactionsFunction->SetPromise(thread_, JSTaggedValue::Hole());
     reactionsFunction->SetAlreadyResolved(thread_, JSTaggedValue::Hole());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(reactionsFunction);
@@ -2548,9 +2548,9 @@ JSHandle<JSPromiseReactionsFunction> ObjectFactory::CreateJSPromiseReactionsFunc
 JSHandle<JSPromiseExecutorFunction> ObjectFactory::CreateJSPromiseExecutorFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseExecutorFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseExecutorFunctionClass());
     JSHandle<JSPromiseExecutorFunction> executorFunction =
-        JSHandle<JSPromiseExecutorFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseExecutorFunction>::Cast(NewJSObject(hclass));
     executorFunction->SetCapability(thread_, JSTaggedValue::Hole());
     executorFunction->SetCapability(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(executorFunction);
@@ -2564,9 +2564,9 @@ JSHandle<JSPromiseExecutorFunction> ObjectFactory::CreateJSPromiseExecutorFuncti
 JSHandle<JSPromiseAllResolveElementFunction> ObjectFactory::NewJSPromiseAllResolveElementFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseAllResolveElementFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseAllResolveElementFunctionClass());
     JSHandle<JSPromiseAllResolveElementFunction> function =
-        JSHandle<JSPromiseAllResolveElementFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseAllResolveElementFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(
         thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_RESOLVE_ELEMENT_FUNCTION));
@@ -2582,9 +2582,9 @@ JSHandle<JSPromiseAllResolveElementFunction> ObjectFactory::NewJSPromiseAllResol
 JSHandle<JSPromiseAnyRejectElementFunction> ObjectFactory::NewJSPromiseAnyRejectElementFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseAnyRejectElementFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseAnyRejectElementFunctionClass());
     JSHandle<JSPromiseAnyRejectElementFunction> function =
-        JSHandle<JSPromiseAnyRejectElementFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseAnyRejectElementFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(
         thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ANY_REJECT_ELEMENT_FUNCTION));
@@ -2600,9 +2600,9 @@ JSHandle<JSPromiseAnyRejectElementFunction> ObjectFactory::NewJSPromiseAnyReject
 JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettledResolveElementFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseAllSettledElementFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseAllSettledElementFunctionClass());
     JSHandle<JSPromiseAllSettledElementFunction> function =
-        JSHandle<JSPromiseAllSettledElementFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseAllSettledElementFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(thread_,
         vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_RESOLVE_ELEMENT_FUNCTION));
@@ -2618,9 +2618,9 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
 JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettledRejectElementFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseAllSettledElementFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseAllSettledElementFunctionClass());
     JSHandle<JSPromiseAllSettledElementFunction> function =
-        JSHandle<JSPromiseAllSettledElementFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseAllSettledElementFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(thread_,
         vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_REJECT_ELEMENT_FUNCTION));
@@ -2636,9 +2636,9 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
 JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseThenFinallyFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseFinallyFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseFinallyFunctionClass());
     JSHandle<JSPromiseFinallyFunction> function =
-        JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THEN_FINALLY_FUNCTION));
     function->SetConstructor(thread_, JSTaggedValue::Undefined());
@@ -2650,9 +2650,9 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseThenFinallyFunctio
 JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseCatchFinallyFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseFinallyFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseFinallyFunctionClass());
     JSHandle<JSPromiseFinallyFunction> function =
-        JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION));
     function->SetConstructor(thread_, JSTaggedValue::Undefined());
@@ -2664,10 +2664,10 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseCatchFinallyFuncti
 JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextRetProRstFulfilledFtn()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(
         env->GetAsyncGeneratorResNextRetProRstFtnClass());
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> function =
-        JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(dynclass));
+        JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION));
     function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
@@ -2678,10 +2678,10 @@ JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextR
 JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextRetProRstRejectedFtn()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(
         env->GetAsyncGeneratorResNextRetProRstFtnClass());
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> function =
-        JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(dynclass));
+        JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION));
     function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
@@ -2692,9 +2692,9 @@ JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextR
 JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseValueThunkFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseValueThunkOrThrowerFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseValueThunkOrThrowerFunctionClass());
     JSHandle<JSPromiseValueThunkOrThrowerFunction> function =
-        JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION));
     function->SetResult(thread_, JSTaggedValue::Undefined());
@@ -2705,9 +2705,9 @@ JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseValueT
 JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseThrowerFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetPromiseValueThunkOrThrowerFunctionClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseValueThunkOrThrowerFunctionClass());
     JSHandle<JSPromiseValueThunkOrThrowerFunction> function =
-        JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(dynclass));
+        JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION));
     function->SetResult(thread_, JSTaggedValue::Undefined());
@@ -2795,7 +2795,7 @@ JSHandle<JSHClass> ObjectFactory::CreateObjectClass(const JSHandle<TaggedArray> 
         fieldOrder++;
     }
     ASSERT(fieldOrder <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES);
-    JSHandle<JSHClass> objClass = NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, fieldOrder);
+    JSHandle<JSHClass> objClass = NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, fieldOrder);
     objClass->SetPrototype(thread_, proto.GetTaggedValue());
     {
         objClass->SetExtensible(true);
@@ -2846,7 +2846,7 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
     JSHandle<TaggedArray> hclassCacheArr = JSHandle<TaggedArray>::Cast(hclassCache);
     JSTaggedValue maybeHClass = hclassCacheArr->Get(length);
     if (maybeHClass.IsHole()) {
-        JSHandle<JSHClass> objHClass = NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, length);
+        JSHandle<JSHClass> objHClass = NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, length);
         objHClass->SetPrototype(thread_, proto.GetTaggedValue());
         {
             objHClass->SetNumberOfProps(0);
@@ -2861,9 +2861,9 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
 
 JSHandle<JSObject> ObjectFactory::NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length)
 {
-    JSHandle<JSHClass> dynclass = GetObjectLiteralHClass(properties, length);
-    JSHandle<JSObject> obj = NewOldSpaceJSObject(dynclass);
-    InitializeJSObject(obj, dynclass);
+    JSHandle<JSHClass> hclass = GetObjectLiteralHClass(properties, length);
+    JSHandle<JSObject> obj = NewOldSpaceJSObject(hclass);
+    InitializeJSObject(obj, hclass);
     return obj;
 }
 
@@ -3218,9 +3218,9 @@ JSHandle<JSAPIArrayListIterator> ObjectFactory::NewJSAPIArrayListIterator(const 
     NewObjectHook();
     JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetArrayListIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIArrayListIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSAPIArrayListIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIArrayListIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSAPIArrayListIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedArrayList(thread_, arrayList);
     iter->SetNextIndex(0);
@@ -3233,9 +3233,9 @@ JSHandle<JSAPILightWeightMapIterator> ObjectFactory::NewJSAPILightWeightMapItera
     NewObjectHook();
     JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetLightWeightMapIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPILightWeightMapIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSAPILightWeightMapIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPILightWeightMapIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSAPILightWeightMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedLightWeightMap(thread_, obj);
     iter->SetNextIndex(0);
@@ -3249,9 +3249,9 @@ JSHandle<JSAPILightWeightSetIterator> ObjectFactory::NewJSAPILightWeightSetItera
     NewObjectHook();
     JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetLightWeightSetIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPILightWeightSetIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSAPILightWeightSetIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPILightWeightSetIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSAPILightWeightSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedLightWeightSet(thread_, obj);
     iter->SetNextIndex(0);
@@ -3279,9 +3279,9 @@ JSHandle<JSAPIPlainArrayIterator> ObjectFactory::NewJSAPIPlainArrayIterator(cons
     NewObjectHook();
     JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetPlainArrayIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIPlainArrayIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSAPIPlainArrayIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIPlainArrayIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSAPIPlainArrayIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedPlainArray(thread_, plainarray);
     iter->SetNextIndex(0);
@@ -3294,9 +3294,9 @@ JSHandle<JSAPIStackIterator> ObjectFactory::NewJSAPIStackIterator(const JSHandle
     NewObjectHook();
     JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetStackIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIStackIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSAPIStackIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIStackIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSAPIStackIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedStack(thread_, stack);
     iter->SetNextIndex(0);
@@ -3333,9 +3333,9 @@ JSHandle<JSAPIDequeIterator> ObjectFactory::NewJSAPIDequeIterator(const JSHandle
     NewObjectHook();
     JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetDequeIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIDequeIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSAPIDequeIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIDequeIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSAPIDequeIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedDeque(thread_, deque);
     iter->SetNextIndex(deque->GetFirst());
@@ -3372,9 +3372,9 @@ JSHandle<JSAPIQueueIterator> ObjectFactory::NewJSAPIQueueIterator(const JSHandle
     NewObjectHook();
     JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetQueueIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIQueueIteratorClass());
-    dynHandle->SetPrototype(thread_, protoValue);
-    JSHandle<JSAPIQueueIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIQueueIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSAPIQueueIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedQueue(thread_, queue); // IteratedQueue
     iter->SetNextIndex(0);
@@ -3387,9 +3387,9 @@ JSHandle<JSAPITreeMapIterator> ObjectFactory::NewJSAPITreeMapIterator(const JSHa
     NewObjectHook();
     JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetTreeMapIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPITreeMapIteratorClass());
-    dynHandle->SetPrototype(thread_, proto);
-    JSHandle<JSAPITreeMapIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPITreeMapIteratorClass());
+    hclassHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPITreeMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedMap(thread_, map);
     iter->SetNextIndex(0);
@@ -3407,9 +3407,9 @@ JSHandle<JSAPITreeSetIterator> ObjectFactory::NewJSAPITreeSetIterator(const JSHa
     NewObjectHook();
     JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetTreeSetIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPITreeSetIteratorClass());
-    dynHandle->SetPrototype(thread_, proto);
-    JSHandle<JSAPITreeSetIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPITreeSetIteratorClass());
+    hclassHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPITreeSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedSet(thread_, set);
     iter->SetNextIndex(0);
@@ -3437,9 +3437,9 @@ JSHandle<JSAPIVectorIterator> ObjectFactory::NewJSAPIVectorIterator(const JSHand
     NewObjectHook();
     JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetVectorIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIVectorIteratorClass());
-    dynHandle->SetPrototype(thread_, proto);
-    JSHandle<JSAPIVectorIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIVectorIteratorClass());
+    hclassHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPIVectorIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedVector(thread_, vector);
     iter->SetNextIndex(0);
@@ -3451,9 +3451,9 @@ JSHandle<JSAPILinkedListIterator> ObjectFactory::NewJSAPILinkedListIterator(cons
     NewObjectHook();
     JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetLinkedListIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPILinkedListIteratorClass());
-    dynHandle->SetPrototype(thread_, proto);
-    JSHandle<JSAPILinkedListIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPILinkedListIteratorClass());
+    hclassHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPILinkedListIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedLinkedList(thread_, linkedList->GetDoubleList());
     iter->SetNextIndex(0);
@@ -3465,9 +3465,9 @@ JSHandle<JSAPIListIterator> ObjectFactory::NewJSAPIListIterator(const JSHandle<J
     NewObjectHook();
     JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetListIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> dynHandle(globalConst->GetHandledJSAPIListIteratorClass());
-    dynHandle->SetPrototype(thread_, proto);
-    JSHandle<JSAPIListIterator> iter(NewJSObject(dynHandle));
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIListIteratorClass());
+    hclassHandle->SetPrototype(thread_, proto);
+    JSHandle<JSAPIListIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedList(thread_, List->GetSingleList());
     iter->SetNextIndex(0);
@@ -3622,7 +3622,7 @@ JSHandle<JSHClass> ObjectFactory::CreateIteratorResultInstanceClass()
 {
     auto globalConst = thread_->GlobalConstants();
     JSHandle<JSTaggedValue> proto = vm_->GetGlobalEnv()->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> iterResultClass = NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
+    JSHandle<JSHClass> iterResultClass = NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
 
     uint32_t fieldOrder = 0;
     JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(2); // 2 means two field
@@ -3650,20 +3650,20 @@ JSHandle<JSHClass> ObjectFactory::CreateIteratorResultInstanceClass()
     return iterResultClass;
 }
 
-TaggedObject *ObjectFactory::NewOldSpaceDynObject(const JSHandle<JSHClass> &dynclass)
+TaggedObject *ObjectFactory::NewOldSpaceObject(const JSHandle<JSHClass> &hclass)
 {
     NewObjectHook();
-    TaggedObject *header = heap_->AllocateOldOrHugeObject(*dynclass);
-    uint32_t inobjPropCount = dynclass->GetInlinedProperties();
+    TaggedObject *header = heap_->AllocateOldOrHugeObject(*hclass);
+    uint32_t inobjPropCount = hclass->GetInlinedProperties();
     if (inobjPropCount > 0) {
-        InitializeExtraProperties(dynclass, header, inobjPropCount);
+        InitializeExtraProperties(hclass, header, inobjPropCount);
     }
     return header;
 }
 
 JSHandle<JSObject> ObjectFactory::NewOldSpaceJSObject(const JSHandle<JSHClass> &jshclass)
 {
-    JSHandle<JSObject> obj(thread_, JSObject::Cast(NewOldSpaceDynObject(jshclass)));
+    JSHandle<JSObject> obj(thread_, JSObject::Cast(NewOldSpaceObject(jshclass)));
     JSHandle<TaggedArray> emptyArray = EmptyArray();
     obj->InitializeHash();
     obj->SetElements(thread_, emptyArray);
@@ -3679,7 +3679,7 @@ JSHandle<TaggedArray> ObjectFactory::NewOldSpaceTaggedArray(uint32_t length, JST
 JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<TaggedArray> &elements)
 {
     JSHandle<JSHClass> cls(thread_,
-                           JSHandle<JSFunction>::Cast(vm_->GetGlobalEnv()->GetArrayFunction())->GetProtoOrDynClass());
+                           JSHandle<JSFunction>::Cast(vm_->GetGlobalEnv()->GetArrayFunction())->GetProtoOrHClass());
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(NewJSObject(cls));
     array->SetElements(thread_, elements);
 
@@ -3694,8 +3694,8 @@ JSHandle<JSFunction> ObjectFactory::NewJSAsyncGeneratorFunction(const JSHandle<M
     NewObjectHook();
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
-    JSHandle<JSFunction> asyncGeneratorFunc = JSHandle<JSFunction>::Cast(NewJSObject(dynclass));
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
+    JSHandle<JSFunction> asyncGeneratorFunc = JSHandle<JSFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, asyncGeneratorFunc, FunctionKind::ASYNC_GENERATOR_FUNCTION);
     asyncGeneratorFunc->SetMethod(thread_, method);
     return asyncGeneratorFunc;

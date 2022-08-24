@@ -55,7 +55,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, Ga
 #endif
 
 #define CALLSLOWPATH()                                                                              \
-    CallNGCRuntime(glue, RTSTUB_ID(PushCallIRangeAndDispatchNative),                                \
+    CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),                                \
                   { glue, nativeCode, func, thisValue, numArgs, argv })
 
 GateRef BuiltinsStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,

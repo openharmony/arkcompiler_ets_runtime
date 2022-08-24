@@ -118,15 +118,15 @@ hello-world.abc反汇编结果如下：
 # METHODS
 
 .function any func_main_0_any_any_any_any_(any a0, any a1, any a2) <static> {
-	mov.dyn v2, a2
-	mov.dyn v1, a1
-	mov.dyn v0, a0
+	mov v2, a2
+	mov v1, a1
+	mov v0, a0
 	builtin.acc
-	sta.dyn v5
+	sta v5
 	builtin.idi "print", 0x0 // 加载print函数
-	sta.dyn v3
+	sta v3
 	lda.str "Hello World!!!"  // 加载Hello World!!!字符串
-	sta.dyn v4
+	sta v4
 	builtin.tern3 v3, v4  // 调用print函数
 	builtin.acc
 }

@@ -137,7 +137,7 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Add_001)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> handleObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> objDynclassVal(thread, handleObj->GetJSHClass());
+    JSHandle<JSTaggedValue> objClassVal(thread, handleObj->GetJSHClass());
     uint32_t weakVectorCapacity = 10;
     uint32_t index = 2;
     JSHandle<WeakVector> weakVector = WeakVector::Create(thread, weakVectorCapacity);
@@ -146,9 +146,9 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Add_001)
     } // weakVector is not full
     JSHandle<ChangeListener> handleChangeListenerArr = JSHandle<ChangeListener>::Cast(weakVector);
     JSHandle<ChangeListener> resultListenerArray =
-        ChangeListener::Add(thread, handleChangeListenerArr, JSHandle<JSHClass>(objDynclassVal), &index);
+        ChangeListener::Add(thread, handleChangeListenerArr, JSHandle<JSHClass>(objClassVal), &index);
     EXPECT_EQ(index, 9U);
-    JSTaggedValue weakRefValue(objDynclassVal.GetTaggedValue());
+    JSTaggedValue weakRefValue(objClassVal.GetTaggedValue());
     weakRefValue.CreateWeakRef();
     EXPECT_EQ(resultListenerArray->Get(index).GetTaggedObject(), weakRefValue.GetTaggedWeakRef());
 }
@@ -168,7 +168,7 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Add_002)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> handleObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> objDynclassVal(thread, handleObj->GetJSHClass());
+    JSHandle<JSTaggedValue> objClassVal(thread, handleObj->GetJSHClass());
     uint32_t weakVectorCapacity = 10;
     uint32_t index = 2;
     JSHandle<WeakVector> weakVector = WeakVector::Create(thread, weakVectorCapacity);
@@ -179,9 +179,9 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Add_002)
     // weakVector exist hole
     weakVector->Delete(thread, 1); // delete in one
     JSHandle<ChangeListener> resultListenerArray =
-    ChangeListener::Add(thread, handleChangeListenerArr, JSHandle<JSHClass>(objDynclassVal), &index);
+    ChangeListener::Add(thread, handleChangeListenerArr, JSHandle<JSHClass>(objClassVal), &index);
     EXPECT_EQ(index, 1U);
-    JSTaggedValue weakRefValue(objDynclassVal.GetTaggedValue());
+    JSTaggedValue weakRefValue(objClassVal.GetTaggedValue());
     weakRefValue.CreateWeakRef();
     EXPECT_EQ(resultListenerArray->Get(index).GetTaggedObject(), weakRefValue.GetTaggedWeakRef());
 }
@@ -201,7 +201,7 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Add_003)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> handleObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSHandle<JSTaggedValue> objDynclassVal(thread, handleObj->GetJSHClass());
+    JSHandle<JSTaggedValue> objClassVal(thread, handleObj->GetJSHClass());
     uint32_t weakVectorCapacity = 10;
     uint32_t index = 2;
     JSHandle<WeakVector> weakVector = WeakVector::Create(thread, weakVectorCapacity);
@@ -211,9 +211,9 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Add_003)
     JSHandle<ChangeListener> handleChangeListenerArr = JSHandle<ChangeListener>::Cast(weakVector);
     // weakVector is full and no hole exists.
     JSHandle<ChangeListener> resultListenerArray =
-    ChangeListener::Add(thread, handleChangeListenerArr, JSHandle<JSHClass>(objDynclassVal), &index);
+    ChangeListener::Add(thread, handleChangeListenerArr, JSHandle<JSHClass>(objClassVal), &index);
     EXPECT_EQ(index, 10U);
-    JSTaggedValue weakRefValue(objDynclassVal.GetTaggedValue());
+    JSTaggedValue weakRefValue(objClassVal.GetTaggedValue());
     weakRefValue.CreateWeakRef();
     EXPECT_EQ(resultListenerArray->Get(index).GetTaggedObject(), weakRefValue.GetTaggedWeakRef());
 }

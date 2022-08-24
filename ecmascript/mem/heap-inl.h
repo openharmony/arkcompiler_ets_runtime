@@ -238,12 +238,12 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
     return object;
 }
 
-TaggedObject *Heap::AllocateDynClassClass(JSHClass *hclass, size_t size)
+TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->Allocate(size));
     if (UNLIKELY(object == nullptr)) {
-        LOG_ECMA_MEM(FATAL) << "Heap::AllocateDynClassClass can not allocate any space";
+        LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
     }
     *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));

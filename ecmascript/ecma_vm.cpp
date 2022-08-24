@@ -173,11 +173,11 @@ bool EcmaVM::Initialize()
 
     if (!options_.EnableSnapshotDeserialize()) {
         LOG_ECMA(DEBUG) << "EcmaVM::Initialize run builtins";
-        JSHandle<JSHClass> dynClassClassHandle = factory_->InitClassClass();
-        JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaDynClass(*dynClassClassHandle,
-                                                                      GlobalEnv::SIZE,
-                                                                      JSType::GLOBAL_ENV);
-        globalConst->Init(thread_, *dynClassClassHandle);
+        JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
+        JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(*hClassHandle,
+                                                                   GlobalEnv::SIZE,
+                                                                   JSType::GLOBAL_ENV);
+        globalConst->Init(thread_, *hClassHandle);
         globalConstInitialized_ = true;
         JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
         globalEnv->Init(thread_);

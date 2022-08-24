@@ -28,8 +28,6 @@
 #include "ecmascript/method.h"
 #include "ecmascript/runtime_call_id.h"
 
-#include "libpandafile/bytecode_instruction-inl.h"
-
 namespace panda::ecmascript::aarch64 {
 using Label = panda::ecmascript::Label;
 #define __ assembler->

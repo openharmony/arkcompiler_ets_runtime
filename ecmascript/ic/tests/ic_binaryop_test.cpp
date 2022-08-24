@@ -67,21 +67,21 @@ HWTEST_F_L0(ICBinaryOPTest, AddWithTSType)
     JSHandle<JSTaggedValue> arg2(thread, arg2Value);
     JSHandle<JSTaggedValue> arg3(thread, arg3Value);
 
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Add2Dyn(thread, arg1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Add2(thread, arg1.GetTaggedValue(),
                                                             arg2.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle1(thread, resInSlowPath1);
     JSTaggedValue resInICPath1 = ICBinaryOP::AddWithTSType(thread,  arg1.GetTaggedValue(), arg2.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle1.GetTaggedValue(), resInICPath1);
 
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Add2Dyn(thread, arg1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Add2(thread, arg1.GetTaggedValue(),
                                                             arg3.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle2(thread, resInSlowPath2);
     JSTaggedValue resInICPath2 = ICBinaryOP::AddWithTSType(thread,  arg1.GetTaggedValue(), arg3.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle2.GetTaggedValue(), resInICPath2);
 
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Add2Dyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Add2(thread, Str1.GetTaggedValue(),
                                                             Str2.GetTaggedValue());
     JSHandle<EcmaString> slowHandle3(thread, reinterpret_cast<EcmaString *>(resInSlowPath3.GetRawData()));
     JSTaggedValue resInICPath3 = ICBinaryOP::AddWithTSType(thread,  Str1.GetTaggedValue(), Str2.GetTaggedValue(),
@@ -89,7 +89,7 @@ HWTEST_F_L0(ICBinaryOPTest, AddWithTSType)
     ASSERT_TRUE(resInICPath3.IsString());
     EXPECT_EQ(slowHandle3->Compare(reinterpret_cast<EcmaString *>(resInICPath3.GetRawData())), 0);
 
-    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Add2Dyn(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Add2(thread, JSTaggedValue::Undefined(),
                                                             arg2.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle4(thread, resInSlowPath4);
     JSTaggedValue resInICPath4 = ICBinaryOP::AddWithTSType(thread,  JSTaggedValue::Undefined(),
@@ -97,7 +97,7 @@ HWTEST_F_L0(ICBinaryOPTest, AddWithTSType)
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER_GEN)));
     EXPECT_EQ(slowHandle4.GetTaggedValue(), resInICPath4);
 
-    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::Add2Dyn(thread, arg3.GetTaggedValue(),
+    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::Add2(thread, arg3.GetTaggedValue(),
                                                             Str1.GetTaggedValue());
     JSHandle<EcmaString> slowHandle5(thread, reinterpret_cast<EcmaString *>(resInSlowPath5.GetRawData()));
     JSTaggedValue resInICPath5 = ICBinaryOP::AddWithTSType(thread,  arg3.GetTaggedValue(),
@@ -106,7 +106,7 @@ HWTEST_F_L0(ICBinaryOPTest, AddWithTSType)
     ASSERT_TRUE(resInICPath5.IsString());
     EXPECT_EQ(slowHandle5->Compare(reinterpret_cast<EcmaString *>(resInICPath5.GetRawData())), 0);
 
-    JSTaggedValue resInSlowPath6 = SlowRuntimeStub::Add2Dyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath6 = SlowRuntimeStub::Add2(thread, Str1.GetTaggedValue(),
                                                             JSTaggedValue::Null());
     JSHandle<EcmaString> slowHandle6(thread, reinterpret_cast<EcmaString *>(resInSlowPath6.GetRawData()));
     JSTaggedValue resInICPath6 = ICBinaryOP::AddWithTSType(thread,  Str1.GetTaggedValue(), JSTaggedValue::Null(),
@@ -114,14 +114,14 @@ HWTEST_F_L0(ICBinaryOPTest, AddWithTSType)
     ASSERT_TRUE(resInICPath6.IsString());
     EXPECT_EQ(slowHandle6->Compare(reinterpret_cast<EcmaString *>(resInICPath6.GetRawData())), 0);
 
-    JSTaggedValue resInSlowPath7 = SlowRuntimeStub::Add2Dyn(thread, arg1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath7 = SlowRuntimeStub::Add2(thread, arg1.GetTaggedValue(),
                                                             JSTaggedValue::True());
     JSHandle<JSTaggedValue> slowHandle7(thread, resInSlowPath7);
     JSTaggedValue resInICPath7 = ICBinaryOP::AddWithTSType(thread, arg1.GetTaggedValue(), JSTaggedValue::True(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER_GEN)));
     EXPECT_EQ(slowHandle7.GetTaggedValue(), resInICPath7);
 
-    JSTaggedValue resInSlowPath8 = SlowRuntimeStub::Add2Dyn(thread, arg4.GetTaggedValue(),
+    JSTaggedValue resInSlowPath8 = SlowRuntimeStub::Add2(thread, arg4.GetTaggedValue(),
                                                             JSTaggedValue::Null());
     JSHandle<EcmaString> slowHandle8(thread, reinterpret_cast<EcmaString *>(resInSlowPath8.GetRawData()));
     JSTaggedValue resInICPath8 = ICBinaryOP::AddWithTSType(thread,  arg4.GetTaggedValue(), JSTaggedValue::Null(),
@@ -139,19 +139,19 @@ HWTEST_F_L0(ICBinaryOPTest, SubWithTSType)
     JSHandle<JSTaggedValue> arg2(thread, arg2Value);
     JSHandle<JSTaggedValue> arg3(thread, arg3Value);
 
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Sub2Dyn(thread, arg1.GetTaggedValue(), arg2.GetTaggedValue());
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Sub2(thread, arg1.GetTaggedValue(), arg2.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle1(thread, resInSlowPath1);
     JSTaggedValue resInICPath1 = ICBinaryOP::SubWithTSType(thread,  arg1.GetTaggedValue(), arg2.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle1.GetTaggedValue(), resInICPath1);
 
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Sub2Dyn(thread, arg2.GetTaggedValue(), arg3.GetTaggedValue());
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Sub2(thread, arg2.GetTaggedValue(), arg3.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle2(thread, resInSlowPath2);
     JSTaggedValue resInICPath2 = ICBinaryOP::SubWithTSType(thread,  arg2.GetTaggedValue(), arg3.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle2.GetTaggedValue(), resInICPath2);
 
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Sub2Dyn(thread, arg1.GetTaggedValue(), JSTaggedValue::True());
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Sub2(thread, arg1.GetTaggedValue(), JSTaggedValue::True());
     JSHandle<JSTaggedValue> slowHandle3(thread, resInSlowPath3);
     JSTaggedValue resInICPath3 = ICBinaryOP::SubWithTSType(thread,  arg1.GetTaggedValue(), JSTaggedValue::True(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::GENERIC)));
@@ -167,19 +167,19 @@ HWTEST_F_L0(ICBinaryOPTest, MulWithTSType)
     JSHandle<JSTaggedValue> arg2(thread, arg2Value);
     JSHandle<JSTaggedValue> arg3(thread, arg3Value);
 
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Mul2Dyn(thread, arg1.GetTaggedValue(), arg2.GetTaggedValue());
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Mul2(thread, arg1.GetTaggedValue(), arg2.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle1(thread, resInSlowPath1);
     JSTaggedValue resInICPath1 = ICBinaryOP::MulWithTSType(thread,  arg1.GetTaggedValue(), arg2.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle1.GetTaggedValue(), resInICPath1);
 
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Mul2Dyn(thread, arg2.GetTaggedValue(), arg3.GetTaggedValue());
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Mul2(thread, arg2.GetTaggedValue(), arg3.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle2(thread, resInSlowPath2);
     JSTaggedValue resInICPath2 = ICBinaryOP::MulWithTSType(thread,  arg2.GetTaggedValue(), arg3.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle2.GetTaggedValue(), resInICPath2);
 
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Mul2Dyn(thread, arg1.GetTaggedValue(), JSTaggedValue::True());
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Mul2(thread, arg1.GetTaggedValue(), JSTaggedValue::True());
     JSHandle<JSTaggedValue> slowHandle3(thread, resInSlowPath3);
     JSTaggedValue resInICPath3 = ICBinaryOP::MulWithTSType(thread,  arg1.GetTaggedValue(), JSTaggedValue::True(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::GENERIC)));
@@ -198,31 +198,31 @@ HWTEST_F_L0(ICBinaryOPTest, DivWithTSType)
     JSHandle<JSTaggedValue> arg3(thread, arg3Value);
     JSHandle<JSTaggedValue> arg4(thread, arg4Value);
 
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Div2Dyn(thread, arg3.GetTaggedValue(), arg2.GetTaggedValue());
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Div2(thread, arg3.GetTaggedValue(), arg2.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle1(thread, resInSlowPath1);
     JSTaggedValue resInICPath1 = ICBinaryOP::DivWithTSType(thread,  arg3.GetTaggedValue(), arg2.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle1.GetTaggedValue(), resInICPath1);
 
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Div2Dyn(thread, arg2.GetTaggedValue(), arg3.GetTaggedValue());
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Div2(thread, arg2.GetTaggedValue(), arg3.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle2(thread, resInSlowPath2);
     JSTaggedValue resInICPath2 = ICBinaryOP::DivWithTSType(thread,  arg2.GetTaggedValue(), arg3.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle2.GetTaggedValue(), resInICPath2);
 
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Div2Dyn(thread, arg1.GetTaggedValue(), arg2.GetTaggedValue());
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Div2(thread, arg1.GetTaggedValue(), arg2.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle3(thread, resInSlowPath3);
     JSTaggedValue resInICPath3 = ICBinaryOP::DivWithTSType(thread,  arg1.GetTaggedValue(), arg2.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle3.GetTaggedValue(), resInICPath3);
 
-    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Div2Dyn(thread, arg2.GetTaggedValue(), JSTaggedValue::True());
+    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Div2(thread, arg2.GetTaggedValue(), JSTaggedValue::True());
     JSHandle<JSTaggedValue> slowHandle4(thread, resInSlowPath4);
     JSTaggedValue resInICPath4 = ICBinaryOP::DivWithTSType(thread,  arg2.GetTaggedValue(), JSTaggedValue::True(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::GENERIC)));
     EXPECT_EQ(slowHandle4.GetTaggedValue(), resInICPath4);
 
-    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::Div2Dyn(thread, arg4.GetTaggedValue(), JSTaggedValue::False());
+    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::Div2(thread, arg4.GetTaggedValue(), JSTaggedValue::False());
     JSHandle<JSTaggedValue> slowHandle5(thread, resInSlowPath5);
     JSTaggedValue resInICPath5 = ICBinaryOP::DivWithTSType(thread,  arg4.GetTaggedValue(),
                                                            JSTaggedValue::False(),
@@ -241,33 +241,33 @@ HWTEST_F_L0(ICBinaryOPTest, ModWithTSType)
     JSHandle<JSTaggedValue> arg3(thread, arg3Value);
     JSHandle<JSTaggedValue> arg4(thread, arg4Value);
 
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Mod2Dyn(thread, arg3.GetTaggedValue(), arg2.GetTaggedValue());
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Mod2(thread, arg3.GetTaggedValue(), arg2.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle1(thread, resInSlowPath1);
     JSTaggedValue resInICPath1 = ICBinaryOP::ModWithTSType(thread,  arg3.GetTaggedValue(), arg2.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle1.GetTaggedValue(), resInICPath1);
 
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Mod2Dyn(thread, arg2.GetTaggedValue(), arg3.GetTaggedValue());
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Mod2(thread, arg2.GetTaggedValue(), arg3.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle2(thread, resInSlowPath2);
     JSTaggedValue resInICPath2 = ICBinaryOP::ModWithTSType(thread,  arg2.GetTaggedValue(), arg3.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle2.GetTaggedValue(), resInICPath2);
 
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Mod2Dyn(thread, arg1.GetTaggedValue(), arg2.GetTaggedValue());
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Mod2(thread, arg1.GetTaggedValue(), arg2.GetTaggedValue());
     JSHandle<JSTaggedValue> slowHandle3(thread, resInSlowPath3);
     JSTaggedValue resInICPath3 = ICBinaryOP::ModWithTSType(thread,  arg1.GetTaggedValue(), arg2.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::NUMBER)));
     EXPECT_EQ(slowHandle3.GetTaggedValue(), resInICPath3);
 
 
-    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Mod2Dyn(thread, arg2.GetTaggedValue(), JSTaggedValue::True());
+    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Mod2(thread, arg2.GetTaggedValue(), JSTaggedValue::True());
     JSHandle<JSTaggedValue> slowHandle4(thread, resInSlowPath4);
     JSTaggedValue resInICPath4 = ICBinaryOP::ModWithTSType(thread,  arg2.GetTaggedValue(), JSTaggedValue::True(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::GENERIC)));
     EXPECT_EQ(slowHandle4.GetTaggedValue(), resInICPath4);
 
 
-    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::Mod2Dyn(thread, arg4.GetTaggedValue(), JSTaggedValue::False());
+    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::Mod2(thread, arg4.GetTaggedValue(), JSTaggedValue::False());
     JSHandle<JSTaggedValue> slowHandle5(thread, resInSlowPath5);
     JSTaggedValue resInICPath5 = ICBinaryOP::ModWithTSType(thread,  arg4.GetTaggedValue(),
                                                            JSTaggedValue::False(),

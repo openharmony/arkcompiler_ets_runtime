@@ -59,13 +59,13 @@ public:
                      JSTaggedValue constpool, JSTaggedValue profileTypeInfo, \
                      JSTaggedValue acc, int16_t hotnessCounter);
     ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
+    ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_HANDLER)
 #undef DEF_HANDLER
 };
 
-static std::array<DispatchEntryPoint, BCStubEntries::BC_HANDLER_COUNT> asmDispatchTable {
 #define DEF_HANDLER(name) InterpreterAssembly::name,
+static std::array<DispatchEntryPoint, BCStubEntries::BC_HANDLER_COUNT> asmDispatchTable {
     ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
-#undef DEF_HANDLER
     InterpreterAssembly::HandleOverflow,
     InterpreterAssembly::HandleOverflow,
     InterpreterAssembly::HandleOverflow,
@@ -99,72 +99,21 @@ static std::array<DispatchEntryPoint, BCStubEntries::BC_HANDLER_COUNT> asmDispat
     InterpreterAssembly::HandleOverflow,
     InterpreterAssembly::HandleOverflow,
     InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
+    InterpreterAssembly::HandleDeprecated,
+    InterpreterAssembly::HandleWide,
+    InterpreterAssembly::HandleThrow,
     InterpreterAssembly::HandleOverflow,
 };
+static std::array<DispatchEntryPoint, kungfu::BytecodeStubCSigns::NUM_OF_DEPRECATED_STUBS> deprecatedDispatchTable {
+    ASM_INTERPRETER_DEPRECATED_STUB_LIST(DEF_HANDLER, DEF_HANDLER, DEF_HANDLER)
+};
+static std::array<DispatchEntryPoint, kungfu::BytecodeStubCSigns::NUM_OF_WIDE_STUBS> wideDispatchTable {
+    ASM_INTERPRETER_WIDE_STUB_LIST(DEF_HANDLER, DEF_HANDLER, DEF_HANDLER)
+};
+static std::array<DispatchEntryPoint, kungfu::BytecodeStubCSigns::NUM_OF_THROW_STUBS> throwDispatchTable {
+    ASM_INTERPRETER_THROW_STUB_LIST(DEF_HANDLER, DEF_HANDLER, DEF_HANDLER)
+};
+#undef DEF_HANDLER
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_INTERPRETER_ASSEMBLY_64BIT_H

@@ -101,9 +101,9 @@ class JSThread;
     V(JSTaggedValue, JSAPITreeSetIteratorClass, JS_API_TREE_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, LinkedNode, LINKED_NODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, RBTreeNode, RB_TREENODE_CLASS_INDEX, ecma_roots_class)                                           \
-    V(JSTaggedValue, JSAPIIteratorFuncDynClass, JS_API_ITERATOR_FUNC_DYN_CLASS_INDEX, ecma_roots_class)               \
+    V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_DYN_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
-    V(JSTaggedValue, ObjectDynClass, OBJECT_DYN_CLASS_INDEX, initial_object_dynclass)                                 \
+    V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                 \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, JSMethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)
 
@@ -442,9 +442,9 @@ public:
 
     const JSTaggedValue *EndSlot() const;
 
-    void Init(JSThread *thread, JSHClass *dynClassClass);
+    void Init(JSThread *thread, JSHClass *hClass);
 
-    void InitRootsClass(JSThread *thread, JSHClass *dynClassClass);
+    void InitRootsClass(JSThread *thread, JSHClass *hClass);
     void InitGlobalConstantSpecial(JSThread *thread);
 
     void InitGlobalConstant(JSThread *thread);

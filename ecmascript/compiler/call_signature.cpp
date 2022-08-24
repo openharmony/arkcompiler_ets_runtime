@@ -786,9 +786,9 @@ DEF_CALL_SIGNATURE(PushCallArgs3AndDispatch)
     PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallArgs3AndDispatch)
 }
 
-DEF_CALL_SIGNATURE(PushCallIRangeAndDispatchNative)
+DEF_CALL_SIGNATURE(PushCallRangeAndDispatchNative)
 {
-    PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(PushCallIRangeAndDispatchNative)
+    PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(PushCallRangeAndDispatchNative)
 }
 
 DEF_CALL_SIGNATURE(PushCallNewAndDispatchNative)
@@ -801,14 +801,14 @@ DEF_CALL_SIGNATURE(PushCallNewAndDispatch)
     PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallNewAndDispatch)
 }
 
-DEF_CALL_SIGNATURE(PushCallIRangeAndDispatch)
+DEF_CALL_SIGNATURE(PushCallRangeAndDispatch)
 {
-    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallIRangeAndDispatch)
+    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallRangeAndDispatch)
 }
 
-DEF_CALL_SIGNATURE(PushCallIThisRangeAndDispatch)
+DEF_CALL_SIGNATURE(PushCallThisRangeAndDispatch)
 {
-    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallIThisRangeAndDispatch)
+    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallThisRangeAndDispatch)
 }
 
 DEF_CALL_SIGNATURE(CallGetter)
@@ -973,12 +973,12 @@ DEF_CALL_SIGNATURE(MarkingBarrier)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(CallArg0Dyn)
+DEF_CALL_SIGNATURE(CallArg0)
 {
     // 2 : 2 input parameters
-    CallSignature callArg0Dyn("callArg0Dyn", 0, 2,
+    CallSignature callArg0("callArg0", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = callArg0Dyn;
+    *callSign = callArg0;
     // 2 : 2 input parameters
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),
@@ -988,12 +988,12 @@ DEF_CALL_SIGNATURE(CallArg0Dyn)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB);
 }
 
-DEF_CALL_SIGNATURE(CallArg1Dyn)
+DEF_CALL_SIGNATURE(CallArg1)
 {
     // 3 : 3 input parameters
-    CallSignature callArg1Dyn("callArg1Dyn", 0, 3,
+    CallSignature callArg1("callArg1", 0, 3,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = callArg1Dyn;
+    *callSign = callArg1;
     // 3 : 3 input parameters
     std::array<VariableType, 3> params = {
         VariableType::NATIVE_POINTER(),
@@ -1004,12 +1004,12 @@ DEF_CALL_SIGNATURE(CallArg1Dyn)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB);
 }
 
-DEF_CALL_SIGNATURE(CallArgs2Dyn)
+DEF_CALL_SIGNATURE(CallArgs2)
 {
     // 4 : 4 input parameters
-    CallSignature callArgs2Dyn("callArgs2Dyn", 0, 4,
+    CallSignature callArgs2("callArgs2", 0, 4,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = callArgs2Dyn;
+    *callSign = callArgs2;
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {
         VariableType::NATIVE_POINTER(),
@@ -1021,12 +1021,12 @@ DEF_CALL_SIGNATURE(CallArgs2Dyn)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB);
 }
 
-DEF_CALL_SIGNATURE(CallArgs3Dyn)
+DEF_CALL_SIGNATURE(CallArgs3)
 {
     // 5 : 5 input parameters
-    CallSignature callArgs3Dyn("callArgs3Dyn", 0, 5,
+    CallSignature callArgs3("callArgs3", 0, 5,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = callArgs3Dyn;
+    *callSign = callArgs3;
     // 5 : 5 input parameters
     std::array<VariableType, 5> params = {
         VariableType::NATIVE_POINTER(),
@@ -1039,12 +1039,12 @@ DEF_CALL_SIGNATURE(CallArgs3Dyn)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB);
 }
 
-DEF_CALL_SIGNATURE(CallIThisRangeDyn)
+DEF_CALL_SIGNATURE(CallThisRange)
 {
     // 3 : 3 input parameters
-    CallSignature callIThisRangeDyn("callIThisRangeDyn", 0, 3,
+    CallSignature callThisRange("callThisRange", 0, 3,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = callIThisRangeDyn;
+    *callSign = callThisRange;
     // 3 : 3 input parameters
     std::array<VariableType, 3> params = {
         VariableType::NATIVE_POINTER(),
@@ -1056,12 +1056,12 @@ DEF_CALL_SIGNATURE(CallIThisRangeDyn)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB);
 }
 
-DEF_CALL_SIGNATURE(CallIRangeDyn)
+DEF_CALL_SIGNATURE(CallRange)
 {
     // 2 : 2 input parameters
-    CallSignature callIRangeDyn("callIRangeDyn", 0, 2,
+    CallSignature callRange("callRange", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = callIRangeDyn;
+    *callSign = callRange;
     // 2 : 2 input parameters
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),

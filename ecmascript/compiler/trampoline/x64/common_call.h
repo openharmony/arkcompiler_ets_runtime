@@ -87,9 +87,9 @@ public:
 
     static void AsmInterpreterEntry(ExtendedAssembler *assembler);
 
-    static void PushCallIThisRangeAndDispatch(ExtendedAssembler *assembler);
+    static void PushCallThisRangeAndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallIRangeAndDispatch(ExtendedAssembler *assembler);
+    static void PushCallRangeAndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallArgs3AndDispatch(ExtendedAssembler *assembler);
 
@@ -103,7 +103,7 @@ public:
 
     static void PushCallNewAndDispatchNative(ExtendedAssembler *assembler);
 
-    static void PushCallIRangeAndDispatchNative(ExtendedAssembler *assembler);
+    static void PushCallRangeAndDispatchNative(ExtendedAssembler *assembler);
 
     static void PushCallArgsAndDispatchNative(ExtendedAssembler *assembler);
 

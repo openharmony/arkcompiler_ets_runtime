@@ -224,7 +224,7 @@ inline SlotStatus SemiGCMarker::EvacuateObject(uint32_t threadId, TaggedObject *
     bool isPromoted = ShouldBePromoted(object);
 
     uintptr_t forwardAddress = AllocateDstSpace(threadId, size, isPromoted);
-    bool result = Barriers::AtomicSetDynPrimitive(object, 0, markWord.GetValue(),
+    bool result = Barriers::AtomicSetPrimitive(object, 0, markWord.GetValue(),
                                                   MarkWord::FromForwardingAddress(forwardAddress));
     if (result) {
         UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot, isPromoted);
@@ -299,8 +299,8 @@ inline SlotStatus CompressGCMarker::EvacuateObject(uint32_t threadId, TaggedObje
     JSHClass *klass = markWord.GetJSHClass();
     size_t size = klass->SizeFromJSHClass(object);
     uintptr_t forwardAddress = AllocateForwardAddress(threadId, size, object);
-    bool result = Barriers::AtomicSetDynPrimitive(object, 0, markWord.GetValue(),
-                                                  MarkWord::FromForwardingAddress(forwardAddress));
+    bool result = Barriers::AtomicSetPrimitive(object, 0, markWord.GetValue(),
+                                               MarkWord::FromForwardingAddress(forwardAddress));
     if (result) {
         UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot);
         return SlotStatus::CLEAR_SLOT;
