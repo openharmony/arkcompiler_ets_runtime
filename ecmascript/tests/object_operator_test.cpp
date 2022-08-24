@@ -316,21 +316,21 @@ HWTEST_F_L0(ObjectOperatorTest, handleKey)
     ObjectOperator objectOperator6(thread, handleKey6);
    
     JSHandle<EcmaString> handleEcmaStrTo1(objectOperator1.GetKey());
-    EXPECT_STREQ("-1", CString(handleEcmaStrTo1->GetCString().get()).c_str());
+    EXPECT_STREQ("-1", EcmaStringAccessor(handleEcmaStrTo1).ToCString().c_str());
 
     JSHandle<EcmaString> handleEcmaStrTo2(objectOperator2.GetKey());
-    EXPECT_STREQ("-1.11", CString(handleEcmaStrTo2->GetCString().get()).c_str());
+    EXPECT_STREQ("-1.11", EcmaStringAccessor(handleEcmaStrTo2).ToCString().c_str());
 
     EcmaString *str1 = EcmaString::Cast(objectOperator3.GetKey()->GetTaggedObject());
-    EXPECT_TRUE(str1->IsInternString());
+    EXPECT_TRUE(EcmaStringAccessor(str1).IsInternString());
     
     EXPECT_TRUE(objectOperator4.GetKey()->IsSymbol());
 
     EcmaString *str2 = EcmaString::Cast(objectOperator5.GetKey()->GetTaggedObject());
-    EXPECT_TRUE(str2->IsInternString());
+    EXPECT_TRUE(EcmaStringAccessor(str2).IsInternString());
 
     JSHandle<EcmaString> handleEcmaStrTo3(objectOperator6.GetKey());
-    EXPECT_STREQ("1.11", CString(handleEcmaStrTo3->GetCString().get()).c_str());
+    EXPECT_STREQ("1.11", EcmaStringAccessor(handleEcmaStrTo3).ToCString().c_str());
 }
 
 HWTEST_F_L0(ObjectOperatorTest, FastGetValue)

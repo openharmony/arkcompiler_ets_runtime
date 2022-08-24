@@ -166,7 +166,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, ToString)
     JSHandle<EcmaString> handleEcmaStr(thread, result);
     JSHandle<EcmaString> resultStr(
         factory->NewFromASCII("en-Latn-US-u-ca-chinese-co-compat-hc-h24-kn-nu-mong"));
-    EXPECT_EQ(handleEcmaStr->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr, *resultStr), 0);
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetBaseName)
@@ -183,7 +183,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetBaseName)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("en-Latn-US", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("en-Latn-US", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetHourCycle)
@@ -200,7 +200,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetHourCycle)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("h24", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("h24", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetCalendar)
@@ -217,7 +217,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetCalendar)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("chinese", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("chinese", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetCaseFirst)
@@ -234,7 +234,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetCaseFirst)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("undefined", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("undefined", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetCollation)
@@ -251,7 +251,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetCollation)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("compat", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("compat", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetNumeric)
@@ -283,7 +283,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetNumberingSystem)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("mong", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("mong", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetLanguage)
@@ -300,7 +300,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetLanguage)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("en", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("en", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetScript)
@@ -317,7 +317,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetScript)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("Latn", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("Latn", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetRegion)
@@ -334,7 +334,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, GetRegion)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("US", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("US", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 static JSTaggedValue JSLocaleCreateWithOptionsTagsTest(JSThread *thread, JSHandle<JSTaggedValue> &value)
@@ -390,7 +390,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, Maximize_001)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("zh-Hans-CN", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("zh-Hans-CN", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, Maximize_002)
@@ -417,7 +417,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, Maximize_002)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("en-Latn-US", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("en-Latn-US", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, Minimize_001)
@@ -444,7 +444,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, Minimize_001)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("en", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("en", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, Minimize_002)
@@ -473,7 +473,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, Minimize_002)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("zh", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("zh", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // test NormalizeKeywordValue(kf is not setted "yes")
@@ -503,6 +503,6 @@ HWTEST_F_L0(BuiltinsLocaleTest, NormalizeKeywordValue)
 
     JSHandle<JSLocale> jsInitLocale(thread, result);
     JSHandle<EcmaString> keyWords = JSLocale::NormalizeKeywordValue(thread, jsInitLocale, "kf");
-    EXPECT_STREQ("false", CString(keyWords->GetCString().get()).c_str());
+    EXPECT_STREQ("false", EcmaStringAccessor(keyWords).ToCString().c_str());
 }
 }  // namespace panda::test

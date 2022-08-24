@@ -111,6 +111,6 @@ HWTEST_F_L0(TemplateStringTest, GetTemplateObject)
     TestHelper::TearDownFrame(thread, prev);
 
     EXPECT_TRUE(result.IsString());
-    EXPECT_TRUE(EcmaString::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *testString));
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *testString));
 }
 }  // namespace panda::test

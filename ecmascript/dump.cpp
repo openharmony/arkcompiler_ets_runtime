@@ -2051,7 +2051,7 @@ void JSAPIVectorIterator::Dump(std::ostream &os) const
 void JSStringIterator::Dump(std::ostream &os) const
 {
     EcmaString *str = EcmaString::Cast(GetIteratedString().GetTaggedObject());
-    os << " - IteratedString: " << str->GetCString().get() << "\n";
+    os << " - IteratedString: " << EcmaStringAccessor(str).ToCString() << "\n";
     os << " - StringIteratorNextIndex: " << std::dec << GetStringIteratorNextIndex() << "\n";
     JSObject::Dump(os);
 }
@@ -3831,7 +3831,7 @@ static void DumpObject(TaggedObject *obj,
 
 static inline void EcmaStringToStd(CString &res, EcmaString *str)
 {
-    if (str->GetLength() == 0) {
+    if (EcmaStringAccessor(str).GetLength() == 0) {
         CString emptyStr = "EmptyString";
         res.append(emptyStr);
     }

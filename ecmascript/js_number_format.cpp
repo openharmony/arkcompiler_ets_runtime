@@ -278,7 +278,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
     //    a. If the result of IsWellFormedCurrencyCode(currency) is false, throw a RangeError exception.
     if (!currency->IsUndefined()) {
         JSHandle<EcmaString> currencyStr = JSHandle<EcmaString>::Cast(currency);
-        if (currencyStr->IsUtf16()) {
+        if (EcmaStringAccessor(currencyStr).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "not a utf-8", fractionDigitsOption);
         }
         std::string currencyCStr = JSLocale::ConvertToStdString(currencyStr);
@@ -324,7 +324,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
     icu::MeasureUnit icuPerUnit;
     if (!unit->IsUndefined()) {
         JSHandle<EcmaString> unitStr = JSHandle<EcmaString>::Cast(unit);
-        if (unitStr->IsUtf16()) {
+        if (EcmaStringAccessor(unitStr).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "Unit input is illegal", fractionDigitsOption);
         }
         std::string str = JSLocale::ConvertToStdString(unitStr);
@@ -468,7 +468,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     std::string numberingSystemStr;
     if (!numberingSystemTaggedValue->IsUndefined()) {
         JSHandle<EcmaString> numberingSystemEcmaString = JSHandle<EcmaString>::Cast(numberingSystemTaggedValue);
-        if (numberingSystemEcmaString->IsUtf16()) {
+        if (EcmaStringAccessor(numberingSystemEcmaString).IsUtf16()) {
             THROW_ERROR(thread, ErrorType::RANGE_ERROR, "invalid numberingSystem");
         }
         numberingSystemStr = JSLocale::ConvertToStdString(numberingSystemEcmaString);
@@ -685,7 +685,7 @@ JSHandle<JSTaggedValue> JSNumberFormat::FormatNumeric(JSThread *thread, const JS
     if (x.IsBigInt()) {
         JSHandle<BigInt> bigint(thread, x);
         JSHandle<EcmaString> bigintStr = BigInt::ToString(thread, bigint);
-        std::string stdString = bigintStr->GetCString().get();
+        std::string stdString = EcmaStringAccessor(bigintStr).ToStdString();
         formattedNumber = icuNumberFormat->formatDecimal(icu::StringPiece(stdString), status);
     } else {
         double number = x.GetNumber();

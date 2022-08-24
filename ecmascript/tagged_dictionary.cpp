@@ -28,7 +28,7 @@ int NameDictionary::Hash(const JSTaggedValue &key)
         }
         if (jsKey.IsString()) {
             auto keyString = reinterpret_cast<EcmaString *>(key.GetTaggedObject());
-            return keyString->GetHashcode();
+            return EcmaStringAccessor(keyString).GetHashcode();
         }
     }
     // key must be object

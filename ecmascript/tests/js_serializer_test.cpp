@@ -276,8 +276,10 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ecmaString fail";
         EXPECT_TRUE(res->IsString()) << "[NotString] Deserialize ecmaString fail";
         JSHandle<EcmaString> resEcmaString = JSHandle<EcmaString>::Cast(res);
-        EXPECT_TRUE(ecmaString->GetHashcode() == resEcmaString->GetHashcode()) << "Not same HashCode";
-        EXPECT_TRUE(EcmaString::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
+        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode();
+        auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode();
+        EXPECT_TRUE(ecmaStringCode == resEcmaStringCode) << "Not same HashCode";
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
         Destroy();
     }
 
@@ -295,8 +297,10 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ecmaString fail";
         EXPECT_TRUE(res->IsString()) << "[NotString] Deserialize ecmaString fail";
         JSHandle<EcmaString> resEcmaString = JSHandle<EcmaString>::Cast(res);
-        EXPECT_TRUE(ecmaString->GetHashcode() == resEcmaString->GetHashcode()) << "Not same HashCode";
-        EXPECT_TRUE(EcmaString::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
+        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode();
+        auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode();
+        EXPECT_TRUE(ecmaStringCode == resEcmaStringCode) << "Not same HashCode";
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
         Destroy();
     }
 
@@ -309,8 +313,10 @@ public:
         JSHandle<JSTaggedValue> res = deserializer.DeserializeJSTaggedValue();
         EXPECT_TRUE(res->IsString()) << "[NotString] Deserialize ecmaString fail";
         JSHandle<EcmaString> resEcmaString = JSHandle<EcmaString>::Cast(res);
-        EXPECT_TRUE(ecmaString->GetHashcode() == resEcmaString->GetHashcode()) << "Not same HashCode";
-        EXPECT_TRUE(EcmaString::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
+        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode();
+        auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode();
+        EXPECT_TRUE(ecmaStringCode == resEcmaStringCode) << "Not same HashCode";
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
         Destroy();
     }
 
@@ -319,16 +325,20 @@ public:
         Init();
         JSHandle<EcmaString> ecmaString = thread->GetEcmaVM()->GetFactory()->NewFromStdString("你好，世界");
         JSHandle<EcmaString> ecmaString1 = thread->GetEcmaVM()->GetFactory()->NewFromStdString("你好，世界");
-        EXPECT_TRUE(ecmaString->GetHashcode() == ecmaString1->GetHashcode()) << "Not same HashCode";
-        EXPECT_TRUE(EcmaString::StringsAreEqual(*ecmaString, *ecmaString1)) << "Not same EcmaString";
+        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode();
+        auto ecmaString1Code = EcmaStringAccessor(ecmaString1).GetHashcode();
+        EXPECT_TRUE(ecmaStringCode == ecmaString1Code) << "Not same HashCode";
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *ecmaString1)) << "Not same EcmaString";
 
         JSDeserializer deserializer(thread, data.first, data.second);
         JSHandle<JSTaggedValue> res = deserializer.DeserializeJSTaggedValue();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ecmaString fail";
         EXPECT_TRUE(res->IsString()) << "[NotString] Deserialize ecmaString fail";
         JSHandle<EcmaString> resEcmaString = JSHandle<EcmaString>::Cast(res);
-        EXPECT_TRUE(ecmaString->GetHashcode() == resEcmaString->GetHashcode()) << "Not same HashCode";
-        EXPECT_TRUE(EcmaString::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
+        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode();
+        auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode();
+        EXPECT_TRUE(ecmaStringCode == resEcmaStringCode) << "Not same HashCode";
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
         Destroy();
     }
 
@@ -396,7 +406,7 @@ public:
 
             JSHandle<EcmaString> resKeyStr = JSHandle<EcmaString>::Cast(resKey);
             JSHandle<EcmaString> keyStr = JSHandle<EcmaString>::Cast(key);
-            EXPECT_TRUE(EcmaString::StringsAreEqual(*resKeyStr, *keyStr)) << "Not same map key";
+            EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*resKeyStr, *keyStr)) << "Not same map key";
             EXPECT_TRUE(JSTaggedValue::ToInt32(thread, resValue) == JSTaggedValue::ToInt32(thread, value))
                 << "Not same map value";
         }
@@ -507,8 +517,8 @@ public:
         EXPECT_TRUE(originalSource->IsString());
         JSHandle<JSTaggedValue> originalFlags(thread, resJSRegexp->GetOriginalFlags());
         EXPECT_TRUE(originalFlags->IsString());
-        EXPECT_TRUE(EcmaString::StringsAreEqual(*JSHandle<EcmaString>(originalSource), *pattern));
-        EXPECT_TRUE(EcmaString::StringsAreEqual(*JSHandle<EcmaString>(originalFlags), *flags));
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(originalSource), *pattern));
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(originalFlags), *flags));
 
         JSHandle<JSTaggedValue> resBufferData(thread, resJSRegexp->GetByteCodeBuffer());
         JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(resBufferData);
@@ -539,8 +549,8 @@ public:
         JSHandle<JSTaggedValue> viewedArrayBuffer(thread, resJSInt8Array->GetViewedArrayBuffer());
 
         EXPECT_TRUE(typedArrayName->IsString());
-        EXPECT_TRUE(EcmaString::StringsAreEqual(*JSHandle<EcmaString>(typedArrayName),
-                                                *JSHandle<EcmaString>(originTypedArrayName)));
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(typedArrayName),
+                                                        *JSHandle<EcmaString>(originTypedArrayName)));
         EXPECT_TRUE(byteLength.ToUint32() == originTypedArray->GetByteLength()) << "Not Same ByteLength";
         EXPECT_TRUE(byteOffset.ToUint32() == originTypedArray->GetByteOffset()) << "Not Same ByteOffset";
         EXPECT_TRUE(arrayLength.ToUint32() == originTypedArray->GetArrayLength()) << "Not Same ArrayLength";

@@ -100,9 +100,9 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     EcmaString *str11 = reinterpret_cast<EcmaString *>(constpool1->Get(2).GetTaggedObject());
     EcmaString *str22 = reinterpret_cast<EcmaString *>(constpool1->Get(4).GetTaggedObject());
     EcmaString *str33 = reinterpret_cast<EcmaString *>(constpool1->Get(5).GetTaggedObject());
-    EXPECT_EQ(std::strcmp(str11->GetCString().get(), "str11"), 0);
-    EXPECT_EQ(std::strcmp(str22->GetCString().get(), "str22"), 0);
-    EXPECT_EQ(std::strcmp(str33->GetCString().get(), "str11"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str11).ToCString().c_str(), "str11"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str22).ToCString().c_str(), "str22"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str33).ToCString().c_str(), "str11"), 0);
     std::remove(fileName.c_str());
 }
 

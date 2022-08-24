@@ -130,7 +130,7 @@ HWTEST_F_L0(BuiltinsBooleanTest, BooleanPrototypeToString)
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> res(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     auto ruler = thread->GetEcmaVM()->GetFactory()->NewFromASCII("false");
-    ASSERT_EQ(res->Compare(*ruler), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*res, *ruler), 0);
 }
 
 // (new Boolean(true)).toString()
@@ -152,7 +152,7 @@ HWTEST_F_L0(BuiltinsBooleanTest, BooleanPrototypeToString1)
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> res(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     auto ruler = thread->GetEcmaVM()->GetFactory()->NewFromASCII("true");
-    ASSERT_EQ(res->Compare(*ruler), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*res, *ruler), 0);
 }
 
 // true.valueOf()

@@ -130,7 +130,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_001)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("tomorrow", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("tomorrow", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // format(0, auto)
@@ -155,7 +155,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_002)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("today", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("today", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // format(-1, auto)
@@ -180,7 +180,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_003)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("yesterday", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("yesterday", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // format(-1, always)
@@ -205,7 +205,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_004)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("1 day ago", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("1 day ago", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // format(1, always)
@@ -230,7 +230,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_005)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("in 1 day", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("in 1 day", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, FormatToParts)

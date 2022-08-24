@@ -79,7 +79,7 @@ HWTEST_F_L0(JSPluralRulesTest, GetIcuPluralRules)
     icu::PluralRules *getPluralRules = pluralRules->GetIcuPluralRules();
     icu::UnicodeString result2 = getPluralRules->select(0);
     JSHandle<EcmaString> stringValue2 = JSLocale::IcuToString(thread, result2);
-    EXPECT_EQ(EcmaString::StringsAreEqual(*stringValue1, *stringValue2), true);
+    EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(*stringValue1, *stringValue2), true);
     delete icuPluralRules;
 }
 
@@ -101,13 +101,13 @@ HWTEST_F_L0(JSPluralRulesTest, BuildLocaleSet)
     EXPECT_EQ(localeSet->GetLength(), 4U);
 
     resultStr = JSHandle<EcmaString>(thread, localeSet->Get(0).GetTaggedObject());
-    EXPECT_EQ(EcmaString::StringsAreEqual(*resultStr, *localeStr4), true);
+    EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(*resultStr, *localeStr4), true);
     resultStr = JSHandle<EcmaString>(thread, localeSet->Get(1).GetTaggedObject());
-    EXPECT_EQ(EcmaString::StringsAreEqual(*resultStr, *localeStr1), true);
+    EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(*resultStr, *localeStr1), true);
     resultStr = JSHandle<EcmaString>(thread, localeSet->Get(2).GetTaggedObject());
-    EXPECT_EQ(EcmaString::StringsAreEqual(*resultStr, *localeStr3), true);
+    EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(*resultStr, *localeStr3), true);
     resultStr = JSHandle<EcmaString>(thread, localeSet->Get(3).GetTaggedObject());
-    EXPECT_EQ(EcmaString::StringsAreEqual(*resultStr, *localeStr2), true);
+    EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(*resultStr, *localeStr2), true);
 }
 
 HWTEST_F_L0(JSPluralRulesTest, InitializePluralRules)
@@ -125,7 +125,7 @@ HWTEST_F_L0(JSPluralRulesTest, InitializePluralRules)
     EXPECT_TRUE(*initPluralRules != nullptr);
 
     JSHandle<EcmaString> resultLocaleStr(thread, initPluralRules->GetLocale().GetTaggedObject());
-    EXPECT_STREQ("en", CString(resultLocaleStr->GetCString().get()).c_str());
+    EXPECT_STREQ("en", EcmaStringAccessor(resultLocaleStr).ToCString().c_str());
     EXPECT_EQ(initPluralRules->GetType(), TypeOption::CARDINAL);
     EXPECT_EQ(initPluralRules->GetRoundingType(), RoundingType::FRACTIONDIGITS);
     EXPECT_EQ(initPluralRules->GetMinimumIntegerDigits().GetInt(), 1); // 1 : 1 default minimum integer
@@ -158,6 +158,6 @@ HWTEST_F_L0(JSPluralRulesTest, ResolvePlural)
     EXPECT_TRUE(*initPluralRules != nullptr);
     // resolve plural nan
     JSHandle<EcmaString> resolveRules = JSPluralRules::ResolvePlural(thread, initPluralRules, n);
-    EXPECT_STREQ("other", CString(resolveRules->GetCString().get()).c_str());
+    EXPECT_STREQ("other", EcmaStringAccessor(resolveRules).ToCString().c_str());
 }
 } // namespace panda::test

@@ -75,9 +75,9 @@ HWTEST_F_L0(JSRelativeTimeFormatTest, InitializeRelativeTimeFormat)
     JSRelativeTimeFormat::InitializeRelativeTimeFormat(thread, relativeTimeFormat, locales, undefinedOptions);
     // Initialize attribute comparison
     JSHandle<EcmaString> numberingSystemStr(thread, relativeTimeFormat->GetNumberingSystem().GetTaggedObject());
-    EXPECT_STREQ("latn", CString(numberingSystemStr->GetCString().get()).c_str());
+    EXPECT_STREQ("latn", EcmaStringAccessor(numberingSystemStr).ToCString().c_str());
     JSHandle<EcmaString> localeStr(thread, relativeTimeFormat->GetLocale().GetTaggedObject());
-    EXPECT_STREQ("en", CString(localeStr->GetCString().get()).c_str());
+    EXPECT_STREQ("en", EcmaStringAccessor(localeStr).ToCString().c_str());
     EXPECT_EQ(NumericOption::ALWAYS, relativeTimeFormat->GetNumeric());
     EXPECT_EQ(RelativeStyleOption::LONG, relativeTimeFormat->GetStyle());
 }
@@ -106,7 +106,7 @@ HWTEST_F_L0(JSRelativeTimeFormatTest, GetIcuRTFFormatter)
     icu::UnicodeString result2 =
         resultRelativeDateTimeFormatter->formatNumericToValue(value, UDAT_REL_UNIT_YEAR, status).toString(status);
     JSHandle<EcmaString> stringValue2 = JSLocale::IcuToString(thread, result2);
-    EXPECT_EQ(EcmaString::StringsAreEqual(*stringValue1, *stringValue2), true);
+    EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(*stringValue1, *stringValue2), true);
 }
 
 HWTEST_F_L0(JSRelativeTimeFormatTest, UnwrapRelativeTimeFormat)

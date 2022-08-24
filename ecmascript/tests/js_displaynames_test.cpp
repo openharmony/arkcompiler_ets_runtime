@@ -84,7 +84,7 @@ HWTEST_F_L0(JSDisplayNamesTest, GetIcuLocaleDisplayNames)
     icu::LocaleDisplayNames *resultIculocaledisplaynames = displayNames->GetIcuLocaleDisplayNames();
     EXPECT_TRUE(iculocaledisplaynames == resultIculocaledisplaynames);
     JSHandle<EcmaString> localeStr = JSLocale::ToLanguageTag(thread, resultIculocaledisplaynames->getLocale());
-    EXPECT_STREQ(CString(localeStr->GetCString().get()).c_str(), "en");
+    EXPECT_STREQ(EcmaStringAccessor(localeStr).ToCString().c_str(), "en");
 }
 
 /**
@@ -162,7 +162,7 @@ HWTEST_F_L0(JSDisplayNamesTest, InitializeDisplayNames)
     EXPECT_EQ(displayNames->GetStyle(), StyOption::SHORT);
     EXPECT_EQ(displayNames->GetType(), TypednsOption::SCRIPT);
     EXPECT_EQ(displayNames->GetFallback(), FallbackOption::NONE);
-    EXPECT_STREQ(CString(setlocale->GetCString().get()).c_str(), "en-US");
+    EXPECT_STREQ(EcmaStringAccessor(setlocale).ToCString().c_str(), "en-US");
     EXPECT_TRUE(displayNames->GetIcuLocaleDisplayNames() != nullptr);
 }
 
@@ -197,19 +197,19 @@ HWTEST_F_L0(JSDisplayNamesTest, CanonicalCodeForDisplayNames)
     JSHandle<EcmaString> code = factory->NewFromASCII("Kana");
     JSHandle<EcmaString> resultDisplay =
         JSDisplayNames::CanonicalCodeForDisplayNames(thread, initDisplayNames, initDisplayNames->GetType(), code);
-    EXPECT_STREQ(CString(resultDisplay->GetCString().get()).c_str(), "片假名");
+    EXPECT_STREQ(EcmaStringAccessor(resultDisplay).ToCString().c_str(), "片假名");
     // CanonicalCode for languege
     code = factory->NewFromASCII("fr");
     initDisplayNames->SetType(TypednsOption::LANGUAGE);
     resultDisplay =
         JSDisplayNames::CanonicalCodeForDisplayNames(thread, initDisplayNames, initDisplayNames->GetType(), code);
-    EXPECT_STREQ(CString(resultDisplay->GetCString().get()).c_str(), "法文");
+    EXPECT_STREQ(EcmaStringAccessor(resultDisplay).ToCString().c_str(), "法文");
     // CanonicalCode for region
     code = factory->NewFromASCII("US");
     initDisplayNames->SetType(TypednsOption::REGION);
     resultDisplay =
         JSDisplayNames::CanonicalCodeForDisplayNames(thread, initDisplayNames, initDisplayNames->GetType(), code);
-    EXPECT_STREQ(CString(resultDisplay->GetCString().get()).c_str(), "美國");
+    EXPECT_STREQ(EcmaStringAccessor(resultDisplay).ToCString().c_str(), "美國");
 }
 
 /**

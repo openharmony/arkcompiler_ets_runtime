@@ -27,13 +27,13 @@ EcmaStringTable::EcmaStringTable(const EcmaVM *vm) : vm_(vm) {}
 EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
                                        const JSHandle<EcmaString> &secondString) const
 {
-    uint32_t hashCode = firstString->GetHashcode();
-    hashCode = secondString->ComputeHashcode(hashCode);
+    uint32_t hashCode = EcmaStringAccessor(firstString).GetHashcode();
+    hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode);
     auto range = table_.equal_range(hashCode);
     auto item = range.first;
     for (; item != range.second; ++item) {
         auto foundString = item->second;
-        if (foundString->EqualToSplicedString(*firstString, *secondString)) {
+        if (EcmaStringAccessor(foundString).EqualToSplicedString(*firstString, *secondString)) {
             return foundString;
         }
     }
@@ -42,12 +42,12 @@ EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
 
 EcmaString *EcmaStringTable::GetString(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const
 {
-    uint32_t hashCode = EcmaString::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
     auto range = table_.equal_range(hashCode);
     auto item = range.first;
     for (; item != range.second; ++item) {
         auto foundString = item->second;
-        if (EcmaString::StringsAreEqualUtf8(foundString, utf8Data, utf8Len, canBeCompress)) {
+        if (EcmaStringAccessor::StringsAreEqualUtf8(foundString, utf8Data, utf8Len, canBeCompress)) {
             return foundString;
         }
     }
@@ -56,12 +56,12 @@ EcmaString *EcmaStringTable::GetString(const uint8_t *utf8Data, uint32_t utf8Len
 
 EcmaString *EcmaStringTable::GetString(const uint16_t *utf16Data, uint32_t utf16Len) const
 {
-    uint32_t hashCode = EcmaString::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
+    uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
     auto range = table_.equal_range(hashCode);
     auto item = range.first;
     for (; item != range.second; ++item) {
         auto foundString = item->second;
-        if (EcmaString::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
+        if (EcmaStringAccessor::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
             return foundString;
         }
     }
@@ -70,11 +70,12 @@ EcmaString *EcmaStringTable::GetString(const uint16_t *utf16Data, uint32_t utf16
 
 EcmaString *EcmaStringTable::GetString(EcmaString *string) const
 {
-    auto range = table_.equal_range(string->GetHashcode());
+    auto hashcode = EcmaStringAccessor(string).GetHashcode();
+    auto range = table_.equal_range(hashcode);
     auto item = range.first;
     for (; item != range.second; ++item) {
         auto foundString = item->second;
-        if (EcmaString::StringsAreEqual(foundString, string)) {
+        if (EcmaStringAccessor::StringsAreEqual(foundString, string)) {
             return foundString;
         }
     }
@@ -83,11 +84,11 @@ EcmaString *EcmaStringTable::GetString(EcmaString *string) const
 
 void EcmaStringTable::InternString(EcmaString *string)
 {
-    if (string->IsInternString()) {
+    if (EcmaStringAccessor(string).IsInternString()) {
         return;
     }
-    table_.emplace(string->GetHashcode(), string);
-    string->SetIsInternString();
+    table_.emplace(EcmaStringAccessor(string).GetHashcode(), string);
+    EcmaStringAccessor(string).SetInternString();
 }
 
 void EcmaStringTable::InternEmptyString(EcmaString *emptyStr)
@@ -102,7 +103,7 @@ EcmaString *EcmaStringTable::GetOrInternString(const JSHandle<EcmaString> &first
     if (concatString != nullptr) {
         return concatString;
     }
-    concatString = EcmaString::Concat(firstString, secondString, vm_);
+    concatString = EcmaStringAccessor::Concat(vm_, firstString, secondString);
 
     InternString(concatString);
     return concatString;
@@ -115,7 +116,7 @@ EcmaString *EcmaStringTable::GetOrInternString(const uint8_t *utf8Data, uint32_t
         return result;
     }
 
-    result = EcmaString::CreateFromUtf8(utf8Data, utf8Len, vm_, canBeCompress);
+    result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress);
     InternString(result);
     return result;
 }
@@ -126,7 +127,7 @@ EcmaString *EcmaStringTable::GetOrInternString(const uint8_t *utf8Data, uint32_t
 */
 EcmaString *EcmaStringTable::CreateAndInternStringNonMovable(const uint8_t *utf8Data, uint32_t utf8Len)
 {
-    EcmaString *result = EcmaString::CreateFromUtf8NonMovable(vm_, utf8Data, utf8Len);
+    EcmaString *result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, true, MemSpaceType::NON_MOVABLE);
     InternString(result);
     return result;
 }
@@ -138,14 +139,14 @@ EcmaString *EcmaStringTable::GetOrInternString(const uint16_t *utf16Data, uint32
         return result;
     }
 
-    result = EcmaString::CreateFromUtf16(utf16Data, utf16Len, vm_, canBeCompress);
+    result = EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress);
     InternString(result);
     return result;
 }
 
 EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
 {
-    if (string->IsInternString()) {
+    if (EcmaStringAccessor(string).IsInternString()) {
         return string;
     }
 
@@ -165,7 +166,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint8_t *utf8D
         return result;
     }
 
-    result = EcmaString::CreateFromUtf8(utf8Data, utf8Len, vm_, canBeCompress, type);
+    result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, type);
     InternString(result);
     return result;
 }
@@ -178,7 +179,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint16_t *utf1
         return result;
     }
 
-    result = EcmaString::CreateFromUtf16(utf16Data, utf16Len, vm_, canBeCompress, type);
+    result = EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, type);
     InternString(result);
     return result;
 }
@@ -207,11 +208,12 @@ bool EcmaStringTable::CheckStringTableValidity()
     for (auto itemOuter = table_.begin(); itemOuter != table_.end(); ++itemOuter) {
         auto outerString = itemOuter->second;
         int counter = 0;
-        auto range = table_.equal_range(outerString->GetHashcode());
+        auto hashcode = EcmaStringAccessor(outerString).GetHashcode();
+        auto range = table_.equal_range(hashcode);
         auto it = range.first;
         for (; it != range.second; ++it) {
             auto foundString = it->second;
-            if (EcmaString::StringsAreEqual(foundString, outerString)) {
+            if (EcmaStringAccessor::StringsAreEqual(foundString, outerString)) {
                 ++counter;
             }
         }

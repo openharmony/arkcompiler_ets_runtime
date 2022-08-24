@@ -16,6 +16,7 @@
 #include "ecmascript/builtins/builtins_ark_tools.h"
 
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/mem/tagged_object-inl.h"
 
 namespace panda::ecmascript::builtins {
 using StringHelper = base::StringHelper;
@@ -28,7 +29,7 @@ JSTaggedValue BuiltinsArkTools::ObjectDump(EcmaRuntimeCallInfo *info)
 
     JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
     // The default log level of ace_engine and js_runtime is error
-    LOG_ECMA(ERROR) << ": " << base::StringHelper::ToStdString(*str);
+    LOG_ECMA(ERROR) << ": " << EcmaStringAccessor(str).ToStdString();
 
     uint32_t numArgs = info->GetArgsNumber();
     for (uint32_t i = 1; i < numArgs; i++) {

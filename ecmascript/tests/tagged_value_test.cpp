@@ -777,8 +777,8 @@ void CheckOkString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged, CStr
 {
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, tagged);
     JSHandle<EcmaString> rightString = thread->GetEcmaVM()->GetFactory()->NewFromASCII(rightCStr);
-    EXPECT_TRUE(EcmaString::StringsAreEqual(EcmaString::Cast(result.GetObject<EcmaString>()),
-                                            EcmaString::Cast(rightString.GetObject<EcmaString>())));
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(EcmaString::Cast(result.GetObject<EcmaString>()),
+                                                    EcmaString::Cast(rightString.GetObject<EcmaString>())));
 }
 
 HWTEST_F_L0(JSTaggedValueTest, ToString)
@@ -866,16 +866,17 @@ HWTEST_F_L0(JSTaggedValueTest, ToObject)
     JSTaggedValue tagged4 =
         JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value4))->GetValue());
     EXPECT_TRUE(tagged4.IsString());
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(tagged4.GetRawData())->Compare(value4.GetObject<EcmaString>()), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(tagged4.GetRawData()),
+        value4.GetObject<EcmaString>()), 0);
 
     JSHandle<JSSymbol> symbol = factory->NewPublicSymbolWithChar("bbb");
     JSHandle<EcmaString> str = factory->NewFromASCII("bbb");
     JSHandle<JSTaggedValue> value5(symbol);
     JSTaggedValue tagged5 =
         JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value5))->GetValue());
-    EXPECT_EQ(EcmaString::Cast(reinterpret_cast<JSSymbol *>(tagged5.GetRawData())->GetDescription().GetTaggedObject())
-                  ->Compare(*str),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(EcmaString::Cast(
+        reinterpret_cast<JSSymbol *>(tagged5.GetRawData())->GetDescription().GetTaggedObject()), *str),
+        0);
     EXPECT_TRUE(tagged5.IsSymbol());
 
     EcmaVM *ecma = thread->GetEcmaVM();

@@ -235,7 +235,7 @@ GlobalTSTypeRef TSObjectType::GetPropTypeGT(JSHandle<TSObjectType> objectType, J
     TSObjLayoutInfo *layout = TSObjLayoutInfo::Cast(objectType->GetObjLayoutInfo().GetTaggedObject());
     for (uint32_t i = 0; i < layout->NumberOfElements(); ++i) {
         EcmaString* propKey = EcmaString::Cast(layout->GetKey(i).GetTaggedObject());
-        if (!EcmaString::StringsAreEqual(propKey, *propName)) {
+        if (!EcmaStringAccessor::StringsAreEqual(propKey, *propName)) {
             continue;
         }
 

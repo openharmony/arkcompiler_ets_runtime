@@ -87,7 +87,7 @@ HWTEST_F_L0(JSNumberFormatTest, GetIcuCallTarget)
     icu::number::FormattedNumber formattedNumber = resultIcuNumberFormatter->formatInt(value, status);
     icu::UnicodeString result = formattedNumber.toString(status);
     JSHandle<EcmaString> stringValue = JSLocale::IcuToString(thread, result);
-    EXPECT_STREQ("-123,456", CString(stringValue->GetCString().get()).c_str());
+    EXPECT_STREQ("-123,456", EcmaStringAccessor(stringValue).ToCString().c_str());
 }
 
 /**
@@ -113,7 +113,7 @@ HWTEST_F_L0(JSNumberFormatTest, InitializeNumberFormat)
     // Initialize attribute comparison
     EXPECT_TRUE(numberFormat->GetNumberingSystem().IsUndefined());
     JSHandle<EcmaString> localeStr(thread, numberFormat->GetLocale().GetTaggedObject());
-    EXPECT_STREQ("zh-Hans-CN", CString(localeStr->GetCString().get()).c_str());
+    EXPECT_STREQ("zh-Hans-CN", EcmaStringAccessor(localeStr).ToCString().c_str());
     EXPECT_EQ(NotationOption::STANDARD, numberFormat->GetNotation());
     EXPECT_EQ(CompactDisplayOption::SHORT, numberFormat->GetCompactDisplay());
     EXPECT_EQ(SignDisplayOption::AUTO, numberFormat->GetSignDisplay());
@@ -186,7 +186,7 @@ HWTEST_F_L0(JSNumberFormatTest, FormatNumeric)
         JSNumberFormat::FormatNumeric(thread, numberFormat, jsBigInt.GetTaggedValue());
 
     JSHandle<EcmaString> resultEcmaStr(thread, formatResult.GetTaggedValue());
-    EXPECT_STREQ("123,456,789", CString(resultEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("123,456,789", EcmaStringAccessor(resultEcmaStr).ToCString().c_str());
 }
 
 /**

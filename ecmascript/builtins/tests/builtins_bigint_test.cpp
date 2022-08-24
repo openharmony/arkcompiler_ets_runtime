@@ -117,7 +117,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, AsIntN_001)
     JSHandle<BigInt> bigIntHandle(thread, result);
     JSHandle<EcmaString> resultStr = BigInt::ToString(thread, bigIntHandle);
     JSHandle<EcmaString> str = factory->NewFromASCII("9223372036854775807");
-    EXPECT_EQ(resultStr->Compare(*str), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*resultStr, *str), 0);
 }
 
 // AsIntN(64, (2 ^ 63))
@@ -141,7 +141,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, AsIntN_002)
     JSHandle<BigInt> bigIntHandle(thread, result);
     JSHandle<EcmaString> resultStr = BigInt::ToString(thread, bigIntHandle);
     JSHandle<EcmaString> str = factory->NewFromASCII("-9223372036854775808");
-    EXPECT_EQ(resultStr->Compare(*str), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*resultStr, *str), 0);
 }
 
 // AsUintN(64, (2 ^ 64 - 1))
@@ -165,7 +165,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, AsUintN_001)
     JSHandle<BigInt> bigIntHandle(thread, result);
     JSHandle<EcmaString> resultStr = BigInt::ToString(thread, bigIntHandle);
     JSHandle<EcmaString> str = factory->NewFromASCII("18446744073709551615");
-    EXPECT_EQ(resultStr->Compare(*str), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*resultStr, *str), 0);
 }
 
 // AsUintN(64, (2 ^ 64))
@@ -189,7 +189,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, AsUintN_002)
     JSHandle<BigInt> bigIntHandle(thread, result);
     JSHandle<EcmaString> resultStr = BigInt::ToString(thread, bigIntHandle);
     JSHandle<EcmaString> str = factory->NewFromASCII("0");
-    EXPECT_EQ(resultStr->Compare(*str), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*resultStr, *str), 0);
 }
 
 // using locale
@@ -223,7 +223,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToLocaleString_001)
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
     JSHandle<EcmaString> resultStr(factory->NewFromASCII("123.456.789.123.456.789"));
-    EXPECT_EQ(ecmaStrHandle->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*ecmaStrHandle, *resultStr), 0);
 }
 
 // using locale and options
@@ -264,7 +264,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToLocaleString_002)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("123.456.789.123.456.789,00 €", CString(ecmaStrHandle->GetCString().get()).c_str());
+    EXPECT_STREQ("123.456.789.123.456.789,00 €", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
 }
 
 // 17.ToStirng()
@@ -294,7 +294,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_001)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("17", CString(ecmaStrHandle->GetCString().get()).c_str());
+    EXPECT_STREQ("17", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
 }
 
 // -0.ToStirng()
@@ -324,7 +324,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_002)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("0", CString(ecmaStrHandle->GetCString().get()).c_str());
+    EXPECT_STREQ("0", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
 }
 
 // -10.ToStirng(2)
@@ -355,7 +355,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_003)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("-1010", CString(ecmaStrHandle->GetCString().get()).c_str());
+    EXPECT_STREQ("-1010", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
 }
 
 // 254.ToStirng(16)
@@ -386,7 +386,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_004)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("fe", CString(ecmaStrHandle->GetCString().get()).c_str());
+    EXPECT_STREQ("fe", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
 }
 
 // BigInt.ValueOf
@@ -541,14 +541,14 @@ HWTEST_F_L0(BuiltinsBigIntTest, StringToBigInt)
     ASSERT_TRUE(bigint->IsBigInt());
     str = BigInt::ToString(thread, JSHandle<BigInt>::Cast(bigint), BigInt::HEXADECIMAL);
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("ffff"));
-    ASSERT_EQ(str->Compare(reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*str, reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
 
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("0XFFFF"));
     bigint = JSHandle<JSTaggedValue>(thread, base::NumberHelper::StringToBigInt(thread, parma));
     ASSERT_TRUE(bigint->IsBigInt());
     str = BigInt::ToString(thread, JSHandle<BigInt>::Cast(bigint), BigInt::HEXADECIMAL);
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("ffff"));
-    ASSERT_EQ(str->Compare(reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*str, reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
 
     // binary string
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("0b11111111"));
@@ -556,14 +556,14 @@ HWTEST_F_L0(BuiltinsBigIntTest, StringToBigInt)
     ASSERT_TRUE(bigint->IsBigInt());
     str = BigInt::ToString(thread, JSHandle<BigInt>::Cast(bigint), BigInt::BINARY);
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("11111111"));
-    ASSERT_EQ(str->Compare(reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*str, reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
 
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("0B11111111"));
     bigint = JSHandle<JSTaggedValue>(thread, base::NumberHelper::StringToBigInt(thread, parma));
     ASSERT_TRUE(bigint->IsBigInt());
     str = BigInt::ToString(thread, JSHandle<BigInt>::Cast(bigint), BigInt::BINARY);
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("11111111"));
-    ASSERT_EQ(str->Compare(reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*str, reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
 
     // octal string
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("0o123456"));
@@ -571,21 +571,21 @@ HWTEST_F_L0(BuiltinsBigIntTest, StringToBigInt)
     ASSERT_TRUE(bigint->IsBigInt());
     str = BigInt::ToString(thread, JSHandle<BigInt>::Cast(bigint), BigInt::OCTAL);
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("123456"));
-    ASSERT_EQ(str->Compare(reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*str, reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
 
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("0O123456"));
     bigint = JSHandle<JSTaggedValue>(thread, base::NumberHelper::StringToBigInt(thread, parma));
     ASSERT_TRUE(bigint->IsBigInt());
     str = BigInt::ToString(thread, JSHandle<BigInt>::Cast(bigint), BigInt::OCTAL);
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("123456"));
-    ASSERT_EQ(str->Compare(reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*str, reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
 
     // decimal string
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("999999999"));
     bigint = JSHandle<JSTaggedValue>(thread, base::NumberHelper::StringToBigInt(thread, parma));
     ASSERT_TRUE(bigint->IsBigInt());
     str = BigInt::ToString(thread, JSHandle<BigInt>::Cast(bigint));
-    ASSERT_EQ(str->Compare(reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*str, reinterpret_cast<EcmaString *>(parma->GetRawData())), 0);
 
     // string has space
     parma = JSHandle<JSTaggedValue>(factory->NewFromASCII("  123  "));

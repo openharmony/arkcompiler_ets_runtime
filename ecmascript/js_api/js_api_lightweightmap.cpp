@@ -398,12 +398,8 @@ JSTaggedValue JSAPILightWeightMap::ToString(JSThread *thread, const JSHandle<JSA
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!valueHandle->IsUndefined() && !valueHandle->IsNull()) {
             JSHandle<EcmaString> valueStringHandle = JSTaggedValue::ToString(thread, valueHandle);
-            uint32_t valueLen = valueStringHandle->GetLength();
-            if (valueStringHandle->IsUtf16()) {
-                valueStr = base::StringHelper::Utf16ToU16String(valueStringHandle->GetDataUtf16(), valueLen);
-            } else {
-                valueStr = base::StringHelper::Utf8ToU16String(valueStringHandle->GetDataUtf8(), valueLen);
-            }
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            valueStr = EcmaStringAccessor(valueStringHandle).ToU16String();
         }
 
         std::u16string keyStr;
@@ -411,12 +407,8 @@ JSTaggedValue JSAPILightWeightMap::ToString(JSThread *thread, const JSHandle<JSA
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!keyHandle->IsUndefined() && !keyHandle->IsNull()) {
             JSHandle<EcmaString> keyStringHandle = JSTaggedValue::ToString(thread, keyHandle);
-            uint32_t keyLen = keyStringHandle->GetLength();
-            if (keyStringHandle->IsUtf16()) {
-                keyStr = base::StringHelper::Utf16ToU16String(keyStringHandle->GetDataUtf16(), keyLen);
-            } else {
-                keyStr = base::StringHelper::Utf8ToU16String(keyStringHandle->GetDataUtf8(), keyLen);
-            }
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            keyStr = EcmaStringAccessor(keyStringHandle).ToU16String();
         }
 
         std::u16string nextStr = base::StringHelper::Append(keyStr, colonStr);
@@ -480,7 +472,7 @@ int32_t JSAPILightWeightMap::Hash(JSTaggedValue key)
     }
     if (key.IsString()) {
         auto keyString = EcmaString::Cast(key.GetTaggedObject());
-        return keyString->GetHashcode();
+        return EcmaStringAccessor(keyString).GetHashcode();
     }
     if (key.IsECMAObject()) {
         uint32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();

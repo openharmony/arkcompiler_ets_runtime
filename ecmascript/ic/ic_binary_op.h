@@ -67,7 +67,7 @@ public:
             case BinaryType::STRING: {
                 JSHandle<EcmaString> stringA0 = JSHandle<EcmaString>(JSHandle<JSTaggedValue>(thread, left));
                 JSHandle<EcmaString> stringA1 = JSHandle<EcmaString>(JSHandle<JSTaggedValue>(thread, right));
-                EcmaString *ret = EcmaString::Concat(stringA0, stringA1, thread->GetEcmaVM());
+                EcmaString *ret = EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1);
                 return JSTaggedValue(ret);
             }
             // Support cases, such as: string + null, string + object, string + boolean, string + number, etc.
@@ -77,12 +77,12 @@ public:
                 if (left.IsString()) {
                     JSHandle<EcmaString> stringA0 = JSHandle<EcmaString>(leftValue);
                     JSHandle<EcmaString> stringA1 = JSTaggedValue::ToString(thread, rightValue);
-                    EcmaString *ret = EcmaString::Concat(stringA0, stringA1, thread->GetEcmaVM());
+                    EcmaString *ret = EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1);
                     return JSTaggedValue(ret);
                 } else {
                     JSHandle<EcmaString> stringA0 = JSTaggedValue::ToString(thread, leftValue);
                     JSHandle<EcmaString> stringA1 = JSHandle<EcmaString>(rightValue);
-                    EcmaString *ret = EcmaString::Concat(stringA0, stringA1, thread->GetEcmaVM());
+                    EcmaString *ret = EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1);
                     return JSTaggedValue(ret);
                 }
             }

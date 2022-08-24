@@ -159,16 +159,8 @@ JSTaggedValue BuiltinsNumber::ParseFloat(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> numberString = JSTaggedValue::ToString(thread, msg);
     // 2. ReturnIfAbrupt(inputString).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    Span<const uint8_t> str;
-    if (UNLIKELY(numberString->IsUtf16())) {
-        size_t len = base::utf_helper::Utf16ToUtf8Size(numberString->GetDataUtf16(), numberString->GetLength()) - 1;
-        CVector<uint8_t> buf(len);
-        len = base::utf_helper::ConvertRegionUtf16ToUtf8(numberString->GetDataUtf16(), buf.data(),
-                                                         numberString->GetLength(), len, 0);
-        str = Span<const uint8_t>(buf.data(), len);
-    } else {
-        str = Span<const uint8_t>(numberString->GetDataUtf8(), numberString->GetUtf8Length() - 1);
-    }
+    [[maybe_unused]] CVector<uint8_t> buf;
+    Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
     // 4. If neither trimmedString nor any prefix of trimmedString satisfies the syntax of a StrDecimalLiteral
     // (see 7.1.3.1), return NaN.
     if (NumberHelper::IsEmptyString(str.begin(), str.end())) {
@@ -198,16 +190,8 @@ JSTaggedValue BuiltinsNumber::ParseInt(EcmaRuntimeCallInfo *argv)
     // 1. Let inputString be ToString(string).
     JSHandle<EcmaString> numberString = JSTaggedValue::ToString(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    Span<const uint8_t> str;
-    if (UNLIKELY(numberString->IsUtf16())) {
-        size_t len = base::utf_helper::Utf16ToUtf8Size(numberString->GetDataUtf16(), numberString->GetLength()) - 1;
-        CVector<uint8_t> buf(len);
-        len = base::utf_helper::ConvertRegionUtf16ToUtf8(numberString->GetDataUtf16(), buf.data(),
-                                                         numberString->GetLength(), len, 0);
-        str = Span<const uint8_t>(buf.data(), len);
-    } else {
-        str = Span<const uint8_t>(numberString->GetDataUtf8(), numberString->GetUtf8Length() - 1);
-    }
+    [[maybe_unused]] CVector<uint8_t> buf;
+    Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
 
     JSTaggedValue result = NumberHelper::StringToDoubleWithRadix(str.begin(), str.end(), radix);
     return JSTaggedValue::TryCastDoubleToInt32(result.GetNumber());

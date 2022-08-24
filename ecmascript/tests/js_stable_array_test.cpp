@@ -243,7 +243,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_NumberElements_UndefinedSep)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(CString(handleEcmaStrRet->GetCString().get()).c_str(), "0,1,2,3,4,5,6,7,8,9");
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(), "0,1,2,3,4,5,6,7,8,9");
 }
 
 /**
@@ -274,7 +274,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_UndefinedSep)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(CString(handleEcmaStrRet->GetCString().get()).c_str(), "abc,abc,abc,abc,abc,abc,abc,abc,abc,abc");
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(), "abc,abc,abc,abc,abc,abc,abc,abc,abc,abc");
 }
 
 /**
@@ -306,7 +306,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_NumberElements_DefinedSep)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(CString(handleEcmaStrRet->GetCString().get()).c_str(), "0^1^2^3^4^5^6^7^8^9");
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(), "0^1^2^3^4^5^6^7^8^9");
 }
 
 /**
@@ -339,7 +339,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_DefinedSep)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(CString(handleEcmaStrRet->GetCString().get()).c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
         "a <> a <> a <> a <> a <> a <> a <> a <> a <> a");
 }
 }  // namespace panda::test

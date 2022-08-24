@@ -29,49 +29,66 @@
 
 #include "libpandabase/macros.h"
 #include "securec.h"
+#include "unicode/locid.h"
 
 namespace panda {
 namespace ecmascript {
 template<typename T>
 class JSHandle;
 class EcmaVM;
-
 class EcmaString : public TaggedObject {
 public:
+    friend class EcmaStringAccessor;
+
     static EcmaString *Cast(TaggedObject *object);
     static const EcmaString *ConstCast(const TaggedObject *object);
 
-    static EcmaString *CreateEmptyString(const EcmaVM *vm);
-    static EcmaString *CreateFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len, const EcmaVM *vm, bool canBeCompress,
-                                      MemSpaceType type = MemSpaceType::SEMI_SPACE);
-    static EcmaString *CreateFromUtf8NonMovable(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len);
-    static EcmaString *CreateFromUtf16(const uint16_t *utf16Data, uint32_t utf16Len, const EcmaVM *vm,
-                                       bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE);
-    static EcmaString *Concat(const JSHandle<EcmaString> &str1Handle, const JSHandle<EcmaString> &str2Handle,
-                              const EcmaVM *vm);
-    static EcmaString *FastSubString(const JSHandle<EcmaString> &src, uint32_t start, uint32_t utf16Len,
-                                     const EcmaVM *vm);
-
     static constexpr uint32_t STRING_COMPRESSED_BIT = 0x1;
     static constexpr uint32_t STRING_INTERN_BIT = 0x2;
+
+    static constexpr size_t MIX_LENGTH_OFFSET = TaggedObjectSize();
+    // In last bit of mix_length we store if this string is compressed or not.
+    ACCESSORS_PRIMITIVE_FIELD(MixLength, uint32_t, MIX_LENGTH_OFFSET, HASHCODE_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(RawHashcode, uint32_t, HASHCODE_OFFSET, SIZE)
+    // DATA_OFFSET: the string data stored after the string header.
+    // Data can be stored in utf8 or utf16 form according to compressed bit.
+    static constexpr size_t DATA_OFFSET = SIZE;  // DATA_OFFSET equal to Empty String size
+
     enum CompressedStatus {
         STRING_COMPRESSED,
         STRING_UNCOMPRESSED,
     };
 
+    enum TrimMode : uint8_t {
+        TRIM,
+        TRIM_START,
+        TRIM_END,
+    };
+
+private:
+    static EcmaString *CreateEmptyString(const EcmaVM *vm);
+    static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+                                      MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
+                                       bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    static EcmaString *Concat(const EcmaVM *vm,
+        const JSHandle<EcmaString> &str1Handle, const JSHandle<EcmaString> &str2Handle);
+    static EcmaString *FastSubString(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
+
     template<bool verify = true>
     uint16_t At(int32_t index) const;
 
-    int32_t Compare(const EcmaString *rhs) const;
+    static int32_t Compare(EcmaString *lhs, EcmaString *rhs);
 
     bool IsUtf16() const
     {
-        return compressedStringsEnabled ? ((GetMixLength() & STRING_COMPRESSED_BIT) == STRING_UNCOMPRESSED) : true;
+        return (GetMixLength() & STRING_COMPRESSED_BIT) == STRING_UNCOMPRESSED;
     }
 
     bool IsUtf8() const
     {
-        return compressedStringsEnabled ? ((GetMixLength() & STRING_COMPRESSED_BIT) == STRING_COMPRESSED) : false;
+        return (GetMixLength() & STRING_COMPRESSED_BIT) == STRING_COMPRESSED;
     }
 
     static size_t ComputeDataSizeUtf16(uint32_t length)
@@ -115,12 +132,12 @@ public:
         return reinterpret_cast<uint8_t *>(GetData());
     }
 
-    size_t GetUtf8Length() const
+    size_t GetUtf8Length(bool modify = true) const
     {
         if (!IsUtf16()) {
             return GetLength() + 1;  // add place for zero in the end
         }
-        return base::utf_helper::Utf16ToUtf8Size(GetData(), GetLength());
+        return base::utf_helper::Utf16ToUtf8Size(GetData(), GetLength(), modify);
     }
 
     size_t GetUtf16Length() const
@@ -128,19 +145,19 @@ public:
         return GetLength();
     }
 
-    inline size_t CopyDataUtf8(uint8_t *buf, size_t maxLength) const
+    inline size_t CopyDataUtf8(uint8_t *buf, size_t maxLength, bool modify = true) const
     {
         if (maxLength == 0) {
             return 1; // maxLength was -1 at napi
         }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        buf[maxLength - 1] = '\0';
-        // Put comparison here so that internal usage and napi can use the same CopyDataRegionUtf8
         size_t length = GetLength();
         if (length > maxLength) {
             return 0;
         }
-        return CopyDataRegionUtf8(buf, 0, length, maxLength) + 1;  // add place for zero in the end
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        buf[maxLength - 1] = '\0';
+        // Put comparison here so that internal usage and napi can use the same CopyDataRegionUtf8
+        return CopyDataRegionUtf8(buf, 0, length, maxLength, modify) + 1;  // add place for zero in the end
     }
 
     // It allows user to copy into buffer even if maxLength < length
@@ -154,7 +171,7 @@ public:
         return CopyDataRegionUtf8(buf, 0, GetLength(), maxLength) + 1;  // add place for zero in the end
     }
 
-    size_t CopyDataRegionUtf8(uint8_t *buf, size_t start, size_t length, size_t maxLength) const
+    size_t CopyDataRegionUtf8(uint8_t *buf, size_t start, size_t length, size_t maxLength, bool modify = true) const
     {
         uint32_t len = GetLength();
         if (start + length > len) {
@@ -181,9 +198,9 @@ public:
             return length;
         }
         if (length > maxLength) {
-            return base::utf_helper::ConvertRegionUtf16ToUtf8(GetDataUtf16(), buf, maxLength, maxLength, start);
+            return base::utf_helper::ConvertRegionUtf16ToUtf8(GetDataUtf16(), buf, maxLength, maxLength, start, modify);
         }
-        return base::utf_helper::ConvertRegionUtf16ToUtf8(GetDataUtf16(), buf, length, maxLength, start);
+        return base::utf_helper::ConvertRegionUtf16ToUtf8(GetDataUtf16(), buf, length, maxLength, start, modify);
     }
 
     inline uint32_t CopyDataUtf16(uint16_t *buf, uint32_t maxLength) const
@@ -212,18 +229,75 @@ public:
         return base::utf_helper::ConvertRegionUtf8ToUtf16(GetDataUtf8(), buf, len, maxLength, start);
     }
 
-    // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-    inline std::unique_ptr<char[]> GetCString()
+    std::u16string ToU16String(uint32_t len = 0);
+
+    std::unique_ptr<uint8_t[]> ToOneByteDataForced()
     {
-        auto length = GetUtf8Length();
-        char *buf = new char[length]();
-        CopyDataUtf8(reinterpret_cast<uint8_t *>(buf), length);
-        // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-        return std::unique_ptr<char[]>(buf);
+        uint8_t *buf = nullptr;
+        auto length = GetLength();
+        if (IsUtf16()) {
+            auto size = ComputeDataSizeUtf16(length);
+            buf = new uint8_t[size]();
+            CopyDataUtf16(reinterpret_cast<uint16_t *>(buf), length);
+        } else {
+            buf = new uint8_t[length + 1]();
+            CopyDataUtf8(buf, length + 1);
+        }
+        return std::unique_ptr<uint8_t[]>(buf);
     }
 
-    inline void WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length);
-    inline void WriteData(char src, uint32_t start);
+    Span<const uint8_t> ToUtf8Span([[maybe_unused]] CVector<uint8_t> &buf, bool modify = true)
+    {
+        Span<const uint8_t> str;
+        uint32_t strLen = GetLength();
+        if (UNLIKELY(IsUtf16())) {
+            size_t len = base::utf_helper::Utf16ToUtf8Size(GetDataUtf16(), strLen, modify) - 1;
+            buf.reserve(len);
+            len = base::utf_helper::ConvertRegionUtf16ToUtf8(GetDataUtf16(), buf.data(), strLen, len, 0, modify);
+            str = Span<const uint8_t>(buf.data(), len);
+        } else {
+            str = Span<const uint8_t>(GetDataUtf8(), strLen);
+        }
+        return str;
+    }
+
+    void WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
+    {
+        if (IsUtf8()) {
+            ASSERT(src->IsUtf8());
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            if (length != 0 && memcpy_s(GetDataUtf8Writable() + start, destSize, src->GetDataUtf8(), length) != EOK) {
+                LOG_FULL(FATAL) << "memcpy_s failed";
+                UNREACHABLE();
+            }
+        } else if (src->IsUtf8()) {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            Span<uint16_t> to(GetDataUtf16Writable() + start, length);
+            Span<const uint8_t> from(src->GetDataUtf8(), length);
+            for (uint32_t i = 0; i < length; i++) {
+                to[i] = from[i];
+            }
+        } else {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            if (length != 0 && memcpy_s(GetDataUtf16Writable() + start,
+                ComputeDataSizeUtf16(destSize), src->GetDataUtf16(), ComputeDataSizeUtf16(length)) != EOK) {
+                LOG_FULL(FATAL) << "memcpy_s failed";
+                UNREACHABLE();
+            }
+        }
+    }
+
+    inline void WriteData(uint16_t src, uint32_t start)
+    {
+        if (IsUtf8()) {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            *(GetDataUtf8Writable() + start) = static_cast<uint8_t>(src);
+        } else {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            *(GetDataUtf16Writable() + start) = src;
+        }
+    }
+
     uint32_t GetLength() const
     {
         return GetMixLength() >> 2U;
@@ -263,7 +337,9 @@ public:
 
     uint32_t ComputeHashcode(uint32_t hashSeed) const;
 
-    int32_t IndexOf(const EcmaString *rhs, int pos = 0) const;
+    static int32_t IndexOf(EcmaString *lhs, EcmaString *rhs, int pos = 0);
+
+    static int32_t LastIndexOf(EcmaString *lhs, EcmaString *rhs, int pos = 0);
 
     static constexpr uint32_t GetStringCompressionMask()
     {
@@ -294,37 +370,34 @@ public:
     static uint32_t ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress);
     static uint32_t ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length);
 
-    static void SetCompressedStringsEnabled(bool val)
-    {
-        compressedStringsEnabled = val;
-    }
-
-    static bool GetCompressedStringsEnabled()
-    {
-        return compressedStringsEnabled;
-    }
-
-    static EcmaString *AllocStringObject(size_t length, bool compressed, const EcmaVM *vm);
-    static EcmaString *AllocStringObjectWithSpaceType(size_t length, bool compressed, const EcmaVM *vm,
+    static EcmaString *AllocStringObject(const EcmaVM *vm, size_t length, bool compressed);
+    static EcmaString *AllocStringObjectWithSpaceType(const EcmaVM *vm, size_t length, bool compressed,
                                                       MemSpaceType type);
 
     static bool CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len);
     static bool CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len);
     static bool CanBeCompressed(const EcmaString *string);
 
-    static constexpr size_t MIX_LENGTH_OFFSET = TaggedObjectSize();
-    // In last bit of mix_length we store if this string is compressed or not.
-    ACCESSORS_PRIMITIVE_FIELD(MixLength, uint32_t, MIX_LENGTH_OFFSET, HASHCODE_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(RawHashcode, uint32_t, HASHCODE_OFFSET, SIZE)
-    // DATA_OFFSET: the string data stored after the string header.
-    // Data can be stored in utf8 or utf16 form according to compressed bit.
-    static constexpr size_t DATA_OFFSET = SIZE;  // DATA_OFFSET equal to Empty String size
-
     static inline EcmaString *FastSubUtf8String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
                                                 uint32_t length);
     static inline EcmaString *FastSubUtf16String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
                                                  uint32_t length);
-private:
+
+    bool ToElementIndex(uint32_t *index);
+
+    bool ToTypedArrayIndex(uint32_t *index);
+
+    template<bool isLower>
+    static EcmaString *ConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src);
+
+    template<bool isLower>
+    static EcmaString *LocaleConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale);
+
+    template<typename T>
+    static EcmaString *TrimBody(const JSThread *thread, const JSHandle<EcmaString> &src, Span<T> &data, TrimMode mode);
+
+    static EcmaString *Trim(const JSThread *thread, const JSHandle<EcmaString> &src, TrimMode mode = TrimMode::TRIM);
+
     void SetLength(uint32_t length, bool compressed = false)
     {
         ASSERT(length < 0x40000000U);
@@ -345,8 +418,6 @@ private:
     }
 
     static void CopyUtf16AsUtf8(const uint16_t *utf16From, uint8_t *utf8To, uint32_t utf16Len);
-
-    static bool compressedStringsEnabled;
 
     static bool IsASCIICharacter(uint16_t data)
     {
@@ -375,9 +446,262 @@ private:
 
     template<typename T1, typename T2>
     static int32_t IndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos, int32_t max);
+
+    template<typename T1, typename T2>
+    static int32_t LastIndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos);
 };
 
 static_assert((EcmaString::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+
+// if you want to use functions of EcmaString, please not use directly,
+// and use functions of EcmaStringAccessor alternatively.
+// eg: EcmaString *str = ***; str->GetLength() ----->  EcmaStringAccessor(str).GetLength()
+class EcmaStringAccessor {
+public:
+    explicit EcmaStringAccessor(EcmaString *string);
+
+    explicit EcmaStringAccessor(TaggedObject *obj);
+
+    explicit EcmaStringAccessor(JSTaggedValue value);
+
+    explicit EcmaStringAccessor(const JSHandle<EcmaString> &strHandle);
+
+    static EcmaString *AllocStringObject(const EcmaVM *vm, size_t length, bool compressed)
+    {
+        return EcmaString::AllocStringObject(vm, length, compressed);
+    }
+
+    static EcmaString *CreateEmptyString(const EcmaVM *vm)
+    {
+        return EcmaString::CreateEmptyString(vm);
+    }
+ 
+    static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+                                      MemSpaceType type = MemSpaceType::SEMI_SPACE)
+    {
+        return EcmaString::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
+    }
+  
+    static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
+                                       bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE)
+    {
+        return EcmaString::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, type);
+    }
+
+    static EcmaString *Concat(const EcmaVM *vm,
+        const JSHandle<EcmaString> &str1Handle, const JSHandle<EcmaString> &str2Handle)
+    {
+        return EcmaString::Concat(vm, str1Handle, str2Handle);
+    }
+
+    static EcmaString *FastSubString(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
+    {
+        return EcmaString::FastSubString(vm, src, start, length);
+    }
+
+    bool IsUtf8() const
+    {
+        return string_->IsUtf8();
+    }
+
+    bool IsUtf16() const
+    {
+        return string_->IsUtf16();
+    }
+
+    uint32_t GetLength() const
+    {
+        return string_->GetLength();
+    }
+
+    size_t GetUtf8Length() const
+    {
+        return string_->GetUtf8Length();
+    }
+
+    size_t ObjectSize() const
+    {
+        return string_->ObjectSize();
+    }
+
+    bool IsInternString() const
+    {
+        return string_->IsInternString();
+    }
+
+    void SetInternString()
+    {
+        string_->SetIsInternString();
+    }
+
+    void ClearInternString()
+    {
+        string_->ClearInternStringFlag();
+    }
+
+    const uint8_t *GetDataUtf8()
+    {
+        return string_->GetDataUtf8();
+    }
+
+    const uint16_t *GetDataUtf16()
+    {
+        return string_->GetDataUtf16();
+    }
+
+    std::u16string ToU16String(uint32_t len = 0)
+    {
+        return string_->ToU16String(len);
+    }
+
+    std::unique_ptr<uint8_t[]> ToOneByteDataForced()
+    {
+        return string_->ToOneByteDataForced();
+    }
+
+    Span<const uint8_t> ToUtf8Span([[maybe_unused]] CVector<uint8_t> &buf)
+    {
+        return string_->ToUtf8Span(buf);
+    }
+
+    std::string ToStdString(StringConvertedUsage usage = StringConvertedUsage::PRINT);
+
+    CString ToCString(StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION);
+
+    uint32_t WriteToFlatUtf8(uint8_t *buf, uint32_t maxLength)
+    {
+        return string_->WriteUtf8(buf, maxLength);
+    }
+
+    uint32_t WriteToFlatUtf16(uint16_t *buf, uint32_t maxLength) const
+    {
+        return string_->CopyDataUtf16(buf, maxLength);
+    }
+
+    static void ReadData(EcmaString * dst, EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
+    {
+        dst->WriteData(src, start, destSize, length);
+    }
+
+    template<bool verify = true>
+    uint16_t Get(uint32_t index) const
+    {
+        return string_->At<verify>(index);
+    }
+
+    void Set(uint32_t index, uint16_t src)
+    {
+        return string_->WriteData(src, index);
+    }
+
+    uint32_t GetHashcode()
+    {
+        return string_->GetHashcode();
+    }
+
+    uint32_t ComputeHashcode(uint32_t hashSeed)
+    {
+        return string_->ComputeHashcode(hashSeed);
+    }
+
+    static uint32_t ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)
+    {
+        return EcmaString::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+    }
+
+    static uint32_t ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length)
+    {
+        return EcmaString::ComputeHashcodeUtf16(utf16Data, length);
+    }
+
+    static int32_t IndexOf(EcmaString *lhs, EcmaString *rhs, int pos = 0)
+    {
+        return EcmaString::IndexOf(lhs, rhs, pos);
+    }
+
+    static int32_t LastIndexOf(EcmaString *lhs, EcmaString *rhs, int pos = 0)
+    {
+        return EcmaString::LastIndexOf(lhs, rhs, pos);
+    }
+
+    static int32_t Compare(EcmaString *lhs, EcmaString *rhs)
+    {
+        return EcmaString::Compare(lhs, rhs);
+    }
+
+    static bool StringsAreEqual(EcmaString *str1, EcmaString *str2)
+    {
+        return EcmaString::StringsAreEqual(str1, str2);
+    }
+
+    static bool StringsAreEqualSameUtfEncoding(EcmaString *str1, EcmaString *str2)
+    {
+        return EcmaString::StringsAreEqualSameUtfEncoding(str1, str2);
+    }
+
+    static bool StringsAreEqualUtf8(const EcmaString *str1, const uint8_t *utf8Data, uint32_t utf8Len,
+                                    bool canBeCompress)
+    {
+        return EcmaString::StringsAreEqualUtf8(str1, utf8Data, utf8Len, canBeCompress);
+    }
+
+    static bool StringsAreEqualUtf16(const EcmaString *str1, const uint16_t *utf16Data, uint32_t utf16Len)
+    {
+        return EcmaString::StringsAreEqualUtf16(str1, utf16Data, utf16Len);
+    }
+
+    bool EqualToSplicedString(const EcmaString *str1, const EcmaString *str2)
+    {
+        return string_->EqualToSplicedString(str1, str2);
+    }
+
+    static bool CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len)
+    {
+        return EcmaString::CanBeCompressed(utf8Data, utf8Len);
+    }
+
+    static bool CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len)
+    {
+        return EcmaString::CanBeCompressed(utf16Data, utf16Len);
+    }
+
+    static bool CanBeCompressed(const EcmaString *string)
+    {
+        return EcmaString::CanBeCompressed(string);
+    }
+
+    bool ToElementIndex(uint32_t *index)
+    {
+        return string_->ToElementIndex(index);
+    }
+
+    bool ToTypedArrayIndex(uint32_t *index)
+    {
+        return string_->ToTypedArrayIndex(index);
+    }
+
+    template<bool isLower>
+    static EcmaString *ConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src)
+    {
+        return EcmaString::ConvertCase<isLower>(vm, src);
+    }
+
+    template<bool isLower>
+    static EcmaString *LocaleConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale)
+    {
+        return EcmaString::LocaleConvertCase<isLower>(vm, src, locale);
+    }
+
+    static EcmaString *Trim(const JSThread *thread,
+        const JSHandle<EcmaString> &src, EcmaString::TrimMode mode = EcmaString::TrimMode::TRIM)
+    {
+        return EcmaString::Trim(thread, src, mode);
+    }
+
+private:
+    EcmaString *string_ {nullptr};
+};
 }  // namespace ecmascript
 }  // namespace panda
 #endif  // ECMASCRIPT_STRING_H

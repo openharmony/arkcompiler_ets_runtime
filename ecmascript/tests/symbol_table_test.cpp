@@ -113,10 +113,6 @@ HWTEST_F_L0(SymbolTableTest, Hash_Utf8)
     JSHandle<JSTaggedValue> jsObJect(factory->NewEmptyJSObject());
     EXPECT_EQ(SymbolTable::Hash(jsObJect.GetTaggedValue()), JSSymbol::ComputeHash());
 
-    // the CompressedStringsEnabled must  be true
-    bool flag = EcmaString::GetCompressedStringsEnabled();
-    EXPECT_EQ(flag, true);
-
     uint8_t utf8ArrayName1[4] = {1, 2, 3}; // The last element is "\0"
     uint32_t utf8ArrayNameLen1 = sizeof(utf8ArrayName1) - 1;
     JSHandle<EcmaString> nameStringUtf8Obj1 = factory->NewFromUtf8(utf8ArrayName1, utf8ArrayNameLen1);
@@ -163,9 +159,6 @@ HWTEST_F_L0(SymbolTableTest, Hash_Utf16)
 HWTEST_F_L0(SymbolTableTest, Create)
 {
     int numberOfElements = SymbolTable::DEFAULT_ELEMENTS_NUMBER;
-    // the CompressedStringsEnabled must  be true
-    bool flag = EcmaString::GetCompressedStringsEnabled();
-    EXPECT_EQ(flag, true);
 
     JSHandle<SymbolTable> symbolTable = SymbolTable::Create(thread, numberOfElements);
     EXPECT_TRUE(*symbolTable != nullptr);

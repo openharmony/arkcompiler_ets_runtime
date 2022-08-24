@@ -643,7 +643,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec1)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("ab");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec2)
@@ -665,10 +665,10 @@ HWTEST_F_L0(RegExpTest, ParseAndExec2)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 10U);
     JSHandle<EcmaString> str = factory->NewFromASCII("ab");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str) == 0);
-    ASSERT_TRUE(result.captures_[2].second->Compare(*str) == 0);
-    ASSERT_TRUE(result.captures_[3].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[2].second, *str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[3].second, *str) == 0);
     ASSERT_TRUE(result.captures_[4].first);
     ASSERT_TRUE(result.captures_[5].first);
     ASSERT_TRUE(result.captures_[6].first);
@@ -697,8 +697,8 @@ HWTEST_F_L0(RegExpTest, ParseAndExec3)
     ASSERT_EQ(result.captures_.size(), 2U);
     JSHandle<EcmaString> str1 = factory->NewFromASCII("aaba");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("ba");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec4)
@@ -720,7 +720,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec4)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("aa");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec5)
@@ -742,7 +742,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec5)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec6)
@@ -768,12 +768,12 @@ HWTEST_F_L0(RegExpTest, ParseAndExec6)
     JSHandle<EcmaString> str3 = factory->NewFromASCII("ac");
     JSHandle<EcmaString> str4 = factory->NewFromASCII("a");
     JSHandle<EcmaString> str5 = factory->NewFromASCII("c");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
-    ASSERT_TRUE(result.captures_[2].second->Compare(*str3) == 0);
-    ASSERT_TRUE(result.captures_[3].second->Compare(*str4) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[2].second, *str3) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[3].second, *str4) == 0);
     ASSERT_TRUE(result.captures_[4].first);
-    ASSERT_TRUE(result.captures_[5].second->Compare(*str5) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[5].second, *str5) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec7)
@@ -795,7 +795,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec7)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("abc");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec8)
@@ -817,7 +817,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec8)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("abc");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec9)
@@ -839,7 +839,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec9)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("er");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec10)
@@ -861,7 +861,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec10)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("d");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec11)
@@ -883,7 +883,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec11)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("a");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec12)
@@ -905,7 +905,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec12)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("\n");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec13)
@@ -927,7 +927,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec13)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("abc");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec14)
@@ -949,7 +949,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec14)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("abc");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec15)
@@ -971,7 +971,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec15)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("a");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec16)
@@ -993,7 +993,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec16)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("ABC");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec17)
@@ -1015,7 +1015,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec17)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("a\n");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec18)
@@ -1053,7 +1053,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec19)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("a");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec20)
@@ -1076,8 +1076,8 @@ HWTEST_F_L0(RegExpTest, ParseAndExec20)
     ASSERT_EQ(result.captures_.size(), 2U);
     JSHandle<EcmaString> str1 = factory->NewFromASCII("");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("aaa");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec21)
@@ -1099,7 +1099,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec21)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("a");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec22)
@@ -1121,7 +1121,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec22)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("aaaa:");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec23)
@@ -1143,7 +1143,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec23)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("a");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec24)
@@ -1182,8 +1182,8 @@ HWTEST_F_L0(RegExpTest, ParseAndExec25)
     ASSERT_EQ(result.captures_.size(), 2U);
     JSHandle<EcmaString> str1 = factory->NewFromASCII("");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("ab");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec26)
@@ -1205,7 +1205,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec26)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("A");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec27)
@@ -1227,7 +1227,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec27)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("Z");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec28)
@@ -1249,7 +1249,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec28)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("\n");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec29)
@@ -1271,8 +1271,8 @@ HWTEST_F_L0(RegExpTest, ParseAndExec29)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 2U);
     JSHandle<EcmaString> str = factory->NewFromASCII("");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec30)
@@ -1294,7 +1294,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec30)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 2U);
     JSHandle<EcmaString> str = factory->NewFromASCII("");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
     ASSERT_TRUE(result.captures_[1].first);
 }
 
@@ -1316,8 +1316,8 @@ HWTEST_F_L0(RegExpTest, ParseAndExec31)
     ASSERT_EQ(result.captures_.size(), 2U);
     JSHandle<EcmaString> str1 = factory->NewFromASCII("abb");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("b");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec32)
@@ -1339,9 +1339,9 @@ HWTEST_F_L0(RegExpTest, ParseAndExec32)
     JSHandle<EcmaString> str1 = factory->NewFromASCII("abb");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("ab");
     JSHandle<EcmaString> str3 = factory->NewFromASCII("b");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
-    ASSERT_TRUE(result.captures_[2].second->Compare(*str3) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[2].second, *str3) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec33)
@@ -1361,7 +1361,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec33)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("qya");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec34)
@@ -1381,7 +1381,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec34)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("qy");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec35)
@@ -1404,10 +1404,10 @@ HWTEST_F_L0(RegExpTest, ParseAndExec35)
     JSHandle<EcmaString> str2 = factory->NewFromASCII("2021");
     JSHandle<EcmaString> str3 = factory->NewFromASCII("01");
     JSHandle<EcmaString> str4 = factory->NewFromASCII("09");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
-    ASSERT_TRUE(result.captures_[2].second->Compare(*str3) == 0);
-    ASSERT_TRUE(result.captures_[3].second->Compare(*str4) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[2].second, *str3) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[3].second, *str4) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec36)
@@ -1429,9 +1429,9 @@ HWTEST_F_L0(RegExpTest, ParseAndExec36)
     JSHandle<EcmaString> str1 = factory->NewFromASCII("Quick Brown Fox Jumps");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("Brown");
     JSHandle<EcmaString> str3 = factory->NewFromASCII("Jumps");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
-    ASSERT_TRUE(result.captures_[2].second->Compare(*str3) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[2].second, *str3) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec37)
@@ -1452,8 +1452,8 @@ HWTEST_F_L0(RegExpTest, ParseAndExec37)
     ASSERT_EQ(result.captures_.size(), 2U);
     JSHandle<EcmaString> str1 = factory->NewFromASCII("abABc");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("AB");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec38)
@@ -1475,9 +1475,9 @@ HWTEST_F_L0(RegExpTest, ParseAndExec38)
     JSHandle<EcmaString> str1 = factory->NewFromASCII("www.netscape.com");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("netscape.");
     JSHandle<EcmaString> str3 = factory->NewFromASCII("netscap");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
-    ASSERT_TRUE(result.captures_[2].second->Compare(*str3) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[2].second, *str3) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec39)
@@ -1498,8 +1498,8 @@ HWTEST_F_L0(RegExpTest, ParseAndExec39)
     ASSERT_EQ(result.captures_.size(), 2U);
     JSHandle<EcmaString> str1 = factory->NewFromASCII("b");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec40)
@@ -1519,7 +1519,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec40)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec41)
@@ -1541,10 +1541,10 @@ HWTEST_F_L0(RegExpTest, ParseAndExec41)
     JSHandle<EcmaString> str1 = factory->NewFromASCII("baaabaac");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("ba");
     JSHandle<EcmaString> str3 = factory->NewFromASCII("abaac");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
     ASSERT_TRUE(result.captures_[2].first);
-    ASSERT_TRUE(result.captures_[3].second->Compare(*str3) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[3].second, *str3) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec42)
@@ -1564,7 +1564,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec42)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("abc324234");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec43)
@@ -1584,7 +1584,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec43)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("1\nl");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec44)
@@ -1604,7 +1604,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec44)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("c\bd");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec45)
@@ -1624,7 +1624,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec45)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("easy");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec46)
@@ -1645,9 +1645,9 @@ HWTEST_F_L0(RegExpTest, ParseAndExec46)
     ASSERT_EQ(result.captures_.size(), 3U);
     JSHandle<EcmaString> str1 = factory->NewFromASCII("Course_Creator = Test");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("Course_Creator");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
     ASSERT_FALSE(result.captures_[1].first);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
     ASSERT_TRUE(result.captures_[2].first);
 }
 
@@ -1668,7 +1668,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec47)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("et");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec49)
@@ -1692,11 +1692,11 @@ HWTEST_F_L0(RegExpTest, ParseAndExec49)
     JSHandle<EcmaString> str3 = factory->NewFromASCII("b");
     JSHandle<EcmaString> str4 = factory->NewFromASCII("5");
     JSHandle<EcmaString> str5 = factory->NewFromASCII("5");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
-    ASSERT_TRUE(result.captures_[2].second->Compare(*str3) == 0);
-    ASSERT_TRUE(result.captures_[3].second->Compare(*str4) == 0);
-    ASSERT_TRUE(result.captures_[4].second->Compare(*str5) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[2].second, *str3) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[3].second, *str4) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[4].second, *str5) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec50)
@@ -1719,10 +1719,10 @@ HWTEST_F_L0(RegExpTest, ParseAndExec50)
     JSHandle<EcmaString> str2 = factory->NewFromASCII("2020");
     JSHandle<EcmaString> str3 = factory->NewFromASCII("12-31");
     JSHandle<EcmaString> str4 = factory->NewFromASCII("31");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
-    ASSERT_TRUE(result.captures_[2].second->Compare(*str3) == 0);
-    ASSERT_TRUE(result.captures_[3].second->Compare(*str4) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[2].second, *str3) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[3].second, *str4) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec51)
@@ -1760,8 +1760,8 @@ HWTEST_F_L0(RegExpTest, ParseAndExec52)
     ASSERT_EQ(result.captures_.size(), 2U);
     JSHandle<EcmaString> str1 = factory->NewFromASCII("aabcdaa");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("aa");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str1) == 0);
-    ASSERT_TRUE(result.captures_[1].second->Compare(*str2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str1) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[1].second, *str2) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec53)
@@ -1781,7 +1781,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec53)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("\u0001");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec54)
@@ -1816,7 +1816,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec55)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("e");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec56)
@@ -1836,7 +1836,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec56)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromUtf8("a啊");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec57)
@@ -1870,7 +1870,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec58)
     ASSERT_EQ(result.captures_.size(), 1U);
     char16_t data1[] = {0xdf06};
     JSHandle<EcmaString> str = factory->NewFromUtf16(reinterpret_cast<const uint16_t *>(data1), 1);
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, ParseAndExec59)
@@ -1892,7 +1892,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec59)
     MatchResult result = executor.GetResult(thread, ret);
     ASSERT_EQ(result.captures_.size(), 1U);
     JSHandle<EcmaString> str = factory->NewFromASCII("\u000B");
-    ASSERT_TRUE(result.captures_[0].second->Compare(*str) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*result.captures_[0].second, *str) == 0);
 }
 
 HWTEST_F_L0(RegExpTest, RangeSet1)

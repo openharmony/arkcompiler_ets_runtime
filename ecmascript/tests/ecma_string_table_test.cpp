@@ -56,11 +56,11 @@ HWTEST_F_L0(EcmaStringTableTest, InternEmptyString)
 {
     EcmaStringTable *table = thread->GetEcmaVM()->GetEcmaStringTable();
 
-    JSHandle<EcmaString> emptyEcmaStrHandle(thread, EcmaString::CreateEmptyString(thread->GetEcmaVM()));
-    EXPECT_TRUE(!emptyEcmaStrHandle->IsInternString());
+    JSHandle<EcmaString> emptyEcmaStrHandle(thread, EcmaStringAccessor::CreateEmptyString(thread->GetEcmaVM()));
+    EXPECT_TRUE(!EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
 
     table->InternEmptyString(*emptyEcmaStrHandle);
-    EXPECT_TRUE(emptyEcmaStrHandle->IsInternString());
+    EXPECT_TRUE(EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
 }
 
 /**
@@ -76,12 +76,12 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_utf8Data)
     EcmaStringTable *table = vm->GetEcmaStringTable();
 
     uint8_t utf8Data[] = {0x68, 0x65, 0x6c, 0x6c, 0x6f}; // " hello "
-    EcmaString *ecmaStrCreatePtr = EcmaString::CreateFromUtf8(utf8Data, sizeof(utf8Data), vm, true);
-    EXPECT_TRUE(!ecmaStrCreatePtr->IsInternString());
+    EcmaString *ecmaStrCreatePtr = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, sizeof(utf8Data), true);
+    EXPECT_TRUE(!EcmaStringAccessor(ecmaStrCreatePtr).IsInternString());
 
     EcmaString *ecmaStrGetPtr = table->GetOrInternString(utf8Data, sizeof(utf8Data), true);
-    EXPECT_STREQ(CString(ecmaStrGetPtr->GetCString().get()).c_str(), "hello");
-    EXPECT_TRUE(ecmaStrGetPtr->IsInternString());
+    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString().c_str(), "hello");
+    EXPECT_TRUE(EcmaStringAccessor(ecmaStrGetPtr).IsInternString());
 }
 
 /**
@@ -98,12 +98,12 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_utf16Data)
 
     uint16_t utf16Data[] = {0x7F16, 0x7801, 0x89E3, 0x7801}; // “ 编码解码 ”
     EcmaString *ecmaStrCreatePtr =
-        EcmaString::CreateFromUtf16(utf16Data, sizeof(utf16Data) / sizeof(uint16_t), vm, false);
-    EXPECT_TRUE(!ecmaStrCreatePtr->IsInternString());
+        EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, sizeof(utf16Data) / sizeof(uint16_t), false);
+    EXPECT_TRUE(!EcmaStringAccessor(ecmaStrCreatePtr).IsInternString());
 
     EcmaString *ecmaStrGetPtr = table->GetOrInternString(utf16Data, sizeof(utf16Data) / sizeof(uint16_t), false);
-    EXPECT_STREQ(ecmaStrGetPtr->GetCString().get(), "编码解码");
-    EXPECT_TRUE(ecmaStrGetPtr->IsInternString());
+    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString().c_str(), "编码解码");
+    EXPECT_TRUE(EcmaStringAccessor(ecmaStrGetPtr).IsInternString());
 }
 
 /**
@@ -120,11 +120,11 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_EcmaString)
     EcmaStringTable *table = vm->GetEcmaStringTable();
 
     JSHandle<EcmaString> ecmaStrCreateHandle = factory->NewFromASCII("hello world");
-    EXPECT_TRUE(ecmaStrCreateHandle->IsInternString());
+    EXPECT_TRUE(EcmaStringAccessor(ecmaStrCreateHandle).IsInternString());
 
     EcmaString *ecmaStrGetPtr = table->GetOrInternString(*ecmaStrCreateHandle);
-    EXPECT_STREQ(ecmaStrGetPtr->GetCString().get(), "hello world");
-    EXPECT_TRUE(ecmaStrGetPtr->IsInternString());
+    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString().c_str(), "hello world");
+    EXPECT_TRUE(EcmaStringAccessor(ecmaStrGetPtr).IsInternString());
 }
 
 /**

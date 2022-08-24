@@ -113,13 +113,13 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_001)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleValue, handleReplacer1, handleGap);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("false", CString(handleEcmaStr1->GetCString().get()).c_str());
+    EXPECT_STREQ("false", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
 
     JsonStringifier stringifier2(thread);
     JSHandle<JSTaggedValue> resultString2 = stringifier2.Stringify(handleValue, handleReplacer2, handleGap);
     EXPECT_TRUE(resultString2->IsString());
     JSHandle<EcmaString> handleEcmaStr2(resultString2);
-    EXPECT_STREQ("10.12", CString(handleEcmaStr2->GetCString().get()).c_str());
+    EXPECT_STREQ("10.12", EcmaStringAccessor(handleEcmaStr2).ToCString().c_str());
 }
 
 /**
@@ -143,7 +143,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_002)
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
     EXPECT_STREQ("{\n          \"z\": 1,\n          \"x\": 3.6,\n          \"y\": \"abc\"\n}",
-                                                     CString(handleEcmaStr->GetCString().get()).c_str());
+                                                     EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 /**
@@ -171,7 +171,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_003)
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> resultStr =
         factory->NewFromASCII("{\ntttt\"z\": 1,\ntttt\"x\": 3.6,\ntttt\"y\": \"abc\"\n}");
-    EXPECT_EQ(resultStr->Compare(reinterpret_cast<EcmaString *>(resultString->GetRawData())), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*resultStr, reinterpret_cast<EcmaString *>(resultString->GetRawData())), 0);
 }
 
 /**
@@ -210,7 +210,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_004)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("{\ntttt\"z\": 1,\ntttt\"x\": 3.6\n}", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("{\ntttt\"z\": 1,\ntttt\"x\": 3.6\n}", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 /**
@@ -233,7 +233,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_005)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("{\"z\":1,\"x\":3.6,\"y\":\"abc\"}", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("{\"z\":1,\"x\":3.6,\"y\":\"abc\"}", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 /**
@@ -275,7 +275,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_006)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("[\ntttt\"json\",\ntttt100,\ntttt\"abc\"\n]", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("[\ntttt\"json\",\ntttt100,\ntttt\"abc\"\n]", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 /**
@@ -314,7 +314,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_007)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("[1,3.6,\"abc\"]", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("[1,3.6,\"abc\"]", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 /**
@@ -342,6 +342,6 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_008)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("\"\\\"\\\\\\b\\f\\n\\r\\t\"", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("\"\\\"\\\\\\b\\f\\n\\r\\t\"", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 }  // namespace panda::test

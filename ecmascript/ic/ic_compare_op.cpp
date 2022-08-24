@@ -93,7 +93,7 @@ JSTaggedValue CompareOp::EqualWithIC(JSThread* thread, JSTaggedValue left,
             break;
         }
         case CompareOpType::STRING_STRING: {
-            bool result = EcmaString::StringsAreEqual(static_cast<EcmaString *>(left.GetTaggedObject()),
+            bool result = EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(left.GetTaggedObject()),
                 static_cast<EcmaString *>(right.GetTaggedObject()));
             ret = result ? JSTaggedValue::True() : JSTaggedValue::False();
             break;
@@ -271,7 +271,7 @@ ComparisonResult CompareOp::Compare(JSThread *thread, JSTaggedValue left,
         case CompareOpType::STRING_STRING: {
             auto xString = static_cast<EcmaString *>(left.GetTaggedObject());
             auto yString = static_cast<EcmaString *>(right.GetTaggedObject());
-            int result = xString->Compare(yString);
+            int result = EcmaStringAccessor::Compare(xString, yString);
             if (result < 0) {
                 ret =  ComparisonResult::LESS;
             } else if (result == 0) {

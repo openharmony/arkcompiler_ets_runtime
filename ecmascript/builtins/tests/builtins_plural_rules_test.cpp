@@ -130,7 +130,7 @@ HWTEST_F_L0(BuiltinsPluralRulesTest, Select_001)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("other", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("other", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // select(1, type(cardinal))
@@ -154,7 +154,7 @@ HWTEST_F_L0(BuiltinsPluralRulesTest, Select_002)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("one", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("one", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // select(2, type(cardinal))
@@ -178,7 +178,7 @@ HWTEST_F_L0(BuiltinsPluralRulesTest, Select_003)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("other", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("other", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // select(3, type(ordinal))
@@ -202,7 +202,7 @@ HWTEST_F_L0(BuiltinsPluralRulesTest, Select_004)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("few", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("few", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // select(2, type(ordinal))
@@ -226,7 +226,7 @@ HWTEST_F_L0(BuiltinsPluralRulesTest, Select_005)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("two", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("two", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // select(0, type(ordinal))
@@ -250,7 +250,7 @@ HWTEST_F_L0(BuiltinsPluralRulesTest, Select_006)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("other", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("other", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // select(1, type(ordinal))
@@ -274,7 +274,7 @@ HWTEST_F_L0(BuiltinsPluralRulesTest, Select_007)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("one", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("one", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsPluralRulesTest, SupportedLocalesOf)
@@ -297,7 +297,7 @@ HWTEST_F_L0(BuiltinsPluralRulesTest, SupportedLocalesOf)
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
     EXPECT_EQ(elements->GetLength(), 1U);
     JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de-id", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsPluralRulesTest, ResolvedOptions)

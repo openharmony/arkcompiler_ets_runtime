@@ -209,7 +209,8 @@ void Snapshot::WriteToFile(std::fstream &writer, const panda_file::File *pf, siz
     CVector<uintptr_t> stringVector = processor.GetStringVector();
     for (size_t i = 0; i < stringVector.size(); ++i) {
         auto str = reinterpret_cast<EcmaString *>(stringVector[i]);
-        size_t objectSize = AlignUp(str->ObjectSize(), static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+        size_t objectSize = AlignUp(EcmaStringAccessor(str).ObjectSize(),
+            static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         totalStringSize += objectSize;
     }
 
@@ -227,7 +228,8 @@ void Snapshot::WriteToFile(std::fstream &writer, const panda_file::File *pf, siz
 
     for (size_t i = 0; i < stringVector.size(); ++i) {
         auto str = reinterpret_cast<EcmaString *>(stringVector[i]);
-        size_t strSize = AlignUp(str->ObjectSize(), static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+        size_t strSize = AlignUp(EcmaStringAccessor(str).ObjectSize(),
+            static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         writer.write(reinterpret_cast<char *>(str), strSize);
         writer.flush();
     }

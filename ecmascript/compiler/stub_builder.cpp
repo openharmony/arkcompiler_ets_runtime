@@ -1064,7 +1064,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef string)
     auto len = GetLengthFromString(string);
     Branch(Int32Equal(len, Int32(0)), &exit, &greatThanZero);
     Bind(&greatThanZero);
-    Branch(Int32GreaterThan(len, Int32(MAX_INDEX_LEN)), &exit, &inRange);
+    Branch(Int32GreaterThan(len, Int32(MAX_ELEMENT_INDEX_LEN)), &exit, &inRange);
     Bind(&inRange);
     {
         GateRef dataUtf16 = PtrAdd(string, IntPtr(EcmaString::DATA_OFFSET));
@@ -4073,7 +4073,7 @@ GateRef StubBuilder::TryStringOrSymbelToElementIndex(GateRef key)
     auto len = GetLengthFromString(key);
     Branch(Int32Equal(len, Int32(0)), &exit, &greatThanZero);
     Bind(&greatThanZero);
-    Branch(Int32GreaterThan(len, Int32(MAX_INDEX_LEN)), &exit, &inRange);
+    Branch(Int32GreaterThan(len, Int32(MAX_ELEMENT_INDEX_LEN)), &exit, &inRange);
     Bind(&inRange);
     {
         Label isUtf8(env);

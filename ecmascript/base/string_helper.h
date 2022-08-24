@@ -25,7 +25,6 @@
 #include <vector>
 
 #include "ecmascript/base/utf_helper.h"
-#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/assert_scope.h"
@@ -52,21 +51,9 @@ static constexpr char UTF8_FIRST_CODE[] = {
 class StringHelper {
 public:
     static constexpr int INVALID_UNICODE_FROM_UTF8 = -1;
-    static std::string ToStdString(EcmaString *string);
-
-    static bool CheckDuplicate(EcmaString *string);
-
-    static inline bool Contains(const EcmaString *string, const EcmaString *other)
-    {
-        [[maybe_unused]] DisallowGarbageCollection noGc;
-        CString str = ConvertToString(string, StringConvertedUsage::LOGICOPERATION);
-        CString oth = ConvertToString(other, StringConvertedUsage::LOGICOPERATION);
-        CString::size_type index = str.find(oth);
-        return (index != CString::npos);
-    }
 
     static inline CString RepalceAll(CString str, const CString &oldValue,
-                                            const CString &newValue)
+                                     const CString &newValue)
     {
         if (oldValue.empty() || oldValue == newValue) {
             return str;
@@ -77,13 +64,6 @@ public:
             pos += newValue.length();
         }
         return str;
-    }
-
-    static inline std::string SubString(JSThread *thread, const JSHandle<EcmaString> &string, uint32_t start,
-                                        uint32_t length)
-    {
-        EcmaString *substring = EcmaString::FastSubString(string, start, length, thread->GetEcmaVM());
-        return std::string(ConvertToString(substring, StringConvertedUsage::LOGICOPERATION));
     }
 
     static inline std::u16string Utf16ToU16String(const uint16_t *utf16Data, uint32_t dataLen)
@@ -146,28 +126,48 @@ public:
         return idx;
     }
 
-    static inline EcmaString *ToUpper(JSThread *thread, const std::u16string &str)
+    static inline std::string ToUpper(const std::u16string &str)
     {
-        ecmascript::ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         std::u16string tmpStr = str;
         const char16_t *constChar16tData = tmpStr.data();
         icu::UnicodeString uString(constChar16tData);
         icu::UnicodeString up = uString.toUpper();
         std::string res;
         up.toUTF8String(res);
-        return *factory->NewFromStdString(res);
+        return res;
     }
 
-    static inline EcmaString *ToLower(JSThread *thread, const std::u16string &str)
+    static inline std::string ToLocaleUpper(const std::u16string &str, const icu::Locale &locale)
     {
-        ecmascript::ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        std::u16string tmpStr = str;
+        const char16_t *constChar16tData = tmpStr.data();
+        icu::UnicodeString uString(constChar16tData);
+        icu::UnicodeString up = uString.toUpper(locale);
+        std::string res;
+        up.toUTF8String(res);
+        return res;
+    }
+
+    static inline std::string ToLower(const std::u16string &str)
+    {
         std::u16string tmpStr = str;
         const char16_t *constChar16tData = tmpStr.data();
         icu::UnicodeString uString(constChar16tData);
         icu::UnicodeString low = uString.toLower();
         std::string res;
         low.toUTF8String(res);
-        return *factory->NewFromStdString(res);
+        return res;
+    }
+
+    static inline std::string ToLocaleLower(const std::u16string &str, const icu::Locale &locale)
+    {
+        std::u16string tmpStr = str;
+        const char16_t *constChar16tData = tmpStr.data();
+        icu::UnicodeString uString(constChar16tData);
+        icu::UnicodeString low = uString.toLower(locale);
+        std::string res;
+        low.toUTF8String(res);
+        return res;
     }
 
     static inline size_t FindFromU16ToUpper(const std::u16string &thisStr, uint16_t *u16Data)
@@ -182,8 +182,6 @@ public:
         size_t idx = Find(thisStr, searchStr, 0);
         return idx;
     }
-
-    static EcmaString *Repeat(JSThread *thread, const std::u16string &thisStr, int32_t repeatLen, bool canBeCompress);
 
     static int UnicodeFromUtf8(const uint8_t *p, int maxLen, const uint8_t **pp)
     {

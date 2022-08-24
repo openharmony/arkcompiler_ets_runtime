@@ -212,15 +212,15 @@ HWTEST_F_L0(JSLocaleTest, CanonicalizeUnicodeLocaleId)
 
     JSHandle<EcmaString> locale = factory-> NewFromStdString("en-Us");
     JSHandle<EcmaString> canonicalizeLocaleId = JSLocale::CanonicalizeUnicodeLocaleId(thread, locale);
-    EXPECT_STREQ("en-US", CString(canonicalizeLocaleId->GetCString().get()).c_str());
+    EXPECT_STREQ("en-US", EcmaStringAccessor(canonicalizeLocaleId).ToCString().c_str());
 
     locale = factory-> NewFromStdString("kO-kore-kr");
     canonicalizeLocaleId = JSLocale::CanonicalizeUnicodeLocaleId(thread, locale);
-    EXPECT_STREQ("ko-Kore-KR", CString(canonicalizeLocaleId->GetCString().get()).c_str());
+    EXPECT_STREQ("ko-Kore-KR", EcmaStringAccessor(canonicalizeLocaleId).ToCString().c_str());
 
     locale = factory-> NewFromStdString("id-u-co-pinyin-de-ID");
     canonicalizeLocaleId = JSLocale::CanonicalizeUnicodeLocaleId(thread, locale);
-    EXPECT_STREQ("id-u-co-pinyin-de-id", CString(canonicalizeLocaleId->GetCString().get()).c_str());
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(canonicalizeLocaleId).ToCString().c_str());
     // invalid locale
     uint16_t localeArr[] = {0x122, 0x104, 0x45, 0x72, 0x97, 0x110, 0x115, 0x45, 0x67, 0x78}; // zh-Hans-CN
     uint32_t localeArrLength = sizeof(localeArr) / sizeof(localeArr[0]);
@@ -228,7 +228,7 @@ HWTEST_F_L0(JSLocaleTest, CanonicalizeUnicodeLocaleId)
 
     canonicalizeLocaleId = JSLocale::CanonicalizeUnicodeLocaleId(thread, locale);
     JSHandle<EcmaString> emptyString = factory->GetEmptyString();
-    EXPECT_EQ(canonicalizeLocaleId->Compare(*emptyString), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*canonicalizeLocaleId, *emptyString), 0);
 }
 
 /**
@@ -272,7 +272,7 @@ HWTEST_F_L0(JSLocaleTest, CanonicalizeLocaleList)
     JSHandle<TaggedArray> localeArr = JSLocale::CanonicalizeLocaleList(thread, JSHandle<JSTaggedValue>(jsLocale));
     EXPECT_EQ(localeArr->GetLength(), 1U);
     JSHandle<EcmaString> handleEcmaStr(thread, localeArr->Get(0));
-    EXPECT_STREQ("fr-Latn-FR", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("fr-Latn-FR", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
     // test locale is object
     JSArray *arr = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetObject<JSArray>();
     JSHandle<JSTaggedValue> localeObj(thread, arr);
@@ -290,9 +290,9 @@ HWTEST_F_L0(JSLocaleTest, CanonicalizeLocaleList)
     localeArr = JSLocale::CanonicalizeLocaleList(thread, localeObj);
     EXPECT_EQ(localeArr->GetLength(), 2U);
     JSHandle<EcmaString> resultEcmaStr1(thread, localeArr->Get(0));
-    EXPECT_STREQ("en-US", CString(resultEcmaStr1->GetCString().get()).c_str());
+    EXPECT_STREQ("en-US", EcmaStringAccessor(resultEcmaStr1).ToCString().c_str());
     JSHandle<EcmaString> resultEcmaStr2(thread, localeArr->Get(1));
-    EXPECT_STREQ("en-GB", CString(resultEcmaStr2->GetCString().get()).c_str());
+    EXPECT_STREQ("en-GB", EcmaStringAccessor(resultEcmaStr2).ToCString().c_str());
 }
 
 /**
@@ -305,19 +305,19 @@ HWTEST_F_L0(JSLocaleTest, IcuToString)
 {
     icu::UnicodeString unicodeString1("GMT-12:00"); // times
     JSHandle<EcmaString> ecmaString = JSLocale::IcuToString(thread, unicodeString1);
-    EXPECT_STREQ("GMT-12:00", CString(ecmaString->GetCString().get()).c_str());
+    EXPECT_STREQ("GMT-12:00", EcmaStringAccessor(ecmaString).ToCString().c_str());
 
     icu::UnicodeString unicodeString2("周日16:00:00–周五23:00:00"); // date
     ecmaString = JSLocale::IcuToString(thread, unicodeString2);
-    EXPECT_STREQ("周日16:00:00–周五23:00:00", CString(ecmaString->GetCString().get()).c_str());
+    EXPECT_STREQ("周日16:00:00–周五23:00:00", EcmaStringAccessor(ecmaString).ToCString().c_str());
 
     icu::UnicodeString unicodeString3("$654K"); // money
     ecmaString = JSLocale::IcuToString(thread, unicodeString3);
-    EXPECT_STREQ("$654K", CString(ecmaString->GetCString().get()).c_str());
+    EXPECT_STREQ("$654K", EcmaStringAccessor(ecmaString).ToCString().c_str());
 
     icu::UnicodeString unicodeString4("1 minute ago"); // moment
     ecmaString = JSLocale::IcuToString(thread, unicodeString4, 0, 2);
-    EXPECT_STREQ("1 ", CString(ecmaString->GetCString().get()).c_str());
+    EXPECT_STREQ("1 ", EcmaStringAccessor(ecmaString).ToCString().c_str());
 }
 
 /**
@@ -357,31 +357,31 @@ HWTEST_F_L0(JSLocaleTest, ToLanguageTag)
 {
     icu::Locale icuLocale1("en", "Latn", "US", "collation=phonebk;currency=euro");
     JSHandle<EcmaString> languageTag = JSLocale::ToLanguageTag(thread, icuLocale1);
-    EXPECT_STREQ("en-Latn-US-u-co-phonebk-cu-euro", CString(languageTag->GetCString().get()).c_str());
+    EXPECT_STREQ("en-Latn-US-u-co-phonebk-cu-euro", EcmaStringAccessor(languageTag).ToCString().c_str());
 
     icu::Locale icuLocale2("zh", "Hans", "CN", "collation=phonebk;kn=true");
     languageTag = JSLocale::ToLanguageTag(thread, icuLocale2);
-    EXPECT_STREQ("zh-Hans-CN-u-co-phonebk-kn", CString(languageTag->GetCString().get()).c_str());
+    EXPECT_STREQ("zh-Hans-CN-u-co-phonebk-kn", EcmaStringAccessor(languageTag).ToCString().c_str());
 
     icu::Locale icuLocale3("ja", "Jpan", "JP", "collation=phonebk;co=yes");
     languageTag = JSLocale::ToLanguageTag(thread, icuLocale3);
-    EXPECT_STREQ("ja-Jpan-JP-u-co", CString(languageTag->GetCString().get()).c_str());
+    EXPECT_STREQ("ja-Jpan-JP-u-co", EcmaStringAccessor(languageTag).ToCString().c_str());
 
     icu::Locale icuLocale4("z", "CN"); // language is fault
     languageTag = JSLocale::ToLanguageTag(thread, icuLocale4);
-    EXPECT_STREQ("und-CN", CString(languageTag->GetCString().get()).c_str());
+    EXPECT_STREQ("und-CN", EcmaStringAccessor(languageTag).ToCString().c_str());
 
     icu::Locale icuLocale5("zh", "c"); // script is fault
     languageTag = JSLocale::ToLanguageTag(thread, icuLocale5);
-    EXPECT_STREQ("zh-x-lvariant-c", CString(languageTag->GetCString().get()).c_str());
+    EXPECT_STREQ("zh-x-lvariant-c", EcmaStringAccessor(languageTag).ToCString().c_str());
 
     icu::Locale icuLocale6("en", "Latn", "E"); // region is fault
     languageTag = JSLocale::ToLanguageTag(thread, icuLocale6);
-    EXPECT_STREQ("en-Latn-x-lvariant-e", CString(languageTag->GetCString().get()).c_str());
+    EXPECT_STREQ("en-Latn-x-lvariant-e", EcmaStringAccessor(languageTag).ToCString().c_str());
 
     icu::Locale icuLocale7("en", "Latn", "EG", "kf=yes"); // key value is fault
     languageTag = JSLocale::ToLanguageTag(thread, icuLocale7);
-    EXPECT_STREQ("en-Latn-EG-u-kf", CString(languageTag->GetCString().get()).c_str());
+    EXPECT_STREQ("en-Latn-EG-u-kf", EcmaStringAccessor(languageTag).ToCString().c_str());
 }
 
 /**
