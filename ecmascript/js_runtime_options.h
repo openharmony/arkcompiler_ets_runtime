@@ -664,8 +664,6 @@ public:
                 }
             }
             moduleFile.close();
-        } else {
-            std::cerr << "failed to open abc's list file " << abcFilelist_.GetValue() << std::endl;
         }
     }
 
