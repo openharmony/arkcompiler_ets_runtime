@@ -64,7 +64,7 @@ DECLARE_BUILTINS(CharCodeAt)
     auto env = GetEnvironment();
     DEFVARIABLE(res, VariableType::JS_ANY(), DoubleBuildTaggedWithNoGC(Double(base::NAN_VALUE)));
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
-    
+
     Label objNotUndefinedAndNull(env);
     Label isString(env);
     Label slowPath(env);
@@ -76,10 +76,13 @@ DECLARE_BUILTINS(CharCodeAt)
     Label posNotLessZero(env);
     Label exit(env);
     Label posTagIsDouble(env);
+    Label thisIsHeapobject(env);
 
     Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, &slowPath);
+        Bind(&thisIsHeapobject);
         Branch(IsString(thisValue), &isString, &slowPath);
         Bind(&isString);
         {
@@ -143,10 +146,13 @@ DECLARE_BUILTINS(IndexOf)
     Label posTagIsDouble(env);
     Label nextCount(env);
     Label posNotLessThanLen(env);
+    Label thisIsHeapobject(env);
 
     Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, &slowPath);
+        Bind(&thisIsHeapobject);
         Branch(IsString(thisValue), &isString, &slowPath);
         Bind(&isString);
         {
@@ -375,6 +381,80 @@ DECLARE_BUILTINS(Substring)
         }
     }
 
+    Bind(&slowPath);
+    {
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(CharAt)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Hole());
+    DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
+
+    Label objNotUndefinedAndNull(env);
+    Label isString(env);
+    Label slowPath(env);
+    Label next(env);
+    Label posTagNotUndefined(env);
+    Label posTagIsInt(env);
+    Label posTagNotInt(env);
+    Label posNotGreaterLen(env);
+    Label posGreaterLen(env);
+    Label posNotLessZero(env);
+    Label exit(env);
+    Label posTagIsDouble(env);
+    Label thisIsHeapobject(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, &slowPath);
+        Bind(&thisIsHeapobject);
+        Branch(IsString(thisValue), &isString, &slowPath);
+        Bind(&isString);
+        {
+            GateRef thisLen = GetLengthFromString(thisValue);
+            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
+            Bind(&posTagNotUndefined);
+            {
+                GateRef posTag = GetCallArg(argv, IntPtr(0));
+                Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
+                Bind(&posTagIsInt);
+                pos = TaggedCastToInt32(posTag);
+                Jump(&next);
+                Bind(&posTagNotInt);
+                Branch(TaggedIsDouble(posTag), &posTagIsDouble, &slowPath);
+                Bind(&posTagIsDouble);
+                pos = DoubleToInt(glue, TaggedCastToDouble(posTag));
+                Jump(&next);
+            }
+            Bind(&next);
+            {
+                Branch(Int32GreaterThanOrEqual(*pos, thisLen), &posGreaterLen, &posNotGreaterLen);
+                Bind(&posNotGreaterLen);
+                {
+                    Branch(Int32LessThan(*pos, Int32(0)), &posGreaterLen, &posNotLessZero);
+                    Bind(&posNotLessZero);
+                    {
+                        BuiltinsStringStubBuilder stringBuilder(this);
+                        res = stringBuilder.CreateFromEcmaString(glue, thisValue, *pos);
+                        Jump(&exit);
+                    }
+                }
+                Bind(&posGreaterLen);
+                {
+                    res = GetGlobalConstantValue(
+                        VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX);
+                    Jump(&exit);
+                }
+            }
+        }
+    }
     Bind(&slowPath);
     {
         res = CALLSLOWPATH();

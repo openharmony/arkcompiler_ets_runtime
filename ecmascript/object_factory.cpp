@@ -15,7 +15,7 @@
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_macros.h"

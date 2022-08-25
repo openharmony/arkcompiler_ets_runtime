@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 
 #ifdef PANDA_TARGET_WINDOWS
 #ifdef ERROR
@@ -1568,7 +1568,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     stringFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, stringFuncInstanceDynclass.GetTaggedValue());
 
     // String.prototype method
-    SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE);
+    SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE,
+                static_cast<uint8_t>(BUILTINS_STUB_ID(CharAt)));
     SetFunction(env, stringFuncPrototype, "charCodeAt", BuiltinsString::CharCodeAt, FunctionLength::ONE,
                 static_cast<uint8_t>(BUILTINS_STUB_ID(CharCodeAt)));
     SetFunction(env, stringFuncPrototype, "codePointAt", BuiltinsString::CodePointAt, FunctionLength::ONE);

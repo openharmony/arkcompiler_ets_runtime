@@ -16,7 +16,7 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
 #include "ecmascript/builtins/builtins_global.h"
