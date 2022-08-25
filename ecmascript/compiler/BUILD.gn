@@ -207,7 +207,7 @@ source_set("ark_aot_compiler_set") {
 source_set("libark_stub_set") {
   deps = [ ":build_stub_to_cpp" ]
 
-  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_aot.cpp" ]
+  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp" ]
 
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
@@ -216,7 +216,7 @@ source_set("libark_stub_set") {
 }
 
 source_set("libark_mock_stub_set") {
-  sources = [ "mock/mock_stub_aot.cpp" ]
+  sources = [ "mock/mock_stub_an.cpp" ]
 
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
@@ -297,10 +297,10 @@ action("gen_stub_file") {
       get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
 
   if (current_toolchain == host_toolchain) {
-    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.aot"
+    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an"
   } else {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
-                  "/stub.aot" + " --target-triple=aarch64-unknown-linux-gnu"
+                  "/stub.an" + " --target-triple=aarch64-unknown-linux-gnu"
   }
 
   if (defined(ark_standalone_build)) {
@@ -331,11 +331,11 @@ action("gen_stub_file") {
     stub_env,
   ]
 
-  outputs = [ "$stub_file_gen_dir/stub.aot" ]
+  outputs = [ "$stub_file_gen_dir/stub.an" ]
 }
 
 action("build_stub_to_cpp") {
-  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub.aot" ]
+  sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub.an" ]
 
   script = "$js_root/script/build_resource_to_cpp.py"
 
@@ -343,10 +343,10 @@ action("build_stub_to_cpp") {
 
   args = [
     "--input",
-    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.aot"),
+    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an"),
     "--output",
-    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub_aot.cpp"),
+    rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp"),
   ]
 
-  outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_aot.cpp" ]
+  outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp" ]
 }
