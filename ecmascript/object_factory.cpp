@@ -2905,14 +2905,14 @@ JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length, const u
     return codeObj;
 }
 
-JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(MethodLiteral *ctorMethod)
+JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTaggedValue> method)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetClassInfoExtractorHClass().GetTaggedObject()));
     JSHandle<ClassInfoExtractor> obj(thread_, header);
     obj->ClearBitField();
-    obj->SetConstructorMethod(ctorMethod);
+    obj->SetConstructorMethod(thread_, method.GetTaggedValue());
     JSHandle<TaggedArray> emptyArray = EmptyArray();
     obj->SetPrototypeHClass(thread_, JSTaggedValue::Undefined());
     obj->SetNonStaticKeys(thread_, emptyArray, SKIP_BARRIER);

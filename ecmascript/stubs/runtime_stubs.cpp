@@ -812,6 +812,17 @@ DEF_RUNTIME_STUBS(CloneClassFromTemplate)
     return RuntimeCloneClassFromTemplate(thread, ctor, base, lexenv).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CreateClassWithBuffer)
+{
+    RUNTIME_STUBS_HEADER(CreateClassWithBuffer);
+    JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
+    return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
+                                        static_cast<uint16_t>(methodId.GetInt())).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
 {
     RUNTIME_STUBS_HEADER(SetClassConstructorLength);

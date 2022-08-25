@@ -3350,15 +3350,12 @@ void InterpreterAssembly::HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8(
     uint16_t v1 = READ_INST_8_8();
     LOG_INST() << "intrinsics::defineclasswithbuffer"
                 << " method id:" << methodId << " lexenv: v" << v0 << " parent: v" << v1;
-    JSFunction *classTemplate = JSFunction::Cast(
-        ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(methodId).GetTaggedObject());
-    ASSERT(classTemplate != nullptr);
 
     JSTaggedValue lexenv = GET_VREG_VALUE(v0);
     JSTaggedValue proto = GET_VREG_VALUE(v1);
 
     SAVE_PC();
-    JSTaggedValue res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
+    JSTaggedValue res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, constpool, methodId);
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
     ASSERT(res.IsClassConstructor());
