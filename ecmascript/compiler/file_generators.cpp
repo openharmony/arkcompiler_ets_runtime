@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/compiler/file_generators.h"
+
+#include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/llvm_stackmap_parser.h"

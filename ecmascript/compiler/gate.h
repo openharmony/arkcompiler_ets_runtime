@@ -162,6 +162,13 @@ public:
         BITCAST,
         RESTORE_REGISTER,
         SAVE_REGISTER,
+
+        COMMON_CIR_FIRST = NOP,
+        COMMON_CIR_LAST = DEPEND_AND,
+        HIGH_CIR_FIRST = JS_BYTECODE,
+        HIGH_CIR_LAST = GET_EXCEPTION,
+        MID_CIR_FIRST = RUNTIME_CALL,
+        MID_CIR_LAST = SAVE_REGISTER
     };
 
     OpCode() = default;
