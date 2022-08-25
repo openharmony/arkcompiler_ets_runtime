@@ -24,6 +24,7 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -904,5 +905,17 @@ HWTEST_F_L0(JSNApiTests, ClassFunction)
     JSTaggedValue accessor = JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(
                                                            JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(accessor.IsInternalAccessor());
+}
+
+/**
+ * @tc.name: BuildJsStackInfo
+ * @tc.desc: Verify the BuildJsStackInfo function.
+ * @tc.type: FUNC
+ * @tc.require: issueI5J7EC
+ */
+HWTEST_F_L0(JSNApiTests, BuildJsStackInfo)
+{
+    ecmascript::JsStackInfo::BuildJsStackInfo(thread_);
+    ASSERT_TRUE(true);
 }
 }  // namespace panda::test
