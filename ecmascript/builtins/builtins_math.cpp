@@ -106,7 +106,7 @@ JSTaggedValue BuiltinsMath::Asinh(EcmaRuntimeCallInfo *argv)
     double result = base::NAN_VALUE;
     // value == -NaN, NaN, result is  NaN
     if (!std::isnan(std::abs(value))) {
-        result = std::asinh(value);
+        result = base::MathHelper::Asinh(value);
     }
     return GetTaggedDouble(result);
 }
@@ -141,7 +141,7 @@ JSTaggedValue BuiltinsMath::Atanh(EcmaRuntimeCallInfo *argv)
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     if (value >= -1 && value <= 1) {
-        result = std::atanh(value);
+        result = base::MathHelper::Atanh(value);
     }
     return GetTaggedDouble(result);
 }
