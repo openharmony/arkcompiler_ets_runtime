@@ -49,6 +49,7 @@ enum class ComparisonResult {
 using JSTaggedType = uint64_t;
 
 static const JSTaggedType NULL_POINTER = 0x05ULL;
+static const JSTaggedType INVALID_VALUE_LIMIT = 0x40000ULL;
 
 static inline JSTaggedType ReinterpretDoubleToTaggedType(double value)
 {
@@ -223,6 +224,11 @@ public:
     inline bool IsHeapObject() const
     {
         return ((value_ & TAG_HEAPOBJECT_MARK) == 0U);
+    }
+
+    inline bool IsInvalidValue() const
+    {
+        return value_ <= INVALID_VALUE_LIMIT;
     }
 
     inline double GetDouble() const

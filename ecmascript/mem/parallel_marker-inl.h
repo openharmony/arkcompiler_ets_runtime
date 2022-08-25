@@ -70,10 +70,20 @@ inline void NonMovableMarker::HandleOldToNewRSet(uint32_t threadId, Region *regi
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());
         if (value.IsHeapObject()) {
+            if (value.IsInvalidValue()) {
+                LOG_ECMA_MEM(INFO) << "HandleOldToNew found an invalid value: " << value.GetRawData()
+                                   << " " << slot.GetTaggedType();
+                return true;
+            }
             if (value.IsWeakForHeapObject()) {
                 RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem), region);
             } else {
                 MarkObject(threadId, value.GetTaggedObject());
+            }
+            if (value.GetRawData() != slot.GetTaggedType()) {
+                LOG_ECMA_MEM(INFO) << "HandleOldToNew mark an overdue value : " << value.GetRawData() << " "
+                                   << slot.GetTaggedType() << " "
+                                   << *reinterpret_cast<JSTaggedType*>(value.GetRawData());
             }
         }
         return true;
