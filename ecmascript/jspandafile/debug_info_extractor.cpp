@@ -196,9 +196,15 @@ void DebugInfoExtractor::Extract(const panda_file::File *pf)
             LineNumberProgramProcessor<LineNumberProgramHandler> programProcessor(program, &handler);
             programProcessor.Process();
 
+            const char *sourceFile = "";
+            if (state.HasFile()) {
+                sourceFile = reinterpret_cast<const char *>(handler.GetFile());
+            }
+            const char *sourceCode = "";
+            if (state.HasSourceCode()) {
+                sourceCode = reinterpret_cast<const char *>(handler.GetSourceCode());
+            }
             panda_file::File::EntityId methodId = mda.GetMethodId();
-            const char *sourceFile = reinterpret_cast<const char *>(handler.GetFile());
-            const char *sourceCode = reinterpret_cast<const char *>(handler.GetSourceCode());
             methods_.insert(std::make_pair(methodId.GetOffset(), MethodDebugInfo {sourceFile, sourceCode,
                                            handler.GetLineNumberTable(),
                                            handler.GetColumnNumberTable(),
