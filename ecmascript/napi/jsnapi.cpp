@@ -279,6 +279,16 @@ bool JSNApi::StopDebugger(EcmaVM *vm)
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
 }
+
+bool JSNApi::IsMixedDebugEnabled(const EcmaVM *vm)
+{
+    return vm->GetJsDebuggerManager()->IsMixedDebugEnabled();
+}
+
+void JSNApi::NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress)
+{
+    vm->GetJsDebuggerManager()->GetNotificationManager()->NativeCallingEvent(nativeAddress);
+}
 #endif
 
 bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry)

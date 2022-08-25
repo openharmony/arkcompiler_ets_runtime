@@ -83,6 +83,8 @@ public:
 
     virtual bool SingleStep(const JSPtLocation &location) = 0;
 
+    virtual void NativeCalling(const void *nativeAddress) = 0;
+
     virtual ~PtHooks() = default;
 
     NO_COPY_SEMANTIC(PtHooks);
