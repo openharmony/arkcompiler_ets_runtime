@@ -162,6 +162,7 @@ using Promise = builtins::BuiltinsPromise;
 using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
 using ErrorType = base::ErrorType;
+using RandomGenerator = base::RandomGenerator;
 using DataView = builtins::BuiltinsDataView;
 using Intl = builtins::BuiltinsIntl;
 using Locale = builtins::BuiltinsLocale;
@@ -1477,6 +1478,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> mathDynclass = factory_->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathDynclass);
+    RandomGenerator::InitRandom();
     SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE);
     SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE);
     SetFunction(env, mathObject, "acosh", Math::Acosh, FunctionLength::ONE);
