@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
 expect_output="expect_output.txt"
 run_output="run_output.txt"
 test_name=""
