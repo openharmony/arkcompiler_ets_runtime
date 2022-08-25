@@ -99,6 +99,7 @@ class Variable;
     V(ZExtInt16ToInt32, OpCode::ZEXT_TO_INT32)                                    \
     V(ZExtInt16ToInt64, OpCode::ZEXT_TO_INT64)                                    \
     V(ChangeInt64ToInt32, OpCode::TRUNC_TO_INT32)                                 \
+    V(ChangeInt16ToInt8, OpCode::TRUNC_TO_INT8)                                   \
     V(ChangeInt32ToIntPtr, OpCode::ZEXT_TO_ARCH)                                  \
     V(TruncInt64ToInt32, OpCode::TRUNC_TO_INT32)                                  \
     V(TruncPtrToInt32, OpCode::TRUNC_TO_INT32)                                    \

@@ -118,6 +118,7 @@ public:
         SEXT_TO_ARCH,
         TRUNC_TO_INT32,
         TRUNC_TO_INT1,
+        TRUNC_TO_INT8,
         TRUNC_TO_INT16,
         REV,
         ADD,

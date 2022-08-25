@@ -281,6 +281,7 @@ bool LatticeUpdateRuleSCCP::Run(GateRef gate)
         {OpCode::SEXT_TO_ARCH, [&]() -> bool { return RunSExtToArch(gate); }},
         {OpCode::TRUNC_TO_INT32, [&]() -> bool { return RunTruncToInt32(gate); }},
         {OpCode::TRUNC_TO_INT1, [&]() -> bool { return RunTruncToInt1(gate); }},
+        {OpCode::TRUNC_TO_INT8, [&]() -> bool { return RunTruncToInt8(gate); }},
         {OpCode::TRUNC_TO_INT16, [&]() -> bool { return RunTruncToInt16(gate); }},
         {OpCode::REV, [&]() -> bool { return RunRev(gate); }},
         {OpCode::ADD, [&]() -> bool { return RunAdd(gate); }},
@@ -660,6 +661,12 @@ bool LatticeUpdateRuleSCCP::RunTruncToInt32(GateRef gate)
 }
 
 bool LatticeUpdateRuleSCCP::RunTruncToInt1(GateRef gate)
+{
+    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
+    return UpdateValueLattice(gate, operandA);
+}
+
+bool LatticeUpdateRuleSCCP::RunTruncToInt8(GateRef gate)
 {
     const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);

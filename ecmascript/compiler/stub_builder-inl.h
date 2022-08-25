@@ -302,6 +302,11 @@ inline GateRef StubBuilder::PtrAdd(GateRef x, GateRef y)
     return Int64Add(x, y);
 }
 
+inline GateRef StubBuilder::PointerAdd(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::ADD), MachineType::ARCH, x, y);
+}
+
 inline GateRef StubBuilder::IntPtrAnd(GateRef x, GateRef y)
 {
     return env_->Is32Bit() ? Int32And(x, y) : Int64And(x, y);
@@ -422,6 +427,11 @@ inline GateRef StubBuilder::BoolOr(GateRef x, GateRef y)
 inline GateRef StubBuilder::Int32Not(GateRef x)
 {
     return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::REV), MachineType::I32, x);
+}
+
+inline GateRef StubBuilder::IntPtrNot(GateRef x)
+{
+    return env_->Is32Bit() ? Int32Not(x) : Int64Not(x);
 }
 
 inline GateRef StubBuilder::BoolNot(GateRef x)
@@ -849,6 +859,11 @@ inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
 inline GateRef StubBuilder::ChangeInt64ToInt32(GateRef val)
 {
     return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT32), val);
+}
+
+inline GateRef StubBuilder::ChangeInt16ToInt8(GateRef val)
+{
+    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT8), val);
 }
 
 inline GateRef StubBuilder::ChangeInt64ToIntPtr(GateRef val)
@@ -1944,6 +1959,39 @@ inline GateRef StubBuilder::GetBuiltinId(GateRef method)
     // 7: builtinsIdOffset
     GateRef builtinsIdOffset = PtrAdd(IntPtr(Method::LITERAL_INFO_OFFSET), IntPtr(7));
     return Load(VariableType::INT8(), method, builtinsIdOffset);
+}
+
+inline GateRef StubBuilder::ComputeSizeUtf8(GateRef length)
+{
+    return PtrAdd(IntPtr(EcmaString::DATA_OFFSET), length);
+}
+
+inline GateRef StubBuilder::ComputeSizeUtf16(GateRef length)
+{
+    return PtrAdd(IntPtr(EcmaString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
+}
+
+inline GateRef StubBuilder::AlignUp(GateRef x, GateRef alignment)
+{
+    GateRef x1 = PtrAdd(x, PtrSub(alignment, IntPtr(1)));
+    return IntPtrAnd(x1, IntPtrNot(PtrSub(alignment, IntPtr(1))));
+}
+
+inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bool compressed)
+{
+    GateRef len = Int32LSL(length, Int32(2));
+    GateRef mixLength;
+    if (compressed) {
+        mixLength = Int32Or(len, Int32(EcmaString::STRING_COMPRESSED));
+    } else {
+        mixLength = Int32Or(len, Int32(EcmaString::STRING_UNCOMPRESSED));;
+    }
+    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
+}
+
+inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode)
+{
+    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::HASHCODE_OFFSET), rawHashcode);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

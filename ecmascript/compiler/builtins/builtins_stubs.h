@@ -66,25 +66,6 @@ public:
     {
         return Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(sizeof(JSTaggedType))));
     }
-
-    inline GateRef StringAt(GateRef obj, GateRef index);
-
-    GateRef StringIndexOf(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,
-                          GateRef pos, GateRef max, GateRef rhsCount);
-    
-    GateRef StringIndexOf(GateRef lhs, GateRef rhs, GateRef pos);
-
-    GateRef GetUtf16Date(GateRef stringData, GateRef index)
-    {
-        return ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(stringData,
-            PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint16_t))))));
-    }
-
-    GateRef GetUtf8Date(GateRef stringData, GateRef index)
-    {
-        return ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(stringData,
-            PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint8_t))))));
-    }
 };
 
 #define DECLARE_BUILTINS_STUB_CLASS(name)                                                           \

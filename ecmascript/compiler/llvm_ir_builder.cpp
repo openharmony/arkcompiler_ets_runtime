@@ -154,6 +154,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::SEXT_TO_INT64, &LLVMIRBuilder::HandleSExtInt},
         {OpCode::SEXT_TO_ARCH, &LLVMIRBuilder::HandleSExtInt},
         {OpCode::TRUNC_TO_INT1, &LLVMIRBuilder::HandleCastIntXToIntY},
+        {OpCode::TRUNC_TO_INT8, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::TRUNC_TO_INT32, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::TRUNC_TO_INT16, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::REV, &LLVMIRBuilder::HandleIntRev},

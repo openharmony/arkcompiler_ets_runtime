@@ -153,6 +153,7 @@ public:
     bool RunTruncToInt32(GateRef gate);
     bool RunTruncToInt1(GateRef gate);
     bool RunTruncToInt16(GateRef gate);
+    bool RunTruncToInt8(GateRef gate);
     bool RunRev(GateRef gate);
     bool RunAdd(GateRef gate);
     bool RunSub(GateRef gate);

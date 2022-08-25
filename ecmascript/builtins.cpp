@@ -1591,7 +1591,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetFunction(env, stringFuncPrototype, "slice", BuiltinsString::Slice, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "split", BuiltinsString::Split, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "startsWith", BuiltinsString::StartsWith, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "substring", BuiltinsString::Substring, FunctionLength::TWO);
+    SetFunction(env, stringFuncPrototype, "substring", BuiltinsString::Substring, FunctionLength::TWO,
+                static_cast<uint8_t>(BUILTINS_STUB_ID(Substring)));
     SetFunction(env, stringFuncPrototype, "substr", BuiltinsString::SubStr, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "toLocaleLowerCase", BuiltinsString::ToLocaleLowerCase, FunctionLength::ZERO);
     SetFunction(env, stringFuncPrototype, "toLocaleUpperCase", BuiltinsString::ToLocaleUpperCase, FunctionLength::ZERO);

@@ -22,6 +22,7 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/lexical_env.h"
+#include "ecmascript/mem/mem.h"
 
 namespace panda::ecmascript::kungfu {
 void NewObjectStubBuilder::NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent)
@@ -230,5 +231,27 @@ void NewObjectStubBuilder::InitializeTaggedArrayWithSpeicalValue(Label *exit,
     offset = Int32Mul(length, Int32(JSTaggedValue::TaggedTypeSize()));
     auto endOffset = Int32Add(offset, Int32(TaggedArray::DATA_OFFSET));
     InitializeWithSpeicalValue(exit, array, value, dataOffset, endOffset);
+}
+
+void NewObjectStubBuilder::AllocStringObject(Variable *result, Label *exit, GateRef length, bool compressed)
+{
+    auto env = GetEnvironment();
+    if (compressed) {
+        size_ = AlignUp(ComputeSizeUtf8(ChangeInt32ToIntPtr(length)),
+            IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+    } else {
+        size_ = AlignUp(ComputeSizeUtf16(ChangeInt32ToIntPtr(length)),
+            IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+    }
+    Label afterAllocate(env);
+    AllocateInYoung(result, &afterAllocate);
+    
+    Bind(&afterAllocate);
+    GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                ConstantIndex::STRING_CLASS_INDEX);
+    StoreHClass(glue_, result->ReadVariable(), arrayClass);
+    SetLength(glue_, result->ReadVariable(), length, compressed);
+    SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
+    Jump(exit);
 }
 }  // namespace panda::ecmascript::kungfu
