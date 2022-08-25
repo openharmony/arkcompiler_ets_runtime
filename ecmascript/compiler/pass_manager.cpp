@@ -101,13 +101,17 @@ bool PassManager::CollectBCInfo(const std::string &fileName, BytecodeInfoCollect
         LOG_COMPILER(INFO) << fileName << " has no type info";
     }
 
+    JSThread *thread = vm_->GetJSThread();
+
     if (jsPandaFile->IsModule()) {
         ModuleManager *moduleManager = vm_->GetModuleManager();
-        moduleManager->HostResolveImportedModule(fileName.c_str());
+        CString moduleFileName = moduleManager->ResolveModuleFileName(fileName.c_str());
+        jsPandaFile =
+            const_cast<JSPandaFile *>(JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName,
+                                                                                         entry_));
     }
 
     auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile);
-    JSThread *thread = vm_->GetJSThread();
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
     JSHandle<Method> method(thread, mainFunc->GetMethod());
     JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());
