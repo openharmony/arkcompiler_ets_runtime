@@ -33,12 +33,15 @@ public:
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value, JSTaggedValue jsFunc);
     JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencingModule);
-    JSHandle<SourceTextModule> PUBLIC_API HostResolveImportedModule(const CString &referencingModule);
+    JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName, JSTaggedValue currentFunc);
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
     bool resolveImportedModule(JSTaggedValue referencingModule);
     void Iterate(const RootVisitor &v);
+
+    // use for AOT PassManager
+    PUBLIC_API CString ResolveModuleFileName(const CString &fileName);
 
 private:
     NO_COPY_SEMANTIC(ModuleManager);
