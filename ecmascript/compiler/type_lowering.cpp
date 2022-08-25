@@ -354,6 +354,12 @@ void TypeLowering::ReplaceGateToSubCfg(GateRef gate, GateRef state, GateRef depe
 
 void TypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl)
 {
+    if (outir != Circuit::NullGate()) {
+        auto type = acc_.GetGateType(hir);
+        if (type.IsTSType()) {
+            acc_.SetGateType(outir, type);
+        }
+    }
     auto uses = acc_.Uses(hir);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         const OpCode op = acc_.GetOpCode(*useIt);
