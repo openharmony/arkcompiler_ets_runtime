@@ -618,7 +618,7 @@ public:
     bool IsJSAPIListIterator() const;
     bool IsJSAPILinkedListIterator() const;
     bool IsSpecialContainer() const;
-
+    bool HasOrdinaryGet() const;
     bool IsPrototypeHandler() const;
     bool IsTransitionHandler() const;
     bool IsPropertyBox() const;

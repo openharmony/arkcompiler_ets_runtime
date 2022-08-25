@@ -116,6 +116,10 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModule(JSThread 
         moduleFullname = baseFilename.substr(0, pos + 1) + moduleFilename.substr(0, suffixEnd) + ".abc";
     }
 #else
+    if (moduleFilename.find("./") == 0) {
+        moduleFilename = moduleFilename.substr(2); // 2 : delete './'
+        suffixEnd -=2; // 2 : delete './'
+    }
     if (moduleFilename[0] == '/') { // absoluteFilePath
         moduleFullname = moduleFilename.substr(0, suffixEnd) + ".abc";
     } else {
