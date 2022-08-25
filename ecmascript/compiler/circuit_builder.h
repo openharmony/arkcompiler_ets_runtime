@@ -414,6 +414,7 @@ public:
     inline GateRef GetState() const;
     inline GateRef GetDepend() const;
     inline void SetDepend(GateRef depend);
+    inline void SetState(GateRef state);
 
 private:
     Circuit *circuit_ {nullptr};

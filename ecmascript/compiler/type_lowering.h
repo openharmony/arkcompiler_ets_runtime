@@ -25,6 +25,80 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
+// TypeLowering Process
+// SW: state wire, DW: depend wire, VW: value wire
+// Before Type Lowering:
+//                                    SW   DW   VW
+//                                    |    |    |
+//                                    |    |    |
+//                                    v    v    v
+//                                +-------------------+
+//                                |       (HIR)       |    SW     +--------------+
+//                            --DW|    JS_BYTECODE    |---------->| IF_EXCEPTION |
+//                            |   +-------------------+           +--------------+
+//                            |            SW       VW
+//                            |            |        |
+//                            |            v        |
+//                            |    +--------------+ |
+//                            |    |  IF_SUCCESS  | |
+//                            |    +--------------+ |
+//                            |            SW       |
+//                            |            |        |
+//                            |            v        v
+//                            |   +-------------------+
+//                            |   |       (HIR)       |
+//                            --->|    JS_BYTECODE    |
+//                                +-------------------+
+//
+// After Type Lowering:
+//                                           SW
+//                                           |
+//                                           v
+//                                 +-------------------+
+//                                 |     IF_BRANCH     |
+//                                 |    (Type Check)   |
+//                                 +-------------------+
+//                                    SW            SW
+//                                    |             |
+//                                    V             V
+//                            +--------------+  +--------------+
+//                            |    IF_TRUE   |  |   IF_FALSE   |
+//                            +--------------+  +--------------+
+//                 VW   DW          SW               SW                   DW   VW
+//                 |    |           |                |                    |    |
+//                 |    |           V                V                    |    |
+//                 |    |  +---------------+     +---------------------+  |    |
+//                 ------->|   FAST PATH   |     |        (HIR)        |<-------
+//                         +---------------+     |     JS_BYTECODE     |
+//                            VW  DW   SW        +---------------------+
+//                            |   |    |               SW         VW  DW
+//                            |   |    |               |          |   |
+//                            |   |    |               v          |   |
+//                            |   |    |         +--------------+ |   |
+//                            |   |    |         |  IF_SUCCESS  | |   |
+//                            |   |    |         +--------------+ |   |
+//                            |   |    |                SW        |   |
+//                            |   |    |                |         |   |
+//                            |   |    v                v         |   |
+//                            |   |  +---------------------+      |   |
+//                            |   |  |        MERGE        |      |   |
+//                            |   |  +---------------------+      |   |
+//                            |   |    SW         SW    SW        |   |
+//                            ----|----|----------|-----|--       |   |
+//                             ---|----|----------|-----|-|-------|----
+//                             |  |    |          |     | |       |
+//                             v  v    v          |     v v       v
+//                            +-----------------+ | +----------------+
+//                            | DEPEND_SELECTOR | | | VALUE_SELECTOR |
+//                            +-----------------+ | +----------------+
+//                                    DW          |        VW
+//                                    |           |        |
+//                                    v           v        v
+//                                  +------------------------+
+//                                  |         (HIR)          |
+//                                  |      JS_BYTECODE       |
+//                                  +------------------------+
+
 class TypeLowering {
 public:
     TypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
@@ -43,12 +117,21 @@ private:
     }
 
     void Lower(GateRef gate);
-
+    void GenerateSuccessMerge(std::vector<GateRef> &successControl);
+    void RebuildSlowpathCfg(GateRef hir);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
+    void ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl);
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
+    template<OpCode::Op Op>
+    GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
+    template<OpCode::Op Op, MachineType Type>
+    GateRef BinaryOp(GateRef x, GateRef y);
+    GateRef DoubleBuildTaggedWithNoGC(GateRef gate);
+    GateRef ChangeInt32ToFloat64(GateRef gate);
 
     void LowerTypeNewObjDynRange(GateRef gate, GateRef glue);
+    void LowerTypeAdd2Dyn(GateRef gate, GateRef glue);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
