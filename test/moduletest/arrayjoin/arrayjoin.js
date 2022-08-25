@@ -13,5 +13,11 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:arrayjoin
+ * @tc.desc:test Array.join
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var a=new Array(1).join("  ");
 print(a.length);
