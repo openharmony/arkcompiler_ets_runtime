@@ -22,6 +22,9 @@ import("//build/test.gni")
 ohos_fuzztest("StartCpuProfilerForFileFuzzTest") {
   module_out_path = "arkcompiler/ets_runtime"
 
+  fuzz_config_file =
+      "//arkcompiler/ets_runtime/test/fuzztest/startcpuprofilerforfile_fuzzer"
+
   sources = [ "startcpuprofilerforfile_fuzzer.cpp" ]
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
