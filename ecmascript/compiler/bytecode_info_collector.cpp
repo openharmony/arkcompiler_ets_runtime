@@ -694,15 +694,15 @@ void BytecodeInfoCollector::UpdateICOffset(MethodLiteral* method, uint8_t *pc)
             // fall through
         case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
             // fall through
-        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
             // fall through
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             // fall through
         case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
             // fall through
-        case EcmaOpcode::LDOBJBYINDEX_IMM8_V8_IMM32:
+        case EcmaOpcode::LDOBJBYINDEX_IMM8_V8_IMM16:
             // fall through
-        case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM32:
+        case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
             // fall through
         case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM32:
             // fall through

@@ -86,8 +86,8 @@ then
   ./out/ark_js_vm test.abc
 elif [ "$1" = "ark" ]
 then
-  export script_root_dir=$(cd $(dirname $0);pwd)  #获取sh脚本绝对路径
-  cp -r $script_root_dir/* $script_root_dir/.gn ./
+  export SCRIPT_ROOT_DIR=$(cd $(dirname $0);pwd)  #获取sh脚本绝对路径
+  cp -r $SCRIPT_ROOT_DIR/* $SCRIPT_ROOT_DIR/.gn ./
   echo "cp -r build/compile_script/* ./"
 else
   $tools/gn gen out 

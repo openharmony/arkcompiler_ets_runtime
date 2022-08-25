@@ -32,17 +32,3 @@ ohos_static_library("libsec_static") {
     "-D_INC_MEMORY_S",
   ]
 }
-
-ohos_shared_library("libsec_shared") {
-  sources = libsec_sources
-  public_configs = [ ":libsec_public_config" ]
-  cflags = [
-    "-D_INC_STRING_S",
-    "-D_INC_WCHAR_S",
-    "-D_SECIMP=//",
-    "-D_STDIO_S_DEFINED",
-    "-D_INC_STDIO_S",
-    "-D_INC_STDLIB_S",
-    "-D_INC_MEMORY_S",
-  ]
-}

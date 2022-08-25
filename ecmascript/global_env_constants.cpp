@@ -154,7 +154,8 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
         factory->NewEcmaReadOnlyHClass(hClass, LocalExportEntry::SIZE, JSType::LOCAL_EXPORTENTRY_RECORD));
     SetConstant(
         ConstantIndex::INDIRECT_EXPORT_ENTRY_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, IndirectExportEntry::SIZE, JSType::INDIRECT_EXPORTENTRY_RECORD));
+        factory->NewEcmaReadOnlyHClass(hClass, IndirectExportEntry::SIZE,
+                                         JSType::INDIRECT_EXPORTENTRY_RECORD));
     SetConstant(
         ConstantIndex::STAR_EXPORT_ENTRY_CLASS_INDEX,
         factory->NewEcmaReadOnlyHClass(hClass, StarExportEntry::SIZE, JSType::STAR_EXPORTENTRY_RECORD));

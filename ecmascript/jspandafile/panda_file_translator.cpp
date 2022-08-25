@@ -1402,15 +1402,15 @@ void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *
             U_FALLTHROUGH;
         case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
             U_FALLTHROUGH;
-        // case EcmaOpcode::LDOBJBYNAME_IMM8_ID16_V8:
+        // case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         //     U_FALLTHROUGH;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             U_FALLTHROUGH;
         case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
             U_FALLTHROUGH;
-        // case EcmaOpcode::LDOBJBYINDEX_IMM8_V8_IMM32:
+        // case EcmaOpcode::LDOBJBYINDEX_IMM8_V8_IMM16:
         //     U_FALLTHROUGH;
-        // case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM32:
+        // case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
         //     U_FALLTHROUGH;
         // case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM32:
         //     U_FALLTHROUGH;

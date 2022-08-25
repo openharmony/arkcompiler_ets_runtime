@@ -387,13 +387,13 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
             LowerTryLdGlobalByName(gate, glue);
             break;
-        case EcmaOpcode::STGLOBALVAR_ID16:
+        case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
             LowerStGlobalVar(gate, glue);
             break;
         case EcmaOpcode::GETITERATOR_IMM8:
             LowerGetIterator(gate, glue);
             break;
-        case EcmaOpcode::NEWOBJSPREAD_IMM8_V8_V8:
+        case EcmaOpcode::NEWOBJAPPLY_IMM8_V8:
             LowerNewObjApply(gate, glue);
             break;
         case EcmaOpcode::THROW:
@@ -417,7 +417,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8:
             LowerThrowUndefinedIfHole(gate, glue);
             break;
-        case EcmaOpcode::THROWIFSUPERNOTCORRECTCALL_IMM16:
+        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
             LowerThrowIfSuperNotCorrectCall(gate, glue);
             break;
         case EcmaOpcode::THROWDELETESUPERPROPERTY:
@@ -459,7 +459,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::XOR2_IMM8_V8:
             LowerXor2(gate, glue);
             break;
-        case EcmaOpcode::DELOBJPROP_V8_V8:
+        case EcmaOpcode::DELOBJPROP_V8:
             LowerDelObjProp(gate, glue);
             break;
         case EcmaOpcode::DEFINENCFUNC_IMM8_ID16_IMM16_V8:
@@ -498,7 +498,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STMODULEVAR_ID16:
             LowerStModuleVar(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::GETTEMPLATEOBJECT_IMM8_V8:
+        case EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
             LowerGetTemplateObject(gate, glue);
             break;
         case EcmaOpcode::SETOBJECTWITHPROTO_IMM8_V8:
@@ -545,7 +545,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::GETNEXTPROPNAME_V8:
             LowerGetNextPropName(gate, glue);
             break;
-        case EcmaOpcode::COPYDATAPROPERTIES_V8_V8:
+        case EcmaOpcode::COPYDATAPROPERTIES_V8:
             LowerCopyDataProperties(gate, glue);
             break;
         case EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8:
@@ -557,7 +557,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
             LowerStOwnByValue(gate, glue);
             break;
-        case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM32:
+        case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
             LowerStOwnByIndex(gate, glue);
             break;
         case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
@@ -605,10 +605,10 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8:
             LowerStOwnByNameWithNameSet(gate, glue);
             break;
-        case EcmaOpcode::LDGLOBALVAR_ID16:
+        case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
             LowerLdGlobalVar(gate, glue);
             break;
-        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
             LowerLdObjByName(gate, glue);
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
@@ -617,10 +617,10 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
             LowerDefineGetterSetterByValue(gate, glue);
             break;
-        case EcmaOpcode::LDOBJBYINDEX_IMM8_V8_IMM32:
+        case EcmaOpcode::LDOBJBYINDEX_IMM8_V8_IMM16:
             LowerLdObjByIndex(gate, glue);
             break;
-        case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM32:
+        case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
             LowerStObjByIndex(gate, glue);
             break;
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8_V8:
@@ -669,7 +669,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM16_V8:
             LowerDefineFunc(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::COPYRESTARGS_IMM16:
+        case EcmaOpcode::COPYRESTARGS_IMM8:
             LowerCopyRestArgs(gate, glue, actualArgc);
             break;
         default:

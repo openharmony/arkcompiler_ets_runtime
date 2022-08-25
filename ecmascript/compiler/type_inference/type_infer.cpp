@@ -142,7 +142,7 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:
         case EcmaOpcode::SETOBJECTWITHPROTO_IMM8_V8:
-        case EcmaOpcode::DELOBJPROP_V8_V8:
+        case EcmaOpcode::DELOBJPROP_V8:
             return SetBooleanType(gate);
         case EcmaOpcode::LDUNDEFINED:
             return InferLdUndefined(gate);
@@ -165,19 +165,19 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
         case EcmaOpcode::DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32:
             return InferLdObjByIndex(gate);
-        case EcmaOpcode::STGLOBALVAR_ID16:
+        case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
         case EcmaOpcode::STCONSTTOGLOBALRECORD_ID16:
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
         case EcmaOpcode::STLETTOGLOBALRECORD_ID16:
         case EcmaOpcode::STCLASSTOGLOBALRECORD_ID16:
             return SetStGlobalBcType(gate);
-        case EcmaOpcode::LDGLOBALVAR_ID16:
+        case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
             return InferLdGlobalVar(gate);
         case EcmaOpcode::RETURNUNDEFINED:
             return InferReturnUndefined(gate);
         case EcmaOpcode::RETURN:
             return InferReturn(gate);
-        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
             return InferLdObjByName(gate);
         case EcmaOpcode::LDA_STR_ID16:
             return InferLdStr(gate);

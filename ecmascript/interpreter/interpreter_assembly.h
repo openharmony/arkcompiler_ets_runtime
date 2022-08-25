@@ -24,7 +24,6 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"
 
-
 namespace panda::ecmascript {
 using DispatchEntryPoint =
     void (*)(JSThread *, const uint8_t *, JSTaggedType *, JSTaggedValue, JSTaggedValue, JSTaggedValue, int16_t);

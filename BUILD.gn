@@ -150,6 +150,11 @@ config("ark_jsruntime_public_config") {
       "ECMASCRIPT_SUPPORT_SNAPSHOT",
       "ECMASCRIPT_SUPPORT_DEBUGGER",
     ]
+  } else if (target_os == "android") {
+    defines += [
+      "ECMASCRIPT_SUPPORT_CPUPROFILER",
+      "ECMASCRIPT_SUPPORT_DEBUGGER",
+    ]
   }
 
   include_dirs = [
@@ -240,6 +245,12 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_UNIX",
       "PANDA_TARGET_MACOS",
     ]
+  } else if (target_os == "android") {
+    defines += [
+      "PANDA_TARGET_ANDROID",
+      "PANDA_TARGET_UNIX",
+      "PANDA_USE_FUTEX",
+    ]
   } else {
     defines += [
       "PANDA_TARGET_UNIX",
@@ -257,14 +268,7 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  if (is_debug) {
-    cflags_cc += [
-      "-O0",
-      "-ggdb3",
-    ]
-  } else {
-    defines += [ "NDEBUG" ]
-  }
+  defines += [ "NDEBUG" ]
 
   if (run_with_asan) {
     defines += [ "RUN_WITH_ASAN" ]
@@ -716,6 +720,10 @@ ohos_shared_library("libark_jsruntime") {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
+  }
+
+  if (target_os == "android") {
+    aosp_deps = [ "shared_library:liblog" ]
   }
 
   if (is_ohos && is_standard_system) {

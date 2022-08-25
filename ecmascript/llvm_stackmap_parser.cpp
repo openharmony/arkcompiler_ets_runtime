@@ -92,7 +92,6 @@ void LLVMStackMapParser::CalcCallSite()
                 }
             } else if (loc.location == LocationTy::Kind::DIRECT) {
                 if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX && j <= lastDeoptIndex) {
-                    ASSERT(loc.DwarfRegNum == GCStackMapRegisters::SP || loc.DwarfRegNum == GCStackMapRegisters::FP);
                     DwarfRegAndOffsetType info(loc.DwarfRegNum, loc.OffsetOrSmallConstant);
                     deoptbundles[callsite].push_back(info);
                 }
