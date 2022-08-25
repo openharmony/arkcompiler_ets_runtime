@@ -26,7 +26,6 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] LocalScope scope(vm);
         NativePointerCallback callBack = nullptr;
         NativePointerRef::New(vm, (void *)(data + size), callBack, (void*)data);
         JSNApi::DestroyJSVM(vm);

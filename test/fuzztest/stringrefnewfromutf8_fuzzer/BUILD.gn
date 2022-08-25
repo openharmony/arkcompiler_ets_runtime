@@ -25,6 +25,9 @@ ohos_fuzztest("StringRefNewFromUtf8FuzzTest") {
   fuzz_config_file =
       "//arkcompiler/ets_runtime/test/fuzztest/stringrefnewfromutf8_fuzzer"
 
+  resource_config_file =
+      "//arkcompiler/ets_runtime/test/resource/js_runtime/ohos_test.xml"
+
   sources = [ "stringrefnewfromutf8_fuzzer.cpp" ]
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]

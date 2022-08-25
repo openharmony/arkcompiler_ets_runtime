@@ -27,7 +27,6 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] LocalScope scope(vm);
         using OnResponseType = const std::function<void(const void *, const std::string &)>;
         OnResponseType onResponse = [data, size](const void *d, [[maybe_unused]] const std::string &s) -> void {
             d = data + size;

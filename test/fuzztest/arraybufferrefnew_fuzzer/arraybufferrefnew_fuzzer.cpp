@@ -28,7 +28,6 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] LocalScope scope(vm);
         Deleter deleter = nullptr;
         ArrayBufferRef::New(vm, (void*)data, (int32_t)size, deleter, (void*)data);
         JSNApi::DestroyJSVM(vm);

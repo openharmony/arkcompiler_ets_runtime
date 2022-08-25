@@ -27,7 +27,6 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] LocalScope scope(vm);
         bool input = true;
         if (size == 0 || data == nullptr) {
             input = false;

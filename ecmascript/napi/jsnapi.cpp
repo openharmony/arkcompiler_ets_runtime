@@ -437,6 +437,7 @@ void JSNApi::DeleteSerializationData(void *data)
 {
     ecmascript::SerializationData *value = reinterpret_cast<ecmascript::SerializationData *>(data);
     delete value;
+    value = nullptr;
 }
 
 void HostPromiseRejectionTracker(const EcmaVM *vm,
