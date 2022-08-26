@@ -61,23 +61,6 @@ struct BCStubEntries {
         stubEntries_[index] = addr;
     }
 
-    void SetUnrealizedBCHandlerStubEntries(Address addr)
-    {
-        for (size_t i = 0; i < EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT; i++) {
-            if (stubEntries_[i] == 0) {
-                stubEntries_[i] = addr;
-            }
-        }
-    }
-    void SetNonexistentBCHandlerStubEntries(Address addr)
-    {
-        for (size_t i = EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT; i < BC_HANDLER_COUNT; i++) {
-            if (stubEntries_[i] == 0) {
-                stubEntries_[i] = addr;
-            }
-        }
-    }
-
     Address* GetAddr()
     {
         return reinterpret_cast<Address*>(stubEntries_);
@@ -389,24 +372,9 @@ public:
         glueData_.bcStubEntries_.Set(id, entry);
     }
 
-    void SetUnrealizedBCStubEntry(Address entry)
-    {
-        glueData_.bcStubEntries_.SetUnrealizedBCHandlerStubEntries(entry);
-    }
-
-    void SetNonExistedBCStubEntry(Address entry)
-    {
-        glueData_.bcStubEntries_.SetNonexistentBCHandlerStubEntries(entry);
-    }
-
     void SetBCDebugStubEntry(size_t id, Address entry)
     {
         glueData_.bcDebuggerStubEntries_.Set(id, entry);
-    }
-
-    void SetNonExistedBCDebugStubEntry(Address entry)
-    {
-        glueData_.bcDebuggerStubEntries_.SetNonexistentBCHandlerStubEntries(entry);
     }
 
     Address *GetBytecodeHandler()

@@ -26,11 +26,11 @@
 
 
 namespace panda::ecmascript {
-class BytecodeInstBase {
+class OldBytecodeInstBase {
 public:
-    BytecodeInstBase() = default;
-    explicit BytecodeInstBase(const uint8_t *pc) : pc_ {pc} {}
-    ~BytecodeInstBase() = default;
+    OldBytecodeInstBase() = default;
+    explicit OldBytecodeInstBase(const uint8_t *pc) : pc_ {pc} {}
+    ~OldBytecodeInstBase() = default;
 
 protected:
     const uint8_t *GetPointer(int32_t offset) const

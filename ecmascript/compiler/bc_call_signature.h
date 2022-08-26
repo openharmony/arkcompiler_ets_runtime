@@ -21,6 +21,47 @@
 
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
+#define ASM_UNUSED_BC_STUB_LIST(T)                      \
+    T(HandleOverflowD5)                                 \
+    T(HandleOverflowD6)                                 \
+    T(HandleOverflowD7)                                 \
+    T(HandleOverflowD8)                                 \
+    T(HandleOverflowD9)                                 \
+    T(HandleOverflowDA)                                 \
+    T(HandleOverflowDB)                                 \
+    T(HandleOverflowDC)                                 \
+    T(HandleOverflowDD)                                 \
+    T(HandleOverflowDE)                                 \
+    T(HandleOverflowDF)                                 \
+    T(HandleOverflowE0)                                 \
+    T(HandleOverflowE1)                                 \
+    T(HandleOverflowE2)                                 \
+    T(HandleOverflowE3)                                 \
+    T(HandleOverflowE4)                                 \
+    T(HandleOverflowE5)                                 \
+    T(HandleOverflowE6)                                 \
+    T(HandleOverflowE7)                                 \
+    T(HandleOverflowE8)                                 \
+    T(HandleOverflowE9)                                 \
+    T(HandleOverflowEA)                                 \
+    T(HandleOverflowEB)                                 \
+    T(HandleOverflowEC)                                 \
+    T(HandleOverflowED)                                 \
+    T(HandleOverflowEE)                                 \
+    T(HandleOverflowEF)                                 \
+    T(HandleOverflowF0)                                 \
+    T(HandleOverflowF1)                                 \
+    T(HandleOverflowF2)                                 \
+    T(HandleOverflowF3)                                 \
+    T(HandleOverflowF4)                                 \
+    T(HandleOverflowF5)                                 \
+    T(HandleOverflowF6)                                 \
+    T(HandleOverflowF7)                                 \
+    T(HandleOverflowF8)                                 \
+    T(HandleOverflowF9)                                 \
+    T(HandleOverflowFA)                                 \
+    T(HandleOverflowFB)
+
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_BC_STUB_LIST(V, T, D)           \
     T(HandleLdnan)                                      \
@@ -113,7 +154,6 @@ namespace panda::ecmascript::kungfu {
     D(HandleCallargs2Imm8V8V8)                          \
     D(HandleCallargs3Imm8V8V8V8)                        \
     D(HandleCallrangeImm8Imm8V8)                        \
-    T(HandleDeprecatedCallrangePrefImm16V8)             \
     T(HandleDefinemethodImm16Id16Imm8)                  \
     T(HandleLdexternalmodulevarImm8)                    \
     T(HandleDefinegettersetterbyvalueV8V8V8V8)          \
@@ -237,7 +277,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleMovV8V8)                                    \
     T(HandleMovV16V16)                                  \
     T(HandleNop)                                        \
-    T(HandleException)                                  \
+    ASM_UNUSED_BC_STUB_LIST(T)                          \
     T(HandleDeprecated)                                 \
     T(HandleWide)                                       \
     T(HandleThrow)                                      \
@@ -251,7 +291,6 @@ namespace panda::ecmascript::kungfu {
     T(HandleDeprecatedCreatearraywithbufferPrefImm16)                  \
     T(HandleDeprecatedCreateobjectwithbufferPrefImm16)                 \
     T(HandleDeprecatedTonumberPrefV8)                                  \
-    T(HandleDeprecatedCallthisrangePrefImm16V8)                        \
     T(HandleDeprecatedTonumericPrefV8)                                 \
     T(HandleDeprecatedNegPrefV8)                                       \
     T(HandleDeprecatedNotPrefV8)                                       \
@@ -261,7 +300,9 @@ namespace panda::ecmascript::kungfu {
     T(HandleDeprecatedCallarg1PrefV8V8)                                \
     T(HandleDeprecatedCallargs2PrefV8V8V8)                             \
     T(HandleDeprecatedCallargs3PrefV8V8V8V8)                           \
+    T(HandleDeprecatedCallrangePrefImm16V8)                            \
     T(HandleDeprecatedCallspreadPrefV8V8V8)                            \
+    T(HandleDeprecatedCallthisrangePrefImm16V8)                        \
     T(HandleDeprecatedDefinefuncPrefId16Imm16V8)                       \
     T(HandleDeprecatedDefinencfuncPrefId16Imm16V8)                     \
     T(HandleDeprecatedDefinegeneratorfuncPrefId16Imm16V8)              \
@@ -295,6 +336,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleDeprecatedLdhomeobjectPrefNone)                            \
     T(HandleDeprecatedCreateobjecthavingmethodPrefImm16)               \
     T(HandleDeprecatedDefineasyncgeneratorfuncPrefId16Imm16V8)
+
+
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_WIDE_STUB_LIST(V, T, D)                        \
@@ -331,12 +374,10 @@ namespace panda::ecmascript::kungfu {
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \
-    V(HandleOverflow)                                   \
     V(BCDebuggerEntry)                                  \
     V(BCDebuggerExceptionEntry)                         \
     V(NewObjectRangeThrowException)                     \
-    V(ThrowStackOverflowException)                      \
-    V(InterpreterGetPropertyByName)
+    V(ThrowStackOverflowException)
 
 #define INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(V)           \
     ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)         \
@@ -354,9 +395,9 @@ namespace panda::ecmascript::kungfu {
     ASM_INTERPRETER_BC_STUB_LIST(V, V, V)
 
 #define ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(V) \
-    ASM_INTERPRETER_DEPRECATED_STUB_LIST(V, V, V) \
     ASM_INTERPRETER_WIDE_STUB_LIST(V, V, V)       \
-    ASM_INTERPRETER_THROW_STUB_LIST(V, V, V)
+    ASM_INTERPRETER_THROW_STUB_LIST(V, V, V)      \
+    ASM_INTERPRETER_DEPRECATED_STUB_LIST(V, V, V)
 
 class BytecodeStubCSigns {
 public:
@@ -371,18 +412,7 @@ public:
         NUM_OF_VALID_STUBS
     };
 
-#define DEF_BC_STUB_ID(name) ID_##name,
-    enum ID {
-        ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_BC_STUB_ID)
-        NUM_OF_ALL_NORMAL_STUBS,
-        lastOpcode = LAST_VALID_OPCODE, // last Opcode is max opcode size
-        ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_BC_STUB_ID)
-        NUM_OF_STUBS
-    };
-    enum DeprecatedID {
-        ASM_INTERPRETER_DEPRECATED_STUB_LIST(DEF_BC_STUB_ID, DEF_BC_STUB_ID, DEF_BC_STUB_ID)
-        NUM_OF_DEPRECATED_STUBS
-    };
+#define DEF_BC_STUB_ID(name) PREF_ID_##name,
     enum WideID {
         ASM_INTERPRETER_WIDE_STUB_LIST(DEF_BC_STUB_ID, DEF_BC_STUB_ID, DEF_BC_STUB_ID)
         NUM_OF_WIDE_STUBS
@@ -390,6 +420,24 @@ public:
     enum ThrowID {
         ASM_INTERPRETER_THROW_STUB_LIST(DEF_BC_STUB_ID, DEF_BC_STUB_ID, DEF_BC_STUB_ID)
         NUM_OF_THROW_STUBS
+    };
+    enum DeprecatedID {
+        ASM_INTERPRETER_DEPRECATED_STUB_LIST(DEF_BC_STUB_ID, DEF_BC_STUB_ID, DEF_BC_STUB_ID)
+        NUM_OF_DEPRECATED_STUBS
+    };
+#undef DEF_BC_STUB_ID
+
+#define DEF_BC_STUB_ID(name) ID_##name,
+    enum ID {
+        ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_BC_STUB_ID)
+        NUM_OF_ALL_NORMAL_STUBS,
+        lastOpcode = LAST_VALID_OPCODE, // last Opcode is max opcode size
+        ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_BC_STUB_ID)
+        ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_BC_STUB_ID)
+        NUM_OF_STUBS,
+        ID_Wide_Start = lastOpcode + 1,
+        ID_Throw_Start = ID_Wide_Start + NUM_OF_WIDE_STUBS,
+        ID_Deprecated_Start = ID_Throw_Start + NUM_OF_THROW_STUBS,
     };
 #undef DEF_BC_STUB_ID
 

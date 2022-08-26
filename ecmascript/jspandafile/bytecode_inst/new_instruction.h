@@ -48,7 +48,7 @@
 #include "securec.h"
 #endif
 
-namespace panda {
+namespace panda::ecmascript {
 
 enum class BytecodeInstMode { FAST, SAFE };
 
@@ -258,70 +258,64 @@ public:
  * limitations under the License.
  */
 
- #define BYTECODE_FORMAT_LIST(V)         \
-    V(NONE, 1)                           \
-    V(ID16, 3)                           \
-    V(IMM16, 3)                          \
-    V(IMM16_ID16, 5)                     \
-    V(IMM16_ID16_ID16_IMM16_V8, 10)      \
-    V(IMM16_ID16_IMM8, 6)                \
-    V(IMM16_ID16_V8, 6)                  \
-    V(IMM16_IMM16, 5)                    \
-    V(IMM16_IMM8_V8, 5)                  \
-    V(IMM16_V8, 4)                       \
-    V(IMM16_V8_IMM16, 6)                 \
-    V(IMM16_V8_V8, 5)                    \
-    V(IMM32, 5)                          \
-    V(IMM4_IMM4, 2)                      \
-    V(IMM64, 9)                          \
-    V(IMM8, 2)                           \
-    V(IMM8_ID16, 4)                      \
-    V(IMM8_ID16_ID16_IMM16_V8, 9)        \
-    V(IMM8_ID16_IMM8, 5)                 \
-    V(IMM8_ID16_V8, 5)                   \
-    V(IMM8_IMM16, 4)                     \
-    V(IMM8_IMM8, 3)                      \
-    V(IMM8_IMM8_V8, 4)                   \
-    V(IMM8_V8, 3)                        \
-    V(IMM8_V8_IMM16, 5)                  \
-    V(IMM8_V8_V8, 4)                     \
-    V(IMM8_V8_V8_V8, 5)                  \
-    V(IMM8_V8_V8_V8_V8, 6)               \
-    V(V16_V16, 5)                        \
-    V(V4_V4, 2)                          \
-    V(V8, 2)                             \
-    V(V8_IMM16, 4)                       \
-    V(V8_IMM8, 3)                        \
-    V(V8_V8, 3)                          \
-    V(V8_V8_V8, 4)                       \
-    V(V8_V8_V8_V8, 5)                    \
-    V(PREF_ID16_IMM16_IMM16_V8_V8, 10)   \
-    V(PREF_ID16_IMM16_V8, 7)             \
-    V(PREF_ID32_IMM8, 7)                 \
-    V(PREF_ID32_V8, 7)                   \
-    V(PREF_ID32, 6)                      \
-    V(PREF_IMM16, 4)                     \
-    V(PREF_IMM16_ID16, 6)                \
-    V(PREF_IMM16_IMM16, 6)               \
-    V(PREF_IMM16_IMM16_V8, 7)            \
-    V(PREF_IMM16_V8, 5)                  \
-    V(PREF_IMM16_V8_V8, 6)               \
-    V(PREF_IMM32, 6)                     \
-    V(PREF_IMM4_IMM4_V8, 4)              \
-    V(PREF_IMM8, 3)                      \
-    V(PREF_IMM8_IMM8_V8, 5)              \
-    V(PREF_NONE, 2)                      \
-    V(PREF_V8, 3)                        \
-    V(PREF_V8_IMM32, 6)                  \
-    V(PREF_V8_V8, 4)                     \
-    V(PREF_V8_V8_V8, 5)                  \
-    V(PREF_V8_V8_V8_V8, 6)
-
-
 enum class Format : uint8_t {
-#define BYTECODE_FORMAT_ENUM(name, size) name,
-    BYTECODE_FORMAT_LIST(BYTECODE_FORMAT_ENUM)
-#undef BYTECODE_FORMAT_ENUM
+    ID16,
+    IMM16,
+    IMM16_ID16,
+    IMM16_ID16_ID16_IMM16_V8,
+    IMM16_ID16_IMM8,
+    IMM16_ID16_V8,
+    IMM16_IMM16,
+    IMM16_IMM8_V8,
+    IMM16_V8,
+    IMM16_V8_IMM16,
+    IMM16_V8_V8,
+    IMM32,
+    IMM4_IMM4,
+    IMM64,
+    IMM8,
+    IMM8_ID16,
+    IMM8_ID16_ID16_IMM16_V8,
+    IMM8_ID16_IMM8,
+    IMM8_ID16_V8,
+    IMM8_IMM16,
+    IMM8_IMM8,
+    IMM8_IMM8_V8,
+    IMM8_V8,
+    IMM8_V8_IMM16,
+    IMM8_V8_V8,
+    IMM8_V8_V8_V8,
+    IMM8_V8_V8_V8_V8,
+    NONE,
+    PREF_ID16_IMM16_IMM16_V8_V8,
+    PREF_ID16_IMM16_V8,
+    PREF_ID32,
+    PREF_ID32_IMM8,
+    PREF_ID32_V8,
+    PREF_IMM16,
+    PREF_IMM16_ID16,
+    PREF_IMM16_IMM16,
+    PREF_IMM16_IMM16_V8,
+    PREF_IMM16_V8,
+    PREF_IMM16_V8_V8,
+    PREF_IMM32,
+    PREF_IMM4_IMM4_V8,
+    PREF_IMM8,
+    PREF_IMM8_IMM8_V8,
+    PREF_NONE,
+    PREF_V8,
+    PREF_V8_IMM32,
+    PREF_V8_V8,
+    PREF_V8_V8_V8,
+    PREF_V8_V8_V8_V8,
+    V16_V16,
+    V4_V4,
+    V8,
+    V8_IMM16,
+    V8_IMM8,
+    V8_V8,
+    V8_V8_V8,
+    V8_V8_V8_V8,
 };
 
 enum class Opcode {
@@ -844,11 +838,11 @@ std::ostream &operator<<(std::ostream &os, const BytecodeInst<Mode> &inst);
 using BytecodeInstruction = BytecodeInst<BytecodeInstMode::FAST>;
 using BytecodeInstructionSafe = BytecodeInst<BytecodeInstMode::SAFE>;
 
-}  // namespace panda
+}  // namespace panda::ecmascript
 
 #endif  // LIBANDAFILE_BYTECODE_INSTRUCTION_H_
 
-namespace panda {
+namespace panda::ecmascript {
 
 template <const BytecodeInstMode Mode>
 template <class R, class S>
@@ -7565,6 +7559,6 @@ inline bool BytecodeInst<Mode>::IsPrimaryOpcodeValid() const
     return true;
 }
 
-}  // namespace panda
+}  // namespace panda::ecmascript
 
 #endif  // LIBPANDAFILE_BYTECODE_INSTRUCTION_INL_H_

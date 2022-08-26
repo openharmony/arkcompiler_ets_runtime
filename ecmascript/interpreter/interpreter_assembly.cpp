@@ -3927,11 +3927,6 @@ void InterpreterAssembly::HandleDeprecated(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
 }
-void InterpreterAssembly::HandleException(
-    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int16_t hotnessCounter)
-{
-}
 void InterpreterAssembly::HandleJnstricteqV8Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -4438,12 +4433,15 @@ void InterpreterAssembly::ExceptionHandler(
     DISPATCH_OFFSET(0);
 }
 
-void InterpreterAssembly::HandleOverflow(
-    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int16_t hotnessCounter)
-{
-    LOG_INTERPRETER(FATAL) << "opcode overflow";
-}
+#define DECLARE_UNUSED_ASM_HANDLE(name)                                                 \
+    void InterpreterAssembly::name(                                                     \
+        JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, \
+        JSTaggedValue profileTypeInfo, JSTaggedValue acc, int16_t hotnessCounter)       \
+    {                                                                                   \
+        LOG_INTERPRETER(FATAL) << #name;                                                \
+    }
+ASM_UNUSED_BC_STUB_LIST(DECLARE_UNUSED_ASM_HANDLE)
+#undef DECLARE_UNUSED_ASM_HANDLE
 
 uint32_t InterpreterAssembly::FindCatchBlock(Method *caller, uint32_t pc)
 {

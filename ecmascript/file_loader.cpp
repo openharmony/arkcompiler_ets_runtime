@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -370,12 +371,9 @@ void FileLoader::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
     const AsmInterParsedOption &asmInterOpt)
 {
     auto defaultBCStubDes = stubs[BytecodeStubCSigns::SingleStepDebugging];
-    auto defaultNonexistentBCStubDes = stubs[BytecodeStubCSigns::HandleOverflow];
     auto defaultBCDebuggerStubDes = stubs[BytecodeStubCSigns::BCDebuggerEntry];
     auto defaultBCDebuggerExceptionStubDes = stubs[BytecodeStubCSigns::BCDebuggerExceptionEntry];
     ASSERT(defaultBCStubDes.kind_ == CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);
-    thread->SetUnrealizedBCStubEntry(defaultBCStubDes.codeAddr_);
-    thread->SetNonExistedBCStubEntry(defaultNonexistentBCStubDes.codeAddr_);
     if (asmInterOpt.handleStart >= 0 && asmInterOpt.handleStart <= asmInterOpt.handleEnd) {
         for (int i = asmInterOpt.handleStart; i <= asmInterOpt.handleEnd; i++) {
             thread->SetBCStubEntry(static_cast<size_t>(i), defaultBCStubDes.codeAddr_);
@@ -385,8 +383,6 @@ void FileLoader::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
         INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(DISABLE_SINGLE_STEP_DEBUGGING)
 #undef DISABLE_SINGLE_STEP_DEBUGGING
     }
-    // bc debugger stub entries
-    thread->SetNonExistedBCDebugStubEntry(defaultNonexistentBCStubDes.codeAddr_);
     for (size_t i = 0; i < BCStubEntries::EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT; i++) {
         if (i == BytecodeStubCSigns::ID_ExceptionHandler) {
             thread->SetBCDebugStubEntry(i, defaultBCDebuggerExceptionStubDes.codeAddr_);
@@ -406,7 +402,9 @@ void FileLoader::InitializeStubEntries(const std::vector<AOTModulePackInfo::Func
         } else if (des.IsBCStub()) {
             thread->SetBCStubEntry(des.indexInKind_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
-            std::cout << "bytecode: " << GetEcmaOpcodeStr(static_cast<EcmaOpcode>(des.indexInKind_))
+            auto start = MessageString::ASM_INTERPRETER_START;
+            std::string format = MessageString::GetMessageString(des.indexInKind_ + start);
+            std::cout << "bytecode-" << des.indexInKind_ << " :" << format
                 << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
 #endif
         } else if (des.IsBuiltinsStub()) {

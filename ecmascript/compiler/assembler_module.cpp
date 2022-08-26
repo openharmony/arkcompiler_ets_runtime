@@ -85,15 +85,25 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
 {
     switch (mode) {
         case JSCallMode::CALL_ARG0:
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
             return 0;
         case JSCallMode::CALL_ARG1:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
             return 1;
         case JSCallMode::CALL_ARG2:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
             return 2; // 2: arg2
         case JSCallMode::CALL_ARG3:
+        case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
             return 3; // 3: arg3
         case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
@@ -113,12 +123,31 @@ int AssemblerModule::GetJumpSizeFromJSCallMode(JSCallMode mode)
     switch (mode) {
         case JSCallMode::CALL_ARG0:
             return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8);
+        case JSCallMode::CALL_THIS_ARG0:
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8);
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM8);
         case JSCallMode::CALL_ARG1:
             return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8);
+        case JSCallMode::CALL_THIS_ARG1:
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8);
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM8);
         case JSCallMode::CALL_ARG2:
             return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8);
+        case JSCallMode::CALL_THIS_ARG2:
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8);
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8);
         case JSCallMode::CALL_ARG3:
             return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8);
+        case JSCallMode::CALL_THIS_ARG3:
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8_V8);
+        case JSCallMode::DEPRECATED_CALL_ARG3:
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8_V8);
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8);
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
@@ -142,8 +171,18 @@ bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)
         case JSCallMode::CALL_ARG1:
         case JSCallMode::CALL_ARG2:
         case JSCallMode::CALL_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
         case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
             return false;
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
@@ -164,10 +203,20 @@ bool AssemblerModule::JSModeHaveNewTargetArg(JSCallMode mode)
         case JSCallMode::CALL_ARG1:
         case JSCallMode::CALL_ARG2:
         case JSCallMode::CALL_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
         case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG3:
             return false;
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
@@ -186,9 +235,19 @@ bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
         case JSCallMode::CALL_ARG1:
         case JSCallMode::CALL_ARG2:
         case JSCallMode::CALL_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
         case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG3:
             return true;
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
