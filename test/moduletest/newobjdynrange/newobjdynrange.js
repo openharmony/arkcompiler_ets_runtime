@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:newobjdynrange
+ * @tc.desc:test newobjdynrange
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function foo(arg1, arg2) {
     this.arg1 = arg1
     this.arg2 = arg2

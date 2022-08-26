@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:bindfunction
+ * @tc.desc:test bind function
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 const module = {
     x: 42,
     getX: function() {

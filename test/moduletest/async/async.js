@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:async
+ * @tc.desc:test async function
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 async function foo() {
     var a = await 1
     print(a)

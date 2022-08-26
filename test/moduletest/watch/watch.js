@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:watch
+ * @tc.desc:test watch
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function func_main_watch() {
     print("watch function success!")
 }

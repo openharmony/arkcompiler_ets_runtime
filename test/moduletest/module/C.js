@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:module
+ * @tc.desc:test module
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var Star = {
     starColor: function() {
         return this.name + ":" + this.type + ":" + this.color;

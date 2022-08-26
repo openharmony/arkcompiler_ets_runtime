@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:dyninstruction
+ * @tc.desc:test dynamic bytecodes
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function Foo() {
     print(3)
     print(1.1)

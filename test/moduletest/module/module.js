@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:module
+ * @tc.desc:test module
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 import { Car } from './B.js';   // Test direct Export & use after import
 import { Star } from './C.js';  // Test indirect Export & use after import
 

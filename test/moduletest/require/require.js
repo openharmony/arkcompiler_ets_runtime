@@ -12,6 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/*
+ * @tc.name:require
+ * @tc.desc:test require
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var b = require('./B.js');
 var c = require('./C.js');
 var strB = JSON.stringify(b);
