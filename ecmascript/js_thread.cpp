@@ -47,17 +47,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
     EcmaInterpreter::InitStackFrame(jsThread);
 
     if (jsThread->IsAsmInterpreter()) {
-        size_t stackSize = GetAsmStackSize();
-        if (stackSize <= EcmaParamConfiguration::GetDefalutReservedStackSize()) {
-            LOG_ECMA(FATAL) << "Too small stackSize to run jsvm:" << stackSize;
-        }
-        // init stack limit of asm interpreter
-        ASSERT(GetCurrentStackPosition() > (stackSize - EcmaParamConfiguration::GetDefalutReservedStackSize()));
-        // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
-        // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
-        // when push other data.
-        jsThread->glueData_.stackLimit_ =
-            GetCurrentStackPosition() - (stackSize - EcmaParamConfiguration::GetDefalutReservedStackSize());
+        jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     }
     return jsThread;
 }
@@ -399,30 +389,53 @@ void JSThread::CollectBCOffsetInfo()
 }
 
 // static
-size_t JSThread::GetAsmStackSize()
+size_t JSThread::GetAsmStackLimit()
 {
-    size_t result = EcmaParamConfiguration::GetDefalutStackSize();
+#ifndef PANDA_TARGET_WINDOWS
+    // js stack limit
+    size_t result = GetCurrentStackPosition() - EcmaParamConfiguration::GetDefalutStackSize();
     pthread_attr_t attr;
-    int ret = pthread_attr_init(&attr);
+    int ret = pthread_getattr_np(pthread_self(), &attr);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Get current thread attr failed";
         return result;
     }
+
+    void *stackAddr = nullptr;
     size_t size = 0;
-    ret = pthread_attr_getstacksize(&attr, &size);
+    ret = pthread_attr_getstack(&attr, &stackAddr, &size);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Get current thread stack size failed";
+        if (pthread_attr_destroy(&attr) != 0) {
+            LOG_ECMA(ERROR) << "Destroy current thread attr failed";
+        }
         return result;
     }
 
-    if (size < result) {
-        result = size;
+    uintptr_t threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr);
+    if (result < threadStackLimit) {
+        result = threadStackLimit;
     }
-    LOG_ECMA(INFO) << "Current thread asm stack size:" << result;
+
+    uintptr_t threadStackStart = threadStackLimit + size;
+    LOG_ECMA(INFO) << "Current thread stack start:" << threadStackStart
+                   << " Used stack before js stack start:" << (threadStackStart - GetCurrentStackPosition())
+                   << " Current thread asm stack limit:" << result;
     ret = pthread_attr_destroy(&attr);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Destroy current thread attr failed";
     }
+
+    // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
+    // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
+    // when push other data.
+    result += EcmaParamConfiguration::GetDefaultReservedStackSize();
+    if (threadStackStart <= result) {
+        LOG_ECMA(FATAL) << "Too small stackSize to run jsvm";
+    }
     return result;
+#else
+    return 0;
+#endif
 }
 }  // namespace panda::ecmascript
