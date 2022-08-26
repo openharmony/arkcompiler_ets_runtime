@@ -1727,7 +1727,7 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
     JSTaggedValue fmtMessageId = GetArg(argv, argc, 0);
     std::string result = MessageString::GetMessageString(fmtMessageId.GetInt());
-    std::cerr << "aot " << result << std::endl;
+    std::cerr << "aot slowpath " << result << std::endl;
     return JSTaggedValue::Undefined().GetRawData();
 }
 
