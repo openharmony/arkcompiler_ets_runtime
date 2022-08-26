@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/emca_bytecode.h"
 #include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {
@@ -277,7 +278,7 @@ private:
     void LowerGetUnmappedArgs(GateRef gate, GateRef glue, GateRef actualArgc);
     void LowerCopyRestArgs(GateRef gate, GateRef glue, GateRef actualArgc);
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
-    int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
+    int32_t ComputeCallArgc(GateRef gate, EcmaBytecode op);
     void LowerCreateAsyncGeneratorObj(GateRef gate, GateRef glue);
     void LowerAsyncGeneratorResolve(GateRef gate, GateRef glue);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);

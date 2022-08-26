@@ -1602,7 +1602,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyindexImm8V8Imm16)
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef index = ReadInst16_2(pc);
+    GateRef index = ZExtInt16ToInt32(ReadInst16_2(pc));
     Label fastPath(env);
     Label slowPath(env);
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
@@ -1628,7 +1628,7 @@ DECLARE_ASM_HANDLER(HandleStownbyindexImm8V8Imm16)
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef index = ReadInst16_2(pc);
+    GateRef index = ZExtInt16ToInt32(ReadInst16_2(pc));
     Label isHeapObject(env);
     Label slowPath(env);
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);

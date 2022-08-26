@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/message_string.h"
 
@@ -54,9 +53,9 @@ void SlowPathLowering::CallRuntimeLowering()
     }
 }
 
-int32_t SlowPathLowering::ComputeCallArgc(GateRef gate, EcmaOpcode op)
+int32_t SlowPathLowering::ComputeCallArgc(GateRef gate, EcmaBytecode op)
 {
-    if (op == EcmaOpcode::CALLTHISRANGE_IMM8_IMM16_V8) {
+    if (op == EcmaBytecode::CALLTHISRANGE) {
         return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 3; // 3: calltarget, this and bcoffset
     }
     return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 2; // 2: calltarget and bcoffset
@@ -278,398 +277,392 @@ void SlowPathLowering::Lower(GateRef gate)
     GateRef actualArgc = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
 
     auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaOpcode op = static_cast<EcmaOpcode>(*pc);
+    EcmaBytecode op = static_cast<EcmaBytecode>(*pc);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case EcmaOpcode::LDA_STR_ID16:
+        case EcmaBytecode::LDASTR:
             LowerLoadStr(gate, glue);
             break;
-        case EcmaOpcode::CALLARG0_IMM8_V8:
+        case EcmaBytecode::CALLARG0:
             LowerCallArg0(gate, glue);
             break;
-        case EcmaOpcode::CALLARG1_IMM8_V8_V8:
+        case EcmaBytecode::CALLARG1:
             LowerCallArg1(gate, glue);
             break;
-        case EcmaOpcode::CALLARGS2_IMM8_V8_V8_V8:
+        case EcmaBytecode::CALLARGS2:
             LowerCallArgs2(gate, glue);
             break;
-        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8_V8:
+        case EcmaBytecode::CALLARGS3:
             LowerCallArgs3(gate, glue);
             break;
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM16_V8:
+        case EcmaBytecode::CALLTHISRANGE:
             LowerCallThisRange(gate, glue);
             break;
-        case EcmaOpcode::CALLSPREAD_IMM8_V8_V8_V8:
+        case EcmaBytecode::CALLSPREAD:
             LowerCallSpread(gate, glue);
             break;
-        case EcmaOpcode::CALLRANGE_IMM8_IMM16_V8:
+        case EcmaBytecode::CALLRANGE:
             LowerCallRange(gate, glue);
             break;
-        case EcmaOpcode::LDLEXENV:
-            LowerLexicalEnv(gate, glue);
-            break;
-        case EcmaOpcode::GETUNMAPPEDARGS:
+        // case EcmaBytecode::LDLEXENV:
+        //     LowerLexicalEnv(gate, glue);
+        //    break;
+        case EcmaBytecode::GETUNMAPPEDARGS:
             LowerGetUnmappedArgs(gate, glue, actualArgc);
             break;
-        case EcmaOpcode::ASYNCFUNCTIONENTER:
+        case EcmaBytecode::ASYNCFUNCTIONENTER:
             LowerAsyncFunctionEnter(gate, glue);
             break;
-        case EcmaOpcode::INC_IMM8:
+        case EcmaBytecode::INC:
             LowerInc(gate, glue);
             break;
-        case EcmaOpcode::DEC_IMM8:
+        case EcmaBytecode::DEC:
             LowerDec(gate, glue);
             break;
-        case EcmaOpcode::GETPROPITERATOR:
+        case EcmaBytecode::GETPROPITERATOR:
             LowerGetPropIterator(gate, glue);
             break;
-        case EcmaOpcode::RESUMEGENERATOR:
+        case EcmaBytecode::RESUMEGENERATOR:
             LowerResumeGenerator(gate);
             break;
-        case EcmaOpcode::GETRESUMEMODE:
+        case EcmaBytecode::GETRESUMEMODE:
             LowerGetResumeMode(gate);
             break;
-        case EcmaOpcode::ITERNEXT_IMM8_V8:
+        case EcmaBytecode::ITERNEXT:
             LowerIterNext(gate, glue);
             break;
-        case EcmaOpcode::CLOSEITERATOR_IMM8_V8:
+        case EcmaBytecode::CLOSEITERATOR:
             LowerCloseIterator(gate, glue);
             break;
-        case EcmaOpcode::ADD2_IMM8_V8:
+        case EcmaBytecode::ADD2:
             LowerAdd2(gate, glue);
             break;
-        case EcmaOpcode::SUB2_IMM8_V8:
+        case EcmaBytecode::SUB2:
             LowerSub2(gate, glue);
             break;
-        case EcmaOpcode::MUL2_IMM8_V8:
+        case EcmaBytecode::MUL2:
             LowerMul2(gate, glue);
             break;
-        case EcmaOpcode::DIV2_IMM8_V8:
+        case EcmaBytecode::DIV2:
             LowerDiv2(gate, glue);
             break;
-        case EcmaOpcode::MOD2_IMM8_V8:
+        case EcmaBytecode::MOD2:
             LowerMod2(gate, glue);
             break;
-        case EcmaOpcode::EQ_IMM8_V8:
+        case EcmaBytecode::EQ:
             LowerEq(gate, glue);
             break;
-        case EcmaOpcode::NOTEQ_IMM8_V8:
+        case EcmaBytecode::NOTEQ:
             LowerNotEq(gate, glue);
             break;
-        case EcmaOpcode::LESS_IMM8_V8:
+        case EcmaBytecode::LESS:
             LowerLess(gate, glue);
             break;
-        case EcmaOpcode::LESSEQ_IMM8_V8:
+        case EcmaBytecode::LESSEQ:
             LowerLessEq(gate, glue);
             break;
-        case EcmaOpcode::GREATER_IMM8_V8:
+        case EcmaBytecode::GREATER:
             LowerGreater(gate, glue);
             break;
-        case EcmaOpcode::GREATEREQ_IMM8_V8:
+        case EcmaBytecode::GREATEREQ:
             LowerGreaterEq(gate, glue);
             break;
-        case EcmaOpcode::CREATEITERRESULTOBJ_V8_V8:
+        case EcmaBytecode::CREATEITERRESULTOBJ:
             LowerCreateIterResultObj(gate, glue);
             break;
-        case EcmaOpcode::SUSPENDGENERATOR_V8_V8:
+        case EcmaBytecode::SUSPENDGENERATOR:
             LowerSuspendGenerator(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::ASYNCFUNCTIONAWAITUNCAUGHT_V8:
+        case EcmaBytecode::ASYNCFUNCTIONAWAITUNCAUGHT:
             LowerAsyncFunctionAwaitUncaught(gate, glue);
             break;
-        case EcmaOpcode::ASYNCFUNCTIONRESOLVE_V8:
+        case EcmaBytecode::ASYNCFUNCTIONRESOLVE:
             LowerAsyncFunctionResolve(gate, glue);
             break;
-        case EcmaOpcode::ASYNCFUNCTIONREJECT_V8:
+        case EcmaBytecode::ASYNCFUNCTIONREJECT:
             LowerAsyncFunctionReject(gate, glue);
             break;
-        case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
+        case EcmaBytecode::TRYLDGLOBALBYNAME:
             LowerTryLdGlobalByName(gate, glue);
             break;
-        case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
+        case EcmaBytecode::STGLOBALVAR:
             LowerStGlobalVar(gate, glue);
             break;
-        case EcmaOpcode::GETITERATOR_IMM8:
+        case EcmaBytecode::GETITERATOR:
             LowerGetIterator(gate, glue);
             break;
-        case EcmaOpcode::NEWOBJAPPLY_IMM8_V8:
+        case EcmaBytecode::NEWOBJAPPLY:
             LowerNewObjApply(gate, glue);
             break;
-        case EcmaOpcode::THROW:
+        case EcmaBytecode::THROW:
             LowerThrow(gate, glue);
             break;
-        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaBytecode::TYPEOF:
             LowerTypeof(gate, glue);
             break;
-        case EcmaOpcode::THROWCONSTASSIGNMENT_V8:
+        case EcmaBytecode::THROW_CONSTASSIGNMENT:
             LowerThrowConstAssignment(gate, glue);
             break;
-        case EcmaOpcode::THROWTHROWNOTEXISTS:
+        case EcmaBytecode::THROW_NOTEXISTS:
             LowerThrowThrowNotExists(gate, glue);
             break;
-        case EcmaOpcode::THROWPATTERNNONCOERCIBLE:
+        case EcmaBytecode::THROW_PATTERNNONCOERCIBLE:
             LowerThrowPatternNonCoercible(gate, glue);
             break;
-        case EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8:
+        case EcmaBytecode::THROW_IFNOTOBJECT:
             LowerThrowIfNotObject(gate, glue);
             break;
-        case EcmaOpcode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8:
+        case EcmaBytecode::THROW_UNDEFINEDIFHOLE:
             LowerThrowUndefinedIfHole(gate, glue);
             break;
-        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
+        case EcmaBytecode::THROW_IFSUPERNOTCORRECTCALL:
             LowerThrowIfSuperNotCorrectCall(gate, glue);
             break;
-        case EcmaOpcode::THROWDELETESUPERPROPERTY:
+        case EcmaBytecode::THROW_DELETESUPERPROPERTY:
             LowerThrowDeleteSuperProperty(gate, glue);
             break;
-        case EcmaOpcode::LDGLOBALTHIS:
+        case EcmaBytecode::LDGLOBALTHIS:
             LowerLdGlobal(gate, glue);
             break;
-        case EcmaOpcode::LDSYMBOL:
+        case EcmaBytecode::LDSYMBOL:
             LowerLdSymbol(gate, glue);
             break;
-        case EcmaOpcode::LDGLOBAL:
+        case EcmaBytecode::LDGLOBAL:
             LowerLdGlobal(gate, glue);
             break;
-        case EcmaOpcode::TONUMBER_IMM8:
+        case EcmaBytecode::TONUMBER:
             LowerToNumber(gate, glue);
             break;
-        case EcmaOpcode::NEG_IMM8:
+        case EcmaBytecode::NEG:
             LowerNeg(gate, glue);
             break;
-        case EcmaOpcode::NOT_IMM8:
+        case EcmaBytecode::NOT:
             LowerNot(gate, glue);
             break;
-        case EcmaOpcode::SHL2_IMM8_V8:
+        case EcmaBytecode::SHL2:
             LowerShl2(gate, glue);
             break;
-        case EcmaOpcode::SHR2_IMM8_V8:
+        case EcmaBytecode::SHR2:
             LowerShr2(gate, glue);
             break;
-        case EcmaOpcode::ASHR2_IMM8_V8:
+        case EcmaBytecode::ASHR2:
             LowerAshr2(gate, glue);
             break;
-        case EcmaOpcode::AND2_IMM8_V8:
+        case EcmaBytecode::AND2:
             LowerAnd2(gate, glue);
             break;
-        case EcmaOpcode::OR2_IMM8_V8:
+        case EcmaBytecode::OR2:
             LowerOr2(gate, glue);
             break;
-        case EcmaOpcode::XOR2_IMM8_V8:
+        case EcmaBytecode::XOR2:
             LowerXor2(gate, glue);
             break;
-        case EcmaOpcode::DELOBJPROP_V8:
+        case EcmaBytecode::DELOBJPROP:
             LowerDelObjProp(gate, glue);
             break;
-        case EcmaOpcode::DEFINENCFUNC_IMM8_ID16_IMM16_V8:
+        case EcmaBytecode::DEFINENCFUNC:
             LowerDefineNCFunc(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM16_V8:
+        case EcmaBytecode::DEFINEMETHOD:
             LowerDefineMethod(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::EXP_IMM8_V8:
+        case EcmaBytecode::EXP:
             LowerExp(gate, glue);
             break;
-        case EcmaOpcode::ISIN_IMM8_V8:
+        case EcmaBytecode::ISIN:
             LowerIsIn(gate, glue);
             break;
-        case EcmaOpcode::INSTANCEOF_IMM8_V8:
+        case EcmaBytecode::INSTANCEOF:
             LowerInstanceof(gate, glue);
             break;
-        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
+        case EcmaBytecode::STRICTNOTEQ:
             LowerFastStrictNotEqual(gate, glue);
             break;
-        case EcmaOpcode::STRICTEQ_IMM8_V8:
+        case EcmaBytecode::STRICTEQ:
             LowerFastStrictEqual(gate, glue);
             break;
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+        case EcmaBytecode::CREATEEMPTYARRAY:
             LowerCreateEmptyArray(gate, glue);
             break;
-        case EcmaOpcode::CREATEEMPTYOBJECT:
+        case EcmaBytecode::CREATEEMPTYOBJECT:
             LowerCreateEmptyObject(gate, glue);
             break;
-        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_IMM16:
+        case EcmaBytecode::CREATEOBJECTWITHBUFFER:
             LowerCreateObjectWithBuffer(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_IMM16:
+        case EcmaBytecode::CREATEARRAYWITHBUFFER:
             LowerCreateArrayWithBuffer(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::STMODULEVAR_ID16:
+        case EcmaBytecode::STMODULEVAR:
             LowerStModuleVar(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
+        case EcmaBytecode::GETTEMPLATEOBJECT:
             LowerGetTemplateObject(gate, glue);
             break;
-        case EcmaOpcode::SETOBJECTWITHPROTO_IMM8_V8:
+        case EcmaBytecode::SETOBJECTWITHPROTO:
             LowerSetObjectWithProto(gate, glue);
             break;
-        case EcmaOpcode::LDBIGINT_ID16:
+        case EcmaBytecode::LDBIGINT:
             LowerLdBigInt(gate, glue);
             break;
-        case EcmaOpcode::TONUMERIC_IMM8:
+        case EcmaBytecode::TONUMERIC:
             LowerToNumeric(gate, glue);
             break;
-        case EcmaOpcode::LDMODULEVAR_ID16_IMM8:
+        case EcmaBytecode::LDMODULEVAR:
             LowerLdModuleVar(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::GETMODULENAMESPACE_ID16:
+        case EcmaBytecode::GETMODULENAMESPACE:
             LowerGetModuleNamespace(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM16_V8:
+        case EcmaBytecode::NEWOBJRANGE:
             LowerNewObjRange(gate, glue);
             break;
-        case EcmaOpcode::JEQZ_IMM8:
-        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaBytecode::JEQZ:
             LowerConditionJump(gate, true);
             break;
-        case EcmaOpcode::JNEZ_IMM8:
-        case EcmaOpcode::JNEZ_IMM16:
+        case EcmaBytecode::JNEZ:
             LowerConditionJump(gate, false);
             break;
-        case EcmaOpcode::GETITERATORNEXT_V8_V8:
+        case EcmaBytecode::GETITERATORNEXT:
             LowerGetIteratorNext(gate, glue);
             break;
-        case EcmaOpcode::SUPERCALL_IMM8_IMM16_V8:
+        case EcmaBytecode::SUPERCALL:
             LowerSuperCall(gate, glue, newTarget);
             break;
-        case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
+        case EcmaBytecode::SUPERCALLSPREAD:
             LowerSuperCallSpread(gate, glue, newTarget);
             break;
-        case EcmaOpcode::ISTRUE:
+        case EcmaBytecode::ISTRUE:
             LowerIsTrueOrFalse(gate, glue, true);
             break;
-        case EcmaOpcode::ISFALSE:
+        case EcmaBytecode::ISFALSE:
             LowerIsTrueOrFalse(gate, glue, false);
             break;
-        case EcmaOpcode::GETNEXTPROPNAME_V8:
+        case EcmaBytecode::GETNEXTPROPNAME:
             LowerGetNextPropName(gate, glue);
             break;
-        case EcmaOpcode::COPYDATAPROPERTIES_V8:
+        case EcmaBytecode::COPYDATAPROPERTIES:
             LowerCopyDataProperties(gate, glue);
             break;
-        case EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8:
+        case EcmaBytecode::CREATEOBJECTWITHEXCLUDEDKEYS:
             LowerCreateObjectWithExcludedKeys(gate, glue);
             break;
-        case EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8:
+        case EcmaBytecode::CREATEREGEXPWITHLITERAL:
             LowerCreateRegExpWithLiteral(gate, glue);
             break;
-        case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
+        case EcmaBytecode::STOWNBYVALUE:
             LowerStOwnByValue(gate, glue);
             break;
-        case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
+        case EcmaBytecode::STOWNBYINDEX:
             LowerStOwnByIndex(gate, glue);
             break;
-        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
+        case EcmaBytecode::STOWNBYNAME:
             LowerStOwnByName(gate, glue);
             break;
-        case EcmaOpcode::DEFINEGENERATORFUNC_IMM8_ID16_IMM16_V8:
+        case EcmaBytecode::DEFINEGENERATORFUNC:
             LowerDefineGeneratorFunc(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::DEFINEASYNCGENERATORFUNC_IMM8_ID16_IMM16_V8:
+        case EcmaBytecode::DEFINEASYNCGENERATORFUNC:
             LowerDefineAsyncGeneratorFunc(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::DEFINEASYNCFUNC_IMM8_ID16_IMM16_V8:
+        case EcmaBytecode::DEFINEASYNCFUNC:
             LowerDefineAsyncFunc(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::NEWLEXENV_IMM8:
+        case EcmaBytecode::NEWLEXENV:
             LowerNewLexicalEnv(gate, glue);
             break;
-        case EcmaOpcode::NEWLEXENVWITHNAME_IMM16_IMM16:
+        case EcmaBytecode::NEWLEXENVWITHNAME:
             LowerNewLexicalEnvWithName(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::POPLEXENV:
+        case EcmaBytecode::POPLEXENV:
             LowerPopLexicalEnv(gate, glue);
             break;
-        case EcmaOpcode::LDSUPERBYVALUE_IMM8_V8_V8:
+        case EcmaBytecode::LDSUPERBYVALUE:
             LowerLdSuperByValue(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::STSUPERBYVALUE_IMM8_V8_V8:
+        case EcmaBytecode::STSUPERBYVALUE:
             LowerStSuperByValue(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
+        case EcmaBytecode::TRYSTGLOBALBYNAME:
             LowerTryStGlobalByName(gate, glue);
             break;
-        case EcmaOpcode::STCONSTTOGLOBALRECORD_ID16:
+        case EcmaBytecode::STCONSTTOGLOBALRECORD:
             LowerStConstToGlobalRecord(gate, glue);
             break;
-        case EcmaOpcode::STLETTOGLOBALRECORD_ID16:
+        case EcmaBytecode::STLETTOGLOBALRECORD:
             LowerStLetToGlobalRecord(gate, glue);
             break;
-        case EcmaOpcode::STCLASSTOGLOBALRECORD_ID16:
-            LowerStClassToGlobalRecord(gate, glue);
-            break;
-        case EcmaOpcode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8:
+        // case EcmaBytecode::STCLASSTOGLOBALRECORD:
+        //     LowerStClassToGlobalRecord(gate, glue);
+        //     break;
+        case EcmaBytecode::STOWNBYVALUEWITHNAMESET:
             LowerStOwnByValueWithNameSet(gate, glue);
             break;
-        case EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8:
+        case EcmaBytecode::STOWNBYNAMEWITHNAMESET:
             LowerStOwnByNameWithNameSet(gate, glue);
             break;
-        case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
+        case EcmaBytecode::LDGLOBALVAR:
             LowerLdGlobalVar(gate, glue);
             break;
-        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
+        case EcmaBytecode::LDOBJBYNAME:
             LowerLdObjByName(gate, glue);
             break;
-        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
+        case EcmaBytecode::STOBJBYNAME:
             LowerStObjByName(gate, glue);
             break;
-        case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
+        case EcmaBytecode::DEFINEGETTERSETTERBYVALUE:
             LowerDefineGetterSetterByValue(gate, glue);
             break;
-        case EcmaOpcode::LDOBJBYINDEX_IMM8_V8_IMM16:
+        case EcmaBytecode::LDOBJBYINDEX:
             LowerLdObjByIndex(gate, glue);
             break;
-        case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
+        case EcmaBytecode::STOBJBYINDEX:
             LowerStObjByIndex(gate, glue);
             break;
-        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8_V8:
+        case EcmaBytecode::LDOBJBYVALUE:
             LowerLdObjByValue(gate, glue);
             break;
-        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+        case EcmaBytecode::STOBJBYVALUE:
             LowerStObjByValue(gate, glue);
             break;
-        case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16_V8:
+        case EcmaBytecode::LDSUPERBYNAME:
             LowerLdSuperByName(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8:
+        case EcmaBytecode::STSUPERBYNAME:
             LowerStSuperByName(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::CREATEGENERATOROBJ_V8:
+        case EcmaBytecode::CREATEGENERATOROBJ:
             LowerCreateGeneratorObj(gate, glue);
             break;
-        case EcmaOpcode::CREATEASYNCGENERATOROBJ_V8:
+        case EcmaBytecode::CREATEASYNCGENERATOROBJ:
             LowerCreateAsyncGeneratorObj(gate, glue);
             break;
-        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
+        case EcmaBytecode::ASYNCGENERATORRESOLVE:
             LowerAsyncGeneratorResolve(gate, glue);
             break;
-        case EcmaOpcode::STARRAYSPREAD_V8_V8:
+        case EcmaBytecode::STARRAYSPREAD:
             LowerStArraySpread(gate, glue);
             break;
-        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::LDLEXVAR_IMM16_IMM16:
+        case EcmaBytecode::LDLEXVAR:
             LowerLdLexVar(gate, glue);
             break;
-        case EcmaOpcode::STLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::STLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
+        case EcmaBytecode::STLEXVAR:
             LowerStLexVar(gate, glue);
             break;
-        case EcmaOpcode::CREATEOBJECTHAVINGMETHOD_IMM8_IMM16:
+        case EcmaBytecode::CREATEOBJECTHAVINGMETHOD:
             LowerCreateObjectHavingMethod(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::LDHOMEOBJECT:
-            LowerLdHomeObject(gate, jsFunc);
-            break;
-        case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_IMM16_IMM16_V8_V8:
+        // case EcmaBytecode::LDHOMEOBJECT:
+        //     LowerLdHomeObject(gate, jsFunc);
+        //    break;
+        case EcmaBytecode::DEFINECLASSWITHBUFFER:
             LowerDefineClassWithBuffer(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM16_V8:
+        case EcmaBytecode::DEFINEFUNC:
             LowerDefineFunc(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::COPYRESTARGS_IMM8:
+        case EcmaBytecode::COPYRESTARGS:
             LowerCopyRestArgs(gate, glue, actualArgc);
             break;
         default:
@@ -692,7 +685,7 @@ GateRef SlowPathLowering::LowerCallRuntime(GateRef glue, int index, const std::v
 
 void SlowPathLowering::LowerAdd2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAdd2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAdd2Imm8V8)));
     const int id = RTSTUB_ID(Add2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -703,7 +696,7 @@ void SlowPathLowering::LowerAdd2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCreateIterResultObj(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateIterResultObjV8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateIterResultObjV8V8)));
     const int id = RTSTUB_ID(CreateIterResultObj);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -790,7 +783,7 @@ void SlowPathLowering::LowerSuspendGenerator(GateRef gate, GateRef glue, [[maybe
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     SaveFrameToContext(gate, glue, jsFunc);
     acc_.SetDep(gate, builder_.GetDepend());
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuspendGeneratorV8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuspendGeneratorV8)));
     const int id = RTSTUB_ID(OptSuspendGenerator);
     GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2)});
     ReplaceHirToCall(gate, newGate);
@@ -798,7 +791,7 @@ void SlowPathLowering::LowerSuspendGenerator(GateRef gate, GateRef glue, [[maybe
 
 void SlowPathLowering::LowerAsyncFunctionAwaitUncaught(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncFunctionAwaitUncaughtV8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncFunctionAwaitUncaughtV8)));
     const int id = RTSTUB_ID(AsyncFunctionAwaitUncaught);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -808,7 +801,7 @@ void SlowPathLowering::LowerAsyncFunctionAwaitUncaught(GateRef gate, GateRef glu
 
 void SlowPathLowering::LowerAsyncFunctionResolve(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncFunctionResolveV8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncFunctionResolveV8V8V8)));
     const int id = RTSTUB_ID(AsyncFunctionResolveOrReject);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -819,7 +812,7 @@ void SlowPathLowering::LowerAsyncFunctionResolve(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerAsyncFunctionReject(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncFunctionRejectV8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncFunctionRejectV8V8V8)));
     const int id = RTSTUB_ID(AsyncFunctionResolveOrReject);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -830,14 +823,14 @@ void SlowPathLowering::LowerAsyncFunctionReject(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLoadStr(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdaStrId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdaStrId16)));
     GateRef newGate = GetValueFromConstStringTable(glue, gate, 0);
     ReplaceHirToCall(gate, newGate);
 }
 
 void SlowPathLowering::LowerLexicalEnv(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdLexEnv)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdLexEnv)));
     const int id = RTSTUB_ID(OptGetLexicalEnv);
     GateRef newGate = LowerCallRuntime(glue, id, {});
     ReplaceHirToCall(gate, newGate, true);
@@ -845,7 +838,7 @@ void SlowPathLowering::LowerLexicalEnv(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerTryLdGlobalByName(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleTryLdGlobalByNameImm8Id16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleTryLdGlobalByNameImm8Id16)));
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), acc_.GetValueIn(gate, 0));
     GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
     GateRef prop = LowerCallRuntime(glue, RTSTUB_ID(LoadValueFromConstantStringTable), { stringId }, true);
@@ -884,7 +877,7 @@ void SlowPathLowering::LowerTryLdGlobalByName(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStGlobalVar(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStGlobalVarId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStGlobalVarId16)));
     GateRef prop = GetValueFromConstStringTable(glue, gate, 0);
     acc_.SetDep(gate, prop);
     const int id = RTSTUB_ID(StGlobalVar);
@@ -895,7 +888,7 @@ void SlowPathLowering::LowerStGlobalVar(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerGetIterator(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetIteratorImm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetIteratorImm8)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     auto result = LowerCallRuntime(glue, RTSTUB_ID(GetIterator), {acc_.GetValueIn(gate, 0)}, true);
@@ -915,11 +908,11 @@ void SlowPathLowering::LowerToJSCall(GateRef gate, GateRef glue, const std::vect
 
 void SlowPathLowering::LowerCallArg0(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallArg0Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallArg0Imm8V8)));
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
 
-    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLARG0_IMM8_V8));
+    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaBytecode::CALLARG0));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
@@ -930,11 +923,11 @@ void SlowPathLowering::LowerCallArg0(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCallArg1(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallArg1Imm8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallArg1Imm8V8V8)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     // 2: func and bcoffset
-    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLARG1_IMM8_V8_V8));
+    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaBytecode::CALLARG1));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
@@ -945,11 +938,11 @@ void SlowPathLowering::LowerCallArg1(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCallArgs2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallArgs2Imm8V8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallArgs2Imm8V8V8V8)));
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     // 2: func and bcoffset
-    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLARGS2_IMM8_V8_V8_V8));
+    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaBytecode::CALLARGS2));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
@@ -961,10 +954,10 @@ void SlowPathLowering::LowerCallArgs2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCallArgs3(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallArgs3Imm8V8V8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallArgs3Imm8V8V8V8V8)));
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
-    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8_V8));
+    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaBytecode::CALLARGS3));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
@@ -976,12 +969,12 @@ void SlowPathLowering::LowerCallArgs3(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCallThisRange(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallThisRangeImm8Imm16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallThisRangeImm8Imm16V8)));
     std::vector<GateRef> vec;
     // The first register input is callTarget, second is thisObj and other inputs are common args.
     size_t fixedInputsNum = 2;
     ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
-    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLTHISRANGE_IMM8_IMM16_V8));
+    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaBytecode::CALLTHISRANGE));
     GateRef callTarget = acc_.GetValueIn(gate, 0);
     GateRef thisObj = acc_.GetValueIn(gate, 1);
     GateRef newTarget = builder_.Undefined();
@@ -1013,10 +1006,10 @@ void SlowPathLowering::LowerCallSpread(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCallRange(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallRangeImm8Imm16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCallRangeImm8Imm16V8)));
     std::vector<GateRef> vec;
     size_t numArgs = acc_.GetNumValueIn(gate);
-    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLRANGE_IMM8_IMM16_V8));
+    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaBytecode::CALLRANGE));
     GateRef callTarget = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
@@ -1036,7 +1029,7 @@ void SlowPathLowering::LowerCallRange(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerNewObjApply(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNewObjApplyImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNewObjApplyImm8V8)));
     const int id = RTSTUB_ID(NewObjApply);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -1047,7 +1040,7 @@ void SlowPathLowering::LowerNewObjApply(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerThrow(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrow)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrow)));
     GateRef exception = acc_.GetValueIn(gate, 0);
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue, exceptionOffset);
@@ -1058,7 +1051,7 @@ void SlowPathLowering::LowerThrow(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerThrowConstAssignment(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowConstAssignmentV8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowConstAssignmentV8)));
     const int id = RTSTUB_ID(ThrowConstAssignment);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1068,7 +1061,7 @@ void SlowPathLowering::LowerThrowConstAssignment(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerThrowThrowNotExists(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowThrowNotExists)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowThrowNotExists)));
     const int id = RTSTUB_ID(ThrowThrowNotExists);
     GateRef newGate = LowerCallRuntime(glue, id, {});
     ReplaceHirToThrowCall(gate, newGate);
@@ -1076,7 +1069,7 @@ void SlowPathLowering::LowerThrowThrowNotExists(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerThrowPatternNonCoercible(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowPatternNonCoercible)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowPatternNonCoercible)));
     const int id = RTSTUB_ID(ThrowPatternNonCoercible);
     GateRef newGate = LowerCallRuntime(glue, id, {});
     ReplaceHirToThrowCall(gate, newGate);
@@ -1084,7 +1077,7 @@ void SlowPathLowering::LowerThrowPatternNonCoercible(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerThrowIfNotObject(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowIfNotObjectV8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowIfNotObjectV8)));
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef value = acc_.GetValueIn(gate, 0);
@@ -1111,7 +1104,7 @@ void SlowPathLowering::LowerThrowIfNotObject(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerThrowUndefinedIfHole(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowIfNotObjectV8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowIfNotObjectV8)));
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef hole = acc_.GetValueIn(gate, 0);
@@ -1136,7 +1129,7 @@ void SlowPathLowering::LowerThrowUndefinedIfHole(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerThrowIfSuperNotCorrectCall(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowIfSuperNotCorrectCallImm16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowIfSuperNotCorrectCallImm16)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     // 2: number of value inputs
@@ -1151,7 +1144,7 @@ void SlowPathLowering::LowerThrowIfSuperNotCorrectCall(GateRef gate, GateRef glu
 
 void SlowPathLowering::LowerThrowDeleteSuperProperty(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowDeleteSuperProperty)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleThrowDeleteSuperProperty)));
     const int id = RTSTUB_ID(ThrowDeleteSuperProperty);
     GateRef newGate = LowerCallRuntime(glue, id, {});
     ReplaceHirToThrowCall(gate, newGate);
@@ -1160,7 +1153,7 @@ void SlowPathLowering::LowerThrowDeleteSuperProperty(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
 {
     GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
-    DebugPrintBC(hirGate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(ExceptionHandler)));
+    // DebugPrintBC(hirGate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(ExceptionHandler)));
     GateRef depend = acc_.GetDep(hirGate);
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue, exceptionOffset);
@@ -1183,7 +1176,7 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
 
 void SlowPathLowering::LowerLdSymbol(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdSymbol)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdSymbol)));
     const int id = RTSTUB_ID(GetSymbolFunction);
     GateRef newGate = LowerCallRuntime(glue, id, {});
     ReplaceHirToCall(gate, newGate);
@@ -1191,7 +1184,7 @@ void SlowPathLowering::LowerLdSymbol(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdGlobal(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdGlobal)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdGlobal)));
     GateRef offset = builder_.Int64(JSThread::GlueData::GetGlobalObjOffset(false));
     GateRef val = builder_.Int64Add(glue, offset);
     GateRef newGate = circuit_->NewGate(OpCode(OpCode::LOAD), VariableType::JS_ANY().GetMachineType(),
@@ -1201,7 +1194,7 @@ void SlowPathLowering::LowerLdGlobal(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerSub2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSub2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSub2Imm8V8)));
     const int id = RTSTUB_ID(Sub2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1211,7 +1204,7 @@ void SlowPathLowering::LowerSub2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerMul2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleMul2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleMul2Imm8V8)));
     const int id = RTSTUB_ID(Mul2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1221,7 +1214,7 @@ void SlowPathLowering::LowerMul2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerDiv2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDiv2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDiv2Imm8V8)));
     const int id = RTSTUB_ID(Div2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1231,7 +1224,7 @@ void SlowPathLowering::LowerDiv2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerMod2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleMod2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleMod2Imm8V8)));
     const int id = RTSTUB_ID(Mod2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1241,7 +1234,7 @@ void SlowPathLowering::LowerMod2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerEq(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleEqImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleEqImm8V8)));
     const int id = RTSTUB_ID(Eq);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1251,7 +1244,7 @@ void SlowPathLowering::LowerEq(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerNotEq(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNotEqImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNotEqImm8V8)));
     const int id = RTSTUB_ID(NotEq);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1261,7 +1254,7 @@ void SlowPathLowering::LowerNotEq(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLess(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLessImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLessImm8V8)));
     const int id = RTSTUB_ID(Less);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1271,7 +1264,7 @@ void SlowPathLowering::LowerLess(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLessEq(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLessEqImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLessEqImm8V8)));
     const int id = RTSTUB_ID(LessEq);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1281,7 +1274,7 @@ void SlowPathLowering::LowerLessEq(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerGreater(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGreaterImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGreaterImm8V8)));
     const int id = RTSTUB_ID(Greater);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1291,7 +1284,7 @@ void SlowPathLowering::LowerGreater(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerGreaterEq(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGreaterEqImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGreaterEqImm8V8)));
     const int id = RTSTUB_ID(GreaterEq);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1301,7 +1294,7 @@ void SlowPathLowering::LowerGreaterEq(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerGetPropIterator(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetPropIterator)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetPropIterator)));
     const int id = RTSTUB_ID(GetPropIterator);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1311,7 +1304,7 @@ void SlowPathLowering::LowerGetPropIterator(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerIterNext(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIterNextImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIterNextImm8V8)));
     const int id = RTSTUB_ID(IterNext);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1321,7 +1314,7 @@ void SlowPathLowering::LowerIterNext(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCloseIterator(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCloseIteratorImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCloseIteratorImm8V8)));
     const int id = RTSTUB_ID(CloseIterator);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1331,7 +1324,7 @@ void SlowPathLowering::LowerCloseIterator(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerInc(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIncImm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIncImm8)));
     const int id = RTSTUB_ID(Inc);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1341,7 +1334,7 @@ void SlowPathLowering::LowerInc(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerDec(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDecImm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDecImm8)));
     const int id = RTSTUB_ID(Dec);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1351,7 +1344,7 @@ void SlowPathLowering::LowerDec(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerToNumber(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleToNumberImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleToNumberImm8V8)));
     const int id = RTSTUB_ID(ToNumber);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1361,7 +1354,7 @@ void SlowPathLowering::LowerToNumber(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerNeg(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNegImm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNegImm8)));
     const int id = RTSTUB_ID(Neg);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1371,7 +1364,7 @@ void SlowPathLowering::LowerNeg(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerNot(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNotImm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNotImm8)));
     const int id = RTSTUB_ID(Not);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1381,7 +1374,7 @@ void SlowPathLowering::LowerNot(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerShl2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleShl2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleShl2Imm8V8)));
     const int id = RTSTUB_ID(Shl2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1391,7 +1384,7 @@ void SlowPathLowering::LowerShl2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerShr2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleShr2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleShr2Imm8V8)));
     const int id = RTSTUB_ID(Shr2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1401,7 +1394,7 @@ void SlowPathLowering::LowerShr2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerAshr2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAshr2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAshr2Imm8V8)));
     const int id = RTSTUB_ID(Ashr2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1411,7 +1404,7 @@ void SlowPathLowering::LowerAshr2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerAnd2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAnd2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAnd2Imm8V8)));
     const int id = RTSTUB_ID(And2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1421,7 +1414,7 @@ void SlowPathLowering::LowerAnd2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerOr2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleOr2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleOr2Imm8V8)));
     const int id = RTSTUB_ID(Or2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1431,7 +1424,7 @@ void SlowPathLowering::LowerOr2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerXor2(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleXOr2Imm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleXOr2Imm8V8)));
     const int id = RTSTUB_ID(Xor2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1441,7 +1434,7 @@ void SlowPathLowering::LowerXor2(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerDelObjProp(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDelObjPropV8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDelObjPropV8V8)));
     const int id = RTSTUB_ID(DelObjProp);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1451,7 +1444,7 @@ void SlowPathLowering::LowerDelObjProp(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerExp(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleExpImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleExpImm8V8)));
     const int id = RTSTUB_ID(Exp);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1461,7 +1454,7 @@ void SlowPathLowering::LowerExp(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerIsIn(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIsInImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIsInImm8V8)));
     const int id = RTSTUB_ID(IsIn);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1471,7 +1464,7 @@ void SlowPathLowering::LowerIsIn(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerInstanceof(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleInstanceOfImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleInstanceOfImm8V8)));
     const int id = RTSTUB_ID(InstanceOf);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1481,7 +1474,7 @@ void SlowPathLowering::LowerInstanceof(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerFastStrictNotEqual(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStrictNotEqImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStrictNotEqImm8V8)));
     const int id = RTSTUB_ID(FastStrictNotEqual);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1491,7 +1484,7 @@ void SlowPathLowering::LowerFastStrictNotEqual(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerFastStrictEqual(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStrictEqImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStrictEqImm8V8)));
     const int id = RTSTUB_ID(FastStrictEqual);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1501,7 +1494,7 @@ void SlowPathLowering::LowerFastStrictEqual(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCreateEmptyArray(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateEmptyArrayImm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateEmptyArrayImm8)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CreateEmptyArray), {}, true);
@@ -1514,7 +1507,7 @@ void SlowPathLowering::LowerCreateEmptyArray(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCreateEmptyObject(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateEmptyObject)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateEmptyObject)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CreateEmptyObject), {}, true);
@@ -1527,7 +1520,7 @@ void SlowPathLowering::LowerCreateEmptyObject(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateArrayWithBufferImm8Imm16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateArrayWithBufferImm8Imm16)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     // 1: number of value inputs
@@ -1543,7 +1536,7 @@ void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue, Ga
 
 void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateObjectWithBufferImm8Imm16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateObjectWithBufferImm8Imm16)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     // 1: number of value inputs
@@ -1559,7 +1552,7 @@ void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, G
 
 void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStModuleVarId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStModuleVarId16)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 2: number of value inputs
@@ -1578,7 +1571,7 @@ void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFu
 
 void SlowPathLowering::LowerGetTemplateObject(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetTemplateObjectImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetTemplateObjectImm8V8)));
     const int id = RTSTUB_ID(GetTemplateObject);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1589,7 +1582,7 @@ void SlowPathLowering::LowerGetTemplateObject(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerSetObjectWithProto(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSetObjectWithProtoImm8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSetObjectWithProtoImm8V8V8)));
     const int id = RTSTUB_ID(SetObjectWithProto);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1601,7 +1594,7 @@ void SlowPathLowering::LowerSetObjectWithProto(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdBigInt(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdBigIntId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdBigIntId16)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     // 1: number of value inputs
@@ -1617,7 +1610,7 @@ void SlowPathLowering::LowerLdBigInt(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleToNumericImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleToNumericImm8V8)));
     const int id = RTSTUB_ID(ToNumeric);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1627,7 +1620,7 @@ void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdModuleVarId16Imm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdModuleVarId16Imm8)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 2: number of value inputs
@@ -1645,7 +1638,7 @@ void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFu
 
 void SlowPathLowering::LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetModuleNamespaceId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetModuleNamespaceId16)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 1: number of value inputs
@@ -1662,7 +1655,7 @@ void SlowPathLowering::LowerGetModuleNamespace(GateRef gate, GateRef glue, GateR
 
 void SlowPathLowering::LowerGetIteratorNext(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetIteratorNextV8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetIteratorNextV8V8)));
     const int id = RTSTUB_ID(GetIteratorNext);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1674,7 +1667,7 @@ void SlowPathLowering::LowerGetIteratorNext(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuperCallImm8Imm16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuperCallImm8Imm16V8)));
     const int id = RTSTUB_ID(OptSuperCall);
     std::vector<GateRef> vec;
     // 3: number of value inputs
@@ -1693,7 +1686,7 @@ void SlowPathLowering::LowerSuperCall(GateRef gate, GateRef glue, GateRef newTar
 
 void SlowPathLowering::LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef newTarget)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuperCallSpreadImm8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleSuperCallSpreadImm8V8)));
     const int id = RTSTUB_ID(OptSuperCallSpread);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1706,9 +1699,9 @@ void SlowPathLowering::LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef 
 void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag)
 {
     if (flag) {
-        DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIsTrue)));
+        // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIsTrue)));
     } else {
-        DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIsFalse)));
+        // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleIsFalse)));
     }
     Label isTrue(&builder_);
     Label isFalse(&builder_);
@@ -1743,7 +1736,7 @@ void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag)
 
 void SlowPathLowering::LowerNewObjRange(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNewObjRangeImm8Imm16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNewObjRangeImm8Imm16V8)));
     const int id = RTSTUB_ID(OptNewObjRange);
     size_t range = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args(range);
@@ -1817,7 +1810,7 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 
 void SlowPathLowering::LowerGetNextPropName(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetNextPropNameV8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetNextPropNameV8)));
     const int id = RTSTUB_ID(GetNextPropName);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1828,7 +1821,7 @@ void SlowPathLowering::LowerGetNextPropName(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCopyDataProperties(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCopyDataPropertiesV8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCopyDataPropertiesV8V8)));
     const int id = RTSTUB_ID(CopyDataProperties);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1840,7 +1833,7 @@ void SlowPathLowering::LowerCopyDataProperties(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCreateObjectWithExcludedKeys(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateObjectWithExcludedKeysImm8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateObjectWithExcludedKeysImm8V8V8)));
     const int id = RTSTUB_ID(CreateObjectWithExcludedKeys);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -1854,7 +1847,7 @@ void SlowPathLowering::LowerCreateObjectWithExcludedKeys(GateRef gate, GateRef g
 
 void SlowPathLowering::LowerCreateRegExpWithLiteral(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateRegExpWithLiteralImm8Id16Imm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateRegExpWithLiteralImm8Id16Imm8)));
     const int id = RTSTUB_ID(CreateRegExpWithLiteral);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1866,7 +1859,7 @@ void SlowPathLowering::LowerCreateRegExpWithLiteral(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStOwnByValue(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByValueImm8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByValueImm8V8V8)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -1908,7 +1901,7 @@ void SlowPathLowering::LowerStOwnByValue(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStOwnByIndex(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByIndexImm8V8Imm32)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByIndexImm8V8Imm32)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -1951,7 +1944,7 @@ void SlowPathLowering::LowerStOwnByIndex(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStOwnByName(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByNameImm8Id16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByNameImm8Id16V8)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     auto args = { builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0))) };
@@ -1994,7 +1987,7 @@ void SlowPathLowering::LowerStOwnByName(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerDefineGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineGeneratorFuncImm8Id16Imm16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineGeneratorFuncImm8Id16Imm16V8)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef methodId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
@@ -2090,7 +2083,7 @@ void SlowPathLowering::LowerDefineAsyncGeneratorFunc(GateRef gate, GateRef glue,
 
 void SlowPathLowering::LowerDefineAsyncFunc(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineAsyncFuncImm8Id16Imm16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineAsyncFuncImm8Id16Imm16V8)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef methodId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
@@ -2138,7 +2131,7 @@ void SlowPathLowering::LowerDefineAsyncFunc(GateRef gate, GateRef glue, GateRef 
 
 void SlowPathLowering::LowerNewLexicalEnv(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNewLexEnvImm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNewLexEnvImm8)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     // 1: number of value inputs
@@ -2154,7 +2147,7 @@ void SlowPathLowering::LowerNewLexicalEnv(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerNewLexicalEnvWithName(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNewLexEnvWithNameImm16Imm16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleNewLexEnvWithNameImm16Imm16)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 2: number of value inputs
@@ -2173,7 +2166,7 @@ void SlowPathLowering::LowerNewLexicalEnvWithName(GateRef gate, GateRef glue, Ga
 
 void SlowPathLowering::LowerPopLexicalEnv(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandlePopLexEnv)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandlePopLexEnv)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     LowerCallRuntime(glue, RTSTUB_ID(OptPopLexicalEnv), {}, true);
@@ -2186,7 +2179,7 @@ void SlowPathLowering::LowerPopLexicalEnv(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdSuperByValueImm8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdSuperByValueImm8V8V8)));
     const int id = RTSTUB_ID(OptLdSuperByValue);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -2198,7 +2191,7 @@ void SlowPathLowering::LowerLdSuperByValue(GateRef gate, GateRef glue, GateRef j
 
 void SlowPathLowering::LowerStSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStSuperByValueImm8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStSuperByValueImm8V8V8)));
     const int id = RTSTUB_ID(OptStSuperByValue);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -2211,7 +2204,7 @@ void SlowPathLowering::LowerStSuperByValue(GateRef gate, GateRef glue, GateRef j
 
 void SlowPathLowering::LowerTryStGlobalByName(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleTryStGlobalByNameImm8Id16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleTryStGlobalByNameImm8Id16)));
     // order: 1. global record 2. global object
     DEFVAlUE(res, (&builder_), VariableType::JS_ANY(), builder_.Int64(JSTaggedValue::VALUE_HOLE));
     // 2 : number of value inputs
@@ -2259,7 +2252,7 @@ void SlowPathLowering::LowerTryStGlobalByName(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStConstToGlobalRecord(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStConstToGlobalRecordId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStConstToGlobalRecordId16)));
     GateRef propKey = GetValueFromConstStringTable(glue, gate, 0);
     acc_.SetDep(gate, propKey);
     // 2 : number of value inputs
@@ -2273,7 +2266,7 @@ void SlowPathLowering::LowerStConstToGlobalRecord(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStLetToGlobalRecord(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStLetToGlobalRecordId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStLetToGlobalRecordId16)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     // 2: number of value inputs
@@ -2291,7 +2284,7 @@ void SlowPathLowering::LowerStLetToGlobalRecord(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStClassToGlobalRecord(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStClassToGlobalRecordId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStClassToGlobalRecordId16)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     // 2: number of value inputs
@@ -2309,7 +2302,7 @@ void SlowPathLowering::LowerStClassToGlobalRecord(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStOwnByValueWithNameSet(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByValueWithNameSetImm8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByValueWithNameSetImm8V8V8)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -2360,7 +2353,7 @@ void SlowPathLowering::LowerStOwnByValueWithNameSet(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStOwnByNameWithNameSet(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByNameWithNameSetImm8Id16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStOwnByNameWithNameSetImm8Id16V8)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef stringId = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(acc_.GetValueIn(gate, 0)));
@@ -2412,7 +2405,7 @@ void SlowPathLowering::LowerStOwnByNameWithNameSet(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdGlobalVar(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdGlobalVarId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdGlobalVarId16)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     Label successExit(&builder_);
@@ -2449,7 +2442,7 @@ void SlowPathLowering::LowerLdGlobalVar(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdObjByName(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdObjByNameImm8Id16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdObjByNameImm8Id16V8)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     GateRef holeConst = builder_.HoleConstant();
@@ -2499,7 +2492,7 @@ void SlowPathLowering::LowerLdObjByName(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStObjByName(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStObjByNameImm8Id16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStObjByNameImm8Id16V8)));
     Label receiverIsHeapObject(&builder_);
     Label slowPath(&builder_);
     Label successExit(&builder_);
@@ -2535,7 +2528,7 @@ void SlowPathLowering::LowerStObjByName(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerDefineGetterSetterByValue(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineGetterSetterByValueV8V8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineGetterSetterByValueV8V8V8V8)));
     const int id = RTSTUB_ID(DefineGetterSetterByValue);
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
@@ -2551,7 +2544,7 @@ void SlowPathLowering::LowerDefineGetterSetterByValue(GateRef gate, GateRef glue
 
 void SlowPathLowering::LowerLdObjByIndex(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdObjByIndexImm8V8Imm32)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdObjByIndexImm8V8Imm32)));
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     std::vector<GateRef> successControl;
@@ -2601,7 +2594,7 @@ void SlowPathLowering::LowerLdObjByIndex(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStObjByIndex(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStObjByIndexImm8V8Imm32)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStObjByIndexImm8V8Imm32)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     Label successExit(&builder_);
@@ -2636,7 +2629,7 @@ void SlowPathLowering::LowerStObjByIndex(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdObjByValue(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdObjByValueImm8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdObjByValueImm8V8V8)));
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 2: number of value inputs
@@ -2685,7 +2678,7 @@ void SlowPathLowering::LowerLdObjByValue(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStObjByValue(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStObjByValueImm8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStObjByValueImm8V8V8)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -2722,7 +2715,7 @@ void SlowPathLowering::LowerStObjByValue(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdSuperByNameImm8Id16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdSuperByNameImm8Id16V8)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     // 2: number of value inputs
@@ -2739,7 +2732,7 @@ void SlowPathLowering::LowerLdSuperByName(GateRef gate, GateRef glue, GateRef js
 
 void SlowPathLowering::LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStSuperByNameImm8Id16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStSuperByNameImm8Id16V8)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     // 3: number of value inputs
@@ -2756,7 +2749,7 @@ void SlowPathLowering::LowerStSuperByName(GateRef gate, GateRef glue, GateRef js
 
 void SlowPathLowering::LowerCreateGeneratorObj(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateGeneratorObjV8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateGeneratorObjV8)));
     const int id = RTSTUB_ID(CreateGeneratorObj);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -2766,7 +2759,7 @@ void SlowPathLowering::LowerCreateGeneratorObj(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCreateAsyncGeneratorObj(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateAsyncGeneratorObjV8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateAsyncGeneratorObjV8)));
     int id = RTSTUB_ID(CreateAsyncGeneratorObj);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -2776,7 +2769,7 @@ void SlowPathLowering::LowerCreateAsyncGeneratorObj(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerAsyncGeneratorResolve(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncGeneratorResolveV8V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncGeneratorResolveV8V8V8)));
     int id = RTSTUB_ID(AsyncGeneratorResolve);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -2789,7 +2782,7 @@ void SlowPathLowering::LowerAsyncGeneratorResolve(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStArraySpread(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStArraySpreadV8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStArraySpreadV8V8)));
     const int id = RTSTUB_ID(StArraySpread);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -2800,7 +2793,7 @@ void SlowPathLowering::LowerStArraySpread(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerLdLexVar(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdLexVarImm4Imm4)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdLexVarImm4Imm4)));
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef level = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
@@ -2834,7 +2827,7 @@ void SlowPathLowering::LowerLdLexVar(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerStLexVar(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStLexVarImm4Imm4V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStLexVarImm4Imm4V8)));
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef level = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
@@ -2869,7 +2862,7 @@ void SlowPathLowering::LowerStLexVar(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerCreateObjectHavingMethod(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateObjectHavingMethodImm8Imm16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCreateObjectHavingMethodImm8Imm16)));
     const int id = RTSTUB_ID(CreateObjectHavingMethod);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -2900,7 +2893,7 @@ void SlowPathLowering::LowerLdHomeObject(GateRef gate, GateRef jsFunc)
 
 void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineClassWithBufferImm8Id16Imm16Imm16V8V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineClassWithBufferImm8Id16Imm16Imm16V8V8)));
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef methodId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
@@ -2939,7 +2932,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
 
 void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineFuncImm8Id16Imm16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineFuncImm8Id16Imm16V8)));
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef length = acc_.GetValueIn(gate, 1);
     GateRef v0 = acc_.GetValueIn(gate, 2);
@@ -3000,7 +2993,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFun
 
 void SlowPathLowering::LowerAsyncFunctionEnter(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncFunctionEnter)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncFunctionEnter)));
     const int id = RTSTUB_ID(AsyncFunctionEnter);
     // 0: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 0);
@@ -3010,7 +3003,7 @@ void SlowPathLowering::LowerAsyncFunctionEnter(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerTypeof(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleTypeofImm8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleTypeofImm8)));
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     std::vector<GateRef> successControl;
@@ -3234,7 +3227,7 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
 
 void SlowPathLowering::LowerDefineNCFunc(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineNCFuncImm8Id16Imm16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineNCFuncImm8Id16Imm16V8)));
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef methodId = acc_.GetValueIn(gate, 0);
@@ -3284,7 +3277,7 @@ void SlowPathLowering::LowerDefineNCFunc(GateRef gate, GateRef glue, GateRef jsF
 
 void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineMethodImm8Id16Imm16V8)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineMethodImm8Id16Imm16V8)));
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef methodId = acc_.GetValueIn(gate, 0);
@@ -3334,7 +3327,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
 
 void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate, GateRef glue, GateRef actualArgc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetUnmappedArgs)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleGetUnmappedArgs)));
     GateRef taggedArgc = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(actualArgc));
     const int id = RTSTUB_ID(OptGetUnmapedArgs);
     GateRef newGate = LowerCallRuntime(glue, id, {taggedArgc});
@@ -3343,7 +3336,7 @@ void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate, GateRef glue, GateRef 
 
 void SlowPathLowering::LowerCopyRestArgs(GateRef gate, GateRef glue, GateRef actualArgc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCopyRestArgsImm16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleCopyRestArgsImm16)));
     GateRef taggedArgc = builder_.TaggedTypeNGC(builder_.ZExtInt32ToInt64(actualArgc));
     GateRef restIdx = acc_.GetValueIn(gate, 0);
     GateRef taggedRestIdx = builder_.TaggedTypeNGC(restIdx);
