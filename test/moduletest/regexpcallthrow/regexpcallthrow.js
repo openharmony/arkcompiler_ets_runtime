@@ -12,6 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/*
+ * @tc.name:regexpcallthrow
+ * @tc.desc:test throw in regular expressions
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function Test262Error(message) {
     this.message = message;
 }

@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:objectcloneproperties
+ * @tc.desc:test object clone properties
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function fn(e) {
     return e;
 }

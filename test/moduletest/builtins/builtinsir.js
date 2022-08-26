@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:builtins
+ * @tc.desc:test builtins
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 print("builtins ir start");
 var str1 = "wpydejkl";
 print(str1.charCodeAt(1.231));

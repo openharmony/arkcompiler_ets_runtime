@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:globalrecord
+ * @tc.desc:test global record
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 "use strict"
 
 class View{}
