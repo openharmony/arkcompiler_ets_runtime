@@ -1455,6 +1455,12 @@ JSHandle<Method> ObjectFactory::NewJSMethod(const MethodLiteral *methodLiteral)
         method->SetCallField(methodLiteral->GetCallField());
         method->SetLiteralInfo(methodLiteral->GetLiteralInfo());
         method->SetNativePointerOrBytecodeArray(const_cast<void *>(methodLiteral->GetNativePointer()));
+        method->SetExtraLiteralInfo(methodLiteral->GetExtraLiteralInfo());
+    } else {
+        method->SetCallField(0ULL);
+        method->SetLiteralInfo(0ULL);
+        method->SetNativePointerOrBytecodeArray(nullptr);
+        method->SetExtraLiteralInfo(0ULL);
     }
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
     return method;
@@ -2210,7 +2216,7 @@ JSHandle<ConstantPool> ObjectFactory::NewConstantPool(uint32_t capacity)
     auto header = heap_->AllocateOldOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
     JSHandle<ConstantPool> array(thread_, header);
-    array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), capacity);
+    array->InitializeWithSpecialValue(JSTaggedValue::Hole(), capacity);
     return array;
 }
 

@@ -542,8 +542,6 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
             U_FALLTHROUGH;
         case OldBytecodeInst::Opcode::ECMA_LDFUNCTION_PREF_NONE:
             U_FALLTHROUGH;
-        case OldBytecodeInst::Opcode::ECMA_LDGLOBALTHIS_PREF_NONE:
-            U_FALLTHROUGH;
         case OldBytecodeInst::Opcode::ECMA_LDGLOBAL_PREF_NONE:
             U_FALLTHROUGH;
         case OldBytecodeInst::Opcode::ECMA_LDHOLE_PREF_NONE:

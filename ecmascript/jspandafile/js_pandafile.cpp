@@ -90,20 +90,6 @@ void JSPandaFile::Initialize()
     }
     methodLiterals_ =
         static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
-}
-
-MethodLiteral *JSPandaFile::FindMethods(uint32_t offset) const
-{
-    return methodMap_.at(offset);
-}
-
-bool JSPandaFile::IsModule() const
-{
-    return isModule_;
-}
-
-bool JSPandaFile::IsCjs() const
-{
-    return isCjs_;
+    isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
 }
 }  // namespace panda::ecmascript

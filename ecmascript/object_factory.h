@@ -635,6 +635,7 @@ private:
     friend class TSObjectType;
     friend class ModuleDataExtractor;
     friend class ModuleDataAccessor;
+    friend class ConstantPool;
 };
 
 class ClassLinkerFactory {

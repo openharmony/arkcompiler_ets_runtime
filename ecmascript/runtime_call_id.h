@@ -26,7 +26,6 @@ namespace panda::ecmascript {
     V(RunInternal)                  \
     V(Ldnan)                        \
     V(Ldinfinity)                   \
-    V(Ldglobalthis)                 \
     V(Ldundefined)                  \
     V(Ldboolean)                    \
     V(Ldnumber)                     \

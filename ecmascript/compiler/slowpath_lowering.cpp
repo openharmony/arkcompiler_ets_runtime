@@ -422,9 +422,6 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaBytecode::THROW_DELETESUPERPROPERTY:
             LowerThrowDeleteSuperProperty(gate, glue);
             break;
-        case EcmaBytecode::LDGLOBALTHIS:
-            LowerLdGlobal(gate, glue);
-            break;
         case EcmaBytecode::LDSYMBOL:
             LowerLdSymbol(gate, glue);
             break;
@@ -1996,39 +1993,27 @@ void SlowPathLowering::LowerDefineGeneratorFunc(GateRef gate, GateRef glue, Gate
     GateRef length = acc_.GetValueIn(gate, 1);
     GateRef lexEnv = acc_.GetValueIn(gate, 2);
     GateRef result;
-    Label isResolved(&builder_);
-    Label notResolved(&builder_);
-    Label defaultLabel(&builder_);
+
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    builder_.Branch(builder_.FunctionIsResolved(*method), &isResolved, &notResolved);
-    builder_.Bind(&isResolved);
+
+    method = LowerCallRuntime(glue, RTSTUB_ID(DefineGeneratorFunc), { *method });
+    Label notException(&builder_);
+    builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &notException);
+    builder_.Bind(&notException);
     {
-        method = LowerCallRuntime(glue, RTSTUB_ID(DefineGeneratorFunc), { *method });
-        Label notException(&builder_);
-        builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
-            &exceptionExit, &notException);
-        builder_.Bind(&notException);
-        {
-            builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
-            builder_.Jump(&defaultLabel);
-        }
+        builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
     }
-    builder_.Bind(&notResolved);
-    {
-        builder_.SetResolvedToFunction(glue, *method, builder_.Boolean(true));
-        builder_.Jump(&defaultLabel);
-    }
-    builder_.Bind(&defaultLabel);
-    {
-        GateRef hclass = builder_.LoadHClass(*method);
-        builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
-            builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        builder_.SetLexicalEnvToFunction(glue, *method, lexEnv);
-        builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
-        result = *method;
-        builder_.Jump(&successExit);
-    }
+
+    GateRef hclass = builder_.LoadHClass(*method);
+    builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
+        builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    builder_.SetLexicalEnvToFunction(glue, *method, lexEnv);
+    builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
+    result = *method;
+    builder_.Jump(&successExit);
+
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
@@ -2044,39 +2029,27 @@ void SlowPathLowering::LowerDefineAsyncGeneratorFunc(GateRef gate, GateRef glue,
     // 2: number of value inputs
     GateRef lexEnv = acc_.GetValueIn(gate, 2);
     GateRef result;
-    Label isResolved(&builder_);
-    Label notResolved(&builder_);
-    Label defaultLabel(&builder_);
+
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    builder_.Branch(builder_.FunctionIsResolved(*method), &isResolved, &notResolved);
-    builder_.Bind(&isResolved);
+
+    method = LowerCallRuntime(glue, RTSTUB_ID(DefineAsyncGeneratorFunc), { *method });
+    Label notException(&builder_);
+    builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &notException);
+    builder_.Bind(&notException);
     {
-        method = LowerCallRuntime(glue, RTSTUB_ID(DefineAsyncGeneratorFunc), { *method });
-        Label notException(&builder_);
-        builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
-            &exceptionExit, &notException);
-        builder_.Bind(&notException);
-        {
-            builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
-            builder_.Jump(&defaultLabel);
-        }
+        builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
     }
-    builder_.Bind(&notResolved);
-    {
-        builder_.SetResolvedToFunction(glue, *method, builder_.Boolean(true));
-        builder_.Jump(&defaultLabel);
-    }
-    builder_.Bind(&defaultLabel);
-    {
-        GateRef hclass = builder_.LoadHClass(*method);
-        builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
-            builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        builder_.SetLexicalEnvToFunction(glue, *method, lexEnv);
-        builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
-        result = *method;
-        builder_.Jump(&successExit);
-    }
+
+    GateRef hclass = builder_.LoadHClass(*method);
+    builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
+        builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    builder_.SetLexicalEnvToFunction(glue, *method, lexEnv);
+    builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
+    result = *method;
+    builder_.Jump(&successExit);
+
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
@@ -2092,39 +2065,27 @@ void SlowPathLowering::LowerDefineAsyncFunc(GateRef gate, GateRef glue, GateRef 
     GateRef length = acc_.GetValueIn(gate, 1);
     GateRef lexEnv = acc_.GetValueIn(gate, 2);
     GateRef result;
-    Label isResolved(&builder_);
-    Label notResolved(&builder_);
-    Label defaultLabel(&builder_);
+
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    builder_.Branch(builder_.FunctionIsResolved(*method), &isResolved, &notResolved);
-    builder_.Bind(&isResolved);
+
+    method = LowerCallRuntime(glue, RTSTUB_ID(DefineAsyncFunc), { *method }, true);
+    Label notException(&builder_);
+    builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &notException);
+    builder_.Bind(&notException);
     {
-        method = LowerCallRuntime(glue, RTSTUB_ID(DefineAsyncFunc), { *method }, true);
-        Label notException(&builder_);
-        builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
-            &exceptionExit, &notException);
-        builder_.Bind(&notException);
-        {
-            builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
-            builder_.Jump(&defaultLabel);
-        }
+        builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
     }
-    builder_.Bind(&notResolved);
-    {
-        builder_.SetResolvedToFunction(glue, *method, builder_.Boolean(true));
-        builder_.Jump(&defaultLabel);
-    }
-    builder_.Bind(&defaultLabel);
-    {
-        GateRef hclass = builder_.LoadHClass(*method);
-        builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
-            builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        builder_.SetLexicalEnvToFunction(glue, *method, lexEnv);
-        builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
-        result = *method;
-        builder_.Jump(&successExit);
-    }
+
+    GateRef hclass = builder_.LoadHClass(*method);
+    builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
+        builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    builder_.SetLexicalEnvToFunction(glue, *method, lexEnv);
+    builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
+    result = *method;
+    builder_.Jump(&successExit);
+
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
@@ -2938,45 +2899,33 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFun
     GateRef v0 = acc_.GetValueIn(gate, 2);
     DEFVAlUE(result, (&builder_),
         VariableType::JS_POINTER(), GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(methodId)));
-    Label isResolved(&builder_);
-    Label notResolved(&builder_);
-    Label defaultLabel(&builder_);
+
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     GateRef ret;
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    builder_.Branch(builder_.FunctionIsResolved(*result), &isResolved, &notResolved);
-    builder_.Bind(&isResolved);
+
+    result = LowerCallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
+    Label isException(&builder_);
+    Label notException(&builder_);
+    builder_.Branch(builder_.TaggedIsException(*result), &isException, &notException);
+    builder_.Bind(&isException);
     {
-        result = LowerCallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
-        Label isException(&builder_);
-        Label notException(&builder_);
-        builder_.Branch(builder_.TaggedIsException(*result), &isException, &notException);
-        builder_.Bind(&isException);
-        {
-            builder_.Jump(&exceptionExit);
-        }
-        builder_.Bind(&notException);
-        {
-            builder_.SetConstPoolToFunction(glue, *result, GetConstPool(jsFunc));
-            builder_.Jump(&defaultLabel);
-        }
+        builder_.Jump(&exceptionExit);
     }
-    builder_.Bind(&notResolved);
+    builder_.Bind(&notException);
     {
-        builder_.SetResolvedToFunction(glue, *result, builder_.Boolean(true));
-        builder_.Jump(&defaultLabel);
+        builder_.SetConstPoolToFunction(glue, *result, GetConstPool(jsFunc));
     }
-    builder_.Bind(&defaultLabel);
-    {
-        GateRef hclass = builder_.LoadHClass(*result);
-        builder_.SetPropertyInlinedProps(glue, *result, hclass, builder_.TaggedNGC(length),
-            builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        builder_.SetLexicalEnvToFunction(glue, *result, v0);
-        builder_.SetModuleToFunction(glue, *result, builder_.GetModuleFromFunction(jsFunc));
-        builder_.Jump(&successExit);
-    }
+
+    GateRef hclass = builder_.LoadHClass(*result);
+    builder_.SetPropertyInlinedProps(glue, *result, hclass, builder_.TaggedNGC(length),
+        builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    builder_.SetLexicalEnvToFunction(glue, *result, v0);
+    builder_.SetModuleToFunction(glue, *result, builder_.GetModuleFromFunction(jsFunc));
+    builder_.Jump(&successExit);
+
     builder_.Bind(&successExit);
     {
         ret = *result;
@@ -3236,41 +3185,29 @@ void SlowPathLowering::LowerDefineNCFunc(GateRef gate, GateRef glue, GateRef jsF
     GateRef result;
     DEFVAlUE(method, (&builder_), VariableType::JS_POINTER(),
              GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(methodId)));
-    Label isResolved(&builder_);
-    Label notResolved(&builder_);
-    Label defaultLabel(&builder_);
+
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    builder_.Branch(builder_.FunctionIsResolved(*method), &isResolved, &notResolved);
-    builder_.Bind(&isResolved);
+
+    method = LowerCallRuntime(glue, RTSTUB_ID(DefineNCFunc), {*method});
+    Label notException(&builder_);
+    builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &notException);
+    builder_.Bind(&notException);
     {
-        method = LowerCallRuntime(glue, RTSTUB_ID(DefineNCFunc), {*method});
-        Label notException(&builder_);
-        builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
-            &exceptionExit, &notException);
-        builder_.Bind(&notException);
-        {
-            builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
-            builder_.Jump(&defaultLabel);
-        }
+        builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
     }
-    builder_.Bind(&notResolved);
-    {
-        builder_.SetResolvedToFunction(glue, *method, builder_.Boolean(true));
-        builder_.Jump(&defaultLabel);
-    }
-    builder_.Bind(&defaultLabel);
-    {
-        GateRef hclass = builder_.LoadHClass(*method);
-        builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
-            builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        builder_.SetLexicalEnvToFunction(glue, *method, env);
-        GateRef homeObject = acc_.GetValueIn(gate, 3);
-        builder_.SetHomeObjectToFunction(glue, *method, homeObject);
-        builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
-        result = *method;
-        builder_.Jump(&successExit);
-    }
+
+    GateRef hclass = builder_.LoadHClass(*method);
+    builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
+        builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    builder_.SetLexicalEnvToFunction(glue, *method, env);
+    GateRef homeObject = acc_.GetValueIn(gate, 3);
+    builder_.SetHomeObjectToFunction(glue, *method, homeObject);
+    builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
+    result = *method;
+    builder_.Jump(&successExit);
+
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
@@ -3287,40 +3224,27 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
     GateRef result;
     DEFVAlUE(method, (&builder_), VariableType::JS_POINTER(),
              GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(methodId)));
-    Label isResolved(&builder_);
-    Label notResolved(&builder_);
-    Label defaultLabel(&builder_);
+
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    builder_.Branch(builder_.FunctionIsResolved(*method), &isResolved, &notResolved);
-    builder_.Bind(&isResolved);
+
+    method = LowerCallRuntime(glue, RTSTUB_ID(DefineMethod), {*method, homeObject});
+    Label notException(&builder_);
+    builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &notException);
+    builder_.Bind(&notException);
     {
-        method = LowerCallRuntime(glue, RTSTUB_ID(DefineMethod), {*method, homeObject});
-        Label notException(&builder_);
-        builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
-            &exceptionExit, &notException);
-        builder_.Bind(&notException);
-        {
-            builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
-            builder_.Jump(&defaultLabel);
-        }
+        builder_.SetConstPoolToFunction(glue, *method, GetConstPool(jsFunc));
     }
-    builder_.Bind(&notResolved);
-    {
-        builder_.SetResolvedToFunction(glue, *method, builder_.Boolean(true));
-        builder_.SetHomeObjectToFunction(glue, *method, homeObject);
-        builder_.Jump(&defaultLabel);
-    }
-    builder_.Bind(&defaultLabel);
-    {
-        GateRef hclass = builder_.LoadHClass(*method);
-        builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
-            builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        builder_.SetLexicalEnvToFunction(glue, *method, env);
-        builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
-        result = *method;
-        builder_.Jump(&successExit);
-    }
+
+    GateRef hclass = builder_.LoadHClass(*method);
+    builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
+        builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    builder_.SetLexicalEnvToFunction(glue, *method, env);
+    builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
+    result = *method;
+    builder_.Jump(&successExit);
+
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }

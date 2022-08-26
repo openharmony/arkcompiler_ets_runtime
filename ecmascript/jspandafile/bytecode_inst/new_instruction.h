@@ -321,7 +321,7 @@ enum class Format : uint8_t {
 enum class Opcode {
     LDNAN = 0,
     LDINFINITY = 1,
-    LDGLOBALTHIS = 2,
+    NOP_XXX = 2,
     LDUNDEFINED = 3,
     LDNULL = 4,
     LDSYMBOL = 5,
@@ -531,7 +531,9 @@ enum class Opcode {
     MOV_V4_V4 = 209,
     MOV_V8_V8 = 210,
     MOV_V16_V16 = 211,
-    NOP = 212,
+    JEQZ_IMM32 = 212,
+    JNEZ_IMM32 = 213,
+    NOP = 214,
     DEPRECATED_LDLEXENV_PREF_NONE = 252,
     WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8 = 253,
     THROW_PREF_NONE = 254,
@@ -2923,8 +2925,6 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
         return BytecodeInst<Mode>::Format::NONE;
-    case BytecodeInst<Mode>::Opcode::LDGLOBALTHIS:
-        return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::LDUNDEFINED:
         return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::LDNULL:
@@ -3514,8 +3514,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
     case BytecodeInst<Mode>::Opcode::LDNAN:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
-        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::LDGLOBALTHIS:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDUNDEFINED:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
@@ -4107,8 +4105,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::LDGLOBALTHIS:
-        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDUNDEFINED:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDNULL:
@@ -4698,8 +4694,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
     case BytecodeInst<Mode>::Opcode::LDNAN:
         return false;
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
-        return false;
-    case BytecodeInst<Mode>::Opcode::LDGLOBALTHIS:
         return false;
     case BytecodeInst<Mode>::Opcode::LDUNDEFINED:
         return false;
@@ -5292,9 +5286,6 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         break;
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
         os << "ldinfinity";
-        break;
-    case BytecodeInst<Mode>::Opcode::LDGLOBALTHIS:
-        os << "ldglobalthis";
         break;
     case BytecodeInst<Mode>::Opcode::LDUNDEFINED:
         os << "ldundefined";
@@ -6665,9 +6656,6 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
         break;
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
         os << "LDINFINITY";
-        break;
-    case BytecodeInst<Mode>::Opcode::LDGLOBALTHIS:
-        os << "LDGLOBALTHIS";
         break;
     case BytecodeInst<Mode>::Opcode::LDUNDEFINED:
         os << "LDUNDEFINED";

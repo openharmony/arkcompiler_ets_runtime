@@ -25,7 +25,6 @@ namespace panda::ecmascript::kungfu {
     V(DEBUGGER) \
     V(LDNAN)  \
     V(LDINFINITY)  \
-    V(LDGLOBALTHIS)  \
     V(LDUNDEFINED)  \
     V(LDNULL)  \
     V(LDSYMBOL)  \

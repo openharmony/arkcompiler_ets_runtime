@@ -24,9 +24,7 @@
 #include "libpandafile/code_data_accessor-inl.h"
 #include "libpandafile/file-inl.h"
 
-#ifndef DISABLE_OLD_BYTECODE
 #include "ecmascript/jspandafile/bytecode_inst/old_instruction.h"
-#endif
 
 namespace panda::ecmascript {
 class JSThread;
@@ -45,13 +43,11 @@ public:
     static void TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName);
 
 private:
-#ifndef DISABLE_OLD_BYTECODE
     static void TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t insSz, const uint8_t *insArr,
         const MethodLiteral *methodLiteral);
     static void FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder = 0);
     static void FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst);
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
-#endif
     static JSTaggedValue ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
     static void DefineClassesInConstPool(JSThread *thread, JSHandle<ConstantPool> constpool,
                                          const JSPandaFile *jsPandaFile);

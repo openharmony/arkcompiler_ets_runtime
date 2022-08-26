@@ -728,9 +728,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaBytecode::LDINFINITY: {
             break;
         }
-        case EcmaBytecode::LDGLOBALTHIS: {
-            break;
-        }
         case EcmaBytecode::LDUNDEFINED: {
             break;
         }

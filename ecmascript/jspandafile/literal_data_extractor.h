@@ -37,6 +37,14 @@ public:
                                    JSHandle<JSTaggedValue> constpool);
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                                     JSHandle<JSTaggedValue> constpool);
+#ifdef NEW_INSTRUCTION_DEFINE
+    static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
+                                   JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
+                                   JSHandle<JSTaggedValue> constpool);
+    static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                    panda_file::File::EntityId index,
+                                                    JSHandle<JSTaggedValue> constpool);
+#endif
     static JSHandle<JSFunction> DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                       JSHandle<Method> method, FunctionKind kind, uint16_t length);
 };

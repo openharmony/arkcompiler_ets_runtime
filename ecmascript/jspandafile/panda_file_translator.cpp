@@ -58,6 +58,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
         cda.EnumerateMethods([jsPandaFile, &translatedCode, &sd, methodLiterals, &methodIdx, pf]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
+            auto methodId = mda.GetMethodId();
             ASSERT(codeId.has_value());
 
             MethodLiteral *methodLiteral = methodLiterals + (methodIdx++);
@@ -66,21 +67,50 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
 
             uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex();
             if (mainMethodIndex == 0 && pf->GetStringData(mda.GetNameId()) == sd) {
-                jsPandaFile->UpdateMainMethodIndex(mda.GetMethodId().GetOffset());
+                jsPandaFile->UpdateMainMethodIndex(methodId.GetOffset());
             }
 
-            InitializeMemory(methodLiteral, jsPandaFile, mda.GetMethodId());
+            InitializeMemory(methodLiteral, jsPandaFile, methodId);
             methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
-            methodLiteral->InitializeCallField(
-                jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
-
+            methodLiteral->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
-#ifndef DISABLE_OLD_BYTECODE
-            if (translatedCode.find(insns) == translatedCode.end()) {
-                translatedCode.insert(insns);
-                TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral);
-            }
+            if (jsPandaFile->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
+                panda_file::IndexAccessor indexAccessor(*pf, methodId);
+                // int32_t index = indexAccessor.GetHeaderIndex();
+                panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
+                FunctionKind kind;
+                switch (funcKind) {
+                    case panda_file::FunctionKind::NONE:
+                    case panda_file::FunctionKind::FUNCTION:
+                        kind = FunctionKind::NORMAL_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::NC_FUNCTION:
+                        kind = FunctionKind::ARROW_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::GENERATOR_FUNCTION:
+                        kind = FunctionKind::GENERATOR_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_FUNCTION:
+                        kind = FunctionKind::ASYNC_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_GENERATOR_FUNCTION:
+                        kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_NC_FUNCTION:
+                        kind = FunctionKind::ASYNC_ARROW_FUNCTION;
+                        break;
+                    default:
+                        UNREACHABLE();
+                }
+                methodLiteral->SetFunctionKind(kind);
 #endif
+            } else {
+                if (translatedCode.find(insns) == translatedCode.end()) {
+                    translatedCode.insert(insns);
+                    TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral);
+                }
+            }
             jsPandaFile->SetMethodToMap(methodLiteral);
         });
     }
@@ -107,12 +137,28 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
 
         program->SetMainFunction(thread, mainFunc.GetTaggedValue());
 
-        JSTaggedValue constpool = vm->FindConstpool(jsPandaFile);
-        if (constpool.IsHole()) {
-            constpool = ParseConstPool(vm, jsPandaFile);
-            vm->SetConstpool(jsPandaFile, constpool);
+        int32_t index = 0;
+        int32_t total = 1;
+        if (jsPandaFile->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
+            panda_file::IndexAccessor indexAccessor(
+                *jsPandaFile->GetPandaFile(), panda_file::File::EntityId(mainMethodIndex));
+            index = indexAccessor.GetHeaderIndex();
+            total = indexAccessor.GetNumHeaders();
+#endif
         }
 
+        JSTaggedValue constpool = vm->FindConstpool(jsPandaFile, index);
+        if (constpool.IsHole()) {
+            if (jsPandaFile->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
+                constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
+#endif
+            } else {
+                constpool = ParseConstPool(vm, jsPandaFile);
+            }
+            vm->AddConstpool(jsPandaFile, constpool, index, total);
+        }
         method->SetConstantPool(thread, constpool);
     }
 
@@ -125,13 +171,13 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     ObjectFactory *factory = vm->GetFactory();
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
-    JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex);
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex + 1);
 
-    // Put JSPandaFile at the first index of constpool.
+    // Put JSPandaFile at the last index of constpool.
     JSHandle<JSNativePointer> jsPandaFilePointer = factory->NewJSNativePointer(
         const_cast<JSPandaFile *>(jsPandaFile), JSPandaFileManager::RemoveJSPandaFile,
         JSPandaFileManager::GetInstance(), true);
-    constpool->Set(thread, 0, jsPandaFilePointer.GetTaggedValue());
+    constpool->Set(thread, constpoolIndex, jsPandaFilePointer.GetTaggedValue());
 
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
 
@@ -294,7 +340,6 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
     return constpool.GetTaggedValue();
 }
 
-#ifndef DISABLE_OLD_BYTECODE
 #define ADD_NOP_INST(pc, oldLen, newOpcode)                              \
 do {                                                                     \
     int newLen = static_cast<int>(BytecodeInstruction::Size(newOpcode)); \
@@ -1116,7 +1161,7 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_LDGLOBALTHIS_PREF_NONE: {
-            newOpcode = EcmaOpcode::LDGLOBALTHIS;
+            newOpcode = EcmaOpcode::LDGLOBAL;
             *pc = static_cast<uint8_t>(newOpcode);
             break;
         }
@@ -1592,7 +1637,6 @@ void PandaFileTranslator::TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t i
         bcIns = nextInst;
     }
 }
-#endif
 
 void PandaFileTranslator::DefineClassesInConstPool(JSThread *thread, JSHandle<ConstantPool> constpool,
                                                    const JSPandaFile *jsPandaFile)

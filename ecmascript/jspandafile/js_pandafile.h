@@ -88,16 +88,25 @@ public:
         mainMethodIndex_ = mainMethodIndex;
     }
 
-    MethodLiteral* PUBLIC_API FindMethods(uint32_t offset) const;
+    MethodLiteral *FindMethods(uint32_t offset) const
+    {
+        return methodMap_.at(offset);
+    }
 
     Span<const uint32_t> GetClasses() const
     {
         return pf_->GetClasses();
     }
 
-    bool PUBLIC_API IsModule() const;
+    bool PUBLIC_API IsModule() const
+    {
+        return isModule_;
+    }
 
-    bool IsCjs() const;
+    bool IsCjs() const
+    {
+        return isCjs_;
+    }
 
     bool HasTSTypes() const
     {
@@ -124,9 +133,18 @@ public:
         return static_cast<uint32_t>(GetPandaFile()->GetUniqId());
     }
 
+    bool IsNewVersion() const
+    {
+        return isNewVersion_;
+    }
+
 private:
     void Initialize();
-    uint32_t constpoolIndex_ {1}; // Index 0 is JSPandaFile NativePointer.
+
+    static constexpr size_t VERSION_SIZE = 4;
+    static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
+
+    uint32_t constpoolIndex_ {0};
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     uint32_t mainMethodIndex_ {0};
@@ -139,6 +157,7 @@ private:
     bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
     uint32_t typeSummaryIndex_ {0};
+    bool isNewVersion_ {true};
 };
 }  // namespace ecmascript
 }  // namespace panda

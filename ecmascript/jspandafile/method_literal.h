@@ -17,9 +17,9 @@
 #define ECMASCRIPT_METHOD_LITERAL_H
 
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_string.h"
-
 #include "libpandafile/file.h"
 
 static constexpr uint32_t CALL_TYPE_MASK = 0xF;  // 0xF: the last 4 bits are used as callType
@@ -30,11 +30,13 @@ using EntityId = panda_file::File::EntityId;
 struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
                                                         base::AlignedUint64,
                                                         base::AlignedPointer,
+                                                        base::AlignedUint64,
                                                         base::AlignedUint64> {
     enum class Index : size_t {
         CALL_FIELD_INDEX = 0,
         NATIVE_POINTER_OR_BYTECODE_ARRAY_INDEX,
         LITERAL_INFO_INDEX,
+        EXTRA_LITERAL_INFO_INDEX,
         NUM_OF_MEMBERS
     };
 
@@ -189,13 +191,17 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
         return NumArgsBits::Decode(callField);
     }
 
-    static constexpr size_t METHOD_ARGS_NUM_BYTES = 8;
     static constexpr size_t METHOD_ARGS_NUM_BITS = 16;
     static constexpr size_t METHOD_ARGS_METHODID_BITS = 32;
+    static constexpr size_t METHOD_SLOT_SIZE_BITS = 16;
     using HotnessCounterBits = BitField<int16_t, 0, METHOD_ARGS_NUM_BITS>; // offset 0-15
     using MethodIdBits = HotnessCounterBits::NextField<uint32_t, METHOD_ARGS_METHODID_BITS>; // offset 16-47
-    using SlotSizeBits = MethodIdBits::NextField<uint8_t, METHOD_ARGS_NUM_BYTES>; // offset 48-55
-    using BuiltinIdBits = SlotSizeBits::NextField<uint8_t, METHOD_ARGS_NUM_BYTES>; // offset 56-63
+    using SlotSizeBits = MethodIdBits::NextField<uint8_t, METHOD_SLOT_SIZE_BITS>; // offset 48-63
+
+    static constexpr size_t BUILTINID_NUM_BITS = 8;
+    static constexpr size_t FUNCTION_KIND_NUM_BITS = 4;
+    using BuiltinIdBits = BitField<uint8_t, 0, BUILTINID_NUM_BITS>; // offset 0-7
+    using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
     {
@@ -217,16 +223,22 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
         return SlotSizeBits::Decode(literalInfo_);
     }
 
-    uint8_t UpdateSlotSize(uint8_t size)
+    uint8_t UpdateSlotSize(uint16_t size)
     {
-        uint8_t start = GetSlotSize();
+        uint16_t start = GetSlotSize();
         uint16_t end = start + size;
-        if (end >= MAX_SLOT_SIZE) {
-            literalInfo_ = SlotSizeBits::Update(literalInfo_, MAX_SLOT_SIZE);
-            return MAX_SLOT_SIZE - 1; // prevent solt + 1 overflow
-        }
-        literalInfo_ = SlotSizeBits::Update(literalInfo_, static_cast<uint8_t>(end));
+        literalInfo_ = SlotSizeBits::Update(literalInfo_, end);
         return start;
+    }
+
+    void SetFunctionKind(FunctionKind kind)
+    {
+        extraLiteralInfo_ = FunctionKindBits::Update(extraLiteralInfo_, kind);
+    }
+
+    FunctionKind GetFunctionKind() const
+    {
+        return static_cast<FunctionKind>(FunctionKindBits::Decode(extraLiteralInfo_));
     }
 
     static inline int16_t GetHotnessCounter(uint64_t literalInfo)
@@ -280,11 +292,18 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
         return literalInfo_;
     }
 
-    alignas(EAS) uint64_t callField_ {0};
+    uint64_t GetExtraLiteralInfo() const
+    {
+        return extraLiteralInfo_;
+    }
+
+    alignas(EAS) uint64_t callField_ {0ULL};
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     alignas(EAS) const void *nativePointerOrBytecodeArray_ {nullptr};
     // hotnessCounter, methodId and slotSize are encoded in literalInfo_.
-    alignas(EAS) uint64_t literalInfo_ {0};
+    alignas(EAS) uint64_t literalInfo_ {0ULL};
+    // BuiltinId, FunctionKind are encoded in extraLiteralInfo_.
+    alignas(EAS) uint64_t extraLiteralInfo_ {0ULL};
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(MethodLiteral), MethodLiteral::SizeArch32, MethodLiteral::SizeArch64);
 }  // namespace panda::ecmascript

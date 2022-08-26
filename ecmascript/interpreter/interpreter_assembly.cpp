@@ -511,18 +511,6 @@ void InterpreterAssembly::HandleLdinfinity(
     DISPATCH(LDINFINITY);
 }
 
-void InterpreterAssembly::HandleLdglobalthis(
-    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int16_t hotnessCounter)
-{
-    LOG_INST() << "intrinsics::ldglobalthis";
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
-    JSTaggedValue globalObj = globalEnv->GetGlobalObject();
-    SET_ACC(globalObj);
-    DISPATCH(LDGLOBALTHIS);
-}
-
 void InterpreterAssembly::HandleLdundefined(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)

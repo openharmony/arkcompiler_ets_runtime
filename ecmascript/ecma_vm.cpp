@@ -467,13 +467,13 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     return result;
 }
 
-JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile)
+JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t index)
 {
     auto iter = cachedConstpools_.find(jsPandaFile);
     if (iter == cachedConstpools_.end()) {
         return JSTaggedValue::Hole();
     }
-    return iter->second;
+    return iter->second[index];
 }
 
 void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg, const JSPandaFile *jsPandaFile)
@@ -515,12 +515,15 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     return;
 }
 
-void EcmaVM::SetConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool)
+void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index, int32_t total)
 {
     ASSERT(constpool.IsTaggedArray());
-    ASSERT(cachedConstpools_.find(jsPandaFile) == cachedConstpools_.end());
+    if (cachedConstpools_.find(jsPandaFile) == cachedConstpools_.end()) {
+        cachedConstpools_[jsPandaFile] = CVector<JSTaggedValue>(total);
+        cachedConstpools_[jsPandaFile].reserve(total);
+    }
 
-    cachedConstpools_[jsPandaFile] = constpool;
+    cachedConstpools_[jsPandaFile][index] = constpool;
 }
 
 JSHandle<JSTaggedValue> EcmaVM::GetAndClearEcmaUncaughtException() const
@@ -619,15 +622,17 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 
     // program maps
     for (auto iter = cachedConstpools_.begin(); iter != cachedConstpools_.end();) {
-        auto object = iter->second;
-        if (object.IsHeapObject()) {
-            TaggedObject *obj = object.GetTaggedObject();
-            auto fwd = visitor(obj);
-            if (fwd == nullptr) {
-                iter = cachedConstpools_.erase(iter);
-                continue;
-            } else if (fwd != obj) {
-                iter->second = JSTaggedValue(fwd);
+        auto &constpools = iter->second;
+        auto size = constpools.size();
+        for (uint32_t i = 0; i < size; i++) {
+            if (constpools[i].IsHeapObject()) {
+                TaggedObject *obj = constpools[i].GetTaggedObject();
+                auto fwd = visitor(obj);
+                if (fwd == nullptr) {
+                    constpools[i] = JSTaggedValue::Hole();
+                } else if (fwd != obj) {
+                    constpools[i] = JSTaggedValue(fwd);
+                }
             }
         }
         ++iter;

@@ -66,7 +66,6 @@ namespace panda::ecmascript::kungfu {
 #define ASM_INTERPRETER_BC_STUB_LIST(V, T, D)           \
     T(HandleLdnan)                                      \
     T(HandleLdinfinity)                                 \
-    T(HandleLdglobalthis)                               \
     T(HandleLdundefined)                                \
     T(HandleLdnull)                                     \
     T(HandleLdsymbol)                                   \
