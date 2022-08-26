@@ -106,7 +106,7 @@ int Main(const int argc, const char **argv)
             continue;
         }
     }
-    generator.SaveAOTFile(outputFileName + ".aot");
+    generator.SaveAOTFile(outputFileName + ".an");
     generator.SaveSnapshotFile();
 
     JSNApi::DestroyJSVM(vm);
