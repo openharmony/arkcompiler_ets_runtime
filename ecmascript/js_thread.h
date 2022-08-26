@@ -703,7 +703,7 @@ private:
 
     void DumpStack() DUMP_API_ATTR;
 
-    static size_t GetAsmStackSize();
+    static size_t GetAsmStackLimit();
 
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
