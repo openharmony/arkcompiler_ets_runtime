@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_H
 #define ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_H
 
-#include <stack>
-
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
@@ -342,12 +340,31 @@ public:
     inline GateRef DoubleToTagged(GateRef x);
     inline GateRef TaggedTrue();
     inline GateRef TaggedFalse();
+    inline GateRef SExtInt8ToInt64(GateRef x);
+    inline GateRef SExtInt16ToInt64(GateRef x);
+    inline GateRef ChangeFloat64ToInt32(GateRef x);
+    inline GateRef ChangeUInt32ToFloat64(GateRef x);
+    inline GateRef ChangeInt32ToFloat64(GateRef x);
+    // Pointer/Arithmetic/Logic Operations
+    inline GateRef PointerSub(GateRef x, GateRef y);
+    inline GateRef IntPtrDiv(GateRef x, GateRef y);
+    inline GateRef IntPtrOr(GateRef x, GateRef y);
+    inline GateRef IntPtrLSL(GateRef x, GateRef y);
+    inline GateRef IntPtrLSR(GateRef x, GateRef y);
+    inline GateRef Int64NotEqual(GateRef x, GateRef y);
+    inline GateRef Int32NotEqual(GateRef x, GateRef y);
+    inline GateRef Int64Equal(GateRef x, GateRef y);
+    inline GateRef DoubleEqual(GateRef x, GateRef y);
+    inline GateRef Int8Equal(GateRef x, GateRef y);
+    inline GateRef Int32Equal(GateRef x, GateRef y);
+    template<OpCode::Op Op, MachineType Type>
+    inline GateRef BinaryOp(GateRef x, GateRef y);
     inline GateRef GetValueFromTaggedArray(VariableType returnType, GateRef array, GateRef index);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
-    // object operation
+    // Object Operations
     inline GateRef LoadHClass(GateRef object);
     inline GateRef IsJsType(GateRef object, JSType type);
     inline GateRef GetObjectType(GateRef hClass);

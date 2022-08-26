@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:fortest
+ * @tc.desc:test for
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 let a = '*'
 let s = ''
 

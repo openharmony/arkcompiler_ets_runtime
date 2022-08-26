@@ -20,7 +20,7 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/tagged_object-inl.h"
 
-#define INVALID_OBJECT ((FreeObject *)NULL_POINTER)
+#define INVALID_OBJECT ((FreeObject *) JSTaggedValue::NULL_POINTER)
 
 namespace panda::ecmascript {
 class FreeObject : public TaggedObject {

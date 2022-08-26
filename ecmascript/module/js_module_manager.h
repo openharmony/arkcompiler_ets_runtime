@@ -51,6 +51,9 @@ public:
     }
     void ConcatFileName(std::string &dirPath, std::string &requestPath, std::string &fileName);
 
+    // use for AOT PassManager
+    PUBLIC_API CString ResolveModuleFileName(const CString &fileName);
+
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);

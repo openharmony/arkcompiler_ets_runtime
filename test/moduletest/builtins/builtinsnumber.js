@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:builtins
+ * @tc.desc:test builtins
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 let result = Number.parseInt("16947500000");
 print("builtins number start");
 print("parseInt result = " + result);

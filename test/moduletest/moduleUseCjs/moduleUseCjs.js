@@ -13,5 +13,11 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:moduleUseCjs
+ * @tc.desc:test module CJS
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 import cjs from "./Cjs"
 print(JSON.stringify(cjs))

@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:bitwiseop
+ * @tc.desc:test bitwise operation
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 print(13 & 3)
 print(13 | 3)
 print(13 ^ 3)

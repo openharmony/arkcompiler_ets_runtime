@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:allocatearraybuffer
+ * @tc.desc:test ArrayBuffer
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var newTarget = function() {}.bind(null);
 var arrayBuffer = Reflect.construct(ArrayBuffer, [16], newTarget);
 print(arrayBuffer.length);

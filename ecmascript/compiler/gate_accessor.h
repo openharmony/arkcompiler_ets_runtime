@@ -294,6 +294,7 @@ public:
 
     void GetInVector(GateRef gate, std::vector<GateRef>& ins) const;
     void GetOutVector(GateRef gate, std::vector<GateRef>& outs) const;
+    void GetOutStateVector(GateRef gate, std::vector<GateRef>& outStates) const;
     size_t GetNumIns(GateRef gate) const;
     OpCode GetOpCode(GateRef gate) const;
     bool IsGCRelated(GateRef gate) const;
