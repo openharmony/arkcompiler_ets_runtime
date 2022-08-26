@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include "ecmascript/compiler/emca_bytecode.h"
 #include "ecmascript/compiler/type_lowering.h"
 
 namespace panda::ecmascript::kungfu {
@@ -39,11 +39,11 @@ void TypeLowering::Lower(GateRef gate)
     auto glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
 
     auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaOpcode op = static_cast<EcmaOpcode>(*pc);
+    EcmaBytecode op = static_cast<EcmaBytecode>(*pc);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM16_V8:
+        case EcmaBytecode::NEWOBJRANGE:
             LowerTypeNewObjRange(gate, glue);
             break;
         default:
