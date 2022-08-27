@@ -2057,8 +2057,8 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<StringId>(input)) {
-            size_t index = tsManager_->GetStringIdx(constantPool_, std::get<StringId>(input).GetId());
-            inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32, index,
+            inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32,
+                                                  std::get<StringId>(input).GetId(),
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<Immediate>(input)) {

@@ -77,7 +77,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
     });
     LOG_COMPILER(INFO) << skipMethodNum << " large methods in '" << fileName << "' have been skipped";
-    generator.AddModule(aotModule, aotModuleAssembler, bytecodeInfo.jsPandaFile);
+    generator.AddModule(aotModule, aotModuleAssembler, bytecodeInfo);
     return true;
 }
 

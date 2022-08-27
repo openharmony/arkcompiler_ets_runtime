@@ -197,7 +197,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(Mul2Dyn)                            \
     V(Div2Dyn)                            \
     V(Mod2Dyn)                            \
-    V(LoadValueFromConstantStringTable)   \
     V(CreateEmptyObject)                  \
     V(CreateEmptyArray)                   \
     V(GetSymbolFunction)                  \

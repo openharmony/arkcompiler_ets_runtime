@@ -314,7 +314,7 @@ void FileLoader::LoadSnapshotFile()
     CString snapshotPath = snapshotArg + ".etso";
     Snapshot snapshot(vm_);
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-    snapshot.Deserialize(SnapshotType::TS_LOADER, snapshotPath);
+    snapshot.Deserialize(SnapshotType::ETSO, snapshotPath);
 #endif
 }
 

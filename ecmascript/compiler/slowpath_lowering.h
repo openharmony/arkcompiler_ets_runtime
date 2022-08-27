@@ -149,7 +149,6 @@ private:
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
     // environment must be initialized
     GateRef GetHomeObjectFromJSFunction(GateRef jsFunc);
-    GateRef GetValueFromConstStringTable(GateRef glue, GateRef gate, uint32_t inIndex);
     void Lower(GateRef gate);
     void LowerAdd2Dyn(GateRef gate, GateRef glue);
     void LowerCreateIterResultObj(GateRef gate, GateRef glue);
@@ -158,10 +157,10 @@ private:
     void LowerAsyncFunctionAwaitUncaught(GateRef gate, GateRef glue);
     void LowerAsyncFunctionResolve(GateRef gate, GateRef glue);
     void LowerAsyncFunctionReject(GateRef gate, GateRef glue);
-    void LowerLoadStr(GateRef gate, GateRef glue);
+    void LowerLoadStr(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLexicalEnv(GateRef gate, GateRef glue);
-    void LowerStGlobalVar(GateRef gate, GateRef glue);
-    void LowerTryLdGlobalByName(GateRef gate, GateRef glue);
+    void LowerStGlobalVar(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerTryLdGlobalByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIterator(GateRef gate, GateRef glue);
     void LowerToJSCall(GateRef gate, GateRef glue, const std::vector<GateRef> &args);
     void LowerCallArg0Dyn(GateRef gate, GateRef glue);
@@ -219,7 +218,7 @@ private:
     void LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetTemplateObject(GateRef gate, GateRef glue);
     void LowerSetObjectWithProto(GateRef gate, GateRef glue);
-    void LowerLdBigInt(GateRef gate, GateRef glue);
+    void LowerLdBigInt(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerToNumeric(GateRef gate, GateRef glue);
     void LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
@@ -232,10 +231,10 @@ private:
     void LowerGetNextPropName(GateRef gate, GateRef glue);
     void LowerCopyDataProperties(GateRef gate, GateRef glue);
     void LowerCreateObjectWithExcludedKeys(GateRef gate, GateRef glue);
-    void LowerCreateRegExpWithLiteral(GateRef gate, GateRef glue);
+    void LowerCreateRegExpWithLiteral(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStOwnByValue(GateRef gate, GateRef glue);
     void LowerStOwnByIndex(GateRef gate, GateRef glue);
-    void LowerStOwnByName(GateRef gate, GateRef glue);
+    void LowerStOwnByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineFuncDyn(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineAsyncGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
@@ -245,15 +244,15 @@ private:
     void LowerPopLexicalEnv(GateRef gate, GateRef glue);
     void LowerLdSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerTryStGlobalByName(GateRef gate, GateRef glue);
-    void LowerStConstToGlobalRecord(GateRef gate, GateRef glue);
-    void LowerStLetToGlobalRecord(GateRef gate, GateRef glue);
-    void LowerStClassToGlobalRecord(GateRef gate, GateRef glue);
+    void LowerTryStGlobalByName(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStConstToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStLetToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStClassToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStOwnByValueWithNameSet(GateRef gate, GateRef glue);
-    void LowerStOwnByNameWithNameSet(GateRef gate, GateRef glue);
-    void LowerLdGlobalVar(GateRef gate, GateRef glue);
-    void LowerLdObjByName(GateRef gate, GateRef glue);
-    void LowerStObjByName(GateRef gate, GateRef glue);
+    void LowerStOwnByNameWithNameSet(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerLdGlobalVar(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerLdObjByName(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStObjByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGetterSetterByValue(GateRef gate, GateRef glue);

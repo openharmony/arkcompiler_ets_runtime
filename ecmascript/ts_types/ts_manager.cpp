@@ -331,10 +331,7 @@ GlobalTSTypeRef TSManager::GetOrCreateUnionType(CVector<GlobalTSTypeRef> unionTy
 void TSManager::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalModuleTable_)));
-    uint64_t length = constantStringTable_.size();
-    for (uint64_t i = 0; i < length; i++) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(constantStringTable_.data()[i]))));
-    }
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&constantPoolInfo_)));
 
     uint64_t hclassTableLength = staticHClassTable_.size();
     for (uint64_t i = 0; i < hclassTableLength; i++) {
@@ -427,31 +424,6 @@ GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
     ASSERT(tsType->IsTSArrayType());
     JSHandle<TSArrayType> arrayType = JSHandle<TSArrayType>(tsType);
     return arrayType->GetElementGT();
-}
-
-size_t TSManager::AddConstString(JSTaggedValue string)
-{
-    auto it = std::find(constantStringTable_.begin(), constantStringTable_.end(), string.GetRawData());
-    if (it != constantStringTable_.end()) {
-        return it - constantStringTable_.begin();
-    } else {
-        constantStringTable_.emplace_back(string.GetRawData());
-        return constantStringTable_.size() - 1;
-    }
-}
-
-// add string to constantstringtable and get its index
-size_t TSManager::GetStringIdx(JSHandle<JSTaggedValue> constPool, const uint16_t id)
-{
-    JSHandle<ConstantPool> newConstPool(thread_, constPool.GetTaggedValue());
-    auto str = newConstPool->GetObjectFromCache(id);
-    return AddConstString(str);
-}
-
-std::string TSManager::GetStdStringById(size_t index) const
-{
-    std::string str = GetStringById(index)->GetCString().get();
-    return str;
 }
 
 void TSManager::GenerateStaticHClass(JSHandle<TSTypeTable> tsTypeTable)

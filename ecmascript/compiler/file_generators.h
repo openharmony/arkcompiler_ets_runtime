@@ -22,8 +22,11 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/file_loader.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/snapshot/mem/snapshot_processor.h"
 
 namespace panda::ecmascript::kungfu {
 class Module {
@@ -206,23 +209,40 @@ protected:
 class AOTFileGenerator : public FileGenerator {
 public:
     AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList,
-        EcmaVM* vm) : FileGenerator(log, logList), vm_(vm) {};
+        EcmaVM* vm) : FileGenerator(log, logList), vm_(vm), cpProcessor_(vm) {};
     ~AOTFileGenerator() override = default;
 
-    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, const JSPandaFile *jsPandaFile)
+    void InitializeConstantPoolInfos(const arg_list_t pandaFileNames)
+    {
+        cpProcessor_.InitializeConstantPoolInfos(pandaFileNames.size());
+    }
+
+    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, const BytecodeInfoCollector::BCInfo &bytecodeInfo)
     {
         modulePackage_.emplace_back(Module(llvmModule, assembler));
-        auto hash = jsPandaFile->GetFileUniqId();
+        auto hash = bytecodeInfo.jsPandaFile->GetFileUniqId();
         aotfileHashs_.emplace_back(hash);
+        CollectConstantPoolInfo(bytecodeInfo.jsPandaFile, bytecodeInfo.constantPool);
+    }
+
+    ConstantPoolProcessor& GetCpProcessor()
+    {
+        return cpProcessor_;
     }
 
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename);
     void SaveSnapshotFile();
 private:
+    void CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool)
+    {
+        cpProcessor_.CollectConstantPoolInfo(pf, constantPool);
+    }
+
     AOTModulePackInfo aotInfo_;
     std::vector<uint32_t> aotfileHashs_ {};
     EcmaVM* vm_;
+    ConstantPoolProcessor cpProcessor_;
 
     // collect aot component info
     void CollectCodeInfo();

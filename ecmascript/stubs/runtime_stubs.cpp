@@ -1280,14 +1280,6 @@ DEF_RUNTIME_STUBS(Mod2Dyn)
     return RuntimeMod2Dyn(thread, left, right).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(LoadValueFromConstantStringTable)
-{
-    RUNTIME_STUBS_HEADER(LoadValueFromConstantStringTable);
-    JSTaggedValue id = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    auto tsManager = thread->GetEcmaVM()->GetTSManager();
-    return tsManager->GetStringById(id.GetInt()).GetTaggedValue().GetRawData();
-}
-
 DEF_RUNTIME_STUBS(JumpToCInterpreter)
 {
     RUNTIME_STUBS_HEADER(JumpToCInterpreter);
