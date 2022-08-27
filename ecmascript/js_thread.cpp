@@ -143,7 +143,7 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     FrameHandler frameHandler(this);
     frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
     // visit tagged handle storage roots
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
     IterateHandleWithCheck(visitor, rangeVisitor);
 #else
     if (currentHandleStorageIndex_ != -1) {
@@ -165,7 +165,7 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
 #endif
 }
 
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
 void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
 {
     size_t handleCount = 0;

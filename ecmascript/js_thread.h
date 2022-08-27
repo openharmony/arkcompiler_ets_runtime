@@ -264,7 +264,7 @@ public:
     void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor);
 
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
     void IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
 #endif
 
@@ -305,6 +305,16 @@ public:
     void HandleScopeCountDec()
     {
         handleScopeCount_--;
+    }
+
+    void SetLastHandleScope(EcmaHandleScope *scope)
+    {
+        lastHandleScope_ = scope;
+    }
+
+    EcmaHandleScope *GetLastHandleScope()
+    {
+        return lastHandleScope_;
     }
 
     void SetException(JSTaggedValue exception);
@@ -721,6 +731,7 @@ private:
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
     int32_t currentHandleStorageIndex_ {-1};
     int32_t handleScopeCount_ {0};
+    EcmaHandleScope *lastHandleScope_ {nullptr};
 
     PropertiesCache *propertiesCache_ {nullptr};
     EcmaGlobalStorage *globalStorage_ {nullptr};
