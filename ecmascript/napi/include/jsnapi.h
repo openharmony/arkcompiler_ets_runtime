@@ -460,6 +460,9 @@ public:
     bool IsAsyncGeneratorFunction();
     bool IsAsyncGeneratorObject();
 
+    bool IsModuleNamespaceObject();
+    bool IsSharedArrayBuffer();
+
     bool IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value);
     Local<StringRef> Typeof(const EcmaVM *vm);
     bool InstanceOf(const EcmaVM *vm, Local<JSValueRef> value);
