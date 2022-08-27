@@ -454,6 +454,7 @@ void FrameBcCollector::CollectBCOffsetInfo()
             case FrameType::BUILTIN_CALL_LEAVE_FRAME:
             case FrameType::LEAVE_FRAME:
             case FrameType::OPTIMIZED_ENTRY_FRAME:
+            case FrameType::ASM_INTERPRETER_BRIDGE_FRAME:
             case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_FRAME:
             case FrameType::INTERPRETER_CONSTRUCTOR_FRAME:
