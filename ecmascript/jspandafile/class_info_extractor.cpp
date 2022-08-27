@@ -288,7 +288,6 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSH
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
 
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
-
     JSHandle<JSFunction> constructor = factory->NewJSFunctionByDynClass(method,
         constructorHClass, FunctionKind::CLASS_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
 

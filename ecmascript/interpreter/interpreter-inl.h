@@ -3229,6 +3229,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(HANDLE_LDGLOBALVAR_PREF_ID32) {
         uint32_t stringId = READ_INST_32_1();
         JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        LOG_INST() << "intrinsics::ldglobalvar " << "stringId:" << stringId << ", "
+                   << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
 
 #if ECMASCRIPT_ENABLE_IC
         auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);

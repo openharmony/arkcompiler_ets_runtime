@@ -105,7 +105,7 @@ class JSThread;
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, ObjectDynClass, OBJECT_DYN_CLASS_INDEX, initial_object_dynclass)                                 \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
-    V(JSTaggedValue, JSMethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)
+    V(JSTaggedValue, MethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \

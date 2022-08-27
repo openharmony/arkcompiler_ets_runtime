@@ -36,6 +36,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/js_patch_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
@@ -2295,5 +2296,20 @@ JsiRuntimeCallInfo::JsiRuntimeCallInfo(ecmascript::EcmaRuntimeCallInfo* ecmaInfo
 EcmaVM *JsiRuntimeCallInfo::GetVM() const
 {
     return thread_->GetEcmaVM();
+}
+
+// ---------------------------------------Hot Patch----------------------------------------------------
+bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName)
+{
+    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    JSThread *thread = vm->GetJSThread();
+    return patchManager->LoadPatch(thread, patchFileName.c_str(), baseFileName.c_str());
+}
+
+bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
+{
+    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    JSThread *thread = vm->GetJSThread();
+    return patchManager->UnLoadPatch(thread, patchFileName.c_str());
 }
 }  // namespace panda

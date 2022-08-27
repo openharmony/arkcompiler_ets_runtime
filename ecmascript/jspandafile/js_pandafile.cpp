@@ -35,7 +35,7 @@ JSPandaFile::~JSPandaFile()
         delete pf_;
         pf_ = nullptr;
     }
-    methodMap_.clear();
+    methodLiteralMap_.clear();
     if (methodLiterals_ != nullptr) {
         JSPandaFileManager::FreeBuffer(methodLiterals_);
         methodLiterals_ = nullptr;
@@ -92,9 +92,9 @@ void JSPandaFile::Initialize()
         static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
 }
 
-MethodLiteral *JSPandaFile::FindMethods(uint32_t offset) const
+MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
 {
-    return methodMap_.at(offset);
+    return methodLiteralMap_.at(offset);
 }
 
 bool JSPandaFile::IsModule() const
