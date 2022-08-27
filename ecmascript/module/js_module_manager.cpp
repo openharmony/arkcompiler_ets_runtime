@@ -182,6 +182,46 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CStrin
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
     if (jsPandaFile == nullptr) {
+        LOG_ECMA(FATAL) << "open jsPandaFile " << moduleFileName << " error";
+        UNREACHABLE();
+    }
+    JSHandle<JSTaggedValue> moduleRecord = globalConstants->GetHandledUndefined();
+    if (jsPandaFile->IsCjs()) {
+        moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
+    } else if (jsPandaFile->IsModule()) {
+        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName);
+    } else {
+        LOG_ECMA(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
+        UNREACHABLE();
+    }
+
+    JSHandle<NameDictionary> dict(thread, resolvedModules_);
+    resolvedModules_ =
+        NameDictionary::Put(thread, dict, referencingHandle, moduleRecord, PropertyAttributes::Default())
+        .GetTaggedValue();
+    return JSHandle<SourceTextModule>::Cast(moduleRecord);
+}
+
+JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const void *buffer, size_t size,
+                                                                    const CString &filename)
+{
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = vm_->GetFactory();
+    auto globalConstants = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> referencingHandle =
+        JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(filename));
+    CString moduleFileName = filename;
+    int entry =
+        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencingHandle.GetTaggedValue());
+    if (entry != -1) {
+        return JSHandle<SourceTextModule>(
+            thread, NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
+    }
+
+    const JSPandaFile *jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName,
+                                                           JSPandaFile::ENTRY_MAIN_FUNCTION, buffer, size);
+    if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "open jsPandaFile " << moduleFileName << " error";
         UNREACHABLE();
     }
@@ -200,6 +240,73 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CStrin
         NameDictionary::Put(thread, dict, referencingHandle, moduleRecord, PropertyAttributes::Default())
         .GetTaggedValue();
     return JSHandle<SourceTextModule>::Cast(moduleRecord);
+}
+
+void ModuleManager::ConcatFileName(std::string &dirPath, std::string &requestPath, std::string &fileName)
+{
+    JSThread *thread = vm_->GetJSThread();
+    int suffixEnd = static_cast<int>(requestPath.find_last_of('.'));
+    if (suffixEnd == -1) {
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+    }
+#if defined(PANDA_TARGET_WINDOWS)
+    if (requestPath[1] == ':') { // absoluteFilePath
+        fileName = requestPath.substr(0, suffixEnd) + ".abc";
+    } else {
+        int pos = static_cast<int>(dirPath.find_last_of('\\'));
+        if (pos == -1) {
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+        }
+        fileName = dirPath.substr(0, pos + 1) + requestPath.substr(0, suffixEnd) + ".abc";
+    }
+#else
+    if (requestPath[0] == '/') { // absoluteFilePath
+        fileName = requestPath.substr(0, suffixEnd) + ".abc";
+    } else {
+        int pos = static_cast<int>(dirPath.find_last_of('/'));
+        if (pos == -1) {
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+        }
+        fileName = dirPath.substr(0, pos + 1) + requestPath.substr(0, suffixEnd) + ".abc";
+    }
+#endif
+}
+
+JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(std::string &baseFilename,
+                                                                    std::string &moduleFilename)
+{
+    JSThread *thread = vm_->GetJSThread();
+    bool mode = GetCurrentMode();
+    std::string moduleFullname;
+    if (!mode) {
+        ResolvePathCallback resolvePathCallback = thread->GetEcmaVM()->GetResolvePathCallback();
+        if (resolvePathCallback != nullptr) {
+            moduleFullname = resolvePathCallback(baseFilename, moduleFilename);
+            if (moduleFullname == "") {
+                LOG_FULL(FATAL) << "dirPath: " << baseFilename << "\n" << " requestPath: " << moduleFilename << "\n"
+                                << " moduleRequest callbackModuleName is hole failed";
+                UNREACHABLE();
+            }
+            return HostResolveImportedModule(moduleFullname.c_str());
+        }
+        ConcatFileName(baseFilename, moduleFilename, moduleFullname);
+        return HostResolveImportedModule(moduleFullname.c_str());
+    } else {
+        // mode == true buffer
+        ResolveBufferCallback resolveBufferCallback = thread->GetEcmaVM()->GetResolveBufferCallback();
+        if (resolveBufferCallback != nullptr) {
+            std::vector<uint8_t> data = resolveBufferCallback(baseFilename, moduleFilename);
+            size_t size = data.size();
+            if (data.empty()) {
+                LOG_FULL(FATAL) << " moduleRequest callbackModuleName " << moduleFullname << "is hole failed";
+                UNREACHABLE();
+            }
+            ConcatFileName(baseFilename, moduleFilename, moduleFullname);
+            return HostResolveImportedModule(data.data(),
+                size, moduleFullname.c_str());
+        }
+        return JSHandle<SourceTextModule>(thread, JSTaggedValue::Undefined());
+    }
 }
 
 void ModuleManager::AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule)

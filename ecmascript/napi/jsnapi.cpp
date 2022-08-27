@@ -468,6 +468,12 @@ void JSNApi::SetHostResolvePathTracker(EcmaVM *vm,
     vm->SetResolvePathCallback(cb);
 }
 
+void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
+    std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)> cb)
+{
+    vm->SetResolveBufferCallback(cb);
+}
+
 void JSNApi::SetNativePtrGetter(EcmaVM *vm, void* cb)
 {
     vm->SetNativePtrGetter(reinterpret_cast<ecmascript::NativePtrGetter>(cb));
