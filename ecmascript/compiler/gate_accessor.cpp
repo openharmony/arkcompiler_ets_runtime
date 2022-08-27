@@ -167,6 +167,11 @@ void GateAccessor::GetOutStateVector(GateRef gate, std::vector<GateRef>& outStat
     }
 }
 
+void GateAccessor::GetAllGates(std::vector<GateRef>& gates) const
+{
+    circuit_->GetAllGates(gates);
+}
+
 bool GateAccessor::IsInGateNull(GateRef gate, size_t idx) const
 {
     return circuit_->IsInGateNull(gate, idx);
