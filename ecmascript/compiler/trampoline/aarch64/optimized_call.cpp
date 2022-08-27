@@ -408,7 +408,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         __ Add(argV, sp, Immediate(DOUBLE_SLOT_SIZE));
         // asm interpreter argV = argv + 24
         __ Add(argV, argV, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE));
-        __ Sub(actualArgC, actualArgC, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+        __ Sub(actualArgC, actualArgC, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum()));
         OptimizedCallAsmInterpreter(assembler);
     }
 
