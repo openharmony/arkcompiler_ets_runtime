@@ -21,6 +21,7 @@
 namespace panda::ecmascript::tooling {
 void DebuggerExecutor::Initialize(const EcmaVM *vm)
 {
+    [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
     Local<ObjectRef> globalObj = JSNApi::GetGlobalObject(vm);
     globalObj->Set(vm, StringRef::NewFromUtf8(vm, "debuggerSetValue"), FunctionRef::New(
         const_cast<panda::EcmaVM*>(vm), DebuggerExecutor::DebuggerSetValue));

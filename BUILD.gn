@@ -660,6 +660,13 @@ source_set("libark_jsruntime_set") {
       include_dirs +=
           [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
     }
+    if (enable_leak_check) {
+      sources += [ "ecmascript/dfx/native_dfx/backtrace.cpp" ]
+      defines += [
+        "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
+        "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
+      ]
+    }
   }
 }
 

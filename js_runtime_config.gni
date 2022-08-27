@@ -24,6 +24,7 @@ if (!defined(ark_standalone_build)) {
 }
 compile_llvm_online = false
 run_with_asan = false
+enable_leak_check = false
 enable_bytrace = true
 enable_hitrace = true
 enable_hilog = true

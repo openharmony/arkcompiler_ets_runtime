@@ -17,7 +17,7 @@
 #define ECMASCRIPT_ECMA_GLOBAL_STORAGE_H
 
 #include "ecmascript/mem/native_area_allocator.h"
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
 #include "ecmascript/dfx/native_dfx/backtrace.h"
 #endif
 #include "ecmascript/mem/c_containers.h"
@@ -138,7 +138,7 @@ public:
             SetNext(next);
             SetObject(value);
             SetUsing(isUsing);
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
             ResetMarkCount();
             if (isUsing) {
                 IncGlobalNumber();
@@ -147,14 +147,14 @@ public:
                 static const int GLOBAL_NUMBER_COUNT = 10000;
                 if (globalNumber_ > START_GLOBAL_NUMBER && globalNumber_ < START_GLOBAL_NUMBER + GLOBAL_NUMBER_COUNT
                     && JSTaggedValue(value).IsHeapObject()) {
-                    LOG_ECMA(ERROR) << "---------------Global Number:" << globalNumber_ << "-------------------";
+                    LOG_ECMA(INFO) << "---------------Global Number:" << globalNumber_ << "-------------------";
                     PrintBacktrace(value);
                 }
             }
 #endif
         }
 
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
         int32_t GetMarkCount() const
         {
             return markCount_;
@@ -189,7 +189,7 @@ public:
         int32_t index_ {-1};
         bool isUsing_ {false};
         bool isWeak_ {false};
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
         int32_t markCount_ {0};
         // A number generated in the order of distribution.It Used to help locate global memory leaks.
         int32_t globalNumber_ {0};

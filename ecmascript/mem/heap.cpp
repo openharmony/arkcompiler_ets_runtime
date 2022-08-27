@@ -883,7 +883,7 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
     OPTIONAL_LOG(ecmaVm_, INFO) << "-----------------------Statistic Heap Object------------------------";
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
                                 << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsFullMark() << ")";
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
     LOG_ECMA(INFO) << "ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize()
                    << "/" << activeSemiSpace_->GetInitialCapacity() << "), NonMovable("
                    << nonMovableSpace_->GetHeapObjectSize() << "/" << nonMovableSpace_->GetCommittedSize()

@@ -26,6 +26,7 @@
 
 namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
+static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
 static const int MAX_STACK_SIZE = 16;
 static const int ALIGN_WIDTH = 2;
 
@@ -37,8 +38,11 @@ void PrintBacktrace(uintptr_t value)
     if (!unwBackTrace) {
         void *handle = dlopen(LIB_UNWIND_SO_NAME.c_str(), RTLD_NOW);
         if (handle == nullptr) {
-            LOG_ECMA(ERROR) << "dlopen libunwind.so failed";
-            return;
+            handle = dlopen(LIB_UNWIND_Z_SO_NAME.c_str(), RTLD_NOW);
+            if (handle == nullptr) {
+                LOG_ECMA(ERROR) << "dlopen libunwind.so failed";
+                return;
+            }
         }
         unwBackTrace = reinterpret_cast<UnwBackTraceFunc>(dlsym(handle, "unw_backtrace"));
         if (unwBackTrace == nullptr) {
