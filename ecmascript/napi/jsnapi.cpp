@@ -1305,7 +1305,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
     RETURN_VALUE_IF_ABRUPT(thread, false);
     info->SetCallArg(arg.GetTaggedValue());
     JSFunction::Call(info);
-    RETURN_VALUE_IF_ABRUPT(thread, false);
+    RETURN_VALUE_IF_ABRUPT_WITH_CLEAR(thread, false);
 
     EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
