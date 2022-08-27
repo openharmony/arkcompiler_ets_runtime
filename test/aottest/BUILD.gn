@@ -136,6 +136,8 @@ group("ark_aot_test") {
     "throwundefindeifhole:throwundefindeifholeAotAction",
     "tonumber:tonumberAotAction",
     "tonumeric:tonumericAotAction",
+
+    #"dynamicimport:dynamicimportAotAction",
     "try_catch_finally:try_catch_finallyAotAction",
     "trystglobalbynameprefid32:trystglobalbynameprefid32AotAction",
     "typeadd:typeaddAotAction",

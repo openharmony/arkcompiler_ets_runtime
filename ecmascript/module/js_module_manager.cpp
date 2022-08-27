@@ -136,21 +136,25 @@ JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(const CString &r
                                       NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
 }
 
-JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(JSTaggedValue referencingModule)
+JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(JSHandle<EcmaString> &referencingHandle)
+{
+    return HostGetImportedModule(referencingHandle.GetTaggedValue());
+}
+
+JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(JSTaggedValue referencing)
 {
     int entry =
-        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencingModule);
-    LOG_ECMA_IF(entry == -1, FATAL) << "cannot get module: " << ConvertToString(referencingModule);
-
+        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencing);
+    LOG_ECMA_IF(entry == -1, FATAL) << "cannot get module: ";
     return JSHandle<SourceTextModule>(vm_->GetJSThread(),
                                       NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
 }
 
-bool ModuleManager::resolveImportedModule(JSTaggedValue referencingModule)
+bool ModuleManager::IsImportedModuleLoaded(JSTaggedValue referencing)
 {
     int entry =
-        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencingModule);
-    return entry != -1;
+        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencing);
+    return (entry != -1);
 }
 
 JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CString &referencingModule)
@@ -162,10 +166,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CStrin
         JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(referencingModule));
     CString moduleFileName = referencingModule;
     if (!vm_->GetResolvePathCallback()) {
-        std::string absPath;
-        std::string moduleName = CstringConvertToStdString(moduleFileName);
-        if (FileLoader::GetAbsolutePath(moduleName, absPath)) {
-            moduleFileName = ConvertToString(absPath);
+        if (FileLoader::GetAbsolutePath(referencingModule, moduleFileName)) {
             referencingHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(moduleFileName));
         } else {
             LOG_ECMA(ERROR) << "absolute " << referencingModule << " path error";
@@ -260,6 +261,10 @@ void ModuleManager::ConcatFileName(std::string &dirPath, std::string &requestPat
         fileName = dirPath.substr(0, pos + 1) + requestPath.substr(0, suffixEnd) + ".abc";
     }
 #else
+    if (requestPath.find("./") == 0) {
+        requestPath = requestPath.substr(2); // 2 : delete './'
+        suffixEnd -=2; // 2 : delete './'
+    }
     if (requestPath[0] == '/') { // absoluteFilePath
         fileName = requestPath.substr(0, suffixEnd) + ".abc";
     } else {

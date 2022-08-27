@@ -464,6 +464,30 @@ FileLoader::FileLoader(EcmaVM *vm) : vm_(vm), factory_(vm->GetFactory())
     arkStackMapParser_ = new kungfu::ArkStackMapParser(enableLog);
 }
 
+JSTaggedValue FileLoader::GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    CString relativePath = ConvertToString(relativePathVal);
+    CString absPath;
+    if (!GetAbsolutePath(relativePath, absPath)) {
+        LOG_FULL(FATAL) << "Get Absolute Path failed";
+        return JSTaggedValue::Hole();
+    }
+    JSTaggedValue absPathVal = factory->NewFromUtf8(absPath).GetTaggedValue();
+    return absPathVal;
+}
+
+bool FileLoader::GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr)
+{
+    std::string relativePath = CstringConvertToStdString(relativePathCstr);
+    std::string absPath = "";
+    if (GetAbsolutePath(relativePath, absPath)) {
+        absPathCstr = ConvertToString(absPath);
+        return true;
+    }
+    return false;
+}
+
 bool FileLoader::GetAbsolutePath(const std::string &relativePath, std::string &absPath)
 {
     if (relativePath.size() >= PATH_MAX) {

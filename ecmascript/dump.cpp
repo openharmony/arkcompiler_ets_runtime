@@ -2307,6 +2307,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetPromiseReactionJob().GetTaggedValue().Dump(os);
     os << " - PromiseResolveThenableJob: ";
     GetPromiseResolveThenableJob().GetTaggedValue().Dump(os);
+    os << " - DynamicImportJob: ";
+    GetDynamicImportJob().GetTaggedValue().Dump(os);
     os << " - ScriptJobString: ";
     globalConst->GetScriptJobString().Dump(os);
     os << " - PromiseString: ";
@@ -3246,9 +3248,6 @@ void ResolvedBinding::Dump(std::ostream &os) const
 
 void ModuleNamespace::Dump(std::ostream &os) const
 {
-    os << " - Module: ";
-    GetModule().Dump(os);
-    os << "\n";
     os << " - Exports: ";
     GetExports().Dump(os);
     os << "\n";
@@ -4424,6 +4423,8 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString("PromiseReactionJob"), GetPromiseReactionJob().GetTaggedValue()));
     vec.push_back(
         std::make_pair(CString("PromiseResolveThenableJob"), GetPromiseResolveThenableJob().GetTaggedValue()));
+    vec.push_back(
+        std::make_pair(CString("DynamicImportJob"), GetDynamicImportJob().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("ScriptJobString"), globalConst->GetScriptJobString()));
     vec.push_back(std::make_pair(CString("PromiseString"), globalConst->GetPromiseString()));
     vec.push_back(std::make_pair(CString("IdentityString"), globalConst->GetIdentityString()));

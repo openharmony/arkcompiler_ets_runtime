@@ -2537,6 +2537,8 @@ void Builtins::InitializePromiseJob(const JSHandle<GlobalEnv> &env)
     env->SetPromiseReactionJob(thread_, func);
     func = NewFunction(env, keyString, BuiltinsPromiseJob::PromiseResolveThenableJob, FunctionLength::THREE);
     env->SetPromiseResolveThenableJob(thread_, func);
+    func = NewFunction(env, keyString, BuiltinsPromiseJob::DynamicImportJob, FunctionLength::FOUR);
+    env->SetDynamicImportJob(thread_, func);
 }
 
 void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncDynclass) const

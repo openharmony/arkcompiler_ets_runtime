@@ -15,6 +15,7 @@
 
 #include "ecmascript/require/js_cjs_module.h"
 
+#include "ecmascript/file_loader.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
@@ -169,6 +170,7 @@ JSHandle<EcmaString> CjsModule::ResolveFilenameFromNative(JSThread *thread, JSTa
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
     }
     CString fullname;
+    CString res;
     if (requestStr[0] == '/') { // absolute FilePath
         fullname = requestStr.substr(0, suffixEnd) + ".abc";
     } else {
@@ -178,7 +180,11 @@ JSHandle<EcmaString> CjsModule::ResolveFilenameFromNative(JSThread *thread, JSTa
         }
         fullname = dirnameStr.substr(0, pos + 1) + requestStr.substr(0, suffixEnd) + ".abc";
     }
-    return factory->NewFromUtf8(fullname);
+
+    if (!FileLoader::GetAbsolutePath(fullname, res)) {
+        LOG_FULL(FATAL) << "resolve absolute path fail";
+    }
+    return factory->NewFromUtf8(res);
 }
 
 JSTaggedValue CjsModule::Require(JSThread *thread, JSHandle<EcmaString> &request,

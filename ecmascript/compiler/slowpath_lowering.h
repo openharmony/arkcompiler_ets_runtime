@@ -221,6 +221,7 @@ private:
     void LowerSetObjectWithProto(GateRef gate, GateRef glue);
     void LowerLdBigInt(GateRef gate, GateRef glue);
     void LowerToNumeric(GateRef gate, GateRef glue);
+    void LowerDynamicImport(GateRef gate, GateRef glue);
     void LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIteratorNext(GateRef gate, GateRef glue);

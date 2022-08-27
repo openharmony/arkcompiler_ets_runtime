@@ -226,7 +226,9 @@ namespace panda::ecmascript {
     V(DefineAsyncGeneratorFunc)     \
     V(DefineGeneratorFuncWithMethodId) \
     V(DefineAsyncGeneratorFuncWithMethodId) \
-    V(GetSuperConstructor)
+    V(GetSuperConstructor)          \
+    V(DynamicImport)
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define BUILTINS_API_LIST(V)                   \
     V(Array, Constructor)                     \

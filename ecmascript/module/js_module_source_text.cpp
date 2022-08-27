@@ -82,7 +82,7 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModule(JSThread 
                                                                        const JSHandle<JSTaggedValue> &moduleRequest)
 {
     auto moduleManage = thread->GetEcmaVM()->GetModuleManager();
-    if (moduleManage->resolveImportedModule(moduleRequest.GetTaggedValue())) {
+    if (moduleManage->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
         return moduleManage->HostGetImportedModule(moduleRequest.GetTaggedValue());
     }
     std::string baseFilename = base::StringHelper::ToStdString(
