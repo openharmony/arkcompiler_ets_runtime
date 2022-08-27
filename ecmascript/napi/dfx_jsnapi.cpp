@@ -45,6 +45,7 @@ using JSHandle = ecmascript::JSHandle<T>;
 using ecmascript::FileStream;
 using ecmascript::FileDescriptorStream;
 using ecmascript::Stream;
+using ecmascript::CMap;
 
 void DFXJSNApi::DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat,
                                  const std::string &path, bool isVmMode, bool isPrivate)
@@ -272,8 +273,17 @@ bool DFXJSNApi::CheckSafepoint(const EcmaVM *vm)
     return  thread->CheckSafepoint();
 }
 
-bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *vm, std::vector<JsFrameInfo>& jsFrames)
+bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames)
 {
+    EcmaVM *vm;
+    if (hostVm->GetJSThread()->GetThreadId() == tid) {
+        vm = const_cast<EcmaVM*>(hostVm);
+    } else {
+        vm = hostVm->GetWorkerList(tid);
+        if (vm == nullptr) {
+            return true;
+        }
+    }
     jsFrames = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
     if (jsFrames.size() > 0) {
         return true;

@@ -1171,6 +1171,8 @@ public:
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
+    static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+
 private:
     static int vmCount_;
     static bool initialize_;

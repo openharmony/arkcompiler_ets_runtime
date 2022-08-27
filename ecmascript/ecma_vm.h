@@ -383,6 +383,23 @@ public:
         exceptionBCList_.clear();
     }
 
+    void WorkersetInfo(uint32_t tid, EcmaVM *workerVm)
+    {
+        WorkerList_.emplace(tid, workerVm);
+    }
+
+    EcmaVM *GetWorkerList(uint32_t tid) const
+    {
+        EcmaVM *workerVm = nullptr;
+        if (!WorkerList_.empty()) {
+            auto iter = WorkerList_.find(tid);
+            if (iter != WorkerList_.end()) {
+                workerVm = iter->second;
+            }
+        }
+        return workerVm;
+    }
+
 #if !WIN_OR_MAC_PLATFORM
     void DeleteHeapProfile();
     HeapProfilerInterface *GetOrNewHeapProfile();
@@ -524,6 +541,7 @@ private:
     friend class ValueSerializer;
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
+    CMap<uint32_t, EcmaVM *> WorkerList_;
 };
 }  // namespace ecmascript
 }  // namespace panda
