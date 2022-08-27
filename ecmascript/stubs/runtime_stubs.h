@@ -157,6 +157,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(StOwnByIndex)                       \
     V(ResolveClass)                       \
     V(CloneClassFromTemplate)             \
+    V(CreateClassWithBuffer)              \
     V(SetClassConstructorLength)          \
     V(LoadICByName)                       \
     V(StoreICByName)                      \
@@ -384,6 +385,11 @@ private:
     static inline JSTaggedValue RuntimeCloneClassFromTemplate(JSThread *thread, const JSHandle<JSFunction> &ctor,
                                                               const JSHandle<JSTaggedValue> &base,
                                                               const JSHandle<JSTaggedValue> &lexenv);
+    static inline JSTaggedValue RuntimeCreateClassWithBuffer(JSThread *thread,
+                                                             const JSHandle<JSTaggedValue> &base,
+                                                             const JSHandle<JSTaggedValue> &lexenv,
+                                                             const JSHandle<JSTaggedValue> &constpool,
+                                                             const uint16_t methodId);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base);

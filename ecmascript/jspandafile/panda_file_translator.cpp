@@ -227,8 +227,9 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             MethodLiteral *methodLiteral = jsPandaFile->FindMethods(it.first);
             ASSERT(methodLiteral != nullptr);
 
-            JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(methodLiteral);
-            constpool->Set(thread, value.GetConstpoolIndex(), classInfoExtractor.GetTaggedValue());
+            JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+            method->SetConstantPool(thread, constpool.GetTaggedValue());
+            constpool->Set(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::METHOD) {
             panda_file::File::EntityId id(it.first);
             MethodLiteral *methodLiteral = jsPandaFile->FindMethods(it.first);
@@ -286,8 +287,6 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             constpool->Set(thread, value.GetConstpoolIndex(), literal.GetTaggedValue());
         }
     }
-
-    DefineClassesInConstPool(thread, constpool, jsPandaFile);
 
     return constpool.GetTaggedValue();
 }
@@ -567,37 +566,6 @@ void PandaFileTranslator::TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t i
         bcIns = bcIns.GetNext();
         FixOpcode(pc);
         UpdateICOffset(const_cast<MethodLiteral *>(method), pc);
-    }
-}
-
-void PandaFileTranslator::DefineClassesInConstPool(JSThread *thread, JSHandle<ConstantPool> constpool,
-                                                   const JSPandaFile *jsPandaFile)
-{
-    uint32_t length = constpool->GetLength();
-    uint32_t index = 1;
-    const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
-    auto fileLoader = thread->GetEcmaVM()->GetFileLoader();
-    while (index < length) {
-        JSTaggedValue value = constpool->Get(index);
-        if (!value.IsClassInfoExtractor()) {
-            index++;
-            continue;
-        }
-
-        // Here, using a law: when inserting ctor in index of constantpool, the index + 1 location will be inserted by
-        // corresponding class literal. Because translator fixes ECMA_DEFINECLASSWITHBUFFER two consecutive times.
-        JSTaggedValue nextValue = constpool->Get(index + 1);
-        ASSERT(nextValue.IsTaggedArray());
-
-        JSHandle<ClassInfoExtractor> extractor(thread, value);
-        JSHandle<TaggedArray> literal(thread, nextValue);
-        ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literal, jsPandaFile);
-        JSHandle<JSFunction> cls = ClassHelper::DefineClassTemplate(thread, extractor, constpool);
-        if (isLoadedAOT) {
-            fileLoader->SetAOTFuncEntry(jsPandaFile, cls);
-        }
-        constpool->Set(thread, index, cls);
-        index += 2;  // 2: pair of extractor and literal
     }
 }
 }  // namespace panda::ecmascript

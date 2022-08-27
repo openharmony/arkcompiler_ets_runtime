@@ -2903,18 +2903,17 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8)));
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
-    GateRef methodId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef length = acc_.GetValueIn(gate, 2);
 
-    GateRef classTemplate = GetObjectFromConstPool(jsFunc, methodId);
     GateRef lexicalEnv = acc_.GetValueIn(gate, 3);
     GateRef proto = acc_.GetValueIn(gate, 4);
     GateRef constpool = GetConstPool(jsFunc);
 
     Label isException(&builder_);
     Label isNotException(&builder_);
-    auto args = { classTemplate, proto, lexicalEnv, constpool };
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), args, true);
+    auto args = { proto, lexicalEnv, constpool, builder_.TaggedNGC(methodId) };
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer), args, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &isException, &isNotException);
     std::vector<GateRef> successControl;

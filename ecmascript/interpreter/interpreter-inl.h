@@ -3485,15 +3485,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t v1 = READ_INST_8_8();
         LOG_INST() << "intrinsics::defineclasswithbuffer"
                    << " method id:" << methodId << " lexenv: v" << v0 << " parent: v" << v1;
-        JSFunction *classTemplate = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(classTemplate != nullptr);
 
         JSTaggedValue lexenv = GET_VREG_VALUE(v0);
         JSTaggedValue proto = GET_VREG_VALUE(v1);
 
         JSTaggedValue res;
         SAVE_PC();
-        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
+        res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, GetConstantPool(sp), methodId);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());

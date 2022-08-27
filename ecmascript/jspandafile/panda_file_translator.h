@@ -48,8 +48,6 @@ private:
     static void FixOpcode(uint8_t *pc);
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
     static JSTaggedValue ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
-    static void DefineClassesInConstPool(JSThread *thread, JSHandle<ConstantPool> constpool,
-                                         const JSPandaFile *jsPandaFile);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_PANDA_FILE_TRANSLATOR_H

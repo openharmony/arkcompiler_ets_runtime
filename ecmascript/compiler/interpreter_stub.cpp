@@ -2895,11 +2895,11 @@ DECLARE_ASM_HANDLER(HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8)
     GateRef v0 = ReadInst8_7(pc);
     GateRef v1 = ReadInst8_8(pc);
 
-    GateRef classTemplate = GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId));
     GateRef lexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v1));
 
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CloneClassFromTemplate), { classTemplate, proto, lexicalEnv, constpool });
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
+                              { proto, lexicalEnv, constpool, Int16ToTaggedTypeNGC(methodId) });
 
     Label isException(env);
     Label isNotException(env);
