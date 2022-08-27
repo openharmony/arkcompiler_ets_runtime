@@ -435,6 +435,7 @@ public:
                                                 const JSHandle<JSTaggedValue> &newTarget);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);
+
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
     JSHandle<MachineCode> NewMachineCodeObject(size_t length, const uint8_t *data);

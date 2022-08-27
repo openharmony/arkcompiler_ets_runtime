@@ -14,14 +14,16 @@
  */
 
 #include "ecmascript/builtins/builtins_math.h"
-
 #include <random>
+#include <sys/time.h>
 
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_number.h"
+#include "utils/bit_utils.h"
 
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
+using RandomGenerator = base::RandomGenerator;
 
 // 20.2.2.1
 JSTaggedValue BuiltinsMath::Abs(EcmaRuntimeCallInfo *argv)
@@ -583,13 +585,15 @@ JSTaggedValue BuiltinsMath::Pow(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsMath::Random([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Math, Random);
-    std::random_device rd;
-    std::default_random_engine engine(rd());
-    std::uniform_real_distribution<double> dis(0, std::random_device::max() - 1);
-    // result range [0,1)
-    double result = dis(engine) / std::random_device::max();
-    return GetTaggedDouble(result);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Math, Random);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    Float64Union dataU;
+    uint64_t val;
+    uint64_t* randomState = RandomGenerator::GetRandomState();
+    val = RandomGenerator::XorShift64(randomState);
+    dataU.u64 = ((uint64_t)base::USE_LEFT << base::LEFT52) | (val >> base::RIGHT12);
+    return GetTaggedDouble(dataU.d - 1.0);
 }
 
 // 20.2.2.28
