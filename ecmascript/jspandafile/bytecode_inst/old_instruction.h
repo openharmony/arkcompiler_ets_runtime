@@ -19,11 +19,11 @@
 #include "ecmascript/jspandafile/bytecode_inst/instruction.h"
 
 namespace panda::ecmascript {
-class OldBytecodeInst : BytecodeInstBase {
+class OldBytecodeInst : OldBytecodeInstBase {
 public:
 #include "ecmascript/jspandafile/bytecode_inst/old_instruction_enum.h"
 
-    explicit OldBytecodeInst(const uint8_t *pc) : BytecodeInstBase {pc}
+    explicit OldBytecodeInst(const uint8_t *pc) : OldBytecodeInstBase {pc}
     {
     }
 
@@ -39,7 +39,7 @@ public:
 
     OldBytecodeInst JumpTo(int32_t offset) const
     {
-        return OldBytecodeInst(BytecodeInstBase::GetPointer(offset));
+        return OldBytecodeInst(OldBytecodeInstBase::GetPointer(offset));
     }
 
     OldBytecodeInst GetNext() const
@@ -49,7 +49,7 @@ public:
 
     const uint8_t *GetAddress() const
     {
-        return BytecodeInstBase::GetAddress();
+        return OldBytecodeInstBase::GetAddress();
     }
 
     size_t GetSize() const

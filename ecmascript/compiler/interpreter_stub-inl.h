@@ -630,10 +630,10 @@ void InterpreterStubBuilder::SetHotnessCounter(GateRef glue, GateRef method, Gat
 }
 
 void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                                     GateRef profileTypeInfo, GateRef acc,
-                                     GateRef hotnessCounter, int index)
+    GateRef profileTypeInfo, GateRef acc,
+    GateRef hotnessCounter, GateRef index)
 {
-    GateRef target = PtrMul(IntPtr(index), IntPtrSize());
+    GateRef target = PtrMul(index, IntPtrSize());
     DispatchBase(target, glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
     Return();
 }

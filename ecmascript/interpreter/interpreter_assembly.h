@@ -49,10 +49,6 @@ public:
     static uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static JSTaggedType *GetAsmInterpreterFramePointer(AsmInterpretedFrame *state);
 
-    static void HandleOverflow(JSThread *thread, const uint8_t *pc, JSTaggedType *sp,
-                               JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-                               JSTaggedValue acc, int16_t hotnessCounter);
-
 #define DEF_HANDLER(name)                                                    \
     static void name(JSThread *thread, const uint8_t *pc, JSTaggedType *sp,  \
                      JSTaggedValue constpool, JSTaggedValue profileTypeInfo, \
@@ -65,43 +61,6 @@ public:
 #define DEF_HANDLER(name) InterpreterAssembly::name,
 static std::array<DispatchEntryPoint, BCStubEntries::BC_HANDLER_COUNT> asmDispatchTable {
     ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleOverflow,
-    InterpreterAssembly::HandleDeprecated,
-    InterpreterAssembly::HandleWide,
-    InterpreterAssembly::HandleThrow,
-    InterpreterAssembly::HandleOverflow,
 };
 static std::array<DispatchEntryPoint, kungfu::BytecodeStubCSigns::NUM_OF_DEPRECATED_STUBS> deprecatedDispatchTable {
     ASM_INTERPRETER_DEPRECATED_STUB_LIST(DEF_HANDLER, DEF_HANDLER, DEF_HANDLER)
