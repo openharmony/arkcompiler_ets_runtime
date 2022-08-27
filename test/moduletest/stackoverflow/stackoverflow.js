@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:stackoverflow
+ * @tc.desc:test stack overflow
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 try {
     var array = new Uint8Array(1000000);
     var res = String.fromCharCode.apply(null, array);

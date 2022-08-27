@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:array
+ * @tc.desc:test Array
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var arr = new Array(100);
 var a = arr.slice(90, 100);
 print(a.length);

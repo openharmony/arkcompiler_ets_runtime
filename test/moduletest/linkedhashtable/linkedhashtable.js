@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:linkedhashtable
+ * @tc.desc:test linked hash table
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 const map = new Map([[800000005, 100]]);
 let obj1 = {"code": 800000005};
 let res = JSON.stringify(obj1);
