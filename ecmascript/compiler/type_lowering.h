@@ -118,7 +118,7 @@ private:
 
     void Lower(GateRef gate);
     void GenerateSuccessMerge(std::vector<GateRef> &successControl);
-    void RebuildSlowpathCfg(GateRef hir);
+    void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
     void ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl);
 

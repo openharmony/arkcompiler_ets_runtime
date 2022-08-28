@@ -54,16 +54,24 @@ void TypeLowering::Lower(GateRef gate)
     }
 }
 
-void TypeLowering::RebuildSlowpathCfg(GateRef hir)
+void TypeLowering::RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap)
 {
     acc_.ReplaceStateIn(hir, builder_.GetState());
     acc_.ReplaceDependIn(hir, builder_.GetDepend());
     auto uses = acc_.Uses(hir);
+    GateRef stateGate = Circuit::NullGate();
     for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
         const OpCode op = acc_.GetOpCode(*useIt);
         if (op == OpCode::IF_SUCCESS) {
+            stateGate = *useIt;
             builder_.SetState(*useIt);
             break;
+        }
+    }
+    auto nextUses = acc_.Uses(stateGate);
+    for (auto it = nextUses.begin(); it != nextUses.end(); ++it) {
+        if (it.GetOpCode().IsState()) {
+            stateGateMap[*it] = it.GetIndex();
         }
     }
     builder_.SetDepend(hir);
@@ -92,9 +100,20 @@ void TypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std
                 acc_.ReplaceValueIn(*useIt, outir);
             }
             ++useIt;
-        } else if (op == OpCode::IF_SUCCESS || op == OpCode::IF_EXCEPTION || op == OpCode::VALUE_SELECTOR ||
-                   op == OpCode::DEPEND_SELECTOR) {
+        } else if (op == OpCode::IF_SUCCESS || op == OpCode::IF_EXCEPTION) {
             ++useIt;
+        } else if (op == OpCode::VALUE_SELECTOR) {
+            if (*useIt != outir) {
+                useIt = acc_.ReplaceIn(useIt, outir);
+            } else {
+                ++useIt;
+            }
+        } else if (op == OpCode::DEPEND_SELECTOR) {
+            if (*useIt != successControl[1]) {
+                useIt = acc_.ReplaceIn(useIt, successControl[1]);
+            } else {
+                ++useIt;
+            }
         } else {
             useIt = acc_.ReplaceIn(useIt, outir);
         }
@@ -317,6 +336,7 @@ void TypeLowering::LowerTypeAdd2Dyn(GateRef gate, [[maybe_unused]]GateRef glue)
     if (!leftType.IsNumberType() || !rightType.IsNumberType()) {
         return;
     }
+    std::map<GateRef, size_t> stateGateMap;
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = FastAddOrSubOrMul<OpCode::ADD>(left, right);
     Label successExit(&builder_);
@@ -327,10 +347,13 @@ void TypeLowering::LowerTypeAdd2Dyn(GateRef gate, [[maybe_unused]]GateRef glue)
     {
         // slow path
         result = gate;
-        RebuildSlowpathCfg(gate);
+        RebuildSlowpathCfg(gate, stateGateMap);
         builder_.Jump(&successExit);
     }
     builder_.Bind(&successExit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
     std::vector<GateRef> successControl;
     GenerateSuccessMerge(successControl);
     ReplaceHirToFastPathCfg(gate, *result, successControl);
