@@ -73,7 +73,7 @@ private:
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
 
-    inline GlobalTSTypeRef GetPropType(const GateType &type, const JSHandle<EcmaString> propertyName) const
+    inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
         return tsManager_->GetPropType(type, propertyName);
     }

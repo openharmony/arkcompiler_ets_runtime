@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/type_inference/type_infer.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript::kungfu {
 void TypeInfer::TraverseCircuit()
@@ -364,8 +365,9 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     if (objType.IsTSType()) {
         // If this object has no gt type, we cannot get its internal property type
         if (IsObjectOrClass(objType)) {
+            auto constantPool = builder_->GetConstantPool().GetObject<ConstantPool>();
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
-            auto name = tsManager_->GetStringById(index);
+            auto name = constantPool->GetObjectFromCache(index);
             auto type = GetPropType(objType, name);
             return UpdateType(gate, type);
         }
@@ -496,9 +498,10 @@ void TypeInfer::TypeCheck(GateRef gate) const
         return;
     }
     auto funcName = gateAccessor_.GetValueIn(func, 0);
-    if (tsManager_->GetStdStringById(gateAccessor_.GetBitField(funcName)) ==  "AssertType") {
+    auto constantPool = builder_->GetConstantPool().GetObject<ConstantPool>();
+    if (constantPool->GetStdStringByIdx(gateAccessor_.GetBitField(funcName)) ==  "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gateAccessor_.GetValueIn(gate, 2), 0);
-        auto expectedTypeStr = tsManager_->GetStdStringById(gateAccessor_.GetBitField(expectedGate));
+        auto expectedTypeStr = constantPool->GetStdStringByIdx(gateAccessor_.GetBitField(expectedGate));
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {

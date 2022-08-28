@@ -34,7 +34,7 @@ class JSPandaFile;
 enum class SnapshotType {
     VM_ROOT,
     BUILTINS,
-    TS_LOADER
+    ETSO
 };
 
 using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;
@@ -129,6 +129,31 @@ private:
 
     NO_COPY_SEMANTIC(SnapshotProcessor);
     NO_MOVE_SEMANTIC(SnapshotProcessor);
+};
+
+class PUBLIC_API ConstantPoolProcessor {
+public:
+    ConstantPoolProcessor(EcmaVM *vm) : vm_(vm), index_(0) {}
+
+    void InitializeConstantPoolInfos(size_t nums);
+
+    void CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool);
+
+    static void RestoreConstantPoolInfo(JSThread *thread, JSTaggedValue constPoolInfo,
+                                        const JSPandaFile* pf, JSHandle<ConstantPool> constPool);
+
+    JSTaggedValue GetInfos() const
+    {
+        return infos_;
+    }
+
+private:
+    JSTaggedValue GenerateConstantPoolInfo(const JSHandle<ConstantPool> constantPool);
+
+    JSTaggedValue infos_ {JSTaggedValue::Hole()};
+    EcmaVM *vm_ {nullptr};
+    size_t index_ {0};
+    static const int ITEM_SIZE = 2;
 };
 }  // namespace panda::ecmascript
 

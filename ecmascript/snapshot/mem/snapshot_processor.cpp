@@ -1254,10 +1254,21 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
             constSpecialIndex++;
             break;
         }
-        case SnapshotType::TS_LOADER: {
-            if (JSType(objType) == JSType::HCLASS) {
+        case SnapshotType::ETSO: {
+            JSTaggedValue item = JSTaggedValue(rootObjectAddr);
+            if (item.IsTaggedArray()) {
+                JSHandle<TaggedArray> root(vm_->GetJSThread(), item);
                 TSManager *tsManager = vm_->GetTSManager();
-                tsManager->AddStaticHClassInRuntimePhase(JSTaggedValue(rootObjectAddr));
+
+                // Get ConstPoolInfo
+                JSTaggedValue constPoolInfo = root->Get(0);
+                tsManager->SetConstantPoolInfo(constPoolInfo);
+
+                // Get StaticHClass
+                uint32_t len = root->GetLength();
+                for (uint32_t i = 1; i < len; ++i) {
+                    tsManager->AddStaticHClassInRuntimePhase(root->Get(i));
+                }
             }
             break;
         }
@@ -1428,6 +1439,11 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value)
         *value = vm_->GetSnapshotEnv()->FindEnvObjectByIndex(index);
         return;
     }
+
+    if (!encodeBit.IsReference()) {
+        return;
+    }
+
     if (encodeBit.IsReference() && !encodeBit.IsSpecial()) {
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
         *value = taggedObjectAddr;
@@ -1655,5 +1671,58 @@ void SnapshotProcessor::EncodeTaggedObjectRange(ObjectSlot start, ObjectSlot end
 size_t SnapshotProcessor::GetNativeTableSize() const
 {
     return sizeof(g_nativeTable) / sizeof(g_nativeTable[0]);
+}
+
+void ConstantPoolProcessor::InitializeConstantPoolInfos(size_t nums)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    infos_ = factory->NewTaggedArray(nums * ITEM_SIZE).GetTaggedValue();
+}
+
+void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool)
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<TaggedArray> array(thread, infos_);
+    ASSERT(index_ < array->GetLength());
+    JSHandle<ConstantPool> cp(thread, constantPool.GetTaggedValue());
+    array->Set(thread, index_++, JSTaggedValue(pf->GetFileUniqId()));
+    array->Set(thread, index_++, GenerateConstantPoolInfo(cp));
+}
+
+JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(const JSHandle<ConstantPool> constantPool)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    JSThread *thread = vm_->GetJSThread();
+
+    uint32_t len = constantPool->GetLength();
+    JSHandle<TaggedArray> valueArray = factory->NewTaggedArray(len * ITEM_SIZE);
+    
+    int index = 0;
+    for (uint32_t i = 0; i < len; ++i) {
+        JSTaggedValue item = constantPool->GetObjectFromCache(i);
+        if (item.GetTaggedObject()->GetClass()->IsString()) {
+            valueArray->Set(thread, index++, JSTaggedValue(i));
+            valueArray->Set(thread, index++, item);
+        }
+    }
+
+    valueArray = TaggedArray::SetCapacity(thread, valueArray, index);
+    return valueArray.GetTaggedValue();
+}
+
+void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSTaggedValue constPoolInfo,
+                                                    const JSPandaFile* pf, JSHandle<ConstantPool> constPool)
+{
+    JSTaggedValue fileUniqID(pf->GetFileUniqId());
+    JSHandle<TaggedArray> array(thread, constPoolInfo);
+    auto index = array->GetIdx(fileUniqID);
+    JSHandle<TaggedArray> valueArray(thread, array->Get(index + 1));
+
+    uint32_t len = valueArray->GetLength();
+    for (uint32_t i = 0; i < len; i += ITEM_SIZE) {
+        uint32_t valueIndex = valueArray->Get(i).GetInt();
+        JSTaggedValue value = valueArray->Get(i + 1);
+        constPool->Set(thread, valueIndex, value);
+    }
 }
 }  // namespace panda::ecmascript

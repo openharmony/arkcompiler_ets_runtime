@@ -64,42 +64,6 @@ public:
     JSThread *thread {nullptr};
 };
 
-HWTEST_F_L0(SnapshotTest, SerializeConstStringTable)
-{
-    auto factory = ecmaVm->GetFactory();
-    auto tsManager = ecmaVm->GetTSManager();
-    JSHandle<EcmaString> str1 = factory->NewFromASCII("str1");
-    JSHandle<EcmaString> str2 = factory->NewFromASCII("str2");
-    JSHandle<EcmaString> str3 = factory->NewFromASCII("str3");
-    JSHandle<EcmaString> str4 = factory->NewFromASCII("str4");
-    tsManager->AddConstString(str1.GetTaggedValue());
-    tsManager->AddConstString(str2.GetTaggedValue());
-    tsManager->AddConstString(str3.GetTaggedValue());
-    tsManager->AddConstString(str4.GetTaggedValue());
-    CString fileName = "snapshot";
-    Snapshot snapshotSerialize(ecmaVm);
-    // serialize
-    CVector<JSTaggedType> constStringTable = tsManager->GetConstStringTable();
-    snapshotSerialize.Serialize(reinterpret_cast<uintptr_t>(constStringTable.data()),
-                                constStringTable.size(), fileName);
-    tsManager->ClearConstStringTable();
-    Snapshot snapshotDeserialize(ecmaVm);
-    // deserialize
-    snapshotDeserialize.Deserialize(SnapshotType::TS_LOADER, fileName);
-    CVector<JSTaggedType> constStringTable1 = tsManager->GetConstStringTable();
-    ASSERT_EQ(constStringTable1.size(), 4U);
-    EcmaString *str11 = reinterpret_cast<EcmaString *>(constStringTable1[0]);
-    EcmaString *str22 = reinterpret_cast<EcmaString *>(constStringTable1[1]);
-    EcmaString *str33 = reinterpret_cast<EcmaString *>(constStringTable1[2]);
-    EcmaString *str44 = reinterpret_cast<EcmaString *>(constStringTable1[3]);
-    ASSERT_EQ(std::strcmp(str11->GetCString().get(), "str1"), 0);
-    ASSERT_EQ(std::strcmp(str22->GetCString().get(), "str2"), 0);
-    ASSERT_EQ(std::strcmp(str33->GetCString().get(), "str3"), 0);
-    ASSERT_EQ(std::strcmp(str44->GetCString().get(), "str4"), 0);
-    ecmaVm->GetHeap()->GetSnapshotSpace()->ReclaimRegions();
-    std::remove(fileName.c_str());
-}
-
 HWTEST_F_L0(SnapshotTest, SerializeConstPool)
 {
     auto factory = ecmaVm->GetFactory();

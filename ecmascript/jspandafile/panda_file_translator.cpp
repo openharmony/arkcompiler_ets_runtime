@@ -29,6 +29,7 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/ts_types/ts_type_table.h"
+#include "ecmascript/snapshot/mem/snapshot_processor.h"
 #include "libpandabase/utils/utf.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 #include "libpandafile/class_data_accessor-inl.h"
@@ -143,9 +144,22 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
     const CUnorderedMap<uint32_t, uint64_t> &constpoolMap = jsPandaFile->GetConstpoolMap();
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     auto fileLoader = vm->GetFileLoader();
+
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+    if (isLoadedAOT) {
+        JSTaggedValue constPoolInfo = vm->GetTSManager()->GetConstantPoolInfo();
+        ConstantPoolProcessor::RestoreConstantPoolInfo(vm->GetJSThread(), constPoolInfo, jsPandaFile, constpool);
+    }
+#endif
+
     for (const auto &it : constpoolMap) {
         ConstPoolValue value(it.second);
         if (value.GetConstpoolType() == ConstPoolType::STRING) {
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+            if (isLoadedAOT) {
+                continue;
+            }
+#endif
             panda_file::File::EntityId id(it.first);
             auto foundStr = pf->GetStringData(id);
             auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length, foundStr.is_ascii,
