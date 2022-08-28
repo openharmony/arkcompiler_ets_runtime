@@ -30,6 +30,15 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define RETURN_VALUE_IF_ABRUPT_WITH_CLEAR(thread, value) \
+    do {                                                 \
+        if (thread->HasPendingException()) {             \
+	    thread->ClearException();                    \
+            return value;                                \
+        }                                                \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define TYPED_ARRAY_ALL(V) \
     V(Int8Array)           \
     V(Uint8Array)          \
