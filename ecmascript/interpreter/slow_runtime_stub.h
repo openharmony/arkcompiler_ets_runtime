@@ -73,12 +73,6 @@ public:
 
     static JSTaggedValue CreateGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
     static JSTaggedValue SuspendGenerator(JSThread *thread, JSTaggedValue genObj, JSTaggedValue value);
-    static JSTaggedValue SuspendGeneratorHelper(JSThread *thread, JSHandle<JSGeneratorObject> generatorObjectHandle,
-                                                JSHandle<GeneratorContext> genContextHandle, JSTaggedValue value);
-    static JSTaggedValue SuspendAsyncGeneratorHelper(JSThread *thread,
-                                                     JSHandle<JSAsyncGeneratorObject> generatorObjectHandle,
-                                                     JSHandle<GeneratorContext> genContextHandle,
-                                                     JSTaggedValue value);
     static JSTaggedValue AsyncFunctionAwaitUncaught(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value);
     static JSTaggedValue AsyncFunctionResolveOrReject(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value,
                                                       bool is_resolve);

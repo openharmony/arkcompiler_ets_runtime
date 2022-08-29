@@ -25,7 +25,6 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/frame_handler.h"
-#include "ecmascript/interpreter/slow_runtime_helper.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
@@ -249,7 +248,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjSpreadDyn(JSThread *thread, const JSHan
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, newTarget, length);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(length, argsArray);
-    return SlowRuntimeHelper::NewObject(info);
+    return NewObject(info);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreateIterResultObj(JSThread *thread, const JSHandle<JSTaggedValue> &value,
@@ -267,6 +266,19 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionAwaitUncaught(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> &value)
 {
     JSAsyncFunction::AsyncFunctionAwait(thread, asyncFuncObj, value);
+    if (asyncFuncObj->IsAsyncGeneratorObject()) {
+        JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObj);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSAsyncGeneratorObject> generator = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
+        JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue());
+        if (queue->Empty()) {
+            return JSTaggedValue::Undefined();
+        }
+        JSHandle<AsyncGeneratorRequest> next(thread, queue->Front());
+        JSHandle<PromiseCapability> completion(thread, next->GetCapability());
+        JSHandle<JSPromise> promise(thread, completion->GetPromise());
+        return promise.GetTaggedValue();
+    }
     JSHandle<JSAsyncFuncObject> asyncFuncObjHandle(asyncFuncObj);
     JSHandle<JSPromise> promise(thread, asyncFuncObjHandle->GetPromise());
 
@@ -900,7 +912,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
         JSHandle<JSAsyncGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
         // save stack, should copy cur_frame, function execute over will free cur_frame
-        SlowRuntimeHelper::SaveFrameToContext(thread, genContextHandle);
+        SaveFrameToContext(thread, genContextHandle);
 
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
@@ -914,7 +926,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
         // save stack, should copy cur_frame, function execute over will free cur_frame
-        SlowRuntimeHelper::SaveFrameToContext(thread, genContextHandle);
+        SaveFrameToContext(thread, genContextHandle);
 
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
