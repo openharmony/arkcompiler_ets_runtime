@@ -142,13 +142,12 @@ private:
 #endif
 
 #ifdef ENABLE_HILOG
-#ifndef NDEBUG
+#if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
 static bool LOGGABLE_VERBOSE = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_VERBOSE);
-static bool LOGGABLE_DEBUG = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_DEBUG);
 #else
 static bool LOGGABLE_VERBOSE = false;
-static bool LOGGABLE_DEBUG = false;
 #endif
+static bool LOGGABLE_DEBUG = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_DEBUG);
 static bool LOGGABLE_INFO = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_INFO);
 static bool LOGGABLE_WARN = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_WARN);
 static bool LOGGABLE_ERROR = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_ERROR);
