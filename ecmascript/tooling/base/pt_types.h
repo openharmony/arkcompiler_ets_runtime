@@ -390,6 +390,7 @@ public:
     static std::string DescriptionForObject(const EcmaVM *ecmaVm, Local<JSValueRef> tagged);
 
 private:
+    enum NumberSize : uint8_t { BYTES_OF_16BITS = 2, BYTES_OF_32BITS = 4, BYTES_OF_64BITS = 8 };
     static std::string DescriptionForArray(const EcmaVM *ecmaVm, Local<ArrayRef> tagged);
     static std::string DescriptionForRegexp(const EcmaVM *ecmaVm, Local<RegExpRef> tagged);
     static std::string DescriptionForDate(const EcmaVM *ecmaVm, Local<DateRef> tagged);
@@ -400,6 +401,11 @@ private:
     static std::string DescriptionForMapIterator();
     static std::string DescriptionForSetIterator();
     static std::string DescriptionForArrayBuffer(const EcmaVM *ecmaVm, Local<ArrayBufferRef> tagged);
+    static std::string DescriptionForSharedArrayBuffer(const EcmaVM *ecmaVm, Local<ArrayBufferRef> tagged);
+    static std::string DescriptionForUint8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged);
+    static std::string DescriptionForInt8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged);
+    static std::string DescriptionForInt16Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged);
+    static std::string DescriptionForInt32Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged);
     static std::string DescriptionForPrimitiveNumber(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged);
     static std::string DescriptionForPrimitiveString(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged);
     static std::string DescriptionForPrimitiveBoolean(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged);
