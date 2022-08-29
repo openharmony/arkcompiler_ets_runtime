@@ -160,13 +160,6 @@ DECLARE_ASM_HANDLER(HandleLdinfinity)
     DISPATCH_WITH_ACC(LDINFINITY);
 }
 
-DECLARE_ASM_HANDLER(HandleLdglobalthis)
-{
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    varAcc = GetGlobalObject(glue);
-    DISPATCH_WITH_ACC(LDGLOBALTHIS);
-}
-
 DECLARE_ASM_HANDLER(HandleLdundefined)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
@@ -3871,43 +3864,29 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDefineasyncgeneratorfuncPrefId16Imm16V8)
     GateRef v0 = ReadInst8_5(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-    Label isResolved(env);
-    Label notResolved(env);
-    Label defaultLabel(env);
-    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-    Bind(&isResolved);
+
+    result = CallRuntime(glue, RTSTUB_ID(DefineAsyncGeneratorFunc), { *result });
+    Label isException(env);
+    Label notException(env);
+    Branch(TaggedIsException(*result), &isException, &notException);
+    Bind(&isException);
     {
-        result = CallRuntime(glue, RTSTUB_ID(DefineAsyncGeneratorFunc), { *result });
-        Label isException(env);
-        Label notException(env);
-        Branch(TaggedIsException(*result), &isException, &notException);
-        Bind(&isException);
-        {
-            DISPATCH_LAST();
-        }
-        Bind(&notException);
-        {
-            SetConstantPoolToFunction(glue, *result, constpool);
-            Jump(&defaultLabel);
-        }
+        DISPATCH_LAST();
     }
-    Bind(&notResolved);
+    Bind(&notException);
     {
-        SetResolvedToFunction(glue, *result, Boolean(true));
-        Jump(&defaultLabel);
+        SetConstantPoolToFunction(glue, *result, constpool);
     }
-    Bind(&defaultLabel);
-    {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-        SetLexicalEnvToFunction(glue, *result, lexEnv);
-        GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-        varAcc = *result;
-        DISPATCH_WITH_ACC(DEPRECATED_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8);
-    }
+
+    GateRef hclass = LoadHClass(*result);
+    SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    SetLexicalEnvToFunction(glue, *result, lexEnv);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+    varAcc = *result;
+    DISPATCH_WITH_ACC(DEPRECATED_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleCallarg0Imm8)
@@ -4496,39 +4475,25 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     GateRef length = ReadInst8_3(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-    Label isResolved(env);
-    Label notResolved(env);
-    Label defaultLabel(env);
-    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-    Bind(&isResolved);
+
+    result = CallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
+    Bind(&notException);
     {
-        result = CallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
-        Label notException(env);
-        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-        Bind(&notException);
-        {
-            SetConstantPoolToFunction(glue, *result, constpool);
-            Jump(&defaultLabel);
-        }
+        SetConstantPoolToFunction(glue, *result, constpool);
     }
-    Bind(&notResolved);
-    {
-        SetResolvedToFunction(glue, *result, Boolean(true));
-        Jump(&defaultLabel);
-    }
-    Bind(&defaultLabel);
-    {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        auto frame = GetFrame(sp);
-        GateRef envHandle = GetEnvFromFrame(frame);
-        SetLexicalEnvToFunction(glue, *result, envHandle);
-        GateRef currentFunc = GetFunctionFromFrame(frame);
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-        varAcc = *result;
-        DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
-    }
+
+    GateRef hclass = LoadHClass(*result);
+    SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    auto frame = GetFrame(sp);
+    GateRef envHandle = GetEnvFromFrame(frame);
+    SetLexicalEnvToFunction(glue, *result, envHandle);
+    GateRef currentFunc = GetFunctionFromFrame(frame);
+    SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+    varAcc = *result;
+    DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
 }
 
 DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
@@ -4539,39 +4504,25 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     GateRef length = ReadInst16_4(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-    Label isResolved(env);
-    Label notResolved(env);
-    Label defaultLabel(env);
-    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-    Bind(&isResolved);
+
+    result = CallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
+    Bind(&notException);
     {
-        result = CallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
-        Label notException(env);
-        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-        Bind(&notException);
-        {
-            SetConstantPoolToFunction(glue, *result, constpool);
-            Jump(&defaultLabel);
-        }
+        SetConstantPoolToFunction(glue, *result, constpool);
     }
-    Bind(&notResolved);
-    {
-        SetResolvedToFunction(glue, *result, Boolean(true));
-        Jump(&defaultLabel);
-    }
-    Bind(&defaultLabel);
-    {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        auto frame = GetFrame(sp);
-        GateRef envHandle = GetEnvFromFrame(frame);
-        SetLexicalEnvToFunction(glue, *result, envHandle);
-        GateRef currentFunc = GetFunctionFromFrame(frame);
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-        varAcc = *result;
-        DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
-    }
+
+    GateRef hclass = LoadHClass(*result);
+    SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    auto frame = GetFrame(sp);
+    GateRef envHandle = GetEnvFromFrame(frame);
+    SetLexicalEnvToFunction(glue, *result, envHandle);
+    GateRef currentFunc = GetFunctionFromFrame(frame);
+    SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+    varAcc = *result;
+    DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedDefinefuncPrefId16Imm16V8)
@@ -4582,40 +4533,26 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDefinefuncPrefId16Imm16V8)
     GateRef length = ReadInst16_3(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetObjectFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
-    Label isResolved(env);
-    Label notResolved(env);
-    Label defaultLabel(env);
-    Branch(FunctionIsResolved(*result), &isResolved, &notResolved);
-    Bind(&isResolved);
+
+    result = CallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
+    Bind(&notException);
     {
-        result = CallRuntime(glue, RTSTUB_ID(Definefunc), { *result });
-        Label notException(env);
-        CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-        Bind(&notException);
-        {
-            SetConstantPoolToFunction(glue, *result, constpool);
-            Jump(&defaultLabel);
-        }
+        SetConstantPoolToFunction(glue, *result, constpool);
     }
-    Bind(&notResolved);
-    {
-        SetResolvedToFunction(glue, *result, Boolean(true));
-        Jump(&defaultLabel);
-    }
-    Bind(&defaultLabel);
-    {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        auto frame = GetFrame(sp);
-        GateRef v0 = ReadInst8_5(pc);
-        GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-        SetLexicalEnvToFunction(glue, *result, lexEnv);
-        GateRef currentFunc = GetFunctionFromFrame(frame);
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
-        varAcc = *result;
-        DISPATCH_WITH_ACC(DEPRECATED_DEFINEFUNC_PREF_ID16_IMM16_V8);
-    }
+
+    GateRef hclass = LoadHClass(*result);
+    SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedNGC(length),
+        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+    auto frame = GetFrame(sp);
+    GateRef v0 = ReadInst8_5(pc);
+    GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    SetLexicalEnvToFunction(glue, *result, lexEnv);
+    GateRef currentFunc = GetFunctionFromFrame(frame);
+    SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+    varAcc = *result;
+    DISPATCH_WITH_ACC(DEPRECATED_DEFINEFUNC_PREF_ID16_IMM16_V8);
 }
 
 // DECLARE_ASM_HANDLER(HandleDefinencfuncImm8Id16Imm16V8)

@@ -314,16 +314,6 @@ void InterpreterStubBuilder::SetConstantPoolToFunction(GateRef glue, GateRef fun
     Store(VariableType::INT64(), glue, method, offset, value);
 }
 
-void InterpreterStubBuilder::SetResolvedToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef bitfield = GetFunctionBitFieldFromJSFunction(function);
-    GateRef mask = Int32(
-        ~(((1<<JSFunction::ResolvedBits::SIZE) - 1) << JSFunction::ResolvedBits::START_BIT));
-    GateRef result = Int32Or(Int32And(bitfield, mask),
-        Int32LSL(ZExtInt1ToInt32(value), Int32(JSFunction::ResolvedBits::START_BIT)));
-    Store(VariableType::INT32(), glue, function, IntPtr(JSFunction::BIT_FIELD_OFFSET), result);
-}
-
 void InterpreterStubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
@@ -605,15 +595,17 @@ GateRef InterpreterStubBuilder::GetObjectFromConstPool(GateRef constpool, GateRe
     return GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, index);
 }
 
+// TODO
 GateRef InterpreterStubBuilder::FunctionIsResolved(GateRef object)
 {
     GateRef bitfield = GetFunctionBitFieldFromJSFunction(object);
     // decode
-    return Int32NotEqual(
-        Int32And(
-            Int32LSR(bitfield, Int32(JSFunction::ResolvedBits::START_BIT)),
-            Int32((1LU << JSFunction::ResolvedBits::SIZE) - 1)),
-        Int32(0));
+    // return Int32NotEqual(
+    //     Int32And(
+    //         Int32LSR(bitfield, Int32(JSFunction::ResolvedBits::START_BIT)),
+    //         Int32((1LU << JSFunction::ResolvedBits::SIZE) - 1)),
+    //     Int32(0));
+    return bitfield;
 }
 
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)

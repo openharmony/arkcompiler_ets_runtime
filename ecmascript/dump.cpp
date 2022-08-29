@@ -1329,12 +1329,6 @@ void JSFunction::Dump(std::ostream &os) const
 
     os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
     os << "\n";
-    os << " - Strict: " << GetStrict();
-    os << "\n";
-    os << " - Resolved: " << GetResolved();
-    os << "\n";
-    os << " - ThisMode: " << static_cast<int>(GetThisMode());
-    os << "\n";
     os << " - FunctionExtraInfo: ";
     GetFunctionExtraInfo().Dump(os);
     os << "\n";
@@ -4006,9 +4000,6 @@ void JSFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> 
     vec.push_back(std::make_pair(CString("LexicalEnv"), GetLexicalEnv()));
     vec.push_back(std::make_pair(CString("HomeObject"), GetHomeObject()));
     vec.push_back(std::make_pair(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind()))));
-    vec.push_back(std::make_pair(CString("Strict"), JSTaggedValue(GetStrict())));
-    vec.push_back(std::make_pair(CString("Resolved"), JSTaggedValue(GetResolved())));
-    vec.push_back(std::make_pair(CString("ThisMode"), JSTaggedValue(static_cast<int>(GetThisMode()))));
     vec.push_back(std::make_pair(CString("FunctionExtraInfo"), GetFunctionExtraInfo()));
     vec.push_back(std::make_pair(CString("ProfileTypeInfo"), GetProfileTypeInfo()));
     JSObject::DumpForSnapshot(vec);

@@ -30,18 +30,8 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
-void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind,
-                                      bool strict)
+void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
 {
-    FunctionMode thisMode;
-    if (IsArrowFunction(kind)) {
-        thisMode = FunctionMode::LEXICAL;
-    } else if (strict) {
-        thisMode = FunctionMode::STRICT;
-    } else {
-        thisMode = FunctionMode::GLOBAL;
-    }
-
     func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
@@ -50,9 +40,6 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetFunctionExtraInfo(thread, JSTaggedValue::Undefined());
     func->SetFunctionKind(kind);
-    func->SetStrict(strict);
-    func->SetThisMode(thisMode);
-    func->SetResolved(false);
     func->SetCallNative(false);
 
     auto globalConst = thread->GlobalConstants();
@@ -607,9 +594,9 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
 
 // Those interface below is discarded
 void JSFunction::InitializeJSFunction(JSThread *thread, [[maybe_unused]] const JSHandle<GlobalEnv> &env,
-                                      const JSHandle<JSFunction> &func, FunctionKind kind, bool strict)
+                                      const JSHandle<JSFunction> &func, FunctionKind kind)
 {
-    InitializeJSFunction(thread, func, kind, strict);
+    InitializeJSFunction(thread, func, kind);
 }
 
 bool JSFunction::NameSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,

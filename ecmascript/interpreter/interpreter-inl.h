@@ -147,7 +147,19 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define SET_ACC(val) (acc = val)               // NOLINT(cppcoreguidelines-macro-usage)
 
 #define GET_OBJ_FROM_CACHE(index) \
-    (ConstantPool::Cast(GetConstantPool(sp).GetTaggedObject())->GetObjectFromCache(index))
+    (ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(thread, constpool, index))
+
+#define GET_STR_FROM_CACHE(index) \
+    (ConstantPool::Cast(constpool.GetTaggedObject())->GetStringFromCache(thread, constpool, index))
+
+#define GET_METHOD_FROM_CACHE(index, type) \
+    (ConstantPool::Cast(constpool.GetTaggedObject())->GetMethodFromCache(thread, constpool, index))
+
+#define GET_LITERA_FROM_CACHE(index, type) \
+    (ConstantPool::Cast(constpool.GetTaggedObject())->GetLiteralFromCache<type>(thread, constpool, index))
+
+#define GET_CLASS_FROM_CACHE(index, litera) \
+    (ConstantPool::Cast(constpool.GetTaggedObject())->GetClassFromCache(thread, constpool, index, litera))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define INTERPRETER_GOTO_EXCEPTION_HANDLER()          \
@@ -244,7 +256,9 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define CALL_INITIALIZE()                                             \
     do {                                                              \
         SAVE_PC();                                                    \
+        SAVE_ACC();                                                   \
         thread->CheckSafepoint();                                     \
+        RESTORE_ACC();                                                \
         funcTagged = acc.GetRawData();                                \
         JSTaggedValue funcValue = acc;                                \
         if (!funcValue.IsCallable()) {                                \
@@ -313,8 +327,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         if (UNLIKELY(thread->DoStackOverflowCheck(newSp - actualNumArgs))) { \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
-        for (int i = actualNumArgs - 1; i >= 0; i--) {                            \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];             \
+        for (int i = actualNumArgs; i >= 0; i--) {                           \
+            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];            \
         }                                                                    \
     } while (false)
 
@@ -782,10 +796,13 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
     }
     uint32_t pcOffset = context->GetBCOffset();
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    // TODO: how to modify for first level inst???
-    // check pandafile version ?
+    // TODO: Refactor ??
+    EcmaOpcode suspendGeneratorOpcode = EcmaOpcode::SUSPENDGENERATOR_V8;
+    if (UNLIKELY(!method->GetJSPandaFile()->IsNewVersion())) {
+        suspendGeneratorOpcode = EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8;
+    }
     const uint8_t *resumePc = method->GetBytecodeArray() + pcOffset +
-                              BytecodeInstruction::Size(EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8);
+                              BytecodeInstruction::Size(suspendGeneratorOpcode);
 
     InterpretedFrame *state = GET_FRAME(newSp);
     state->pc = resumePc;
@@ -946,7 +963,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(LDA_STR_ID16) {
         uint16_t stringId = READ_INST_16_0();
         LOG_INST() << "lda.str " << std::hex << stringId;
-        SET_ACC(GET_OBJ_FROM_CACHE(stringId));
+        auto constpool = GetConstantPool(sp);
+        SET_ACC(GET_STR_FROM_CACHE(stringId));
         DISPATCH(LDA_STR_ID16);
     }
     HANDLE_OPCODE(JMP_IMM8) {
@@ -991,6 +1009,18 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             DISPATCH(JEQZ_IMM16);
         }
     }
+    HANDLE_OPCODE(JEQZ_IMM32) {
+        int32_t offset = READ_INST_32_0();
+        LOG_INST() << "jeqz ->\t"
+                   << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
+        if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+            (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
+            UPDATE_HOTNESS_COUNTER(offset);
+            DISPATCH_OFFSET(offset);
+        } else {
+            DISPATCH(JEQZ_IMM32);
+        }
+    }
     HANDLE_OPCODE(JNEZ_IMM8) {
         int8_t offset = READ_INST_8_0();
         LOG_INST() << "jnez ->\t"
@@ -1013,6 +1043,18 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             DISPATCH_OFFSET(offset);
         } else {
             DISPATCH(JNEZ_IMM16);
+        }
+    }
+    HANDLE_OPCODE(JNEZ_IMM32) {
+        int32_t offset = READ_INST_32_0();
+        LOG_INST() << "jnez ->\t"
+                   << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
+        if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+            (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
+            UPDATE_HOTNESS_COUNTER(offset);
+            DISPATCH_OFFSET(offset);
+        } else {
+            DISPATCH(JNEZ_IMM32);
         }
     }
     HANDLE_OPCODE(LDA_V8) {
@@ -1067,7 +1109,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
         HANDLE_OPCODE(CALLARG1_IMM8_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARG1;
-            uint8_t a0 = READ_INST_8_1();
+            uint32_t a0 = READ_INST_8_1();
             LOG_INST() << "callarg1 "
                        << "v" << a0;
             CALL_INITIALIZE();
@@ -1077,7 +1119,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         HANDLE_OPCODE(DEPRECATED_CALLARG1_PREF_V8_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARG1;
             startReg = READ_INST_8_1();
-            uint8_t a0 = READ_INST_8_2();
+            uint32_t a0 = READ_INST_8_2();
             LOG_INST() << "callarg1 "
                        << "v" << startReg << ", v" << a0;
             DEPRECATED_CALL_INITIALIZE();
@@ -1086,8 +1128,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
         HANDLE_OPCODE(CALLARGS2_IMM8_V8_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARGS2;
-            uint8_t a0 = READ_INST_8_1();
-            uint8_t a1 = READ_INST_8_2();
+            uint32_t a0 = READ_INST_8_1();
+            uint32_t a1 = READ_INST_8_2();
             LOG_INST() << "callargs2 "
                        << "v" << a0 << ", v" << a1;
             CALL_INITIALIZE();
@@ -1097,8 +1139,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         HANDLE_OPCODE(DEPRECATED_CALLARGS2_PREF_V8_V8_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARGS2;
             startReg = READ_INST_8_1();
-            uint8_t a0 = READ_INST_8_2();
-            uint8_t a1 = READ_INST_8_3();
+            uint32_t a0 = READ_INST_8_2();
+            uint32_t a1 = READ_INST_8_3();
             LOG_INST() << "callargs2 "
                        << "v" << startReg << ", v" << a0 << ", v" << a1;
             DEPRECATED_CALL_INITIALIZE();
@@ -1107,9 +1149,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
         HANDLE_OPCODE(CALLARGS3_IMM8_V8_V8_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARGS3;
-            uint8_t a0 = READ_INST_8_1();
-            uint8_t a1 = READ_INST_8_2();
-            uint8_t a2 = READ_INST_8_3();
+            uint32_t a0 = READ_INST_8_1();
+            uint32_t a1 = READ_INST_8_2();
+            uint32_t a2 = READ_INST_8_3();
             LOG_INST() << "callargs3 "
                        << "v" << a0 << ", v" << a1 << ", v" << a2;
             CALL_INITIALIZE();
@@ -1119,9 +1161,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         HANDLE_OPCODE(DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARGS3;
             startReg = READ_INST_8_1();
-            uint8_t a0 = READ_INST_8_2();
-            uint8_t a1 = READ_INST_8_3();
-            uint8_t a2 = READ_INST_8_4();
+            uint32_t a0 = READ_INST_8_2();
+            uint32_t a1 = READ_INST_8_3();
+            uint32_t a2 = READ_INST_8_4();
             LOG_INST() << "callargs3 "
                        << "v" << startReg << ", v" << a0 << ", v" << a1 << ", v" << a2;
             DEPRECATED_CALL_INITIALIZE();
@@ -1139,7 +1181,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         HANDLE_OPCODE(CALLTHIS1_IMM8_V8_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARG1;
             startReg = READ_INST_8_1();
-            uint8_t a0 = READ_INST_8_2();
+            uint32_t a0 = READ_INST_8_2();
             LOG_INST() << "call.this1, v" << startReg << " v" << a0;
             CALL_INITIALIZE();
             callThis = true;
@@ -1148,8 +1190,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         HANDLE_OPCODE(CALLTHIS2_IMM8_V8_V8_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARGS2;
             startReg = READ_INST_8_1();
-            uint8_t a0 = READ_INST_8_2();
-            uint8_t a1 = READ_INST_8_3();
+            uint32_t a0 = READ_INST_8_2();
+            uint32_t a1 = READ_INST_8_3();
             LOG_INST() << "call.this2, v" << startReg << " v" << a0 << " v" << a1;
             CALL_INITIALIZE();
             callThis = true;
@@ -1158,16 +1200,16 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         HANDLE_OPCODE(CALLTHIS3_IMM8_V8_V8_V8_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARGS3;
             startReg = READ_INST_8_1();
-            uint8_t a0 = READ_INST_8_2();
-            uint8_t a1 = READ_INST_8_3();
-            uint8_t a2 = READ_INST_8_4();
+            uint32_t a0 = READ_INST_8_2();
+            uint32_t a1 = READ_INST_8_3();
+            uint32_t a2 = READ_INST_8_4();
             LOG_INST() << "call.this3, v" << startReg << " v" << a0 << " v" << a1 << " v" << a2;
             CALL_INITIALIZE();
             callThis = true;
             CALL_PUSH_ARGS(3);
         }
         HANDLE_OPCODE(CALLTHISRANGE_IMM8_IMM8_V8) {
-            actualNumArgs = static_cast<int32_t>(READ_INST_8_1() - 1);  // 1: exclude this
+            actualNumArgs = READ_INST_8_1();
             startReg = READ_INST_8_2();
             LOG_INST() << "call.this.range " << actualNumArgs << ", v" << startReg;
             CALL_INITIALIZE();
@@ -1175,7 +1217,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             CALL_PUSH_ARGS(THISRANGE);
         }
         HANDLE_OPCODE(WIDE_CALLTHISRANGE_PREF_IMM16_V8) {
-            actualNumArgs = static_cast<int32_t>(READ_INST_16_1() - 1);  // 1: exclude this
+            actualNumArgs = READ_INST_16_1();
             startReg = READ_INST_8_3();
             LOG_INST() << "call.this.range " << actualNumArgs << ", v" << startReg;
             CALL_INITIALIZE();
@@ -1191,7 +1233,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             DEPRECATED_CALL_PUSH_ARGS(THISRANGE);
         }
         HANDLE_OPCODE(CALLRANGE_IMM8_IMM8_V8) {
-            actualNumArgs = READ_INST_8_1();
+            actualNumArgs = READ_INST_8_1() + 1;  // add 1 for startReg(arg0)
             startReg = READ_INST_8_2();
             LOG_INST() << "calli.range " << actualNumArgs << ", v" << startReg;
             CALL_INITIALIZE();
@@ -1199,7 +1241,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             CALL_PUSH_ARGS(RANGE);
         }
         HANDLE_OPCODE(WIDE_CALLRANGE_PREF_IMM16_V8) {
-            actualNumArgs = READ_INST_16_1();
+            actualNumArgs = READ_INST_16_1() + 1;  // add 1 for startReg(arg0)
             startReg = READ_INST_8_3();
             LOG_INST() << "calli.range " << actualNumArgs << ", v" << startReg;
             CALL_INITIALIZE();
@@ -1298,8 +1340,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
     }
     HANDLE_OPCODE(APPLY_IMM8_V8_V8) {
-        uint16_t v0 = READ_INST_8_0();
-        uint16_t v1 = READ_INST_8_1();
+        uint16_t v0 = READ_INST_8_1();
+        uint16_t v1 = READ_INST_8_2();
         LOG_INST() << "intrinsics::callspread"
                     << " v" << v0 << " v" << v1;
         JSTaggedValue func = GET_ACC();
@@ -1432,11 +1474,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(JSTaggedValue(base::POSITIVE_INFINITY));
         DISPATCH(LDINFINITY);
     }
-    HANDLE_OPCODE(LDGLOBALTHIS) {
-        LOG_INST() << "intrinsics::ldglobalthis";
-        SET_ACC(globalObj);
-        DISPATCH(LDGLOBALTHIS);
-    }
     HANDLE_OPCODE(LDUNDEFINED) {
         LOG_INST() << "intrinsics::ldundefined";
         SET_ACC(JSTaggedValue::Undefined());
@@ -1500,16 +1537,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(GETPROPITERATOR);
-    }
-    HANDLE_OPCODE(GETITERATOR_IMM8) {
-        LOG_INST() << "intrinsics::getiterator";
-        JSTaggedValue obj = GET_ACC();
-        // slow path
-        SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        SET_ACC(res);
-        DISPATCH(GETITERATOR_IMM8);
     }
     // TODO 
     // HANDLE_OPCODE(ITERNEXT_IMM8_V8) {
@@ -2118,10 +2145,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue receiver = GET_VREG_VALUE(v0);
         if (receiver.IsJSObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
-            JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+            SAVE_ACC();
+            auto constpool = GetConstantPool(sp);
+            JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+            RESTORE_ACC();
             JSTaggedValue value = GET_ACC();
             // fast path
             SAVE_ACC();
+            receiver = GET_VREG_VALUE(v0);
             JSTaggedValue res = FastRuntimeStub::SetPropertyByName<true>(thread, receiver, propKey, value);
             if (!res.IsHole()) {
                 INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -2132,10 +2163,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
 
         SAVE_ACC();
-        receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
-        auto propKey = GET_OBJ_FROM_CACHE(stringId);  // Maybe moved by GC
+        auto constpool = GetConstantPool(sp);
+        auto propKey = GET_STR_FROM_CACHE(stringId);  // Maybe moved by GC
+        RESTORE_ACC();
         auto value = GET_ACC();                                  // Maybe moved by GC
-        SAVE_PC();
+        receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
         JSTaggedValue res = SlowRuntimeStub::StOwnByName(thread, receiver, propKey, value);
         RESTORE_ACC();
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -2148,6 +2180,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(CREATEEMPTYARRAY_IMM8);
     }
+    HANDLE_OPCODE(CREATEEMPTYARRAY_IMM16) {
+        LOG_INST() << "intrinsics::createemptyarray";
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::CreateEmptyArray(thread, factory, globalEnv);
+        SET_ACC(res);
+        DISPATCH(CREATEEMPTYARRAY_IMM16);
+    }
     HANDLE_OPCODE(CREATEEMPTYOBJECT) {
         LOG_INST() << "intrinsics::createemptyobject";
         SAVE_PC();
@@ -2157,12 +2196,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8) {
         uint16_t stringId = READ_INST_16_1();
-        JSTaggedValue pattern = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue pattern = GET_STR_FROM_CACHE(stringId);
         uint8_t flags = READ_INST_8_3();
         LOG_INST() << "intrinsics::createregexpwithliteral "
                    << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(pattern.GetTaggedObject()))
                    << ", flags:" << flags;
-        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateRegExpWithLiteral(thread, pattern, flags);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -2170,12 +2210,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8) {
         uint16_t stringId = READ_INST_16_2();
-        JSTaggedValue pattern = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue pattern = GET_STR_FROM_CACHE(stringId);
         uint8_t flags = READ_INST_8_4();
         LOG_INST() << "intrinsics::createregexpwithliteral "
                    << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(pattern.GetTaggedObject()))
                    << ", flags:" << flags;
-        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateRegExpWithLiteral(thread, pattern, flags);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -2234,16 +2275,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t v0 = READ_INST_8_5();
         LOG_INST() << "define async gengerator function length: " << length
                    << " v" << v0;
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
         JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_PC();
-            auto res = SlowRuntimeStub::DefineAsyncGeneratorFunc(thread, result);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-        } else {
-            result->SetResolved(true);
-        }
+
+        SAVE_PC();
+        auto res = SlowRuntimeStub::DefineAsyncGeneratorFunc(thread, result);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         JSTaggedValue env = GET_VREG_VALUE(v0);
@@ -2342,6 +2382,69 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
         DISPATCH(STOBJBYVALUE_IMM8_V8_V8);
     }
+    HANDLE_OPCODE(STOBJBYVALUE_IMM16_V8_V8) {
+        uint32_t v0 = READ_INST_8_2();
+        uint32_t v1 = READ_INST_8_3();
+
+        LOG_INST() << "intrinsics::stobjbyvalue"
+                   << " v" << v0 << " v" << v1;
+
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        if (!profileTypeInfo.IsUndefined()) {
+            uint16_t slotId = READ_INST_16_0();
+            auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+            JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+            JSTaggedValue propKey = GET_VREG_VALUE(v1);
+            JSTaggedValue value = GET_ACC();
+            JSTaggedValue res = JSTaggedValue::Hole();
+            SAVE_ACC();
+
+            if (LIKELY(firstValue.IsHeapObject())) {
+                JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+                res = ICRuntimeStub::TryStoreICByValue(thread, receiver, propKey, firstValue, secondValue, value);
+            }
+            // IC miss and not enter the megamorphic state, store as polymorphic
+            if (res.IsHole() && !firstValue.IsHole()) {
+                res = ICRuntimeStub::StoreICByValue(thread,
+                                                    profileTypeArray,
+                                                    receiver, propKey, value, slotId);
+            }
+
+            if (LIKELY(!res.IsHole())) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STOBJBYVALUE_IMM16_V8_V8);
+            }
+        }
+#endif
+        if (receiver.IsHeapObject()) {
+            SAVE_ACC();
+            JSTaggedValue propKey = GET_VREG_VALUE(v1);
+            JSTaggedValue value = GET_ACC();
+            // fast path
+            JSTaggedValue res = FastRuntimeStub::SetPropertyByValue(thread, receiver, propKey, value);
+            if (!res.IsHole()) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STOBJBYVALUE_IMM16_V8_V8);
+            }
+            RESTORE_ACC();
+        }
+        {
+            // slow path
+            SAVE_ACC();
+            SAVE_PC();
+            receiver = GET_VREG_VALUE(v0);  // Maybe moved by GC
+            JSTaggedValue propKey = GET_VREG_VALUE(v1);   // Maybe moved by GC
+            JSTaggedValue value = GET_ACC();              // Maybe moved by GC
+            JSTaggedValue res = SlowRuntimeStub::StObjByValue(thread, receiver, propKey, value);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+        }
+        DISPATCH(STOBJBYVALUE_IMM16_V8_V8);
+    }
     HANDLE_OPCODE(STSUPERBYVALUE_IMM8_V8_V8) {
         uint32_t v0 = READ_INST_8_1();
         uint32_t v1 = READ_INST_8_2();
@@ -2363,7 +2466,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(TRYLDGLOBALBYNAME_IMM8_ID16) {
         uint16_t stringId = READ_INST_16_1();
-        auto prop = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        auto prop = GET_STR_FROM_CACHE(stringId);
 
         LOG_INST() << "intrinsics::tryldglobalbyname "
                    << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(prop.GetTaggedObject()));
@@ -2374,7 +2478,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             uint16_t slotId = READ_INST_8_0();
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
-                                                                      profileTypeInfo.GetTaggedObject()),
+                                                                  profileTypeInfo.GetTaggedObject()),
                                                                   globalObj, prop, slotId);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
@@ -2401,9 +2505,53 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         DISPATCH(TRYLDGLOBALBYNAME_IMM8_ID16);
     }
+    HANDLE_OPCODE(TRYLDGLOBALBYNAME_IMM16_ID16) {
+        uint16_t stringId = READ_INST_16_2();
+        auto constpool = GetConstantPool(sp);
+        auto prop = GET_STR_FROM_CACHE(stringId);
+
+        LOG_INST() << "intrinsics::tryldglobalbyname "
+                   << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(prop.GetTaggedObject()));
+
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        if (!profileTypeInfo.IsUndefined()) {
+            uint16_t slotId = READ_INST_16_0();
+            JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
+                                                                  ProfileTypeInfo::Cast(
+                                                                  profileTypeInfo.GetTaggedObject()),
+                                                                  globalObj, prop, slotId);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);
+        }
+#endif
+
+        // order: 1. global record 2. global object
+        JSTaggedValue result = SlowRuntimeStub::LdGlobalRecord(thread, prop);
+        if (!result.IsUndefined()) {
+            SET_ACC(PropertyBox::Cast(result.GetTaggedObject())->GetValue());
+        } else {
+            JSTaggedValue globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, prop);
+            if (!globalResult.IsHole()) {
+                SET_ACC(globalResult);
+            } else {
+                // slow path
+                SAVE_PC();
+                JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj, prop);
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                SET_ACC(res);
+            }
+        }
+
+        DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);
+    }
     HANDLE_OPCODE(TRYSTGLOBALBYNAME_IMM8_ID16) {
         uint16_t stringId = READ_INST_16_1();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         LOG_INST() << "intrinsics::trystglobalbyname"
                    << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
 
@@ -2491,7 +2639,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue receiver = GET_VREG_VALUE(v0);
         if (receiver.IsJSObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
-            JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+            SAVE_ACC();
+            auto constpool = GetConstantPool(sp);
+            JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+            RESTORE_ACC();
             JSTaggedValue value = GET_ACC();
             // fast path
             SAVE_ACC();
@@ -2508,7 +2659,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SAVE_ACC();
         SAVE_PC();
         receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
-        auto propKey = GET_OBJ_FROM_CACHE(stringId);  // Maybe moved by GC
+        auto constpool = GetConstantPool(sp);
+        auto propKey = GET_STR_FROM_CACHE(stringId);  // Maybe moved by GC
+        RESTORE_ACC();
         auto value = GET_ACC();                                  // Maybe moved by GC
         JSTaggedValue res = SlowRuntimeStub::StOwnByNameWithNameSet(thread, receiver, propKey, value);
         RESTORE_ACC();
@@ -2518,7 +2671,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(LDGLOBALVAR_IMM16_ID16) {
         uint16_t stringId = READ_INST_16_2();
         LOG_INST() << "intrinsics::ldglobalvar stringId:" << stringId;
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
 
 #if ECMASCRIPT_ENABLE_IC
         auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
@@ -2548,8 +2703,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(STOBJBYNAME_IMM8_ID16_V8) {
         uint32_t v0 = READ_INST_8_3();
-        JSTaggedValue receiver = GET_VREG_VALUE(v0);
-        JSTaggedValue value = GET_ACC();
 #if ECMASCRIPT_ENABLE_IC
         auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
         if (!profileTypeInfo.IsUndefined()) {
@@ -2559,6 +2712,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = JSTaggedValue::Hole();
             SAVE_ACC();
 
+            JSTaggedValue receiver = GET_VREG_VALUE(v0);
+            JSTaggedValue value = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
                 JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
                 res = ICRuntimeStub::TryStoreICByName(thread, receiver, firstValue, secondValue, value);
@@ -2569,7 +2724,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 DISPATCH(STOBJBYNAME_IMM8_ID16_V8);
             } else if (!firstValue.IsHole()) { // IC miss and not enter the megamorphic state, store as polymorphic
                 uint16_t stringId = READ_INST_16_1();
-                JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+                SAVE_ACC();
+                auto constpool = GetConstantPool(sp);
+                JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+                RESTORE_ACC();
+                value = GET_ACC();
+                receiver = GET_VREG_VALUE(v0);
                 res = ICRuntimeStub::StoreICByName(thread,
                                                    profileTypeArray,
                                                    receiver, propKey, value, slotId);
@@ -2582,11 +2742,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t stringId = READ_INST_16_1();
         LOG_INST() << "intrinsics::stobjbyname "
                    << "v" << v0 << " stringId:" << stringId;
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
         if (receiver.IsHeapObject()) {
-            JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
-            value = GET_ACC();
-            // fast path
             SAVE_ACC();
+            auto constpool = GetConstantPool(sp);
+            JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+            RESTORE_ACC();
+            JSTaggedValue value = GET_ACC();
+            receiver = GET_VREG_VALUE(v0);
+            // fast path
             JSTaggedValue res = FastRuntimeStub::SetPropertyByName(thread, receiver, propKey, value);
             if (!res.IsHole()) {
                 INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -2598,20 +2762,95 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         // slow path
         SAVE_ACC();
         SAVE_PC();
-        receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
-        auto propKey = GET_OBJ_FROM_CACHE(stringId);  // Maybe moved by GC
-        value = GET_ACC();                                  // Maybe moved by GC
+        auto constpool = GetConstantPool(sp);                    // Maybe moved by GC
+        auto propKey = GET_STR_FROM_CACHE(stringId);  // Maybe moved by GC
+        RESTORE_ACC();
+        JSTaggedValue value = GET_ACC();                                  // Maybe moved by GC
+        receiver = GET_VREG_VALUE(v0);
         JSTaggedValue res = SlowRuntimeStub::StObjByName(thread, receiver, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         RESTORE_ACC();
         DISPATCH(STOBJBYNAME_IMM8_ID16_V8);
+    }
+    HANDLE_OPCODE(STOBJBYNAME_IMM16_ID16_V8) {
+        uint16_t stringId = READ_INST_16_2();
+        uint32_t v0 = READ_INST_8_4();
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        if (!profileTypeInfo.IsUndefined()) {
+            uint16_t slotId = READ_INST_16_0();
+            auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+            JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+            JSTaggedValue res = JSTaggedValue::Hole();
+            SAVE_ACC();
+
+            JSTaggedValue receiver = GET_VREG_VALUE(v0);
+            JSTaggedValue value = GET_ACC();
+            if (LIKELY(firstValue.IsHeapObject())) {
+                JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+                res = ICRuntimeStub::TryStoreICByName(thread, receiver, firstValue, secondValue, value);
+            }
+            if (LIKELY(!res.IsHole())) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STOBJBYNAME_IMM16_ID16_V8);
+            } else if (!firstValue.IsHole()) { // IC miss and not enter the megamorphic state, store as polymorphic
+                SAVE_ACC();
+                auto constpool = GetConstantPool(sp);
+                JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+                RESTORE_ACC();
+                value = GET_ACC();
+                receiver = GET_VREG_VALUE(v0);
+                res = ICRuntimeStub::StoreICByName(thread,
+                                                   profileTypeArray,
+                                                   receiver, propKey, value, slotId);
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STOBJBYNAME_IMM16_ID16_V8);
+            }
+        }
+#endif
+        LOG_INST() << "intrinsics::stobjbyname "
+                   << "v" << v0 << " stringId:" << stringId;
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
+        if (receiver.IsHeapObject()) {
+            SAVE_ACC();
+            auto constpool = GetConstantPool(sp);
+            JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+            RESTORE_ACC();
+            JSTaggedValue value = GET_ACC();
+            receiver = GET_VREG_VALUE(v0);
+            // fast path
+            JSTaggedValue res = FastRuntimeStub::SetPropertyByName(thread, receiver, propKey, value);
+            if (!res.IsHole()) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STOBJBYNAME_IMM16_ID16_V8);
+            }
+            RESTORE_ACC();
+        }
+        // slow path
+        SAVE_ACC();
+        SAVE_PC();
+        auto constpool = GetConstantPool(sp);                    // Maybe moved by GC
+        auto propKey = GET_STR_FROM_CACHE(stringId);  // Maybe moved by GC
+        RESTORE_ACC();
+        JSTaggedValue value = GET_ACC();                                  // Maybe moved by GC
+        receiver = GET_VREG_VALUE(v0);
+        JSTaggedValue res = SlowRuntimeStub::StObjByName(thread, receiver, propKey, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+        DISPATCH(STOBJBYNAME_IMM16_ID16_V8);
     }
     HANDLE_OPCODE(STSUPERBYNAME_IMM8_ID16_V8) {
         uint16_t stringId = READ_INST_16_1();
         uint32_t v0 = READ_INST_8_3();
 
         JSTaggedValue obj = GET_VREG_VALUE(v0);
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         JSTaggedValue value = GET_ACC();
 
         LOG_INST() << "intrinsics::stsuperbyname"
@@ -2630,7 +2869,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(STGLOBALVAR_IMM16_ID16) {
         uint16_t stringId = READ_INST_16_2();
-        JSTaggedValue prop = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue prop = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         JSTaggedValue value = GET_ACC();
 
         LOG_INST() << "intrinsics::stglobalvar "
@@ -2643,7 +2885,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SAVE_ACC();
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
-                                                                       profileTypeInfo.GetTaggedObject()),
+                                                                   profileTypeInfo.GetTaggedObject()),
                                                                    globalObj, prop, value, slotId);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
@@ -2690,7 +2932,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(LDBIGINT_ID16) {
         uint16_t stringId = READ_INST_16_0();
         LOG_INST() << "intrinsic::ldbigint";
-        JSTaggedValue numberBigInt = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue numberBigInt = GET_STR_FROM_CACHE(stringId);
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdBigInt(thread, numberBigInt);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -3302,7 +3546,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_1();
         LOG_INST() << "intrinsics::createobjecthavingmethod"
                    << " imm:" << imm;
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
         JSObject *result = JSObject::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
+        RESTORE_ACC();
         JSTaggedValue env = GET_ACC();
 
         SAVE_PC();
@@ -3370,45 +3617,39 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     // TODO: Implement code of 16bits ic slot bytecode
     HANDLE_OPCODE(TYPEOF_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(TYPEOF_IMM16);
     }
-    HANDLE_OPCODE(CREATEEMPTYARRAY_IMM16) {
-        DISPATCH(CREATEEMPTYARRAY_IMM16);
-    }
-    HANDLE_OPCODE(GETITERATOR_IMM16) {
-        DISPATCH(GETITERATOR_IMM16);
-    }
     HANDLE_OPCODE(CLOSEITERATOR_IMM16_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(CLOSEITERATOR_IMM16_V8);
     }
-    HANDLE_OPCODE(STOBJBYVALUE_IMM16_V8_V8) {
-        DISPATCH(STOBJBYVALUE_IMM16_V8_V8);
-    }
     HANDLE_OPCODE(STOWNBYVALUE_IMM16_V8_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STOWNBYVALUE_IMM16_V8_V8);
     }
     HANDLE_OPCODE(STSUPERBYVALUE_IMM16_V8_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STSUPERBYVALUE_IMM16_V8_V8);
     }
-    HANDLE_OPCODE(TRYLDGLOBALBYNAME_IMM16_ID16) {
-        DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);
-    }
     HANDLE_OPCODE(TRYSTGLOBALBYNAME_IMM16_ID16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
     }
-    HANDLE_OPCODE(STOBJBYNAME_IMM16_ID16_V8) {
-        DISPATCH(STOBJBYNAME_IMM16_ID16_V8);
-    }
     HANDLE_OPCODE(STOWNBYNAME_IMM16_ID16_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STOWNBYNAME_IMM16_ID16_V8);
     }
     HANDLE_OPCODE(STSUPERBYNAME_IMM16_ID16_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STSUPERBYNAME_IMM16_ID16_V8);
     }
     HANDLE_OPCODE(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
     }
     HANDLE_OPCODE(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
     }
     HANDLE_OPCODE(OVERFLOW) {
@@ -3551,7 +3792,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             methodHandle.Update(ctorFunc->GetMethod());
             if (ctorFunc->IsBuiltinConstructor()) {
                 ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 3;  // 3: this & numArgs & thread
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 4;  // 2: numArgs & thread
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
@@ -3563,17 +3804,17 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
                 newSp[index++] = ToUintPtr(thread);
-                newSp[index++] = numArgs + 1; // +1 for this
+                newSp[index++] = numArgs + 2; // 2: for newtarget / this
                 // func
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                newSp[index++] = GET_VREG(firstArgRegIdx);
+                newSp[index++] = ctor.GetRawData();
                 // newTarget
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                newSp[index++] = GET_VREG(firstArgRegIdx + 1);
+                newSp[index++] = ctor.GetRawData();
                 // this
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
-                for (size_t i = 2; i < numArgs; ++i) {  // 2: func and newTarget
+                for (size_t i = 1; i < numArgs; ++i) {
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = GET_VREG(firstArgRegIdx + i);
                 }
@@ -3605,7 +3846,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                                            methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                                            methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
                 // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 2;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -3623,14 +3864,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // this
                 JSTaggedValue thisObj;
                 if (ctorFunc->IsBase()) {
-                    JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+                    JSTaggedValue newTarget = GET_ACC();
                     thisObj = FastRuntimeStub::NewThisObject(thread, ctor, newTarget, state);
                     INTERPRETER_RETURN_IF_ABRUPT(thisObj);
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = thisObj.GetRawData();
                 } else {
                     ASSERT(ctorFunc->IsDerivedConstructor());
-                    JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+                    JSTaggedValue newTarget = GET_ACC();
                     newSp[index++] = newTarget.GetRawData();
                     thisObj = JSTaggedValue::Undefined();
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -3643,7 +3884,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 }
 
                 // the second condition ensure not push extra args
-                for (size_t i = 2; i < numArgs && index < numVregs + numDeclaredArgs; ++i) {  // 2: func and newTarget
+                for (size_t i = 1; i < numArgs && index < numVregs + numDeclaredArgs; ++i) {
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = GET_VREG(firstArgRegIdx + i);
                 }
@@ -3671,14 +3912,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
 
         // bound function, proxy, other call types, enter slow path
-        constexpr uint16_t firstArgOffset = 2;
-        JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+        constexpr uint16_t firstArgOffset = 1;
         // Exclude func and newTarget
         uint16_t firstArgIdx = firstArgRegIdx + firstArgOffset;
         uint16_t length = numArgs - firstArgOffset;
 
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, newTarget, firstArgIdx, length);
+        JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, ctor, firstArgIdx, length);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(NEWOBJRANGE_IMM8_IMM8_V8);
@@ -3694,7 +3934,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             methodHandle.Update(ctorFunc->GetMethod());
             if (ctorFunc->IsBuiltinConstructor()) {
                 ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 3;  // 3: this & numArgs & thread
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 4;  // 4: newtarget/this & numArgs & thread
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
@@ -3706,7 +3946,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
                 newSp[index++] = ToUintPtr(thread);
-                newSp[index++] = numArgs + 1; // +1 for this
+                newSp[index++] = numArgs + 2; // +1 for newtarget/this
                 // func
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = GET_VREG(firstArgRegIdx);
@@ -3716,7 +3956,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // this
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
-                for (size_t i = 2; i < numArgs; ++i) {  // 2: func and newTarget
+                for (size_t i = 1; i < numArgs; ++i) {  // 2: func and newTarget
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = GET_VREG(firstArgRegIdx + i);
                 }
@@ -3748,7 +3988,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                                            methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                                            methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
                 // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 2;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -3766,15 +4006,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // this
                 JSTaggedValue thisObj;
                 if (ctorFunc->IsBase()) {
-                    JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
-                    thisObj = FastRuntimeStub::NewThisObject(thread, ctor, newTarget, state);
+                    thisObj = FastRuntimeStub::NewThisObject(thread, ctor, ctor, state);
                     INTERPRETER_RETURN_IF_ABRUPT(thisObj);
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = thisObj.GetRawData();
                 } else {
                     ASSERT(ctorFunc->IsDerivedConstructor());
-                    JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
-                    newSp[index++] = newTarget.GetRawData();
+                    newSp[index++] = ctor.GetRawData();
                     thisObj = JSTaggedValue::Undefined();
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = thisObj.GetRawData();
@@ -3786,7 +4024,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 }
 
                 // the second condition ensure not push extra args
-                for (size_t i = 2; i < numArgs && index < numVregs + numDeclaredArgs; ++i) {  // 2: func and newTarget
+                for (size_t i = 1; i < numArgs && index < numVregs + numDeclaredArgs; ++i) {  // 2: func and newTarget
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = GET_VREG(firstArgRegIdx + i);
                 }
@@ -3814,14 +4052,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
 
         // bound function, proxy, other call types, enter slow path
-        constexpr uint16_t firstArgOffset = 2;
-        JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+        constexpr uint16_t firstArgOffset = 1;
         // Exclude func and newTarget
         uint16_t firstArgIdx = firstArgRegIdx + firstArgOffset;
         uint16_t length = numArgs - firstArgOffset;
 
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, newTarget, firstArgIdx, length);
+        JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, ctor, firstArgIdx, length);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(NEWOBJRANGE_IMM16_IMM8_V8);
@@ -3837,7 +4074,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             methodHandle.Update(ctorFunc->GetMethod());
             if (ctorFunc->IsBuiltinConstructor()) {
                 ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 3;  // 3: this & numArgs & thread
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 4;  // 3: this & numArgs & thread
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
@@ -3849,17 +4086,17 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
                 newSp[index++] = ToUintPtr(thread);
-                newSp[index++] = numArgs + 1; // +1 for this
+                newSp[index++] = numArgs + 2; // +1 for this
                 // func
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                newSp[index++] = GET_VREG(firstArgRegIdx);
+                newSp[index++] = ctor.GetRawData();
                 // newTarget
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                newSp[index++] = GET_VREG(firstArgRegIdx + 1);
+                newSp[index++] = ctor.GetRawData();
                 // this
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
-                for (size_t i = 2; i < numArgs; ++i) {  // 2: func and newTarget
+                for (size_t i = 1; i < numArgs; ++i) {
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = GET_VREG(firstArgRegIdx + i);
                 }
@@ -3891,7 +4128,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                                            methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                                            methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
                 // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 2;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -3909,15 +4146,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // this
                 JSTaggedValue thisObj;
                 if (ctorFunc->IsBase()) {
-                    JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
-                    thisObj = FastRuntimeStub::NewThisObject(thread, ctor, newTarget, state);
+                    thisObj = FastRuntimeStub::NewThisObject(thread, ctor, ctor, state);
                     INTERPRETER_RETURN_IF_ABRUPT(thisObj);
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = thisObj.GetRawData();
                 } else {
                     ASSERT(ctorFunc->IsDerivedConstructor());
-                    JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
-                    newSp[index++] = newTarget.GetRawData();
+                    newSp[index++] = ctor.GetRawData();
                     thisObj = JSTaggedValue::Undefined();
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = thisObj.GetRawData();
@@ -3929,7 +4164,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 }
 
                 // the second condition ensure not push extra args
-                for (size_t i = 2; i < numArgs && index < numVregs + numDeclaredArgs; ++i) {  // 2: func and newTarget
+                for (size_t i = 1; i < numArgs && index < numVregs + numDeclaredArgs; ++i) {
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = GET_VREG(firstArgRegIdx + i);
                 }
@@ -3957,14 +4192,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
 
         // bound function, proxy, other call types, enter slow path
-        constexpr uint16_t firstArgOffset = 2;
-        JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+        constexpr uint16_t firstArgOffset = 1;
         // Exclude func and newTarget
         uint16_t firstArgIdx = firstArgRegIdx + firstArgOffset;
         uint16_t length = numArgs - firstArgOffset;
 
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, newTarget, firstArgIdx, length);
+        JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, ctor, firstArgIdx, length);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(WIDE_NEWOBJRANGE_PREF_IMM16_V8);
@@ -4048,6 +4282,26 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         GET_FRAME(sp)->env = parentLexenv;
         DISPATCH(DEPRECATED_POPLEXENV_PREF_NONE);
     }
+    HANDLE_OPCODE(GETITERATOR_IMM8) {
+        LOG_INST() << "intrinsics::getiterator";
+        JSTaggedValue obj = GET_ACC();
+        // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(GETITERATOR_IMM8);
+    }
+    HANDLE_OPCODE(GETITERATOR_IMM16) {
+        LOG_INST() << "intrinsics::getiterator";
+        JSTaggedValue obj = GET_ACC();
+        // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(GETITERATOR_IMM16);
+    }
     HANDLE_OPCODE(DEPRECATED_GETITERATORNEXT_PREF_V8_V8) {
         uint16_t v0 = READ_INST_8_1();
         uint16_t v1 = READ_INST_8_2();
@@ -4065,7 +4319,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_1();
         LOG_INST() << "intrinsics::createarraywithbuffer"
                    << " imm:" << imm;
-        JSArray *result = JSArray::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
+        auto constpool = GetConstantPool(sp);
+        JSArray *result = JSArray::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::ARRAY_LITERAL).GetTaggedObject());
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateArrayWithBuffer(thread, factory, result);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -4076,7 +4331,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_2();
         LOG_INST() << "intrinsics::createarraywithbuffer"
                    << " imm:" << imm;
-        JSArray *result = JSArray::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
+        auto constpool = GetConstantPool(sp);
+        JSArray *result = JSArray::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::ARRAY_LITERAL).GetTaggedObject());
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateArrayWithBuffer(thread, factory, result);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -4087,6 +4343,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_1();
         LOG_INST() << "intrinsics::createarraywithbuffer"
                    << " imm:" << imm;
+        auto constpool = GetConstantPool(sp);
         JSArray *result = JSArray::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateArrayWithBuffer(thread, factory, result);
@@ -4098,7 +4355,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_1();
         LOG_INST() << "intrinsics::createobjectwithbuffer"
                    << " imm:" << imm;
-        JSObject *result = JSObject::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
+        auto constpool = GetConstantPool(sp);
+        JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL).GetTaggedObject());
 
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
@@ -4110,7 +4368,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_2();
         LOG_INST() << "intrinsics::createobjectwithbuffer"
                    << " imm:" << imm;
-        JSObject *result = JSObject::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
+        auto constpool = GetConstantPool(sp);
+        JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL).GetTaggedObject());
 
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
@@ -4122,6 +4381,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_1();
         LOG_INST() << "intrinsics::createobjectwithbuffer"
                    << " imm:" << imm;
+        auto constpool = GetConstantPool(sp);
         JSObject *result = JSObject::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
 
         SAVE_PC();
@@ -4385,16 +4645,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t methodId = READ_INST_16_1();
         uint16_t length = READ_INST_8_3();
         LOG_INST() << "intrinsics::definefunc length: " << length;
+        auto constpool = GetConstantPool(sp);
         JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_PC();
-            auto res = SlowRuntimeStub::Definefunc(thread, result);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-        } else {
-            result->SetResolved(true);
-        }
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         InterpretedFrame *state = GET_FRAME(sp);
@@ -4411,16 +4664,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t methodId = READ_INST_16_2();
         uint16_t length = READ_INST_8_4();
         LOG_INST() << "intrinsics::definefunc length: " << length;
+        auto constpool = GetConstantPool(sp);
         JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_PC();
-            auto res = SlowRuntimeStub::Definefunc(thread, result);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-        } else {
-            result->SetResolved(true);
-        }
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         InterpretedFrame *state = GET_FRAME(sp);
@@ -4439,16 +4685,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t v0 = READ_INST_8_5();
         LOG_INST() << "intrinsics::definefunc length: " << length
                    << " v" << v0;
+        auto constpool = GetConstantPool(sp);
         JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_PC();
-            auto res = SlowRuntimeStub::Definefunc(thread, result);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-        } else {
-            result->SetResolved(true);
-        }
+
+        SAVE_PC();
+        auto res = SlowRuntimeStub::Definefunc(thread, result);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         JSTaggedValue envHandle = GET_VREG_VALUE(v0);
@@ -4464,22 +4708,20 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t methodId = READ_INST_16_1();
         uint16_t length = READ_INST_16_3();
         uint16_t v0 = READ_INST_8_5();
-        JSTaggedValue homeObject = GET_ACC();
         LOG_INST() << "intrinsics::definencfunc length: " << length
                    << " v" << v0;
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
         JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_ACC();
-            SAVE_PC();
-            auto res = SlowRuntimeStub::DefineNCFunc(thread, result);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-            RESTORE_ACC();
-            homeObject = GET_ACC();
-        } else {
-            result->SetResolved(true);
-        }
+        RESTORE_ACC();
+
+        SAVE_PC();
+        auto res = SlowRuntimeStub::DefineNCFunc(thread, result);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
+        RESTORE_ACC();
+        JSTaggedValue homeObject = GET_ACC();
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         JSTaggedValue env = GET_VREG_VALUE(v0);
@@ -4498,16 +4740,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t v0 = READ_INST_8_5();
         LOG_INST() << "define gengerator function length: " << length
                    << " v" << v0;
+        auto constpool = GetConstantPool(sp);
         JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_PC();
-            auto res = SlowRuntimeStub::DefineGeneratorFunc(thread, result);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-        } else {
-            result->SetResolved(true);
-        }
+
+        SAVE_PC();
+        auto res = SlowRuntimeStub::DefineGeneratorFunc(thread, result);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         JSTaggedValue env = GET_VREG_VALUE(v0);
@@ -4524,16 +4764,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t v0 = READ_INST_8_5();
         LOG_INST() << "define async function length: " << length
                    << " v" << v0;
+        auto constpool = GetConstantPool(sp);
         JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_PC();
-            auto res = SlowRuntimeStub::DefineAsyncFunc(thread, result);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-        } else {
-            result->SetResolved(true);
-        }
+
+        SAVE_PC();
+        auto res = SlowRuntimeStub::DefineAsyncFunc(thread, result);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         JSTaggedValue env = GET_VREG_VALUE(v0);
@@ -4547,19 +4785,19 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(DEFINEMETHOD_IMM8_ID16_IMM8) {
         uint16_t methodId = READ_INST_16_1();
         uint16_t length = READ_INST_16_3();
-        JSTaggedValue homeObject = GET_ACC();
         LOG_INST() << "intrinsics::definemethod length: " << length;
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSFunction *result =
+            JSFunction::Cast(GET_METHOD_FROM_CACHE(methodId, ConstPoolType::METHOD).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_PC();
-            auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-        } else {
-            result->SetHomeObject(thread, homeObject);
-            result->SetResolved(true);
-        }
+        RESTORE_ACC();
+
+        SAVE_PC();
+        JSTaggedValue homeObject = GET_ACC();
+        auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         InterpretedFrame *state = GET_FRAME(sp);
@@ -4575,19 +4813,19 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(DEFINEMETHOD_IMM16_ID16_IMM8) {
         uint16_t methodId = READ_INST_16_2();
         uint16_t length = READ_INST_16_4();
-        JSTaggedValue homeObject = GET_ACC();
         LOG_INST() << "intrinsics::definemethod length: " << length;
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSFunction *result =
+            JSFunction::Cast(GET_METHOD_FROM_CACHE(methodId, ConstPoolType::METHOD).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_PC();
-            auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-        } else {
-            result->SetHomeObject(thread, homeObject);
-            result->SetResolved(true);
-        }
+        RESTORE_ACC();
+
+        SAVE_PC();
+        JSTaggedValue homeObject = GET_ACC();
+        auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         InterpretedFrame *state = GET_FRAME(sp);
@@ -4604,20 +4842,18 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t methodId = READ_INST_16_1();
         uint16_t length = READ_INST_16_3();
         uint16_t v0 = READ_INST_8_5();
-        JSTaggedValue homeObject = GET_ACC();
         LOG_INST() << "intrinsics::definemethod length: " << length
                    << " v" << v0;
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
         JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(result != nullptr);
-        if (result->GetResolved()) {
-            SAVE_PC();
-            auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
-            INTERPRETER_RETURN_IF_ABRUPT(res);
-            result = JSFunction::Cast(res.GetTaggedObject());
-        } else {
-            result->SetHomeObject(thread, homeObject);
-            result->SetResolved(true);
-        }
+        RESTORE_ACC();
+        SAVE_PC();
+        JSTaggedValue homeObject = GET_ACC();
+        auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        result = JSFunction::Cast(res.GetTaggedObject());
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         JSTaggedValue taggedCurEnv = GET_VREG_VALUE(v0);
@@ -4631,26 +4867,30 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8) {
         uint16_t methodId = READ_INST_16_1();
+        uint16_t literaId = READ_INST_16_3();
         uint16_t length = READ_INST_16_5();
         uint16_t v0 = READ_INST_8_7();
         LOG_INST() << "intrinsics::defineclasswithbuffer"
                    << " method id:" << methodId << " lexenv: v" << v0;
-        JSFunction *classTemplate = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSFunction *classTemplate =
+            JSFunction::Cast(GET_CLASS_FROM_CACHE(methodId, literaId).GetTaggedObject());
         ASSERT(classTemplate != nullptr);
+        RESTORE_ACC();
 
-        JSTaggedValue lexenv = GET_VREG_VALUE(v0);
-        JSTaggedValue proto = GET_ACC();
+        JSTaggedValue proto = GET_VREG_VALUE(v0);
 
         JSTaggedValue res;
         SAVE_PC();
-        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
+        InterpretedFrame *state = GET_FRAME(sp);
+        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, state->env);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
         JSFunction *cls = JSFunction::Cast(res.GetTaggedObject());
 
-        lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
-        cls->SetLexicalEnv(thread, lexenv);
+        cls->SetLexicalEnv(thread, state->env);
 
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
         cls->SetModule(thread, currentFunc->GetModule());
@@ -4662,26 +4902,31 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8) {
         uint16_t methodId = READ_INST_16_2();
+        uint16_t literaId = READ_INST_16_4();
         uint16_t length = READ_INST_16_6();
         uint16_t v0 = READ_INST_8_8();
         LOG_INST() << "intrinsics::defineclasswithbuffer"
                    << " method id:" << methodId << " lexenv: v" << v0;
-        JSFunction *classTemplate = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSFunction *classTemplate =
+            JSFunction::Cast(GET_CLASS_FROM_CACHE(methodId, literaId).GetTaggedObject());
         ASSERT(classTemplate != nullptr);
+        RESTORE_ACC();
 
-        JSTaggedValue lexenv = GET_VREG_VALUE(v0);
-        JSTaggedValue proto = GET_ACC();
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue proto = GET_VREG_VALUE(v0);
 
+        // TODO: move to constpool
         JSTaggedValue res;
         SAVE_PC();
-        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
+        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, state->env);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
         JSFunction *cls = JSFunction::Cast(res.GetTaggedObject());
 
-        lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
-        cls->SetLexicalEnv(thread, lexenv);
+        cls->SetLexicalEnv(thread, state->env);
 
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
         cls->SetModule(thread, currentFunc->GetModule());
@@ -4698,8 +4943,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t v1 = READ_INST_8_8();
         LOG_INST() << "intrinsics::defineclasswithbuffer"
                    << " method id:" << methodId << " lexenv: v" << v0 << " parent: v" << v1;
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
         JSFunction *classTemplate = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(classTemplate != nullptr);
+        RESTORE_ACC();
 
         JSTaggedValue lexenv = GET_VREG_VALUE(v0);
         JSTaggedValue proto = GET_VREG_VALUE(v1);
@@ -5196,7 +5444,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(LDOBJBYINDEX_IMM8_IMM16);
     }
     HANDLE_OPCODE(LDOBJBYINDEX_IMM16_IMM16) {
-        uint32_t idx = READ_INST_32_1();
+        uint32_t idx = READ_INST_16_2();
         LOG_INST() << "intrinsics::ldobjbyindex"
                    << " imm" << idx;
 
@@ -5631,7 +5879,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(GETMODULENAMESPACE_IMM8) {
         uint16_t stringId = READ_INST_8_0();
-        auto localName = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        auto localName = GET_STR_FROM_CACHE(stringId);
 
         LOG_INST() << "intrinsics::getmodulenamespace "
                    << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(localName.GetTaggedObject()));
@@ -5643,7 +5892,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(WIDE_GETMODULENAMESPACE_PREF_IMM16) {
         uint16_t stringId = READ_INST_16_1();
-        auto localName = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        auto localName = GET_STR_FROM_CACHE(stringId);
 
         LOG_INST() << "intrinsics::getmodulenamespace "
                    << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(localName.GetTaggedObject()));
@@ -5655,7 +5905,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEPRECATED_GETMODULENAMESPACE_PREF_ID32) {
         uint16_t stringId = READ_INST_32_1();
-        auto localName = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        auto localName = GET_STR_FROM_CACHE(stringId);
 
         LOG_INST() << "intrinsics::getmodulenamespace "
                    << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(localName.GetTaggedObject()));
@@ -5667,42 +5918,48 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(STMODULEVAR_IMM8) {
         uint16_t stringId = READ_INST_8_0();
-        auto key = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        auto key = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
 
         LOG_INST() << "intrinsics::stmodulevar "
                    << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
 
         JSTaggedValue value = GET_ACC();
 
-        SAVE_ACC();
         SlowRuntimeStub::StModuleVar(thread, key, value);
         RESTORE_ACC();
         DISPATCH(STMODULEVAR_IMM8);
     }
     HANDLE_OPCODE(WIDE_STMODULEVAR_PREF_IMM16) {
         uint16_t stringId = READ_INST_16_1();
-        auto key = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        auto key = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
 
         LOG_INST() << "intrinsics::stmodulevar "
                    << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
 
         JSTaggedValue value = GET_ACC();
 
-        SAVE_ACC();
         SlowRuntimeStub::StModuleVar(thread, key, value);
         RESTORE_ACC();
         DISPATCH(WIDE_STMODULEVAR_PREF_IMM16);
     }
     HANDLE_OPCODE(DEPRECATED_STMODULEVAR_PREF_ID32) {
         uint16_t stringId = READ_INST_32_1();
-        auto key = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        auto key = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
 
         LOG_INST() << "intrinsics::stmodulevar "
                    << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
 
         JSTaggedValue value = GET_ACC();
 
-        SAVE_ACC();
         SlowRuntimeStub::StModuleVar(thread, key, value);
         RESTORE_ACC();
         DISPATCH(DEPRECATED_STMODULEVAR_PREF_ID32);
@@ -5710,7 +5967,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(LDLOCALMODULEVAR_IMM8) {
         uint16_t stringId = READ_INST_8_0();
 
-        JSTaggedValue key = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue key = GET_STR_FROM_CACHE(stringId);
         LOG_INST() << "intrinsics::ldmodulevar "
                    << "string_id:" << stringId << ", "
                    << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
@@ -5723,7 +5981,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(WIDE_LDLOCALMODULEVAR_PREF_IMM16) {
         uint16_t stringId = READ_INST_16_1();
 
-        JSTaggedValue key = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue key = GET_STR_FROM_CACHE(stringId);
         LOG_INST() << "intrinsics::ldmodulevar "
                    << "string_id:" << stringId << ", "
                    << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
@@ -5736,7 +5995,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(LDEXTERNALMODULEVAR_IMM8) {
         uint16_t stringId = READ_INST_8_0();
 
-        JSTaggedValue key = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue key = GET_STR_FROM_CACHE(stringId);
         LOG_INST() << "intrinsics::ldmodulevar "
                    << "string_id:" << stringId << ", "
                    << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
@@ -5749,7 +6009,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16) {
         uint16_t stringId = READ_INST_16_1();
 
-        JSTaggedValue key = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue key = GET_STR_FROM_CACHE(stringId);
         LOG_INST() << "intrinsics::ldmodulevar "
                    << "string_id:" << stringId << ", "
                    << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
@@ -5761,12 +6022,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(STCONSTTOGLOBALRECORD_IMM16_ID16) {
         uint16_t stringId = READ_INST_16_2();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         LOG_INST() << "intrinsics::stconsttoglobalrecord"
                    << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
 
         JSTaggedValue value = GET_ACC();
-        SAVE_ACC();
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, true);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5775,12 +6038,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32) {
         uint16_t stringId = READ_INST_32_1();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         LOG_INST() << "intrinsics::stconsttoglobalrecord"
                    << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
 
         JSTaggedValue value = GET_ACC();
-        SAVE_ACC();
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, true);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5789,12 +6054,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(STTOGLOBALRECORD_IMM16_ID16) {
         uint16_t stringId = READ_INST_16_2();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         LOG_INST() << "intrinsics::stlettoglobalrecord"
                    << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
 
         JSTaggedValue value = GET_ACC();
-        SAVE_ACC();
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, false);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5803,12 +6070,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32) {
         uint16_t stringId = READ_INST_32_1();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         LOG_INST() << "intrinsics::stlettoglobalrecord"
                    << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
 
         JSTaggedValue value = GET_ACC();
-        SAVE_ACC();
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, false);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5817,12 +6086,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32) {
         uint16_t stringId = READ_INST_32_1();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         LOG_INST() << "intrinsics::stclasstoglobalrecord"
                    << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
 
         JSTaggedValue value = GET_ACC();
-        SAVE_ACC();
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, false);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5833,7 +6104,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t stringId = READ_INST_16_1();
         uint8_t innerFlag = READ_INST_8_5();
 
-        JSTaggedValue key = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue key = GET_STR_FROM_CACHE(stringId);
         LOG_INST() << "intrinsics::ldmodulevar "
                    << "string_id:" << stringId << ", "
                    << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
@@ -5844,8 +6116,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8);
     }
     HANDLE_OPCODE(LDOBJBYNAME_IMM8_ID16) {
-        JSTaggedValue receiver = GET_ACC();
-
 #if ECMASCRIPT_ENABLE_IC
         auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
         if (!profileTypeInfo.IsUndefined()) {
@@ -5854,6 +6124,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue firstValue = profileTypeArray->Get(slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
+            JSTaggedValue receiver = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
                 JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
                 res = ICRuntimeStub::TryLoadICByName(thread, receiver, firstValue, secondValue);
@@ -5864,7 +6135,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 DISPATCH(LDOBJBYNAME_IMM8_ID16);
             } else if (!firstValue.IsHole()) { // IC miss and not enter the megamorphic state, store as polymorphic
                 uint16_t stringId = READ_INST_16_1();
-                JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+                SAVE_ACC();
+                auto constpool = GetConstantPool(sp);
+                JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+                RESTORE_ACC();
+                receiver = GET_ACC();
                 res = ICRuntimeStub::LoadICByName(thread,
                                                   profileTypeArray,
                                                   receiver, propKey, slotId);
@@ -5875,7 +6150,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
 #endif
         uint16_t stringId = READ_INST_16_1();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
+        JSTaggedValue receiver = GET_ACC();
         LOG_INST() << "intrinsics::ldobjbyname stringId:" << stringId << ", "
                    << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << receiver.GetRawData();
 
@@ -5898,8 +6177,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(LDOBJBYNAME_IMM8_ID16);
     }
     HANDLE_OPCODE(LDOBJBYNAME_IMM16_ID16) {
-        JSTaggedValue receiver = GET_ACC();
-
 #if ECMASCRIPT_ENABLE_IC
         auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
         if (!profileTypeInfo.IsUndefined()) {
@@ -5908,6 +6185,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue firstValue = profileTypeArray->Get(slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
+            JSTaggedValue receiver = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
                 JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
                 res = ICRuntimeStub::TryLoadICByName(thread, receiver, firstValue, secondValue);
@@ -5918,7 +6196,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 DISPATCH(LDOBJBYNAME_IMM16_ID16);
             } else if (!firstValue.IsHole()) { // IC miss and not enter the megamorphic state, store as polymorphic
                 uint16_t stringId = READ_INST_16_2();
-                JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+                SAVE_ACC();
+                auto constpool = GetConstantPool(sp);
+                JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+                RESTORE_ACC();
+                receiver = GET_ACC();
                 res = ICRuntimeStub::LoadICByName(thread,
                                                   profileTypeArray,
                                                   receiver, propKey, slotId);
@@ -5929,7 +6211,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
 #endif
         uint16_t stringId = READ_INST_16_2();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
+        JSTaggedValue receiver = GET_ACC();
         LOG_INST() << "intrinsics::ldobjbyname stringId:" << stringId << ", "
                    << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << receiver.GetRawData();
 
@@ -5956,7 +6242,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue receiver = GET_VREG_VALUE(v0);
 
         uint16_t stringId = READ_INST_32_1();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
         LOG_INST() << "intrinsics::ldobjbyname "
                    << "v" << v0 << " stringId:" << stringId << ", "
                    << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << receiver.GetRawData();
@@ -5981,9 +6268,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(LDSUPERBYNAME_IMM8_ID16) {
         uint16_t stringId = READ_INST_16_1();
-        JSTaggedValue obj = GET_ACC();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
 
+        JSTaggedValue obj = GET_ACC();
         LOG_INST() << "intrinsics::ldsuperbyname stringId:" << stringId << ", "
                    << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData();
 
@@ -5997,8 +6287,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(LDSUPERBYNAME_IMM16_ID16) {
         uint16_t stringId = READ_INST_16_2();
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         JSTaggedValue obj = GET_ACC();
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
 
         LOG_INST() << "intrinsics::ldsuperbyname stringId:" << stringId << ", "
                    << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData();
@@ -6015,7 +6308,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint32_t stringId = READ_INST_32_1();
         uint32_t v0 = READ_INST_8_5();
         JSTaggedValue obj = GET_VREG_VALUE(v0);
-        JSTaggedValue propKey = GET_OBJ_FROM_CACHE(stringId);
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
 
         LOG_INST() << "intrinsics::ldsuperbyname"
                    << "v" << v0 << " stringId:" << stringId << ", "
@@ -6086,123 +6380,163 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(DEPRECATED_ASYNCFUNCTIONREJECT_PREF_V8_V8_V8);
     }
     HANDLE_OPCODE(JSTRICTEQZ_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JSTRICTEQZ_IMM8);
     }
     HANDLE_OPCODE(JSTRICTEQZ_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JSTRICTEQZ_IMM16);
     }
     HANDLE_OPCODE(JNSTRICTEQZ_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNSTRICTEQZ_IMM8);
     }
     HANDLE_OPCODE(JNSTRICTEQZ_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNSTRICTEQZ_IMM16);
     }
     HANDLE_OPCODE(JEQNULL_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JEQNULL_IMM8);
     }
     HANDLE_OPCODE(JEQNULL_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JEQNULL_IMM16);
     }
     HANDLE_OPCODE(JNENULL_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNENULL_IMM8);
     }
     HANDLE_OPCODE(JNENULL_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNENULL_IMM16);
     }
     HANDLE_OPCODE(JSTRICTEQNULL_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JSTRICTEQNULL_IMM8);
     }
     HANDLE_OPCODE(JSTRICTEQNULL_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JSTRICTEQNULL_IMM16);
     }
     HANDLE_OPCODE(JNSTRICTEQNULL_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNSTRICTEQNULL_IMM8);
     }
     HANDLE_OPCODE(JNSTRICTEQNULL_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNSTRICTEQNULL_IMM16);
     }
     HANDLE_OPCODE(JEQUNDEFINED_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JEQUNDEFINED_IMM8);
     }
     HANDLE_OPCODE(JEQUNDEFINED_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JEQUNDEFINED_IMM16);
     }
     HANDLE_OPCODE(JNEUNDEFINED_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNEUNDEFINED_IMM8);
     }
     HANDLE_OPCODE(JNEUNDEFINED_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNEUNDEFINED_IMM16);
     }
     HANDLE_OPCODE(JSTRICTEQUNDEFINED_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JSTRICTEQUNDEFINED_IMM8);
     }
     HANDLE_OPCODE(JSTRICTEQUNDEFINED_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JSTRICTEQUNDEFINED_IMM16);
     }
     HANDLE_OPCODE(JNSTRICTEQUNDEFINED_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNSTRICTEQUNDEFINED_IMM8);
     }
     HANDLE_OPCODE(JNSTRICTEQUNDEFINED_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNSTRICTEQUNDEFINED_IMM16);
     }
     HANDLE_OPCODE(JEQ_V8_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JEQ_V8_IMM8);
     }
     HANDLE_OPCODE(JEQ_V8_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JEQ_V8_IMM16);
     }
     HANDLE_OPCODE(JNE_V8_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNE_V8_IMM8);
     }
     HANDLE_OPCODE(JNE_V8_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNE_V8_IMM16);
     }
     HANDLE_OPCODE(JSTRICTEQ_V8_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JSTRICTEQ_V8_IMM8);
     }
     HANDLE_OPCODE(JSTRICTEQ_V8_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JSTRICTEQ_V8_IMM16);
     }
     HANDLE_OPCODE(JNSTRICTEQ_V8_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNSTRICTEQ_V8_IMM8);
     }
     HANDLE_OPCODE(JNSTRICTEQ_V8_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(JNSTRICTEQ_V8_IMM16);
     }
     HANDLE_OPCODE(LDNEWTARGET) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(LDNEWTARGET);
     }
     HANDLE_OPCODE(LDTHIS) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(LDTHIS);
     }
     HANDLE_OPCODE(LDTHISBYVALUE_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(LDTHISBYVALUE_IMM8);
     }
     HANDLE_OPCODE(LDTHISBYVALUE_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(LDTHISBYVALUE_IMM16);
     }
     HANDLE_OPCODE(STTHISBYVALUE_IMM8_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STTHISBYVALUE_IMM8_V8);
     }
     HANDLE_OPCODE(STTHISBYVALUE_IMM16_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STTHISBYVALUE_IMM16_V8);
     }
     HANDLE_OPCODE(LDTHISBYNAME_IMM8_ID16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(LDTHISBYNAME_IMM8_ID16);
     }
     HANDLE_OPCODE(LDTHISBYNAME_IMM16_ID16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(LDTHISBYNAME_IMM16_ID16);
     }
     HANDLE_OPCODE(STTHISBYNAME_IMM8_ID16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STTHISBYNAME_IMM8_ID16);
     }
     HANDLE_OPCODE(STTHISBYNAME_IMM16_ID16) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STTHISBYNAME_IMM16_ID16);
     }
     HANDLE_OPCODE(LDPATCHVAR_IMM8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(LDPATCHVAR_IMM8);
     }
     HANDLE_OPCODE(STPATCHVAR_IMM8_V8) {
+        LOG_FULL(FATAL) << "not implement";
         DISPATCH(STPATCHVAR_IMM8_V8);
     }
 #include "templates/debugger_instruction_handler.inl"
@@ -6397,7 +6731,6 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
     const std::map<EcmaOpcode, const char *> strMap = {
         {EcmaOpcode::LDNAN, "LDNAN"},
         {EcmaOpcode::LDINFINITY, "LDINFINITY"},
-        {EcmaOpcode::LDGLOBALTHIS, "LDGLOBALTHIS"},
         {EcmaOpcode::LDUNDEFINED, "LDUNDEFINED"},
         {EcmaOpcode::LDNULL, "LDNULL"},
         {EcmaOpcode::LDSYMBOL, "LDSYMBOL"},

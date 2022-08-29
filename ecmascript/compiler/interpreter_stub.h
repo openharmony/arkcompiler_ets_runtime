@@ -88,7 +88,6 @@ public:
     inline void SetAccToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void SetEnvToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void SetConstantPoolToFunction(GateRef glue, GateRef function, GateRef value);
-    inline void SetResolvedToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,

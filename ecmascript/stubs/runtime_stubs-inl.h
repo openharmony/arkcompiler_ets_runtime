@@ -661,7 +661,6 @@ JSTaggedValue RuntimeStubs::RuntimeResolveClass(JSThread *thread, const JSHandle
         }
     }
 
-    ctor->SetResolved(true);
     return ctor.GetTaggedValue();
 }
 

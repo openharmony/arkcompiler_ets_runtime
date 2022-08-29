@@ -364,9 +364,9 @@ public:
         return resolvePathCallback_;
     }
 
-    void SetConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool);
+    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index, int32_t total = 0);
 
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile);
+    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
 
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {
@@ -477,7 +477,7 @@ private:
     CString frameworkAbcFileName_;
     JSTaggedValue frameworkProgram_ {JSTaggedValue::Hole()};
     const JSPandaFile *frameworkPandaFile_ {nullptr};
-    CMap<const JSPandaFile *, JSTaggedValue> cachedConstpools_ {};
+    CMap<const JSPandaFile *, CVector<JSTaggedValue>> cachedConstpools_ {};
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};

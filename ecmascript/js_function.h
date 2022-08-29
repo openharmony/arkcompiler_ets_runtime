@@ -61,7 +61,7 @@ public:
     CAST_CHECK(JSFunction, IsJSFunction);
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<GlobalEnv> &env, const JSHandle<JSFunction> &func,
-                                     FunctionKind kind = FunctionKind::NORMAL_FUNCTION, bool strict = true);
+                                     FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     // ecma6 7.3
     static bool OrdinaryHasInstance(JSThread *thread, const JSHandle<JSTaggedValue> &constructor,
                                     const JSHandle<JSTaggedValue> &obj);
@@ -200,7 +200,7 @@ public:
     }
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
-                                     FunctionKind kind = FunctionKind::NORMAL_FUNCTION, bool strict = true);
+                                     FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     static JSHClass *GetOrCreateInitialJSHClass(JSThread *thread, const JSHandle<JSFunction> &fun);
     static JSHandle<JSHClass> GetInstanceJSHClass(JSThread *thread, JSHandle<JSFunction> constructor,
                                                   JSHandle<JSTaggedValue> newTarget);
@@ -217,15 +217,9 @@ public:
 
     // define BitField
     static constexpr uint32_t FUNCTION_KIND_BITS = 4;
-    static constexpr uint32_t STRICT_BITS = 1;
-    static constexpr uint32_t RESOLVED_BITS = 1;
     static constexpr uint32_t CALL_NATIVE_BITS = 1;
-    static constexpr uint32_t THIS_MODE_BITS = 2;
     FIRST_BIT_FIELD(BitField, FunctionKind, FunctionKind, FUNCTION_KIND_BITS)
-    NEXT_BIT_FIELD(BitField, Strict, bool, STRICT_BITS, FunctionKind)
-    NEXT_BIT_FIELD(BitField, Resolved, bool, RESOLVED_BITS, Strict)
-    NEXT_BIT_FIELD(BitField, CallNative, bool, CALL_NATIVE_BITS, Resolved)
-    NEXT_BIT_FIELD(BitField, ThisMode, FunctionMode, THIS_MODE_BITS, CallNative)
+    NEXT_BIT_FIELD(BitField, CallNative, bool, CALL_NATIVE_BITS, FunctionKind)
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunctionBase, PROTO_OR_DYNCLASS_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()
