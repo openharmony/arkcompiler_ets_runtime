@@ -16,7 +16,7 @@
 #include "ecmascript/global_env_constants.h"
 
 #include "ecmascript/accessor_data.h"
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"

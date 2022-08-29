@@ -52,6 +52,75 @@ GateRef BuiltinsStringStubBuilder::StringAt(GateRef obj, GateRef index)
     return ret;
 }
 
+GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef obj, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Hole());
+    DEFVARIABLE(canBeCompressed, VariableType::BOOL(), False());
+    DEFVARIABLE(data, VariableType::INT16(), Int32(0));
+
+    Label exit(env);
+    Label isUtf16(env);
+    Label isUtf8(env);
+    Label allocString(env);
+    GateRef dataUtf = PtrAdd(obj, IntPtr(EcmaString::DATA_OFFSET));
+    Branch(IsUtf16String(obj), &isUtf16, &isUtf8);
+    Bind(&isUtf16);
+    {
+        GateRef dataAddr = PtrAdd(dataUtf, PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint16_t))));
+        data = Load(VariableType::INT16(), dataAddr);
+        canBeCompressed = CanBeCompressed(dataAddr, Int32(1), true);
+        Jump(&allocString);
+    }
+    Bind(&isUtf8);
+    {
+        GateRef dataAddr = PtrAdd(dataUtf, PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint8_t))));
+        data = ZExtInt8ToInt16(Load(VariableType::INT8(), dataAddr));
+        canBeCompressed = CanBeCompressed(dataAddr, Int32(1), false);
+        Jump(&allocString);
+    }
+    Bind(&allocString);
+    {
+        Label afterNew(env);
+        Label isUtf8Next(env);
+        Label isUtf16Next(env);
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        Branch(*canBeCompressed, &isUtf8Next, &isUtf16Next);
+        Bind(&isUtf8Next);
+        {
+            newBuilder.AllocStringObject(&result, &afterNew, Int32(1), true);
+        }
+        Bind(&isUtf16Next);
+        {
+            newBuilder.AllocStringObject(&result, &afterNew, Int32(1), false);
+        }
+        Bind(&afterNew);
+        {
+            Label isUtf8Copy(env);
+            Label isUtf16Copy(env);
+            GateRef dst = PtrAdd(*result, IntPtr(EcmaString::DATA_OFFSET));
+            Branch(*canBeCompressed, &isUtf8Copy, &isUtf16Copy);
+            Bind(&isUtf8Copy);
+            {
+                Store(VariableType::INT8(), glue, dst, IntPtr(0), ChangeInt16ToInt8(*data));
+                Jump(&exit);
+            }
+            Bind(&isUtf16Copy);
+            {
+                Store(VariableType::INT16(), glue, dst, IntPtr(0), *data);
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef thisValue, GateRef from, GateRef len)
 {
     auto env = GetEnvironment();
@@ -116,7 +185,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
     {
         GateRef fromOffset = PtrMul(ChangeInt32ToIntPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
         GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(EcmaString::DATA_OFFSET)), fromOffset);
-        GateRef canBeCompressed = CanBeCompressed(source, len);
+        GateRef canBeCompressed = CanBeCompressed(source, len, true);
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
         Label afterNew(env);
@@ -188,7 +257,7 @@ void BuiltinsStringStubBuilder::StringCopy(GateRef glue, GateRef dst, GateRef so
     return;
 }
 
-GateRef BuiltinsStringStubBuilder::CanBeCompressed(GateRef utf16Data, GateRef utf16Len)
+GateRef BuiltinsStringStubBuilder::CanBeCompressed(GateRef data, GateRef len, bool isUtf16)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -203,12 +272,18 @@ GateRef BuiltinsStringStubBuilder::CanBeCompressed(GateRef utf16Data, GateRef ut
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        Branch(Int32LessThan(*i, utf16Len), &nextCount, &exit);
+        Branch(Int32LessThan(*i, len), &nextCount, &exit);
         Bind(&nextCount);
         {
-            GateRef tmp = Load(VariableType::INT16(), utf16Data,
-                               PtrMul(ChangeInt32ToIntPtr(*i), IntPtr(sizeof(uint16_t))));
-            Branch(IsASCIICharacter(ZExtInt16ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
+            if (isUtf16) {
+                GateRef tmp = Load(VariableType::INT16(), data,
+                    PtrMul(ChangeInt32ToIntPtr(*i), IntPtr(sizeof(uint16_t))));
+                Branch(IsASCIICharacter(ZExtInt16ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
+            } else {
+                GateRef tmp = Load(VariableType::INT8(), data,
+                    PtrMul(ChangeInt32ToIntPtr(*i), IntPtr(sizeof(uint8_t))));
+                Branch(IsASCIICharacter(ZExtInt8ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
+            }
             Bind(&isNotASCIICharacter);
             {
                 result = False();
