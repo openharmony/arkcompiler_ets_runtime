@@ -16,15 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_CIRCUIT_OPTIMIZER_H_
 #define ECMASCRIPT_COMPILER_CIRCUIT_OPTIMIZER_H_
 
-#include <cstdint>
-#include <deque>
-#include <vector>
 #include <queue>
-#include <map>
-#include <optional>
-#include <random>
-#include <stdexcept>
-#include <memory>
 
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/compiler/circuit.h"
