@@ -191,6 +191,13 @@ DispatchResponse RuntimeImpl::GetProperties(const GetPropertiesParams &params,
         LOG_DEBUGGER(ERROR) << "RuntimeImpl::GetProperties should a js object";
         return DispatchResponse::Fail("Not a object");
     }
+    bool skipProto = false;
+    if (!internalObjects_.IsEmpty() && internalObjects_->Get(vm_, value)->IsNumber()) {
+        if (static_cast<ArkInternalValueType>(internalObjects_->Get(vm_, value)->ToNumber(vm_)->Value()) ==
+            ArkInternalValueType::Entry) {
+            skipProto = true;
+        }
+    }
     if (value->IsArrayBuffer()) {
         Local<ArrayBufferRef> arrayBufferRef(value);
         AddTypedArrayRefs(arrayBufferRef, outPropertyDesc);
@@ -214,6 +221,8 @@ DispatchResponse RuntimeImpl::GetProperties(const GetPropertiesParams &params,
         GetCollatorValue(value, outPropertyDesc);
     } else if (value->IsJSDateTimeFormat()) {
         GetDateTimeFormatValue(value, outPropertyDesc);
+    } else if (value->IsMap()) {
+        GetMapValue(value, outPropertyDesc);
     }
     Local<ArrayRef> keys = Local<ObjectRef>(value)->GetOwnPropertyNames(vm_);
     int32_t length = keys->Length(vm_);
@@ -250,7 +259,9 @@ DispatchResponse RuntimeImpl::GetProperties(const GetPropertiesParams &params,
         }
         outPropertyDesc->emplace_back(std::move(debuggerProperty));
     }
-    GetProtoOrProtoType(value, isOwn, isAccessorOnly, outPropertyDesc);
+    if (!skipProto) {
+        GetProtoOrProtoType(value, isOwn, isAccessorOnly, outPropertyDesc);
+    }
     GetAdditionalProperties(value, outPropertyDesc);
 
     return DispatchResponse::Ok();
@@ -499,5 +510,34 @@ void RuntimeImpl::GetDateTimeFormatValue(Local<JSValueRef> value,
     Local<DataTimeFormatRef> dtFormatRef = value->ToObject(vm_);
     Local<JSValueRef> jsValueRef = dtFormatRef->GetFormatFunction(vm_);
     SetKeyValue(jsValueRef, outPropertyDesc, "format");
+}
+
+void RuntimeImpl::AddInternalProperties(Local<ObjectRef> objRef, ArkInternalValueType type)
+{
+    if (internalObjects_.IsEmpty()) {
+        internalObjects_ = Global<MapRef>(vm_, MapRef::New(vm_));
+    }
+    internalObjects_->Set(vm_, objRef, NumberRef::New(vm_, static_cast<int32_t>(type)));
+}
+
+void RuntimeImpl::GetMapValue(Local<JSValueRef> value,
+    std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
+{
+    Local<MapRef> mapRef = value->ToObject(vm_);
+    int32_t len = mapRef->GetSize();
+    Local<JSValueRef> jsValueRef = NumberRef::New(vm_, len);
+    SetKeyValue(jsValueRef, outPropertyDesc, "size");
+    jsValueRef = ArrayRef::New(vm_, len);
+    for (int32_t i = 0; i < len; i++) {
+        Local<JSValueRef> jsKey = mapRef->GetKey(vm_, i);
+        Local<JSValueRef> jsValue = mapRef->GetValue(vm_, i);
+        Local<ObjectRef> objRef = ObjectRef::New(vm_);
+        objRef->Set(vm_, StringRef::NewFromUtf8(vm_, "key"), jsKey);
+        objRef->Set(vm_, StringRef::NewFromUtf8(vm_, "value"), jsValue);
+        AddInternalProperties(objRef, ArkInternalValueType::Entry);
+        ArrayRef::SetValueAt(vm_, jsValueRef, i, objRef);
+    }
+    AddInternalProperties(jsValueRef, ArkInternalValueType::Entry);
+    SetKeyValue(jsValueRef, outPropertyDesc, "[[Entries]]");
 }
 }  // namespace panda::ecmascript::tooling
