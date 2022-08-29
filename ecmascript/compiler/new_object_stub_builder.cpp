@@ -141,7 +141,7 @@ void NewObjectStubBuilder::NewArgumentsObj(Variable *result, Label *exit,
     Label setArgumentsObjProperties(env);
     Branch(TaggedIsException(result->ReadVariable()), exit, &setArgumentsObjProperties);
     Bind(&setArgumentsObjProperties);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, IntToTaggedNGC(numArgs),
+    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, IntToTaggedInt(numArgs),
                             Int32(JSArguments::LENGTH_INLINE_PROPERTY_INDEX));
     SetElementsArray(VariableType::JS_ANY(), glue_, result->ReadVariable(), argumentsList);
     GateRef arrayProtoValuesFunction = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
@@ -192,7 +192,7 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
     Bind(&callRuntime);
     {
         ret = CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), {
-            IntToTaggedTypeNGC(size_) });
+            IntToTaggedInt(size_) });
         result->WriteVariable(*ret);
         Jump(exit);
     }
