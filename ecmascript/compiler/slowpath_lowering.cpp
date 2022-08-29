@@ -1463,21 +1463,193 @@ void SlowPathLowering::LowerInstanceofDyn(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerFastStrictNotEqual(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStrictNotEqDynPrefV8)));
-    const int id = RTSTUB_ID(FastStrictNotEqual);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate, true);
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> failControl;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    Label strictEqual(&builder_);
+    Label notStrictEqual(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(FastStrictEqual(glue, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)), &strictEqual,
+        &notStrictEqual);
+    builder_.Bind(&strictEqual);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notStrictEqual);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    successControl.emplace_back(builder_.GetState());
+    successControl.emplace_back(builder_.GetDepend());
+    failControl.emplace_back(Circuit::NullGate());
+    failControl.emplace_back(Circuit::NullGate());
+    ReplaceHirToSubCfg(gate, *result, successControl, failControl, true);
 }
 
 void SlowPathLowering::LowerFastStrictEqual(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStrictEqDynPrefV8)));
-    const int id = RTSTUB_ID(FastStrictEqual);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate, true);
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> failControl;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    Label strictEqual(&builder_);
+    Label notStrictEqual(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(FastStrictEqual(glue, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)), &strictEqual,
+        &notStrictEqual);
+    builder_.Bind(&strictEqual);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notStrictEqual);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    successControl.emplace_back(builder_.GetState());
+    successControl.emplace_back(builder_.GetDepend());
+    failControl.emplace_back(Circuit::NullGate());
+    failControl.emplace_back(Circuit::NullGate());
+    ReplaceHirToSubCfg(gate, *result, successControl, failControl, true);
+}
+
+GateRef SlowPathLowering::FastStrictEqual(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+
+    DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.False());
+    Label leftIsNumber(&builder_);
+    Label leftNotNumber(&builder_);
+    Label sameVariableCheck(&builder_);
+    Label stringEqCheck(&builder_);
+    Label stringCompare(&builder_);
+    Label bigIntEqualCheck(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsNumber(left), &leftIsNumber, &leftNotNumber);
+    builder_.Bind(&leftIsNumber);
+    {
+        Label rightIsNumber(&builder_);
+        builder_.Branch(builder_.TaggedIsNumber(right), &rightIsNumber, &exit);
+        builder_.Bind(&rightIsNumber);
+        {
+            DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
+            DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
+            Label leftIsInt(&builder_);
+            Label leftNotInt(&builder_);
+            Label getRight(&builder_);
+            Label strictNumberEqualCheck(&builder_);
+            builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftNotInt);
+            builder_.Bind(&leftIsInt);
+            {
+                doubleLeft = builder_.ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+                builder_.Jump(&getRight);
+            }
+            builder_.Bind(&leftNotInt);
+            {
+                doubleLeft = builder_.TaggedCastToDouble(left);
+                builder_.Jump(&getRight);
+            }
+            builder_.Bind(&getRight);
+            {
+                Label rightIsInt(&builder_);
+                Label rightNotInt(&builder_);
+                builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightNotInt);
+                builder_.Bind(&rightIsInt);
+                {
+                    doubleRight = builder_.ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+                    builder_.Jump(&strictNumberEqualCheck);
+                }
+                builder_.Bind(&rightNotInt);
+                {
+                    doubleRight = builder_.TaggedCastToDouble(right);
+                    builder_.Jump(&strictNumberEqualCheck);
+                }
+            }
+            builder_.Bind(&strictNumberEqualCheck);
+            {
+                Label leftNotNan(&builder_);
+                Label numberCheck(&builder_);
+                builder_.Branch(builder_.DoubleIsNAN(*doubleLeft), &exit, &leftNotNan);
+                builder_.Bind(&leftNotNan);
+                {
+                    Label rightNotNan(&builder_);
+                    builder_.Branch(builder_.DoubleIsNAN(*doubleRight), &exit, &rightNotNan);
+                    builder_.Bind(&rightNotNan);
+                    {
+                        result = builder_.Equal(*doubleLeft, *doubleRight);
+                        builder_.Jump(&exit);
+                    }
+                }
+            }
+        }
+    }
+    builder_.Bind(&leftNotNumber);
+    builder_.Branch(builder_.TaggedIsNumber(right), &exit, &sameVariableCheck);
+    builder_.Bind(&sameVariableCheck);
+    {
+        Label strictEq(&builder_);
+        builder_.Branch(builder_.Equal(left, right), &strictEq, &stringEqCheck);
+        builder_.Bind(&strictEq);
+        {
+            result = builder_.True();
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&stringEqCheck);
+    builder_.Branch(builder_.BothAreString(left, right), &stringCompare, &bigIntEqualCheck);
+    builder_.Bind(&stringCompare);
+    {
+        Label lengthCompare(&builder_);
+        Label hashcodeCompare(&builder_);
+        Label contentsCompare(&builder_);
+        builder_.Branch(builder_.Equal(builder_.ZExtInt1ToInt32(builder_.IsUtf16String(left)),
+            builder_.ZExtInt1ToInt32(builder_.IsUtf16String(right))), &lengthCompare, &exit);
+        builder_.Bind(&lengthCompare);
+        builder_.Branch(builder_.Equal(builder_.GetLengthFromString(left), builder_.GetLengthFromString(right)),
+            &hashcodeCompare, &exit);
+        builder_.Bind(&hashcodeCompare);
+        builder_.Branch(
+            builder_.Equal(builder_.GetHashcodeFromString(glue, left), builder_.GetHashcodeFromString(glue, right)),
+            &contentsCompare, &exit);
+        builder_.Bind(&contentsCompare);
+        {
+            GateRef stringEqual = LowerCallRuntime(glue, RTSTUB_ID(StringEqual), { left, right }, true);
+            result = builder_.Equal(stringEqual, builder_.TaggedTrue());
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&bigIntEqualCheck);
+    {
+        Label leftIsBigInt(&builder_);
+        Label leftIsNotBigInt(&builder_);
+        builder_.Branch(builder_.TaggedIsBigInt(left), &leftIsBigInt, &exit);
+        builder_.Bind(&leftIsBigInt);
+        {
+            Label rightIsBigInt(&builder_);
+            builder_.Branch(builder_.TaggedIsBigInt(right), &rightIsBigInt, &exit);
+            builder_.Bind(&rightIsBigInt);
+            {
+                GateRef bigIntEqual = LowerCallRuntime(glue, RTSTUB_ID(BigIntEqual), { left, right }, true);
+                result = builder_.Equal(bigIntEqual, builder_.TaggedTrue());
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 void SlowPathLowering::LowerCreateEmptyArray(GateRef gate, GateRef glue)

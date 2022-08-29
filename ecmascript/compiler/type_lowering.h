@@ -133,10 +133,11 @@ private:
     GateRef Int32Mod(GateRef left, GateRef right);
     GateRef DoubleMod(GateRef left, GateRef right);
     GateRef IntToTaggedNGc(GateRef x);
-    GateRef DoubleIsNAN(GateRef x);
     GateRef DoubleIsINF(GateRef x);
     GateRef Less(GateRef left, GateRef right);
     GateRef LessEq(GateRef left, GateRef right);
+    GateRef FastEqual(GateRef left, GateRef right);
+    GateRef FastDiv(GateRef left, GateRef right);
 
     void LowerTypeNewObjDynRange(GateRef gate, GateRef glue);
     void LowerTypeAdd2Dyn(GateRef gate, GateRef glue);
@@ -147,6 +148,9 @@ private:
     void LowerTypeLessEqDyn(GateRef gate);
     void LowerTypeGreaterDyn(GateRef gate);
     void LowerTypeGreaterEqDyn(GateRef gate);
+    void LowerTypeDiv2Dyn(GateRef gate);
+    void LowerTypeEqDyn(GateRef gate);
+    void LowerTypeNotEqDyn(GateRef gate);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

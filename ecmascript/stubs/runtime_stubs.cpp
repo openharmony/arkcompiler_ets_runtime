@@ -1777,6 +1777,30 @@ DEF_RUNTIME_STUBS(JSObjectGetMethod)
     return result->GetRawData();
 }
 
+DEF_RUNTIME_STUBS(BigIntEqual)
+{
+    RUNTIME_STUBS_HEADER(OptBigIntEqual);
+    JSTaggedValue left = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue right = GetArg(argv, argc, 1);  // 1: means the first parameter
+    if (BigInt::Equal(left, right)) {
+        return JSTaggedValue::VALUE_TRUE;
+    }
+    return JSTaggedValue::VALUE_FALSE;
+}
+
+DEF_RUNTIME_STUBS(StringEqual)
+{
+    RUNTIME_STUBS_HEADER(OptBigIntEqual);
+    JSTaggedValue left = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue right = GetArg(argv, argc, 1);  // 1: means the first parameter
+    auto leftStr = EcmaString::Cast(left.GetTaggedObject());
+    auto rightStr = EcmaString::Cast(right.GetTaggedObject());
+    if (EcmaString::StringsAreEqualSameUtfEncoding(leftStr, rightStr)) {
+        return JSTaggedValue::VALUE_TRUE;
+    }
+    return JSTaggedValue::VALUE_FALSE;
+}
+
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
