@@ -27,6 +27,7 @@
 
 namespace panda::ecmascript {
 const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
+const int MAX_NODE_COUNT = 2000; // 2000:the maximum size of the array
 struct FrameInfo {
     std::string codeType = "";
     std::string functionName = "";
@@ -45,7 +46,8 @@ struct CpuProfileNode {
 struct ProfileInfo {
     uint64_t startTime = 0;
     uint64_t stopTime = 0;
-    CVector<struct CpuProfileNode> nodes;
+    struct CpuProfileNode nodes[MAX_NODE_COUNT];
+    int nodeCount = 0;
     CVector<int> samples;
     CVector<int> timeDeltas;
 };
@@ -80,7 +82,8 @@ public:
 
     void AddSample(uint64_t sampleTimeStamp, bool outToFile);
     void WriteMethodsAndSampleInfo(bool timeEnd);
-    CVector<struct CpuProfileNode> GetMethodNodes() const;
+    int GetMethodNodeCount() const;
+    int GetframeStackLength() const;
     CDeque<struct SampleInfo> GetSamples() const;
     std::string GetSampleData() const;
     void SetThreadStartTime(uint64_t threadStartTime);

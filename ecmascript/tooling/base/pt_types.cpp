@@ -2007,7 +2007,7 @@ std::unique_ptr<Profile> Profile::FromProfileInfo(const ProfileInfo &profileInfo
     profile->SetTimeDeltas(tmpTimeDeltas);
 
     std::vector<std::unique_ptr<ProfileNode>> profileNode;
-    size_t nodesLen = profileInfo.nodes.size();
+    size_t nodesLen = profileInfo.nodeCount;
     for (size_t i = 0; i < nodesLen; ++i) {
         const auto &cpuProfileNode = profileInfo.nodes[i];
         profileNode.push_back(ProfileNode::FromCpuProfileNode(cpuProfileNode));
