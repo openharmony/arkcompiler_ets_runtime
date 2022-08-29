@@ -38,7 +38,7 @@ SamplesRecord::SamplesRecord()
     methodNode.codeEntry.functionName = "(root)";
     methodNode.id = 1;
     profileInfo_ = std::make_unique<struct ProfileInfo>();
-    profileInfo_->nodes.push_back(methodNode);
+    profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
 }
 
 SamplesRecord::~SamplesRecord()
@@ -51,6 +51,8 @@ SamplesRecord::~SamplesRecord()
 void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
 {
     if (isLastSample_.load()) {
+        frameStackLength_ = 0;
+        frameInfoTempLength_ = 0;
         return;
     }
     FrameInfoTempToMap();
@@ -65,7 +67,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
             methodMap_.insert(std::make_pair(methodkey, methodNode.id));
             methodNode.codeEntry = GetGcInfo();
             stackTopLines_.push_back(0);
-            profileInfo_->nodes.push_back(methodNode);
+            profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
             if (!outToFile) {
                 if (UNLIKELY(methodNode.parentId) == 0) {
                     profileInfo_->nodes[0].children.push_back(methodNode.id);
@@ -93,7 +95,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
                 previousId_ = methodNode.id = id;
                 methodNode.codeEntry = GetMethodInfo(methodkey.method);
                 stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
-                profileInfo_->nodes.push_back(methodNode);
+                profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
                 if (!outToFile) {
                     profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
                 }
@@ -122,7 +124,9 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
 void SamplesRecord::WriteAddNodes()
 {
     sampleData_ += "{\"args\":{\"data\":{\"cpuProfile\":{\"nodes\":[";
-    for (auto it : profileInfo_->nodes) {
+    int count = profileInfo_->nodeCount;
+    for (int i = 0; i < count; i++) {
+        auto it = profileInfo_->nodes[i];
         sampleData_ += "{\"callFrame\":{\"codeType\":\"" + it.codeEntry.codeType + "\",";
         if (it.parentId == 0) {
             sampleData_ += "\"functionName\":\"(root)\",\"scriptId\":0},\"id\":1},";
@@ -165,16 +169,16 @@ void SamplesRecord::WriteAddSamples()
 
 void SamplesRecord::WriteMethodsAndSampleInfo(bool timeEnd)
 {
-    if (profileInfo_->nodes.size() >= 10) { // 10:Number of nodes currently stored
+    if (profileInfo_->nodeCount >= 10) { // 10:Number of nodes currently stored
         WriteAddNodes();
         WriteAddSamples();
-        profileInfo_->nodes.clear();
+        profileInfo_->nodeCount = 0;
         samples_.clear();
     } else if (samples_.size() == 100 || timeEnd) { // 100:Number of samples currently stored
-        if (!profileInfo_->nodes.empty()) {
+        if (!(profileInfo_->nodeCount == 0)) {
             WriteAddNodes();
             WriteAddSamples();
-            profileInfo_->nodes.clear();
+            profileInfo_->nodeCount = 0;
             samples_.clear();
         } else if (!samples_.empty()) {
             sampleData_ += "{\"args\":{\"data\":{\"cpuProfile\":{\"samples\":[";
@@ -195,9 +199,9 @@ void SamplesRecord::WriteMethodsAndSampleInfo(bool timeEnd)
                    std::to_string(tts) + "},\n";
 }
 
-CVector<struct CpuProfileNode> SamplesRecord::GetMethodNodes() const
+int SamplesRecord::GetMethodNodeCount() const
 {
-    return profileInfo_->nodes;
+    return profileInfo_->nodeCount;
 }
 
 CDeque<struct SampleInfo> SamplesRecord::GetSamples() const
@@ -298,13 +302,13 @@ void SamplesRecord::InsertStackInfo(JSMethod *method, struct FrameInfo &codeEntr
     stackInfoMap_.insert(std::make_pair(method, codeEntry));
 }
 
-void SamplesRecord::PushFrameStack(JSMethod *method, int count)
+void SamplesRecord::PushFrameStack(JSMethod *method)
 {
-    if (count >= MAX_ARRAY_COUNT) {
-        SetSampleFlag(false);
+    if (frameStackLength_ >= MAX_ARRAY_COUNT) {
+        SetSampleFlag(true);
+        return;
     }
-    frameStack_[count] = method;
-    frameStackLength_++;
+    frameStack_[frameStackLength_++] = method;
 }
 
 bool SamplesRecord::GetGcState() const
@@ -327,14 +331,13 @@ void SamplesRecord::SetIsStart(bool isStart)
     isStart_.store(isStart);
 }
 
-void SamplesRecord::PushStackInfo(const FrameInfoTemp &frameInfoTemp, int index)
+void SamplesRecord::PushStackInfo(const FrameInfoTemp &frameInfoTemp)
 {
-    if (index >= MAX_ARRAY_COUNT) {
-        SetSampleFlag(false);
+    if (frameInfoTempLength_ >= MAX_ARRAY_COUNT) {
+        SetSampleFlag(true);
         return;
     }
-    frameInfoTemps_[index] = frameInfoTemp;
-    frameInfoTempLength_++;
+    frameInfoTemps_[frameInfoTempLength_++] = frameInfoTemp;
 }
 
 void SamplesRecord::FrameInfoTempToMap()
@@ -359,5 +362,10 @@ void SamplesRecord::FrameInfoTempToMap()
         stackInfoMap_.insert(std::make_pair(frameInfoTemps_[i].method, frameInfo));
     }
     frameInfoTempLength_ = 0;
+}
+
+int SamplesRecord::GetframeStackLength() const
+{
+    return frameStackLength_;
 }
 } // namespace panda::ecmascript

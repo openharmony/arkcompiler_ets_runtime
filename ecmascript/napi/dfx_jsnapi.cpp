@@ -175,55 +175,76 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 void DFXJSNApi::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName)
 {
-    panda::ecmascript::CpuProfiler* singleton = panda::ecmascript::CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return;
     }
-    singleton->StartCpuProfilerForFile(vm, fileName);
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        profiler = new CpuProfiler(vm);
+        const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
+    }
+    profiler->StartCpuProfilerForFile(fileName);
 }
 
-void DFXJSNApi::StopCpuProfilerForFile()
+void DFXJSNApi::StopCpuProfilerForFile(const EcmaVM *vm)
 {
-    panda::ecmascript::CpuProfiler* singleton = panda::ecmascript::CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return;
     }
-    singleton->StopCpuProfilerForFile();
-    delete singleton;
-    singleton = nullptr;
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        return;
+    }
+    profiler->StopCpuProfilerForFile();
+    delete profiler;
+    profiler = nullptr;
+    const_cast<EcmaVM *>(vm)->SetProfiler(nullptr);
 }
 
 void DFXJSNApi::StartCpuProfilerForInfo(const EcmaVM *vm)
 {
-    CpuProfiler *singleton = CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return;
     }
-    singleton->StartCpuProfilerForInfo(vm);
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        profiler = new CpuProfiler(vm);
+        const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
+    }
+    profiler->StartCpuProfilerForInfo();
 }
 
-std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo()
+std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo(const EcmaVM *vm)
 {
-    CpuProfiler *singleton = CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return nullptr;
     }
-    auto profile = singleton->StopCpuProfilerForInfo();
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        return nullptr;
+    }
+    auto profile = profiler->StopCpuProfilerForInfo();
     if (profile == nullptr) {
         LOG_DEBUGGER(ERROR) << "Transfer CpuProfiler::StopCpuProfilerImpl is failure";
     }
-    delete singleton;
-    singleton = nullptr;
+    delete profiler;
+    profiler = nullptr;
+    const_cast<EcmaVM *>(vm)->SetProfiler(nullptr);
     return profile;
 }
 
-void DFXJSNApi::SetCpuSamplingInterval(int interval)
+void DFXJSNApi::SetCpuSamplingInterval(const EcmaVM *vm, int interval)
 {
-    CpuProfiler *singleton = CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return;
     }
-    singleton->SetCpuSamplingInterval(interval);
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        return;
+    }
+    profiler = new CpuProfiler(vm);
+    const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
+    profiler->SetCpuSamplingInterval(interval);
 }
 #endif
 

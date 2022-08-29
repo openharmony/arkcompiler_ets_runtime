@@ -28,12 +28,10 @@
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
-std::atomic<CpuProfiler*> CpuProfiler::singleton_ = nullptr;
 os::memory::Mutex CpuProfiler::synchronizationMutex_;
-CpuProfiler *CpuProfiler::pThis_ = nullptr;
-CpuProfiler::CpuProfiler()
+CMap<pthread_t, const EcmaVM *> CpuProfiler::profilerMap_ = CMap<pthread_t, const EcmaVM *>();
+CpuProfiler::CpuProfiler(const EcmaVM *vm) : vm_(vm)
 {
-    pThis_ = this;
     generator_ = new SamplesRecord();
     if (generator_->SemInit(0, 0, 0) != 0) {
         LOG_ECMA(ERROR) << "sem_[0] init failed";
@@ -43,25 +41,12 @@ CpuProfiler::CpuProfiler()
     }
 }
 
-CpuProfiler *CpuProfiler::GetInstance()
-{
-    CpuProfiler *temp = singleton_;
-    if (temp == nullptr) {
-        os::memory::LockHolder lock(synchronizationMutex_);
-        if ((temp = CpuProfiler::singleton_) == nullptr) {
-            CpuProfiler::singleton_ = temp = new CpuProfiler();
-        }
-    }
-    return CpuProfiler::singleton_;
-}
-
-void CpuProfiler::StartCpuProfilerForInfo(const EcmaVM *vm)
+void CpuProfiler::StartCpuProfilerForInfo()
 {
     if (isProfiling_) {
         return;
     }
     isProfiling_ = true;
-    vm_ = const_cast<EcmaVM *>(vm);
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
 #else
     struct sigaction sa;
@@ -79,18 +64,21 @@ void CpuProfiler::StartCpuProfilerForInfo(const EcmaVM *vm)
     }
 #endif
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
+    {
+        os::memory::LockHolder lock(synchronizationMutex_);
+        profilerMap_[tid_] = vm_;
+    }
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
         std::make_unique<SamplingProcessor>(generator_, interval_, outToFile_));
 }
 
-void CpuProfiler::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName)
+void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 {
     if (isProfiling_) {
         return;
     }
     isProfiling_ = true;
-    vm_ = const_cast<EcmaVM *>(vm);
     std::string absoluteFilePath("");
     if (!CheckFileName(fileName, absoluteFilePath)) {
         LOG_ECMA(ERROR) << "The fileName contains illegal characters";
@@ -124,6 +112,11 @@ void CpuProfiler::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &f
         return;
     }
 #endif
+    tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
+    {
+        os::memory::LockHolder lock(synchronizationMutex_);
+        profilerMap_[tid_] = vm_;
+    }
     uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
     SetProfileStart(ts);
     outToFile_ = true;
@@ -142,10 +135,6 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
     }
     if (outToFile_) {
         LOG_ECMA(ERROR) << "Can not Stop a CpuProfiler sampling which is for file output by this stop method";
-        return profileInfo;
-    }
-    if (static_cast<long>(tid_) != syscall(SYS_gettid)) {
-        LOG_ECMA(ERROR) << "Thread attempted to close other sampling threads";
         return profileInfo;
     }
     isProfiling_ = false;
@@ -183,10 +172,6 @@ void CpuProfiler::StopCpuProfilerForFile()
         return;
     }
 
-    if (static_cast<long>(tid_) != syscall(SYS_gettid)) {
-        LOG_ECMA(ERROR) << "Thread attempted to close other sampling threads";
-        return;
-    }
     isProfiling_ = false;
     generator_->SetIsStart(false);
     generator_->SetSampleFlag(true);
@@ -216,7 +201,6 @@ CpuProfiler::~CpuProfiler()
         delete generator_;
         generator_ = nullptr;
     }
-    singleton_ = nullptr;
 }
 
 void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
@@ -250,7 +234,6 @@ void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProces
         LOG_FULL(FATAL) << "syscall failed";
         UNREACHABLE();
     }
-    tid_ = currentProcessInfo.tid = static_cast<pthread_t>(syscall(SYS_gettid));
     currentProcessInfo.tts = SamplingProcessor::GetMicrosecondsTimeStamp();
 }
 
@@ -259,9 +242,7 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
     const CMap<JSMethod *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->SetGcState(vm_->GetAssociatedJSThread()->GetGcState());
     if (!generator_->GetGcState()) {
-        int methodCount = 0;
-        int methodInfoCount = 0;
-        for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame(), ++methodCount) {
+        for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
             if (!frameHandler.IsInterpretedFrame()) {
                 continue;
             }
@@ -271,33 +252,37 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
             }
 
             if (stackInfo.count(method) == 0) {
-                ParseMethodInfo(method, frameHandler, &methodInfoCount);
+                ParseMethodInfo(method, frameHandler);
             }
-            generator_->PushFrameStack(method, methodCount);
+            generator_->PushFrameStack(method);
         }
     }
 }
 
-void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler, int *index)
+void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler)
 {
     struct FrameInfoTemp codeEntry;
     codeEntry.method = method;
-    JSThread *thread = pThis_->vm_->GetAssociatedJSThread();
     if (method != nullptr && method->IsNativeWithCallField()) {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
             return;
         }
-        GetNativeStack(thread, frameHandler, codeEntry.functionName, sizeof(codeEntry.functionName));
+        GetNativeStack(frameHandler, codeEntry.functionName, sizeof(codeEntry.functionName));
     } else {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {
             return;
         }
-        const std::string &functionName = method->ParseFunctionName();
-        const char *tempVariable = nullptr;
-        if (functionName.empty()) {
+        const char *tempVariable = method->GetMethodName();
+        uint8_t length = strlen(tempVariable);
+        if (length != 0 && tempVariable[0] == '#') {
+            uint8_t index = length - 1;
+            while (tempVariable[index] != '#') {
+                index--;
+            }
+            tempVariable += (index + 1);
+        }
+        if (strlen(tempVariable) == 0) {
             tempVariable = "anonymous";
-        } else {
-            tempVariable = functionName.c_str();
         }
         if (!CheckAndCopy(codeEntry.functionName, sizeof(codeEntry.functionName), tempVariable)) {
             return;
@@ -336,28 +321,37 @@ void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler, 
             codeEntry.columnNumber = columnNumber;
         }
     }
-    generator_->PushStackInfo(codeEntry, *index);
-    *index = *index + 1;
+    generator_->PushStackInfo(codeEntry);
 }
 
-void CpuProfiler::GetNativeStack(JSThread *thread, FrameHandler &frameHandler, char *functionName, size_t size)
+void CpuProfiler::GetNativeStack(FrameHandler &frameHandler, char *functionName, size_t size)
 {
     std::stringstream stream;
     JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
+    // napi method
     if (function->GetCallNative()) {
         JSNativePointer *extraInfo = JSNativePointer::Cast(function->GetFunctionExtraInfo().GetTaggedObject());
-        auto cb = thread->GetEcmaVM()->GetNativePtrGetter();
+        auto cb = vm_->GetNativePtrGetter();
         if (cb != nullptr  && extraInfo != nullptr) {
             auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
-            stream << "napi(" << addr << ")";
-            CheckAndCopy(functionName, size, stream.str().c_str());
+            stream << addr;
+            CheckAndCopy(functionName, size, "napi(");
+            const uint8_t napiBeginLength = 5; // 5:the length of "napi("
+            CheckAndCopy(functionName + napiBeginLength, size - napiBeginLength, stream.str().c_str());
+            uint8_t srcLength = stream.str().size();
+            CheckAndCopy(functionName + napiBeginLength + srcLength, size - napiBeginLength - srcLength, ")");
             return;
         }
     }
+    // builtin method
     auto method = frameHandler.CheckAndGetMethod();
     auto addr = method->GetNativePointer();
-    stream << "other(" << addr << ")";
-    CheckAndCopy(functionName, size, stream.str().c_str());
+    stream << addr;
+    CheckAndCopy(functionName, size, "builtin(");
+    const uint8_t builtinBeginLength = 8; // 8:the length of "builtin("
+    CheckAndCopy(functionName + builtinBeginLength, size - builtinBeginLength, stream.str().c_str());
+    uint8_t srcLength = stream.str().size();
+    CheckAndCopy(functionName + builtinBeginLength + srcLength, size - builtinBeginLength - srcLength, ")");
 }
 
 void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
@@ -376,8 +370,22 @@ void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
 void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *siginfo, void *context)
 {
     if (signal != SIGPROF) return;
-    JSThread *thread = pThis_->vm_->GetAssociatedJSThread();
-    if (thread->IsAsmInterpreter() && pThis_->IsAddrAtStub(context)) {
+    CpuProfiler *profiler = nullptr;
+    JSThread *thread = nullptr;
+    {
+        os::memory::LockHolder lock(synchronizationMutex_);
+        pthread_t tid = static_cast<pthread_t>(syscall(SYS_gettid));
+        const EcmaVM *vm = profilerMap_[tid];
+        if (vm == nullptr) {
+            return;
+        }
+        profiler = vm->GetProfiler();
+        thread = vm->GetAssociatedJSThread();
+        if (profiler == nullptr) {
+            return;
+        }
+    }
+    if (thread->IsAsmInterpreter() && profiler->IsAddrAtStub(context)) {
         [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
         [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
         [[maybe_unused]] void *fp = nullptr;
@@ -395,19 +403,19 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         if (reinterpret_cast<uint64_t*>(sp) > reinterpret_cast<uint64_t*>(fp)) {
             LOG_ECMA(FATAL) << "sp > fp, stack frame exception";
         }
-        if (pThis_->CheckFrameType(thread, reinterpret_cast<JSTaggedType *>(fp))) {
+        if (profiler->CheckFrameType(thread, reinterpret_cast<JSTaggedType *>(fp))) {
             FrameHandler frameHandler(thread, fp);
-            pThis_->GetFrameStack(frameHandler);
+            profiler->GetFrameStack(frameHandler);
         }
     } else {
         if (thread->GetCurrentFrame() != nullptr) {
-            if (pThis_->CheckFrameType(thread, const_cast<JSTaggedType *>(thread->GetCurrentFrame()))) {
+            if (profiler->CheckFrameType(thread, const_cast<JSTaggedType *>(thread->GetCurrentFrame()))) {
                 FrameHandler frameHandler(thread);
-                pThis_->GetFrameStack(frameHandler);
+                profiler->GetFrameStack(frameHandler);
             }
         }
     }
-    if (pThis_->generator_->SemPost(0) != 0) {
+    if (profiler->generator_->SemPost(0) != 0) {
         LOG_ECMA(ERROR) << "sem_[0] post failed";
         return;
     }
@@ -512,6 +520,7 @@ bool CpuProfiler::CheckFileName(const std::string &fileName, std::string &absolu
     auto result = realpath(fileName.c_str(), resolvedPath.data());
     if (result == nullptr) {
         LOG_ECMA(INFO) << "The file path does not exist";
+        return false;
     }
     std::ofstream file(resolvedPath.data());
     if (!file.good()) {
