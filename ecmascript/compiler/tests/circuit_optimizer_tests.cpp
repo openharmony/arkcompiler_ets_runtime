@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/circuit_optimizer.h"
+#include <random>
 
+#include "ecmascript/compiler/circuit_optimizer.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/tests/test_helper.h"
 
