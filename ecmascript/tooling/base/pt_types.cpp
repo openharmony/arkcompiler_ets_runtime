@@ -283,7 +283,7 @@ std::string ObjectRemoteObject::DescriptionForObject(const EcmaVM *ecmaVm, Local
         return DescriptionForDate(ecmaVm, Local<DateRef>(tagged));
     }
     if (tagged->IsMap()) {
-        return DescriptionForMap(Local<MapRef>(tagged));
+        return DescriptionForMap(ecmaVm, Local<MapRef>(tagged));
     }
     if (tagged->IsWeakMap()) {
         return RemoteObject::WeakMapDescription;
@@ -379,9 +379,43 @@ std::string ObjectRemoteObject::DescriptionForDate(const EcmaVM *ecmaVm, Local<D
     return description;
 }
 
-std::string ObjectRemoteObject::DescriptionForMap(Local<MapRef> tagged)
+std::string ObjectRemoteObject::DescriptionForMap(const EcmaVM *ecmaVm, Local<MapRef> tagged)
 {
-    std::string description = ("Map(" + std::to_string(tagged->GetSize()) + ")");
+    int32_t len = tagged->GetSize();
+    std::string description = "Map(" + std::to_string(len) + ")";
+    if (!len) {
+        return description;
+    }
+    description += " {";
+    char cPre = '\'';
+    for (int32_t i = 0; i < len; ++i) {
+        // add Key
+        Local<JSValueRef> jsVKey = tagged->GetKey(ecmaVm, i);
+        Local<JSValueRef> jsVValue = tagged->GetValue(ecmaVm, i);
+        if (jsVKey->IsObject()) {
+            description += "Object";
+        } else if (jsVKey->IsString()) {
+            description += cPre + jsVKey->ToString(ecmaVm)->ToString() + cPre;
+        } else {
+            description += jsVKey->ToString(ecmaVm)->ToString();
+        }
+
+        description += " => ";
+        // add Value
+        if (jsVValue->IsObject()) {
+            description += "Object";
+        } else if (jsVValue->IsString()) {
+            description += cPre + jsVValue->ToString(ecmaVm)->ToString() + cPre;
+        } else {
+            description += jsVValue->ToString(ecmaVm)->ToString();
+        }
+        if (i == len - 1 || i >= 4) { // 4:The count of elements
+            description += len > 5? ", ..." : ""; // 5:The count of elements
+            break;
+        }
+        description += ", ";
+    }
+    description += "}";
     return description;
 }
 

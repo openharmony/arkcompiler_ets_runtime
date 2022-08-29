@@ -58,6 +58,7 @@
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/log.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_map_allocator.h"
@@ -105,6 +106,7 @@ using ecmascript::JSTaggedNumber;
 using ecmascript::JSTaggedType;
 using ecmascript::JSTaggedValue;
 using ecmascript::JSThread;
+using ecmascript::LinkedHashMap;
 using ecmascript::ObjectFactory;
 using ecmascript::PromiseCapability;
 using ecmascript::PropertyDescriptor;
@@ -1622,6 +1624,33 @@ double DateRef::GetTime()
         LOG_ECMA(ERROR) << "Not a Date Object";
     }
     return date->GetTime().GetDouble();
+}
+
+Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
+{
+    JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(),
+                map->Get(JSNApiHelper::ToJSTaggedValue(*key))));
+}
+
+void MapRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
+{
+    JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    JSMap::Set(vm->GetJSThread(), map, JSNApiHelper::ToJSHandle(key), JSNApiHelper::ToJSHandle(value));
+}
+
+Local<MapRef> MapRef::New(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsMapFunction();
+    JSHandle<JSMap> map =
+        JSHandle<JSMap>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashMap> hashMap = LinkedHashMap::Create(thread);
+    map->SetLinkedMap(thread, hashMap);
+    JSHandle<JSTaggedValue> mapTag = JSHandle<JSTaggedValue>::Cast(map);
+    return JSNApiHelper::ToLocal<MapRef>(mapTag);
 }
 
 int32_t MapRef::GetSize()
