@@ -531,12 +531,6 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
             break;
         }
-        case OldBytecodeInst::Opcode::ECMA_NEWOBJDYNRANGE_PREF_IMM16_V8: {
-            newOpcode = EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8;
-            *pc = static_cast<uint8_t>(widePrefOp);
-            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
-            break;
-        }
         case OldBytecodeInst::Opcode::ECMA_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8: {
             newOpcode = EcmaOpcode::WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8;
             *pc = static_cast<uint8_t>(widePrefOp);
@@ -1203,6 +1197,19 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
         case OldBytecodeInst::Opcode::ECMA_RETURNUNDEFINED_PREF_NONE: {
             newOpcode = EcmaOpcode::RETURNUNDEFINED;
             *pc = static_cast<uint8_t>(newOpcode);
+            break;
+        }
+        case OldBytecodeInst::Opcode::ECMA_NEWOBJDYNRANGE_PREF_IMM16_V8: {
+            newOpcode = EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8;
+            *pc = static_cast<uint8_t>(widePrefOp);
+            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
+
+            uint16_t imm = inst.GetImm<OldBytecodeInst::Format::PREF_IMM16_V8>() - 1;
+            if (memcpy_s(pc + 2, sizeof(uint16_t), &imm, sizeof(uint16_t)) != EOK) {    // 2: skip opcode and ic slot
+                LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
+                UNREACHABLE();
+            }
+            *(pc + 4) = *(pc + 4) + 1;
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_LDLEXVARDYN_PREF_IMM4_IMM4: {
