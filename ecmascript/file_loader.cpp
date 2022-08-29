@@ -404,16 +404,16 @@ void FileLoader::InitializeStubEntries(const std::vector<AOTModulePackInfo::Func
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
             auto start = MessageString::ASM_INTERPRETER_START;
             std::string format = MessageString::GetMessageString(des.indexInKind_ + start);
-            std::cout << "bytecode-" << des.indexInKind_ << " :" << format
-                << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
+            LOG_ECMA(DEBUG) << "bytecode-" << des.indexInKind_ << " :" << format
+                << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         } else if (des.IsBuiltinsStub()) {
             thread->SetBuiltinStubEntry(des.indexInKind_, des.codeAddr_);
         } else {
             thread->RegisterRTInterface(des.indexInKind_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
-                std::cout << "runtime index: " << std::dec << des.indexInKind_
-                    << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
+                LOG_ECMA(DEBUG) << "runtime index: " << std::dec << des.indexInKind_
+                    << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         }
     }
