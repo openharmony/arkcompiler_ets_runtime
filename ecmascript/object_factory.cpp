@@ -132,6 +132,7 @@ using AggregateError = builtins::BuiltinsAggregateError;
 using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
+using OOMError = builtins::BuiltinsOOMError;
 using ErrorType = base::ErrorType;
 using ErrorHelper = base::ErrorHelper;
 
@@ -730,7 +731,7 @@ JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const c
     ASSERT_PRINT(errorType == ErrorType::ERROR || errorType == ErrorType::EVAL_ERROR ||
                      errorType == ErrorType::RANGE_ERROR || errorType == ErrorType::REFERENCE_ERROR ||
                      errorType == ErrorType::SYNTAX_ERROR || errorType == ErrorType::TYPE_ERROR ||
-                     errorType == ErrorType::URI_ERROR,
+                     errorType == ErrorType::URI_ERROR || errorType == ErrorType::OOM_ERROR,
                  "The error type is not in the valid range.");
     if (data != nullptr) {
         JSHandle<EcmaString> handleMsg = NewFromUtf8(data);
@@ -779,6 +780,9 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
             break;
         case ErrorType::SYNTAX_ERROR:
             nativeConstructor = env->GetSyntaxErrorFunction();
+            break;
+        case ErrorType::OOM_ERROR:
+            nativeConstructor = env->GetOOMErrorFunction();
             break;
         default:
             nativeConstructor = env->GetErrorFunction();
@@ -862,6 +866,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_AGGREGATE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
         case JSType::JS_ITERATOR: {
             break;
         }

@@ -144,6 +144,7 @@ using AggregateError = builtins::BuiltinsAggregateError;
 using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
+using OOMError = builtins::BuiltinsOOMError;
 using ErrorType = base::ErrorType;
 using Global = builtins::BuiltinsGlobal;
 using BuiltinsString = builtins::BuiltinsString;
@@ -1004,6 +1005,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceDynclass, JSType::JS_URI_ERROR);
     InitializeError(env, errorNativeFuncInstanceDynclass, JSType::JS_SYNTAX_ERROR);
     InitializeError(env, errorNativeFuncInstanceDynclass, JSType::JS_EVAL_ERROR);
+    InitializeError(env, errorNativeFuncInstanceDynclass, JSType::JS_OOM_ERROR);
 }
 
 void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm) const
@@ -1020,6 +1022,7 @@ void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm)
     SetErrorWithRealm(realm, JSType::JS_URI_ERROR);
     SetErrorWithRealm(realm, JSType::JS_SYNTAX_ERROR);
     SetErrorWithRealm(realm, JSType::JS_EVAL_ERROR);
+    SetErrorWithRealm(realm, JSType::JS_OOM_ERROR);
 }
 
 void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType &errorTag) const
@@ -1064,6 +1067,11 @@ void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType 
             nativeErrorFunction = env->GetSyntaxErrorFunction();
             nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledSyntaxErrorString());
             realm->SetSyntaxErrorFunction(thread_, nativeErrorFunction);
+            break;
+        case JSType::JS_OOM_ERROR:
+            nativeErrorFunction = env->GetOOMErrorFunction();
+            nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledOOMErrorString());
+            realm->SetOOMErrorFunction(thread_, nativeErrorFunction);
             break;
         default:
             break;
@@ -1119,6 +1127,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
             GeneralUpdateError(&errorParameter, SyntaxError::SyntaxErrorConstructor, SyntaxError::ToString,
                                "SyntaxError", JSType::JS_SYNTAX_ERROR);
             break;
+        case JSType::JS_OOM_ERROR:
+            GeneralUpdateError(&errorParameter, OOMError::OOMErrorConstructor, OOMError::ToString,
+                               "OutOfMemoryError", JSType::JS_OOM_ERROR);
+            break;
         default:
             break;
     }
@@ -1164,8 +1176,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
         env->SetURIErrorFunction(thread_, nativeErrorFunction);
     } else if (errorTag == JSType::JS_SYNTAX_ERROR) {
         env->SetSyntaxErrorFunction(thread_, nativeErrorFunction);
-    } else {
+    } else if (errorTag == JSType::JS_EVAL_ERROR) {
         env->SetEvalErrorFunction(thread_, nativeErrorFunction);
+    } else {
+        env->SetOOMErrorFunction(thread_, nativeErrorFunction);
     }
 }  // namespace panda::ecmascript
 

@@ -137,6 +137,7 @@ using AggregateError = builtins::BuiltinsAggregateError;
 using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
+using OOMError = builtins::BuiltinsOOMError;
 using ErrorType = base::ErrorType;
 using Global = builtins::BuiltinsGlobal;
 using BuiltinsString = builtins::BuiltinsString;
@@ -218,6 +219,8 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(SyntaxError::ToString),
     reinterpret_cast<uintptr_t>(EvalError::EvalErrorConstructor),
     reinterpret_cast<uintptr_t>(EvalError::ToString),
+    reinterpret_cast<uintptr_t>(OOMError::OOMErrorConstructor),
+    reinterpret_cast<uintptr_t>(OOMError::ToString),
     reinterpret_cast<uintptr_t>(Number::NumberConstructor),
     reinterpret_cast<uintptr_t>(Number::ToExponential),
     reinterpret_cast<uintptr_t>(Number::ToFixed),
