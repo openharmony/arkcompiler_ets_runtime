@@ -730,7 +730,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
         fileLoader->SetAOTFuncEntry(jsPandaFile, cls);
     }
 
-    SlowRuntimeStub::SetClassInheritanceRelationship(thread, cls.GetTaggedValue(), base.GetTaggedValue());
+    RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     return cls.GetTaggedValue();
