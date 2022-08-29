@@ -259,6 +259,17 @@ void StubBuilder::SavePcIfNeeded(GateRef glue)
     }
 }
 
+void StubBuilder::SaveJumpSizeIfNeeded(GateRef glue, GateRef jumpSize)
+{
+    if (env_->IsAsmInterp()) {
+        GateRef sp = Argument(static_cast<size_t>(InterpreterHandlerInputs::SP));
+        GateRef frame = PtrSub(sp,
+            IntPtr(AsmInterpretedFrame::GetSize(GetEnvironment()->IsArch32Bit())));
+        Store(VariableType::INT64(), glue, frame,
+            IntPtr(AsmInterpretedFrame::GetCallSizeOffset(GetEnvironment()->IsArch32Bit())), jumpSize);
+    }
+}
+
 // memory
 inline GateRef StubBuilder::Load(VariableType type, GateRef base, GateRef offset)
 {

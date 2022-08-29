@@ -196,7 +196,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     __ Movq(Operand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), pcRegister);
     __ Movl(Operand(contextRegister, GeneratorContext::GENERATOR_BC_OFFSET_OFFSET), operatorRegister);
     __ Addq(operatorRegister, pcRegister);
-    __ Addq(BytecodeInstruction::Size(BytecodeInstruction::Format::V8_V8), pcRegister);
+    __ Addq(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8), pcRegister);
     __ Pushq(pcRegister);                                              // pc
     __ Pushq(fpRegister);                                              // fp
     __ Pushq(0);                                                       // jumpSizeAfterCall
@@ -292,18 +292,12 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
     // save fp
     __ Movq(rsp, fpRegister);
 
-    auto jumpSize = kungfu::AssemblerModule::GetJumpSizeFromJSCallMode(mode);
-    if (mode == JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV) {
+    if (kungfu::AssemblerModule::IsCallNew(mode)) {
         Register thisRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         [[maybe_unused]] TempRegisterScope scope(assembler);
         Register tempArgcRegister = __ TempRegister();
         __ PushArgc(argcRegister, tempArgcRegister);
         __ Pushq(thisRegister);
-        jumpSize = 0;
-    }
-    if (jumpSize >= 0) {
-        intptr_t offset = AsmInterpretedFrame::GetCallSizeOffset(false) - AsmInterpretedFrame::GetSize(false);
-        __ Movq(static_cast<int>(jumpSize), Operand(rbp, static_cast<int32_t>(offset)));
     }
 
     Register declaredNumArgsRegister = __ AvailableRegister2();
@@ -344,7 +338,7 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         // Reload constpool and profileInfo to make sure gc map work normally
         __ Movq(Operand(tempRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);       // profileTypeInfo: r14
         __ Movq(Operand(methodRegister, Method::CONSTANT_POOL_OFFSET), rbx);           // constantPool: rbx
-        
+
         __ Movq(kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException, tempRegister);
         __ Movq(Operand(glueRegister, tempRegister, Times8, JSThread::GlueData::GetBCStubEntriesOffset(false)),
             tempRegister);
@@ -915,10 +909,10 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     Label dispatch;
     Label newObjectRangeReturn;
     __ Cmpq(0, jumpSizeRegister);
-    __ Je(&newObjectRangeReturn);
+    __ Jle(&newObjectRangeReturn);
 
     __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetBaseOffset(false)), spRegister);  // update sp
-    __ Addq(jumpSizeRegister, pcRegister);  // newPc
+    __ Addq(jumpSizeRegister, pcRegister);  // newPC
     Register temp = rax;
     Register opcodeRegister = rax;
     __ Movzbq(Operand(pcRegister, 0), opcodeRegister);
@@ -932,8 +926,6 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Jmp(bcStubRegister);
     }
 
-    auto jumpSize = kungfu::AssemblerModule::GetJumpSizeFromJSCallMode(
-        JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
     Label getHiddenThis;
     Label notUndefined;
     __ Bind(&newObjectRangeReturn);
@@ -943,7 +935,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     auto index = AsmInterpretedFrame::ReverseIndex::THIS_OBJECT_REVERSE_INDEX;
     __ Bind(&getHiddenThis);
     __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetBaseOffset(false)), spRegister);  // update sp
-    __ Addq(jumpSize, pcRegister);  // newPc
+    __ Subq(jumpSizeRegister, pcRegister);  // sub negative jmupSize
     __ Movzbq(Operand(pcRegister, 0), opcodeRegister);
     {
         __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetFpOffset(false)), rsp);   // resume rsp
@@ -970,7 +962,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Jb(&notEcmaObject);
         // acc is ecma object
         __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetBaseOffset(false)), spRegister);  // update sp
-        __ Addq(jumpSize, pcRegister);  // newPc
+        __ Subq(jumpSizeRegister, pcRegister);  // sub negative jmupSize
         __ Movzbq(Operand(pcRegister, 0), opcodeRegister);
         __ Jmp(&dispatch);
 

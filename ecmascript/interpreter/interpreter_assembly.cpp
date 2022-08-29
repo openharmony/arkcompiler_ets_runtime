@@ -363,7 +363,23 @@ void InterpreterAssembly::HandleJeqzImm16(
     }
 }
 
-void InterpreterAssembly::HandleJnezImm8(
+void InterpreterAssembly::HandleJeqzImm32(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t offset = static_cast<int32_t>(READ_INST_32_0());
+    LOG_INST() << "jeqz ->\t"
+                << "cond jmpz " << std::hex << offset;
+    if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+        (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
+        UPDATE_HOTNESS_COUNTER(offset);
+        DISPATCH_OFFSET(offset);
+    } else {
+        DISPATCH(JEQZ_IMM16);
+    }
+}
+
+void InterpreterAssembly::HandleJneqzImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
@@ -379,7 +395,7 @@ void InterpreterAssembly::HandleJnezImm8(
     }
 }
 
-void InterpreterAssembly::HandleJnezImm16(
+void InterpreterAssembly::HandleJneqzImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
@@ -392,6 +408,22 @@ void InterpreterAssembly::HandleJnezImm16(
         DISPATCH_OFFSET(offset);
     } else {
         DISPATCH(JNEZ_IMM16);
+    }
+}
+
+void InterpreterAssembly::HandleJneqzImm32(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t offset = static_cast<int32_t>(READ_INST_32_0());
+    LOG_INST() << "jnez ->\t"
+                << "cond jmpz " << std::hex << offset;
+    if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+        (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
+        UPDATE_HOTNESS_COUNTER(offset);
+        DISPATCH_OFFSET(offset);
+    } else {
+        DISPATCH(JNEZ_IMM32);
     }
 }
 

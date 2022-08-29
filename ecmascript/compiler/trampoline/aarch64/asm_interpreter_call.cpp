@@ -136,24 +136,12 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         __ Mov(Register(SP), tempRegister);
     }
 
-    auto jumpSize = kungfu::AssemblerModule::GetJumpSizeFromJSCallMode(mode);
-    if (mode == JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV) {
+    if (kungfu::AssemblerModule::IsCallNew(mode)) {
         Register thisRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         [[maybe_unused]] TempRegister1Scope scope(assembler);
         Register tempArgcRegister = __ TempRegister1();
         __ PushArgc(argcRegister, tempArgcRegister, currentSlotRegister);
         __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-        jumpSize = 0;
-    }
-
-    if (jumpSize >= 0) {
-        [[maybe_unused]] TempRegister1Scope scope(assembler);
-        Register temp = __ TempRegister1();
-        __ Mov(temp, Immediate(static_cast<int>(jumpSize)));
-        int64_t offset = static_cast<int64_t>(AsmInterpretedFrame::GetCallSizeOffset(false))
-            - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
-        ASSERT(offset < 0);
-        __ Stur(temp, MemoryOperand(Register(FP), offset));
     }
 
     Register declaredNumArgsRegister = __ AvailableRegister2();
@@ -643,7 +631,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     Label dispatch;
     __ Ldur(fp, MemoryOperand(sp, fpOffset));  // store fp for temporary
     __ Cmp(jumpSizeRegister, Immediate(0));
-    __ B(Condition::EQ, &newObjectRangeReturn);
+    __ B(Condition::LE, &newObjectRangeReturn);
     __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
 
     __ Add(pc, pc, Operand(jumpSizeRegister, LSL, 0));
@@ -656,7 +644,6 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Br(bcStub);
     }
 
-    auto jumpSize = kungfu::AssemblerModule::GetJumpSizeFromJSCallMode(JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
     Label getHiddenThis;
     Label notUndefined;
     __ Bind(&newObjectRangeReturn);
@@ -670,7 +657,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
         __ Mov(rsp, fp);  // resume rsp
         __ Ldur(ret, MemoryOperand(rsp, thisOffset));  // update acc
-        __ Add(pc, pc, Immediate(jumpSize));
+        __ Sub(pc, pc, jumpSizeRegister); // sub negative jmupSize
         __ Ldrb(opcode, MemoryOperand(pc, 0));
         __ Add(bcStub, glueRegister, Operand(opcode, UXTW, SHIFT_OF_FRAMESLOT));
         __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
@@ -693,7 +680,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ B(Condition::LO, &notEcmaObject);
         // acc is ecma object
         __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
-        __ Add(pc, pc, Immediate(jumpSize));
+        __ Sub(pc, pc, jumpSizeRegister); // sub negative jmupSize
         __ Ldrb(opcode, MemoryOperand(pc, 0));
         __ B(&dispatch);
 
@@ -1109,7 +1096,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     // 32: get high 32bit
     __ Lsr(operatorRegister, operatorRegister, 32);
     __ Add(pcRegister, operatorRegister, pcRegister);
-    __ Add(pcRegister, pcRegister, Immediate(BytecodeInstruction::Size(BytecodeInstruction::Format::V8_V8)));
+    __ Add(pcRegister, pcRegister, Immediate(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8)));
     // 2 : pc and fp
     __ Stp(fpRegister, pcRegister, MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // jumpSizeAfterCall

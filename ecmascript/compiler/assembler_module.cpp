@@ -118,50 +118,37 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
     }
 }
 
-int AssemblerModule::GetJumpSizeFromJSCallMode(JSCallMode mode)
+bool AssemblerModule::IsCallNew(JSCallMode mode)
 {
     switch (mode) {
         case JSCallMode::CALL_ARG0:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8);
         case JSCallMode::CALL_THIS_ARG0:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8);
         case JSCallMode::DEPRECATED_CALL_ARG0:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM8);
         case JSCallMode::CALL_ARG1:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8);
         case JSCallMode::CALL_THIS_ARG1:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8);
         case JSCallMode::DEPRECATED_CALL_ARG1:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM8);
         case JSCallMode::CALL_ARG2:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8);
         case JSCallMode::CALL_THIS_ARG2:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8);
         case JSCallMode::DEPRECATED_CALL_ARG2:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8);
         case JSCallMode::CALL_ARG3:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8);
         case JSCallMode::CALL_THIS_ARG3:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8_V8);
         case JSCallMode::DEPRECATED_CALL_ARG3:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8_V8);
         case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8);
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_WITH_ARGV:
-        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8);
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
-            return -1;
+            return false;
+        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
+            return true;
         default:
             UNREACHABLE();
     }
-    return 0;
+    return false;
 }
 
 bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)

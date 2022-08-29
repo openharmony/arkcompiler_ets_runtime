@@ -338,7 +338,7 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     va_list args;
     va_start(args, fmtMessageId);
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
-    std::cerr << result << std::endl;
+    LOG_ECMA(DEBUG) << result;
     va_end(args);
 }
 
@@ -348,7 +348,7 @@ void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
     va_list args;
     va_start(args, fmtMessageId);
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
-    std::cerr << result << std::endl;
+    LOG_FULL(FATAL) << result;
     va_end(args);
     UNREACHABLE();
 }

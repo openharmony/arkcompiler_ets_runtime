@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/stub_builder-inl.h"
 
+#include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -569,7 +570,7 @@ GateRef StubBuilder::CallGetterHelper(GateRef glue, GateRef receiver, GateRef ho
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, getter, Int32(0),
+            auto retValue = JSCallDispatch(glue, getter, Int32(0), 0,
                                            JSCallMode::CALL_GETTER, { receiver });
             Label noPendingException(env);
             Branch(HasPendingException(glue), &exit, &noPendingException);
@@ -617,7 +618,7 @@ GateRef StubBuilder::CallSetterHelper(GateRef glue, GateRef receiver, GateRef ac
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, setter, Int32(1),
+            auto retValue = JSCallDispatch(glue, setter, Int32(1), 0,
                                            JSCallMode::CALL_SETTER, { receiver, value });
             Label noPendingException(env);
             Branch(HasPendingException(glue), &exit, &noPendingException);
@@ -3746,7 +3747,7 @@ GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut
     return ret;
 }
 
-GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
+GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                                     JSCallMode mode, std::initializer_list<GateRef> args)
 {
     auto env = GetEnvironment();
@@ -3763,7 +3764,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // save pc
     SavePcIfNeeded(glue);
     GateRef bitfield = 0;
-    if (mode != JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV) {
+    if (!AssemblerModule::IsCallNew(mode)) {
         Branch(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
         Bind(&funcIsHeapObject);
         GateRef hclass = LoadHClass(func);
@@ -3871,7 +3872,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Bind(&methodNotNative);
     Label funcIsClassConstructor(env);
     Label funcNotClassConstructor(env);
-    if (mode != JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV) {
+    if (!AssemblerModule::IsCallNew(mode)) {
         Branch(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &funcNotClassConstructor);
         Bind(&funcIsClassConstructor);
         {
@@ -3964,6 +3965,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             }
         }
         Bind(&methodNotAot);
+        if (jumpSize != 0) {
+            SaveJumpSizeIfNeeded(glue, jumpSize);
+        }
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
             case JSCallMode::CALL_ARG0:
