@@ -623,7 +623,7 @@ int64_t JSDate::GetLocalOffsetFromOS([[maybe_unused]] int64_t timeMs, bool isLoc
 #else
     TIME_ZONE_INFORMATION tmp;
     GetTimeZoneInformation(&tmp);
-    int64_t res = tmp.Bias / SEC_PER_MINUTE;
+    int64_t res = -tmp.Bias;
     return res;
 #endif
 }
