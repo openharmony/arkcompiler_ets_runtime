@@ -77,6 +77,7 @@ class CjsModuleCache;
 class SlowRuntimeStub;
 class RequireManager;
 struct CJSInfo;
+class JSPatchManager;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -418,6 +419,11 @@ public:
 
     // For Internal Native MethodLiteral.
     JSTaggedValue GetMethodByIndex(MethodIndex idx);
+
+    JSPatchManager *GetPatchManager() const
+    {
+        return patchManager_;
+    }
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
@@ -529,6 +535,9 @@ private:
     // For Native MethodLiteral
     static void *InternalMethodTable[static_cast<uint8_t>(MethodIndex::METHOD_END)];
     CVector<JSTaggedValue> internalNativeMethods_;
+
+    // For repair patch.
+    JSPatchManager *patchManager_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;

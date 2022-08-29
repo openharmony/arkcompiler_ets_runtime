@@ -450,6 +450,7 @@ ecma_source = [
   "ecmascript/jspandafile/scope_info_extractor.cpp",
   "ecmascript/jspandafile/method_literal.cpp",
   "ecmascript/jspandafile/program_object.cpp",
+  "ecmascript/jspandafile/js_patch_manager.cpp",
   "ecmascript/js_api/js_api_arraylist.cpp",
   "ecmascript/js_api/js_api_arraylist_iterator.cpp",
   "ecmascript/js_api/js_api_deque.cpp",

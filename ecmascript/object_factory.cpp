@@ -142,7 +142,7 @@ ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap)
 JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, uint8_t builtinId)
 {
     uint32_t numArgs = 2;  // function object and this
-    auto method = NewJSMethod(nullptr);
+    auto method = NewMethod(nullptr);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
     if (builtinId != INVALID_BUILTINS_ID) {
@@ -1450,11 +1450,11 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(const void *func, co
     return function;
 }
 
-JSHandle<Method> ObjectFactory::NewJSMethod(const MethodLiteral *methodLiteral)
+JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateOldOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetJSMethodClass().GetTaggedObject()));
+        JSHClass::Cast(thread_->GlobalConstants()->GetMethodClass().GetTaggedObject()));
     JSHandle<Method> method(thread_, header);
     if (methodLiteral != nullptr) {
         method->SetCallField(methodLiteral->GetCallField());

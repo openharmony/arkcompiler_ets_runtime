@@ -1180,6 +1180,8 @@ public:
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
+    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
+    static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
 private:
     static int vmCount_;
     static bool initialize_;

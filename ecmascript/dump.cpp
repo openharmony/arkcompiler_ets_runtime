@@ -1347,6 +1347,9 @@ void JSFunction::Dump(std::ostream &os) const
     os << " - Module: ";
     GetModule().Dump(os);
     os << "\n";
+    os << " - Method: ";
+    GetMethod().Dump(os);
+    os << "\n";
     JSObject::Dump(os);
 }
 
@@ -3330,6 +3333,9 @@ void JSFunctionBase::Dump(std::ostream &os) const
 
 void Method::Dump(std::ostream &os) const
 {
+    os << " - MethodName: ";
+    os << GetMethodName();
+    os << "\n";
     os << " - ConstantPool: ";
     GetConstantPool().Dump(os);
     os << "\n";

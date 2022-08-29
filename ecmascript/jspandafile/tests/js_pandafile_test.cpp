@@ -116,7 +116,7 @@ HWTEST_F_L0(JSPandaFileTest, GetMethodLiterals_GetNumMethods)
     EXPECT_EQ(methodNum, 3U); // 3 : number of methods
 }
 
-HWTEST_F_L0(JSPandaFileTest, SetMethodToMap_FindMethods)
+HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
 {
     const char *source = R"(
         .function void foo1() {}
@@ -142,9 +142,9 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodToMap_FindMethods)
     MethodLiteral method1(pf, methodId[0]);
     MethodLiteral method2(pf, methodId[1]);
     MethodLiteral method3(pf, methodId[2]);
-    pf->SetMethodToMap(&method1);
-    pf->SetMethodToMap(&method2);
-    pf->SetMethodToMap(&method3);
+    pf->SetMethodLiteralToMap(&method1);
+    pf->SetMethodLiteralToMap(&method2);
+    pf->SetMethodLiteralToMap(&method3);
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[0]).c_str(), "foo1");
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[1]).c_str(), "foo2");
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[2]).c_str(), "foo3");

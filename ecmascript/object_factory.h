@@ -428,7 +428,7 @@ public:
                                                  MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSFunctionByDynClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
-    JSHandle<Method> NewJSMethod(const MethodLiteral *methodLiteral);
+    JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral);
 
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,

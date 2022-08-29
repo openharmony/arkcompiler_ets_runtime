@@ -330,7 +330,7 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex();
     auto fileHash = jsPandaFile->GetFileUniqId();
     auto mainEntry = GetAOTFuncEntry(fileHash, mainFuncMethodId);
-    MethodLiteral *mainMethod = jsPandaFile->FindMethods(mainFuncMethodId);
+    MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
     mainFunc->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
