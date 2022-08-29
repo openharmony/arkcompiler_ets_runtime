@@ -194,6 +194,9 @@ DispatchResponse RuntimeImpl::GetProperties(const GetPropertiesParams &params,
     if (value->IsArrayBuffer()) {
         Local<ArrayBufferRef> arrayBufferRef(value);
         AddTypedArrayRefs(arrayBufferRef, outPropertyDesc);
+    } else if (value->IsSharedArrayBuffer()) {
+        Local<ArrayBufferRef> arrayBufferRef(value);
+        AddSharedArrayBufferRefs(arrayBufferRef, outPropertyDesc);
     } else if (value->IsMapIterator()) {
         GetMapIteratorValue(value, outPropertyDesc);
     } else if (value->IsSetIterator()) {
@@ -284,6 +287,29 @@ void RuntimeImpl::AddTypedArrayRefs(Local<ArrayBufferRef> arrayBufferRef,
         AddTypedArrayRef<BigInt64ArrayRef>(arrayBufferRef, typedArrayLength, "[[BigInt64Array]]", outPropertyDesc);
         AddTypedArrayRef<BigUint64ArrayRef>(arrayBufferRef, typedArrayLength, "[[BigUint64Array]]", outPropertyDesc);
     }
+}
+
+void RuntimeImpl::AddSharedArrayBufferRefs(Local<ArrayBufferRef> arrayBufferRef,
+    std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
+{
+    int32_t arrayBufferByteLength = arrayBufferRef->ByteLength(vm_);
+    int32_t typedArrayLength = arrayBufferByteLength;
+    AddTypedArrayRef<Int8ArrayRef>(arrayBufferRef, typedArrayLength, "[[Int8Array]]", outPropertyDesc);
+    AddTypedArrayRef<Uint8ArrayRef>(arrayBufferRef, typedArrayLength, "[[Uint8Array]]", outPropertyDesc);
+
+    if ((arrayBufferByteLength % NumberSize::BYTES_OF_16BITS) == 0) {
+        typedArrayLength = arrayBufferByteLength / NumberSize::BYTES_OF_16BITS;
+        AddTypedArrayRef<Int16ArrayRef>(arrayBufferRef, typedArrayLength, "[[Int16Array]]", outPropertyDesc);
+    }
+
+    if ((arrayBufferByteLength % NumberSize::BYTES_OF_32BITS) == 0) {
+        typedArrayLength = arrayBufferByteLength / NumberSize::BYTES_OF_32BITS;
+        AddTypedArrayRef<Int32ArrayRef>(arrayBufferRef, typedArrayLength, "[[Int32Array]]", outPropertyDesc);
+    }
+    Local<JSValueRef> jsValueRef;
+    jsValueRef = NumberRef::New(vm_, arrayBufferByteLength);
+    SetKeyValue(jsValueRef, outPropertyDesc, "[[ArrayBufferByteLength]]");
+    SetKeyValue(jsValueRef, outPropertyDesc, "byteLength");
 }
 
 template <typename TypedArrayRef>

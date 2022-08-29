@@ -78,6 +78,8 @@ private:
         const char* name, std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
     void AddTypedArrayRefs(Local<ArrayBufferRef> arrayBufferRef,
         std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void AddSharedArrayBufferRefs(Local<ArrayBufferRef> arrayBufferRef,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
     void GetProtoOrProtoType(Local<JSValueRef> value, bool isOwn, bool isAccessorOnly,
                              std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
     void GetAdditionalProperties(Local<JSValueRef> value,
