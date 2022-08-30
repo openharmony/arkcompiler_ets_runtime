@@ -641,6 +641,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(Promise::GetSpecies),
     reinterpret_cast<uintptr_t>(BuiltinsPromiseJob::PromiseReactionJob),
     reinterpret_cast<uintptr_t>(BuiltinsPromiseJob::PromiseResolveThenableJob),
+    reinterpret_cast<uintptr_t>(BuiltinsPromiseJob::DynamicImportJob),
     reinterpret_cast<uintptr_t>(Intl::GetCanonicalLocales),
     reinterpret_cast<uintptr_t>(Locale::LocaleConstructor),
     reinterpret_cast<uintptr_t>(Locale::Maximize),

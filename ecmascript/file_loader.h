@@ -425,7 +425,10 @@ public:
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);
     void LoadSnapshotFile();
     kungfu::ArkStackMapParser* GetStackMapParser() const;
+    static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
+    static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
+
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void RuntimeRelocate();
 private:

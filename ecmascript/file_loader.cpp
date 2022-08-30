@@ -330,7 +330,7 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex();
     auto fileHash = jsPandaFile->GetFileUniqId();
     auto mainEntry = GetAOTFuncEntry(fileHash, mainFuncMethodId);
-    MethodLiteral *mainMethod = jsPandaFile->FindMethods(mainFuncMethodId);
+    MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
     mainFunc->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
@@ -462,6 +462,30 @@ FileLoader::FileLoader(EcmaVM *vm) : vm_(vm), factory_(vm->GetFactory())
 {
     bool enableLog = vm->GetJSOptions().WasSetCompilerLogOption();
     arkStackMapParser_ = new kungfu::ArkStackMapParser(enableLog);
+}
+
+JSTaggedValue FileLoader::GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    CString relativePath = ConvertToString(relativePathVal);
+    CString absPath;
+    if (!GetAbsolutePath(relativePath, absPath)) {
+        LOG_FULL(FATAL) << "Get Absolute Path failed";
+        return JSTaggedValue::Hole();
+    }
+    JSTaggedValue absPathVal = factory->NewFromUtf8(absPath).GetTaggedValue();
+    return absPathVal;
+}
+
+bool FileLoader::GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr)
+{
+    std::string relativePath = CstringConvertToStdString(relativePathCstr);
+    std::string absPath = "";
+    if (GetAbsolutePath(relativePath, absPath)) {
+        absPathCstr = ConvertToString(absPath);
+        return true;
+    }
+    return false;
 }
 
 bool FileLoader::GetAbsolutePath(const std::string &relativePath, std::string &absPath)

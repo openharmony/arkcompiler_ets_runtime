@@ -232,6 +232,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(OptSuperCall)                       \
     V(LdBigInt)                           \
     V(ToNumeric)                          \
+    V(DynamicImport)                      \
     V(CreateAsyncGeneratorObj)            \
     V(AsyncGeneratorResolve)              \
     V(DefineAsyncGeneratorFunc)           \
@@ -439,6 +440,7 @@ private:
     static inline JSTaggedValue RuntimeStGlobalVar(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
                                                    const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &value);
+    static inline JSTaggedValue RuntimeDynamicImport(JSThread *thread, JSTaggedValue specifier);
     static inline JSTaggedValue RuntimeToNumeric(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeEqDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                              const JSHandle<JSTaggedValue> &right);

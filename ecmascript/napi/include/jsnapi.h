@@ -846,8 +846,11 @@ public:
 class PUBLIC_API MapRef : public ObjectRef {
 public:
     int32_t GetSize();
+    Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
     Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+    static Local<MapRef> New(const EcmaVM *vm);
+    void Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
 };
 
 class PUBLIC_API SetRef : public ObjectRef {
@@ -1177,6 +1180,8 @@ public:
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
+    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
+    static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
 private:
     static int vmCount_;
     static bool initialize_;

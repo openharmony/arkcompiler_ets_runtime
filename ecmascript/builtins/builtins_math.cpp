@@ -590,8 +590,8 @@ JSTaggedValue BuiltinsMath::Random([[maybe_unused]] EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     Float64Union dataU;
     uint64_t val;
-    uint64_t* randomState = RandomGenerator::GetRandomState();
-    val = RandomGenerator::XorShift64(randomState);
+    uint64_t &randomState = RandomGenerator::GetRandomState();
+    val = RandomGenerator::XorShift64(&randomState);
     dataU.u64 = ((uint64_t)base::USE_LEFT << base::LEFT52) | (val >> base::RIGHT12);
     return GetTaggedDouble(dataU.d - 1.0);
 }

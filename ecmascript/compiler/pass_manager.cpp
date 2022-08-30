@@ -41,7 +41,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     TSManager *tsManager = vm_->GetTSManager();
     uint32_t mainMethodIndex = bytecodeInfo.jsPandaFile->GetMainMethodIndex();
     uint32_t skipMethodNum = 0;
-    auto mainMethod = bytecodeInfo.jsPandaFile->FindMethods(mainMethodIndex);
+    auto mainMethod = bytecodeInfo.jsPandaFile->FindMethodLiteral(mainMethodIndex);
     bool enableLog = !log_->NoneMethod();
 
     bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableLog, aotModule, &cmpCfg, tsManager,

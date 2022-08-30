@@ -501,6 +501,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case TONUMERIC_PREF_V8:
             LowerToNumeric(gate, glue);
             break;
+        case DYNAMICIMPORT_PREF_V8:
+            LowerDynamicImport(gate, glue);
+            break;
         case LDMODULEVAR_PREF_ID32_IMM8:
             LowerLdModuleVar(gate, glue, jsFunc);
             break;
@@ -1612,6 +1615,16 @@ void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleToNumericPrefV8)));
     const int id = RTSTUB_ID(ToNumeric);
+    // 1: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0)});
+    ReplaceHirToCall(gate, newGate);
+}
+
+void SlowPathLowering::LowerDynamicImport(GateRef gate, GateRef glue)
+{
+    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDynamicImportPrefV8)));
+    const int id = RTSTUB_ID(DynamicImport);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0)});

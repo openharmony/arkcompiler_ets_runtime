@@ -4144,6 +4144,15 @@ DECLARE_ASM_HANDLER(HandleDefineAsyncGeneratorFuncPrefId16Imm16V8)
     }
 }
 
+DECLARE_ASM_HANDLER(HandleDynamicImportPrefV8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef v0 = ReadInst8_1(pc);
+    GateRef specifier = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { specifier });
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_V8));
+}
+
 DECLARE_ASM_HANDLER(HandleCreateAsyncGeneratorObjPrefV8)
 {
     auto env = GetEnvironment();

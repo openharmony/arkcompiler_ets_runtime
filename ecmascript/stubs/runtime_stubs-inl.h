@@ -1165,6 +1165,11 @@ JSTaggedValue RuntimeStubs::RuntimeToNumeric(JSThread *thread, const JSHandle<JS
     return JSTaggedValue::ToNumeric(thread, value).GetTaggedValue();
 }
 
+JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, JSTaggedValue specifier)
+{
+    return SlowRuntimeStub::DynamicImport(thread, specifier);
+}
+
 JSTaggedValue RuntimeStubs::RuntimeEqDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                          const JSHandle<JSTaggedValue> &right)
 {

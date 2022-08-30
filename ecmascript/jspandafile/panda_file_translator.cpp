@@ -81,7 +81,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
                 translatedCode.insert(insns);
                 TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral);
             }
-            jsPandaFile->SetMethodToMap(methodLiteral);
+            jsPandaFile->SetMethodLiteralToMap(methodLiteral);
         });
     }
 }
@@ -95,27 +95,28 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
         JSThread *thread = vm->GetJSThread();
         EcmaHandleScope handleScope(thread);
 
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-
-        uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex();
-        auto methodLiteral = jsPandaFile->FindMethods(mainMethodIndex);
-        JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
-
-        JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-        JSHandle<JSFunction> mainFunc =
-            factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::BASE_CONSTRUCTOR);
-
-        program->SetMainFunction(thread, mainFunc.GetTaggedValue());
-
+        // Parse constpool.
         JSTaggedValue constpool = vm->FindConstpool(jsPandaFile);
         if (constpool.IsHole()) {
             constpool = ParseConstPool(vm, jsPandaFile);
             vm->SetConstpool(jsPandaFile, constpool);
         }
 
-        method->SetConstantPool(thread, constpool);
-    }
+        // Generate Program.
+        uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex();
+        auto methodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
+        if (methodLiteral == nullptr) {
+            program->SetMainFunction(thread, JSTaggedValue::Undefined());
+        } else {
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
+            JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(vm->GetGlobalEnv()->GetFunctionClassWithProto());
+            JSHandle<JSFunction> mainFunc =
+                factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::BASE_CONSTRUCTOR);
 
+            program->SetMainFunction(thread, mainFunc.GetTaggedValue());
+            method->SetConstantPool(thread, constpool);
+        }
+    }
     return program;
 }
 
@@ -133,8 +134,6 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
         JSPandaFileManager::GetInstance(), true);
     constpool->Set(thread, 0, jsPandaFilePointer.GetTaggedValue());
 
-    const panda_file::File *pf = jsPandaFile->GetPandaFile();
-
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
     JSHandle<JSHClass> normalDynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
     JSHandle<JSHClass> asyncDynclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
@@ -142,6 +141,7 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
     JSHandle<JSHClass> asyncGeneratorDynclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
 
     const CUnorderedMap<uint32_t, uint64_t> &constpoolMap = jsPandaFile->GetConstpoolMap();
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     auto fileLoader = vm->GetFileLoader();
 
@@ -166,10 +166,9 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
                                                                MemSpaceType::OLD_SPACE);
             constpool->Set(thread, value.GetConstpoolIndex(), JSTaggedValue(string));
         } else if (value.GetConstpoolType() == ConstPoolType::BASE_FUNCTION) {
-            panda_file::File::EntityId id(it.first);
-            MethodLiteral *methodLiteral = jsPandaFile->FindMethods(it.first);
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
-            JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
 
             JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(
                 method, dynclass, FunctionKind::BASE_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
@@ -179,10 +178,9 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::NC_FUNCTION) {
-            panda_file::File::EntityId id(it.first);
-            MethodLiteral *methodLiteral = jsPandaFile->FindMethods(it.first);
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
-            JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
 
             JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(
                 method, normalDynclass, FunctionKind::NORMAL_FUNCTION, MemSpaceType::OLD_SPACE);
@@ -192,10 +190,9 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::GENERATOR_FUNCTION) {
-            panda_file::File::EntityId id(it.first);
-            MethodLiteral *methodLiteral = jsPandaFile->FindMethods(it.first);
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
-            JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
 
             JSHandle<JSFunction> jsFunc =
                 factory->NewJSFunctionByDynClass(method, generatorDynclass, FunctionKind::GENERATOR_FUNCTION);
@@ -213,10 +210,9 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::ASYNC_GENERATOR_FUNCTION) {
-            panda_file::File::EntityId id(it.first);
-            MethodLiteral *methodLiteral = jsPandaFile->FindMethods(it.first);
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
-            JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
 
             JSHandle<JSFunction> jsFunc =
                 factory->NewJSFunctionByDynClass(method, asyncGeneratorDynclass,
@@ -224,10 +220,9 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::ASYNC_FUNCTION) {
-            panda_file::File::EntityId id(it.first);
-            MethodLiteral *methodLiteral = jsPandaFile->FindMethods(it.first);
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
-            JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
 
             JSHandle<JSFunction> jsFunc =
                 factory->NewJSFunctionByDynClass(method, asyncDynclass, FunctionKind::ASYNC_FUNCTION);
@@ -237,18 +232,16 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::CLASS_FUNCTION) {
-            panda_file::File::EntityId id(it.first);
-            MethodLiteral *methodLiteral = jsPandaFile->FindMethods(it.first);
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
 
-            JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
             method->SetConstantPool(thread, constpool.GetTaggedValue());
             constpool->Set(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::METHOD) {
-            panda_file::File::EntityId id(it.first);
-            MethodLiteral *methodLiteral = jsPandaFile->FindMethods(it.first);
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
-            JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
 
             JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(
                 method, normalDynclass, FunctionKind::NORMAL_FUNCTION, MemSpaceType::OLD_SPACE);
