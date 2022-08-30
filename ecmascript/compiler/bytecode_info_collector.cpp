@@ -644,7 +644,7 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
 // reuse prefix 8bits to store slotid
 void BytecodeInfoCollector::UpdateICOffset(MethodLiteral* method, uint8_t *pc)
 {
-    uint8_t offset = MethodLiteral::MAX_SLOT_SIZE;
+    uint8_t offset = MethodLiteral::INVALID_IC_SLOT;
     auto opcode = static_cast<EcmaOpcode>(*pc);
     switch (opcode) {
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
@@ -684,7 +684,7 @@ void BytecodeInfoCollector::UpdateICOffset(MethodLiteral* method, uint8_t *pc)
         case EcmaOpcode::GREATER_IMM8_V8:
             // fall through
         case EcmaOpcode::GREATEREQ_IMM8_V8:
-            offset = method->UpdateSlotSize(1);
+            offset = method->UpdateSlotSizeWith8Bit(1);
             break;
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8_V8:
             // fall through
@@ -711,7 +711,7 @@ void BytecodeInfoCollector::UpdateICOffset(MethodLiteral* method, uint8_t *pc)
         case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16_V8:
             // fall through
         case EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8:
-            offset = method->UpdateSlotSize(2); // 2: occupy two ic slot
+            offset = method->UpdateSlotSizeWith8Bit(2); // 2: occupy two ic slot
             break;
         default:
             return;

@@ -1403,7 +1403,7 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
 // reuse prefix 8bits to store slotid
 void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *pc)
 {
-    uint8_t offset = MethodLiteral::MAX_SLOT_SIZE;
+    uint8_t offset = MethodLiteral::INVALID_IC_SLOT;
     auto opcode = static_cast<EcmaOpcode>(*pc);
     switch (opcode) {
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
@@ -1447,7 +1447,7 @@ void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *
         case EcmaOpcode::GREATER_IMM8_V8:
             U_FALLTHROUGH;
         case EcmaOpcode::GREATEREQ_IMM8_V8:
-            offset = methodLiteral->UpdateSlotSize(1);
+            offset = methodLiteral->UpdateSlotSizeWith8Bit(1);
             break;
         // case EcmaOpcode::LDOBJBYVALUE_IMM8_V8_V8:
         //     U_FALLTHROUGH;
@@ -1474,7 +1474,7 @@ void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *
         // case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16_V8:
         //     U_FALLTHROUGH;
         case EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8:
-            offset = methodLiteral->UpdateSlotSize(2); // 2: occupy two ic slot
+            offset = methodLiteral->UpdateSlotSizeWith8Bit(2); // 2: occupy two ic slot
             break;
         default:
             return;
