@@ -379,7 +379,7 @@ void InterpreterAssembly::HandleJeqzImm32(
     }
 }
 
-void InterpreterAssembly::HandleJneqzImm8(
+void InterpreterAssembly::HandleJnezImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
@@ -395,7 +395,7 @@ void InterpreterAssembly::HandleJneqzImm8(
     }
 }
 
-void InterpreterAssembly::HandleJneqzImm16(
+void InterpreterAssembly::HandleJnezImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
@@ -411,7 +411,7 @@ void InterpreterAssembly::HandleJneqzImm16(
     }
 }
 
-void InterpreterAssembly::HandleJneqzImm32(
+void InterpreterAssembly::HandleJnezImm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {

@@ -31,7 +31,11 @@
 #include "ecmascript/tagged_hash_table.h"
 
 // TODO
+#ifdef NEW_INSTRUCTION_DEFINE
+#include "libpandafile/bytecode_instruction-inl.h"
+#else
 #include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
+#endif
 
 namespace panda::ecmascript::kungfu {
 #if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
@@ -3278,7 +3282,7 @@ DECLARE_ASM_HANDLER(HandleJeqzImm32)
     DISPATCH_BAK(JUMP, INT_PTR(JEQZ_IMM32));
 }
 
-DECLARE_ASM_HANDLER(HandleJneqzImm8)
+DECLARE_ASM_HANDLER(HandleJnezImm8)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_ANY(), profileTypeInfo);
@@ -3320,7 +3324,7 @@ DECLARE_ASM_HANDLER(HandleJneqzImm8)
     DISPATCH_BAK(JUMP, INT_PTR(JNEZ_IMM8));
 }
 
-DECLARE_ASM_HANDLER(HandleJneqzImm16)
+DECLARE_ASM_HANDLER(HandleJnezImm16)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_ANY(), profileTypeInfo);
@@ -3362,7 +3366,7 @@ DECLARE_ASM_HANDLER(HandleJneqzImm16)
     DISPATCH_BAK(JUMP, INT_PTR(JNEZ_IMM16));
 }
 
-DECLARE_ASM_HANDLER(HandleJneqzImm32)
+DECLARE_ASM_HANDLER(HandleJnezImm32)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_ANY(), profileTypeInfo);
