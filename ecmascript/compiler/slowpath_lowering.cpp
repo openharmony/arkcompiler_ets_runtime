@@ -73,7 +73,6 @@ UseIterator SlowPathLowering::ReplaceHirControlGate(const UseIterator &useIt, Ga
     return next;
 }
 
-// depends on the construction of JSgates in BytecodeCircuitBuilder
 void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
                                           const std::vector<GateRef> &successControl,
                                           const std::vector<GateRef> &exceptionControl,
@@ -88,41 +87,23 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
     auto uses = acc_.Uses(hir);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         const OpCode op = acc_.GetOpCode(*useIt);
-        // replace HIR:IF_SUCCESS/IF_EXCEPTION with control flow in Label successExit/failExit of MIR Circuit
         if (op == OpCode::IF_SUCCESS) {
             useIt = ReplaceHirControlGate(useIt, successControl[0]);
         } else if (op == OpCode::IF_EXCEPTION) {
             useIt = ReplaceHirControlGate(useIt, exceptionControl[0], noThrow);
-        // change depend flow in catch block from HIR:JS_BYTECODE to depend flow in MIR Circuit
-        } else if (op == OpCode::DEPEND_SELECTOR) {
-            if (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*useIt, 0), useIt.GetIndex() - 1)) == OpCode::IF_EXCEPTION) {
+        } else if (acc_.IsValueIn(useIt)) {
+            useIt = acc_.ReplaceIn(useIt, outir);
+        } else if (acc_.IsDependIn(useIt)) {
+            if (acc_.IsExceptionState(useIt)) {
                 useIt = noThrow ? acc_.DeleteExceptionDep(useIt)
                                 : acc_.ReplaceIn(useIt, exceptionControl[1]);
-            } else {
-                useIt = acc_.ReplaceIn(useIt, successControl[1]);
-            }
-        } else if (op == OpCode::DEPEND_RELAY) {
-            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION) {
+            } else if (op == OpCode::DEPEND_RELAY && acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION) {
                 useIt = acc_.ReplaceIn(useIt, exceptionControl[1]);
             } else {
                 useIt = acc_.ReplaceIn(useIt, successControl[1]);
             }
-        // replace normal depend
-        } else if (op == OpCode::JS_BYTECODE && useIt.GetIndex() == 1) {
-            useIt = acc_.ReplaceIn(useIt, successControl[1]);
-        } else if (op == OpCode::RUNTIME_CALL && useIt.GetIndex() == 0) {
-            useIt = acc_.ReplaceIn(useIt, successControl[1]);
-        // if no catch block, just throw exception(RETURN)
-        } else if (op == OpCode::RETURN &&
-                   acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION) {
-            useIt = noThrow ? acc_.DeleteExceptionDep(useIt)
-                            : acc_.ReplaceIn(useIt, exceptionControl[1]);
-        // if hir isThrow
-        } else if (op != OpCode::VALUE_SELECTOR && useIt.GetIndex() == 1 && !acc_.IsValueIn(*useIt, useIt.GetIndex())) {
-            useIt = acc_.ReplaceIn(useIt, successControl[1]);
-        // replace data flow with data output in label successExit(incluing JSgates and phigates)
         } else {
-            useIt = acc_.ReplaceIn(useIt, outir);
+            UNREACHABLE();
         }
     }
     acc_.DeleteGate(hir);

@@ -107,8 +107,11 @@ class VerifierPass {
 public:
     bool Run(PassData* data, bool enableLog)
     {
-        Verifier::Run(data->GetCircuit(), enableLog);
-        return true;
+        bool isQualified = Verifier::Run(data->GetCircuit(), enableLog);
+        if (!isQualified) {
+            std::abort();
+        }
+        return isQualified;
     }
 };
 
