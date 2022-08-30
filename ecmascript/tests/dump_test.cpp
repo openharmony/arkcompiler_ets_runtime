@@ -1262,6 +1262,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_ITERATOR:
+            case JSType::JS_ASYNCITERATOR:
             case JSType::FREE_OBJECT_WITH_ONE_FIELD:
             case JSType::FREE_OBJECT_WITH_NONE_FIELD:
             case JSType::FREE_OBJECT_WITH_TWO_FIELD:

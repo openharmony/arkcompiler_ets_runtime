@@ -118,6 +118,7 @@ namespace panda::ecmascript {
     V(Trystobjprop)                 \
     V(GetTemplateObject)            \
     V(GetIterator)                  \
+    V(GetAsyncIterator)             \
     V(ThrowIfNotObject)             \
     V(ThrowThrowNotExists)          \
     V(CreateObjectWithExcludedKeys) \
@@ -319,6 +320,11 @@ namespace panda::ecmascript {
     V(Iterator, Throw)                        \
     V(Iterator, Return)                       \
     V(Iterator, GetObj)                       \
+    V(AsyncIterator, Constructor)             \
+    V(AsyncIterator, Next)                    \
+    V(AsyncIterator, Throw)                   \
+    V(AsyncIterator, Return)                  \
+    V(AsyncIterator, GetObj)                  \
     V(Json, Parse)                            \
     V(Json, Stringify)                        \
     V(Map, Constructor)                       \
