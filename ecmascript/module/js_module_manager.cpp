@@ -26,6 +26,10 @@
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/require/js_cjs_module.h"
 
+#ifdef PANDA_TARGET_WINDOWS
+#include <algorithm>
+#endif
+
 namespace panda::ecmascript {
 ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 {
@@ -293,6 +297,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(std::string 
         return HostResolveImportedModule(moduleFullname.c_str());
     } else {
         // mode == true buffer
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
         ResolveBufferCallback resolveBufferCallback = thread->GetEcmaVM()->GetResolveBufferCallback();
         if (resolveBufferCallback != nullptr) {
             std::vector<uint8_t> data = resolveBufferCallback(baseFilename, moduleFilename);
@@ -305,6 +310,22 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(std::string 
             return HostResolveImportedModule(data.data(),
                 size, moduleFullname.c_str());
         }
+#else
+        ResolvePathCallback resolvePathCallback = thread->GetEcmaVM()->GetResolvePathCallback();
+        std::string modulePath = moduleFilename;
+#ifdef PANDA_TARGET_WINDOWS
+        replace(modulePath.begin(), modulePath.end(), '/', '\\');
+#endif
+        if (resolvePathCallback != nullptr) {
+            moduleFullname = resolvePathCallback(baseFilename, modulePath);
+            if (moduleFullname == "") {
+                LOG_FULL(FATAL) << "dirPath: " << baseFilename << "\n" << " requestPath: " << modulePath << "\n"
+                                << " moduleRequest callbackModuleName is hole failed";
+                UNREACHABLE();
+            }
+            return HostResolveImportedModule(moduleFullname.c_str());
+        }
+#endif
         return JSHandle<SourceTextModule>(thread, JSTaggedValue::Undefined());
     }
 }
