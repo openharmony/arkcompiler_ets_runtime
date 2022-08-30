@@ -305,7 +305,7 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncGeneratorResolve(JSThread *thread, JSHan
 
     JSHandle<JSAsyncGeneratorObject> asyncGeneratorObjHandle(asyncFuncObj);
     JSHandle<JSTaggedValue> valueHandle(value);
-    
+
     ASSERT(flag.IsBoolean());
     bool done = flag.IsTrue();
     return JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, asyncGeneratorObjHandle, valueHandle, done);
@@ -774,17 +774,16 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
     if (icSlotSize == 0) {
         return JSTaggedValue::Undefined();
     }
-    bool overflow = icSlotSize == ProfileTypeInfo::INVALID_SLOT_INDEX;
-    if (overflow) {
-        icSlotSize++;
-    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     JSHandle<ProfileTypeInfo> profileTypeInfo = factory->NewProfileTypeInfo(icSlotSize);
-    if (overflow) {
+    // overflow 8bit
+    if (icSlotSize > ProfileTypeInfo::INVALID_SLOT_INDEX) {
         // set as mega
-        profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX - 1, JSTaggedValue::Hole());
         profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX, JSTaggedValue::Hole());
+        // overflow 16bit
+        if (icSlotSize > ProfileTypeInfo::MAX_SLOT_INDEX) {
+            profileTypeInfo->Set(thread, ProfileTypeInfo::MAX_SLOT_INDEX, JSTaggedValue::Hole());
+        }
     }
     func->SetProfileTypeInfo(thread, profileTypeInfo.GetTaggedValue());
     return profileTypeInfo.GetTaggedValue();
@@ -2302,7 +2301,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
         }
         scopeDebugInfo->scopeInfo.insert(std::make_pair(name, slot));
     }
-    
+
     auto freeObjFunc = NativeAreaAllocator::FreeObjectFunc<struct ScopeDebugInfo>;
     auto allocator = ecmaVm->GetNativeAreaAllocator();
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(buffer, freeObjFunc, allocator);

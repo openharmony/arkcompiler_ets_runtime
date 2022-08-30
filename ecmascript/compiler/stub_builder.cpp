@@ -3851,6 +3851,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),
                     { glue, nativeCode, func, thisValue, data[0], data[1] });
                 break;
+            case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatchNative),
                     { glue, nativeCode, func, data[2], data[0], data[1] });
@@ -3944,6 +3945,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         { glue, ZExtInt32ToInt64(actualNumArgs), func, newTarget, thisValue, data[1] });
                     Jump(&exit);
                     break;
+                case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
                 case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                     result = CallNGCRuntime(glue, RTSTUB_ID(ConstructorJSCallWithArgV),
                         { glue, ZExtInt32ToInt64(actualNumArgs), func, func, data[2], data[1]});
@@ -4009,6 +4011,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { glue, sp, func, method, callField, data[0], data[1], data[2] });
                 Return();
                 break;
+            case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatch),
                     { glue, sp, func, method, callField, data[0], data[1], data[2] });

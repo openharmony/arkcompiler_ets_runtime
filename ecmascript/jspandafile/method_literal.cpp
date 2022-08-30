@@ -34,7 +34,7 @@ MethodLiteral::MethodLiteral(const JSPandaFile *jsPandaFile, EntityId methodId)
     }
     SetHotnessCounter(static_cast<int16_t>(0));
     SetMethodId(methodId);
-    UpdateSlotSize(static_cast<uint16_t>(0));
+    UpdateSlotSizeWith8Bit(static_cast<uint8_t>(0));
 }
 
 void MethodLiteral::InitializeCallField(const JSPandaFile *jsPandaFile, uint32_t numVregs, uint32_t numArgs)
