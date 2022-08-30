@@ -29,7 +29,8 @@ bool JSPatchManager::LoadPatch(JSThread *thread, const CString &patchFileName, c
     if (baseFile_ == nullptr) {
         return false;
     }
-    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_);
+    // TODO: use "for"
+    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
     if (baseConstpoolValue.IsHole()) {
         return false;
     }
@@ -42,7 +43,7 @@ bool JSPatchManager::LoadPatch(JSThread *thread, const CString &patchFileName, c
         return false;
     }
     JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, patchFile);
-    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile);
+    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, 0);
     if (patchConstpoolValue.IsHole()) {
         return false;
     }
@@ -104,7 +105,7 @@ bool JSPatchManager::UnLoadPatch(JSThread *thread, const CString &patchFileName)
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
-    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_);
+    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
     if (baseConstpoolValue.IsHole()) {
         return false;
     }

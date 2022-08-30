@@ -392,18 +392,18 @@ enum class Opcode {
     CALLARGS3_IMM8_V8_V8_V8 = 88,
     CALLRANGE_IMM8_IMM8_V8 = 89,
     LDEXTERNALMODULEVAR_IMM8 = 90,
-    LDTHISBYNAME_IMM8_ID16 = 91,
+    DYNAMICIMPORT_V8 = 91,
     DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8 = 92,
-    LDTHISBYNAME_IMM16_ID16 = 93,
-    STTHISBYNAME_IMM8_ID16 = 94,
-    STTHISBYNAME_IMM16_ID16 = 95,
-    LDTHISBYVALUE_IMM8 = 96,
-    LDTHISBYVALUE_IMM16 = 97,
-    STTHISBYVALUE_IMM8_V8 = 98,
-    STTHISBYVALUE_IMM16_V8 = 99,
-    LDPATCHVAR_IMM8 = 100,
-    STPATCHVAR_IMM8_V8 = 101,
-    JEQZ_IMM8 = 102,
+    LDTHISBYNAME_IMM8_ID16 = 93,
+    LDTHISBYNAME_IMM16_ID16 = 94,
+    STTHISBYNAME_IMM8_ID16 = 95,
+    STTHISBYNAME_IMM16_ID16 = 96,
+    LDTHISBYVALUE_IMM8 = 97,
+    LDTHISBYVALUE_IMM16 = 98,
+    STTHISBYVALUE_IMM8_V8 = 99,
+    STTHISBYVALUE_IMM16_V8 = 100,
+    LDPATCHVAR_IMM8 = 101,
+    STPATCHVAR_IMM8_V8 = 102,
     DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8 = 103,
     DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8 = 104,
     RESUMEGENERATOR = 105,
@@ -411,8 +411,8 @@ enum class Opcode {
     GETTEMPLATEOBJECT_IMM8 = 107,
     GETTEMPLATEOBJECT_IMM16 = 108,
     GETNEXTPROPNAME_V8 = 109,
-    JEQZ_IMM16 = 110,
-    JEQZ_IMM32 = 111,
+    JEQZ_IMM8 = 110,
+    JEQZ_IMM16 = 111,
     SETOBJECTWITHPROTO_IMM8_V8 = 112,
     DELOBJPROP_V8 = 113,
     SUSPENDGENERATOR_V8 = 114,
@@ -462,10 +462,10 @@ enum class Opcode {
     LDLOCALMODULEVAR_IMM8 = 158,
     STCONSTTOGLOBALRECORD_IMM16_ID16 = 159,
     STTOGLOBALRECORD_IMM16_ID16 = 160,
-    JNEZ_IMM8 = 161,
-    JNEZ_IMM16 = 162,
-    JNEZ_IMM32 = 163,
-    JSTRICTEQZ_IMM8 = 164,
+    JEQZ_IMM32 = 161,
+    JNEZ_IMM8 = 162,
+    JNEZ_IMM16 = 163,
+    JNEZ_IMM32 = 164,
     STOWNBYVALUEWITHNAMESET_IMM8_V8_V8 = 165,
     STOWNBYVALUEWITHNAMESET_IMM16_V8_V8 = 166,
     STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8 = 167,
@@ -475,12 +475,12 @@ enum class Opcode {
     JMP_IMM8 = 171,
     JMP_IMM16 = 172,
     JMP_IMM32 = 173,
-    JSTRICTEQZ_IMM16 = 174,
-    JNSTRICTEQZ_IMM8 = 175,
-    JNSTRICTEQZ_IMM16 = 176,
-    JEQNULL_IMM8 = 177,
-    JEQNULL_IMM16 = 178,
-    JNENULL_IMM8 = 179,
+    JSTRICTEQZ_IMM8 = 174,
+    JSTRICTEQZ_IMM16 = 175,
+    JNSTRICTEQZ_IMM8 = 176,
+    JNSTRICTEQZ_IMM16 = 177,
+    JEQNULL_IMM8 = 178,
+    JEQNULL_IMM16 = 179,
     LDA_V8 = 180,
     STA_V8 = 181,
     LDAI_IMM32 = 182,
@@ -488,33 +488,34 @@ enum class Opcode {
     RETURN = 184,
     RETURNUNDEFINED = 185,
     LDLEXVAR_IMM8_IMM8 = 186,
-    JNENULL_IMM16 = 187,
+    JNENULL_IMM8 = 187,
     STLEXVAR_IMM8_IMM8 = 188,
-    JSTRICTEQNULL_IMM8 = 189,
+    JNENULL_IMM16 = 189,
     CALLARG1_IMM8_V8 = 190,
-    JSTRICTEQNULL_IMM16 = 191,
-    JNSTRICTEQNULL_IMM8 = 192,
-    JNSTRICTEQNULL_IMM16 = 193,
-    JEQUNDEFINED_IMM8 = 194,
-    JEQUNDEFINED_IMM16 = 195,
-    JNEUNDEFINED_IMM8 = 196,
-    JNEUNDEFINED_IMM16 = 197,
-    JSTRICTEQUNDEFINED_IMM8 = 198,
-    JSTRICTEQUNDEFINED_IMM16 = 199,
-    JNSTRICTEQUNDEFINED_IMM8 = 200,
-    JNSTRICTEQUNDEFINED_IMM16 = 201,
-    JEQ_V8_IMM8 = 202,
-    JEQ_V8_IMM16 = 203,
-    JNE_V8_IMM8 = 204,
-    JNE_V8_IMM16 = 205,
-    JSTRICTEQ_V8_IMM8 = 206,
-    JSTRICTEQ_V8_IMM16 = 207,
-    JNSTRICTEQ_V8_IMM8 = 208,
-    JNSTRICTEQ_V8_IMM16 = 209,
-    MOV_V4_V4 = 210,
-    MOV_V8_V8 = 211,
-    MOV_V16_V16 = 212,
-    NOP = 213,
+    JSTRICTEQNULL_IMM8 = 191,
+    JSTRICTEQNULL_IMM16 = 192,
+    JNSTRICTEQNULL_IMM8 = 193,
+    JNSTRICTEQNULL_IMM16 = 194,
+    JEQUNDEFINED_IMM8 = 195,
+    JEQUNDEFINED_IMM16 = 196,
+    JNEUNDEFINED_IMM8 = 197,
+    JNEUNDEFINED_IMM16 = 198,
+    JSTRICTEQUNDEFINED_IMM8 = 199,
+    JSTRICTEQUNDEFINED_IMM16 = 200,
+    JNSTRICTEQUNDEFINED_IMM8 = 201,
+    JNSTRICTEQUNDEFINED_IMM16 = 202,
+    JEQ_V8_IMM8 = 203,
+    JEQ_V8_IMM16 = 204,
+    JNE_V8_IMM8 = 205,
+    JNE_V8_IMM16 = 206,
+    JSTRICTEQ_V8_IMM8 = 207,
+    JSTRICTEQ_V8_IMM16 = 208,
+    JNSTRICTEQ_V8_IMM8 = 209,
+    JNSTRICTEQ_V8_IMM16 = 210,
+    MOV_V4_V4 = 211,
+    MOV_V8_V8 = 212,
+    MOV_V16_V16 = 213,
+    NOP = 214,
     DEPRECATED_LDLEXENV_PREF_NONE = 252,
     WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8 = 253,
     THROW_PREF_NONE = 254,
@@ -3078,10 +3079,12 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::IMM8_IMM8_V8;
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         return BytecodeInst<Mode>::Format::IMM8;
-    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
-        return BytecodeInst<Mode>::Format::IMM8_ID16;
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
+        return BytecodeInst<Mode>::Format::V8;
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
         return BytecodeInst<Mode>::Format::V8_V8_V8_V8;
+    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
+        return BytecodeInst<Mode>::Format::IMM8_ID16;
     case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM16_ID16:
         return BytecodeInst<Mode>::Format::IMM16_ID16;
     case BytecodeInst<Mode>::Opcode::STTHISBYNAME_IMM8_ID16:
@@ -3100,8 +3103,6 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
         return BytecodeInst<Mode>::Format::IMM8_V8;
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
-        return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         return BytecodeInst<Mode>::Format::IMM8_ID16_ID16_IMM16_V8;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
@@ -3116,10 +3117,10 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::IMM16;
     case BytecodeInst<Mode>::Opcode::GETNEXTPROPNAME_V8:
         return BytecodeInst<Mode>::Format::V8;
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
+        return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::JEQZ_IMM16:
         return BytecodeInst<Mode>::Format::IMM16;
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
-        return BytecodeInst<Mode>::Format::IMM32;
     case BytecodeInst<Mode>::Opcode::SETOBJECTWITHPROTO_IMM8_V8:
         return BytecodeInst<Mode>::Format::IMM8_V8;
     case BytecodeInst<Mode>::Opcode::DELOBJPROP_V8:
@@ -3218,14 +3219,14 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::IMM16_ID16;
     case BytecodeInst<Mode>::Opcode::STTOGLOBALRECORD_IMM16_ID16:
         return BytecodeInst<Mode>::Format::IMM16_ID16;
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
+        return BytecodeInst<Mode>::Format::IMM32;
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM8:
         return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM16:
         return BytecodeInst<Mode>::Format::IMM16;
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM32:
         return BytecodeInst<Mode>::Format::IMM32;
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
-        return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8:
         return BytecodeInst<Mode>::Format::IMM8_V8_V8;
     case BytecodeInst<Mode>::Opcode::STOWNBYVALUEWITHNAMESET_IMM16_V8_V8:
@@ -3244,6 +3245,8 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::IMM16;
     case BytecodeInst<Mode>::Opcode::JMP_IMM32:
         return BytecodeInst<Mode>::Format::IMM32;
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
+        return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM16:
         return BytecodeInst<Mode>::Format::IMM16;
     case BytecodeInst<Mode>::Opcode::JNSTRICTEQZ_IMM8:
@@ -3254,8 +3257,6 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::JEQNULL_IMM16:
         return BytecodeInst<Mode>::Format::IMM16;
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
-        return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::LDA_V8:
         return BytecodeInst<Mode>::Format::V8;
     case BytecodeInst<Mode>::Opcode::STA_V8:
@@ -3270,14 +3271,16 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::LDLEXVAR_IMM8_IMM8:
         return BytecodeInst<Mode>::Format::IMM8_IMM8;
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
-        return BytecodeInst<Mode>::Format::IMM16;
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
+        return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::STLEXVAR_IMM8_IMM8:
         return BytecodeInst<Mode>::Format::IMM8_IMM8;
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
-        return BytecodeInst<Mode>::Format::IMM8;
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
+        return BytecodeInst<Mode>::Format::IMM16;
     case BytecodeInst<Mode>::Opcode::CALLARG1_IMM8_V8:
         return BytecodeInst<Mode>::Format::IMM8_V8;
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
+        return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM16:
         return BytecodeInst<Mode>::Format::IMM16;
     case BytecodeInst<Mode>::Opcode::JNSTRICTEQNULL_IMM8:
@@ -3672,10 +3675,12 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::JIT_IC_SLOT | Flags::TWO_SLOT | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
-        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::STRING_ID | Flags::IC_SLOT | Flags::TWO_SLOT | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
+        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
+        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::STRING_ID | Flags::IC_SLOT | Flags::TWO_SLOT | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM16_ID16:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::STRING_ID | Flags::IC_SLOT | Flags::TWO_SLOT | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STTHISBYNAME_IMM8_ID16:
@@ -3694,8 +3699,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
-        return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::IC_SLOT | Flags::ONE_SLOT | Flags::LITERALARRAY_ID | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
@@ -3710,9 +3713,9 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::IC_SLOT | Flags::ONE_SLOT | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::GETNEXTPROPNAME_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM16:
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM16:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::SETOBJECTWITHPROTO_IMM8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::IC_SLOT | Flags::TWO_SLOT | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
@@ -3812,13 +3815,13 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::STRING_ID | Flags::IC_SLOT | Flags::ONE_SLOT | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STTOGLOBALRECORD_IMM16_ID16:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::STRING_ID | Flags::IC_SLOT | Flags::ONE_SLOT | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
+        return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM8:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM16:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM32:
-        return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::IC_SLOT | Flags::TWO_SLOT | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
@@ -3838,6 +3841,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::JUMP | Flags::ACC_NONE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JMP_IMM32:
         return ((Flags::JUMP | Flags::ACC_NONE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
+        return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM16:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JNSTRICTEQZ_IMM8:
@@ -3847,8 +3852,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
     case BytecodeInst<Mode>::Opcode::JEQNULL_IMM8:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JEQNULL_IMM16:
-        return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDA_V8:
         return ((Flags::DYNAMIC | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
@@ -3864,14 +3867,16 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::DYNAMIC | Flags::RETURN | Flags::ACC_NONE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDLEXVAR_IMM8_IMM8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STLEXVAR_IMM8_IMM8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::CALLARG1_IMM8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::JIT_IC_SLOT | Flags::TWO_SLOT | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
+        return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM16:
         return ((Flags::JUMP | Flags::CONDITIONAL | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JNSTRICTEQNULL_IMM8:
@@ -4266,9 +4271,11 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM16_ID16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
@@ -4288,8 +4295,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
-        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
@@ -4304,9 +4309,9 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::GETNEXTPROPNAME_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM16:
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::SETOBJECTWITHPROTO_IMM8_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
@@ -4406,13 +4411,13 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STTOGLOBALRECORD_IMM16_ID16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM32:
-        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
@@ -4432,6 +4437,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JMP_IMM32:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JNSTRICTEQZ_IMM8:
@@ -4441,8 +4448,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
     case BytecodeInst<Mode>::Opcode::JEQNULL_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JEQNULL_IMM16:
-        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDA_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
@@ -4458,13 +4463,15 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDLEXVAR_IMM8_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STLEXVAR_IMM8_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::CALLARG1_IMM8_V8:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
@@ -4860,9 +4867,11 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         return false;
-    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
         return false;
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
+        return false;
+    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
         return false;
     case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM16_ID16:
         return false;
@@ -4882,8 +4891,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
         return false;
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
-        return false;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         return false;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
@@ -4898,9 +4905,9 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::GETNEXTPROPNAME_V8:
         return false;
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM16:
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
         return false;
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM16:
         return false;
     case BytecodeInst<Mode>::Opcode::SETOBJECTWITHPROTO_IMM8_V8:
         return false;
@@ -5000,13 +5007,13 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::STTOGLOBALRECORD_IMM16_ID16:
         return false;
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
+        return false;
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM8:
         return false;
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM16:
         return false;
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM32:
-        return false;
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
         return false;
     case BytecodeInst<Mode>::Opcode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8:
         return false;
@@ -5026,6 +5033,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::JMP_IMM32:
         return false;
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
+        return false;
     case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM16:
         return false;
     case BytecodeInst<Mode>::Opcode::JNSTRICTEQZ_IMM8:
@@ -5035,8 +5044,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
     case BytecodeInst<Mode>::Opcode::JEQNULL_IMM8:
         return false;
     case BytecodeInst<Mode>::Opcode::JEQNULL_IMM16:
-        return false;
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
         return false;
     case BytecodeInst<Mode>::Opcode::LDA_V8:
         return false;
@@ -5052,13 +5059,15 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::LDLEXVAR_IMM8_IMM8:
         return false;
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
         return false;
     case BytecodeInst<Mode>::Opcode::STLEXVAR_IMM8_IMM8:
         return false;
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
         return false;
     case BytecodeInst<Mode>::Opcode::CALLARG1_IMM8_V8:
+        return false;
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
         return false;
     case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM16:
         return false;
@@ -5694,10 +5703,9 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << "ldexternalmodulevar";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
         break;
-    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
-        os << "ldthisbyname";
-        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_ID16, 0>();
-        os << ", id" << inst.template GetId<BytecodeInst<Mode>::Format::IMM8_ID16, 0>();
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
+        os << "dynamicimport";
+        os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8, 0>();
         break;
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
         os << "definegettersetterbyvalue";
@@ -5705,6 +5713,11 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8_V8_V8_V8, 1>();
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8_V8_V8_V8, 2>();
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8_V8_V8_V8, 3>();
+        break;
+    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
+        os << "ldthisbyname";
+        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_ID16, 0>();
+        os << ", id" << inst.template GetId<BytecodeInst<Mode>::Format::IMM8_ID16, 0>();
         break;
     case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM16_ID16:
         os << "ldthisbyname";
@@ -5748,10 +5761,6 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_V8, 0>();
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::IMM8_V8, 0>();
         break;
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
-        os << "jeqz";
-        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
-        break;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         os << "defineclasswithbuffer";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_ID16_ID16_IMM16_V8, 0>();
@@ -5786,13 +5795,13 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << "getnextpropname";
         os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8, 0>();
         break;
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
+        os << "jeqz";
+        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
+        break;
     case BytecodeInst<Mode>::Opcode::JEQZ_IMM16:
         os << "jeqz";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM16, 0>();
-        break;
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
-        os << "jeqz";
-        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM32, 0>();
         break;
     case BytecodeInst<Mode>::Opcode::SETOBJECTWITHPROTO_IMM8_V8:
         os << "setobjectwithproto";
@@ -6045,6 +6054,10 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM16_ID16, 0>();
         os << ", id" << inst.template GetId<BytecodeInst<Mode>::Format::IMM16_ID16, 0>();
         break;
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
+        os << "jeqz";
+        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM32, 0>();
+        break;
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM8:
         os << "jnez";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
@@ -6056,10 +6069,6 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM32:
         os << "jnez";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM32, 0>();
-        break;
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
-        os << "jstricteqz";
-        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
         break;
     case BytecodeInst<Mode>::Opcode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8:
         os << "stownbyvaluewithnameset";
@@ -6105,6 +6114,10 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << "jmp";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM32, 0>();
         break;
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
+        os << "jstricteqz";
+        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
+        break;
     case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM16:
         os << "jstricteqz";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM16, 0>();
@@ -6124,10 +6137,6 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
     case BytecodeInst<Mode>::Opcode::JEQNULL_IMM16:
         os << "jeqnull";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM16, 0>();
-        break;
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
-        os << "jnenull";
-        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
         break;
     case BytecodeInst<Mode>::Opcode::LDA_V8:
         os << "lda";
@@ -6156,23 +6165,27 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_IMM8, 0>();
         os << ", " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_IMM8, 1>();
         break;
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
         os << "jnenull";
-        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM16, 0>();
+        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
         break;
     case BytecodeInst<Mode>::Opcode::STLEXVAR_IMM8_IMM8:
         os << "stlexvar";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_IMM8, 0>();
         os << ", " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_IMM8, 1>();
         break;
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
-        os << "jstricteqnull";
-        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
+        os << "jnenull";
+        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM16, 0>();
         break;
     case BytecodeInst<Mode>::Opcode::CALLARG1_IMM8_V8:
         os << "callarg1";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_V8, 0>();
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::IMM8_V8, 0>();
+        break;
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
+        os << "jstricteqnull";
+        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
         break;
     case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM16:
         os << "jstricteqnull";
@@ -6923,11 +6936,14 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         os << "LDEXTERNALMODULEVAR_IMM8";
         break;
-    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
-        os << "LDTHISBYNAME_IMM8_ID16";
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
+        os << "DYNAMICIMPORT_V8";
         break;
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
         os << "DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8";
+        break;
+    case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM8_ID16:
+        os << "LDTHISBYNAME_IMM8_ID16";
         break;
     case BytecodeInst<Mode>::Opcode::LDTHISBYNAME_IMM16_ID16:
         os << "LDTHISBYNAME_IMM16_ID16";
@@ -6956,9 +6972,6 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
         os << "STPATCHVAR_IMM8_V8";
         break;
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
-        os << "JEQZ_IMM8";
-        break;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         os << "DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8";
         break;
@@ -6980,11 +6993,11 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::GETNEXTPROPNAME_V8:
         os << "GETNEXTPROPNAME_V8";
         break;
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM8:
+        os << "JEQZ_IMM8";
+        break;
     case BytecodeInst<Mode>::Opcode::JEQZ_IMM16:
         os << "JEQZ_IMM16";
-        break;
-    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
-        os << "JEQZ_IMM32";
         break;
     case BytecodeInst<Mode>::Opcode::SETOBJECTWITHPROTO_IMM8_V8:
         os << "SETOBJECTWITHPROTO_IMM8_V8";
@@ -7133,6 +7146,9 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::STTOGLOBALRECORD_IMM16_ID16:
         os << "STTOGLOBALRECORD_IMM16_ID16";
         break;
+    case BytecodeInst<Mode>::Opcode::JEQZ_IMM32:
+        os << "JEQZ_IMM32";
+        break;
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM8:
         os << "JNEZ_IMM8";
         break;
@@ -7141,9 +7157,6 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
         break;
     case BytecodeInst<Mode>::Opcode::JNEZ_IMM32:
         os << "JNEZ_IMM32";
-        break;
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
-        os << "JSTRICTEQZ_IMM8";
         break;
     case BytecodeInst<Mode>::Opcode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8:
         os << "STOWNBYVALUEWITHNAMESET_IMM8_V8_V8";
@@ -7172,6 +7185,9 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::JMP_IMM32:
         os << "JMP_IMM32";
         break;
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM8:
+        os << "JSTRICTEQZ_IMM8";
+        break;
     case BytecodeInst<Mode>::Opcode::JSTRICTEQZ_IMM16:
         os << "JSTRICTEQZ_IMM16";
         break;
@@ -7186,9 +7202,6 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
         break;
     case BytecodeInst<Mode>::Opcode::JEQNULL_IMM16:
         os << "JEQNULL_IMM16";
-        break;
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
-        os << "JNENULL_IMM8";
         break;
     case BytecodeInst<Mode>::Opcode::LDA_V8:
         os << "LDA_V8";
@@ -7211,17 +7224,20 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::LDLEXVAR_IMM8_IMM8:
         os << "LDLEXVAR_IMM8_IMM8";
         break;
-    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
-        os << "JNENULL_IMM16";
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM8:
+        os << "JNENULL_IMM8";
         break;
     case BytecodeInst<Mode>::Opcode::STLEXVAR_IMM8_IMM8:
         os << "STLEXVAR_IMM8_IMM8";
         break;
-    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
-        os << "JSTRICTEQNULL_IMM8";
+    case BytecodeInst<Mode>::Opcode::JNENULL_IMM16:
+        os << "JNENULL_IMM16";
         break;
     case BytecodeInst<Mode>::Opcode::CALLARG1_IMM8_V8:
         os << "CALLARG1_IMM8_V8";
+        break;
+    case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM8:
+        os << "JSTRICTEQNULL_IMM8";
         break;
     case BytecodeInst<Mode>::Opcode::JSTRICTEQNULL_IMM16:
         os << "JSTRICTEQNULL_IMM16";
@@ -7539,7 +7555,7 @@ inline bool BytecodeInst<Mode>::IsPrimaryOpcodeValid() const
 {
     auto opcode = GetPrimaryOpcode();
     // NOLINTNEXTLINE(readability-magic-numbers)
-    if (((opcode >= 214) &&
+    if (((opcode >= 215) &&
         // NOLINTNEXTLINE(readability-magic-numbers)
         (opcode <= 251)) ||
         // NOLINTNEXTLINE(readability-magic-numbers)

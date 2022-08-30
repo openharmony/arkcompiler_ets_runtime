@@ -126,6 +126,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
         JSThread *thread = vm->GetJSThread();
         EcmaHandleScope handleScope(thread);
 
+        uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex();
         int32_t index = 0;
         int32_t total = 1;
         if (jsPandaFile->IsNewVersion()) {
@@ -151,7 +152,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
 
         JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
-        uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex();
         auto methodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
         if (methodLiteral == nullptr) {
             program->SetMainFunction(thread, JSTaggedValue::Undefined());

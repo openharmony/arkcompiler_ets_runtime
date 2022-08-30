@@ -4130,7 +4130,7 @@ DECLARE_ASM_HANDLER(HandleDynamicimportV8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef specifier = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { specifier });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_V8));
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DYNAMICIMPORT_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateasyncgeneratorobjV8)

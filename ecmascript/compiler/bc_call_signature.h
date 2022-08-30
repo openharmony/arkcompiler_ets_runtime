@@ -22,7 +22,6 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
-    T(HandleOverflowD6)                                 \
     T(HandleOverflowD7)                                 \
     T(HandleOverflowD8)                                 \
     T(HandleOverflowD9)                                 \

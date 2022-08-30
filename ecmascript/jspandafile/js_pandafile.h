@@ -97,7 +97,7 @@ public:
 
     MethodLiteral *FindMethodLiteral(uint32_t offset) const
     {
-        return methodMap_.at(offset);
+        return methodLiteralMap_.at(offset);
     }
 
     Span<const uint32_t> GetClasses() const

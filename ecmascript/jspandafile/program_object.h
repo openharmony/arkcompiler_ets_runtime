@@ -131,9 +131,9 @@ public:
             Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
             panda_file::File::EntityId id = indexs[index];
 
-            MethodLiteral *methodLitera = jsPandaFile->FindMethods(id.GetOffset());
-            LOG_ECMA_IF(methodLitera == nullptr, FATAL) << "Unknown method: " << id.GetOffset();
-            JSHandle<Method> method = factory->NewJSMethod(methodLitera);
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
+            LOG_ECMA_IF(methodLiteral == nullptr, FATAL) << "Unknown method: " << id.GetOffset();
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
 
             panda_file::IndexAccessor newIndexAccessor(*pf, id);
             auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
@@ -145,7 +145,7 @@ public:
             method->SetConstantPool(thread, newConstpool);
 
             JSHandle<JSFunction> jsFunc;
-            FunctionKind kind = methodLitera->GetFunctionKind();
+            FunctionKind kind = methodLiteral->GetFunctionKind();
             switch (kind)
             {
                 case FunctionKind::NORMAL_FUNCTION:
@@ -180,23 +180,20 @@ public:
         return val;
     }
 
-    inline JSTaggedValue GetClassFromCache(JSThread *thread, JSTaggedValue constpool,
-                                           uint32_t index, uint32_t literal) const
+    static JSTaggedValue GetClassMethodFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
+                                                 uint32_t index)
     {
-        auto val = Get(index);
+        auto val = constpool->Get(index);
         if (val.IsHole()) {
-            JSHandle<ConstantPool> constpoolHandle(thread, constpool);
 #ifdef NEW_INSTRUCTION_DEFINE
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
 
-            const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-            JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
-            panda_file::File::IndexHeader *indexHeader = taggedPool->GetIndexHeader();
+            JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
+            panda_file::File::IndexHeader *indexHeader = constpool->GetIndexHeader();
             auto pf = jsPandaFile->GetPandaFile();
             Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
             panda_file::File::EntityId id = indexs[index];
-            panda_file::File::EntityId literalId = indexs[literal];
 
             panda_file::IndexAccessor newIndexAccessor(*pf, id);
             auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
@@ -207,20 +204,54 @@ public:
             }
             JSHandle<JSTaggedValue> newConstpoolHandle(thread, newConstpool);
 
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
+            ASSERT(methodLiteral != nullptr);
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
+            method->SetConstantPool(thread, newConstpoolHandle.GetTaggedValue());
+        
+            val = method.GetTaggedValue();
+            constpool->Set(thread, index, val);
+            return val;
+#else
+        (void) thread;
+        (void) constpool;
+#endif
+        }
+
+        return val;
+    }
+
+    static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
+                                                  uint32_t literal)
+    {
+        auto val = constpool->Get(literal);
+        if (val.IsHole()) {
+#ifdef NEW_INSTRUCTION_DEFINE
+            EcmaVM *vm = thread->GetEcmaVM();
+
+            JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
+            panda_file::File::IndexHeader *indexHeader = constpool->GetIndexHeader();
+            auto pf = jsPandaFile->GetPandaFile();
+            Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
+            panda_file::File::EntityId literalId = indexs[literal];
+
+            panda_file::IndexAccessor newIndexAccessor(*pf, literalId);
+            auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
+            JSTaggedValue newConstpool = vm->FindConstpool(jsPandaFile, constpoolIndex);
+            if (newConstpool.IsHole()) {
+                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, literalId.GetOffset());
+                vm->AddConstpool(jsPandaFile, newConstpool, constpoolIndex);
+            }
+            JSHandle<JSTaggedValue> newConstpoolHandle(thread, newConstpool);
             JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
                 thread, jsPandaFile, literalId, newConstpoolHandle);
 
-            MethodLiteral *methodLitera = jsPandaFile->FindMethods(id.GetOffset());
-            ASSERT(methodLitera != nullptr);
-            JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(methodLitera);
-            ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, classInfoExtractor,
-                                                                   literalArray, jsPandaFile);
-            JSHandle<JSFunction> cls = ClassHelper::DefineClassTemplate(thread, classInfoExtractor,
-                                                                        JSHandle<ConstantPool>(newConstpoolHandle));
-            val = cls.GetTaggedValue();
-            constpoolHandle->Set(thread, index, val);
+            val = literalArray.GetTaggedValue();
+            constpool->Set(thread, literal, val);
+            return val;
 #else
-            (void) literal;
+        (void) thread;
+        (void) constpool;
 #endif
         }
 
@@ -308,10 +339,10 @@ public:
             Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
             panda_file::File::EntityId id = indexs[index];
 
-            MethodLiteral *methodLitera = jsPandaFile->FindMethods(id.GetOffset());
-            ASSERT(methodLitera != nullptr);
+            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
+            ASSERT(methodLiteral != nullptr);
 
-            JSHandle<Method> method = factory->NewJSMethod(methodLitera);
+            JSHandle<Method> method = factory->NewMethod(methodLiteral);
             panda_file::IndexAccessor newIndexAccessor(*pf, id);
             auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
             JSTaggedValue newConstpool = vm->FindConstpool(jsPandaFile, constpoolIndex);

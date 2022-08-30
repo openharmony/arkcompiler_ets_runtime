@@ -146,6 +146,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define GET_ACC() (acc)                        // NOLINT(cppcoreguidelines-macro-usage)
 #define SET_ACC(val) (acc = val)               // NOLINT(cppcoreguidelines-macro-usage)
 
+// TODO: change to static method
 #define GET_OBJ_FROM_CACHE(index) \
     (ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(thread, constpool, index))
 
@@ -157,9 +158,6 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 
 #define GET_LITERA_FROM_CACHE(index, type) \
     (ConstantPool::Cast(constpool.GetTaggedObject())->GetLiteralFromCache<type>(thread, constpool, index))
-
-#define GET_CLASS_FROM_CACHE(index, litera) \
-    (ConstantPool::Cast(constpool.GetTaggedObject())->GetClassFromCache(thread, constpool, index, litera))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define INTERPRETER_GOTO_EXCEPTION_HANDLER()          \
@@ -4867,24 +4865,18 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8) {
         uint16_t methodId = READ_INST_16_1();
-        uint16_t literaId = READ_INST_16_3();
+        // uint16_t literaId = READ_INST_16_3();
         uint16_t length = READ_INST_16_5();
         uint16_t v0 = READ_INST_8_7();
         LOG_INST() << "intrinsics::defineclasswithbuffer"
                    << " method id:" << methodId << " lexenv: v" << v0;
-        SAVE_ACC();
-        auto constpool = GetConstantPool(sp);
-        JSFunction *classTemplate =
-            JSFunction::Cast(GET_CLASS_FROM_CACHE(methodId, literaId).GetTaggedObject());
-        ASSERT(classTemplate != nullptr);
-        RESTORE_ACC();
 
         JSTaggedValue proto = GET_VREG_VALUE(v0);
 
         JSTaggedValue res;
         SAVE_PC();
         InterpretedFrame *state = GET_FRAME(sp);
-        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, state->env);
+        res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, state->env, GetConstantPool(sp), methodId);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
@@ -4902,17 +4894,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8) {
         uint16_t methodId = READ_INST_16_2();
-        uint16_t literaId = READ_INST_16_4();
+        // uint16_t literaId = READ_INST_16_4();
         uint16_t length = READ_INST_16_6();
         uint16_t v0 = READ_INST_8_8();
         LOG_INST() << "intrinsics::defineclasswithbuffer"
                    << " method id:" << methodId << " lexenv: v" << v0;
-        SAVE_ACC();
-        auto constpool = GetConstantPool(sp);
-        JSFunction *classTemplate =
-            JSFunction::Cast(GET_CLASS_FROM_CACHE(methodId, literaId).GetTaggedObject());
-        ASSERT(classTemplate != nullptr);
-        RESTORE_ACC();
 
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue proto = GET_VREG_VALUE(v0);
@@ -4920,7 +4906,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         // TODO: move to constpool
         JSTaggedValue res;
         SAVE_PC();
-        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, state->env);
+        res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, state->env, GetConstantPool(sp), methodId);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
@@ -4943,18 +4929,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t v1 = READ_INST_8_8();
         LOG_INST() << "intrinsics::defineclasswithbuffer"
                    << " method id:" << methodId << " lexenv: v" << v0 << " parent: v" << v1;
-        SAVE_ACC();
-        auto constpool = GetConstantPool(sp);
-        JSFunction *classTemplate = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(classTemplate != nullptr);
-        RESTORE_ACC();
 
         JSTaggedValue lexenv = GET_VREG_VALUE(v0);
         JSTaggedValue proto = GET_VREG_VALUE(v1);
 
         JSTaggedValue res;
         SAVE_PC();
-        res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
+        res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, GetConstantPool(sp), lexenv, methodId);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
