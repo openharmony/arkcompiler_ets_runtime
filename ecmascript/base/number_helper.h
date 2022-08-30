@@ -120,7 +120,7 @@ public:
     static uint64_t XorShift64(uint64_t *pVal);
     static void InitRandom();
 private:
-    static uint64_t randomState;
+    static thread_local uint64_t randomState;
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_NUMBER_HELPER_H
