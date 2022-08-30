@@ -82,6 +82,7 @@ class ProfileTypeInfo : public TaggedArray {
 public:
     static const uint32_t MAX_FUNC_CACHE_INDEX = std::numeric_limits<uint32_t>::max();
     static constexpr uint32_t INVALID_SLOT_INDEX = 0xFF;
+    static constexpr uint32_t MAX_SLOT_INDEX = 0xFFFF;
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {

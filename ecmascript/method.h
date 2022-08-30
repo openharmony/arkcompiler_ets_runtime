@@ -145,7 +145,7 @@ public:
         return MethodLiteral::GetMethodId(literalInfo);
     }
 
-    uint8_t GetSlotSize() const
+    uint16_t GetSlotSize() const
     {
         uint64_t literalInfo = GetLiteralInfo();
         return MethodLiteral::GetSlotSize(literalInfo);

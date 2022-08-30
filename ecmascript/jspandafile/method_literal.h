@@ -42,7 +42,8 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
 
     static_assert(static_cast<size_t>(Index::NUM_OF_MEMBERS) == NumOfTypes);
 
-    static constexpr uint8_t MAX_SLOT_SIZE = 0xFF;
+    static constexpr uint8_t INVALID_IC_SLOT = 0xFFU;
+    static constexpr uint16_t MAX_SLOT_SIZE = 0xFFFFU;
 
     MethodLiteral(const JSPandaFile *jsPandaFile, EntityId fileId);
     MethodLiteral() = delete;
@@ -196,7 +197,7 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
     static constexpr size_t METHOD_SLOT_SIZE_BITS = 16;
     using HotnessCounterBits = BitField<int16_t, 0, METHOD_ARGS_NUM_BITS>; // offset 0-15
     using MethodIdBits = HotnessCounterBits::NextField<uint32_t, METHOD_ARGS_METHODID_BITS>; // offset 16-47
-    using SlotSizeBits = MethodIdBits::NextField<uint8_t, METHOD_SLOT_SIZE_BITS>; // offset 48-63
+    using SlotSizeBits = MethodIdBits::NextField<uint16_t, METHOD_SLOT_SIZE_BITS>; // offset 48-63
 
     static constexpr size_t BUILTINID_NUM_BITS = 8;
     static constexpr size_t FUNCTION_KIND_NUM_BITS = 4;
@@ -218,16 +219,23 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
         literalInfo_ = MethodIdBits::Update(literalInfo_, methodId.GetOffset());
     }
 
-    uint8_t GetSlotSize() const
+    uint16_t GetSlotSize() const
     {
         return SlotSizeBits::Decode(literalInfo_);
     }
 
-    uint8_t UpdateSlotSize(uint16_t size)
+    uint8_t UpdateSlotSizeWith8Bit(uint16_t size)
     {
         uint16_t start = GetSlotSize();
-        uint16_t end = start + size;
-        literalInfo_ = SlotSizeBits::Update(literalInfo_, end);
+        uint32_t end = start + size;
+        // ic overflow
+        if (end >= INVALID_IC_SLOT) {
+            if (GetSlotSize() < INVALID_IC_SLOT + 1) {
+                literalInfo_ = SlotSizeBits::Update(literalInfo_, INVALID_IC_SLOT + 1);
+            }
+            return INVALID_IC_SLOT;
+        }
+        literalInfo_ = SlotSizeBits::Update(literalInfo_, static_cast<uint8_t>(end));
         return start;
     }
 

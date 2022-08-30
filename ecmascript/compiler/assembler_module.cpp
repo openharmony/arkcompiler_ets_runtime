@@ -109,7 +109,7 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
         case JSCallMode::CALL_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
             return -1;
@@ -147,7 +147,7 @@ bool AssemblerModule::IsCallNew(JSCallMode mode)
         case JSCallMode::CALL_FROM_AOT:
             return false;
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             return true;
         default:
             UNREACHABLE();
@@ -176,7 +176,7 @@ bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)
         case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_GETTER:
@@ -210,7 +210,7 @@ bool AssemblerModule::JSModeHaveNewTargetArg(JSCallMode mode)
         case JSCallMode::CALL_THIS_ARG3:
             return false;
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
             return true;
