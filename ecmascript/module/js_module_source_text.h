@@ -37,6 +37,8 @@ public:
     static JSHandle<SourceTextModule> HostResolveImportedModule(JSThread *thread,
                                                                 const JSHandle<SourceTextModule> &module,
                                                                 const JSHandle<JSTaggedValue> &moduleRequest);
+    static JSHandle<SourceTextModule> HostResolveImportedModuleWithMerge(
+        JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
 
     // 15.2.1.16.2 GetExportedNames(exportStarSet)
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -76,7 +78,8 @@ public:
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);
     ACCESSORS(Namespace, NAMESPACE_OFFSET, ECMA_MODULE_FILENAME);
-    ACCESSORS(EcmaModuleFilename, ECMA_MODULE_FILENAME, REQUESTED_MODULES_OFFSET);
+    ACCESSORS(EcmaModuleFilename, ECMA_MODULE_FILENAME, ECMA_MODULE_RECORDNAME);
+    ACCESSORS(EcmaModuleRecordName, ECMA_MODULE_RECORDNAME, REQUESTED_MODULES_OFFSET);
     ACCESSORS(RequestedModules, REQUESTED_MODULES_OFFSET, IMPORT_ENTRIES_OFFSET);
     ACCESSORS(ImportEntries, IMPORT_ENTRIES_OFFSET, LOCAL_EXPORT_ENTTRIES_OFFSET);
     ACCESSORS(LocalExportEntries, LOCAL_EXPORT_ENTTRIES_OFFSET, INDIRECT_EXPORT_ENTTRIES_OFFSET);

@@ -56,7 +56,7 @@ DebuggerImpl::~DebuggerImpl()
     DebuggerApi::DestroyJSDebugger(jsDebugger_);
 }
 
-bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &fileName)
+bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &fileName, std::string_view entryPoint)
 {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     if (fileName.substr(0, DATA_APP_PATH.length()) != DATA_APP_PATH) {
@@ -85,7 +85,7 @@ bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &file
         return false;
     }
 
-    auto mainMethodIndex = panda_file::File::EntityId(jsPandaFile->GetMainMethodIndex());
+    auto mainMethodIndex = panda_file::File::EntityId(jsPandaFile->GetMainMethodIndex(entryPoint.data()));
     const std::string &source = extractor->GetSourceCode(mainMethodIndex);
     const std::string &url = extractor->GetSourceFile(mainMethodIndex);
     const uint32_t MIN_SOURCE_CODE_LENGTH = 5;  // maybe return 'ANDA' when source code is empty

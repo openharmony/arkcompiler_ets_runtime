@@ -136,7 +136,7 @@ void CjsModule::RequireExecution(JSThread *thread, const JSHandle<EcmaString> &m
         LOG_ECMA(ERROR) << "open jsPandaFile " << moduleFilenameStr << " error";
         UNREACHABLE();
     }
-    JSPandaFileExecutor::Execute(thread, jsPandaFile);
+    JSPandaFileExecutor::Execute(thread, jsPandaFile, JSPandaFile::ENTRY_FUNCTION_NAME);
 }
 
 JSHandle<EcmaString> CjsModule::ResolveFilename(JSThread *thread, JSTaggedValue dirname, JSTaggedValue request)

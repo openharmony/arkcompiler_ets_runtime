@@ -51,7 +51,7 @@ public:
         }
     }
 
-    void LoadModule(std::string_view panda_file_name) override
+    void LoadModule(std::string_view panda_file_name, [[maybe_unused]]std::string_view entryPoint) override
     {
         if (test_->loadModule) {
             test_->loadModule(panda_file_name);

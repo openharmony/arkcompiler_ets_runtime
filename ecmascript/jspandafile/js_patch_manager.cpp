@@ -40,7 +40,8 @@ bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileNam
     if (patchFile_ == nullptr) {
         return false;
     }
-    JSHandle<Program> patchProgram = PandaFileTranslator::GenerateProgram(vm, patchFile_);
+    JSHandle<Program> patchProgram =
+        PandaFileTranslator::GenerateProgram(vm, patchFile_, JSPandaFile::ENTRY_FUNCTION_NAME);
     JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_);
     if (patchConstpoolValue.IsHole()) {
         return false;
@@ -75,7 +76,8 @@ bool JSPatchManager::LoadPatch(JSThread *thread,
     if (patchFile_ == nullptr) {
         return false;
     }
-    JSHandle<Program> patchProgram = PandaFileTranslator::GenerateProgram(vm, patchFile_);
+    JSHandle<Program> patchProgram =
+        PandaFileTranslator::GenerateProgram(vm, patchFile_, JSPandaFile::ENTRY_FUNCTION_NAME);
     JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_);
     if (patchConstpoolValue.IsHole()) {
         return false;

@@ -1004,7 +1004,6 @@ public:
     {
         return isWorker_;
     }
-
 private:
     std::string GetGcType() const
     {
@@ -1192,6 +1191,8 @@ public:
                           const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                           const std::string &baseFileName, const void *baseBuffer, size_t baseSize);
     static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
+    static bool IsBundle(EcmaVM *vm);
+    static void SetBundle(EcmaVM *vm, bool value);
 private:
     static int vmCount_;
     static bool initialize_;

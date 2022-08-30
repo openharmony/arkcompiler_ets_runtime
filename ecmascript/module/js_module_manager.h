@@ -34,10 +34,13 @@ public:
     JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
     JSHandle<SourceTextModule> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
     JSHandle<SourceTextModule> HostResolveImportedModule(std::string &baseFilename, std::string &moduleFilename);
+
     JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
     JSHandle<SourceTextModule> HostGetImportedModule(JSHandle<EcmaString> &referencingHandle);
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
+    JSHandle<SourceTextModule> HostResolveImportedModuleWithMerge(const CString &referencingModule,
+                                                                  const CString &recodeName);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName, JSTaggedValue currentFunc);
     JSTaggedValue GetCurrentModule();
