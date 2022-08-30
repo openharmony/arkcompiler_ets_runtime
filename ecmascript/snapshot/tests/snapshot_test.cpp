@@ -90,7 +90,7 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
 
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetFirstRegion();
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
               constpool1->GetClass()->SizeFromJSHClass(constpool1));
@@ -135,7 +135,7 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
 
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetFirstRegion();
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
               constpool1->GetClass()->SizeFromJSHClass(constpool1));
@@ -191,7 +191,7 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName1);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName2);
 
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetFirstRegion();
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
     auto constpool = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_TRUE(constpool->Get(0).IsTaggedArray());
     EXPECT_TRUE(constpool->Get(100).IsTaggedArray());
