@@ -296,7 +296,7 @@ void ParallelEvacuator::UpdateRSet(Region *region)
         ObjectSlot slot(ToUintPtr(mem));
         return UpdateOldToNewObjectSlot(slot);
     };
-    if (heap_->GetSweeper()->isSweeping()) {
+    if (heap_->GetSweeper()->IsSweeping()) {
         if (region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             // Region is safe while update remember set
             region->MergeRSetForConcurrentSweeping();

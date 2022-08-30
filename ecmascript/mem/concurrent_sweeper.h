@@ -54,12 +54,12 @@ public:
     void TryFillSweptRegion();
     void ClearRSetInRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd);
 
-    bool isSweeping()
+    void EnableConcurrentSweep(EnableConcurrentSweepType type);
+
+    bool IsSweeping()
     {
         return isSweeping_;
     }
-
-    void EnableConcurrentSweep(EnableConcurrentSweepType type);
 
     bool ConcurrentSweepEnabled()
     {
@@ -76,6 +76,7 @@ public:
         return enableType_ == EnableConcurrentSweepType::DISABLE ||
             enableType_ == EnableConcurrentSweepType::CONFIG_DISABLE;
     }
+    
     bool IsRequestDisabled() const
     {
         return enableType_ == EnableConcurrentSweepType::REQUEST_DISABLE;
