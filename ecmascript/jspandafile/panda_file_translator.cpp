@@ -1209,6 +1209,7 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
             }
+            // TODO: add a deprecated inst to translate
             *(pc + 4) = *(pc + 4) + 1;
             break;
         }

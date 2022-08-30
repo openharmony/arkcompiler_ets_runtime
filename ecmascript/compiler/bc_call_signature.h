@@ -224,9 +224,9 @@ namespace panda::ecmascript::kungfu {
     T(HandleLdlocalmodulevarImm8)                       \
     T(HandleStconsttoglobalrecordImm16Id16)             \
     T(HandleSttoglobalrecordImm16Id16)                  \
-    T(HandleJneqzImm8)                                  \
-    T(HandleJneqzImm16)                                 \
-    T(HandleJneqzImm32)                                 \
+    T(HandleJnezImm8)                                   \
+    T(HandleJnezImm16)                                  \
+    T(HandleJnezImm32)                                  \
     T(HandleJstricteqzImm8)                             \
     T(HandleStownbyvaluewithnamesetImm8V8V8)            \
     T(HandleStownbyvaluewithnamesetImm16V8V8)           \

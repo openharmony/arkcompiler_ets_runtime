@@ -176,12 +176,12 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
     uint32_t index1 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[0].GetOffset());
     uint32_t index2 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[1].GetOffset());
     uint32_t index3 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[2].GetOffset());
-    EXPECT_EQ(index1, 1U);
-    EXPECT_EQ(index2, 2U);
-    EXPECT_EQ(index3, 3U);
+    EXPECT_EQ(index1, 0U);
+    EXPECT_EQ(index2, 1U);
+    EXPECT_EQ(index3, 2U);
 
     uint32_t conPoolIndex = pf->GetConstpoolIndex();
-    EXPECT_EQ(conPoolIndex, 4U); // 4 : 3 + 1, Index of the next insertion position
+    EXPECT_EQ(conPoolIndex, 3U); // 4 : 2 + 1, Index of the next insertion position
 
     CUnorderedMap<uint32_t, uint64_t> constpoolMap = pf->GetConstpoolMap();
     ConstPoolValue constPoolValue1(constpoolMap.at(methodId[0].GetOffset()));
@@ -196,9 +196,9 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
     EXPECT_EQ(type1, ConstPoolType::METHOD);
     EXPECT_EQ(type2, ConstPoolType::METHOD);
     EXPECT_EQ(type3, ConstPoolType::METHOD);
-    EXPECT_EQ(gotIndex1, 1U);
-    EXPECT_EQ(gotIndex2, 2U);
-    EXPECT_EQ(gotIndex3, 3U);
+    EXPECT_EQ(gotIndex1, 0U);
+    EXPECT_EQ(gotIndex2, 1U);
+    EXPECT_EQ(gotIndex3, 2U);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
