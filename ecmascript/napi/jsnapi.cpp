@@ -76,7 +76,6 @@
 #include "os/mutex.h"
 
 namespace panda {
-using ecmascript::CString;
 using ecmascript::ECMAObject;
 using ecmascript::EcmaString;
 using ecmascript::ErrorType;
@@ -2332,13 +2331,22 @@ bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::
 {
     ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->LoadPatch(thread, patchFileName.c_str(), baseFileName.c_str());
+    return patchManager->LoadPatch(thread, patchFileName, baseFileName);
+}
+
+bool JSNApi::LoadPatch(EcmaVM *vm,
+                       const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                       const std::string &baseFileName, const void *baseBuffer, size_t baseSize)
+{
+    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    JSThread *thread = vm->GetJSThread();
+    return patchManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName, baseBuffer, baseSize);
 }
 
 bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
 {
     ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->UnLoadPatch(thread, patchFileName.c_str());
+    return patchManager->UnLoadPatch(thread, patchFileName);
 }
 }  // namespace panda
