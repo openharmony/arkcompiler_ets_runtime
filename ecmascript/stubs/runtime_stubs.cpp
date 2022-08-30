@@ -1630,6 +1630,13 @@ DEF_RUNTIME_STUBS(ToNumeric)
     return RuntimeToNumeric(thread, value).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DynamicImport)
+{
+    RUNTIME_STUBS_HEADER(DynamicImport);
+    JSTaggedValue specifier = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDynamicImport(thread, specifier).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(NewLexicalEnvWithNameDyn)
 {
     RUNTIME_STUBS_HEADER(NewLexicalEnvWithNameDyn);

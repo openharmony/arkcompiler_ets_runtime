@@ -29,7 +29,7 @@
 
 namespace panda::ecmascript::base {
 enum class Sign { NONE, NEG, POS };
-uint64_t* RandomGenerator::randomState {nullptr};
+uint64_t RandomGenerator::randomState {0};
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_IF_CONVERSION_END(p, end, result) \
     if ((p) == (end)) {                          \
@@ -794,7 +794,7 @@ int NumberHelper::GetMinmumDigits(double d, int *decpt, char *buf)
 
     return digits;
 }
-uint64_t* RandomGenerator::GetRandomState()
+uint64_t& RandomGenerator::GetRandomState()
 {
     return randomState;
 }
@@ -811,10 +811,9 @@ void RandomGenerator::InitRandom()
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    auto val = static_cast<int64_t>((tv.tv_sec * SECONDS_TO_SUBTLE) + tv.tv_usec);
-    randomState = reinterpret_cast<uint64_t *>(&val);
+    randomState = static_cast<uint64_t>((tv.tv_sec * SECONDS_TO_SUBTLE) + tv.tv_usec);
     // the state must be non zero
-    if (*randomState == 0)
-        *randomState = 1;
+    if (randomState == 0)
+        randomState = 1;
 }
 }  // namespace panda::ecmascript::base

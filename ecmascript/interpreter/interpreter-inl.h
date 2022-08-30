@@ -3568,6 +3568,18 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(BytecodeInstruction::Format::PREF_V8_V8_V8);
     }
+    HANDLE_OPCODE(HANDLE_DYNAMICIMPORT_PREF_V8) {
+        uint16_t v0 = READ_INST_8_1();
+
+        LOG_INST() << "intrinsics::dynamicimport"
+                   << " v" << v0;
+        JSTaggedValue specifier = GET_VREG_VALUE(v0);
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(BytecodeInstruction::Format::PREF_V8);
+    }
     HANDLE_OPCODE(HANDLE_SUPERCALL_PREF_IMM16_V8) {
         uint16_t range = READ_INST_16_1();
         uint16_t v0 = READ_INST_8_3();
@@ -4168,6 +4180,7 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {TONUMERIC_PREF_V8, "TONUMERIC"},
         {CREATEASYNCGENERATOROBJ_PREF_V8, "CREATEASYNCGENERATOROBJ"},
         {ASYNCGENERATORRESOLVE_PREF_V8_V8_V8, "ASYNCGENERATORRESOLVE"},
+        {DYNAMICIMPORT_PREF_V8, "DYNAMICIMPORT"},
         {MOV_DYN_V8_V8, "MOV_DYN"},
         {MOV_DYN_V16_V16, "MOV_DYN"},
         {LDA_STR_ID32, "LDA_STR"},
