@@ -115,16 +115,6 @@ public:
         return JSHandle<TSModuleTable>(reinterpret_cast<uintptr_t>(&globalModuleTable_));
     }
 
-    CVector<JSTaggedType> GetConstStringTable() const
-    {
-        return constantStringTable_;
-    }
-
-    void ClearConstStringTable()
-    {
-        constantStringTable_.clear();
-    }
-
     void SetTSModuleTable(JSHandle<TSModuleTable> table)
     {
         globalModuleTable_ = table.GetTaggedValue();
@@ -145,6 +135,11 @@ public:
     GlobalTSTypeRef PUBLIC_API CreateGT(const panda_file::File &pf, const uint32_t localId) const;
 
     GlobalTSTypeRef PUBLIC_API GetImportTypeTargetGT(GlobalTSTypeRef gt) const;
+
+    inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, JSTaggedValue propertyName) const
+    {
+        return GetPropType(gateType, JSHandle<EcmaString>(vm_->GetJSThread(), propertyName));
+    }
 
     inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, JSHandle<EcmaString> propertyName) const
     {
@@ -197,8 +192,6 @@ public:
 
     GlobalTSTypeRef PUBLIC_API GetArrayParameterTypeGT(GlobalTSTypeRef gt) const;
 
-    size_t PUBLIC_API AddConstString(JSTaggedValue string);
-
     bool PUBLIC_API AssertTypes() const
     {
         return assertTypes_;
@@ -219,22 +212,6 @@ public:
         std::string fileName = vm_->GetJSOptions().GetBuiltinsDTS();
         return CString(fileName);
     }
-
-    // add string to constantstringtable and get its index
-    size_t PUBLIC_API GetStringIdx(JSHandle<JSTaggedValue> constPool, const uint16_t id);
-
-    /*
-     * Before using this method for type infer, you need to wait until all the
-     * string objects of the panda_file are collected, otherwise an error will
-     * be generated, and it will be optimized later.
-     */
-    JSHandle<EcmaString> PUBLIC_API GetStringById(size_t index) const
-    {
-        ASSERT(index < constantStringTable_.size());
-        return JSHandle<EcmaString>(reinterpret_cast<uintptr_t>(&(constantStringTable_.at(index))));
-    }
-
-    std::string PUBLIC_API GetStdStringById(size_t index) const;
 
     CVector<JSTaggedType> GetStaticHClassTable() const
     {
@@ -262,6 +239,18 @@ public:
     JSHandle<JSTaggedValue> GetTSType(const GlobalTSTypeRef &gt) const;
 
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
+
+    void PUBLIC_API CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool);
+
+    JSTaggedValue PUBLIC_API GetConstantPoolInfo() const
+    {
+        return constantPoolInfo_;
+    }
+
+    void PUBLIC_API SetConstantPoolInfo(JSTaggedValue constantPoolInfo)
+    {
+        constantPoolInfo_ = constantPoolInfo;
+    }
 
 #define IS_TSTYPEKIND_METHOD_LIST(V)              \
     V(Primitive, TSTypeKind::PRIMITIVE)           \
@@ -310,8 +299,8 @@ private:
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
+    JSTaggedValue constantPoolInfo_ {JSTaggedValue::Hole()};
     JSTaggedValue globalModuleTable_ {JSTaggedValue::Hole()};
-    CVector<JSTaggedType> constantStringTable_ {};
     CVector<JSTaggedType> staticHClassTable_ {};  // store hclass which produced from static type info
     std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap_ {};  // record gt and static hclass index mapping relation
     bool assertTypes_ {false};

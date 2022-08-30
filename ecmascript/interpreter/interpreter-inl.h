@@ -6539,6 +6539,18 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_FULL(FATAL) << "not implement";
         DISPATCH(STPATCHVAR_IMM8_V8);
     }
+    HANDLE_OPCODE(DYNAMICIMPORT_V8) {
+        uint16_t v0 = READ_INST_8_0();
+
+        LOG_INST() << "intrinsics::dynamicimport"
+                   << " v" << v0;
+        JSTaggedValue specifier = GET_VREG_VALUE(v0);
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(DYNAMICIMPORT_V8);
+    }
 #include "templates/debugger_instruction_handler.inl"
 }
 
@@ -6831,6 +6843,7 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {EcmaOpcode::STTHISBYVALUE_IMM16_V8, "STTHISBYVALUE_IMM16_V8"},
         {EcmaOpcode::LDPATCHVAR_IMM8, "LDPATCHVAR_IMM8"},
         {EcmaOpcode::STPATCHVAR_IMM8_V8, "STPATCHVAR_IMM8_V8"},
+        {EcmaOpcode::DYNAMICIMPORT_V8, "DYNAMICIMPORT_V8"},
         {EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8, "DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8"},
         {EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8, "DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8"},
         {EcmaOpcode::RESUMEGENERATOR, "RESUMEGENERATOR"},

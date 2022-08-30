@@ -49,11 +49,11 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(PushCallArgs1AndDispatch)              \
     V(PushCallArgs2AndDispatch)              \
     V(PushCallArgs3AndDispatch)              \
-    V(PushCallRangeAndDispatch)             \
+    V(PushCallRangeAndDispatch)              \
     V(PushCallNewAndDispatch)                \
     V(PushCallNewAndDispatchNative)          \
-    V(PushCallRangeAndDispatchNative)       \
-    V(PushCallThisRangeAndDispatch)         \
+    V(PushCallRangeAndDispatchNative)        \
+    V(PushCallThisRangeAndDispatch)          \
     V(ResumeRspAndDispatch)                  \
     V(ResumeRspAndReturn)                    \
     V(ResumeCaughtFrameAndDispatch)          \
@@ -101,7 +101,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(NameDictPutIfAbsent)                \
     V(PropertiesSetValue)                 \
     V(TaggedArraySetValue)                \
-    V(NewEcmaHClass)                    \
+    V(NewEcmaHClass)                      \
     V(UpdateLayOutAndAddTransition)       \
     V(NoticeThroughChainAndRefreshUser)   \
     V(JumpToCInterpreter)                 \
@@ -140,7 +140,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(SuperCallSpread)                    \
     V(OptSuperCallSpread)                 \
     V(DelObjProp)                         \
-    V(NewObjApply)                       \
+    V(NewObjApply)                        \
     V(CreateIterResultObj)                \
     V(AsyncFunctionAwaitUncaught)         \
     V(AsyncFunctionResolveOrReject)       \
@@ -159,6 +159,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(StOwnByIndex)                       \
     V(ResolveClass)                       \
     V(CloneClassFromTemplate)             \
+    V(CreateClassWithBuffer)              \
     V(SetClassConstructorLength)          \
     V(LoadICByName)                       \
     V(StoreICByName)                      \
@@ -169,14 +170,14 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(StModuleVarOnJSFunc)                \
     V(LdModuleVar)                        \
     V(LdModuleVarOnJSFunc)                \
-    V(Throw)                           \
+    V(Throw)                              \
     V(GetPropIterator)                    \
     V(AsyncFunctionEnter)                 \
     V(GetIterator)                        \
     V(ThrowThrowNotExists)                \
     V(ThrowPatternNonCoercible)           \
     V(ThrowDeleteSuperProperty)           \
-    V(Eq)                              \
+    V(Eq)                                 \
     V(LdGlobalRecord)                     \
     V(GetGlobalOwnProperty)               \
     V(TryLdGlobalByName)                  \
@@ -188,17 +189,16 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(LdGlobalVar)                        \
     V(ToNumber)                           \
     V(ToBoolean)                          \
-    V(NotEq)                           \
-    V(Less)                            \
-    V(LessEq)                          \
-    V(Greater)                         \
-    V(GreaterEq)                       \
-    V(Add2)                            \
-    V(Sub2)                            \
-    V(Mul2)                            \
-    V(Div2)                            \
-    V(Mod2)                            \
-    V(LoadValueFromConstantStringTable)   \
+    V(NotEq)                              \
+    V(Less)                               \
+    V(LessEq)                             \
+    V(Greater)                            \
+    V(GreaterEq)                          \
+    V(Add2)                               \
+    V(Sub2)                               \
+    V(Mul2)                               \
+    V(Div2)                               \
+    V(Mod2)                               \
     V(CreateEmptyObject)                  \
     V(CreateEmptyArray)                   \
     V(GetSymbolFunction)                  \
@@ -206,15 +206,15 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CopyRestArgs)                       \
     V(CreateArrayWithBuffer)              \
     V(CreateObjectWithBuffer)             \
-    V(NewLexicalEnv)                   \
+    V(NewLexicalEnv)                      \
     V(NewThisObject)                      \
-    V(NewObjRange)                     \
-    V(Definefunc)                      \
+    V(NewObjRange)                        \
+    V(Definefunc)                         \
     V(CreateRegExpWithLiteral)            \
     V(ThrowIfSuperNotCorrectCall)         \
     V(CreateObjectHavingMethod)           \
     V(CreateObjectWithExcludedKeys)       \
-    V(DefineNCFunc)                    \
+    V(DefineNCFunc)                       \
     V(DefineGeneratorFunc)                \
     V(DefineAsyncFunc)                    \
     V(DefineMethod)                       \
@@ -225,30 +225,31 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(ThrowStackOverflowException)        \
     V(ThrowDerivedMustReturnException)    \
     V(CallNative)                         \
-    V(CallSpread)                      \
+    V(CallSpread)                         \
     V(DefineGetterSetterByValue)          \
     V(SuperCall)                          \
     V(OptSuperCall)                       \
     V(LdBigInt)                           \
     V(ToNumeric)                          \
+    V(DynamicImport)                      \
     V(CreateAsyncGeneratorObj)            \
     V(AsyncGeneratorResolve)              \
     V(DefineAsyncGeneratorFunc)           \
-    V(NewLexicalEnvWithName)           \
+    V(NewLexicalEnvWithName)              \
     V(OptGetUnmapedArgs)                  \
     V(OptCopyRestArgs)                    \
     V(NotifyBytecodePcChanged)            \
     V(OptGetLexicalEnv)                   \
-    V(OptNewLexicalEnv)                \
-    V(OptNewLexicalEnvWithName)        \
+    V(OptNewLexicalEnv)                   \
+    V(OptNewLexicalEnvWithName)           \
     V(OptSuspendGenerator)                \
-    V(OptNewObjRange)                  \
+    V(OptNewObjRange)                     \
     V(GetTypeArrayPropertyByIndex)        \
     V(SetTypeArrayPropertyByIndex)        \
     V(OptNewObjWithIHClass)               \
     V(OptPopLexicalEnv)                   \
-    V(OptLdLexVar)                     \
-    V(OptStLexVar)                     \
+    V(OptLdLexVar)                        \
+    V(OptStLexVar)                        \
     V(JSObjectGetMethod)                  \
     V(DebugAOTPrint)                      \
     V(OptLdSuperByValue)                  \
@@ -385,6 +386,11 @@ private:
     static inline JSTaggedValue RuntimeCloneClassFromTemplate(JSThread *thread, const JSHandle<JSFunction> &ctor,
                                                               const JSHandle<JSTaggedValue> &base,
                                                               const JSHandle<JSTaggedValue> &lexenv);
+    static inline JSTaggedValue RuntimeCreateClassWithBuffer(JSThread *thread,
+                                                             const JSHandle<JSTaggedValue> &base,
+                                                             const JSHandle<JSTaggedValue> &lexenv,
+                                                             const JSHandle<JSTaggedValue> &constpool,
+                                                             const uint16_t methodId);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base);
@@ -430,6 +436,7 @@ private:
     static inline JSTaggedValue RuntimeStGlobalVar(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
                                                    const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &value);
+    static inline JSTaggedValue RuntimeDynamicImport(JSThread *thread, JSTaggedValue specifier);
     static inline JSTaggedValue RuntimeToNumeric(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                              const JSHandle<JSTaggedValue> &right);

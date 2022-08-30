@@ -691,6 +691,17 @@ HWTEST_F_L0(JSNApiTests, SyntaxError)
     ASSERT_TRUE(thread_->HasPendingException());
 }
 
+HWTEST_F_L0(JSNApiTests, OOMError)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<JSValueRef> error = Exception::OOMError(vm_, message);
+    ASSERT_TRUE(error->IsError());
+
+    JSNApi::ThrowException(vm_, error);
+    ASSERT_TRUE(thread_->HasPendingException());
+}
+
 HWTEST_F_L0(JSNApiTests, InheritPrototype_001)
 {
     LocalScope scope(vm_);

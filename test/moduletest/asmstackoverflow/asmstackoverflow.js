@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:asmstackoverflow
+ * @tc.desc:test stack overflow in asm
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function foo(x,y,z,a,b)
 {
     foo(x,y,z,a,b)

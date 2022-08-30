@@ -65,6 +65,7 @@ class JSThread;
     V(JSTaggedValue, URIErrorFunction, URI_ERROR_FUNCTION_INDEX)                                    \
     V(JSTaggedValue, SyntaxErrorFunction, SYNTAX_ERROR_FUNCTION_INDEX)                              \
     V(JSTaggedValue, EvalErrorFunction, EVAL_ERROR_FUNCTION_INDEX)                                  \
+    V(JSTaggedValue, OOMErrorFunction, OOM_ERROR_FUNCTION_INDEX)                                    \
     V(JSTaggedValue, IntlFunction, INTL_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, LocaleFunction, LOCALE_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, DateTimeFormatFunction, DATE_TIME_FORMAT_FUNCTION_INDEX)                       \
@@ -129,6 +130,7 @@ class JSThread;
     V(JSTaggedValue, PromiseFunction, PROMISE_FUNCTION_INDEX)                                       \
     V(JSTaggedValue, PromiseReactionJob, PROMISE_REACTION_JOB_INDEX)                                \
     V(JSTaggedValue, PromiseResolveThenableJob, PROMISE_REACTION_THENABLE_JOB_INDEX)                \
+    V(JSTaggedValue, DynamicImportJob, DYNAMIC_IMPORT_JOB_INDEX)                                    \
     V(JSTaggedValue, TemplateMap, TEMPLATE_MAP_INDEX)                                               \
     V(JSTaggedValue, FunctionClassWithProto, FUNCTION_CLASS_WITH_PROTO)                             \
     V(JSTaggedValue, FunctionClassWithoutProto, FUNCTION_CLASS_WITHOUT_PROTO)                       \

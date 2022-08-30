@@ -71,9 +71,9 @@ HWTEST_F_L0(JSTaggedValueTest, Double)
     EXPECT_EQ(true, tNan.IsDouble());
     EXPECT_EQ(false, tNan.IsInt());
     EXPECT_EQ(false, tNan.IsObject());
-    EXPECT_EQ(ReinterpretDoubleToTaggedType(tNan.GetDouble()), ReinterpretDoubleToTaggedType(nan));
+    EXPECT_EQ(JSTaggedValue::CastDoubleToTagged(tNan.GetDouble()), JSTaggedValue::CastDoubleToTagged(nan));
 
-    double pureNaN = ReinterpretTaggedTypeToDouble(JSTaggedValue::TAG_INT - JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+    double pureNaN = JSTaggedValue::CastTaggedToDouble(JSTaggedValue::TAG_INT - JSTaggedValue::DOUBLE_ENCODE_OFFSET);
     EXPECT_EQ(true, JSTaggedValue::IsImpureNaN(pureNaN));
 }
 

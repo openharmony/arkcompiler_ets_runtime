@@ -417,6 +417,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_URI_ERROR:
             case JSType::JS_ARGUMENTS:
             case JSType::JS_SYNTAX_ERROR:
+            case JSType::JS_OOM_ERROR:
             case JSType::JS_OBJECT: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSObject::SIZE, 2U);
                 JSHandle<JSObject> jsObj = NewJSObject(thread, factory, globalEnv);
@@ -932,7 +933,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
 #else
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 9U);
 #endif
-                JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(nullptr);
+                JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(
+                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
                 DUMP_FOR_HANDLE(classInfoExtractor)
                 break;
             }

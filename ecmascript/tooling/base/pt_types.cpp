@@ -283,7 +283,7 @@ std::string ObjectRemoteObject::DescriptionForObject(const EcmaVM *ecmaVm, Local
         return DescriptionForDate(ecmaVm, Local<DateRef>(tagged));
     }
     if (tagged->IsMap()) {
-        return DescriptionForMap(Local<MapRef>(tagged));
+        return DescriptionForMap(ecmaVm, Local<MapRef>(tagged));
     }
     if (tagged->IsWeakMap()) {
         return RemoteObject::WeakMapDescription;
@@ -317,6 +317,21 @@ std::string ObjectRemoteObject::DescriptionForObject(const EcmaVM *ecmaVm, Local
     }
     if (tagged->IsArrayBuffer()) {
         return DescriptionForArrayBuffer(ecmaVm, Local<ArrayBufferRef>(tagged));
+    }
+    if (tagged->IsSharedArrayBuffer()) {
+        return DescriptionForSharedArrayBuffer(ecmaVm, Local<ArrayBufferRef>(tagged));
+    }
+    if (tagged->IsUint8Array()) {
+        return DescriptionForUint8Array(ecmaVm, Local<TypedArrayRef>(tagged));
+    }
+    if (tagged->IsInt8Array()) {
+        return DescriptionForInt8Array(ecmaVm, Local<TypedArrayRef>(tagged));
+    }
+    if (tagged->IsInt16Array()) {
+        return DescriptionForInt16Array(ecmaVm, Local<TypedArrayRef>(tagged));
+    }
+    if (tagged->IsInt32Array()) {
+        return DescriptionForInt32Array(ecmaVm, Local<TypedArrayRef>(tagged));
     }
     if (tagged->IsJSPrimitiveRef() && tagged->IsJSPrimitiveNumber()) {
         return DescriptionForPrimitiveNumber(ecmaVm, tagged);
@@ -379,9 +394,43 @@ std::string ObjectRemoteObject::DescriptionForDate(const EcmaVM *ecmaVm, Local<D
     return description;
 }
 
-std::string ObjectRemoteObject::DescriptionForMap(Local<MapRef> tagged)
+std::string ObjectRemoteObject::DescriptionForMap(const EcmaVM *ecmaVm, Local<MapRef> tagged)
 {
-    std::string description = ("Map(" + std::to_string(tagged->GetSize()) + ")");
+    int32_t len = tagged->GetSize();
+    std::string description = "Map(" + std::to_string(len) + ")";
+    if (!len) {
+        return description;
+    }
+    description += " {";
+    char cPre = '\'';
+    for (int32_t i = 0; i < len; ++i) {
+        // add Key
+        Local<JSValueRef> jsVKey = tagged->GetKey(ecmaVm, i);
+        Local<JSValueRef> jsVValue = tagged->GetValue(ecmaVm, i);
+        if (jsVKey->IsObject()) {
+            description += "Object";
+        } else if (jsVKey->IsString()) {
+            description += cPre + jsVKey->ToString(ecmaVm)->ToString() + cPre;
+        } else {
+            description += jsVKey->ToString(ecmaVm)->ToString();
+        }
+
+        description += " => ";
+        // add Value
+        if (jsVValue->IsObject()) {
+            description += "Object";
+        } else if (jsVValue->IsString()) {
+            description += cPre + jsVValue->ToString(ecmaVm)->ToString() + cPre;
+        } else {
+            description += jsVValue->ToString(ecmaVm)->ToString();
+        }
+        if (i == len - 1 || i >= 4) { // 4:The count of elements
+            description += len > 5? ", ..." : ""; // 5:The count of elements
+            break;
+        }
+        description += ", ";
+    }
+    description += "}";
     return description;
 }
 
@@ -428,6 +477,41 @@ std::string ObjectRemoteObject::DescriptionForArrayBuffer(const EcmaVM *ecmaVm, 
 {
     int32_t len = tagged->ByteLength(ecmaVm);
     std::string description = ("ArrayBuffer(" + std::to_string(len) + ")");
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForSharedArrayBuffer(const EcmaVM *ecmaVm, Local<ArrayBufferRef> tagged)
+{
+    int32_t len = tagged->ByteLength(ecmaVm);
+    std::string description = ("SharedArrayBuffer(" + std::to_string(len) + ")");
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForUint8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
+{
+    int32_t len = tagged->ByteLength(ecmaVm);
+    std::string description = ("Uint8Array(" + std::to_string(len) + ")");
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForInt8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
+{
+    int32_t len = tagged->ByteLength(ecmaVm);
+    std::string description = ("Int8Array(" + std::to_string(len) + ")");
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForInt16Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
+{
+    int32_t len = tagged->ByteLength(ecmaVm) / NumberSize::BYTES_OF_16BITS;
+    std::string description = ("Int16Array(" + std::to_string(len) + ")");
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForInt32Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
+{
+    int32_t len = tagged->ByteLength(ecmaVm) / NumberSize::BYTES_OF_32BITS;
+    std::string description = ("Int32Array(" + std::to_string(len) + ")");
     return description;
 }
 

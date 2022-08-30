@@ -361,6 +361,8 @@ public:
         return val;
     }
 
+    std::string PUBLIC_API GetStdStringByIdx(size_t index) const;
+
     DECL_DUMP()
 };
 }  // namespace ecmascript

@@ -35,7 +35,7 @@ JSPandaFile::~JSPandaFile()
         delete pf_;
         pf_ = nullptr;
     }
-    methodMap_.clear();
+    methodLiteralMap_.clear();
     if (methodLiterals_ != nullptr) {
         JSPandaFileManager::FreeBuffer(methodLiterals_);
         methodLiterals_ = nullptr;

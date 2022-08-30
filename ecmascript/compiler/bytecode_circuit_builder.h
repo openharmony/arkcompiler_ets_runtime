@@ -420,9 +420,8 @@ public:
                                     const MethodLiteral *methodLiteral,
                                     BytecodeInfoCollector::MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager, bool enableLog)
-        : tsManager_(tsManager), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
-          method_(methodLiteral), constantPool_(constantPool), gateAcc_(&circuit_),
-          argAcc_(&circuit_, method_, jsPandaFile),
+        : file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()), method_(methodLiteral), constantPool_(constantPool),
+          gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)
@@ -512,6 +511,11 @@ public:
         }
     }
 
+    JSHandle<JSTaggedValue> GetConstantPool() const
+    {
+        return constantPool_;
+    }
+
 private:
     void CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
     void CompleteBytecodeBlockInfo();
@@ -557,7 +561,6 @@ private:
     std::map<kungfu::GateRef, std::pair<size_t, const uint8_t *>> jsgateToBytecode_;
     std::map<const uint8_t *, kungfu::GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
-    TSManager *tsManager_ {nullptr};
     const JSPandaFile *file_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     const MethodLiteral *method_ {nullptr};

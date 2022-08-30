@@ -91,10 +91,10 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
             case LiteralTag::METHODAFFILIATE: {
                 uint16_t length = std::get<uint16_t>(value);
-                auto methodLiteral = jsPandaFile->FindMethods(methodId);
+                auto methodLiteral = jsPandaFile->FindMethodLiteral(methodId);
                 ASSERT(methodLiteral != nullptr);
 
-                JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+                JSHandle<Method> method = factory->NewMethod(methodLiteral);
                 method->SetConstantPool(thread, constpool.GetTaggedValue());
                 JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
                 jt = jsFunc.GetTaggedValue();
@@ -175,10 +175,10 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 }
                 case LiteralTag::METHODAFFILIATE: {
                     uint16_t length = std::get<uint16_t>(value);
-                    auto methodLiteral = jsPandaFile->FindMethods(methodId);
+                    auto methodLiteral = jsPandaFile->FindMethodLiteral(methodId);
                     ASSERT(methodLiteral != nullptr);
 
-                    JSHandle<Method> method = factory->NewJSMethod(methodLiteral);
+                    JSHandle<Method> method = factory->NewMethod(methodLiteral);
                     method->SetConstantPool(thread, constpool.GetTaggedValue());
                     JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
                     jt = jsFunc.GetTaggedValue();

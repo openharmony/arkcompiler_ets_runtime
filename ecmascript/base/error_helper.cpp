@@ -117,6 +117,9 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorName(JSThread *thread, const JSHand
             case ErrorType::SYNTAX_ERROR:
                 errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledSyntaxErrorString());
                 break;
+            case ErrorType::OOM_ERROR:
+                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledOOMErrorString());
+                break;
             default:
                 errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledErrorString());
                 break;

@@ -3825,6 +3825,33 @@ void InterpreterAssembly::HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm1
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t methodId = READ_INST_16_1();
+    uint16_t length = READ_INST_16_5();
+    uint16_t v0 = READ_INST_8_7();
+    uint16_t v1 = READ_INST_8_8();
+    LOG_INST() << "intrinsics::defineclasswithbuffer"
+                << " method id:" << methodId << " lexenv: v" << v0 << " parent: v" << v1;
+
+    JSTaggedValue lexenv = GET_VREG_VALUE(v0);
+    JSTaggedValue proto = GET_VREG_VALUE(v1);
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, constpool, methodId);
+
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    ASSERT(res.IsClassConstructor());
+    JSFunction *cls = JSFunction::Cast(res.GetTaggedObject());
+
+    lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
+    cls->SetLexicalEnv(thread, lexenv);
+
+    JSFunction *currentFunc = JSFunction::Cast((GET_ASM_FRAME(sp)->function).GetTaggedObject());
+    cls->SetModule(thread, currentFunc->GetModule());
+
+    SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
+
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8);
 }
 void InterpreterAssembly::HandleDeprecatedDefinemethodPrefId16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
@@ -4288,6 +4315,20 @@ void InterpreterAssembly::HandleCallrangeImm8Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+}
+void InterpreterAssembly::HandleDynamicimportV8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t v0 = READ_INST_8_0();
+
+    LOG_INST() << "intrinsics::dynamicimport"
+                << " v" << v0;
+    JSTaggedValue specifier = GET_VREG_VALUE(v0);
+    JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DYNAMICIMPORT_V8);
 }
 void InterpreterAssembly::HandleCallargs3Imm8V8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,

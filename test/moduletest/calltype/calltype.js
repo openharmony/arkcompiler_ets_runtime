@@ -28,6 +28,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:calltype
+ * @tc.desc:test different kinds of call types
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 print();
 
 function foo0 () {

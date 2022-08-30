@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:typearray
+ * @tc.desc:test TypeArray
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 [
     Float64Array,
     Float32Array,

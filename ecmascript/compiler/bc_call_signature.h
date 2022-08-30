@@ -165,7 +165,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleStthisbyvalueImm16V8)                       \
     T(HandleLdpatchvarImm8)                             \
     T(HandleStpatchvarImm8V8)                           \
-    T(HandleJeqzImm8)                                    \
+    T(HandleDynamicimportV8)                            \
+    T(HandleJeqzImm8)                                   \
     T(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)   \
     T(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)  \
     T(HandleResumegenerator)                            \
@@ -173,8 +174,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleGettemplateobjectImm8)                      \
     T(HandleGettemplateobjectImm16)                     \
     T(HandleGetnextpropnameV8)                          \
-    T(HandleJeqzImm16)                                    \
-    T(HandleJeqzImm32)                                   \
+    T(HandleJeqzImm16)                                  \
+    T(HandleJeqzImm32)                                  \
     T(HandleSetobjectwithprotoImm8V8)                   \
     T(HandleDelobjpropV8)                               \
     T(HandleSuspendgeneratorV8)                         \

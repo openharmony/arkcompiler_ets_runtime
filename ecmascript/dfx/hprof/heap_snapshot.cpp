@@ -254,6 +254,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Uri Error");
         case JSType::JS_SYNTAX_ERROR:
             return GetString("Syntax Error");
+        case JSType::JS_OOM_ERROR:
+            return GetString("OutOfMemory Error");
         case JSType::JS_REG_EXP:
             return GetString("Regexp");
         case JSType::JS_SET:

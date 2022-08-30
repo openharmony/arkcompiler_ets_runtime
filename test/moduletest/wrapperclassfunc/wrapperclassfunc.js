@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:wrapperclassfunc
+ * @tc.desc:test wrapper
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 (() => {
     function WrapperFunc(propertyDesc) {
         const method = propertyDesc.value

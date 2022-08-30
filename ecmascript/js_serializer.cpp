@@ -260,6 +260,7 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
         case JSType::JS_AGGREGATE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
             return WriteJSError(value);
         case JSType::JS_DATE:
             return WriteJSDate(value);
@@ -344,6 +345,8 @@ bool JSSerializer::WriteJSErrorHeader(JSType type)
             return WriteType(SerializationUID::URI_ERROR);
         case JSType::JS_SYNTAX_ERROR:
             return WriteType(SerializationUID::SYNTAX_ERROR);
+        case JSType::JS_OOM_ERROR:
+            return WriteType(SerializationUID::OOM_ERROR);
         default:
             UNREACHABLE();
     }
@@ -969,6 +972,7 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
         case SerializationUID::AGGREGATE_ERROR:
         case SerializationUID::URI_ERROR:
         case SerializationUID::SYNTAX_ERROR:
+        case SerializationUID::OOM_ERROR:
             return ReadJSError(uid);
         case SerializationUID::JS_DATE:
             return ReadJSDate();
@@ -1046,7 +1050,10 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
             errorType = base::ErrorType::URI_ERROR;
             break;
         case SerializationUID::SYNTAX_ERROR:
-            errorType = base::ErrorType::URI_ERROR;
+            errorType = base::ErrorType::SYNTAX_ERROR;
+            break;
+        case SerializationUID::OOM_ERROR:
+            errorType = base::ErrorType::OOM_ERROR;
             break;
         default:
             UNREACHABLE();

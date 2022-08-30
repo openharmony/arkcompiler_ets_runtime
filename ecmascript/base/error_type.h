@@ -28,6 +28,7 @@ enum class ErrorType : uint8_t {
     TYPE_ERROR,
     URI_ERROR,
     AGGREGATE_ERROR,
+    OOM_ERROR,
 };
 }  // namespace panda::ecmascript::base
 

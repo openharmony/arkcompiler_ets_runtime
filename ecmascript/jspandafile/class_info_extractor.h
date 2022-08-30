@@ -37,14 +37,19 @@ public:
         uint32_t extractBegin;
         uint32_t extractEnd;
         uint8_t fillStartLoc;
-        MethodLiteral *ctorMethod;
+        Method *method;
     };
 
     CAST_CHECK(ClassInfoExtractor, IsClassInfoExtractor);
 
     static void BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                   const JSHandle<TaggedArray> &literal,
-                                                   const JSPandaFile *jsPandaFile);
+                                                   const JSHandle<TaggedArray> &literal);
+
+    static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+                                                    JSHandle<TaggedArray> &properties);
+
+    static JSHandle<JSHClass> CreateConstructorHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+                                                      JSHandle<TaggedArray> &properties);
 
     static constexpr size_t PROTOTYPE_HCLASS_OFFSET = TaggedObjectSize();
     ACCESSORS(PrototypeHClass, PROTOTYPE_HCLASS_OFFSET, NON_STATIC_KEYS_OFFSET)
@@ -55,7 +60,7 @@ public:
     ACCESSORS(StaticKeys, STATIC_KEYS_OFFSET, STATIC_PROPERTIES_OFFSET)
     ACCESSORS(StaticProperties, STATIC_PROPERTIES_OFFSET, STATIC_ELEMENTS_OFFSET)
     ACCESSORS(StaticElements, STATIC_ELEMENTS_OFFSET, CONSTRUCTOR_METHOD_OFFSET)
-    ACCESSORS_NATIVE_FIELD(ConstructorMethod, MethodLiteral, CONSTRUCTOR_METHOD_OFFSET, BIT_FIELD_OFFSET)
+    ACCESSORS(ConstructorMethod, CONSTRUCTOR_METHOD_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
@@ -65,8 +70,7 @@ public:
     FIRST_BIT_FIELD(BitField, NonStaticWithElements, bool, NON_STATIC_BITS)
     NEXT_BIT_FIELD(BitField, StaticWithElements, bool, STATIC_BITS, NonStaticWithElements)
 
-    DECL_VISIT_OBJECT(PROTOTYPE_HCLASS_OFFSET, CONSTRUCTOR_METHOD_OFFSET)
-    DECL_VISIT_NATIVE_FIELD(CONSTRUCTOR_METHOD_OFFSET, BIT_FIELD_OFFSET)
+    DECL_VISIT_OBJECT(PROTOTYPE_HCLASS_OFFSET, BIT_FIELD_OFFSET)
 
     DECL_DUMP()
 
@@ -74,22 +78,16 @@ private:
     static bool ExtractAndReturnWhetherWithElements(JSThread *thread, const JSHandle<TaggedArray> &literal,
                                                     const ExtractContentsDetail &detail,
                                                     JSHandle<TaggedArray> &keys, JSHandle<TaggedArray> &properties,
-                                                    JSHandle<TaggedArray> &elements,
-                                                    const JSPandaFile *jsPandaFile);
-
-    static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
-                                                    JSHandle<TaggedArray> &properties);
-
-    static JSHandle<JSHClass> CreateConstructorHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
-                                                      JSHandle<TaggedArray> &properties);
+                                                    JSHandle<TaggedArray> &elements);
 };
 
 enum class ClassPropertyType : uint8_t { NON_STATIC = 0, STATIC };
 
 class ClassHelper {
 public:
-    static JSHandle<JSFunction> DefineClassTemplate(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                    const JSHandle<ConstantPool> &constantpool);
+    static JSHandle<JSFunction> DefineClassFromExtractor(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
+                                                         const JSHandle<JSTaggedValue> &constpool,
+                                                         const JSHandle<JSTaggedValue> &lexenv);
 
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,

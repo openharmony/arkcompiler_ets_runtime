@@ -91,7 +91,8 @@ class ProtoChangeDetails;
         JS_TYPE_ERROR,      /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_AGGREGATE_ERROR, /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_URI_ERROR,       /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_SYNTAX_ERROR,    /* JS_ERROR_LAST /////////////////////////////////////////////////////////////////////// */\
+        JS_SYNTAX_ERROR,    /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_OOM_ERROR,       /* JS_ERROR_LAST /////////////////////////////////////////////////////////////////////// */\
                                                                                                                        \
         JS_REG_EXP,  /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SET,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -242,7 +243,7 @@ class ProtoChangeDetails;
         ECMA_OBJECT_LAST = JS_PROXY,    /* /////////////////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
         JS_ERROR_FIRST = JS_ERROR,      /* ////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_ERROR_LAST = JS_SYNTAX_ERROR, /* ////////////////////////////////////////////////////////////////-PADDING */\
+        JS_ERROR_LAST = JS_OOM_ERROR,    /* ////////////////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
         JS_ITERATOR_FIRST = JS_ITERATOR,      /* //////////////////////////////////////////////////////////-PADDING */ \
         JS_ITERATOR_LAST = JS_STRING_ITERATOR, /* //////////////////////////////////////////////////////////-PADDING */\
@@ -487,6 +488,11 @@ public:
     {
         JSType jsType = GetObjectType();
         return (JSType::JS_TYPED_ARRAY_FIRST < jsType && jsType <= JSType::JS_TYPED_ARRAY_LAST);
+    }
+
+    inline bool HasOrdinaryGet() const
+    {
+        return (IsTypedArray() || IsSpecialContainer() || IsModuleNamespace());
     }
 
     inline bool IsJSTypedArray() const

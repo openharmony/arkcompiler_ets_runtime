@@ -77,6 +77,7 @@ class CjsModuleCache;
 class SlowRuntimeStub;
 class RequireManager;
 struct CJSInfo;
+class JSPatchManager;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -114,6 +115,7 @@ using PromiseRejectCallback = void (*)(void* info);
 using NativePtrGetter = void* (*)(void* info);
 
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
+using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)>;
 
 class EcmaVM {
 public:
@@ -364,6 +366,16 @@ public:
         return resolvePathCallback_;
     }
 
+    void SetResolveBufferCallback(ResolveBufferCallback cb)
+    {
+        resolveBufferCallback_ = cb;
+    }
+
+    ResolveBufferCallback GetResolveBufferCallback() const
+    {
+        return resolveBufferCallback_;
+    }
+
     void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index, int32_t total = 0);
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
@@ -407,6 +419,11 @@ public:
 
     // For Internal Native MethodLiteral.
     JSTaggedValue GetMethodByIndex(MethodIndex idx);
+
+    JSPatchManager *GetPatchManager() const
+    {
+        return patchManager_;
+    }
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
@@ -507,6 +524,7 @@ private:
 
     // CJS resolve path Callbacks
     ResolvePathCallback resolvePathCallback_ {nullptr};
+    ResolveBufferCallback resolveBufferCallback_ {nullptr};
 
     // vm parameter configurations
     EcmaParamConfiguration ecmaParamConfiguration_;
@@ -517,6 +535,9 @@ private:
     // For Native MethodLiteral
     static void *InternalMethodTable[static_cast<uint8_t>(MethodIndex::METHOD_END)];
     CVector<JSTaggedValue> internalNativeMethods_;
+
+    // For repair patch.
+    JSPatchManager *patchManager_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;

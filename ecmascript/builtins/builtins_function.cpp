@@ -276,7 +276,11 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
         tooling::JSPtExtractor *debugExtractor =
                 JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
         const std::string &sourceCode = debugExtractor->GetSourceCode(method->GetMethodId());
-        return GetTaggedString(thread, sourceCode.c_str());
+        if (!sourceCode.empty()) {
+            return GetTaggedString(thread, sourceCode.c_str());
+        } else {
+            return GetTaggedString(thread, "Cannot get source code of funtion");
+        }
     }
 
     THROW_TYPE_ERROR_AND_RETURN(thread,

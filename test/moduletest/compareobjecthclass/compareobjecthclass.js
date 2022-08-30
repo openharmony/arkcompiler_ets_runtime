@@ -12,6 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/*
+ * @tc.name:compareobjecthclass
+ * @tc.desc:test compareHClass
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var res = false;
 
     let obj1 = {x : 1, y : 2, z :3};

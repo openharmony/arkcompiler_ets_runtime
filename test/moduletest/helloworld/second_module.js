@@ -13,5 +13,11 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:helloworld
+ * @tc.desc:test helloworld
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var second_module = "I'm second_module!"
 print("second_module got: " + helloworld)

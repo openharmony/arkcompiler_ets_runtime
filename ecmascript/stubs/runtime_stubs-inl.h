@@ -37,6 +37,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/ts_types/ts_manager.h"
+#include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 
@@ -701,6 +702,38 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     return cloneClass.GetTaggedValue();
 }
 
+// clone class may need re-set inheritance relationship due to extends may be a variable.
+JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
+                                                         const JSHandle<JSTaggedValue> &base,
+                                                         const JSHandle<JSTaggedValue> &lexenv,
+                                                         const JSHandle<JSTaggedValue> &constpool,
+                                                         const uint16_t methodId)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
+    JSHandle<JSTaggedValue> method(thread, constantPool->Get(methodId));
+    JSHandle<TaggedArray> literal(thread, constantPool->Get(methodId + 1));
+    JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
+
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literal);
+    JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, extractor, constpool, lexenv);
+
+    // JSPandaFile is in the first index of constpool.
+    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(
+        JSNativePointer::Cast(constantPool->Get(0).GetTaggedObject())->GetExternalPointer());
+    FileLoader *fileLoader = thread->GetEcmaVM()->GetFileLoader();
+    if (jsPandaFile->IsLoadedAOT()) {
+        fileLoader->SetAOTFuncEntry(jsPandaFile, cls);
+    }
+
+    RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    return cls.GetTaggedValue();
+}
+
 JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                    const JSHandle<JSTaggedValue> &ctor,
                                                                    const JSHandle<JSTaggedValue> &base)
@@ -1116,6 +1149,11 @@ JSTaggedValue RuntimeStubs::RuntimeToNumber(JSThread *thread, const JSHandle<JST
 JSTaggedValue RuntimeStubs::RuntimeToNumeric(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     return JSTaggedValue::ToNumeric(thread, value).GetTaggedValue();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, JSTaggedValue specifier)
+{
+    return SlowRuntimeStub::DynamicImport(thread, specifier);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,

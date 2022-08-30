@@ -13,5 +13,11 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:builtins
+ * @tc.desc:test builtins
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var string = "builtins test start"
 print(string)

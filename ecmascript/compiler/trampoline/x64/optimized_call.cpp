@@ -436,6 +436,7 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
         __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 get aot argv
+        __ Subq(Immediate(kungfu::ArgumentAccessor::GetFixArgsNum()), argc);
         // argv + 24 get asm interpreter argv
         __ Addq(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE, argV);
         OptimizedCallAsmInterpreter(assembler);
@@ -665,6 +666,7 @@ void OptimizedCall::JSCall(ExtendedAssembler *assembler)
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
         __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 get aot argv
+        __ Subq(Immediate(kungfu::ArgumentAccessor::GetFixArgsNum()), argc);
         // argv + 24 get asm interpreter argv
         __ Addq(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE, argV);
         OptimizedCallAsmInterpreter(assembler);

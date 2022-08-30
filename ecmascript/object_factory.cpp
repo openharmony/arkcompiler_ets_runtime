@@ -15,7 +15,7 @@
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_macros.h"
@@ -132,6 +132,7 @@ using AggregateError = builtins::BuiltinsAggregateError;
 using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
+using OOMError = builtins::BuiltinsOOMError;
 using ErrorType = base::ErrorType;
 using ErrorHelper = base::ErrorHelper;
 
@@ -141,7 +142,7 @@ ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap)
 JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, uint8_t builtinId)
 {
     uint32_t numArgs = 2;  // function object and this
-    auto method = NewJSMethod(nullptr);
+    auto method = NewMethod(nullptr);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
     if (builtinId != INVALID_BUILTINS_ID) {
@@ -730,7 +731,7 @@ JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const c
     ASSERT_PRINT(errorType == ErrorType::ERROR || errorType == ErrorType::EVAL_ERROR ||
                      errorType == ErrorType::RANGE_ERROR || errorType == ErrorType::REFERENCE_ERROR ||
                      errorType == ErrorType::SYNTAX_ERROR || errorType == ErrorType::TYPE_ERROR ||
-                     errorType == ErrorType::URI_ERROR,
+                     errorType == ErrorType::URI_ERROR || errorType == ErrorType::OOM_ERROR,
                  "The error type is not in the valid range.");
     if (data != nullptr) {
         JSHandle<EcmaString> handleMsg = NewFromUtf8(data);
@@ -779,6 +780,9 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
             break;
         case ErrorType::SYNTAX_ERROR:
             nativeConstructor = env->GetSyntaxErrorFunction();
+            break;
+        case ErrorType::OOM_ERROR:
+            nativeConstructor = env->GetOOMErrorFunction();
             break;
         default:
             nativeConstructor = env->GetErrorFunction();
@@ -862,6 +866,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_AGGREGATE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
         case JSType::JS_ITERATOR: {
             break;
         }
@@ -1445,11 +1450,11 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, cons
     return function;
 }
 
-JSHandle<Method> ObjectFactory::NewJSMethod(const MethodLiteral *methodLiteral)
+JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateOldOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetJSMethodClass().GetTaggedObject()));
+        JSHClass::Cast(thread_->GlobalConstants()->GetMethodClass().GetTaggedObject()));
     JSHandle<Method> method(thread_, header);
     if (methodLiteral != nullptr) {
         method->SetCallField(methodLiteral->GetCallField());
@@ -2911,14 +2916,14 @@ JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length, const u
     return codeObj;
 }
 
-JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(MethodLiteral *ctorMethod)
+JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTaggedValue> method)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetClassInfoExtractorHClass().GetTaggedObject()));
     JSHandle<ClassInfoExtractor> obj(thread_, header);
     obj->ClearBitField();
-    obj->SetConstructorMethod(ctorMethod);
+    obj->SetConstructorMethod(thread_, method.GetTaggedValue());
     JSHandle<TaggedArray> emptyArray = EmptyArray();
     obj->SetPrototypeHClass(thread_, JSTaggedValue::Undefined());
     obj->SetNonStaticKeys(thread_, emptyArray, SKIP_BARRIER);

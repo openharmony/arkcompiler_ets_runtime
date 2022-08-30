@@ -41,7 +41,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     TSManager *tsManager = vm_->GetTSManager();
     uint32_t mainMethodIndex = bytecodeInfo.jsPandaFile->GetMainMethodIndex();
     uint32_t skipMethodNum = 0;
-    auto mainMethod = bytecodeInfo.jsPandaFile->FindMethods(mainMethodIndex);
+    auto mainMethod = bytecodeInfo.jsPandaFile->FindMethodLiteral(mainMethodIndex);
     bool enableLog = !log_->NoneMethod();
 
     bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableLog, aotModule, &cmpCfg, tsManager,
@@ -77,7 +77,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
     });
     LOG_COMPILER(INFO) << skipMethodNum << " large methods in '" << fileName << "' have been skipped";
-    generator.AddModule(aotModule, aotModuleAssembler, bytecodeInfo.jsPandaFile);
+    generator.AddModule(aotModule, aotModuleAssembler, bytecodeInfo);
     return true;
 }
 
@@ -101,13 +101,17 @@ bool PassManager::CollectBCInfo(const std::string &fileName, BytecodeInfoCollect
         LOG_COMPILER(INFO) << fileName << " has no type info";
     }
 
+    JSThread *thread = vm_->GetJSThread();
+
     if (jsPandaFile->IsModule()) {
         ModuleManager *moduleManager = vm_->GetModuleManager();
-        moduleManager->HostResolveImportedModule(fileName.c_str());
+        CString moduleFileName = moduleManager->ResolveModuleFileName(fileName.c_str());
+        jsPandaFile =
+            const_cast<JSPandaFile *>(JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName,
+                                                                                         entry_));
     }
 
     auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile);
-    JSThread *thread = vm_->GetJSThread();
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
     JSHandle<Method> method(thread, mainFunc->GetMethod());
     JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());

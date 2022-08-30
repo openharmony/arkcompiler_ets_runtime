@@ -25,7 +25,6 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_table.h"
-#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
 void StubBuilder::Jump(Label *label)
