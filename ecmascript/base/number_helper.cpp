@@ -29,7 +29,7 @@
 
 namespace panda::ecmascript::base {
 enum class Sign { NONE, NEG, POS };
-uint64_t RandomGenerator::randomState {0};
+thread_local uint64_t RandomGenerator::randomState {0};
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_IF_CONVERSION_END(p, end, result) \
     if ((p) == (end)) {                          \
