@@ -81,11 +81,11 @@ class ArkTest():
             self.type = self.args.type
 
         product_dir = f'{self.ohdir}/out/{self.product}'
-        libs_dir_x64_release = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib'
+        libs_dir_x64_release = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib:'
                                 f'{product_dir}/clang_x64/ark/ark:'
                                 f'{product_dir}/clang_x64/ark/ark_js_runtime:'
                                 f'{product_dir}/clang_x64/thirdparty/icu')
-        libs_dir_x64_debug = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib'
+        libs_dir_x64_debug = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib:'
                               f'{product_dir}/clang_x64/exe.unstripped/clang_x64/ark/ark:'
                               f'{product_dir}/clang_x64/exe.unstripped/clang_x64/ark/ark_js_runtime:'
                               f'{product_dir}/clang_x64/lib.unstripped/clang_x64/ark/ark:'
