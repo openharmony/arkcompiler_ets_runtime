@@ -19,13 +19,13 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
-bool JSPatchManager::LoadPatch(JSThread *thread, const CString &patchFileName, const CString &baseFileName)
+bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName)
 {
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     EcmaVM *vm = thread->GetEcmaVM();
 
     // Get base constpool.
-    baseFile_ = pfManager->LoadJSPandaFile(thread, baseFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
+    baseFile_ = pfManager->LoadJSPandaFile(thread, ConvertToString(baseFileName), JSPandaFile::ENTRY_MAIN_FUNCTION);
     if (baseFile_ == nullptr) {
         return false;
     }
@@ -34,26 +34,70 @@ bool JSPatchManager::LoadPatch(JSThread *thread, const CString &patchFileName, c
         return false;
     }
     JSHandle<ConstantPool> baseConstpool(thread, baseConstpoolValue);
-    auto baseConstpoolSize = baseConstpool->GetLength();
 
     // Resolve patch.abc and get patch constpool.
-    const JSPandaFile *patchFile = pfManager->LoadJSPandaFile(thread, patchFileName, JSPandaFile::PATCH_ENTRY_FUNCTION);
-    if (patchFile == nullptr) {
+    patchFile_ = pfManager->LoadJSPandaFile(thread, ConvertToString(patchFileName), JSPandaFile::PATCH_ENTRY_FUNCTION);
+    if (patchFile_ == nullptr) {
         return false;
     }
-    JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, patchFile);
-    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile);
+    JSHandle<Program> patchProgram = PandaFileTranslator::GenerateProgram(vm, patchFile_);
+    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_);
     if (patchConstpoolValue.IsHole()) {
         return false;
     }
     JSHandle<ConstantPool> patchConstpool(thread, patchConstpoolValue);
 
+    return ReplaceMethod(thread, baseConstpool, patchConstpool, patchProgram);
+}
+
+bool JSPatchManager::LoadPatch(JSThread *thread,
+                               const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                               const std::string &baseFileName, const void *baseBuffer, size_t baseSize)
+{
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    EcmaVM *vm = thread->GetEcmaVM();
+
+    // Get base constpool.
+    baseFile_ = pfManager->LoadJSPandaFile(
+        thread, ConvertToString(baseFileName), JSPandaFile::ENTRY_MAIN_FUNCTION, baseBuffer, baseSize);
+    if (baseFile_ == nullptr) {
+        return false;
+    }
+    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_);
+    if (baseConstpoolValue.IsHole()) {
+        return false;
+    }
+    JSHandle<ConstantPool> baseConstpool(thread, baseConstpoolValue);
+
+    // Resolve patch.abc and get patch constpool.
+    patchFile_ = pfManager->LoadJSPandaFile(
+        thread, ConvertToString(patchFileName), JSPandaFile::PATCH_ENTRY_FUNCTION, patchBuffer, patchSize);
+    if (patchFile_ == nullptr) {
+        return false;
+    }
+    JSHandle<Program> patchProgram = PandaFileTranslator::GenerateProgram(vm, patchFile_);
+    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_);
+    if (patchConstpoolValue.IsHole()) {
+        return false;
+    }
+    JSHandle<ConstantPool> patchConstpool(thread, patchConstpoolValue);
+
+    return ReplaceMethod(thread, baseConstpool, patchConstpool, patchProgram);
+}
+
+bool JSPatchManager::ReplaceMethod(JSThread *thread,
+                                   const JSHandle<ConstantPool> &baseConstpool,
+                                   const JSHandle<ConstantPool> &patchConstpool,
+                                   const JSHandle<Program> &patchProgram)
+{
+    CUnorderedMap<uint32_t, MethodLiteral *> patchMethodLiterals = patchFile_->GetMethodLiteralMap();
+    auto baseConstpoolSize = baseConstpool->GetLength();
+
     // Find same method both in base and patch.
-    CUnorderedMap<uint32_t, MethodLiteral *> patchMethodLiterals = patchFile->GetMethodLiteralMap();
     for (const auto &item : patchMethodLiterals) {
         MethodLiteral *patch = item.second;
         auto methodId = patch->GetMethodId();
-        const char *patchMethodName = MethodLiteral::GetMethodName(patchFile, methodId);
+        const char *patchMethodName = MethodLiteral::GetMethodName(patchFile_, methodId);
 
         for (uint32_t index = 1; index < baseConstpoolSize; index++) { // 1: first value is JSPandaFile.
             JSTaggedValue constpoolValue = baseConstpool->GetObjectFromCache(index);
@@ -85,21 +129,21 @@ bool JSPatchManager::LoadPatch(JSThread *thread, const CString &patchFileName, c
     }
 
     // Call patch_main_0 for newly function.
-    if (!program->GetMainFunction().IsUndefined()) {
-        JSHandle<JSTaggedValue> global = vm->GetGlobalEnv()->GetJSGlobalObject();
+    if (!patchProgram->GetMainFunction().IsUndefined()) {
+        JSHandle<JSTaggedValue> global = thread->GetEcmaVM()->GetGlobalEnv()->GetJSGlobalObject();
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-        JSHandle<JSTaggedValue> func(thread, program->GetMainFunction());
+        JSHandle<JSTaggedValue> func(thread, patchProgram->GetMainFunction());
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, func, global, undefined, 0);
         EcmaInterpreter::Execute(info);
     }
-    patchFileName_ = patchFileName;
     return true;
 }
 
-bool JSPatchManager::UnLoadPatch(JSThread *thread, const CString &patchFileName)
+bool JSPatchManager::UnLoadPatch(JSThread *thread, const std::string &patchFileName)
 {
-    if ((patchFileName != patchFileName_) || (reservedBaseInfo_.empty())) {
+    if ((ConvertToString(patchFileName) != patchFile_->GetJSPandaFileDesc()) ||
+        (reservedBaseInfo_.empty())) {
         return false;
     }
 
