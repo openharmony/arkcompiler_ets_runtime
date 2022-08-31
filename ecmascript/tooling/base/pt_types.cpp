@@ -425,7 +425,7 @@ std::string ObjectRemoteObject::DescriptionForMap(const EcmaVM *ecmaVm, Local<Ma
             description += jsVValue->ToString(ecmaVm)->ToString();
         }
         if (i == len - 1 || i >= 4) { // 4:The count of elements
-            description += len > 5? ", ..." : ""; // 5:The count of elements
+            description += len > 5 ? ", ..." : ""; // 5:The count of elements
             break;
         }
         description += ", ";
@@ -489,28 +489,28 @@ std::string ObjectRemoteObject::DescriptionForSharedArrayBuffer(const EcmaVM *ec
 
 std::string ObjectRemoteObject::DescriptionForUint8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
 {
-    int32_t len = tagged->ByteLength(ecmaVm);
+    int32_t len = static_cast<int32_t>(tagged->ByteLength(ecmaVm));
     std::string description = ("Uint8Array(" + std::to_string(len) + ")");
     return description;
 }
 
 std::string ObjectRemoteObject::DescriptionForInt8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
 {
-    int32_t len = tagged->ByteLength(ecmaVm);
+    int32_t len = static_cast<int32_t>(tagged->ByteLength(ecmaVm));
     std::string description = ("Int8Array(" + std::to_string(len) + ")");
     return description;
 }
 
 std::string ObjectRemoteObject::DescriptionForInt16Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
 {
-    int32_t len = tagged->ByteLength(ecmaVm) / NumberSize::BYTES_OF_16BITS;
+    int32_t len = tagged->ByteLength(ecmaVm) / static_cast<int32_t>(NumberSize::BYTES_OF_16BITS);
     std::string description = ("Int16Array(" + std::to_string(len) + ")");
     return description;
 }
 
 std::string ObjectRemoteObject::DescriptionForInt32Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
 {
-    int32_t len = tagged->ByteLength(ecmaVm) / NumberSize::BYTES_OF_32BITS;
+    int32_t len = tagged->ByteLength(ecmaVm) / static_cast<int32_t>(NumberSize::BYTES_OF_32BITS);
     std::string description = ("Int32Array(" + std::to_string(len) + ")");
     return description;
 }
