@@ -382,7 +382,7 @@ public:
     bool OldSpaceExceedCapacity(size_t size) const
     {
         size_t totalSize = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize() + size;
-        return totalSize >= oldSpace_->GetMaximumCapacity();
+        return totalSize >= oldSpace_->GetMaximumCapacity() + oldSpace_->GetOutOfMemoryOvershootSize();
     }
 
     bool OldSpaceExceedLimit() const
@@ -413,8 +413,15 @@ public:
         fullMarkRequested_ = fullMarkRequested;
     }
 
-private:
+    void ShouldThrowOOMError(bool shouldThrow)
+    {
+        shouldThrowOOMError_ = shouldThrow;
+    }
+
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
+
+private:
+    void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
@@ -523,6 +530,7 @@ private:
     bool fullGCRequested_ {false};
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
+    bool shouldThrowOOMError_ {false};
 
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};

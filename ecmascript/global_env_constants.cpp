@@ -16,7 +16,7 @@
 #include "ecmascript/global_env_constants.h"
 
 #include "ecmascript/accessor_data.h"
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
@@ -155,7 +155,7 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
     SetConstant(
         ConstantIndex::INDIRECT_EXPORT_ENTRY_CLASS_INDEX,
         factory->NewEcmaReadOnlyHClass(hClass, IndirectExportEntry::SIZE,
-                                         JSType::INDIRECT_EXPORTENTRY_RECORD));
+                                       JSType::INDIRECT_EXPORTENTRY_RECORD));
     SetConstant(
         ConstantIndex::STAR_EXPORT_ENTRY_CLASS_INDEX,
         factory->NewEcmaReadOnlyHClass(hClass, StarExportEntry::SIZE, JSType::STAR_EXPORTENTRY_RECORD));
@@ -362,6 +362,7 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::URI_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("URIError"));
     SetConstant(ConstantIndex::SYNTAX_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("SyntaxError"));
     SetConstant(ConstantIndex::EVAL_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("EvalError"));
+    SetConstant(ConstantIndex::OOM_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("OutOfMemoryError"));
     SetConstant(ConstantIndex::ERROR_FUNC_STRING_INDEX, factory->NewFromASCIINonMovable("errorfunc"));
     SetConstant(ConstantIndex::STACK_STRING_INDEX, factory->NewFromASCIINonMovable("stack"));
     SetConstant(ConstantIndex::STACK_EMPTY_STRING_INDEX, factory->NewFromASCIINonMovable("stackisempty"));

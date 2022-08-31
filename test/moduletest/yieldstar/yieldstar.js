@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:yieldstar
+ * @tc.desc:test yield *
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function *foo1() {
     yield 1
     yield 2

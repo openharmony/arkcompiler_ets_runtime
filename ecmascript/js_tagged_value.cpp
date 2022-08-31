@@ -388,6 +388,12 @@ JSTaggedValue JSTaggedValue::OrdinaryToPrimitive(JSThread *thread, const JSHandl
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a illegal value to a Primitive", JSTaggedValue::Undefined());
 }
 
+JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, JSTaggedValue val)
+{
+    JSHandle<JSTaggedValue> tagged(thread, val);
+    return ToString(thread, tagged);
+}
+
 JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
 {
     if (tagged->IsString()) {

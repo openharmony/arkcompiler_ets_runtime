@@ -428,17 +428,18 @@ public:
                                                  MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
-    JSHandle<Method> NewJSMethod(const MethodLiteral *methodLiteral);
+    JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral);
 
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 const JSHandle<JSTaggedValue> &newTarget);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);
+
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
     JSHandle<MachineCode> NewMachineCodeObject(size_t length, const uint8_t *data);
-    JSHandle<ClassInfoExtractor> NewClassInfoExtractor(MethodLiteral *ctorMethod);
+    JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
 
     // ----------------------------------- new TSType ----------------------------------------
     JSHandle<TSObjLayoutInfo> CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal = JSTaggedValue::Hole());

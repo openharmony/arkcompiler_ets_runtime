@@ -806,6 +806,17 @@ DEF_RUNTIME_STUBS(CloneClassFromTemplate)
     return RuntimeCloneClassFromTemplate(thread, ctor, base, lexenv).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CreateClassWithBuffer)
+{
+    RUNTIME_STUBS_HEADER(CreateClassWithBuffer);
+    JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
+    return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
+                                        static_cast<uint16_t>(methodId.GetInt())).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
 {
     RUNTIME_STUBS_HEADER(SetClassConstructorLength);
@@ -1263,14 +1274,6 @@ DEF_RUNTIME_STUBS(Mod2)
     return RuntimeMod2(thread, left, right).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(LoadValueFromConstantStringTable)
-{
-    RUNTIME_STUBS_HEADER(LoadValueFromConstantStringTable);
-    JSTaggedValue id = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    auto tsManager = thread->GetEcmaVM()->GetTSManager();
-    return tsManager->GetStringById(id.GetInt()).GetTaggedValue().GetRawData();
-}
-
 DEF_RUNTIME_STUBS(JumpToCInterpreter)
 {
     RUNTIME_STUBS_HEADER(JumpToCInterpreter);
@@ -1670,6 +1673,13 @@ DEF_RUNTIME_STUBS(ToNumeric)
     RUNTIME_STUBS_HEADER(ToNumeric);
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeToNumeric(thread, value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(DynamicImport)
+{
+    RUNTIME_STUBS_HEADER(DynamicImport);
+    JSTaggedValue specifier = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDynamicImport(thread, specifier).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(NewLexicalEnvWithName)

@@ -164,6 +164,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Uri Error";
         case JSType::JS_SYNTAX_ERROR:
             return "Syntax Error";
+        case JSType::JS_OOM_ERROR:
+            return "OutOfMemory Error";
         case JSType::JS_REG_EXP:
             return "Regexp";
         case JSType::JS_SET:
@@ -560,6 +562,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_REFERENCE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
             JSObject::Cast(obj)->Dump(os);
             break;
@@ -1337,6 +1340,9 @@ void JSFunction::Dump(std::ostream &os) const
     os << "\n";
     os << " - Module: ";
     GetModule().Dump(os);
+    os << "\n";
+    os << " - Method: ";
+    GetMethod().Dump(os);
     os << "\n";
     JSObject::Dump(os);
 }
@@ -2135,6 +2141,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetSyntaxErrorFunction().GetTaggedValue().Dump(os);
     os << " - EvalErrorFunction: ";
     GetEvalErrorFunction().GetTaggedValue().Dump(os);
+    os << " - OOMErrorFunction: ";
+    GetOOMErrorFunction().GetTaggedValue().Dump(os);
     os << " - RegExpFunction: ";
     GetRegExpFunction().GetTaggedValue().Dump(os);
     os << " - BuiltinsSetFunction: ";
@@ -2301,6 +2309,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetPromiseReactionJob().GetTaggedValue().Dump(os);
     os << " - PromiseResolveThenableJob: ";
     GetPromiseResolveThenableJob().GetTaggedValue().Dump(os);
+    os << " - DynamicImportJob: ";
+    GetDynamicImportJob().GetTaggedValue().Dump(os);
     os << " - ScriptJobString: ";
     globalConst->GetScriptJobString().Dump(os);
     os << " - PromiseString: ";
@@ -3240,9 +3250,6 @@ void ResolvedBinding::Dump(std::ostream &os) const
 
 void ModuleNamespace::Dump(std::ostream &os) const
 {
-    os << " - Module: ";
-    GetModule().Dump(os);
-    os << "\n";
     os << " - Exports: ";
     GetExports().Dump(os);
     os << "\n";
@@ -3319,6 +3326,9 @@ void JSFunctionBase::Dump(std::ostream &os) const
 
 void Method::Dump(std::ostream &os) const
 {
+    os << " - MethodName: ";
+    os << GetMethodName();
+    os << "\n";
     os << " - ConstantPool: ";
     GetConstantPool().Dump(os);
     os << "\n";
@@ -3382,6 +3392,7 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_REFERENCE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
         case JSType::JS_GLOBAL_OBJECT:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
@@ -4329,6 +4340,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString("URIErrorFunction"), GetURIErrorFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("SyntaxErrorFunction"), GetSyntaxErrorFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("EvalErrorFunction"), GetEvalErrorFunction().GetTaggedValue()));
+    vec.push_back(std::make_pair(CString("OOMErrorFunction"), GetOOMErrorFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("RegExpFunction"), GetRegExpFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("BuiltinsSetFunction"), GetBuiltinsSetFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("BuiltinsMapFunction"), GetBuiltinsMapFunction().GetTaggedValue()));
@@ -4415,6 +4427,8 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString("PromiseReactionJob"), GetPromiseReactionJob().GetTaggedValue()));
     vec.push_back(
         std::make_pair(CString("PromiseResolveThenableJob"), GetPromiseResolveThenableJob().GetTaggedValue()));
+    vec.push_back(
+        std::make_pair(CString("DynamicImportJob"), GetDynamicImportJob().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("ScriptJobString"), globalConst->GetScriptJobString()));
     vec.push_back(std::make_pair(CString("PromiseString"), globalConst->GetPromiseString()));
     vec.push_back(std::make_pair(CString("IdentityString"), globalConst->GetIdentityString()));

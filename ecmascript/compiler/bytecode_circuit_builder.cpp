@@ -1394,6 +1394,11 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaBytecode::TONUMERIC_IMM8: {
             break;
         }
+        case EcmaBytecode::DYNAMICIMPORT_V8: {
+            uint16_t v0 = READ_INST_8_0();
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
         case EcmaBytecode::SUPERCALL_IMM8_IMM16_V8: {
             uint16_t range = READ_INST_16_1();
             uint16_t v0 = READ_INST_8_3();
@@ -1725,8 +1730,8 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<StringId>(input)) {
-            size_t index = tsManager_->GetStringIdx(constantPool_, std::get<StringId>(input).GetId());
-            inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32, index,
+            inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32,
+                                                  std::get<StringId>(input).GetId(),
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<Immediate>(input)) {

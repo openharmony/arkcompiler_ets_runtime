@@ -31,7 +31,6 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] LocalScope scope(vm);
         JSThread *thread = vm->GetAssociatedJSThread();
         JSHandle<JSTaggedValue> transfer(thread, JSTaggedValue::Undefined());
         Serializer serializer = Serializer(thread);

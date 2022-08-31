@@ -74,7 +74,7 @@ private:
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
 
-    inline GlobalTSTypeRef GetPropType(const GateType &type, const JSHandle<EcmaString> propertyName) const
+    inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
         return tsManager_->GetPropType(type, propertyName);
     }
@@ -84,7 +84,7 @@ private:
         return tsManager_->GetPropType(type, key);
     }
 
-    inline bool IsObjectOrHClass(const GateType &type) const
+    inline bool IsObjectOrClass(const GateType &type) const
     {
         auto flag = tsManager_->IsObjectTypeKind(type) ||
                     tsManager_->IsClassTypeKind(type) ||

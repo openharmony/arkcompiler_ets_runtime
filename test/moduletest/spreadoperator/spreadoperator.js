@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:spreadoperator
+ * @tc.desc:test spread (...)
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 // test spread Array
 var arr1 = [...Array(16).keys()];
 print(arr1.length);

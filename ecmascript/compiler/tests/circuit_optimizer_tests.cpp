@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/circuit_optimizer.h"
+#include <random>
 
+#include "ecmascript/compiler/circuit_optimizer.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -27,6 +28,7 @@ using ecmascript::kungfu::OpCode;
 using ecmascript::kungfu::GateType;
 using ecmascript::kungfu::MachineType;
 using ecmascript::kungfu::GateAccessor;
+using ecmascript::kungfu::GateRef;
 
 HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
 {
@@ -168,7 +170,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSubgraphRewriteFramework)
     const uint64_t numOfUses = 10;
     std::random_device randomDevice;
     std::mt19937_64 rng(randomDevice());
-    std::multimap<uint64_t, ecmascript::kungfu::GateRef> constantsSet;
+    std::multimap<uint64_t, GateRef> constantsSet;
     for (uint64_t iter = 0; iter < numOfUses; iter++) {
         for (uint64_t idx = 0; idx < numOfConstants; idx++) {
             constantsSet.insert(
@@ -207,5 +209,238 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSubgraphRewriteFramework)
     auto returnValue = acc.GetIn(ret, 2);
     EXPECT_TRUE(acc.GetOpCode(returnValue) == OpCode(OpCode::CONSTANT));
     EXPECT_TRUE(acc.GetBitField(returnValue) == (numOfUses) * (numOfConstants) * (numOfConstants - 1) / 2);
+}
+
+HWTEST_F_L0(CircuitOptimizerTests, TestSmallSizeGlobalValueNumbering) {
+    // construct a circuit
+    Circuit circuit;
+    GateAccessor acc(&circuit);
+    auto constantA = circuit.NewGate(OpCode(OpCode::CONSTANT),
+                                     MachineType::I64,
+                                     1,
+                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
+                                     GateType::NJSValue());
+    auto constantB = circuit.NewGate(OpCode(OpCode::CONSTANT),
+                                     MachineType::I64,
+                                     1,
+                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
+                                     GateType::NJSValue());
+    auto argA = circuit.NewGate(OpCode(OpCode::ARG),
+                                MachineType::I64,
+                                1,
+                                {Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))},
+                                GateType::NJSValue());
+    auto argB = circuit.NewGate(OpCode(OpCode::ARG),
+                                MachineType::I64,
+                                2,
+                                {Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))},
+                                GateType::NJSValue());
+
+    auto add1 = circuit.NewGate(OpCode(OpCode::ADD),
+                               MachineType::I64,
+                               0,
+                               {constantA, argA},
+                               GateType::NJSValue());
+
+    auto add2 = circuit.NewGate(OpCode(OpCode::ADD),
+                               MachineType::I64,
+                               0,
+                               {constantB, argA},
+                               GateType::NJSValue());
+
+    auto add3 = circuit.NewGate(OpCode(OpCode::ADD),
+                               MachineType::I64,
+                               0,
+                               {constantA, argB},
+                               GateType::NJSValue());
+    ecmascript::kungfu::GlobalValueNumbering(&circuit).Run();
+    EXPECT_FALSE(acc.GetOpCode(add3).IsNop());
+    EXPECT_FALSE(acc.GetOpCode(argA).IsNop());
+    EXPECT_FALSE(acc.GetOpCode(argB).IsNop());
+    EXPECT_TRUE(acc.GetOpCode(constantA).IsNop() || acc.GetOpCode(constantB).IsNop());
+    EXPECT_FALSE(acc.GetOpCode(constantA).IsNop() && acc.GetOpCode(constantB).IsNop());
+    EXPECT_TRUE(acc.GetOpCode(add1).IsNop() || acc.GetOpCode(add2).IsNop());
+    EXPECT_FALSE(acc.GetOpCode(add1).IsNop() && acc.GetOpCode(add2).IsNop());
+}
+
+HWTEST_F_L0(CircuitOptimizerTests, TestMultiLevelGlobalValueNumbering) {
+    Circuit circuit;
+    GateAccessor acc(&circuit);
+    std::random_device randomDevice;
+    std::mt19937_64 rng(randomDevice());
+    std::vector<GateRef> args;
+    for (uint32_t i = 0; i < 5; ++i) {
+        args.push_back(circuit.NewGate(OpCode(OpCode::ARG),
+                                MachineType::I64,
+                                i,
+                                {Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))},
+                                GateType::NJSValue()));
+    }
+    std::map<GateRef, std::vector<GateRef>> addToAdds;
+    std::map<GateRef, GateRef> addToAdd;
+    std::map<std::pair<GateRef, GateRef>, GateRef> pairToAdd;
+    std::vector<GateRef> adds;
+    for (uint32_t i = 0; i < 50; ++i) {
+        std::pair<GateRef, GateRef> p(args[rng() % 5], args[rng() % 5]);
+        auto add = circuit.NewGate(OpCode(OpCode::ADD),
+                               MachineType::I64,
+                               0,
+                               {p.first, p.second},
+                               GateType::NJSValue());
+        adds.push_back(add);
+        if (pairToAdd.count(p) == 0) {
+            pairToAdd[p] = add;
+            addToAdds[add] = std::vector<GateRef>(0);
+        }
+        addToAdd[add] = pairToAdd[p];
+        addToAdds[addToAdd[add]].emplace_back(add);
+    }
+    std::map<GateRef, std::vector<GateRef>> subToSubs;
+    std::map<GateRef, GateRef> subToSub;
+    std::map<std::pair<GateRef, GateRef>, GateRef> pairToSub;
+    std::vector<GateRef> subs;
+    for (uint32_t i = 0; i < 50; ++i) {
+        std::pair<GateRef, GateRef> p(adds[rng() % 5], adds[rng() % 5]);
+        auto sub = circuit.NewGate(OpCode(OpCode::SUB),
+                               MachineType::I64,
+                               0,
+                               {p.first, p.second},
+                               GateType::NJSValue());
+        subs.push_back(sub);
+        // remove redundant adds.
+        std::pair<GateRef, GateRef> np(addToAdd[p.first], addToAdd[p.second]);
+        if (pairToSub.count(np) == 0) {
+            pairToSub[np] = sub;
+            subToSubs[sub] = std::vector<GateRef>(0);
+        }
+        subToSub[sub] = pairToSub[np];
+        subToSubs[subToSub[sub]].emplace_back(sub);
+    }
+    ecmascript::kungfu::GlobalValueNumbering(&circuit).Run();
+    std::map<GateRef, GateRef> gateToKing;
+    for (const auto &p : addToAdds) {
+        uint32_t cnt = 0;
+        GateRef kingGate;
+        for (auto gate : p.second) {
+            if (acc.GetOpCode(gate) != OpCode::NOP) {
+                cnt++;
+                kingGate = gate;
+            }
+        }
+        EXPECT_TRUE(cnt == 1);
+        for (auto gate : p.second) {
+            gateToKing[gate] = kingGate;
+        }
+    }
+    for (const auto &p : subToSubs) {
+        uint32_t cnt = 0;
+        GateRef kingGate;
+        for (auto gate : p.second) {
+            if (acc.GetOpCode(gate) != OpCode::NOP) {
+                cnt++;
+                kingGate = gate;
+            }
+        }
+        EXPECT_TRUE(cnt == 1);
+        for (auto gate : p.second) {
+            gateToKing[gate] = kingGate;
+        }
+    }
+    std::vector<GateRef> gates;
+    acc.GetAllGates(gates);
+    for (auto gate : gates) {
+        if (acc.GetOpCode(gate) == OpCode::NOP) {
+            continue;
+        }
+        std::vector<GateRef> ins;
+        for (auto in : ins) {
+            EXPECT_TRUE(in == gateToKing[in]);
+        }
+    }
+}
+
+HWTEST_F_L0(CircuitOptimizerTests, TestSmallWorldGlobalValueNumbering) {
+    Circuit circuit;
+    GateAccessor acc(&circuit);
+    std::random_device randomDevice;
+    std::mt19937_64 rng(randomDevice());
+    std::vector<GateRef> args;
+    for (uint32_t i = 0; i < 3; ++i) {
+        args.push_back(circuit.NewGate(OpCode(OpCode::ARG),
+                                MachineType::I64,
+                                i,
+                                {Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))},
+                                GateType::NJSValue()));
+    }
+    std::map<GateRef, std::vector<GateRef>> addToAdds;
+    std::map<GateRef, GateRef> addToAdd;
+    std::map<std::pair<GateRef, GateRef>, GateRef> pairToAdd;
+    std::vector<GateRef> adds;
+    std::vector<GateRef> toBeSelect;
+    for (uint32_t i = 0; i < 10; ++i) {
+        std::pair<GateRef, GateRef> p(args[rng() % 3], args[rng() % 3]);
+        auto add = circuit.NewGate(OpCode(OpCode::ADD),
+                               MachineType::I64,
+                               0,
+                               {p.first, p.second},
+                               GateType::NJSValue());
+        adds.emplace_back(add);
+        toBeSelect.emplace_back(add);
+        toBeSelect.emplace_back(add);
+        if (pairToAdd.count(p) == 0) {
+            pairToAdd[p] = add;
+            addToAdds[add] = std::vector<GateRef>(0);
+        }
+        addToAdd[add] = pairToAdd[p];
+        addToAdds[addToAdd[add]].emplace_back(add);
+    }
+    for (uint32_t i = 0; i < 1000; ++i) {
+        std::pair<GateRef, GateRef> p(toBeSelect[rng() % toBeSelect.size()], toBeSelect[rng() % toBeSelect.size()]);
+        auto add = circuit.NewGate(OpCode(OpCode::ADD),
+                               MachineType::I64,
+                               0,
+                               {p.first, p.second},
+                               GateType::NJSValue());
+        adds.emplace_back(add);
+        toBeSelect.emplace_back(add);
+        toBeSelect.emplace_back(add);
+        toBeSelect.emplace_back(p.first);
+        toBeSelect.emplace_back(p.second);
+
+        std::pair<GateRef, GateRef> np(addToAdd[p.first], addToAdd[p.second]);
+        if (pairToAdd.count(np) == 0) {
+            pairToAdd[np] = add;
+            addToAdds[add] = std::vector<GateRef>(0);
+        }
+        addToAdd[add] = pairToAdd[np];
+        addToAdds[addToAdd[add]].emplace_back(add);
+    }
+    ecmascript::kungfu::GlobalValueNumbering(&circuit).Run();
+    std::map<GateRef, GateRef> gateToKing;
+    for (const auto &p : addToAdds) {
+        uint32_t cnt = 0;
+        GateRef kingGate;
+        for (auto gate : p.second) {
+            if (acc.GetOpCode(gate) != OpCode::NOP) {
+                cnt++;
+                kingGate = gate;
+            }
+        }
+        EXPECT_TRUE(cnt == 1);
+        for (auto gate : p.second) {
+            gateToKing[gate] = kingGate;
+        }
+    }
+    std::vector<GateRef> gates;
+    acc.GetAllGates(gates);
+    for (auto gate : gates) {
+        if (acc.GetOpCode(gate) == OpCode::NOP) {
+            continue;
+        }
+        std::vector<GateRef> ins;
+        for (auto in : ins) {
+            EXPECT_TRUE(in == gateToKing[in]);
+        }
+    }
 }
 } // namespace panda::test

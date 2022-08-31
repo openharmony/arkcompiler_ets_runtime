@@ -98,6 +98,8 @@ int Main(const int argc, const char **argv)
     CompilerLog log(logOption, isEnableBcTrace);
     AotMethodLogList logList(logMethodsList);
     AOTFileGenerator generator(&log, &logList, vm);
+    generator.InitializeConstantPoolInfos(pandaFileNames);
+    vm->GetTSManager()->SetConstantPoolInfo(generator.GetCpProcessor().GetInfos());
     PassManager passManager(vm, entry, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize);
     for (const auto &fileName : pandaFileNames) {
         LOG_COMPILER(INFO) << "AOT start to execute ark file: " << fileName;
@@ -106,7 +108,7 @@ int Main(const int argc, const char **argv)
             continue;
         }
     }
-    generator.SaveAOTFile(outputFileName + ".aot");
+    generator.SaveAOTFile(outputFileName + ".an");
     generator.SaveSnapshotFile();
 
     JSNApi::DestroyJSVM(vm);

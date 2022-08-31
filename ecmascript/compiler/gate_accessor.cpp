@@ -148,6 +148,30 @@ void GateAccessor::GetOutVector(GateRef gate, std::vector<GateRef>& outs) const
     }
 }
 
+void GateAccessor::GetOutStateVector(GateRef gate, std::vector<GateRef>& outStates) const
+{
+    const Gate *curGate = circuit_->LoadGatePtrConst(gate);
+    if (!curGate->IsFirstOutNull()) {
+        const Out *curOut = curGate->GetFirstOutConst();
+        GateRef ref = circuit_->GetGateRef(curOut->GetGateConst());
+        if (circuit_->GetOpCode(ref).IsState()) {
+            outStates.push_back(ref);
+        }
+        while (!curOut->IsNextOutNull()) {
+            curOut = curOut->GetNextOutConst();
+            ref = circuit_->GetGateRef(curOut->GetGateConst());
+            if (circuit_->GetOpCode(ref).IsState()) {
+                outStates.push_back(ref);
+            }
+        }
+    }
+}
+
+void GateAccessor::GetAllGates(std::vector<GateRef>& gates) const
+{
+    circuit_->GetAllGates(gates);
+}
+
 bool GateAccessor::IsInGateNull(GateRef gate, size_t idx) const
 {
     return circuit_->IsInGateNull(gate, idx);

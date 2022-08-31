@@ -20,9 +20,11 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_tagged_value.h"
-
+#include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/require/js_cjs_module.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::builtins {
@@ -117,6 +119,59 @@ JSTaggedValue BuiltinsPromiseJob::PromiseResolveThenableJob(EcmaRuntimeCallInfo 
         return JSFunction::Call(runtimeInfo);
     }
     // 4. NextJob Completion(thenCallResult).
+    return result;
+}
+
+JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), PromiseJob, DynamicImportJob);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    EcmaVM *vm = thread->GetEcmaVM();
+
+    JSHandle<JSPromiseReactionsFunction> resolve(GetCallArg(argv, 0));
+    JSHandle<JSPromiseReactionsFunction> reject(GetCallArg(argv, 1)); // 1 : first argument
+    JSHandle<EcmaString> dirPath(GetCallArg(argv, 2)); // 2: second argument
+    JSHandle<EcmaString> specifier(GetCallArg(argv, 3)); // 3 : third argument
+
+    // dirPath + specifier ----> fileName
+    JSHandle<EcmaString> fileName = CjsModule::ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
+                                                                         specifier.GetTaggedValue());
+    CString moduleName = ConvertToString(fileName.GetTaggedValue());
+
+    // std::string entry = "_GLOBAL::func_main_0";
+    if (!vm->GetModuleManager()->IsImportedModuleLoaded(fileName.GetTaggedValue())) {
+        if (!JSPandaFileExecutor::ExecuteFromFile(thread, moduleName.c_str(), "_GLOBAL::func_main_0")) {
+            LOG_FULL(FATAL) << "Cannot execute dynamic-imported panda file : ";
+        }
+    }
+
+    // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
+    JSHandle<SourceTextModule> moduleRecord = vm->GetModuleManager()->HostGetImportedModule(fileName);
+
+    // d. Let namespace be ? GetModuleNamespace(moduleRecord).
+    JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
+
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        EcmaInterpreter::NewRuntimeCallInfo(thread,
+                                            JSHandle<JSTaggedValue>(resolve),
+                                            undefined, undefined, 1);
+    info->SetCallArg(moduleNamespace.GetTaggedValue());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue result = JSFunction::Call(info);
+
+    if (thread->HasPendingException()) {
+        auto thenResult = JSPromise::IfThrowGetThrowValue(thread);
+        thread->ClearException();
+        JSHandle<JSTaggedValue> rejectfun(reject);
+        EcmaRuntimeCallInfo *runtimeInfo =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, rejectfun, undefined, undefined, 1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        runtimeInfo->SetCallArg(thenResult.GetTaggedValue());
+        return JSFunction::Call(runtimeInfo);
+    }
     return result;
 }
 }  // namespace panda::ecmascript::builtins

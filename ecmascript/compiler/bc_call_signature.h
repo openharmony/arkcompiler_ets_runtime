@@ -22,7 +22,6 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
-    T(HandleOverflowD6)                                 \
     T(HandleOverflowD7)                                 \
     T(HandleOverflowD8)                                 \
     T(HandleOverflowD9)                                 \
@@ -154,8 +153,9 @@ namespace panda::ecmascript::kungfu {
     D(HandleCallargs3Imm8V8V8V8)                        \
     D(HandleCallrangeImm8Imm8V8)                        \
     T(HandleLdexternalmodulevarImm8)                    \
-    T(HandleLdthisbynameImm8Id16)                       \
+    T(HandleDynamicimportV8)                            \
     T(HandleDefinegettersetterbyvalueV8V8V8V8)          \
+    T(HandleLdthisbynameImm8Id16)                       \
     T(HandleLdthisbynameImm16Id16)                      \
     T(HandleStthisbynameImm8Id16)                       \
     T(HandleStthisbynameImm16Id16)                      \
@@ -165,7 +165,6 @@ namespace panda::ecmascript::kungfu {
     T(HandleStthisbyvalueImm16V8)                       \
     T(HandleLdpatchvarImm8)                             \
     T(HandleStpatchvarImm8V8)                           \
-    T(HandleJeqzImm8)                                    \
     T(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)   \
     T(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)  \
     T(HandleResumegenerator)                            \
@@ -173,8 +172,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleGettemplateobjectImm8)                      \
     T(HandleGettemplateobjectImm16)                     \
     T(HandleGetnextpropnameV8)                          \
-    T(HandleJeqzImm16)                                    \
-    T(HandleJeqzImm32)                                   \
+    T(HandleJeqzImm8)                                   \
+    T(HandleJeqzImm16)                                  \
     T(HandleSetobjectwithprotoImm8V8)                   \
     T(HandleDelobjpropV8)                               \
     T(HandleSuspendgeneratorV8)                         \
@@ -224,10 +223,10 @@ namespace panda::ecmascript::kungfu {
     T(HandleLdlocalmodulevarImm8)                       \
     T(HandleStconsttoglobalrecordImm16Id16)             \
     T(HandleSttoglobalrecordImm16Id16)                  \
+    T(HandleJeqzImm32)                                  \
     T(HandleJnezImm8)                                   \
     T(HandleJnezImm16)                                  \
     T(HandleJnezImm32)                                  \
-    T(HandleJstricteqzImm8)                             \
     T(HandleStownbyvaluewithnamesetImm8V8V8)            \
     T(HandleStownbyvaluewithnamesetImm16V8V8)           \
     T(HandleStownbynamewithnamesetImm8Id16V8)           \
@@ -237,12 +236,12 @@ namespace panda::ecmascript::kungfu {
     T(HandleJmpImm8)                                    \
     T(HandleJmpImm16)                                   \
     T(HandleJmpImm32)                                   \
+    T(HandleJstricteqzImm8)                             \
     T(HandleJstricteqzImm16)                            \
     T(HandleJnstricteqzImm8)                            \
     T(HandleJnstricteqzImm16)                           \
     T(HandleJeqnullImm8)                                \
     T(HandleJeqnullImm16)                               \
-    T(HandleJnenullImm8)                                \
     T(HandleLdaV8)                                      \
     T(HandleStaV8)                                      \
     T(HandleLdaiImm32)                                  \
@@ -250,10 +249,11 @@ namespace panda::ecmascript::kungfu {
     D(HandleReturn)                                     \
     D(HandleReturnundefined)                            \
     T(HandleLdlexvarImm8Imm8)                           \
-    T(HandleJnenullImm16)                               \
+    T(HandleJnenullImm8)                                \
     T(HandleStlexvarImm8Imm8)                           \
-    T(HandleJstricteqnullImm8)                          \
+    T(HandleJnenullImm16)                               \
     D(HandleCallarg1Imm8V8)                             \
+    T(HandleJstricteqnullImm8)                          \
     T(HandleJstricteqnullImm16)                         \
     T(HandleJnstricteqnullImm8)                         \
     T(HandleJnstricteqnullImm16)                        \
@@ -336,8 +336,6 @@ namespace panda::ecmascript::kungfu {
     T(HandleDeprecatedLdhomeobjectPrefNone)                            \
     T(HandleDeprecatedCreateobjecthavingmethodPrefImm16)               \
     T(HandleDeprecatedDefineasyncgeneratorfuncPrefId16Imm16V8)
-
-
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_WIDE_STUB_LIST(V, T, D)                        \

@@ -13,7 +13,12 @@
  * limitations under the License.
  */
 
-
+/*
+ * @tc.name:generator
+ * @tc.desc:test generator
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function* gen(){
     yield 1;
     yield 2;

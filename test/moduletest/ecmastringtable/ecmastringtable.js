@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:ecmastringtable
+ * @tc.desc:test string
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 // Using to test the concat interface of EcmaStringTable about intern string and non-intern string
 {
     let REGISTRY = Symbol();

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 
 #ifdef PANDA_TARGET_WINDOWS
 #ifdef ERROR
@@ -144,6 +144,7 @@ using AggregateError = builtins::BuiltinsAggregateError;
 using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
+using OOMError = builtins::BuiltinsOOMError;
 using ErrorType = base::ErrorType;
 using Global = builtins::BuiltinsGlobal;
 using BuiltinsString = builtins::BuiltinsString;
@@ -162,6 +163,7 @@ using Promise = builtins::BuiltinsPromise;
 using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
 using ErrorType = base::ErrorType;
+using RandomGenerator = base::RandomGenerator;
 using DataView = builtins::BuiltinsDataView;
 using Intl = builtins::BuiltinsIntl;
 using Locale = builtins::BuiltinsLocale;
@@ -1003,6 +1005,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_URI_ERROR);
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_SYNTAX_ERROR);
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_EVAL_ERROR);
+    InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_OOM_ERROR);
 }
 
 void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm) const
@@ -1019,6 +1022,7 @@ void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm)
     SetErrorWithRealm(realm, JSType::JS_URI_ERROR);
     SetErrorWithRealm(realm, JSType::JS_SYNTAX_ERROR);
     SetErrorWithRealm(realm, JSType::JS_EVAL_ERROR);
+    SetErrorWithRealm(realm, JSType::JS_OOM_ERROR);
 }
 
 void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType &errorTag) const
@@ -1063,6 +1067,11 @@ void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType 
             nativeErrorFunction = env->GetSyntaxErrorFunction();
             nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledSyntaxErrorString());
             realm->SetSyntaxErrorFunction(thread_, nativeErrorFunction);
+            break;
+        case JSType::JS_OOM_ERROR:
+            nativeErrorFunction = env->GetOOMErrorFunction();
+            nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledOOMErrorString());
+            realm->SetOOMErrorFunction(thread_, nativeErrorFunction);
             break;
         default:
             break;
@@ -1118,6 +1127,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
             GeneralUpdateError(&errorParameter, SyntaxError::SyntaxErrorConstructor, SyntaxError::ToString,
                                "SyntaxError", JSType::JS_SYNTAX_ERROR);
             break;
+        case JSType::JS_OOM_ERROR:
+            GeneralUpdateError(&errorParameter, OOMError::OOMErrorConstructor, OOMError::ToString,
+                               "OutOfMemoryError", JSType::JS_OOM_ERROR);
+            break;
         default:
             break;
     }
@@ -1163,8 +1176,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
         env->SetURIErrorFunction(thread_, nativeErrorFunction);
     } else if (errorTag == JSType::JS_SYNTAX_ERROR) {
         env->SetSyntaxErrorFunction(thread_, nativeErrorFunction);
-    } else {
+    } else if (errorTag == JSType::JS_EVAL_ERROR) {
         env->SetEvalErrorFunction(thread_, nativeErrorFunction);
+    } else {
+        env->SetOOMErrorFunction(thread_, nativeErrorFunction);
     }
 }  // namespace panda::ecmascript
 
@@ -1477,6 +1492,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> mathClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathClass);
+    RandomGenerator::InitRandom();
     SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE);
     SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE);
     SetFunction(env, mathObject, "acosh", Math::Acosh, FunctionLength::ONE);
@@ -1568,7 +1584,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     stringFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, stringFuncInstanceHClass.GetTaggedValue());
 
     // String.prototype method
-    SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE);
+    SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE,
+                static_cast<uint8_t>(BUILTINS_STUB_ID(CharAt)));
     SetFunction(env, stringFuncPrototype, "charCodeAt", BuiltinsString::CharCodeAt, FunctionLength::ONE,
                 static_cast<uint8_t>(BUILTINS_STUB_ID(CharCodeAt)));
     SetFunction(env, stringFuncPrototype, "codePointAt", BuiltinsString::CodePointAt, FunctionLength::ONE);
@@ -1591,7 +1608,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetFunction(env, stringFuncPrototype, "slice", BuiltinsString::Slice, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "split", BuiltinsString::Split, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "startsWith", BuiltinsString::StartsWith, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "substring", BuiltinsString::Substring, FunctionLength::TWO);
+    SetFunction(env, stringFuncPrototype, "substring", BuiltinsString::Substring, FunctionLength::TWO,
+                static_cast<uint8_t>(BUILTINS_STUB_ID(Substring)));
     SetFunction(env, stringFuncPrototype, "substr", BuiltinsString::SubStr, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "toLocaleLowerCase", BuiltinsString::ToLocaleLowerCase, FunctionLength::ZERO);
     SetFunction(env, stringFuncPrototype, "toLocaleUpperCase", BuiltinsString::ToLocaleUpperCase, FunctionLength::ZERO);
@@ -2534,6 +2552,8 @@ void Builtins::InitializePromiseJob(const JSHandle<GlobalEnv> &env)
     env->SetPromiseReactionJob(thread_, func);
     func = NewFunction(env, keyString, BuiltinsPromiseJob::PromiseResolveThenableJob, FunctionLength::THREE);
     env->SetPromiseResolveThenableJob(thread_, func);
+    func = NewFunction(env, keyString, BuiltinsPromiseJob::DynamicImportJob, FunctionLength::FOUR);
+    env->SetDynamicImportJob(thread_, func);
 }
 
 void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const

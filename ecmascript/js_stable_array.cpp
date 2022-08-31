@@ -420,4 +420,153 @@ JSTaggedValue JSStableArray::IndexOf(JSThread *thread, JSHandle<JSTaggedValue> r
     }
     return JSTaggedValue(-1);
 }
+
+JSTaggedValue JSStableArray::Filter(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
+                                    EcmaRuntimeCallInfo *argv, uint32_t &k, double &toIndex)
+{
+    JSThread *thread = argv->GetThread();
+    JSHandle<JSTaggedValue> callbackFnHandle = base::BuiltinsBase::GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> thisArgHandle = base::BuiltinsBase::GetCallArg(argv, 1);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> toIndexHandle(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    const int32_t argsLength = 3; // 3: ?kValue, k, O?
+    double len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
+    JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    while (k < len) {
+        JSTaggedValue kValue = array->Get(k);
+        if (!kValue.IsHole()) {
+            key.Update(JSTaggedValue(k));
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(kValue, key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            JSTaggedValue callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (array->GetLength() < len) {
+                len = array->GetLength();
+            }
+            bool boolResult = callResult.ToBoolean();
+            if (boolResult) {
+                toIndexHandle.Update(JSTaggedValue(toIndex));
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle,
+                                                    toIndexHandle, JSHandle<JSTaggedValue>(thread, kValue));
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                toIndex++;
+            }
+        }
+        k++;
+        if (!thisObjVal->IsStableJSArray(thread)) {
+            break;
+        }
+    }
+    return base::BuiltinsBase::GetTaggedDouble(true);
+}
+
+JSTaggedValue JSStableArray::Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
+                                 EcmaRuntimeCallInfo *argv, uint32_t &k, uint32_t len)
+{
+    JSThread *thread = argv->GetThread();
+    JSHandle<JSTaggedValue> callbackFnHandle = base::BuiltinsBase::GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> thisArgHandle = base::BuiltinsBase::GetCallArg(argv, 1);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    JSMutableHandle<JSTaggedValue> mapResultHandle(thread, JSTaggedValue::Undefined());
+    const int32_t argsLength = 3; // 3: ?kValue, k, O?
+    JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    while (k < len) {
+        JSTaggedValue kValue = array->Get(k);
+        if (!kValue.IsHole()) {
+            key.Update(JSTaggedValue(k));
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(kValue, key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            JSTaggedValue mapResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            mapResultHandle.Update(mapResult);
+            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapResultHandle);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (array->GetLength() < len) {
+                len = array->GetLength();
+            }
+        }
+        k++;
+        if (!thisObjVal->IsStableJSArray(thread)) {
+            break;
+        }
+    }
+    return base::BuiltinsBase::GetTaggedDouble(true);
+}
+
+JSTaggedValue JSStableArray::Reverse(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                     JSHandle<JSTaggedValue> thisHandle, double &lower, uint32_t len)
+{
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    JSMutableHandle<JSTaggedValue> lowerP(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> upperP(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> lowerValueHandle(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> upperValueHandle(thread, JSTaggedValue::Undefined());
+    double middle = std::floor(len / 2);
+    while (lower != middle) {
+        if (array->GetLength() != len) {
+            break;
+        }
+        double upper = len - lower - 1;
+        lowerP.Update(JSTaggedValue(lower));
+        upperP.Update(JSTaggedValue(upper));
+        bool lowerExists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, lowerP));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (lowerExists) {
+            lowerValueHandle.Update(array->Get(lower));
+        }
+        bool upperExists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, upperP));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (upperExists) {
+            upperValueHandle.Update(array->Get(upper));
+        }
+        if (lowerExists && upperExists) {
+            array->Set(thread, lower, upperValueHandle.GetTaggedValue());
+            array->Set(thread, upper, lowerValueHandle.GetTaggedValue());
+        } else if (upperExists) {
+            array->Set(thread, lower, upperValueHandle.GetTaggedValue());
+            JSTaggedValue::SetProperty(thread, thisObjVal, lowerP, upperValueHandle, true);
+            JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, upperP);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        } else if (lowerExists) {
+            array->Set(thread, upper, lowerValueHandle.GetTaggedValue());
+            JSTaggedValue::SetProperty(thread, thisObjVal, upperP, lowerValueHandle, true);
+            JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, lowerP);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+        lower++;
+    }
+    return base::BuiltinsBase::GetTaggedDouble(true);
+}
+
+JSTaggedValue JSStableArray::Concat(JSThread *thread, JSHandle<JSObject> newArrayHandle,
+                                    JSHandle<JSObject> thisObjHandle, double &k, double &n)
+{
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    double thisLen = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
+    JSHandle<TaggedArray> arrayFrom(thread, thisObjHandle->GetElements());
+    JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
+    while (k < thisLen) {
+        if (arrayFrom->GetLength() != thisLen) {
+            break;
+        }
+        toKey.Update(JSTaggedValue(n));
+        JSTaggedValue kValue = arrayFrom->Get(k);
+        if (!kValue.IsHole()) {
+            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, JSHandle<JSTaggedValue>(thread, kValue));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+        n++;
+        k++;
+    }
+    return base::BuiltinsBase::GetTaggedDouble(true);
+}
 }  // namespace panda::ecmascript

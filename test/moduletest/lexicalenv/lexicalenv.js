@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:lexicalenv
+ * @tc.desc:test lexical env
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function foo(a) {
     var b = 2;
     var c = 3

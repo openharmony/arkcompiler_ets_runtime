@@ -34,6 +34,7 @@ public:
     explicit Snapshot(EcmaVM *vm) : vm_(vm) {}
     ~Snapshot() = default;
 
+    void Serialize(const CString &fileName = "./snapshot");
     void Serialize(TaggedObject *objectHeader, const panda_file::File *pf, const CString &fileName = "./snapshot");
     void Serialize(uintptr_t startAddr, size_t size, const CString &fileName = "./snapshot");
     void SerializeBuiltins(const CString &fileName = "./snapshot");

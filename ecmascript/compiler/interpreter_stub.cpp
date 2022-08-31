@@ -2932,7 +2932,6 @@ DECLARE_ASM_HANDLER(HandleShl2Imm8V8)
 DECLARE_ASM_HANDLER(HandleStobjbynameImm8Id16V8)
 {
     auto env = GetEnvironment();
-
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
@@ -4353,6 +4352,15 @@ DECLARE_ASM_HANDLER(HandleDeprecatedTonumericPrefV8)
     }
 }
 
+DECLARE_ASM_HANDLER(HandleDynamicimportV8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef v0 = ReadInst8_1(pc);
+    GateRef specifier = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { specifier });
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DYNAMICIMPORT_V8));
+}
+
 DECLARE_ASM_HANDLER(HandleCreateasyncgeneratorobjV8)
 {
     auto env = GetEnvironment();
@@ -4991,6 +4999,37 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
 
 DECLARE_ASM_HANDLER(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)
 {
+    // TODO
+    // auto env = GetEnvironment();
+    // DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    // GateRef methodId = ReadInst16_1(pc);
+    // GateRef length = ReadInst16_5(pc);
+    // GateRef v0 = ReadInst8_7(pc);
+    // GateRef v1 = ReadInst8_8(pc);
+
+    // GateRef lexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    // GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v1));
+
+    // GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
+    //                           { proto, lexicalEnv, constpool, Int16ToTaggedTypeNGC(methodId) });
+
+    // Label isException(env);
+    // Label isNotException(env);
+    // Branch(TaggedIsException(res), &isException, &isNotException);
+    // Bind(&isException);
+    // {
+    //     DISPATCH_LAST_WITH_ACC();
+    // }
+    // Bind(&isNotException);
+    // GateRef newLexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));  // slow runtime may gc
+    // SetLexicalEnvToFunction(glue, res, newLexicalEnv);
+    // GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    // SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
+    // CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedTypeNGC(length) });
+    // varAcc = res;
+    // DISPATCH_WITH_ACC(DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8);
+
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 

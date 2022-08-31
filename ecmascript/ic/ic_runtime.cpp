@@ -137,7 +137,7 @@ void ICRuntime::TraceIC([[maybe_unused]] JSHandle<JSTaggedValue> receiver,
 
 JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
-    if (receiver->IsTypedArray() || !receiver->IsJSObject() || receiver->IsSpecialContainer()) {
+    if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
         icAccessor_.SetAsMega();
         return JSTaggedValue::GetProperty(thread_, receiver, key).GetValue().GetTaggedValue();
     }
@@ -179,7 +179,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
 JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                         JSHandle<JSTaggedValue> value)
 {
-    if (receiver->IsTypedArray() || !receiver->IsJSObject() || receiver->IsSpecialContainer()) {
+    if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
         icAccessor_.SetAsMega();
         bool success = JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();

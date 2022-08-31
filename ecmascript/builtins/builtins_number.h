@@ -53,7 +53,7 @@ public:
     static JSTaggedValue ValueOf(EcmaRuntimeCallInfo *argv);
 
 private:
-    static JSTaggedNumber ThisNumberValue(EcmaRuntimeCallInfo *argv);
+    static JSTaggedNumber ThisNumberValue(JSThread *thread, EcmaRuntimeCallInfo *argv);
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_NUBMER_H

@@ -154,6 +154,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::SEXT_TO_INT64, &LLVMIRBuilder::HandleSExtInt},
         {OpCode::SEXT_TO_ARCH, &LLVMIRBuilder::HandleSExtInt},
         {OpCode::TRUNC_TO_INT1, &LLVMIRBuilder::HandleCastIntXToIntY},
+        {OpCode::TRUNC_TO_INT8, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::TRUNC_TO_INT32, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::TRUNC_TO_INT16, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::REV, &LLVMIRBuilder::HandleIntRev},
@@ -968,7 +969,7 @@ void LLVMIRBuilder::LinkToLLVMCfg(int bbId, const OperandsVector &predecessors)
 void LLVMIRBuilder::HandleGoto(GateRef gate)
 {
     std::vector<GateRef> outs;
-    acc_.GetOutVector(gate, outs);
+    acc_.GetOutStateVector(gate, outs);
     int block = instID2bbID_[acc_.GetId(gate)];
     int bbOut = instID2bbID_[acc_.GetId(outs[0])];
     switch (acc_.GetOpCode(gate)) {
@@ -1129,7 +1130,7 @@ void LLVMIRBuilder::HandleBranch(GateRef gate)
     std::vector<GateRef> ins;
     acc_.GetInVector(gate, ins);
     std::vector<GateRef> outs;
-    acc_.GetOutVector(gate, outs);
+    acc_.GetOutStateVector(gate, outs);
     GateRef bTrue = (acc_.GetOpCode(outs[0]) == OpCode::IF_TRUE) ? outs[0] : outs[1];
     GateRef bFalse = (acc_.GetOpCode(outs[0]) == OpCode::IF_FALSE) ? outs[0] : outs[1];
     int bbTrue = instID2bbID_[acc_.GetId(bTrue)];
@@ -1187,7 +1188,7 @@ void LLVMIRBuilder::HandleSwitch(GateRef gate)
     std::vector<GateRef> ins;
     acc_.GetInVector(gate, ins);
     std::vector<GateRef> outs;
-    acc_.GetOutVector(gate, outs);
+    acc_.GetOutStateVector(gate, outs);
     VisitSwitch(gate, ins[1], outs);
 }
 

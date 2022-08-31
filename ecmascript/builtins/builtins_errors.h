@@ -85,5 +85,12 @@ public:
 
     static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
 };
+
+class BuiltinsOOMError : public base::BuiltinsBase {
+public:
+    static JSTaggedValue OOMErrorConstructor(EcmaRuntimeCallInfo *argv);
+
+    static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
+};
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_ERRORS_H

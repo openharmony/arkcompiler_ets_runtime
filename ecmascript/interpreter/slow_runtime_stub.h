@@ -151,6 +151,7 @@ public:
                                    uint16_t length);
     static JSTaggedValue SuperCallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                          JSTaggedValue array);
+    static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier);
     static JSTaggedValue DefineMethod(JSThread *thread, JSFunction *func, JSTaggedValue homeObject);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
@@ -162,10 +163,14 @@ public:
                                       JSTaggedValue lexenv);
     static JSTaggedValue CloneClassFromTemplate(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base,
                                                 JSTaggedValue lexenv);
+    static JSTaggedValue CreateClassWithBuffer(JSThread *thread, JSTaggedValue base,
+                                               JSTaggedValue lexenv, JSTaggedValue constpool,
+                                               const uint16_t methodId);
     static JSTaggedValue SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length);
     static JSTaggedValue GetModuleNamespace(JSThread *thread, JSTaggedValue localName);
     static JSTaggedValue LdBigInt(JSThread *thread, JSTaggedValue numberBigInt);
     static JSTaggedValue ThrowTypeError(JSThread *thread, const char *message);
+    static JSTaggedValue SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base);
 
     static JSTaggedValue AsyncGeneratorResolve(JSThread *thread, JSTaggedValue asyncFuncObj,
                                                const JSTaggedValue value, JSTaggedValue flag);
@@ -174,7 +179,6 @@ public:
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);
     static JSTaggedValue GetCallSpreadArgs(JSThread *thread, JSTaggedValue array);
-    static JSTaggedValue SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_SLOW_RUNTIME_STUB_H

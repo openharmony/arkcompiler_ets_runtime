@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/compiler/file_generators.h"
+
+#include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/llvm_stackmap_parser.h"
@@ -126,14 +127,8 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
 
 void AOTFileGenerator::SaveSnapshotFile()
 {
-    TSManager *tsManager = vm_->GetTSManager();
     Snapshot snapshot(vm_);
-    CVector<JSTaggedType> constStringTable = tsManager->GetConstStringTable();
-    CVector<JSTaggedType> staticHClassTable = tsManager->GetStaticHClassTable();
-    CVector<JSTaggedType> tsManagerSerializeTable(constStringTable);
-    tsManagerSerializeTable.insert(tsManagerSerializeTable.end(), staticHClassTable.begin(), staticHClassTable.end());
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
-    snapshot.Serialize(reinterpret_cast<uintptr_t>(tsManagerSerializeTable.data()), tsManagerSerializeTable.size(),
-                       snapshotPath + ".etso");
+    snapshot.Serialize(snapshotPath + ".etso");
 }
 }  // namespace panda::ecmascript::kungfu

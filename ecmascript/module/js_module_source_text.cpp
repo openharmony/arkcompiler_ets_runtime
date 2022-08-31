@@ -82,51 +82,14 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModule(JSThread 
                                                                        const JSHandle<JSTaggedValue> &moduleRequest)
 {
     auto moduleManage = thread->GetEcmaVM()->GetModuleManager();
-    std::string moduleFilename = base::StringHelper::ToStdString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
-    if (moduleManage->resolveImportedModule(moduleRequest.GetTaggedValue())) {
+    if (moduleManage->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
         return moduleManage->HostGetImportedModule(moduleRequest.GetTaggedValue());
     }
-    ASSERT(module->GetEcmaModuleFilename().IsHeapObject());
-    std::string baseFilename = base::StringHelper::ToStdString(EcmaString::Cast(module->GetEcmaModuleFilename()
-        .GetTaggedObject()));
-    int suffixEnd = static_cast<int>(moduleFilename.find_last_of('.'));
-    if (suffixEnd == -1) {
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(SourceTextModule, thread);
-    }
-
-    ResolvePathCallback resolvePathCallback = thread->GetEcmaVM()->GetResolvePathCallback();
-    if (resolvePathCallback != nullptr) {
-        std::string callbackModuleName = resolvePathCallback(baseFilename, moduleFilename);
-        if (callbackModuleName == "") {
-            LOG_ECMA(ERROR) << "dirPath: " << baseFilename << "\n" << " requestPath: " << moduleFilename << "\n"
-                            << " moduleRequest callbackModuleName is hole failed";
-            UNREACHABLE();
-        }
-        return moduleManage->HostResolveImportedModule(callbackModuleName.c_str());
-    }
-    std::string moduleFullname;
-#if defined(PANDA_TARGET_WINDOWS)
-    if (moduleFilename[1] == ':') { // absoluteFilePath
-        moduleFullname = moduleFilename.substr(0, suffixEnd) + ".abc";
-    } else {
-        int pos = static_cast<int>(baseFilename.find_last_of('\\'));
-        if (pos == -1) {
-            RETURN_HANDLE_IF_ABRUPT_COMPLETION(SourceTextModule, thread);
-        }
-        moduleFullname = baseFilename.substr(0, pos + 1) + moduleFilename.substr(0, suffixEnd) + ".abc";
-    }
-#else
-    if (moduleFilename[0] == '/') { // absoluteFilePath
-        moduleFullname = moduleFilename.substr(0, suffixEnd) + ".abc";
-    } else {
-        int pos = static_cast<int>(baseFilename.find_last_of('/'));
-        if (pos == -1) {
-            RETURN_HANDLE_IF_ABRUPT_COMPLETION(SourceTextModule, thread);
-        }
-        moduleFullname = baseFilename.substr(0, pos + 1) + moduleFilename.substr(0, suffixEnd) + ".abc";
-    }
-#endif
-    return moduleManage->HostResolveImportedModule(moduleFullname.c_str());
+    std::string baseFilename = base::StringHelper::ToStdString(
+        EcmaString::Cast(module->GetEcmaModuleFilename().GetTaggedObject()));
+    std::string moduleFilename = base::StringHelper::ToStdString(
+        EcmaString::Cast(moduleRequest->GetTaggedObject()));
+    return thread->GetEcmaVM()->GetModuleManager()->HostResolveImportedModule(baseFilename, moduleFilename);
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -448,7 +411,8 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
     return moduleNamespace;
 }
 
-int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module)
+int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                               const void *buffer, size_t size)
 {
     // 1. Let module be this Source Text Module Record.
     // 2. Assert: module.[[Status]] is "instantiated" or "evaluated".
@@ -458,7 +422,7 @@ int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule
     CVector<JSHandle<SourceTextModule>> stack;
     // 4. Let result be InnerModuleEvaluation(module, stack, 0)
     JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
-    int result = SourceTextModule::InnerModuleEvaluation(thread, moduleRecord, stack, 0);
+    int result = SourceTextModule::InnerModuleEvaluation(thread, moduleRecord, stack, 0, buffer, size);
     // 5. If result is an abrupt completion, then
     if (thread->HasPendingException()) {
         // a. For each module m in stack, do
@@ -486,7 +450,8 @@ int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule
 }
 
 int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-                                            CVector<JSHandle<SourceTextModule>> &stack, int index)
+                                            CVector<JSHandle<SourceTextModule>> &stack, int index,
+                                            const void *buffer, size_t size)
 {
     // 1. If module is not a Source Text Module Record, then
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
@@ -557,7 +522,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
     }
 
     // 11. Perform ? ModuleExecution(module).
-    SourceTextModule::ModuleExecution(thread, module);
+    SourceTextModule::ModuleExecution(thread, module, buffer, size);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
     // 12. Assert: module occurs exactly once in stack.
     // 13. Assert: module.[[DFSAncestorIndex]] is less than or equal to module.[[DFSIndex]].
@@ -585,13 +550,22 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
     return index;
 }
 
-void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module)
+void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                       const void *buffer, size_t size)
 {
     JSTaggedValue moduleFileName = module->GetEcmaModuleFilename();
     ASSERT(moduleFileName.IsString());
     CString moduleFilenameStr = ConvertToString(EcmaString::Cast(moduleFileName.GetTaggedObject()));
-    const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr, JSPandaFile::ENTRY_MAIN_FUNCTION);
+    const JSPandaFile *jsPandaFile = nullptr;
+    if (buffer != nullptr) {
+        jsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr,
+                                                               JSPandaFile::ENTRY_MAIN_FUNCTION, buffer, size);
+    } else {
+        jsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr,
+                                                               JSPandaFile::ENTRY_MAIN_FUNCTION);
+    }
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "open jsPandaFile " << moduleFilenameStr << " error";
         UNREACHABLE();

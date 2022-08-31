@@ -77,7 +77,7 @@ static constexpr size_t MAX_CHUNK_AREA_SIZE = 1_MB;
 
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);
-static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = base::math::GetIntLog2(TAGGED_TYPE_SIZE);
+static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = base::MathHelper::GetIntLog2(TAGGED_TYPE_SIZE);
 
 template<typename T>
 constexpr inline bool IsAligned(T value, size_t alignment)

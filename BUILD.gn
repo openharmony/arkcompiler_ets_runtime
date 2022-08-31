@@ -143,7 +143,7 @@ config("ark_jsruntime_public_config") {
   ]
 
   defines = []
-  if (!is_mingw && !is_mac && target_os != "android") {
+  if (!is_mingw && !is_mac) {
     defines += [
       "ECMASCRIPT_SUPPORT_CPUPROFILER",
       "ECMASCRIPT_SUPPORT_HEAPPROFILER",
@@ -358,7 +358,7 @@ ecma_source = [
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
   "ecmascript/base/utf_helper.cpp",
-  "ecmascript/builtins.cpp",
+  "ecmascript/builtins/builtins.cpp",
   "ecmascript/builtins/builtins_ark_tools.cpp",
   "ecmascript/builtins/builtins_array.cpp",
   "ecmascript/builtins/builtins_arraybuffer.cpp",
@@ -449,6 +449,8 @@ ecma_source = [
   "ecmascript/jspandafile/js_pandafile_executor.cpp",
   "ecmascript/jspandafile/scope_info_extractor.cpp",
   "ecmascript/jspandafile/method_literal.cpp",
+  "ecmascript/jspandafile/program_object.cpp",
+  "ecmascript/jspandafile/js_patch_manager.cpp",
   "ecmascript/js_api/js_api_arraylist.cpp",
   "ecmascript/js_api/js_api_arraylist_iterator.cpp",
   "ecmascript/js_api/js_api_deque.cpp",
@@ -659,6 +661,13 @@ source_set("libark_jsruntime_set") {
       defines += [ "ENABLE_HILOG" ]
       include_dirs +=
           [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
+    }
+    if (enable_leak_check) {
+      sources += [ "ecmascript/dfx/native_dfx/backtrace.cpp" ]
+      defines += [
+        "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
+        "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
+      ]
     }
   }
 }

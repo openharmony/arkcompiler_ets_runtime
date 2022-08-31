@@ -30,7 +30,6 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] LocalScope scope(vm);
         double input = 0;
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;

@@ -264,7 +264,7 @@ template("host_aot_js_test_action") {
 
   _test_ts_path_ = "./${_target_name_}.js"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
-  _test_aot_path_ = "$target_out_dir/${_target_name_}.aot"
+  _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
   _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.etso"
   _test_aot_arg_ = "$target_out_dir/${_target_name_}"
   _test_aot_log_level = "info"
@@ -382,7 +382,7 @@ template("host_aot_test_action") {
 
   _test_ts_path_ = "./${_target_name_}.ts"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
-  _test_aot_path_ = "$target_out_dir/${_target_name_}.aot"
+  _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
   _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.etso"
   _test_aot_arg_ = "$target_out_dir/${_target_name_}"
   _test_aot_log_level = "info"

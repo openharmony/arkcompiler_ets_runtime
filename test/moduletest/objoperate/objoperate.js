@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:objoperate
+ * @tc.desc:test object operate
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function assertEqual(a, b) {
     var t1 = JSON.stringify(a);
     var t2 = JSON.stringify(b);

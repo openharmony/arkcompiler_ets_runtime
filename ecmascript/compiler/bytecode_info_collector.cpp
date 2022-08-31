@@ -91,7 +91,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
             } else {
                 methodPcInfos[it->second].methods.emplace_back(methodLiteral);
             }
-            jsPandaFile->SetMethodToMap(methodLiteral);
+            jsPandaFile->SetMethodLiteralToMap(methodLiteral);
         });
     }
     LOG_COMPILER(INFO) << "Total number of methods in file: " << jsPandaFile->GetJSPandaFileDesc()
