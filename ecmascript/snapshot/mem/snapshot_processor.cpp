@@ -1724,7 +1724,7 @@ void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSTaggedVa
 
     uint32_t len = valueArray->GetLength();
     for (uint32_t i = 0; i < len; i += ITEM_SIZE) {
-        uint32_t valueIndex = valueArray->Get(i).GetInt();
+        uint32_t valueIndex = static_cast<uint32_t>(valueArray->Get(i).GetInt());
         JSTaggedValue value = valueArray->Get(i + 1);
         constPool->Set(thread, valueIndex, value);
     }

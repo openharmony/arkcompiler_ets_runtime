@@ -1972,7 +1972,7 @@ inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bo
     if (compressed) {
         mixLength = Int32Or(len, Int32(EcmaString::STRING_COMPRESSED));
     } else {
-        mixLength = Int32Or(len, Int32(EcmaString::STRING_UNCOMPRESSED));;
+        mixLength = Int32Or(len, Int32(EcmaString::STRING_UNCOMPRESSED));
     }
     Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
 }
