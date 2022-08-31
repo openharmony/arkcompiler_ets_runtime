@@ -146,7 +146,6 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define GET_ACC() (acc)                        // NOLINT(cppcoreguidelines-macro-usage)
 #define SET_ACC(val) (acc = val)               // NOLINT(cppcoreguidelines-macro-usage)
 
-// TODO: change to static method
 #define GET_OBJ_FROM_CACHE(index) \
     ConstantPool::GetObjectFromCache(thread, constpool, index)
 
@@ -4865,7 +4864,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8) {
         uint16_t methodId = READ_INST_16_1();
-        // uint16_t literaId = READ_INST_16_3();
+        uint16_t literaId = READ_INST_16_3();
         uint16_t length = READ_INST_16_5();
         uint16_t v0 = READ_INST_8_7();
         LOG_INST() << "intrinsics::defineclasswithbuffer"
@@ -4873,10 +4872,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue proto = GET_VREG_VALUE(v0);
 
-        JSTaggedValue res;
         SAVE_PC();
         InterpretedFrame *state = GET_FRAME(sp);
-        res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, state->env, GetConstantPool(sp), methodId);
+        JSTaggedValue res =
+            SlowRuntimeStub::CreateClassWithBuffer(thread, proto, state->env, GetConstantPool(sp), methodId, literaId);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
@@ -4894,7 +4893,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8) {
         uint16_t methodId = READ_INST_16_2();
-        // uint16_t literaId = READ_INST_16_4();
+        uint16_t literaId = READ_INST_16_4();
         uint16_t length = READ_INST_16_6();
         uint16_t v0 = READ_INST_8_8();
         LOG_INST() << "intrinsics::defineclasswithbuffer"
@@ -4903,10 +4902,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue proto = GET_VREG_VALUE(v0);
 
-        // TODO: move to constpool
-        JSTaggedValue res;
         SAVE_PC();
-        res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, state->env, GetConstantPool(sp), methodId);
+        JSTaggedValue res =
+            SlowRuntimeStub::CreateClassWithBuffer(thread, proto, state->env, GetConstantPool(sp), methodId, literaId);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
@@ -4933,9 +4931,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue lexenv = GET_VREG_VALUE(v0);
         JSTaggedValue proto = GET_VREG_VALUE(v1);
 
-        JSTaggedValue res;
         SAVE_PC();
-        res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, GetConstantPool(sp), methodId);
+        JSTaggedValue res =
+            SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, GetConstantPool(sp), methodId, methodId + 1);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());

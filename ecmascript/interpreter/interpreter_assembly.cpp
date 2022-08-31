@@ -3836,7 +3836,8 @@ void InterpreterAssembly::HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm1
     JSTaggedValue proto = GET_VREG_VALUE(v1);
 
     SAVE_PC();
-    JSTaggedValue res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, constpool, methodId);
+    JSTaggedValue res =
+        SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, constpool, methodId, methodId + 1);
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
     ASSERT(res.IsClassConstructor());

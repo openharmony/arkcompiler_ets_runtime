@@ -2860,15 +2860,17 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef methodId = acc_.GetValueIn(gate, 0);
+    GateRef literalId = acc_.GetValueIn(gate, 1);
     GateRef length = acc_.GetValueIn(gate, 2);
 
+    // TODO: get lexenv from frame state
     GateRef lexicalEnv = acc_.GetValueIn(gate, 3);
     GateRef proto = acc_.GetValueIn(gate, 4);
     GateRef constpool = GetConstPool(jsFunc);
 
     Label isException(&builder_);
     Label isNotException(&builder_);
-    auto args = { proto, lexicalEnv, constpool, builder_.TaggedNGC(methodId) };
+    auto args = { proto, lexicalEnv, constpool, builder_.TaggedNGC(methodId), builder_.TaggedNGC(literalId) };
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer), args, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &isException, &isNotException);

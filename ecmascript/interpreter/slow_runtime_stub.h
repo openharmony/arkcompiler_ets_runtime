@@ -165,7 +165,7 @@ public:
                                                 JSTaggedValue lexenv);
     static JSTaggedValue CreateClassWithBuffer(JSThread *thread, JSTaggedValue base,
                                                JSTaggedValue lexenv, JSTaggedValue constpool,
-                                               const uint16_t methodId);
+                                               uint16_t methodId, uint16_t literalId);
     static JSTaggedValue SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length);
     static JSTaggedValue GetModuleNamespace(JSThread *thread, JSTaggedValue localName);
     static JSTaggedValue LdBigInt(JSThread *thread, JSTaggedValue numberBigInt);

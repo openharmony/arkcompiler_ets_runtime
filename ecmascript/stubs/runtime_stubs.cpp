@@ -813,8 +813,10 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
     JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
+    JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
     return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
-                                        static_cast<uint16_t>(methodId.GetInt())).GetRawData();
+                                        static_cast<uint16_t>(methodId.GetInt()),
+                                        static_cast<uint16_t>(literalId.GetInt())).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SetClassConstructorLength)

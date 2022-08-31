@@ -390,7 +390,7 @@ private:
                                                              const JSHandle<JSTaggedValue> &base,
                                                              const JSHandle<JSTaggedValue> &lexenv,
                                                              const JSHandle<JSTaggedValue> &constpool,
-                                                             const uint16_t methodId);
+                                                             uint16_t methodId, uint16_t literalId);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base);
