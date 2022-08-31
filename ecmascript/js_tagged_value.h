@@ -55,7 +55,7 @@ using JSTaggedType = uint64_t;
 
 //  Nan-boxing pointer is used and the first four bytes are used as tag:
 //    Object:             [0x0000] [48 bit direct pointer]
-//    WeakRef:            [0x0000] [47 bits direct pointer] | 1 bit 1
+//    WeakRef:            [0x0000] [47 bits direct pointer] | 1
 //                   /    [0x0001] [48 bit any value]
 //    TaggedDouble:       ......
 //                   \    [0xFFFE] [48 bit any value]

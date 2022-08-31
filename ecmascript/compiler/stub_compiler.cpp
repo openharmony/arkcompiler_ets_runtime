@@ -98,10 +98,11 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
     auto callSigns = module->GetCSigns();
     const CompilerLog *log = GetLog();
     auto logList = GetLogList();
+    auto cconfig = module->GetCompilationConfig();
 
     bool enableLog = !log->NoneMethod();
     for (size_t i = 0; i < callSigns.size(); i++) {
-        Circuit circuit;
+        Circuit circuit(cconfig->Is64Bit());
         Stub stub(callSigns[i], &circuit);
         ASSERT(callSigns[i]->HasConstructor());
         StubBuilder* stubBuilder = static_cast<StubBuilder*>(

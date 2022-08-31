@@ -32,7 +32,7 @@
 namespace panda::ecmascript::kungfu {
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
 public:
-    Circuit();
+    Circuit(bool isArch64 = true);
     ~Circuit();
     Circuit(Circuit const &circuit) = default;
     Circuit &operator=(Circuit const &circuit) = default;
@@ -59,6 +59,14 @@ public:
     size_t GetGateCount() const;
     TimeStamp GetTime() const;
     void AdvanceTime() const;
+    void SetArch(bool isArch64)
+    {
+        isArch64_ = isArch64;
+    }
+    bool IsArch64() const
+    {
+        return isArch64_;
+    }
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
@@ -102,13 +110,14 @@ private:
     const Gate *LoadGatePtrConst(GateRef shift) const;
 
 private:
-    void* space_;
-    size_t circuitSize_;
-    size_t gateCount_;
+    void* space_ {nullptr};
+    size_t circuitSize_ {0};
+    size_t gateCount_ {0};
     TimeStamp time_;
     std::vector<uint8_t> dataSection_ {};
     std::map<std::tuple<MachineType, BitField, GateType>, GateRef> constantCache_ {};
     panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
+    bool isArch64_ {false};
 
     friend class GateAccessor;
     friend class Verifier;
