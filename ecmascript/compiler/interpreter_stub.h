@@ -87,7 +87,6 @@ public:
     inline void SetFunctionToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void SetAccToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void SetEnvToFrame(GateRef glue, GateRef frame, GateRef value);
-    inline void SetConstantPoolToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
@@ -122,8 +121,11 @@ public:
                                  GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
     inline void DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
-    inline GateRef FunctionIsResolved(GateRef object);
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetStringFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetMethodFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetArrayLiteralFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetObjectLiteralFromConstPool(GateRef constpool, GateRef index);
 private:
     template<typename... Args>
     void DispatchBase(GateRef target, GateRef glue, Args... args);

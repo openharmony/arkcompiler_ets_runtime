@@ -497,9 +497,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaBytecode::TONUMERIC:
             LowerToNumeric(gate, glue);
             break;
-        case DYNAMICIMPORT_V8:
-            LowerDynamicImport(gate, glue, jsFunc);
-            break;
+        // case DYNAMICIMPORT_V8:
+        //     LowerDynamicImport(gate, glue, jsFunc);
+        //     break;
         case EcmaBytecode::LDMODULEVAR:
             LowerLdModuleVar(gate, glue, jsFunc);
             break;
@@ -812,7 +812,7 @@ void SlowPathLowering::LowerAsyncFunctionReject(GateRef gate, GateRef glue)
     ReplaceHirToCall(gate, newGate);
 }
 
-void SlowPathLowering::LowerLoadStr(GateRef gate, GateRef glue, GateRef jsFunc)
+void SlowPathLowering::LowerLoadStr(GateRef gate, [[maybe_unused]] GateRef glue, GateRef jsFunc)
 {
     // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleLdaStrId16)));
     GateRef newGate = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
@@ -869,7 +869,7 @@ void SlowPathLowering::LowerTryLdGlobalByName(GateRef gate, GateRef glue, GateRe
 
 void SlowPathLowering::LowerStGlobalVar(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStGlobalVarId16)));
+    // DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStGlobalVarId16)));
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     GateRef prop = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));

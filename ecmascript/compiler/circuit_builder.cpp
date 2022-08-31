@@ -442,35 +442,6 @@ GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, offset);
 }
 
-// TODO
-GateRef CircuitBuilder::FunctionIsResolved(GateRef function)
-{
-    Label subentry(env_);
-    SubCfgEntry(&subentry);
-    Label exit(env_);
-    Label isUndefined(env_);
-    Label notUndefined(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), True());
-    Branch(TaggedIsUndefined(function), &isUndefined, &notUndefined);
-    Bind(&isUndefined);
-    {
-        Jump(&exit);
-    }
-    Bind(&notUndefined);
-    {
-        // GateRef bitfield = GetFunctionBitFieldFromJSFunction(function);
-        // result = NotEqual(Int32And(Int32LSR(bitfield,
-        //                                     Int32(JSFunction::ResolvedBits::START_BIT)),
-        //                            Int32((1LU << JSFunction::ResolvedBits::SIZE) - 1)),
-        //                   Int32(0));
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
-}
-
 void CircuitBuilder::SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef method = GetMethodFromFunction(function);

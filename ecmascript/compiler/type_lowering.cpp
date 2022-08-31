@@ -46,7 +46,7 @@ void TypeLowering::Lower(GateRef gate)
         case EcmaBytecode::NEWOBJRANGE:
             LowerTypeNewObjRange(gate, glue);
             break;
-        case ADD2DYN_PREF_V8:
+        case EcmaBytecode::ADD2:
             LowerTypeAdd2Dyn(gate, glue);
             break;
         default:

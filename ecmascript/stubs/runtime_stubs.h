@@ -115,19 +115,19 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(StOwnByNameWithNameSet)             \
     V(SuspendGenerator)                   \
     V(UpFrame)                            \
-    V(Neg)                             \
-    V(Not)                             \
-    V(Inc)                             \
-    V(Dec)                             \
-    V(Shl2)                            \
-    V(Shr2)                            \
-    V(Ashr2)                           \
-    V(Or2)                             \
-    V(Xor2)                            \
-    V(And2)                            \
-    V(Exp)                             \
-    V(IsIn)                            \
-    V(InstanceOf)                      \
+    V(Neg)                                \
+    V(Not)                                \
+    V(Inc)                                \
+    V(Dec)                                \
+    V(Shl2)                               \
+    V(Shr2)                               \
+    V(Ashr2)                              \
+    V(Or2)                                \
+    V(Xor2)                               \
+    V(And2)                               \
+    V(Exp)                                \
+    V(IsIn)                               \
+    V(InstanceOf)                         \
     V(FastStrictEqual)                    \
     V(FastStrictNotEqual)                 \
     V(CreateGeneratorObj)                 \
@@ -252,6 +252,10 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(OptStLexVar)                        \
     V(JSObjectGetMethod)                  \
     V(DebugAOTPrint)                      \
+    V(GetMethodFromCache)                 \
+    V(GetArrayLiteralFromCache)           \
+    V(GetObjectLiteralFromCache)          \
+    V(GetStringFromCache)                 \
     V(OptLdSuperByValue)                  \
     V(OptStSuperByValue)
 

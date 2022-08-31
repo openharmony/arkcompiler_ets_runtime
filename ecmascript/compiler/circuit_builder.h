@@ -384,7 +384,6 @@ public:
     GateRef GetFunctionBitFieldFromJSFunction(GateRef function);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
-    GateRef FunctionIsResolved(GateRef function);
     void SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
     void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
