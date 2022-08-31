@@ -707,7 +707,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
                                                          const JSHandle<JSTaggedValue> &lexenv,
                                                          const JSHandle<JSTaggedValue> &constpool,
-                                                         const uint16_t methodId)
+                                                         uint16_t methodId, uint16_t literalId)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -715,7 +715,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
     auto methodObj = ConstantPool::GetClassMethodFromCache(thread, constantPool, methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
-    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, methodId + 1);
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId);
     JSHandle<TaggedArray> literal(thread, literalObj);
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
