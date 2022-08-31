@@ -1122,6 +1122,7 @@ void SnapshotProcessor::DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, 
     auto nonMovableSpace = heap->GetNonMovableSpace();
     auto machineCodeSpace = heap->GetMachineCodeSpace();
     auto snapshotSpace = heap->GetSnapshotSpace();
+
     DeserializeSpaceObject(oldSpaceBegin, oldSpace, oldSpaceObjSize);
     DeserializeSpaceObject(nonMovableBegin, nonMovableSpace, nonMovableObjSize);
     DeserializeSpaceObject(machineCodeBegin, machineCodeSpace, machineCodeObjSize);
@@ -1144,35 +1145,38 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         uint32_t regionIndex = *(reinterpret_cast<GCBitset *>(oldMarkGCBitsetAddr)->Words());
         regionIndexMap_.emplace(regionIndex, region);
 
-        size_t copyBytes = fileRegion->highWaterMark_ - fileRegion->packedData_.begin_;
+        size_t liveObjectSize = 0;
+        if (space->GetSpaceType() == MemSpaceType::SNAPSHOT_SPACE) {
+            liveObjectSize = fileRegion->highWaterMark_ - fileRegion->packedData_.begin_;
+        } else {
+            liveObjectSize = fileRegion->AliveObject();
+        }
         // Retrieve the data beginning address based on the serialized data format.
         uintptr_t copyFrom = oldMarkGCBitsetAddr +
             (fileRegion->packedData_.begin_ - ToUintPtr(fileRegion->packedData_.markGCBitset_));
-        ASSERT(copyBytes <= region->end_ - region->packedData_.begin_);
+        ASSERT(liveObjectSize <= region->end_ - region->packedData_.begin_);
 
         if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
-                     copyBytes,
+                     liveObjectSize,
                      ToVoidPtr(copyFrom),
-                     copyBytes) != EOK) {
+                     liveObjectSize) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
 
-        region->highWaterMark_ = region->packedData_.begin_ + copyBytes;
         // Other information like aliveObject size, wasted size etc. in the region object to restore.
-        region->aliveObject_ = fileRegion->AliveObject();
+        region->aliveObject_ = liveObjectSize;
         region->wasted_ = fileRegion->wasted_;
-
+        region->highWaterMark_ = region->packedData_.begin_ + liveObjectSize;
         region->SetGCFlag(RegionGCFlags::NEED_RELOCATE);
 
-        size_t liveObjectSize = region->GetHighWaterMark() - region->GetBegin();
         if (space->GetSpaceType() != MemSpaceType::SNAPSHOT_SPACE) {
             auto sparseSpace = reinterpret_cast<SparseSpace *>(space);
             region->InitializeFreeObjectSets();
             sparseSpace->FreeLiveRange(region, region->GetHighWaterMark(), region->GetEnd(), true);
             sparseSpace->IncreaseLiveObjectSize(liveObjectSize);
             sparseSpace->IncreaseAllocatedSize(liveObjectSize);
-            sparseSpace->AddRegionToFront(region);
+            sparseSpace->AddRegion(region);
         } else {
             auto snapshotSpace = reinterpret_cast<SnapshotSpace *>(space);
             snapshotSpace->IncreaseLiveObjectSize(liveObjectSize);
@@ -1455,7 +1459,14 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value)
     }
 
     if (encodeBit.IsReference() && !encodeBit.IsSpecial()) {
+        Region *rootRegion = Region::ObjectAddressToRange((uintptr_t)value);
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
+        Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
+        if (!rootRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+            // Should align with '8' in 64 and 32 bit platform
+            ASSERT((value % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+            rootRegion->InsertOldToNewRSet((uintptr_t)value);
+        }
         *value = taggedObjectAddr;
         return;
     }
