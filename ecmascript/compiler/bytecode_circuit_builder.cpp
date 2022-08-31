@@ -1394,7 +1394,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaBytecode::TONUMERIC_IMM8: {
             break;
         }
-        case EcmaBytecode::DYNAMICIMPORT_V8: {
+        case EcmaBytecode::DYNAMICIMPORT: {
             uint16_t v0 = READ_INST_8_0();
             info.inputs.emplace_back(VirtualRegister(v0));
             break;

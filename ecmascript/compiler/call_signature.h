@@ -324,14 +324,18 @@ private:
     V(GeneratorReEnterAsmInterp)            \
     V(CallRuntimeWithArgv)                  \
     V(OptimizedCallOptimized)               \
-    V(PushCallArgs0AndDispatch)             \
+    V(PushCallArg0AndDispatch)              \
     V(PushCallArgsAndDispatchNative)        \
-    V(PushCallArgs1AndDispatch)             \
+    V(PushCallArg1AndDispatch)              \
     V(PushCallArgs2AndDispatch)             \
     V(PushCallArgs3AndDispatch)             \
-    V(PushCallRangeAndDispatch)            \
-    V(PushCallRangeAndDispatchNative)      \
-    V(PushCallThisRangeAndDispatch)        \
+    V(PushCallRangeAndDispatch)             \
+    V(PushCallRangeAndDispatchNative)       \
+    V(PushCallThisRangeAndDispatch)         \
+    V(PushCallThisArg0AndDispatch)          \
+    V(PushCallThisArg1AndDispatch)          \
+    V(PushCallThisArgs2AndDispatch)         \
+    V(PushCallThisArgs3AndDispatch)         \
     V(PushCallNewAndDispatchNative)         \
     V(PushCallNewAndDispatch)               \
     V(CallGetter)                           \

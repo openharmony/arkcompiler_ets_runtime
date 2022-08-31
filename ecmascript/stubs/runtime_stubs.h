@@ -45,10 +45,14 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(AsmInterpreterEntry)                   \
     V(GeneratorReEnterAsmInterp)             \
     V(PushCallArgsAndDispatchNative)         \
-    V(PushCallArgs0AndDispatch)              \
-    V(PushCallArgs1AndDispatch)              \
+    V(PushCallArg0AndDispatch)               \
+    V(PushCallArg1AndDispatch)               \
     V(PushCallArgs2AndDispatch)              \
     V(PushCallArgs3AndDispatch)              \
+    V(PushCallThisArg0AndDispatch)           \
+    V(PushCallThisArg1AndDispatch)           \
+    V(PushCallThisArgs2AndDispatch)          \
+    V(PushCallThisArgs3AndDispatch)          \
     V(PushCallRangeAndDispatch)              \
     V(PushCallNewAndDispatch)                \
     V(PushCallNewAndDispatchNative)          \

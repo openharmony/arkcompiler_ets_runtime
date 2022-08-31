@@ -485,6 +485,7 @@ enum class CallDispatchInputs : size_t {
     ARG0,
     ARG1,
     ARG2,
+    ARG3,
     NUM_OF_INPUTS,
 
     ARGC = ARG0,

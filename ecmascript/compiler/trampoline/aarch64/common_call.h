@@ -77,9 +77,9 @@ public:
     static void ConstructorJSCall(ExtendedAssembler *assembler);
 
     static void CallRuntimeWithArgv(ExtendedAssembler *assembler);
-    
+
     static void JSCallWithArgV(ExtendedAssembler *assembler);
-    
+
     static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
 
 private:
@@ -124,9 +124,17 @@ public:
 
     static void PushCallArgs2AndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallArgs1AndDispatch(ExtendedAssembler *assembler);
+    static void PushCallArg1AndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallArgs0AndDispatch(ExtendedAssembler *assembler);
+    static void PushCallArg0AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArg0AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArg1AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallThisRangeAndDispatchNative(ExtendedAssembler *assembler);
 
@@ -170,7 +178,7 @@ private:
 
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register currentSlot,
         Register callTarget, Register method, Register pc, Register op);
-    
+
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode);
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *pushCallThis,
         Label *stackOverflow);

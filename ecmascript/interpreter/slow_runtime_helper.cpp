@@ -23,6 +23,13 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/tagged_array-inl.h"
 
+// TODO
+#ifdef NEW_INSTRUCTION_DEFINE
+#include "libpandafile/bytecode_instruction-inl.h"
+#else
+#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
+#endif
+
 namespace panda::ecmascript {
 JSTaggedValue SlowRuntimeHelper::CallBoundFunction(EcmaRuntimeCallInfo *info)
 {
@@ -93,9 +100,11 @@ void SlowRuntimeHelper::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorC
     context->SetRegsArray(thread, regsArray.GetTaggedValue());
     context->SetMethod(thread, frameHandler.GetFunction());
 
+    BytecodeInstruction ins(frameHandler.GetPc());
+    auto offset = ins.GetSize();
     context->SetAcc(thread, frameHandler.GetAcc());
     context->SetLexicalEnv(thread, thread->GetCurrentLexenv());
     context->SetNRegs(nregs);
-    context->SetBCOffset(frameHandler.GetBytecodeOffset());
+    context->SetBCOffset(frameHandler.GetBytecodeOffset() + offset);
 }
 }  // namespace panda::ecmascript

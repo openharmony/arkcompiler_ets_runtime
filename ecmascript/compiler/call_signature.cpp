@@ -766,14 +766,14 @@ DEF_CALL_SIGNATURE(PushCallArgsAndDispatchNative)
     PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_SIGNATURE(PushCallArgsAndDispatchNative)
 }
 
-DEF_CALL_SIGNATURE(PushCallArgs0AndDispatch)
+DEF_CALL_SIGNATURE(PushCallArg0AndDispatch)
 {
-    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallArgs0AndDispatch)
+    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallArg0AndDispatch)
 }
 
-DEF_CALL_SIGNATURE(PushCallArgs1AndDispatch)
+DEF_CALL_SIGNATURE(PushCallArg1AndDispatch)
 {
-    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallArgs1AndDispatch)
+    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallArg1AndDispatch)
 }
 
 DEF_CALL_SIGNATURE(PushCallArgs2AndDispatch)
@@ -784,6 +784,26 @@ DEF_CALL_SIGNATURE(PushCallArgs2AndDispatch)
 DEF_CALL_SIGNATURE(PushCallArgs3AndDispatch)
 {
     PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallArgs3AndDispatch)
+}
+
+DEF_CALL_SIGNATURE(PushCallThisArg0AndDispatch)
+{
+    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallThisArg0AndDispatch)
+}
+
+DEF_CALL_SIGNATURE(PushCallThisArg1AndDispatch)
+{
+    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallThisArg1AndDispatch)
+}
+
+DEF_CALL_SIGNATURE(PushCallThisArgs2AndDispatch)
+{
+    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallThisArgs2AndDispatch)
+}
+
+DEF_CALL_SIGNATURE(PushCallThisArgs3AndDispatch)
+{
+    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallThisArgs3AndDispatch)
 }
 
 DEF_CALL_SIGNATURE(PushCallRangeAndDispatchNative)

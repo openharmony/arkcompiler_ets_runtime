@@ -793,13 +793,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
     }
     uint32_t pcOffset = context->GetBCOffset();
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    // TODO: Refactor ??
-    EcmaOpcode suspendGeneratorOpcode = EcmaOpcode::SUSPENDGENERATOR_V8;
-    if (UNLIKELY(!method->GetJSPandaFile()->IsNewVersion())) {
-        suspendGeneratorOpcode = EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8;
-    }
-    const uint8_t *resumePc = method->GetBytecodeArray() + pcOffset +
-                              BytecodeInstruction::Size(suspendGeneratorOpcode);
+    const uint8_t *resumePc = method->GetBytecodeArray() + pcOffset;
 
     InterpretedFrame *state = GET_FRAME(newSp);
     state->pc = resumePc;
@@ -1535,7 +1529,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(GETPROPITERATOR);
     }
-    // TODO 
+    // TODO
     // HANDLE_OPCODE(ITERNEXT_IMM8_V8) {
     //     uint16_t v0 = READ_INST_8_1();
     //     LOG_INST() << "intrinsics::iternext"
@@ -6518,7 +6512,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_FULL(FATAL) << "not implement";
         DISPATCH(STPATCHVAR_IMM8_V8);
     }
-    HANDLE_OPCODE(DYNAMICIMPORT_V8) {
+    HANDLE_OPCODE(DYNAMICIMPORT) {
         uint16_t v0 = READ_INST_8_0();
 
         LOG_INST() << "intrinsics::dynamicimport"
@@ -6528,7 +6522,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
-        DISPATCH(DYNAMICIMPORT_V8);
+        DISPATCH(DYNAMICIMPORT);
     }
 #include "templates/debugger_instruction_handler.inl"
 }
@@ -6822,7 +6816,7 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {EcmaOpcode::STTHISBYVALUE_IMM16_V8, "STTHISBYVALUE_IMM16_V8"},
         {EcmaOpcode::LDPATCHVAR_IMM8, "LDPATCHVAR_IMM8"},
         {EcmaOpcode::STPATCHVAR_IMM8_V8, "STPATCHVAR_IMM8_V8"},
-        {EcmaOpcode::DYNAMICIMPORT_V8, "DYNAMICIMPORT_V8"},
+        {EcmaOpcode::DYNAMICIMPORT, "DYNAMICIMPORT"},
         {EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8, "DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8"},
         {EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8, "DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8"},
         {EcmaOpcode::RESUMEGENERATOR, "RESUMEGENERATOR"},
