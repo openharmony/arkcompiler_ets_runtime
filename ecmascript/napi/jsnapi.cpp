@@ -69,6 +69,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
+#include "ecmascript/regexp/regexp_parser.h"
 
 #include "ohos/init_data.h"
 #include "utils/pandargs.h"
@@ -136,6 +137,7 @@ using ecmascript::GeneratorContext;
 using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
+using ecmascript::RegExpParser;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -1592,6 +1594,88 @@ Local<StringRef> RegExpRef::GetOriginalSource(const EcmaVM *vm)
     }
     JSHandle<JSTaggedValue> sourceHandle(thread, source);
     return JSNApiHelper::ToLocal<StringRef>(sourceHandle);
+}
+
+std::string RegExpRef::GetOriginalFlags()
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue regExpFlags = regExp->GetOriginalFlags();
+    uint32_t regExpFlagsInt = static_cast<uint32_t>(regExpFlags.GetInt());
+    std::string strFlags = "";
+    if (regExpFlagsInt & RegExpParser::FLAG_GLOBAL) {
+        strFlags += "g";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_IGNORECASE) {
+        strFlags += "i";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_MULTILINE) {
+        strFlags += "m";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_DOTALL) {
+        strFlags += "s";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_UTF16) {
+        strFlags += "u";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_STICKY) {
+        strFlags += "y";
+    }
+    std::sort(strFlags.begin(), strFlags.end());
+    return strFlags;
+}
+
+Local<JSValueRef> RegExpRef::IsGlobal(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_GLOBAL;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsIgnoreCase(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_IGNORECASE;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsMultiline(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_MULTILINE;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsDotAll(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_DOTALL;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsUtf16(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_UTF16;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsStick(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_STICKY;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
 }
 
 Local<DateRef> DateRef::New(const EcmaVM *vm, double time)

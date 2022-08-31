@@ -226,6 +226,8 @@ DispatchResponse RuntimeImpl::GetProperties(const GetPropertiesParams &params,
         GetDateTimeFormatValue(value, outPropertyDesc);
     } else if (value->IsMap()) {
         GetMapValue(value, outPropertyDesc);
+    } else if (value->IsRegExp()) {
+        GetRegExpValue(value, outPropertyDesc);
     }
     Local<ArrayRef> keys = Local<ObjectRef>(value)->GetOwnPropertyNames(vm_);
     int32_t length = keys->Length(vm_);
@@ -565,5 +567,30 @@ void RuntimeImpl::GetMapValue(Local<JSValueRef> value,
     }
     AddInternalProperties(jsValueRef, ArkInternalValueType::Entry);
     SetKeyValue(jsValueRef, outPropertyDesc, "[[Entries]]");
+}
+
+void RuntimeImpl::GetRegExpValue(Local<JSValueRef> value,
+    std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
+{
+    Local<RegExpRef> regExpRef = value->ToObject(vm_);
+    Local<JSValueRef> jsValueRef = regExpRef->IsGlobal(vm_);
+    SetKeyValue(jsValueRef, outPropertyDesc, "global");
+    jsValueRef = regExpRef->IsIgnoreCase(vm_);
+    SetKeyValue(jsValueRef, outPropertyDesc, "ignoreCase");
+    jsValueRef = regExpRef->IsMultiline(vm_);
+    SetKeyValue(jsValueRef, outPropertyDesc, "multiline");
+    jsValueRef = regExpRef->IsDotAll(vm_);
+    SetKeyValue(jsValueRef, outPropertyDesc, "dotAll");
+    SetKeyValue(jsValueRef, outPropertyDesc, "hasIndices");
+    jsValueRef = regExpRef->IsUtf16(vm_);
+    SetKeyValue(jsValueRef, outPropertyDesc, "unicode");
+    jsValueRef = regExpRef->IsStick(vm_);
+    SetKeyValue(jsValueRef, outPropertyDesc, "sticky");
+    std::string strFlags = regExpRef->GetOriginalFlags();
+    jsValueRef = StringRef::NewFromUtf8(vm_, strFlags.c_str());
+    SetKeyValue(jsValueRef, outPropertyDesc, "flags");
+    std::string strSource = regExpRef->GetOriginalSource(vm_)->ToString();
+    jsValueRef = StringRef::NewFromUtf8(vm_, strSource.c_str());
+    SetKeyValue(jsValueRef, outPropertyDesc, "source");
 }
 }  // namespace panda::ecmascript::tooling

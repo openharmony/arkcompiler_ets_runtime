@@ -834,6 +834,13 @@ public:
 class PUBLIC_API RegExpRef : public ObjectRef {
 public:
     Local<StringRef> GetOriginalSource(const EcmaVM *vm);
+    std::string GetOriginalFlags();
+    Local<JSValueRef> IsGlobal(const EcmaVM *vm);
+    Local<JSValueRef> IsIgnoreCase(const EcmaVM *vm);
+    Local<JSValueRef> IsMultiline(const EcmaVM *vm);
+    Local<JSValueRef> IsDotAll(const EcmaVM *vm);
+    Local<JSValueRef> IsUtf16(const EcmaVM *vm);
+    Local<JSValueRef> IsStick(const EcmaVM *vm);
 };
 
 class PUBLIC_API DateRef : public ObjectRef {

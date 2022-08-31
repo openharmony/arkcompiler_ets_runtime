@@ -383,9 +383,9 @@ std::string ObjectRemoteObject::DescriptionForArray(const EcmaVM *ecmaVm, Local<
 
 std::string ObjectRemoteObject::DescriptionForRegexp(const EcmaVM *ecmaVm, Local<RegExpRef> tagged)
 {
-    std::string regexpSource = tagged->GetOriginalSource(ecmaVm)->ToString();
-    std::string description = "/" + regexpSource + "/";
-    return description;
+    std::string regExpSource = tagged->GetOriginalSource(ecmaVm)->ToString();
+    std::string regExpFlags = tagged->GetOriginalFlags();
+    return "/" + regExpSource + "/" + regExpFlags;
 }
 
 std::string ObjectRemoteObject::DescriptionForDate(const EcmaVM *ecmaVm, Local<DateRef> tagged)
