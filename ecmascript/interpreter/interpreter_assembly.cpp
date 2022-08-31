@@ -4329,7 +4329,7 @@ void InterpreterAssembly::HandleDynamicimportV8(
     JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
-    DISPATCH(DYNAMICIMPORT_V8);
+    DISPATCH(DYNAMICIMPORT);
 }
 void InterpreterAssembly::HandleCallargs3Imm8V8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,

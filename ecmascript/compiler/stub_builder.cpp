@@ -3971,20 +3971,32 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         }
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg0AndDispatch),
+                    { glue, sp, func, method, callField, data[0] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG0:
             case JSCallMode::DEPRECATED_CALL_ARG0:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs0AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg0AndDispatch),
                     { glue, sp, func, method, callField });
                 Return();
                 break;
             case JSCallMode::CALL_THIS_ARG1:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg1AndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG1:
             case JSCallMode::DEPRECATED_CALL_ARG1:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs1AndDispatch),
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg1AndDispatch),
                     { glue, sp, func, method, callField, data[0] });
                 Return();
                 break;
             case JSCallMode::CALL_THIS_ARG2:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs2AndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG2:
             case JSCallMode::DEPRECATED_CALL_ARG2:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs2AndDispatch),
@@ -3992,6 +4004,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 Return();
                 break;
             case JSCallMode::CALL_THIS_ARG3:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs3AndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1], data[2], data[3] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG3:
             case JSCallMode::DEPRECATED_CALL_ARG3:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs3AndDispatch),

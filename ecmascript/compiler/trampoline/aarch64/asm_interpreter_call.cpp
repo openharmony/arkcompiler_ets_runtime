@@ -400,16 +400,40 @@ void AsmInterpreterCall::PushCallArgs2AndDispatch(ExtendedAssembler *assembler)
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG2);
 }
 
-void AsmInterpreterCall::PushCallArgs1AndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallArg1AndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallArgs1AndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallArg1AndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG1);
 }
 
-void AsmInterpreterCall::PushCallArgs0AndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallArg0AndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallArgs0AndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallArg0AndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0);
+}
+
+void AsmInterpreterCall::PushCallThisArg0AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg0AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG0);
+}
+
+void AsmInterpreterCall::PushCallThisArg1AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg1AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG1);
+}
+
+void AsmInterpreterCall::PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs2AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2);
+}
+
+void AsmInterpreterCall::PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs3AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3);
 }
 
 // uint64_t PushCallRangeAndDispatchNative(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
@@ -1096,7 +1120,6 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     // 32: get high 32bit
     __ Lsr(operatorRegister, operatorRegister, 32);
     __ Add(pcRegister, operatorRegister, pcRegister);
-    __ Add(pcRegister, pcRegister, Immediate(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8)));
     // 2 : pc and fp
     __ Stp(fpRegister, pcRegister, MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // jumpSizeAfterCall

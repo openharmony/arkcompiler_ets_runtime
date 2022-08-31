@@ -95,9 +95,17 @@ public:
 
     static void PushCallArgs2AndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallArgs1AndDispatch(ExtendedAssembler *assembler);
+    static void PushCallArg1AndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallArgs0AndDispatch(ExtendedAssembler *assembler);
+    static void PushCallArg0AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArg0AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArg1AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallNewAndDispatch(ExtendedAssembler *assembler);
 

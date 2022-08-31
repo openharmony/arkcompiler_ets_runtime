@@ -1208,7 +1208,7 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_DYNAMICIMPORT_PREF_V8: {
-            newOpcode = EcmaOpcode::DYNAMICIMPORT_V8;
+            newOpcode = EcmaOpcode::DYNAMICIMPORT;
             *pc = static_cast<uint8_t>(newOpcode);
             *(pc + 1) = *(pc + 2);
             break;

@@ -196,7 +196,6 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     __ Movq(Operand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), pcRegister);
     __ Movl(Operand(contextRegister, GeneratorContext::GENERATOR_BC_OFFSET_OFFSET), operatorRegister);
     __ Addq(operatorRegister, pcRegister);
-    __ Addq(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8), pcRegister);
     __ Pushq(pcRegister);                                              // pc
     __ Pushq(fpRegister);                                              // fp
     __ Pushq(0);                                                       // jumpSizeAfterCall
@@ -392,16 +391,39 @@ void AsmInterpreterCall::PushCallArgs2AndDispatch(ExtendedAssembler *assembler)
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG2);
 }
 
-void AsmInterpreterCall::PushCallArgs1AndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallArg1AndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallArgs1AndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallArg1AndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG1);
 }
 
-void AsmInterpreterCall::PushCallArgs0AndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallArg0AndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallArgs0AndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallArg0AndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0);
+}
+void AsmInterpreterCall::PushCallThisArg0AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg0AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG0);
+}
+
+void AsmInterpreterCall::PushCallThisArg1AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg1AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG1);
+}
+
+void AsmInterpreterCall::PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs2AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2);
+}
+
+void AsmInterpreterCall::PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs3AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3);
 }
 
 void AsmInterpreterCall::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow)
@@ -527,12 +549,17 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
 {
     switch (mode) {
         case JSCallMode::CALL_GETTER:
+        case JSCallMode::CALL_THIS_ARG0:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
         case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG1:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
+        case JSCallMode::CALL_THIS_ARG2:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
+        case JSCallMode::CALL_THIS_ARG3:
+            return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG3);
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT: {
             Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);

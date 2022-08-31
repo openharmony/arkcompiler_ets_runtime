@@ -392,7 +392,7 @@ enum class Opcode {
     CALLARGS3_IMM8_V8_V8_V8 = 88,
     CALLRANGE_IMM8_IMM8_V8 = 89,
     LDEXTERNALMODULEVAR_IMM8 = 90,
-    DYNAMICIMPORT_V8 = 91,
+    DYNAMICIMPORT = 91,
     DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8 = 92,
     LDTHISBYNAME_IMM8_ID16 = 93,
     LDTHISBYNAME_IMM16_ID16 = 94,
@@ -3079,7 +3079,7 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::IMM8_IMM8_V8;
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         return BytecodeInst<Mode>::Format::IMM8;
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return BytecodeInst<Mode>::Format::V8;
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
         return BytecodeInst<Mode>::Format::V8_V8_V8_V8;
@@ -3675,7 +3675,7 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::JIT_IC_SLOT | Flags::TWO_SLOT | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
@@ -4271,7 +4271,7 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
@@ -4867,7 +4867,7 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         return false;
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return false;
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
         return false;
@@ -5703,7 +5703,7 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << "ldexternalmodulevar";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
         break;
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         os << "dynamicimport";
         os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8, 0>();
         break;
@@ -6936,8 +6936,8 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::LDEXTERNALMODULEVAR_IMM8:
         os << "LDEXTERNALMODULEVAR_IMM8";
         break;
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT_V8:
-        os << "DYNAMICIMPORT_V8";
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
+        os << "DYNAMICIMPORT";
         break;
     case BytecodeInst<Mode>::Opcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
         os << "DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8";

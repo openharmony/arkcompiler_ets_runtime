@@ -497,7 +497,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaBytecode::TONUMERIC:
             LowerToNumeric(gate, glue);
             break;
-        // case DYNAMICIMPORT_V8:
+        // case DYNAMICIMPORT:
         //     LowerDynamicImport(gate, glue, jsFunc);
         //     break;
         case EcmaBytecode::LDMODULEVAR:
