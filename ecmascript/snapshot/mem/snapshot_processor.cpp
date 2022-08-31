@@ -21,6 +21,7 @@
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_async_function.h"
 #include "ecmascript/builtins/builtins_async_generator.h"
+#include "ecmascript/builtins/builtins_async_iterator.h"
 #include "ecmascript/builtins/builtins_atomics.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_boolean.h"
@@ -129,6 +130,7 @@ using BuiltinsFinalizationRegistry = builtins::BuiltinsFinalizationRegistry;
 using BuiltinsArray = builtins::BuiltinsArray;
 using BuiltinsTypedArray = builtins::BuiltinsTypedArray;
 using BuiltinsIterator = builtins::BuiltinsIterator;
+using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using Error = builtins::BuiltinsError;
 using RangeError = builtins::BuiltinsRangeError;
 using ReferenceError = builtins::BuiltinsReferenceError;
@@ -599,6 +601,10 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsIterator::Return),
     reinterpret_cast<uintptr_t>(BuiltinsIterator::Throw),
     reinterpret_cast<uintptr_t>(BuiltinsIterator::GetIteratorObj),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::Next),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::Return),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::Throw),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::GetAsyncIteratorObj),
     reinterpret_cast<uintptr_t>(JSForInIterator::Next),
     reinterpret_cast<uintptr_t>(JSRegExpIterator::Next),
     reinterpret_cast<uintptr_t>(JSSetIterator::Next),

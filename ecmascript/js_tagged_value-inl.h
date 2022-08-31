@@ -1081,6 +1081,11 @@ inline bool JSTaggedValue::IsIterator() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsIterator();
 }
 
+inline bool JSTaggedValue::IsAsyncIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsAsyncIterator();
+}
+
 inline bool JSTaggedValue::IsGeneratorFunction() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorFunction();

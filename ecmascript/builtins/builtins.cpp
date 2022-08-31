@@ -29,6 +29,7 @@
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_async_function.h"
+#include "ecmascript/builtins/builtins_async_iterator.h"
 #include "ecmascript/builtins/builtins_async_generator.h"
 #include "ecmascript/builtins/builtins_atomics.h"
 #include "ecmascript/builtins/builtins_bigint.h"
@@ -181,6 +182,7 @@ using BuiltinsCjsRequire = builtins::BuiltinsCjsRequire;
 using ContainersPrivate = containers::ContainersPrivate;
 using SharedArrayBuffer = builtins::BuiltinsSharedArrayBuffer;
 
+using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
 void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
@@ -298,6 +300,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializeAtomics(env, objFuncPrototypeVal);
     InitializeJson(env, objFuncPrototypeVal);
     InitializeIterator(env, objFuncDynclass);
+    InitializeAsyncIterator(env, objFuncDynclass);
     InitializeProxy(env);
     InitializeReflect(env, objFuncPrototypeVal);
     InitializeAsyncFunction(env, objFuncDynclass);
@@ -556,6 +559,8 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetNoneAttributeProperty(symbolFunction, "toStringTag", toStringTagSymbol);
     JSHandle<JSTaggedValue> iteratorSymbol(factory_->NewPublicSymbolWithChar("Symbol.iterator"));
     SetNoneAttributeProperty(symbolFunction, "iterator", iteratorSymbol);
+    JSHandle<JSTaggedValue> asyncIteratorSymbol(factory_->NewPublicSymbolWithChar("Symbol.asyncIterator"));
+    SetNoneAttributeProperty(symbolFunction, "asyncIterator", asyncIteratorSymbol);
     JSHandle<JSTaggedValue> matchSymbol(factory_->NewPublicSymbolWithChar("Symbol.match"));
     SetNoneAttributeProperty(symbolFunction, "match", matchSymbol);
     JSHandle<JSTaggedValue> matchAllSymbol(factory_->NewPublicSymbolWithChar("Symbol.matchAll"));
@@ -597,6 +602,7 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     env->SetIsConcatSpreadableSymbol(thread_, isConcatSpreadableSymbol);
     env->SetToStringTagSymbol(thread_, toStringTagSymbol);
     env->SetIteratorSymbol(thread_, iteratorSymbol);
+    env->SetAsyncIteratorSymbol(thread_, asyncIteratorSymbol);
     env->SetMatchSymbol(thread_, matchSymbol);
     env->SetMatchAllSymbol(thread_, matchAllSymbol);
     env->SetReplaceSymbol(thread_, replaceSymbol);
@@ -654,6 +660,7 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     SetNoneAttributeProperty(symbolFunction, "isConcatSpreadable", env->GetIsConcatSpreadableSymbol());
     SetNoneAttributeProperty(symbolFunction, "toStringTag", env->GetToStringTagSymbol());
     SetNoneAttributeProperty(symbolFunction, "iterator", env->GetIteratorSymbol());
+    SetNoneAttributeProperty(symbolFunction, "asyncIterator", env->GetAsyncIteratorSymbol());
     SetNoneAttributeProperty(symbolFunction, "match", env->GetMatchSymbol());
     SetNoneAttributeProperty(symbolFunction, "matchAll", env->GetMatchAllSymbol());
     SetNoneAttributeProperty(symbolFunction, "replace", env->GetReplaceSymbol());
@@ -686,6 +693,7 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     realm->SetIsConcatSpreadableSymbol(thread_, env->GetIsConcatSpreadableSymbol());
     realm->SetToStringTagSymbol(thread_, env->GetToStringTagSymbol());
     realm->SetIteratorSymbol(thread_, env->GetIteratorSymbol());
+    realm->SetAsyncIteratorSymbol(thread_, env->GetAsyncIteratorSymbol());
     realm->SetMatchSymbol(thread_, env->GetMatchSymbol());
     realm->SetMatchAllSymbol(thread_, env->GetMatchAllSymbol());
     realm->SetReplaceSymbol(thread_, env->GetReplaceSymbol());
@@ -1699,6 +1707,31 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     InitializeArrayIterator(env, iteratorFuncDynclass);
     InitializeStringIterator(env, iteratorFuncDynclass);
     InitializeRegexpIterator(env, iteratorFuncDynclass);
+}
+
+void Builtins::InitializeAsyncIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncDynclass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    // AsyncIterator.prototype
+    JSHandle<JSObject> asyncIteratorPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
+    // AsyncIterator.prototype.next()
+    SetFunction(env, asyncIteratorPrototype, "next", BuiltinsAsyncIterator::Next, FunctionLength::ONE);
+    // AsyncIterator.prototype.return()
+    SetFunction(env, asyncIteratorPrototype, "return", BuiltinsAsyncIterator::Return, FunctionLength::ONE);
+    // AsyncIterator.prototype.throw()
+    SetFunction(env, asyncIteratorPrototype, "throw", BuiltinsAsyncIterator::Throw, FunctionLength::ONE);
+    // %AsyncIteratorPrototype% [ @@AsyncIterator ]
+    SetFunctionAtSymbol(env, asyncIteratorPrototype, env->GetAsyncIteratorSymbol(), "[Symbol.asyncIterator]",
+                        BuiltinsAsyncIterator::GetAsyncIteratorObj, FunctionLength::ZERO);
+    env->SetAsyncIteratorPrototype(thread_, asyncIteratorPrototype);
+
+    // AsyncIterator.dynclass
+    JSHandle<JSHClass> asyncIteratorFuncDynclass =
+        factory_->NewEcmaDynClass(JSObject::SIZE,
+                                  JSType::JS_ASYNCITERATOR, JSHandle<JSTaggedValue>(asyncIteratorPrototype));
+
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    globalConst->SetConstant(ConstantIndex::JS_API_ASYNCITERATOR_FUNC_DYN_CLASS_INDEX, asyncIteratorFuncDynclass);
 }
 
 void Builtins::InitializeForinIterator(const JSHandle<GlobalEnv> &env,
@@ -2934,7 +2967,7 @@ void Builtins::InitializeAsyncGenerator(const JSHandle<GlobalEnv> &env,
                                         const JSHandle<JSHClass> &objFuncDynclass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSObject> asyncGeneratorFuncPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
 
     // GeneratorObject.prototype method
@@ -2951,7 +2984,12 @@ void Builtins::InitializeAsyncGenerator(const JSHandle<GlobalEnv> &env,
     // 27.6.1.5 AsyncGenerator.prototype [ @@toStringTag ]
     SetStringTagSymbol(env, asyncGeneratorFuncPrototype, "AsyncGenerator");
 
+    PropertyDescriptor descriptor(thread_, env->GetAsyncIteratorPrototype(), true, false, false);
+    JSObject::DefineOwnProperty(thread_, asyncGeneratorFuncPrototype,
+                                globalConst->GetHandledPrototypeString(), descriptor);
     env->SetAsyncGeneratorPrototype(thread_, asyncGeneratorFuncPrototype);
+    JSObject::SetPrototype(thread_, asyncGeneratorFuncPrototype, env->GetAsyncIteratorPrototype());
+
     JSHandle<JSObject> initialAsyncGeneratorFuncPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
     JSObject::SetPrototype(thread_, initialAsyncGeneratorFuncPrototype,
                            JSHandle<JSTaggedValue>(asyncGeneratorFuncPrototype));

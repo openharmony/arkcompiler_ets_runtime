@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
-#include "builtins_async_iterator.h"
+#include "ecmascript/builtins/builtins_async_iterator.h"
+#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_iterator.h"
+#include "ecmascript/js_promise.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsAsyncIterator::AsyncIteratorConstructor([[maybe_unused]] EcmaRuntimeCallInfo *argv)
@@ -36,13 +38,21 @@ JSTaggedValue BuiltinsAsyncIterator::Throw([[maybe_unused]] EcmaRuntimeCallInfo 
 
 JSTaggedValue BuiltinsAsyncIterator::Return(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), AsyncIterator, Return);
     JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, Iterator, Return);
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-
+    JSHandle<PromiseCapability> pcap = JSPromise::NewPromiseCapability(thread, promiseFunc);
     JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, value, true);
-    return iterResult.GetTaggedValue();
+    JSHandle<JSTaggedValue> iterResultVal(iterResult);
+    JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo* info = EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
+    info->SetCallArg(iterResultVal.GetTaggedValue());
+    JSFunction::Call(info);
+    return pcap->GetPromise();
 }
 
 JSTaggedValue BuiltinsAsyncIterator::GetAsyncIteratorObj(EcmaRuntimeCallInfo *argv)

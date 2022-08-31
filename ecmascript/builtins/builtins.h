@@ -195,6 +195,8 @@ private:
 
     void InitializeAsyncGenerator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncDynclass) const;
 
+    void InitializeAsyncIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncDynclass) const;
+
     void InitializeGenerator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncDynclass) const;
 
     JSHandle<JSFunction> InitializeExoticConstructor(const JSHandle<GlobalEnv> &env, EcmaEntrypoint ctorFunc,
