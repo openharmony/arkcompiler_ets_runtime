@@ -28,11 +28,7 @@ static constexpr uint32_t MAC_MAX_THREADS_NUM = 5;
 #endif
 class Taskpool {
 public:
-    static Taskpool *GetCurrentTaskpool()
-    {
-        static Taskpool taskpool;
-        return &taskpool;
-    }
+    PUBLIC_API static Taskpool *GetCurrentTaskpool();
 
     Taskpool() = default;
     PUBLIC_API ~Taskpool()
