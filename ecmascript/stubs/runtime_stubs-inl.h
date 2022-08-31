@@ -319,7 +319,7 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncGeneratorResolve(JSThread *thread, JSHan
 
     JSHandle<JSAsyncGeneratorObject> asyncGeneratorObjHandle(asyncFuncObj);
     JSHandle<JSTaggedValue> valueHandle(value);
-    
+
     ASSERT(flag.IsBoolean());
     bool done = flag.IsTrue();
     return JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, asyncGeneratorObjHandle, valueHandle, done);
@@ -727,16 +727,15 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
-    JSHandle<JSTaggedValue> method(thread, constantPool->Get(methodId));
-    JSHandle<TaggedArray> literal(thread, constantPool->Get(methodId + 1));
+    JSHandle<JSTaggedValue> method(thread, constantPool->GetObjectFromCache(methodId));
+    JSHandle<TaggedArray> literal(thread, constantPool->GetObjectFromCache(methodId + 1));
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literal);
     JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, extractor, constpool, lexenv);
 
     // JSPandaFile is in the first index of constpool.
-    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(
-        JSNativePointer::Cast(constantPool->Get(0).GetTaggedObject())->GetExternalPointer());
+    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(constantPool->GetJSPandaFile());
     FileLoader *fileLoader = thread->GetEcmaVM()->GetFileLoader();
     if (jsPandaFile->IsLoadedAOT()) {
         fileLoader->SetAOTFuncEntry(jsPandaFile, cls);
@@ -2353,7 +2352,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
         }
         scopeDebugInfo->scopeInfo.insert(std::make_pair(name, slot));
     }
-    
+
     auto freeObjFunc = NativeAreaAllocator::FreeObjectFunc<struct ScopeDebugInfo>;
     auto allocator = ecmaVm->GetNativeAreaAllocator();
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(buffer, freeObjFunc, allocator);

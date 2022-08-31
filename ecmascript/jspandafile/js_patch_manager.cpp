@@ -91,7 +91,7 @@ bool JSPatchManager::ReplaceMethod(JSThread *thread,
                                    const JSHandle<Program> &patchProgram)
 {
     CUnorderedMap<uint32_t, MethodLiteral *> patchMethodLiterals = patchFile_->GetMethodLiteralMap();
-    auto baseConstpoolSize = baseConstpool->GetLength();
+    auto baseConstpoolSize = baseConstpool->GetCacheLength();
 
     // Find same method both in base and patch.
     for (const auto &item : patchMethodLiterals) {
@@ -99,7 +99,7 @@ bool JSPatchManager::ReplaceMethod(JSThread *thread,
         auto methodId = patch->GetMethodId();
         const char *patchMethodName = MethodLiteral::GetMethodName(patchFile_, methodId);
 
-        for (uint32_t index = 1; index < baseConstpoolSize; index++) { // 1: first value is JSPandaFile.
+        for (uint32_t index = 0; index < baseConstpoolSize; index++) { // 1: first value is JSPandaFile.
             JSTaggedValue constpoolValue = baseConstpool->GetObjectFromCache(index);
             if (!constpoolValue.IsJSFunctionBase()) {
                 continue;
@@ -158,7 +158,7 @@ bool JSPatchManager::UnLoadPatch(JSThread *thread, const std::string &patchFileN
         uint32_t constpoolIndex = item.first;
         MethodLiteral *base = item.second;
 
-        JSTaggedValue value = baseConstpool->Get(thread, constpoolIndex);
+        JSTaggedValue value = baseConstpool->GetObjectFromCache(constpoolIndex);
         ASSERT(value.IsJSFunctionBase());
         JSHandle<JSFunction> func(thread, value);
         JSHandle<Method> method(thread, func->GetMethod());

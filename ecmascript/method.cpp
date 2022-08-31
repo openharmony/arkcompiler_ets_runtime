@@ -51,13 +51,8 @@ const JSPandaFile *Method::GetJSPandaFile() const
         return nullptr;
     }
 
-    // JSPandaFile is located at the first index of constPool.
-    JSTaggedValue fileValue = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(0);
-    if (fileValue.IsUndefined()) {
-        return nullptr;
-    }
-
-    void *nativePointer = JSNativePointer::Cast(fileValue.GetTaggedObject())->GetExternalPointer();
+    // JSPandaFile is located at the last index of constPool.
+    void *nativePointer = ConstantPool::Cast(constpool.GetTaggedObject())->GetJSPandaFile();
     return reinterpret_cast<JSPandaFile *>(nativePointer);
 }
 

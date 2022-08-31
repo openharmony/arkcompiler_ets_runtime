@@ -35,12 +35,64 @@ public:
     DECL_DUMP()
 };
 
+/*
+ *       ConstantPool
+ *      +------------+
+ *      |  hClass    +
+ *      +------------+
+ *      |  length    |
+ *      +------------+
+ *      |  cache...  |
+ *      +------------+
+ *      |js_pandafile|
+ *      +------------+
+ */
 class ConstantPool : public TaggedArray {
 public:
+    static constexpr size_t JS_PANDA_FILE_INDEX = 1;
+    static constexpr size_t RESERVED_POOL_LENGTH = JS_PANDA_FILE_INDEX;
+
     static ConstantPool *Cast(TaggedObject *object)
     {
-        ASSERT(JSTaggedValue(object).IsTaggedArray());
+        ASSERT(JSTaggedValue(object).IsConstantPool());
         return static_cast<ConstantPool *>(object);
+    }
+
+    static size_t ComputeSize(uint32_t cacheSize)
+    {
+        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + RESERVED_POOL_LENGTH);
+    }
+
+    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity)
+    {
+        ASSERT(initValue.IsSpecial());
+        SetLength(capacity + RESERVED_POOL_LENGTH);
+        SetExtractLength(0);
+        for (uint32_t i = 0; i < capacity; i++) {
+            size_t offset = JSTaggedValue::TaggedTypeSize() * i;
+            Barriers::SetDynPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
+        }
+        SetJSPandaFile(nullptr);
+    }
+
+    inline uint32_t GetCacheLength() const
+    {
+        return GetLength() - RESERVED_POOL_LENGTH;
+    }
+
+    inline void SetJSPandaFile(const void *jsPandaFile)
+    {
+        Barriers::SetDynPrimitive(GetData(), GetJSPandaFileOffset(), jsPandaFile);
+    }
+
+    inline void *GetJSPandaFile() const
+    {
+        return Barriers::GetDynValue<void *>(GetData(), GetJSPandaFileOffset());
+    }
+
+    inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
+    {
+        Set(thread, index, value);
     }
 
     inline JSTaggedValue GetObjectFromCache(uint32_t index) const
@@ -50,7 +102,21 @@ public:
 
     std::string PUBLIC_API GetStdStringByIdx(size_t index) const;
 
+    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength());
+    DECL_VISIT_NATIVE_FIELD(GetLastOffset() - JSTaggedValue::TaggedTypeSize(), GetLastOffset());
+
     DECL_DUMP()
+
+private:
+    inline size_t GetJSPandaFileOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - JS_PANDA_FILE_INDEX);
+    }
+
+    inline size_t GetLastOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * GetLength() + LAST_OFFSET;
+    }
 };
 }  // namespace ecmascript
 }  // namespace panda

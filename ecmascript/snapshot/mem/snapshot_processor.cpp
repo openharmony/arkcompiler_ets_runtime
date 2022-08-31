@@ -976,7 +976,6 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(JSFunction::NameGetter),
     reinterpret_cast<uintptr_t>(JSArray::LengthSetter),
     reinterpret_cast<uintptr_t>(JSArray::LengthGetter),
-    reinterpret_cast<uintptr_t>(JSPandaFileManager::RemoveJSPandaFile),
     reinterpret_cast<uintptr_t>(JSPandaFileManager::GetInstance)
 };
 
@@ -1717,9 +1716,9 @@ JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(JSHandle<ConstantP
     ObjectFactory *factory = vm_->GetFactory();
     JSThread *thread = vm_->GetJSThread();
 
-    uint32_t len = constantPool->GetLength();
+    uint32_t len = constantPool->GetCacheLength();
     JSHandle<TaggedArray> valueArray = factory->NewTaggedArray(len * ITEM_SIZE);
-    
+
     int index = 0;
     for (uint32_t i = 0; i < len; ++i) {
         JSTaggedValue item = constantPool->GetObjectFromCache(i);
@@ -1744,7 +1743,7 @@ void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSHandle<T
     for (uint32_t i = 0; i < len; i += ITEM_SIZE) {
         uint32_t valueIndex = static_cast<uint32_t>(valueArray->Get(i).GetInt());
         JSTaggedValue value = valueArray->Get(i + 1);
-        constPool->Set(thread, valueIndex, value);
+        constPool->SetObjectToCache(thread, valueIndex, value);
     }
 }
 }  // namespace panda::ecmascript
