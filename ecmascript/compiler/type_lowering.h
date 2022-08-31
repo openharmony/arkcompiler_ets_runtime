@@ -127,7 +127,7 @@ private:
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
     template<OpCode::Op Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
-    GateRef DoubleBuildTaggedWithNoGC(GateRef gate);
+    GateRef DoubleToTaggedDoublePtr(GateRef gate);
     GateRef ChangeInt32ToFloat64(GateRef gate);
 
     void LowerTypeNewObjDynRange(GateRef gate, GateRef glue);

@@ -62,7 +62,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, Ga
 DECLARE_BUILTINS(CharCodeAt)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), DoubleBuildTaggedWithNoGC(Double(base::NAN_VALUE)));
+    DEFVARIABLE(res, VariableType::JS_ANY(), DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)));
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
 
     Label objNotUndefinedAndNull(env);
@@ -110,7 +110,7 @@ DECLARE_BUILTINS(CharCodeAt)
                     Bind(&posNotLessZero);
                     {
                         BuiltinsStringStubBuilder stringBuilder(this);
-                        res = IntToTaggedNGC(stringBuilder.StringAt(thisValue, *pos));
+                        res = IntToTaggedPtr(stringBuilder.StringAt(thisValue, *pos));
                         Jump(&exit);
                     }
                 }
@@ -129,7 +129,7 @@ DECLARE_BUILTINS(CharCodeAt)
 DECLARE_BUILTINS(IndexOf)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), IntToTaggedNGC(Int32(-1)));
+    DEFVARIABLE(res, VariableType::JS_ANY(), IntToTaggedPtr(Int32(-1)));
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
     
     Label objNotUndefinedAndNull(env);
@@ -207,7 +207,7 @@ DECLARE_BUILTINS(IndexOf)
                             Branch(Int32LessThanOrEqual(resPos, thisLen), &resPosLessZero, &exit);
                             Bind(&resPosLessZero);
                             {
-                                res = IntToTaggedNGC(resPos);
+                                res = IntToTaggedPtr(resPos);
                                 Jump(&exit);
                             }
                         }
@@ -228,7 +228,7 @@ DECLARE_BUILTINS(IndexOf)
 DECLARE_BUILTINS(Substring)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), IntToTaggedNGC(Int32(-1)));
+    DEFVARIABLE(res, VariableType::JS_ANY(), IntToTaggedPtr(Int32(-1)));
     DEFVARIABLE(start, VariableType::INT32(), Int32(0));
     DEFVARIABLE(end, VariableType::INT32(), Int32(0));
     DEFVARIABLE(from, VariableType::INT32(), Int32(0));

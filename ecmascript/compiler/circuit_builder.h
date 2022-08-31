@@ -307,7 +307,7 @@ public:
     inline GateRef TaggedCastToIntPtr(GateRef x);
     inline GateRef TaggedCastToDouble(GateRef x);
     inline GateRef ChangeTaggedPointerToInt64(GateRef x);
-    inline GateRef ChangeInt64ToTagged(GateRef x);
+    inline GateRef Int64ToTaggedPtr(GateRef x);
     // bit operation
     inline GateRef IsSpecial(GateRef x, JSTaggedType type);
     inline GateRef TaggedIsInt(GateRef x);
@@ -332,11 +332,10 @@ public:
     inline GateRef TaggedIsNull(GateRef x);
     inline GateRef TaggedIsBoolean(GateRef x);
     inline GateRef TaggedGetInt(GateRef x);
-    inline GateRef TaggedTypeNGC(GateRef x);
-    inline GateRef TaggedNGC(GateRef x);
-    inline GateRef DoubleToTaggedNGC(GateRef x);
-    inline GateRef DoubleToTaggedTypeNGC(GateRef x);
-    inline GateRef Tagged(GateRef x);
+    inline GateRef ToTaggedInt(GateRef x);
+    inline GateRef ToTaggedIntPtr(GateRef x);
+    inline GateRef DoubleToTaggedDoublePtr(GateRef x);
+    inline GateRef DoubleToTaggedDouble(GateRef x);
     inline GateRef DoubleToTagged(GateRef x);
     inline GateRef TaggedTrue();
     inline GateRef TaggedFalse();

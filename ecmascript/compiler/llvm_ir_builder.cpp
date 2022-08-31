@@ -1859,9 +1859,8 @@ void LLVMIRBuilder::HandleBitCast(GateRef gate)
 void LLVMIRBuilder::VisitBitCast(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    [[maybe_unused]] auto gateValCode = acc_.GetMachineType(gate);
-    [[maybe_unused]] auto e1ValCode = acc_.GetMachineType(e1);
-    ASSERT(GetBitWidthFromMachineType(gateValCode) == GetBitWidthFromMachineType(e1ValCode));
+    ASSERT(GetBitWidthFromMachineType(acc_.GetMachineType(gate)) ==
+           GetBitWidthFromMachineType(acc_.GetMachineType(e1)));
     auto returnType = ConvertLLVMTypeFromGate(gate);
     LLVMValueRef result = LLVMBuildBitCast(builder_, e1Value, returnType, "");
     gate2LValue_[gate] = result;

@@ -679,46 +679,34 @@ inline GateRef StubBuilder::TaggedGetInt(GateRef x)
     return TruncInt64ToInt32(Int64And(x, Int64(~JSTaggedValue::TAG_MARK)));
 }
 
-inline GateRef StubBuilder::Int8ToTaggedTypeNGC(GateRef x)
+inline GateRef StubBuilder::Int8ToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt8ToInt64(x);
     return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
 }
 
-inline GateRef StubBuilder::Int16ToTaggedNGC(GateRef x)
-{
-    GateRef val = SExtInt16ToInt64(x);
-    return ChangeInt64ToTagged(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
-}
-
-inline GateRef StubBuilder::Int16ToTaggedTypeNGC(GateRef x)
+inline GateRef StubBuilder::Int16ToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt16ToInt64(x);
     return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
 }
 
-inline GateRef StubBuilder::IntToTaggedNGC(GateRef x)
+inline GateRef StubBuilder::IntToTaggedPtr(GateRef x)
 {
     GateRef val = SExtInt32ToInt64(x);
-    return ChangeInt64ToTagged(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
+    return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
 }
 
-inline GateRef StubBuilder::IntToTaggedTypeNGC(GateRef x)
+inline GateRef StubBuilder::IntToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt32ToInt64(x);
     return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
 }
 
-inline GateRef StubBuilder::DoubleBuildTaggedWithNoGC(GateRef x)
+inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
-    return ChangeInt64ToTagged(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
-}
-
-inline GateRef StubBuilder::DoubleBuildTaggedTypeWithNoGC(GateRef x)
-{
-    GateRef val = CastDoubleToInt64(x);
-    return Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
+    return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
 inline GateRef StubBuilder::CastDoubleToInt64(GateRef x)
@@ -1530,9 +1518,9 @@ inline GateRef StubBuilder::ChangeTaggedPointerToInt64(GateRef x)
     return env_->GetBuilder()->ChangeTaggedPointerToInt64(x);
 }
 
-inline GateRef StubBuilder::ChangeInt64ToTagged(GateRef x)
+inline GateRef StubBuilder::Int64ToTaggedPtr(GateRef x)
 {
-    return env_->GetBuilder()->ChangeInt64ToTagged(x);
+    return env_->GetBuilder()->Int64ToTaggedPtr(x);
 }
 
 inline GateRef StubBuilder::CastInt64ToFloat64(GateRef x)
