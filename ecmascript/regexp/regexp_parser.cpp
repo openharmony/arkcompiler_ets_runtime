@@ -26,6 +26,7 @@
 
 namespace panda::ecmascript {
 static constexpr uint32_t CACHE_SIZE = 128;
+static constexpr uint32_t CHAR_MAXS = 128;
 static constexpr uint32_t ID_START_TABLE_ASCII[4] = {
     /* $ A-Z _ a-z */
     0x00000000, 0x00000010, 0x87FFFFFE, 0x07FFFFFE
@@ -1163,7 +1164,9 @@ int RegExpParser::ParseCharacterEscape()
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
             PrintF("SourceCharacter %c\n", c0_);
             result = c0_;
-            Advance();
+            if (result < CHAR_MAXS) {
+                Advance();
+            }
             break;
     }
     return result;
