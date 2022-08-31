@@ -386,7 +386,6 @@ public:
     GateRef GetModuleFromFunction(GateRef function);
     void SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetLexicalEnv(GateRef function);
     void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,

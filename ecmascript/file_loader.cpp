@@ -325,7 +325,7 @@ bool FileLoader::hasLoaded(const JSPandaFile *jsPandaFile)
     return hashToEntryMap_.find(fileHash) != hashToEntryMap_.end();
 }
 
-void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile)
+void FileLoader::UpdateJSMethods(const JSPandaFile *jsPandaFile)
 {
     // get main func method
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex();
@@ -334,18 +334,17 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
     MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
-    mainFunc->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
+    mainMethod->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
 }
 
-void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func)
+void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method)
 {
-    Method *method = func->GetCallTarget();
     uint32_t methodId = method->GetMethodId().GetOffset();
     auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
     if (!codeEntry) {
         return;
     }
-    func->SetCodeEntryAndMarkAOT(codeEntry);
+    method->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
 void FileLoader::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj)
@@ -356,7 +355,7 @@ void FileLoader::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const
     for (size_t i = 0; i < elementsLen; i++) {
         valueHandle.Update(obj->Get(i));
         if (valueHandle->IsJSFunction()) {
-            SetAOTFuncEntry(jsPandaFile, JSHandle<JSFunction>(valueHandle));
+            SetAOTFuncEntry(jsPandaFile, JSHandle<JSFunction>(valueHandle)->GetCallTarget());
         }
     }
 }

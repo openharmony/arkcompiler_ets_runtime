@@ -141,10 +141,7 @@ public:
     static JSTaggedValue TryUpdateGlobalRecord(JSThread *thread, JSTaggedValue prop, JSTaggedValue value);
     static JSTaggedValue StArraySpread(JSThread *thread, JSTaggedValue dst, JSTaggedValue index, JSTaggedValue src);
 
-    static JSTaggedValue DefineGeneratorFunc(JSThread *thread, JSFunction *func);
-    static JSTaggedValue DefineAsyncFunc(JSThread *thread, JSFunction *func);
-    static JSTaggedValue DefineNCFunc(JSThread *thread, JSFunction *func);
-    static JSTaggedValue Definefunc(JSThread *thread, JSFunction *func);
+    static JSTaggedValue DefineFunc(JSThread *thread, Method *method);
 
     static JSTaggedValue GetSuperConstructor(JSThread *thread, JSTaggedValue ctor);
     static JSTaggedValue SuperCall(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget, uint16_t firstVRegIdx,
@@ -152,7 +149,7 @@ public:
     static JSTaggedValue SuperCallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                          JSTaggedValue array);
     static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier);
-    static JSTaggedValue DefineMethod(JSThread *thread, JSFunction *func, JSTaggedValue homeObject);
+    static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
                                         JSTaggedValue thisFunc);
@@ -175,7 +172,6 @@ public:
     static JSTaggedValue AsyncGeneratorResolve(JSThread *thread, JSTaggedValue asyncFuncObj,
                                                const JSTaggedValue value, JSTaggedValue flag);
     static JSTaggedValue CreateAsyncGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
-    static JSTaggedValue DefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func);
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);
     static JSTaggedValue GetCallSpreadArgs(JSThread *thread, JSTaggedValue array);

@@ -40,11 +40,10 @@ public:
     static JSHandle<JSTaggedValue> GetFunctionName(JSThread *thread, const JSHandle<JSFunctionBase> &func);
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
-    ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LAST_OFFSET)
+    ACCESSORS(Method, METHOD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, CODE_ENTRY_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, LAST_OFFSET)
     DECL_DUMP()
 };
 
@@ -188,15 +187,6 @@ public:
     inline void SetClassConstructor(bool flag)
     {
         GetClass()->SetClassConstructor(flag);
-    }
-
-    // add for AOT
-    inline void SetCodeEntryAndMarkAOT(const uintptr_t codeEntry)
-    {
-        Method *method = Method::Cast(GetMethod().GetTaggedObject());
-        method->SetAotCodeBit(true);
-        method->SetNativeBit(false);
-        SetCodeEntry(codeEntry);
     }
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,

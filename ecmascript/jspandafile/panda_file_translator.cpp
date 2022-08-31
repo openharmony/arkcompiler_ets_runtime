@@ -172,7 +172,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
 JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
 {
     JSThread *thread = vm->GetJSThread();
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     ObjectFactory *factory = vm->GetFactory();
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
     JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex + 1);
@@ -182,12 +181,6 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
         const_cast<JSPandaFile *>(jsPandaFile), JSPandaFileManager::RemoveJSPandaFile,
         JSPandaFileManager::GetInstance(), true);
     constpool->Set(thread, constpoolIndex, jsPandaFilePointer.GetTaggedValue());
-
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-    JSHandle<JSHClass> normalClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSHClass> asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-    JSHandle<JSHClass> generatorClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    JSHandle<JSHClass> asyncGeneratorClass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
 
     const CUnorderedMap<uint32_t, uint64_t> &constpoolMap = jsPandaFile->GetConstpoolMap();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -217,69 +210,52 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
         } else if (value.GetConstpoolType() == ConstPoolType::BASE_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
+            methodLiteral->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
-
-            JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(
-                method, hclass, FunctionKind::BASE_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
             if (isLoadedAOT) {
-                fileLoader->SetAOTFuncEntry(jsPandaFile, jsFunc);
+                fileLoader->SetAOTFuncEntry(jsPandaFile, *method);
             }
-            constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
+            constpool->Set(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::NC_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
+            methodLiteral->SetFunctionKind(FunctionKind::ARROW_FUNCTION);
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
-
-            JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(
-                method, normalClass, FunctionKind::NORMAL_FUNCTION, MemSpaceType::OLD_SPACE);
             if (isLoadedAOT) {
-                fileLoader->SetAOTFuncEntry(jsPandaFile, jsFunc);
+                fileLoader->SetAOTFuncEntry(jsPandaFile, *method);
             }
-            constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
+            constpool->Set(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::GENERATOR_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
+            methodLiteral->SetFunctionKind(FunctionKind::GENERATOR_FUNCTION);
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
-
-            JSHandle<JSFunction> jsFunc =
-                factory->NewJSFunctionByHClass(method, generatorClass, FunctionKind::GENERATOR_FUNCTION);
             if (isLoadedAOT) {
-                fileLoader->SetAOTFuncEntry(jsPandaFile, jsFunc);
+                fileLoader->SetAOTFuncEntry(jsPandaFile, *method);
             }
-            // 26.3.4.3 prototype
-            // Whenever a GeneratorFunction instance is created another ordinary object is also created and
-            // is the initial value of the generator function's "prototype" property.
-            JSHandle<JSFunction> objFun(env->GetObjectFunction());
-            JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
-            JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
-            jsFunc->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
-
-            constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
+            constpool->Set(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::ASYNC_GENERATOR_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
+            methodLiteral->SetFunctionKind(FunctionKind::ASYNC_GENERATOR_FUNCTION);
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
-
-            JSHandle<JSFunction> jsFunc =
-                factory->NewJSFunctionByHClass(method, asyncGeneratorClass,
-                                               FunctionKind::ASYNC_GENERATOR_FUNCTION);
-
-            constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
+            if (isLoadedAOT) {
+                fileLoader->SetAOTFuncEntry(jsPandaFile, *method);
+            }
+            constpool->Set(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::ASYNC_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
+            methodLiteral->SetFunctionKind(FunctionKind::ASYNC_FUNCTION);
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
-
-            JSHandle<JSFunction> jsFunc =
-                factory->NewJSFunctionByHClass(method, asyncClass, FunctionKind::ASYNC_FUNCTION);
             if (isLoadedAOT) {
-                fileLoader->SetAOTFuncEntry(jsPandaFile, jsFunc);
+                fileLoader->SetAOTFuncEntry(jsPandaFile, *method);
             }
-            constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
+            constpool->Set(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::CLASS_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
@@ -290,15 +266,13 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
             constpool->Set(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::METHOD) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
+            methodLiteral->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
             ASSERT(methodLiteral != nullptr);
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
-
-            JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(
-                method, normalClass, FunctionKind::NORMAL_FUNCTION, MemSpaceType::OLD_SPACE);
             if (isLoadedAOT) {
-                fileLoader->SetAOTFuncEntry(jsPandaFile, jsFunc);
+                fileLoader->SetAOTFuncEntry(jsPandaFile, *method);
             }
-            constpool->Set(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
+            constpool->Set(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::OBJECT_LITERAL) {
             size_t index = it.first;
@@ -702,36 +676,6 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
             break;
         }
-        case OldBytecodeInst::Opcode::ECMA_DEFINEMETHOD_PREF_ID16_IMM16_V8: {
-            newOpcode = EcmaOpcode::DEPRECATED_DEFINEMETHOD_PREF_ID16_IMM16_V8;
-            *pc = static_cast<uint8_t>(deprecatedPrefOp);
-            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
-            break;
-        }
-        case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8: {
-            newOpcode = EcmaOpcode::DEPRECATED_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8;
-            *pc = static_cast<uint8_t>(deprecatedPrefOp);
-            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
-            break;
-        }
-        case OldBytecodeInst::Opcode::ECMA_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8: {
-            newOpcode = EcmaOpcode::DEPRECATED_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8;
-            *pc = static_cast<uint8_t>(deprecatedPrefOp);
-            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
-            break;
-        }
-        case OldBytecodeInst::Opcode::ECMA_DEFINENCFUNCDYN_PREF_ID16_IMM16_V8: {
-            newOpcode = EcmaOpcode::DEPRECATED_DEFINENCFUNC_PREF_ID16_IMM16_V8;
-            *pc = static_cast<uint8_t>(deprecatedPrefOp);
-            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
-            break;
-        }
-        case OldBytecodeInst::Opcode::ECMA_DEFINEFUNCDYN_PREF_ID16_IMM16_V8: {
-            newOpcode = EcmaOpcode::DEPRECATED_DEFINEFUNC_PREF_ID16_IMM16_V8;
-            *pc = static_cast<uint8_t>(deprecatedPrefOp);
-            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
-            break;
-        }
         case OldBytecodeInst::Opcode::ECMA_CALLTHISRANGEDYN_PREF_IMM16_V8: {
             newOpcode = EcmaOpcode::DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8;
             *pc = static_cast<uint8_t>(deprecatedPrefOp);
@@ -848,12 +792,6 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
         }
         case OldBytecodeInst::Opcode::ECMA_CREATEOBJECTHAVINGMETHOD_PREF_IMM16: {
             newOpcode = EcmaOpcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16;
-            *pc = static_cast<uint8_t>(deprecatedPrefOp);
-            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
-            break;
-        }
-        case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8: {
-            newOpcode = EcmaOpcode::DEPRECATED_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8;
             *pc = static_cast<uint8_t>(deprecatedPrefOp);
             *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
             break;
@@ -1207,10 +1145,9 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             *pc = static_cast<uint8_t>(newOpcode);
             break;
         }
-        case OldBytecodeInst::Opcode::ECMA_DYNAMICIMPORT_PREF_V8: {
+        case OldBytecodeInst::Opcode::ECMA_DYNAMICIMPORT_PREF_NONE: {
             newOpcode = EcmaOpcode::DYNAMICIMPORT;
             *pc = static_cast<uint8_t>(newOpcode);
-            *(pc + 1) = *(pc + 2);
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_NEWOBJDYNRANGE_PREF_IMM16_V8: {
@@ -1400,6 +1337,36 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             *(pc + 2) = 0x00;
             uint16_t newId = static_cast<uint16_t>(id);
             if (memcpy_s(pc + 3, sizeof(uint16_t), &newId, sizeof(uint16_t)) != EOK) {  // 3: offset of id
+                LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
+                UNREACHABLE();
+            }
+            break;
+        }
+        case OldBytecodeInst::Opcode::ECMA_DEFINEMETHOD_PREF_ID16_IMM16_V8: {
+            newOpcode = EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8;
+            *pc = static_cast<uint8_t>(newOpcode);
+            uint16_t imm = inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>();
+            uint8_t newImm = static_cast<uint8_t>(imm);
+            if (memcpy_s(pc + 4, sizeof(uint8_t), &newImm, sizeof(uint8_t)) != EOK) {  // 4: offset of imm
+                LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
+                UNREACHABLE();
+            }
+            break;
+        }
+        case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
+            U_FALLTHROUGH;
+        case OldBytecodeInst::Opcode::ECMA_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
+            U_FALLTHROUGH;
+        case OldBytecodeInst::Opcode::ECMA_DEFINENCFUNCDYN_PREF_ID16_IMM16_V8:
+            U_FALLTHROUGH;
+        case OldBytecodeInst::Opcode::ECMA_DEFINEFUNCDYN_PREF_ID16_IMM16_V8:
+            U_FALLTHROUGH;
+        case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8: {
+            newOpcode = EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8;
+            *pc = static_cast<uint8_t>(newOpcode);
+            uint16_t imm = inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>();
+            uint8_t newImm = static_cast<uint8_t>(imm);
+            if (memcpy_s(pc + 4, sizeof(uint8_t), &newImm, sizeof(uint8_t)) != EOK) {  // 4: offset of imm
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
             }

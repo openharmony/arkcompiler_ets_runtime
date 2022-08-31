@@ -30,11 +30,13 @@ using EntityId = panda_file::File::EntityId;
 struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
                                                         base::AlignedUint64,
                                                         base::AlignedPointer,
+                                                        base::AlignedPointer,
                                                         base::AlignedUint64,
                                                         base::AlignedUint64> {
     enum class Index : size_t {
         CALL_FIELD_INDEX = 0,
         NATIVE_POINTER_OR_BYTECODE_ARRAY_INDEX,
+        CODE_ENTRY_INDEX,
         LITERAL_INFO_INDEX,
         EXTRA_LITERAL_INFO_INDEX,
         NUM_OF_MEMBERS
@@ -259,6 +261,11 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
         return HotnessCounterBits::Update(literalInfo, counter);
     }
 
+    static FunctionKind GetFunctionKind(uint64_t extraLiteralInfo)
+    {
+        return static_cast<FunctionKind>(FunctionKindBits::Decode(extraLiteralInfo));
+    }
+
     static EntityId GetMethodId(uint64_t literalInfo)
     {
         return EntityId(MethodIdBits::Decode(literalInfo));
@@ -295,6 +302,16 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
         return nativePointerOrBytecodeArray_;
     }
 
+    void SetCodeEntry(uintptr_t codeEntry)
+    {
+        codeEntry_ = codeEntry;
+    }
+
+    uintptr_t GetCodeEntry() const
+    {
+        return codeEntry_;
+    }
+
     uint64_t GetLiteralInfo() const
     {
         return literalInfo_;
@@ -308,6 +325,7 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
     alignas(EAS) uint64_t callField_ {0ULL};
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     alignas(EAS) const void *nativePointerOrBytecodeArray_ {nullptr};
+    alignas(EAS) uintptr_t codeEntry_ {0};
     // hotnessCounter, methodId and slotSize are encoded in literalInfo_.
     alignas(EAS) uint64_t literalInfo_ {0ULL};
     // BuiltinId, FunctionKind are encoded in extraLiteralInfo_.
