@@ -107,9 +107,10 @@ public:
         return Get(index);
     }
 
-    inline JSTaggedValue GetObjectFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index) const
+    static JSTaggedValue GetObjectFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
     {
-        auto val = Get(index);
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        auto val = taggedPool->Get(index);
         if (val.IsHole()) {
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
 #ifdef NEW_INSTRUCTION_DEFINE
@@ -124,7 +125,6 @@ public:
             JSHandle<JSHClass> generatorClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
             JSHandle<JSHClass> asyncGeneratorClass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
 
-            const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
             JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
             panda_file::File::IndexHeader *indexHeader = taggedPool->GetIndexHeader();
             auto pf = jsPandaFile->GetPandaFile();
@@ -259,16 +259,15 @@ public:
     }
 
     template <ConstPoolType type>
-    inline JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index) const
+    static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
     {
         static_assert(type == ConstPoolType::OBJECT_LITERAL || type == ConstPoolType::ARRAY_LITERAL);
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
 
-        auto val = Get(index);
+        auto val = taggedPool->Get(index);
         if (val.IsHole()) {
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
 #ifdef NEW_INSTRUCTION_DEFINE
-
-            const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
             JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
             panda_file::File::IndexHeader *indexHeader = taggedPool->GetIndexHeader();
             auto pf = jsPandaFile->GetPandaFile();
@@ -320,9 +319,10 @@ public:
         return val;
     }
 
-    inline JSTaggedValue GetMethodFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index) const
+    static JSTaggedValue GetMethodFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
     {
-        auto val = Get(index);
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        auto val = taggedPool->Get(index);
         if (val.IsHole()) {
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
 #ifdef NEW_INSTRUCTION_DEFINE
@@ -332,7 +332,6 @@ public:
 
             JSHandle<JSHClass> normalClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
 
-            const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
             JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
             panda_file::File::IndexHeader *indexHeader = taggedPool->GetIndexHeader();
             auto pf = jsPandaFile->GetPandaFile();
@@ -363,16 +362,16 @@ public:
         return val;
     }
 
-    inline JSTaggedValue GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index) const
+    static JSTaggedValue GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
     {
-        auto val = Get(index);
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        auto val = taggedPool->Get(index);
         if (val.IsHole()) {
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
 #ifdef NEW_INSTRUCTION_DEFINE
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
 
-            const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
             JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
             panda_file::File::IndexHeader *indexHeader = taggedPool->GetIndexHeader();
             auto pf = jsPandaFile->GetPandaFile();

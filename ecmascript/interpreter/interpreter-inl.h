@@ -148,16 +148,16 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 
 // TODO: change to static method
 #define GET_OBJ_FROM_CACHE(index) \
-    (ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(thread, constpool, index))
+    ConstantPool::GetObjectFromCache(thread, constpool, index)
 
 #define GET_STR_FROM_CACHE(index) \
-    (ConstantPool::Cast(constpool.GetTaggedObject())->GetStringFromCache(thread, constpool, index))
+    ConstantPool::GetStringFromCache(thread, constpool, index)
 
 #define GET_METHOD_FROM_CACHE(index, type) \
-    (ConstantPool::Cast(constpool.GetTaggedObject())->GetMethodFromCache(thread, constpool, index))
+    ConstantPool::GetMethodFromCache(thread, constpool, index)
 
 #define GET_LITERA_FROM_CACHE(index, type) \
-    (ConstantPool::Cast(constpool.GetTaggedObject())->GetLiteralFromCache<type>(thread, constpool, index))
+    ConstantPool::GetLiteralFromCache<type>(thread, constpool, index)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define INTERPRETER_GOTO_EXCEPTION_HANDLER()          \
@@ -4935,7 +4935,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res;
         SAVE_PC();
-        res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, GetConstantPool(sp), lexenv, methodId);
+        res = SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, GetConstantPool(sp), methodId);
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());

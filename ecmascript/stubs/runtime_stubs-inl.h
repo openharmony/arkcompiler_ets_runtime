@@ -723,8 +723,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, extractor, constpool, lexenv);
 
     // JSPandaFile is in the first index of constpool.
-    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(
-        JSNativePointer::Cast(constantPool->Get(0).GetTaggedObject())->GetExternalPointer());
+    JSPandaFile *jsPandaFile = constantPool->GetJSPandaFile();
     FileLoader *fileLoader = thread->GetEcmaVM()->GetFileLoader();
     if (jsPandaFile->IsLoadedAOT()) {
         fileLoader->SetAOTFuncEntry(jsPandaFile, cls);
