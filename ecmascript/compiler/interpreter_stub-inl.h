@@ -307,13 +307,6 @@ void InterpreterStubBuilder::SetFunctionToFrame(GateRef glue, GateRef frame, Gat
           IntPtr(AsmInterpretedFrame::GetFunctionOffset(GetEnvironment()->IsArch32Bit())), value);
 }
 
-void InterpreterStubBuilder::SetConstantPoolToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef method = GetMethodFromJSFunction(function);
-    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
-    Store(VariableType::INT64(), glue, method, offset, value);
-}
-
 void InterpreterStubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
@@ -593,19 +586,6 @@ void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, Gate
 GateRef InterpreterStubBuilder::GetObjectFromConstPool(GateRef constpool, GateRef index)
 {
     return GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, index);
-}
-
-// TODO
-GateRef InterpreterStubBuilder::FunctionIsResolved(GateRef object)
-{
-    GateRef bitfield = GetFunctionBitFieldFromJSFunction(object);
-    // decode
-    // return Int32NotEqual(
-    //     Int32And(
-    //         Int32LSR(bitfield, Int32(JSFunction::ResolvedBits::START_BIT)),
-    //         Int32((1LU << JSFunction::ResolvedBits::SIZE) - 1)),
-    //     Int32(0));
-    return bitfield;
 }
 
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)

@@ -676,6 +676,42 @@ DEF_RUNTIME_STUBS(OptStSuperByValue)
     return RuntimeStSuperByValue(thread, obj, key, value, thisFunc).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetMethodFromCache)
+{
+    RUNTIME_STUBS_HEADER(GetMethodFromCache);
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return ConstantPool::GetObjectFromCache(
+        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetStringFromCache)
+{
+    RUNTIME_STUBS_HEADER(GetStringFromCache);
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return ConstantPool::GetStringFromCache(
+        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
+{
+    RUNTIME_STUBS_HEADER(GetLiteralFromCache);
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
+        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
+{
+    RUNTIME_STUBS_HEADER(GetLiteralFromCache);
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
+        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LdObjByIndex)
 {
     RUNTIME_STUBS_HEADER(LdObjByIndex);
