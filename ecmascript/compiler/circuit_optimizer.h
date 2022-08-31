@@ -94,6 +94,12 @@ protected:
 class LatticeUpdateRuleSCCP : public LatticeUpdateRule {
 public:
     ~LatticeUpdateRuleSCCP() override {}
+    uint64_t RunBoolArithmetic(bool valueA, bool valueB, OpCode::Op op);
+    template<class T>
+    uint64_t RunFixedPointArithmetic(T valueA, T valueB, OpCode::Op op);
+    template<class T>
+    double RunFloatingPointArithmetic(T valueA, T valueB, OpCode::Op op);
+    uint64_t RunBasicArithmetic(ValueLattice operandA, ValueLattice operandB, OpCode::Op op, MachineType machineType);
     bool Run(GateRef gate) override;
     bool RunCircuitRoot(GateRef gate);
     bool RunStateEntry(GateRef gate);
