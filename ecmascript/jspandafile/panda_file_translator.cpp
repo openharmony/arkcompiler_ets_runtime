@@ -84,7 +84,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
                 switch (funcKind) {
                     case panda_file::FunctionKind::NONE:
                     case panda_file::FunctionKind::FUNCTION:
-                        kind = FunctionKind::NORMAL_FUNCTION;
+                        kind = FunctionKind::BASE_CONSTRUCTOR;
                         break;
                     case panda_file::FunctionKind::NC_FUNCTION:
                         kind = FunctionKind::ARROW_FUNCTION;

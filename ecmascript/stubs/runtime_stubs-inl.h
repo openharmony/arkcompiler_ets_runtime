@@ -806,10 +806,7 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
     if (icSlotSize > ProfileTypeInfo::INVALID_SLOT_INDEX) {
         // set as mega
         profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX, JSTaggedValue::Hole());
-        // overflow 16bit
-        if (icSlotSize > ProfileTypeInfo::MAX_SLOT_INDEX) {
-            profileTypeInfo->Set(thread, ProfileTypeInfo::MAX_SLOT_INDEX, JSTaggedValue::Hole());
-        }
+        ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + 1);
     }
     func->SetProfileTypeInfo(thread, profileTypeInfo.GetTaggedValue());
     return profileTypeInfo.GetTaggedValue();
@@ -1610,7 +1607,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
     FunctionKind kind = methodHandle->GetFunctionKind();
     switch (kind)
     {
-        case FunctionKind::NORMAL_FUNCTION: {
+        case FunctionKind::BASE_CONSTRUCTOR: {
             auto hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
             jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass, kind, MemSpaceType::OLD_SPACE);
             break;

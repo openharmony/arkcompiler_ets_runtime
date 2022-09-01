@@ -153,7 +153,7 @@ namespace panda::ecmascript::kungfu {
     D(HandleCallargs3Imm8V8V8V8)                        \
     D(HandleCallrangeImm8Imm8V8)                        \
     T(HandleLdexternalmodulevarImm8)                    \
-    T(HandleDynamicimportV8)                            \
+    T(HandleDynamicimport)                              \
     T(HandleDefinegettersetterbyvalueV8V8V8V8)          \
     T(HandleLdthisbynameImm8Id16)                       \
     T(HandleLdthisbynameImm16Id16)                      \

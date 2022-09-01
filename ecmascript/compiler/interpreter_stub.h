@@ -126,6 +126,7 @@ public:
     GateRef GetMethodFromConstPool(GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef constpool, GateRef index);
     GateRef GetObjectLiteralFromConstPool(GateRef constpool, GateRef index);
+    void DebugPrintInstruction();
 private:
     template<typename... Args>
     void DispatchBase(GateRef target, GateRef glue, Args... args);

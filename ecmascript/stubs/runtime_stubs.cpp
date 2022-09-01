@@ -42,6 +42,13 @@
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
+// TODO
+#ifdef NEW_INSTRUCTION_DEFINE
+#include "libpandafile/bytecode_instruction-inl.h"
+#else
+#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
+#endif
+
 namespace panda::ecmascript {
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -340,6 +347,12 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
     LOG_ECMA(DEBUG) << result;
     va_end(args);
+}
+
+void RuntimeStubs::DebugPrintInstruction(uintptr_t pc)
+{
+    BytecodeInstruction inst(reinterpret_cast<const uint8_t*>(pc));
+    LOG_INTERPRETER(DEBUG) << inst;
 }
 
 void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
@@ -696,7 +709,7 @@ DEF_RUNTIME_STUBS(GetStringFromCache)
 
 DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
 {
-    RUNTIME_STUBS_HEADER(GetLiteralFromCache);
+    RUNTIME_STUBS_HEADER(GetObjectLiteralFromCache);
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
@@ -705,7 +718,7 @@ DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
 
 DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
 {
-    RUNTIME_STUBS_HEADER(GetLiteralFromCache);
+    RUNTIME_STUBS_HEADER(GetArrayLiteralFromCache);
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(

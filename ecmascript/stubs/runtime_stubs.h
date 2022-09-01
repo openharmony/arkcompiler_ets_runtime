@@ -79,6 +79,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(DebugPrint)                              \
+    V(DebugPrintInstruction)                   \
     V(FatalPrint)                              \
     V(InsertOldToNewRSet)                      \
     V(MarkingBarrier)                          \
@@ -302,6 +303,7 @@ public:
     }
 
     static void DebugPrint(int fmtMessageId, ...);
+    static void DebugPrintInstruction(uintptr_t pc);
     static void FatalPrint(int fmtMessageId, ...);
     static void MarkingBarrier([[maybe_unused]]uintptr_t argGlue, uintptr_t slotAddr,
         Region *objectRegion, TaggedObject *value, Region *valueRegion);

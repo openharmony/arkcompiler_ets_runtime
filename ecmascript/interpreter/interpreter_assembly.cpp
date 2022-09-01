@@ -4161,7 +4161,7 @@ void InterpreterAssembly::HandleCallrangeImm8Imm8V8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
 }
-void InterpreterAssembly::HandleDynamicimportV8(
+void InterpreterAssembly::HandleDynamicimport(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {

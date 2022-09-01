@@ -897,6 +897,22 @@ DEF_CALL_SIGNATURE(DebugPrint)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(DebugPrintInstruction)
+{
+    // 1 : 1 input parameters
+    CallSignature debugPrintInstruction("DebugPrintInstruction", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = debugPrintInstruction;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(FatalPrint)
 {
     // 1 : 1 input parameters

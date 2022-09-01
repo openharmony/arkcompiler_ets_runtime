@@ -38,7 +38,6 @@
 #endif
 
 namespace panda::ecmascript::kungfu {
-#if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
 #define DECLARE_ASM_HANDLER(name)                                                         \
 void name##StubBuilder::GenerateCircuit()                                                 \
 {                                                                                         \
@@ -52,32 +51,12 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef acc = TaggedArgument(static_cast<size_t>(InterpreterHandlerInputs::ACC));     \
     GateRef hotnessCounter = Int32Argument(                                               \
         static_cast<size_t>(InterpreterHandlerInputs::HOTNESS_COUNTER));                  \
-    DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(name)) });                             \
+    DebugPrintInstruction();                                                              \
     GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);   \
 }                                                                                         \
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,         \
                                      GateRef constpool, GateRef profileTypeInfo,          \
                                      GateRef acc, GateRef hotnessCounter)
-#else
-#define DECLARE_ASM_HANDLER(name)                                                         \
-void name##StubBuilder::GenerateCircuit()                                                 \
-{                                                                                         \
-    GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));      \
-    GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));          \
-    GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));          \
-    GateRef constpool = TaggedPointerArgument(                                            \
-        static_cast<size_t>(InterpreterHandlerInputs::CONSTPOOL));                        \
-    GateRef profileTypeInfo = TaggedPointerArgument(                                      \
-        static_cast<size_t>(InterpreterHandlerInputs::PROFILE_TYPE_INFO));                \
-    GateRef acc = TaggedArgument(static_cast<size_t>(InterpreterHandlerInputs::ACC));     \
-    GateRef hotnessCounter = Int32Argument(                                               \
-        static_cast<size_t>(InterpreterHandlerInputs::HOTNESS_COUNTER));                  \
-    GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);   \
-}                                                                                         \
-void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,         \
-                                     GateRef constpool, GateRef profileTypeInfo,          \
-                                     GateRef acc, GateRef hotnessCounter)
-#endif
 
 // TYPE:{OFFSET, ACC_VARACC, JUMP, SSD}
 #define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
@@ -149,6 +128,15 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define CHECK_PENDING_EXCEPTION(res, offset)                                              \
     CheckPendingException(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,  \
 		          res, offset)
+
+void InterpreterStubBuilder::DebugPrintInstruction()
+{
+#if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
+    GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));
+    GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));
+    UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(DebugPrintInstruction), { pc });
+#endif
+}
 
 GateRef InterpreterStubBuilder::GetStringFromConstPool(GateRef constpool, GateRef index)
 {
@@ -4452,7 +4440,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedTonumericPrefV8)
     }
 }
 
-DECLARE_ASM_HANDLER(HandleDynamicimportV8)
+DECLARE_ASM_HANDLER(HandleDynamicimport)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef specifier = *varAcc;
@@ -4507,9 +4495,9 @@ DECLARE_ASM_HANDLER(HandleSupercallthisrangeImm8Imm8V8)
 {
     GateRef range = ReadInst8_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_2(pc));
-    // acc is thisFunc
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
-        { acc, Int16ToTaggedTypeNGC(v0), Int8ToTaggedTypeNGC(range) });
+        { currentFunc, Int16ToTaggedTypeNGC(v0), Int8ToTaggedTypeNGC(range) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(SUPERCALLTHISRANGE_IMM8_IMM8_V8));
 }
 
@@ -4518,9 +4506,9 @@ DECLARE_ASM_HANDLER(HandleSupercallarrowrangeImm8Imm8V8)
     // TODO same as HandleSupercallthisrangeImm8Imm8V8
     GateRef range = ReadInst8_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_2(pc));
-    // acc is thisFunc
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
-        { acc, Int16ToTaggedTypeNGC(v0), Int8ToTaggedTypeNGC(range) });
+        { currentFunc, Int16ToTaggedTypeNGC(v0), Int8ToTaggedTypeNGC(range) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(SUPERCALLARROWRANGE_IMM8_IMM8_V8));
 }
 
@@ -4528,9 +4516,9 @@ DECLARE_ASM_HANDLER(HandleWideSupercallthisrangePrefImm16V8)
 {
     GateRef range = ReadInst16_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_3(pc));
-    // acc is thisFunc
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
-        { acc, Int16ToTaggedTypeNGC(v0), Int16ToTaggedTypeNGC(range) });
+        { currentFunc, Int16ToTaggedTypeNGC(v0), Int16ToTaggedTypeNGC(range) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8));
 }
 
@@ -4539,9 +4527,9 @@ DECLARE_ASM_HANDLER(HandleWideSupercallarrowrangePrefImm16V8)
     // TODO same as HandleSupercallthisrangeImm8Imm8V8
     GateRef range = ReadInst16_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_3(pc));
-    // acc is thisFunc
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
-        { acc, Int16ToTaggedTypeNGC(v0), Int16ToTaggedTypeNGC(range) });
+        { currentFunc, Int16ToTaggedTypeNGC(v0), Int16ToTaggedTypeNGC(range) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8));
 }
 
@@ -5043,8 +5031,8 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
     GateRef length = ReadInst16_5(pc);
     GateRef v0 = ReadInst8_7(pc);
 
-    GateRef lexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef proto = acc;
+    GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
                               { proto, lexicalEnv, constpool,
                                 Int16ToTaggedTypeNGC(methodId),
@@ -5058,8 +5046,7 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
         DISPATCH_LAST_WITH_ACC();
     }
     Bind(&isNotException);
-    GateRef newLexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));  // slow runtime may gc
-    SetLexicalEnvToFunction(glue, res, newLexicalEnv);
+    SetLexicalEnvToFunction(glue, res, lexicalEnv);
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedTypeNGC(length) });
@@ -5077,8 +5064,8 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
     GateRef length = ReadInst16_6(pc);
     GateRef v0 = ReadInst8_8(pc);
 
-    GateRef lexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef proto = acc;
+    GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
                               { proto, lexicalEnv, constpool,
                                 Int16ToTaggedTypeNGC(methodId),
@@ -5092,8 +5079,7 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
         DISPATCH_LAST_WITH_ACC();
     }
     Bind(&isNotException);
-    GateRef newLexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));  // slow runtime may gc
-    SetLexicalEnvToFunction(glue, res, newLexicalEnv);
+    SetLexicalEnvToFunction(glue, res, lexicalEnv);
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedTypeNGC(length) });
@@ -5128,8 +5114,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)
         DISPATCH_LAST_WITH_ACC();
     }
     Bind(&isNotException);
-    GateRef newLexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));  // slow runtime may gc
-    SetLexicalEnvToFunction(glue, res, newLexicalEnv);
+    SetLexicalEnvToFunction(glue, res, lexicalEnv);
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedTypeNGC(length) });
@@ -5186,7 +5171,7 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm16Id16)
     Label slowPath(env);
 
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
+    GateRef receiver = acc;
     GateRef value = 0;
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
@@ -5352,9 +5337,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallargs3PrefV8V8V8V8)
 
 DECLARE_ASM_HANDLER(HandleCallrangeImm8Imm8V8)
 {
-    GateRef actualNumArgs = Int32Add(ZExtInt8ToInt32(ReadInst8_1(pc)), Int32(1));
+    GateRef actualNumArgs = ZExtInt8ToInt32(ReadInst8_1(pc));
     GateRef func = acc;
-    GateRef argv = PtrAdd(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
+    GateRef argv = PtrAdd(sp, PtrMul(ZExtInt8ToPtr(ReadInst8_2(pc)), IntPtr(8))); // 8: byteSize
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
@@ -5364,9 +5349,9 @@ DECLARE_ASM_HANDLER(HandleCallrangeImm8Imm8V8)
 
 DECLARE_ASM_HANDLER(HandleWideCallrangePrefImm16V8)
 {
-    GateRef actualNumArgs = Int32Add(ZExtInt16ToInt32(ReadInst16_1(pc)), Int32(1));
+    GateRef actualNumArgs = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef func = acc;
-    GateRef argv = PtrAdd(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
+    GateRef argv = PtrAdd(sp, PtrMul(ZExtInt8ToPtr(ReadInst8_2(pc)), IntPtr(8))); // 8: byteSize
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
@@ -5390,12 +5375,12 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallrangePrefImm16V8)
 
 DECLARE_ASM_HANDLER(HandleCallthisrangeImm8Imm8V8)
 {
-    GateRef actualNumArgs = Int32Sub(ZExtInt8ToInt32(ReadInst8_1(pc)), Int32(1));  // 1: exclude this
+    GateRef actualNumArgs = ZExtInt8ToInt32(ReadInst8_1(pc));
     GateRef thisReg = ZExtInt8ToPtr(ReadInst8_2(pc));
     GateRef func = acc;
     GateRef thisValue = GetVregValue(sp, thisReg);
     GateRef argv = PtrAdd(sp, PtrMul(
-        PtrAdd(thisReg, IntPtr(1)), IntPtr(8))); // 1: skip function&this
+        PtrAdd(thisReg, IntPtr(1)), IntPtr(8))); // 1: skip this
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
@@ -5405,12 +5390,12 @@ DECLARE_ASM_HANDLER(HandleCallthisrangeImm8Imm8V8)
 
 DECLARE_ASM_HANDLER(HandleWideCallthisrangePrefImm16V8)
 {
-    GateRef actualNumArgs = Int32Sub(ZExtInt16ToInt32(ReadInst16_1(pc)), Int32(1));  // 1: exclude this
+    GateRef actualNumArgs = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef thisReg = ZExtInt8ToPtr(ReadInst8_3(pc));
     GateRef func = acc;
     GateRef thisValue = GetVregValue(sp, thisReg);
     GateRef argv = PtrAdd(sp, PtrMul(
-        PtrAdd(thisReg, IntPtr(1)), IntPtr(8))); // 1: skip function&this
+        PtrAdd(thisReg, IntPtr(1)), IntPtr(8))); // 1: skip this
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,

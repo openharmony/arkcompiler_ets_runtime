@@ -1601,7 +1601,7 @@ void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerDynamicImport(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDynamicimportV8)));
+    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDynamicimport)));
     const int id = RTSTUB_ID(DynamicImport);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
