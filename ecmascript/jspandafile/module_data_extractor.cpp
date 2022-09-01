@@ -28,30 +28,16 @@ namespace panda::ecmascript {
 using StringData = panda_file::StringData;
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                         const CString &descriptor)
+                                                         const CString &descriptor, const CString &moduleFilename)
 {
-    const panda_file::File *pf = jsPandaFile->GetPandaFile();
-    Span<const uint32_t> classIndexes = pf->GetClasses();
     int moduleIdx = -1;
-    for (const uint32_t index : classIndexes) {
-        panda_file::File::EntityId classId(index);
-        if (pf->IsExternal(classId)) {
-            continue;
-        }
-        panda_file::ClassDataAccessor cda(*pf, classId);
-        const char *desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (std::strcmp(JSPandaFile::MODULE_CLASS, desc) == 0) { // module class
-            cda.EnumerateFields([&](panda_file::FieldDataAccessor &field_accessor) -> void {
-                panda_file::File::EntityId field_name_id = field_accessor.GetNameId();
-                StringData sd = pf->GetStringData(field_name_id);
-                if (std::strcmp(reinterpret_cast<const char *>(sd.data), descriptor.c_str())) {
-                    moduleIdx = field_accessor.GetValue<int32_t>().value();
-                    return;
-                }
-            });
-        }
+    if (jsPandaFile->IsBundle()) {
+        moduleIdx = jsPandaFile->GetModuleRecordIdx();
+    } else {
+        moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
     }
     ASSERT(moduleIdx != -1);
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
     panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
     panda_file::File::EntityId moduleId = lda.GetLiteralArrayId(static_cast<size_t>(moduleIdx));
@@ -60,7 +46,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
     ModuleDataExtractor::ExtractModuleDatas(thread, jsPandaFile, moduleId, moduleRecord);
 
-    JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(descriptor);
+    JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);
     moduleRecord->SetEcmaModuleFilename(thread, ecmaModuleFilename);
 
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);

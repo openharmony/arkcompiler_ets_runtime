@@ -29,7 +29,8 @@ public:
                                                          std::string_view entryPoint);
     static Expected<JSTaggedValue, bool> ExecuteFromBuffer(JSThread *thread, const void *buffer, size_t size,
                                                            std::string_view entryPoint, const CString &filename = "");
-    static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile);
+    static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                 std::string_view entryPoint);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H

@@ -28,7 +28,7 @@ public:
     DEFAULT_COPY_SEMANTIC(RuntimeListener);
     DEFAULT_MOVE_SEMANTIC(RuntimeListener);
 
-    virtual void LoadModule(std::string_view name) = 0;
+    virtual void LoadModule(std::string_view name, std::string_view) = 0;
 
     virtual void BytecodePcChanged(JSThread *thread, JSHandle<Method> method,
                                    uint32_t bc_offset) = 0;
@@ -54,10 +54,10 @@ public:
         listener_ = nullptr;
     }
 
-    void LoadModuleEvent(std::string_view name) const
+    void LoadModuleEvent(std::string_view name, std::string_view entryPoint) const
     {
         if (UNLIKELY(listener_ != nullptr)) {
-            listener_->LoadModule(name);
+            listener_->LoadModule(name, entryPoint);
         }
     }
 
