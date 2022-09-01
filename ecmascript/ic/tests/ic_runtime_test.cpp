@@ -181,7 +181,8 @@ HWTEST_F_L0(ICRunTimeTest, StoreMiss)
     EXPECT_TRUE(handleProfileTypeInfo->Get(0).IsHole());
     EXPECT_TRUE(handleProfileTypeInfo->Get(1).IsHole());
 
-    SlowRuntimeStub::StGlobalRecord(thread, handleKeyWithString.GetTaggedValue(), handleKeyWithString.GetTaggedValue(), false);
+    SlowRuntimeStub::StGlobalRecord(thread, handleKeyWithString.GetTaggedValue(),
+                                    handleKeyWithString.GetTaggedValue(), false);
     handleTaggedArray->Set(thread, 0, JSTaggedValue::Undefined());
     storeICRuntime.StoreMiss(handleReceiver1, handleKeyWithString, handleValueWithElement);
     EXPECT_TRUE(handleProfileTypeInfo->Get(0).IsPropertyBox());
