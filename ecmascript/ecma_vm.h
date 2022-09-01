@@ -22,7 +22,6 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/waiter_list.h"
 
@@ -78,6 +77,33 @@ class CjsModuleCache;
 class SlowRuntimeStub;
 class RequireManager;
 struct CJSInfo;
+class JSPatchManager;
+
+enum class MethodIndex : uint8_t {
+    BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
+    BUILTINS_GLOBAL_CALL_JS_PROXY,
+    BUILTINS_OBJECT_CREATE_DATA_PROPERTY_ON_OBJECT_FUNCTIONS,
+    BUILTINS_COLLATOR_ANONYMOUS_COLLATOR,
+    BUILTINS_DATE_TIME_FORMAT_ANONYMOUS_DATE_TIME_FORMAT,
+    BUILTINS_NUMBER_FORMAT_NUMBER_FORMAT_INTERNAL_FORMAT_NUMBER,
+    BUILTINS_PROXY_INVALIDATE_PROXY_FUNCTION,
+    BUILTINS_PROMISE_HANDLER_ASYNC_AWAIT_FULFILLED,
+    BUILTINS_PROMISE_HANDLER_ASYNC_AWAIT_REJECTED,
+    BUILTINS_PROMISE_HANDLER_RESOLVE_ELEMENT_FUNCTION,
+    BUILTINS_PROMISE_HANDLER_RESOLVE,
+    BUILTINS_PROMISE_HANDLER_REJECT,
+    BUILTINS_PROMISE_HANDLER_EXECUTOR,
+    BUILTINS_PROMISE_HANDLER_ANY_REJECT_ELEMENT_FUNCTION,
+    BUILTINS_PROMISE_HANDLER_ALL_SETTLED_RESOLVE_ELEMENT_FUNCTION,
+    BUILTINS_PROMISE_HANDLER_ALL_SETTLED_REJECT_ELEMENT_FUNCTION,
+    BUILTINS_PROMISE_HANDLER_THEN_FINALLY_FUNCTION,
+    BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION,
+    BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION,
+    BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION,
+    BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION,
+    BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION,
+    METHOD_END
+};
 
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,
@@ -89,6 +115,7 @@ using PromiseRejectCallback = void (*)(void* info);
 using NativePtrGetter = void* (*)(void* info);
 
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
+using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)>;
 
 class EcmaVM {
 public:
@@ -203,7 +230,7 @@ public:
         return optionalLogEnabled_;
     }
 
-    void Iterate(const RootVisitor &v);
+    void Iterate(const RootVisitor &v, const RootRangeVisitor &rv);
 
     const Heap *GetHeap() const
     {
@@ -339,6 +366,16 @@ public:
         return resolvePathCallback_;
     }
 
+    void SetResolveBufferCallback(ResolveBufferCallback cb)
+    {
+        resolveBufferCallback_ = cb;
+    }
+
+    ResolveBufferCallback GetResolveBufferCallback() const
+    {
+        return resolveBufferCallback_;
+    }
+
     void SetConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool);
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile);
@@ -363,8 +400,30 @@ public:
     HeapProfilerInterface *GetOrNewHeapProfile();
 #endif
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    CpuProfiler *GetProfiler() const
+    {
+        return profiler_;
+    }
+
+    void SetProfiler(CpuProfiler *profiler)
+    {
+        profiler_ = profiler;
+    }
+#endif
+
+    bool FindCatchBlock(Method *method, uint32_t pc) const;
+
     void preFork();
     void postFork();
+
+    // For Internal Native MethodLiteral.
+    JSTaggedValue GetMethodByIndex(MethodIndex idx);
+
+    JSPatchManager *GetPatchManager() const
+    {
+        return patchManager_;
+    }
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
@@ -400,6 +459,9 @@ private:
     void LoadAOTFiles();
     void LoadStubFile();
 
+    // For Internal Native MethodLiteral.
+    void GenerateInternalNativeMethods();
+
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
 
@@ -418,8 +480,7 @@ private:
     Chunk chunk_;
     Heap *heap_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    ChunkVector<JSNativePointer *> nativePointerList_;
-
+    CVector<JSNativePointer *> nativePointerList_;
     // VM execution states.
     JSThread *thread_ {nullptr};
     RegExpParserCache *regExpParserCache_ {nullptr};
@@ -463,9 +524,20 @@ private:
 
     // CJS resolve path Callbacks
     ResolvePathCallback resolvePathCallback_ {nullptr};
+    ResolveBufferCallback resolveBufferCallback_ {nullptr};
 
     // vm parameter configurations
     EcmaParamConfiguration ecmaParamConfiguration_;
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    CpuProfiler *profiler_ {nullptr};
+#endif
+
+    // For Native MethodLiteral
+    static void *InternalMethodTable[static_cast<uint8_t>(MethodIndex::METHOD_END)];
+    CVector<JSTaggedValue> internalNativeMethods_;
+
+    // For repair patch.
+    JSPatchManager *patchManager_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;

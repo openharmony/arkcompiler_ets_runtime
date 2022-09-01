@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_H
 #define ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_H
 
-#include <stack>
-
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
@@ -99,6 +97,7 @@ class Variable;
     V(ZExtInt16ToInt32, OpCode::ZEXT_TO_INT32)                                    \
     V(ZExtInt16ToInt64, OpCode::ZEXT_TO_INT64)                                    \
     V(ChangeInt64ToInt32, OpCode::TRUNC_TO_INT32)                                 \
+    V(ChangeInt16ToInt8, OpCode::TRUNC_TO_INT8)                                   \
     V(ChangeInt32ToIntPtr, OpCode::ZEXT_TO_ARCH)                                  \
     V(TruncInt64ToInt32, OpCode::TRUNC_TO_INT32)                                  \
     V(TruncPtrToInt32, OpCode::TRUNC_TO_INT32)                                    \
@@ -308,7 +307,7 @@ public:
     inline GateRef TaggedCastToIntPtr(GateRef x);
     inline GateRef TaggedCastToDouble(GateRef x);
     inline GateRef ChangeTaggedPointerToInt64(GateRef x);
-    inline GateRef ChangeInt64ToTagged(GateRef x);
+    inline GateRef Int64ToTaggedPtr(GateRef x);
     // bit operation
     inline GateRef IsSpecial(GateRef x, JSTaggedType type);
     inline GateRef TaggedIsInt(GateRef x);
@@ -322,6 +321,7 @@ public:
     inline GateRef TaggedIsSpecial(GateRef x);
     inline GateRef TaggedIsHeapObject(GateRef x);
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef x);
+    inline GateRef TaggedIsGeneratorObject(GateRef x);
     inline GateRef TaggedIsPropertyBox(GateRef x);
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef x);
@@ -332,20 +332,38 @@ public:
     inline GateRef TaggedIsNull(GateRef x);
     inline GateRef TaggedIsBoolean(GateRef x);
     inline GateRef TaggedGetInt(GateRef x);
-    inline GateRef TaggedTypeNGC(GateRef x);
-    inline GateRef TaggedNGC(GateRef x);
-    inline GateRef DoubleToTaggedNGC(GateRef x);
-    inline GateRef DoubleToTaggedTypeNGC(GateRef x);
-    inline GateRef Tagged(GateRef x);
+    inline GateRef ToTaggedInt(GateRef x);
+    inline GateRef ToTaggedIntPtr(GateRef x);
+    inline GateRef DoubleToTaggedDoublePtr(GateRef x);
+    inline GateRef DoubleToTaggedDouble(GateRef x);
     inline GateRef DoubleToTagged(GateRef x);
     inline GateRef TaggedTrue();
     inline GateRef TaggedFalse();
+    inline GateRef SExtInt8ToInt64(GateRef x);
+    inline GateRef SExtInt16ToInt64(GateRef x);
+    inline GateRef ChangeFloat64ToInt32(GateRef x);
+    inline GateRef ChangeUInt32ToFloat64(GateRef x);
+    inline GateRef ChangeInt32ToFloat64(GateRef x);
+    // Pointer/Arithmetic/Logic Operations
+    inline GateRef PointerSub(GateRef x, GateRef y);
+    inline GateRef IntPtrDiv(GateRef x, GateRef y);
+    inline GateRef IntPtrOr(GateRef x, GateRef y);
+    inline GateRef IntPtrLSL(GateRef x, GateRef y);
+    inline GateRef IntPtrLSR(GateRef x, GateRef y);
+    inline GateRef Int64NotEqual(GateRef x, GateRef y);
+    inline GateRef Int32NotEqual(GateRef x, GateRef y);
+    inline GateRef Int64Equal(GateRef x, GateRef y);
+    inline GateRef DoubleEqual(GateRef x, GateRef y);
+    inline GateRef Int8Equal(GateRef x, GateRef y);
+    inline GateRef Int32Equal(GateRef x, GateRef y);
+    template<OpCode::Op Op, MachineType Type>
+    inline GateRef BinaryOp(GateRef x, GateRef y);
     inline GateRef GetValueFromTaggedArray(VariableType returnType, GateRef array, GateRef index);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
-    // object operation
+    // Object Operations
     inline GateRef LoadHClass(GateRef object);
     inline GateRef IsJsType(GateRef object, JSType type);
     inline GateRef GetObjectType(GateRef hClass);
@@ -355,11 +373,15 @@ public:
     inline GateRef IsClassPrototype(GateRef object);
     inline GateRef IsExtensible(GateRef object);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
-    inline GateRef IsJsObject(GateRef obj);
-    inline GateRef BothAreString(GateRef x, GateRef y);
+    inline GateRef IsJSObject(GateRef obj);
+    inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef IsCallable(GateRef obj);
+    inline GateRef IsCallableFromBitField(GateRef bitfield);
+    inline GateRef LogicAnd(GateRef x, GateRef y);
+    inline GateRef LogicOr(GateRef x, GateRef y);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetFunctionBitFieldFromJSFunction(GateRef function);
+    GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
     GateRef FunctionIsResolved(GateRef function);
     void SetResolvedToFunction(GateRef glue, GateRef function, GateRef value);
@@ -408,6 +430,7 @@ public:
     inline GateRef GetState() const;
     inline GateRef GetDepend() const;
     inline void SetDepend(GateRef depend);
+    inline void SetState(GateRef state);
 
 private:
     Circuit *circuit_ {nullptr};
@@ -581,7 +604,7 @@ public:
     }
     inline bool IsAsmInterp() const
     {
-        return circuit_->GetFrameType() == FrameType::INTERPRETER_FRAME;
+        return circuit_->GetFrameType() == FrameType::ASM_INTERPRETER_FRAME;
     }
     inline bool IsArch32Bit() const
     {
@@ -609,7 +632,7 @@ private:
     std::stack<Label *> stack_;
     int nextVariableId_ {0};
     std::vector<GateRef> arguments_;
-    const CompilationConfig *ccfg_ { nullptr };
+    const CompilationConfig *ccfg_ {nullptr};
 };
 
 class Variable {

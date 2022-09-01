@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/verifier.h"
 
 #include <cmath>
+#include <stack>
 #include <unordered_set>
 
 #include "ecmascript/compiler/scheduler.h"

@@ -254,6 +254,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Uri Error");
         case JSType::JS_SYNTAX_ERROR:
             return GetString("Syntax Error");
+        case JSType::JS_OOM_ERROR:
+            return GetString("OutOfMemory Error");
         case JSType::JS_REG_EXP:
             return GetString("Regexp");
         case JSType::JS_SET:
@@ -463,8 +465,12 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("SourceTextModule");
         case JSType::IMPORTENTRY_RECORD:
             return GetString("ImportEntry");
-        case JSType::EXPORTENTRY_RECORD:
-            return GetString("ExportEntry");
+        case JSType::LOCAL_EXPORTENTRY_RECORD:
+            return GetString("LocalExportEntry");
+        case JSType::INDIRECT_EXPORTENTRY_RECORD:
+            return GetString("IndirectExportEntry");
+        case JSType::STAR_EXPORTENTRY_RECORD:
+            return GetString("StarExportEntry");
         case JSType::RESOLVEDBINDING_RECORD:
             return GetString("ResolvedBinding");
         case JSType::JS_MODULE_NAMESPACE:
@@ -479,6 +485,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("CJS Module");
         case JSType::JS_CJS_REQUIRE:
             return GetString("CJS Require");
+        case JSType::METHOD:
+            return GetString("Method");
         default:
             break;
     }
@@ -686,7 +694,7 @@ TraceNode* TraceNode::FindChild(uint32_t nodeIndex)
     return nullptr;
 }
 
-void HeapSnapshot::AddTraceNodeId(JSMethod *method)
+void HeapSnapshot::AddTraceNodeId(Method *method)
 {
     uint32_t traceNodeId = 0;
     auto result = methodToTraceNodeId_.find(method);
@@ -729,7 +737,7 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
     return topNode->GetId();
 }
 
-void HeapSnapshot::AddMethodInfo(JSMethod *method, const FrameHandler &frameHandler, int sequenceId)
+void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandler, int sequenceId)
 {
     struct FunctionInfo codeEntry;
     codeEntry.functionId = sequenceId;

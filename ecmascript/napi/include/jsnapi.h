@@ -25,7 +25,6 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/mem/mem_common.h"
-#include "generated/base_options.h"
 
 #include "libpandabase/macros.h"
 
@@ -108,16 +107,6 @@ public:
     inline bool IsEmpty() const
     {
         return GetAddress() == nullptr;
-    }
-
-    inline bool CheckException() const
-    {
-        return IsEmpty() || GetAddress()->IsException();
-    }
-
-    inline bool IsException() const
-    {
-        return !IsEmpty() && GetAddress()->IsException();
     }
 
     inline bool IsNull() const
@@ -222,11 +211,6 @@ public:
         return GetAddress() == nullptr;
     }
 
-    inline bool CheckException() const
-    {
-        return IsEmpty() || GetAddress()->IsException();
-    }
-
     void SetWeak();
 
     void ClearWeak();
@@ -322,11 +306,6 @@ public:
         return GetAddress() == nullptr;
     }
 
-    inline bool CheckException() const
-    {
-        return IsEmpty() || GetAddress()->IsException();
-    }
-
     void SetWeak();
 
     void SetWeakCallback(void *ref, WeakRefClearCallBack callback);
@@ -401,7 +380,6 @@ public:
     static Local<PrimitiveRef> Null(const EcmaVM *vm);
     static Local<PrimitiveRef> True(const EcmaVM *vm);
     static Local<PrimitiveRef> False(const EcmaVM *vm);
-    static Local<JSValueRef> Exception(const EcmaVM *vm);
 
     bool BooleaValue();
     int64_t IntegerValue(const EcmaVM *vm);
@@ -431,7 +409,6 @@ public:
     bool IsConstructor();
     bool IsFunction();
     bool IsProxy();
-    bool IsException();
     bool IsPromise();
     bool IsDataView();
     bool IsTypedArray();
@@ -440,6 +417,7 @@ public:
     bool IsError();
     bool IsMap();
     bool IsSet();
+    bool IsWeakRef();
     bool IsWeakMap();
     bool IsWeakSet();
     bool IsRegExp();
@@ -471,8 +449,19 @@ public:
     bool IsArgumentsObject();
     bool IsGeneratorFunction();
     bool IsAsyncFunction();
+    bool IsJSLocale();
+    bool IsJSDateTimeFormat();
+    bool IsJSRelativeTimeFormat();
+    bool IsJSIntl();
+    bool IsJSNumberFormat();
+    bool IsJSCollator();
+    bool IsJSPluralRules();
+    bool IsJSListFormat();
     bool IsAsyncGeneratorFunction();
     bool IsAsyncGeneratorObject();
+
+    bool IsModuleNamespaceObject();
+    bool IsSharedArrayBuffer();
 
     bool IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value);
     Local<StringRef> Typeof(const EcmaVM *vm);
@@ -845,6 +834,13 @@ public:
 class PUBLIC_API RegExpRef : public ObjectRef {
 public:
     Local<StringRef> GetOriginalSource(const EcmaVM *vm);
+    std::string GetOriginalFlags();
+    Local<JSValueRef> IsGlobal(const EcmaVM *vm);
+    Local<JSValueRef> IsIgnoreCase(const EcmaVM *vm);
+    Local<JSValueRef> IsMultiline(const EcmaVM *vm);
+    Local<JSValueRef> IsDotAll(const EcmaVM *vm);
+    Local<JSValueRef> IsUtf16(const EcmaVM *vm);
+    Local<JSValueRef> IsStick(const EcmaVM *vm);
 };
 
 class PUBLIC_API DateRef : public ObjectRef {
@@ -857,8 +853,11 @@ public:
 class PUBLIC_API MapRef : public ObjectRef {
 public:
     int32_t GetSize();
+    Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
     Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+    static Local<MapRef> New(const EcmaVM *vm);
+    void Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
 };
 
 class PUBLIC_API SetRef : public ObjectRef {
@@ -879,6 +878,33 @@ public:
     Local<JSValueRef> GetKind(const EcmaVM *vm);
 };
 
+class PUBLIC_API GeneratorFunctionRef : public ObjectRef {
+public:
+    bool IsGenerator();
+};
+
+class PUBLIC_API GeneratorObjectRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetGeneratorState(const EcmaVM *vm);
+    Local<JSValueRef> GetGeneratorFunction(const EcmaVM *vm);
+    Local<JSValueRef> GetGeneratorReceiver(const EcmaVM *vm);
+};
+
+class PUBLIC_API CollatorRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetCompareFunction(const EcmaVM *vm);
+};
+
+class PUBLIC_API DataTimeFormatRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetFormatFunction(const EcmaVM *vm);
+};
+
+class PUBLIC_API NumberFormatRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetFormatFunction(const EcmaVM *vm);
+};
+
 class PUBLIC_API JSON {
 public:
     static Local<JSValueRef> Parse(const EcmaVM *vm, Local<StringRef> string);
@@ -894,6 +920,7 @@ public:
     static Local<JSValueRef> TypeError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> AggregateError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> EvalError(const EcmaVM *vm, Local<StringRef> message);
+    static Local<JSValueRef> OOMError(const EcmaVM *vm, Local<StringRef> message);
 };
 
 using LOG_PRINT = int (*)(int id, int level, const char *tag, const char *fmt, const char *message);
@@ -1138,6 +1165,7 @@ public:
     static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
     static Local<ObjectRef> GetAndClearUncaughtException(const EcmaVM *vm);
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
+    static bool HasPendingException(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
     static bool StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
@@ -1149,15 +1177,20 @@ public:
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetHostResolvePathTracker(EcmaVM *vm,
                                           std::function<std::string(std::string dirPath, std::string requestPath)> cb);
+    static void SetHostResolveBufferTracker(EcmaVM *vm,
+        std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)> cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();
     static void DestroyMemMapAllocator();
-    static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options,
-                                const base_options::Options &baseOption = base_options::Options(""));
+    static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
+    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
+    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                          const std::string &baseFileName);
+    static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
 private:
     static int vmCount_;
     static bool initialize_;

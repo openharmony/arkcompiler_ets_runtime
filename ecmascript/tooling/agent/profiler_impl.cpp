@@ -189,7 +189,7 @@ DispatchResponse ProfilerImpl::Start()
 
 DispatchResponse ProfilerImpl::Stop(std::unique_ptr<Profile> *profile)
 {
-    auto profileInfo = panda::DFXJSNApi::StopCpuProfilerForInfo();
+    auto profileInfo = panda::DFXJSNApi::StopCpuProfilerForInfo(vm_);
     if (profileInfo == nullptr) {
         LOG_DEBUGGER(ERROR) << "Transfer DFXJSNApi::StopCpuProfilerImpl is failure";
         return DispatchResponse::Fail("Stop is failure");
@@ -200,7 +200,7 @@ DispatchResponse ProfilerImpl::Stop(std::unique_ptr<Profile> *profile)
 
 DispatchResponse ProfilerImpl::SetSamplingInterval(const SetSamplingIntervalParams &params)
 {
-    panda::DFXJSNApi::SetCpuSamplingInterval(params.GetInterval());
+    panda::DFXJSNApi::SetCpuSamplingInterval(vm_, params.GetInterval());
     return DispatchResponse::Ok();
 }
 

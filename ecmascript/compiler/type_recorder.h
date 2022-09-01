@@ -18,15 +18,15 @@
 
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/file-inl.h"
+#include "ecmascript/method.h"
 #include "libpandafile/method_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
 class TypeRecorder {
 public:
-    explicit TypeRecorder(const JSMethod *method, TSManager *tsManager);
+    explicit TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager);
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
@@ -34,7 +34,7 @@ public:
     GateType UpdateType(const int32_t offset, const GateType &type) const;
 
 private:
-    void LoadTypes(const JSMethod *method, TSManager *tsManager);
+    void LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager);
     
     inline int32_t GetArgOffset(const int32_t argIndex) const
     {

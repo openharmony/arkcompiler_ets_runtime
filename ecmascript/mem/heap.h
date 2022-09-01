@@ -19,7 +19,6 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/sparse_space.h"
@@ -60,6 +59,7 @@ public:
     void Destroy();
     void Prepare();
     void Resume(TriggerGCType gcType);
+    void ResumeForAppSpawn();
     void CompactHeapBeforeFork();
     void DisableParallelGC();
     // fixme: Rename NewSpace to YoungSpace.
@@ -108,6 +108,11 @@ public:
     ReadOnlySpace *GetReadOnlySpace() const
     {
         return readOnlySpace_;
+    }
+
+    AppSpawnSpace *GetAppSpawnSpace() const
+    {
+        return appSpawnSpace_;
     }
 
     SparseSpace *GetSpaceWithType(MemSpaceType type) const
@@ -255,7 +260,7 @@ public:
     void WaitRunningTaskFinished();
 
     void TryTriggerConcurrentMarking();
-
+    void AdjustBySurvivalRate(size_t originalNewSpaceSize);
     void TriggerConcurrentMarking();
 
     /*
@@ -282,17 +287,6 @@ public:
 
     inline bool MoveYoungRegionSync(Region *region);
     inline void MergeToOldSpaceSync(LocalSpace *localSpace);
-
-    // record lastRegion for each space, which will be used in ReclaimRegions()
-    void PrepareRecordRegionsForReclaim()
-    {
-        activeSemiSpace_->SetRecordRegion();
-        oldSpace_->SetRecordRegion();
-        snapshotSpace_->SetRecordRegion();
-        nonMovableSpace_->SetRecordRegion();
-        hugeObjectSpace_->SetRecordRegion();
-        machineCodeSpace_->SetRecordRegion();
-    }
 
     template<class Callback>
     void EnumerateOldSpaceRegions(const Callback &cb, Region *region = nullptr) const;
@@ -388,7 +382,7 @@ public:
     bool OldSpaceExceedCapacity(size_t size) const
     {
         size_t totalSize = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize() + size;
-        return totalSize >= oldSpace_->GetMaximumCapacity();
+        return totalSize >= oldSpace_->GetMaximumCapacity() + oldSpace_->GetOutOfMemoryOvershootSize();
     }
 
     bool OldSpaceExceedLimit() const
@@ -397,6 +391,7 @@ public:
         return totalSize >= oldSpace_->GetInitialCapacity();
     }
 
+    void AdjustSpaceSizeForAppSpawn();
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool IsVerifying() const
     {
@@ -408,10 +403,29 @@ public:
         return value.IsString() && !Region::ObjectAddressToRange(value.GetTaggedObject())->InHugeObjectSpace();
     }
 
-private:
+    bool IsFullMarkRequested() const
+    {
+        return fullMarkRequested_;
+    }
+
+    void SetFullMarkRequestedState(bool fullMarkRequested)
+    {
+        fullMarkRequested_ = fullMarkRequested;
+    }
+
+    void ShouldThrowOOMError(bool shouldThrow)
+    {
+        shouldThrowOOMError_ = shouldThrow;
+    }
+
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
+
+private:
+    void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
+    // record lastRegion for each space, which will be used in ReclaimRegions()
+    void PrepareRecordRegionsForReclaim();
     TriggerGCType SelectGCType() const;
     void IncreaseTaskCount();
     void ReduceTaskCount();
@@ -463,6 +477,7 @@ private:
     OldSpace *oldSpace_ {nullptr};
     OldSpace *compressSpace_ {nullptr};
     ReadOnlySpace *readOnlySpace_ {nullptr};
+    AppSpawnSpace *appSpawnSpace_ {nullptr};
     // Spaces used for special kinds of objects.
     NonMovableSpace *nonMovableSpace_ {nullptr};
     MachineCodeSpace *machineCodeSpace_ {nullptr};
@@ -513,9 +528,11 @@ private:
 
     bool parallelGC_ {true};
     bool fullGCRequested_ {false};
+    bool fullMarkRequested_ {false};
+    bool oldSpaceLimitAdjusted_ {false};
+    bool shouldThrowOOMError_ {false};
 
     size_t globalSpaceAllocLimit_ {0};
-    bool oldSpaceLimitAdjusted_ {false};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};

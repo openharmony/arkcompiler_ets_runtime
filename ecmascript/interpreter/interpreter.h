@@ -17,11 +17,11 @@
 #define ECMASCRIPT_INTERPRETER_INTERPRETER_H
 
 #include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/method.h"
 #include "ecmascript/require/js_cjs_module.h"
 
 namespace panda::ecmascript {
@@ -31,7 +31,8 @@ class GeneratorContext;
 
 class EcmaInterpreter {
 public:
-    static const int16_t METHOD_HOTNESS_THRESHOLD = 512;
+    static const int16_t METHOD_HOTNESS_THRESHOLD = 0x700;
+    static const int16_t METHOD_HOTNESS_THRESHOLD_FACTOR = 10;
     enum ActualNumArgsOfCall : uint8_t { CALLARG0 = 0, CALLARG1, CALLARGS2, CALLARGS3 };
 
     static inline JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
@@ -43,7 +44,7 @@ public:
     static inline JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline void RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp);
     static inline void InitStackFrame(JSThread *thread);
-    static inline uint32_t FindCatchBlock(JSMethod *caller, uint32_t pc);
+    static inline uint32_t FindCatchBlock(Method *caller, uint32_t pc);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
 
     static inline JSTaggedValue GetRuntimeProfileTypeInfo(JSTaggedType *sp);
@@ -55,8 +56,9 @@ public:
     static inline JSTaggedValue GetNewTarget(JSTaggedType *sp);
     static inline uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static inline JSTaggedValue GetThisObjectFromFastNewFrame(JSTaggedType *sp);
-    static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSMethod *method);
+    static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
+    static inline int16_t GetHotnessCounter(uint32_t codeSize);
 };
 
 enum EcmaOpcode {
@@ -200,6 +202,7 @@ enum EcmaOpcode {
     CREATEASYNCGENERATOROBJ_PREF_V8,
     ASYNCGENERATORRESOLVE_PREF_V8_V8_V8,
     DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8,
+    DYNAMICIMPORT_PREF_V8,
     ASYNCGENERATORREJECT_PREF_V8_V8,
     MOV_DYN_V8_V8,
     MOV_DYN_V16_V16,

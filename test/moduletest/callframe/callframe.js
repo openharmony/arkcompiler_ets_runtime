@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:callframe
+ * @tc.desc:test different kinds of call frames
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 // normal
 function foo0(a) {
     return a;

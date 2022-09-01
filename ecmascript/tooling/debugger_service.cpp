@@ -46,7 +46,7 @@ void WaitForDebugger(const ::panda::ecmascript::EcmaVM *vm)
     }
 }
 
-void DispatchMessage(const ::panda::ecmascript::EcmaVM *vm, std::string &&message)
+void OnMessage(const ::panda::ecmascript::EcmaVM *vm, std::string &&message)
 {
     ProtocolHandler *handler = vm->GetJsDebuggerManager()->GetDebuggerHandler();
     if (LIKELY(handler != nullptr)) {

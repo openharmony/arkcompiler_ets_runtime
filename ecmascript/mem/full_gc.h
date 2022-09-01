@@ -32,6 +32,7 @@ public:
 
     void RunPhases() override;
     void RunPhasesForAppSpawn();
+    void SetForAppSpawn(bool flag);
 protected:
     void Initialize() override;
     void Mark() override;
@@ -39,13 +40,15 @@ protected:
     void Finish() override;
 
 private:
+    bool HasEvacuated(Region *region);
+
     Heap *heap_;
     size_t youngAndOldAliveSize_ = 0;
     size_t nonMoveSpaceFreeSize_ = 0;
     size_t youngSpaceCommitSize_ = 0;
     size_t oldSpaceCommitSize_ = 0;
     size_t nonMoveSpaceCommitSize_ = 0;
-
+    bool forAppSpawn_ {false};
     // obtain from heap
     WorkManager *workManager_ {nullptr};
 

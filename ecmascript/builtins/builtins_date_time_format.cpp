@@ -225,8 +225,8 @@ JSTaggedValue BuiltinsDateTimeFormat::ResolvedOptions(EcmaRuntimeCallInfo *argv)
     auto ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSTaggedValue> ctor = env->GetObjectFunction();
-    JSHandle<JSObject> options(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    JSHandle<JSFunction> ctor(env->GetObjectFunction());
+    JSHandle<JSObject> options(factory->NewJSObjectByConstructor(ctor));
     JSDateTimeFormat::ResolvedOptions(thread, JSHandle<JSDateTimeFormat>::Cast(thisValue), options);
     // 6. Return options.
     return options.GetTaggedValue();

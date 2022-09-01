@@ -20,7 +20,7 @@
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/type_recorder.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 
 namespace panda::ecmascript::kungfu {
 enum class CommonArgIdx : uint8_t {
@@ -35,9 +35,11 @@ enum class CommonArgIdx : uint8_t {
 
 class ArgumentAccessor {
 public:
-    explicit ArgumentAccessor(Circuit *circuit, const JSMethod *method = nullptr)
+    explicit ArgumentAccessor(
+        Circuit *circuit, const MethodLiteral *methodLiteral = nullptr, const JSPandaFile *jsPandaFile = nullptr)
         : circuit_(circuit),
-          method_(method),
+          method_(methodLiteral),
+          jsPandaFile_(jsPandaFile),
           argRoot_(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))),
           args_(0)
     {
@@ -47,20 +49,25 @@ public:
 
     void NewCommonArg(const CommonArgIdx argIndex, MachineType machineType, GateType gateType);
     void NewArg(const size_t argIndex);
-    // jsmethod must be set
+    // method must be set
     size_t GetActualNumArgs() const;
-    // jsmethod must be set
+    // method must be set
     GateRef GetArgGate(const size_t currentVreg) const;
     GateRef GetCommonArgGate(const CommonArgIdx arg) const;
     void FillArgsGateType(const TypeRecorder *typeRecorder);
     void CollectArgs();
+    static size_t GetFixArgsNum()
+    {
+        return static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS) - static_cast<size_t>(CommonArgIdx::FUNC);
+    }
 
 private:
     size_t GetFunctionArgIndex(const size_t currentVreg, const bool haveFunc,
                                const bool haveNewTarget, const bool haveThis) const;
 
     Circuit *circuit_ {nullptr};
-    const JSMethod *method_ {nullptr};
+    const MethodLiteral *method_ {nullptr};
+    const JSPandaFile *jsPandaFile_ {nullptr};
     GateRef argRoot_;
     std::vector<GateRef> args_;
 };

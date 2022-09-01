@@ -40,10 +40,10 @@ JSTaggedValue BuiltinsBoolean::BooleanConstructor(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> ctor = JSHandle<JSFunction>(GetConstructor(argv));
     JSHandle<JSObject> result = factory->NewJSObjectByConstructor(ctor, newTarget);
-    JSTaggedValue objValue = boolValue ? JSTaggedValue::True() : JSTaggedValue::False();
-    JSPrimitiveRef::Cast(*result)->SetValue(thread, objValue);
     // 4. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue objValue = boolValue ? JSTaggedValue::True() : JSTaggedValue::False();
+    JSPrimitiveRef::Cast(*result)->SetValue(thread, objValue);
     // 6. Return O.
     return result.GetTaggedValue();
 }

@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
+#include <sys/time.h>
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/string_helper.h"
@@ -28,7 +29,7 @@
 
 namespace panda::ecmascript::base {
 enum class Sign { NONE, NEG, POS };
-
+thread_local uint64_t RandomGenerator::randomState {0};
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_IF_CONVERSION_END(p, end, result) \
     if ((p) == (end)) {                          \
@@ -667,8 +668,8 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
     if (strLen == 0) {
         return BigInt::Int32ToBigInt(thread, 0).GetTaggedValue();
     }
+    [[maybe_unused]] CVector<uint8_t> buf; // Span will use buf.data(), shouldn't define inside 'if'
     if (UNLIKELY(strObj->IsUtf16())) {
-        CVector<uint8_t> buf;
         size_t len = base::utf_helper::Utf16ToUtf8Size(strObj->GetDataUtf16(), strLen) - 1;
         buf.reserve(len);
         len = base::utf_helper::ConvertRegionUtf16ToUtf8(strObj->GetDataUtf16(), buf.data(), strLen, len, 0);
@@ -792,5 +793,27 @@ int NumberHelper::GetMinmumDigits(double d, int *decpt, char *buf)
     GetBase(d, digits, decpt, buf, bufTmp, sizeof(bufTmp));
 
     return digits;
+}
+uint64_t& RandomGenerator::GetRandomState()
+{
+    return randomState;
+}
+uint64_t RandomGenerator::XorShift64(uint64_t *pVal)
+{
+    uint64_t x = *pVal;
+    x ^= x >> RIGHT12;
+    x ^= x << LEFT25;
+    x ^= x >> RIGHT27;
+    *pVal = x;
+    return x * GET_MULTIPLY;
+}
+void RandomGenerator::InitRandom()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    randomState = static_cast<uint64_t>((tv.tv_sec * SECONDS_TO_SUBTLE) + tv.tv_usec);
+    // the state must be non zero
+    if (randomState == 0)
+        randomState = 1;
 }
 }  // namespace panda::ecmascript::base

@@ -83,7 +83,7 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 
 bool SparseSpace::Expand()
 {
-    if (committedSize_ >= maximumCapacity_) {
+    if (committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_) {
         LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;
     }
@@ -106,7 +106,6 @@ uintptr_t SparseSpace::AllocateAfterSweepingCompleted(size_t size)
     if (TryFillSweptRegion()) {
         auto object = allocator_->Allocate(size);
         if (object != 0) {
-            liveObjectSize_ += size;
             return object;
         }
     }
@@ -150,7 +149,6 @@ void SparseSpace::AsyncSweep(bool isMain)
 void SparseSpace::Sweep()
 {
     liveObjectSize_ = 0;
-    sweepState_ = SweepState::SWEEPING;
     allocator_->RebuildFreeList();
     EnumerateRegions([this](Region *current) {
         if (!current->InCollectSet()) {
@@ -362,6 +360,7 @@ void OldSpace::Merge(LocalSpace *localSpace)
 {
     localSpace->FreeBumpPoint();
     os::memory::LockHolder lock(lock_);
+    size_t oldCommittedSize = committedSize_;
     localSpace->EnumerateRegions([&](Region *region) {
         localSpace->DetachFreeObjectSet(region);
         localSpace->RemoveRegion(region);
@@ -370,8 +369,12 @@ void OldSpace::Merge(LocalSpace *localSpace)
         IncreaseLiveObjectSize(region->AliveObject());
         allocator_->CollectFreeObjectSet(region);
     });
-    if (committedSize_ >= maximumCapacity_) {
-        LOG_ECMA_MEM(FATAL) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
+    if (committedSize_ > maximumCapacity_ + outOfMemoryOvershootSize_) {
+        LOG_ECMA_MEM(ERROR) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
+        heap_->ShouldThrowOOMError(true);
+        IncreaseMergeSize(committedSize_- oldCommittedSize);
+        // if throw OOM, temporarily increase space size to avoid vm crash
+        IncreaseOutOfMemoryOvershootSize(committedSize_ - maximumCapacity_ - outOfMemoryOvershootSize_);
     }
 
     localSpace->GetRegionList().Clear();
@@ -399,7 +402,19 @@ void OldSpace::SelectCSet()
     std::sort(collectRegionSet_.begin(), collectRegionSet_.end(), [](Region *first, Region *second) {
         return first->AliveObject() < second->AliveObject();
     });
-    unsigned long selectedRegionNumber = GetSelectedRegionNumber();
+    unsigned long selectedRegionNumber = 0;
+    int64_t evacuateSize = PARTIAL_GC_MAX_EVACUATION_SIZE;
+    EnumerateCollectRegionSet([&](Region *current) {
+        if (evacuateSize > 0) {
+            selectedRegionNumber++;
+            evacuateSize -= current->AliveObject();
+        } else {
+            return;
+        }
+    });
+    OPTIONAL_LOG(heap_->GetEcmaVM(), INFO) << "Max evacuation size is 4_MB. The CSet region number: "
+        << selectedRegionNumber;
+    selectedRegionNumber = std::max(selectedRegionNumber, GetSelectedRegionNumber());
     if (collectRegionSet_.size() > selectedRegionNumber) {
         collectRegionSet_.resize(selectedRegionNumber);
     }
@@ -411,7 +426,7 @@ void OldSpace::SelectCSet()
         current->SetGCFlag(RegionGCFlags::IN_COLLECT_SET);
     });
     sweepState_ = SweepState::NO_SWEEP;
-    LOG_ECMA_MEM(DEBUG) << "Select CSet success: number is " << collectRegionSet_.size();
+    OPTIONAL_LOG(heap_->GetEcmaVM(), INFO) << "Select CSet success: number is " << collectRegionSet_.size();
 }
 
 void OldSpace::CheckRegionSize()
@@ -426,7 +441,7 @@ void OldSpace::CheckRegionSize()
         LOG_GC(DEBUG) << "Actual live object size:" << GetHeapObjectSize()
                             << ", free object size:" << available
                             << ", wasted size:" << wasted
-                            << ", but exception totoal size:" << objectSize_;
+                            << ", but exception total size:" << objectSize_;
     }
 #endif
 }
@@ -486,6 +501,21 @@ NonMovableSpace::NonMovableSpace(Heap *heap, size_t initialCapacity, size_t maxi
 {
 }
 
+AppSpawnSpace::AppSpawnSpace(Heap *heap, size_t initialCapacity)
+    : SparseSpace(heap, MemSpaceType::APPSPAWN_SPACE, initialCapacity, initialCapacity)
+{
+}
+
+void AppSpawnSpace::IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const
+{
+    EnumerateRegions([&](Region *current) {
+        current->IterateAllMarkedBits([&](void *mem) {
+            ASSERT(current->InRange(ToUintPtr(mem)));
+            visitor(reinterpret_cast<TaggedObject *>(mem));
+        });
+    });
+}
+
 uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
 {
     auto object = allocator_->Allocate(size);
@@ -493,6 +523,9 @@ uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
         if (isExpand && Expand()) {
             object = allocator_->Allocate(size);
         }
+    }
+    if (object != 0) {
+        Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);
     }
     return object;
 }

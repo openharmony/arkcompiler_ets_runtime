@@ -262,20 +262,25 @@ HWTEST_F_L0(BuiltinsMapTest, DeleteAndRemove)
     EXPECT_EQ(result2.GetRawData(), JSTaggedValue::True().GetRawData());
 
     // delete
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result3 = BuiltinsMap::Delete(ecmaRuntimeCallInfo1);
-
+    TestHelper::TearDownFrame(thread, prev1);
     EXPECT_EQ(result3.GetRawData(), JSTaggedValue::True().GetRawData());
 
     // check deleteKey is deleted
+    [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result4 = BuiltinsMap::Has(ecmaRuntimeCallInfo1);
-
+    TestHelper::TearDownFrame(thread, prev2);
     EXPECT_EQ(result4.GetRawData(), JSTaggedValue::False().GetRawData());
+    [[maybe_unused]] auto prev3 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result5 = BuiltinsMap::GetSize(ecmaRuntimeCallInfo1);
-
+    TestHelper::TearDownFrame(thread, prev3);
     EXPECT_EQ(result5.GetRawData(), JSTaggedValue(39).GetRawData());
 
     // clear
+    [[maybe_unused]] auto prev4 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result6 = BuiltinsMap::Clear(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev4);
     EXPECT_EQ(result6.GetRawData(), JSTaggedValue::VALUE_UNDEFINED);
     EXPECT_EQ(map->GetSize(), 0);
 }

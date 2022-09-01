@@ -42,6 +42,14 @@ public:
                                                JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
     static JSTaggedValue IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
                                  JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len);
+    static JSTaggedValue Filter(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
+                                 EcmaRuntimeCallInfo *argv, uint32_t &k, double &toIndex);
+    static JSTaggedValue Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
+                                 EcmaRuntimeCallInfo *argv, uint32_t &k, uint32_t len);
+    static JSTaggedValue Reverse(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                 JSHandle<JSTaggedValue> thisHandle, double &lower, uint32_t len);
+    static JSTaggedValue Concat(JSThread *thread, JSHandle<JSObject> newArrayHandle,
+                                JSHandle<JSObject> thisObjHandle, double &k, double &n);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

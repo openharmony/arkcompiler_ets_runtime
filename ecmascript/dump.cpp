@@ -164,6 +164,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Uri Error";
         case JSType::JS_SYNTAX_ERROR:
             return "Syntax Error";
+        case JSType::JS_OOM_ERROR:
+            return "OutOfMemory Error";
         case JSType::JS_REG_EXP:
             return "Regexp";
         case JSType::JS_SET:
@@ -222,6 +224,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "DataView";
         case JSType::JS_ITERATOR:
             return "Iterator";
+        case JSType::JS_ASYNCITERATOR:
+            return "AsyncIterator";
         case JSType::JS_FORIN_ITERATOR:
             return "ForinInterator";
         case JSType::JS_MAP_ITERATOR:
@@ -412,6 +416,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "CommonJSModule";
         case JSType::JS_CJS_REQUIRE:
             return "CommonJSRequire";
+        case JSType::METHOD:
+            return "Method";
         default: {
             CString ret = "unknown type ";
             return ret + static_cast<char>(type);
@@ -485,7 +491,7 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     os << "| ElementRepresentation :" << static_cast<int>(jshclass->GetElementRepresentation());
     os << "| NumberOfProps :" << std::dec << jshclass->NumberOfProps();
     os << "| InlinedProperties :" << std::dec << jshclass->GetInlinedProperties();
-    os << "| IsTSType :" << std::boolalpha << jshclass->IsTSType();
+    os << "| IsAOT :" << std::boolalpha << jshclass->IsAOT();
     os << "\n";
 }
 
@@ -558,9 +564,12 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_REFERENCE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
-        case JSType::JS_FUNCTION_BASE:
             JSObject::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_FUNCTION_BASE:
+            JSFunctionBase::Cast(obj)->Dump(os);
             break;
         case JSType::GLOBAL_ENV:
             GlobalEnv::Cast(obj)->Dump(os);
@@ -711,6 +720,8 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             JSIntlBoundFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ITERATOR:
+            break;
+        case JSType::JS_ASYNCITERATOR:
             break;
         case JSType::JS_FORIN_ITERATOR:
             JSForInIterator::Cast(obj)->Dump(os);
@@ -907,8 +918,14 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::IMPORTENTRY_RECORD:
             ImportEntry::Cast(obj)->Dump(os);
             break;
-        case JSType::EXPORTENTRY_RECORD:
-            ExportEntry::Cast(obj)->Dump(os);
+        case JSType::LOCAL_EXPORTENTRY_RECORD:
+            LocalExportEntry::Cast(obj)->Dump(os);
+            break;
+        case JSType::INDIRECT_EXPORTENTRY_RECORD:
+            IndirectExportEntry::Cast(obj)->Dump(os);
+            break;
+        case JSType::STAR_EXPORTENTRY_RECORD:
+            StarExportEntry::Cast(obj)->Dump(os);
             break;
         case JSType::RESOLVEDBINDING_RECORD:
             ResolvedBinding::Cast(obj)->Dump(os);
@@ -930,6 +947,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_CJS_EXPORTS:
             CjsExports::Cast(obj)->Dump(os);
+            break;
+        case JSType::METHOD:
+            Method::Cast(obj)->Dump(os);
             break;
         default:
             UNREACHABLE();
@@ -1325,14 +1345,14 @@ void JSFunction::Dump(std::ostream &os) const
     os << " - FunctionExtraInfo: ";
     GetFunctionExtraInfo().Dump(os);
     os << "\n";
-    os << " - ConstantPool: ";
-    GetConstantPool().Dump(os);
-    os << "\n";
     os << " - ProfileTypeInfo: ";
     GetProfileTypeInfo().Dump(os);
     os << "\n";
     os << " - Module: ";
     GetModule().Dump(os);
+    os << "\n";
+    os << " - Method: ";
+    GetMethod().Dump(os);
     os << "\n";
     JSObject::Dump(os);
 }
@@ -2131,6 +2151,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetSyntaxErrorFunction().GetTaggedValue().Dump(os);
     os << " - EvalErrorFunction: ";
     GetEvalErrorFunction().GetTaggedValue().Dump(os);
+    os << " - OOMErrorFunction: ";
+    GetOOMErrorFunction().GetTaggedValue().Dump(os);
     os << " - RegExpFunction: ";
     GetRegExpFunction().GetTaggedValue().Dump(os);
     os << " - BuiltinsSetFunction: ";
@@ -2179,6 +2201,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetToStringTagSymbol().GetTaggedValue().Dump(os);
     os << " - IteratorSymbol: ";
     GetIteratorSymbol().GetTaggedValue().Dump(os);
+    os << " - AsyncIteratorSymbol: ";
+    GetAsyncIteratorSymbol().GetTaggedValue().Dump(os);
     os << " - MatchSymbol: ";
     GetMatchSymbol().GetTaggedValue().Dump(os);
     os << " - MatchAllSymbol: ";
@@ -2297,6 +2321,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetPromiseReactionJob().GetTaggedValue().Dump(os);
     os << " - PromiseResolveThenableJob: ";
     GetPromiseResolveThenableJob().GetTaggedValue().Dump(os);
+    os << " - DynamicImportJob: ";
+    GetDynamicImportJob().GetTaggedValue().Dump(os);
     os << " - ScriptJobString: ";
     globalConst->GetScriptJobString().Dump(os);
     os << " - PromiseString: ";
@@ -3056,7 +3082,6 @@ void TSClassInstanceType::Dump(std::ostream &os) const
     os << localTypeId;
     os << "\n";
 
-    os << " -------------------------------------------- ";
     os << " - createClassType GT: ";
     GlobalTSTypeRef createClassTypeGT = GetClassGT();
     os << createClassTypeGT.GetType();
@@ -3099,8 +3124,32 @@ void TSFunctionType::Dump(std::ostream &os) const
     uint32_t localTypeId = gt.GetLocalId();
     os << localTypeId;
     os << "\n";
+    os << " - TSFunctionType Name: ";
+    JSTaggedValue name = GetName();
+    if (name.IsString()) {
+        os << ConvertToString(EcmaString::Cast(name.GetTaggedObject()));
+    }
+    os << "\n";
     os << " - TSFunctionType ParameterTypeIds: " << "\n";
     DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), os);
+    os << " - TSFunctionType ReturnType: " << GetReturnGT().GetType() << "\n";
+    os << " - TSFunctionType ThisType: " << GetThisGT().GetType() << "\n";
+    TSFunctionType::Visibility visibility = GetVisibility();
+    switch (visibility) {
+        case TSFunctionType::Visibility::PUBLIC:
+            os << " - Visibility: public";
+            break;
+        case TSFunctionType::Visibility::PRIVATE:
+            os << " - Visibility: private";
+            break;
+        case TSFunctionType::Visibility::PROTECTED:
+            os << " - Visibility: protected";
+            break;
+    }
+    os << " | Static: " << std::boolalpha << GetStatic();
+    os << " | Async: " << std::boolalpha << GetAsync();
+    os << " | Generator: " << std::boolalpha << GetGenerator();
+    os << "\n";
 }
 
 void TSArrayType::Dump(std::ostream &os) const
@@ -3108,16 +3157,10 @@ void TSArrayType::Dump(std::ostream &os) const
     os << " - Dump TSArrayType - " << "\n";
     os << " - TSArrayType globalTSTypeRef: ";
     GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
+    os << gt.GetType();
     os << "\n";
-    os << " - TSArrayType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSArrayType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
+    os << " - TSArrayType ElementGT: ";
+    os <<  GetElementGT().GetType();
     os << "\n";
 }
 
@@ -3177,7 +3220,17 @@ void ImportEntry::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void ExportEntry::Dump(std::ostream &os) const
+void LocalExportEntry::Dump(std::ostream &os) const
+{
+    os << " - ExportName: ";
+    GetExportName().Dump(os);
+    os << "\n";
+    os << " - LocalName: ";
+    GetLocalName().Dump(os);
+    os << "\n";
+}
+
+void IndirectExportEntry::Dump(std::ostream &os) const
 {
     os << " - ExportName: ";
     GetExportName().Dump(os);
@@ -3188,8 +3241,12 @@ void ExportEntry::Dump(std::ostream &os) const
     os << " - ImportName: ";
     GetImportName().Dump(os);
     os << "\n";
-    os << " - LocalName: ";
-    GetLocalName().Dump(os);
+}
+
+void StarExportEntry::Dump(std::ostream &os) const
+{
+    os << " - ModuleRequest: ";
+    GetModuleRequest().Dump(os);
     os << "\n";
 }
 
@@ -3205,9 +3262,6 @@ void ResolvedBinding::Dump(std::ostream &os) const
 
 void ModuleNamespace::Dump(std::ostream &os) const
 {
-    os << " - Module: ";
-    GetModule().Dump(os);
-    os << "\n";
     os << " - Exports: ";
     GetExports().Dump(os);
     os << "\n";
@@ -3274,6 +3328,24 @@ void CjsExports::Dump(std::ostream &os) const
         dict->Dump(os);
     }
 }
+
+void JSFunctionBase::Dump(std::ostream &os) const
+{
+    os << " - Method: ";
+    GetMethod().Dump(os);
+    os << "\n";
+}
+
+void Method::Dump(std::ostream &os) const
+{
+    os << " - MethodName: ";
+    os << GetMethodName();
+    os << "\n";
+    os << " - ConstantPool: ";
+    GetConstantPool().Dump(os);
+    os << "\n";
+}
+
 // ########################################################################################
 // Dump for Snapshot
 // ########################################################################################
@@ -3332,6 +3404,7 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_REFERENCE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
         case JSType::JS_GLOBAL_OBJECT:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
@@ -3461,6 +3534,7 @@ static void DumpObject(TaggedObject *obj,
             CompletionRecord::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_ITERATOR:
+        case JSType::JS_ASYNCITERATOR:
         case JSType::JS_FORIN_ITERATOR:
         case JSType::JS_MAP_ITERATOR:
         case JSType::JS_SET_ITERATOR:
@@ -3629,8 +3703,14 @@ static void DumpObject(TaggedObject *obj,
         case JSType::IMPORTENTRY_RECORD:
             ImportEntry::Cast(obj)->DumpForSnapshot(vec);
             return;
-        case JSType::EXPORTENTRY_RECORD:
-            ExportEntry::Cast(obj)->DumpForSnapshot(vec);
+        case JSType::LOCAL_EXPORTENTRY_RECORD:
+            LocalExportEntry::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::INDIRECT_EXPORTENTRY_RECORD:
+            IndirectExportEntry::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::STAR_EXPORTENTRY_RECORD:
+            StarExportEntry::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::RESOLVEDBINDING_RECORD:
             ResolvedBinding::Cast(obj)->DumpForSnapshot(vec);
@@ -3702,6 +3782,9 @@ static void DumpObject(TaggedObject *obj,
                 return;
             case JSType::TS_ARRAY_TYPE:
                 TSArrayType::Cast(obj)->DumpForSnapshot(vec);
+                return;
+            case JSType::METHOD:
+                Method::Cast(obj)->DumpForSnapshot(vec);
                 return;
             default:
                 UNREACHABLE();
@@ -3945,9 +4028,13 @@ void JSFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> 
     vec.push_back(std::make_pair(CString("Resolved"), JSTaggedValue(GetResolved())));
     vec.push_back(std::make_pair(CString("ThisMode"), JSTaggedValue(static_cast<int>(GetThisMode()))));
     vec.push_back(std::make_pair(CString("FunctionExtraInfo"), GetFunctionExtraInfo()));
-    vec.push_back(std::make_pair(CString("ConstantPool"), GetConstantPool()));
     vec.push_back(std::make_pair(CString("ProfileTypeInfo"), GetProfileTypeInfo()));
     JSObject::DumpForSnapshot(vec);
+}
+
+void Method::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("ConstantPool"), GetConstantPool()));
 }
 
 void Program::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4269,6 +4356,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString("URIErrorFunction"), GetURIErrorFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("SyntaxErrorFunction"), GetSyntaxErrorFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("EvalErrorFunction"), GetEvalErrorFunction().GetTaggedValue()));
+    vec.push_back(std::make_pair(CString("OOMErrorFunction"), GetOOMErrorFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("RegExpFunction"), GetRegExpFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("BuiltinsSetFunction"), GetBuiltinsSetFunction().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("BuiltinsMapFunction"), GetBuiltinsMapFunction().GetTaggedValue()));
@@ -4294,6 +4382,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString("IsConcatSpreadableSymbol"), GetIsConcatSpreadableSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("ToStringTagSymbol"), GetToStringTagSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("IteratorSymbol"), GetIteratorSymbol().GetTaggedValue()));
+    vec.push_back(std::make_pair(CString("AsyncIteratorSymbol"), GetAsyncIteratorSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("MatchSymbol"), GetMatchSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("MatchAllSymbol"), GetMatchAllSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("ReplaceSymbol"), GetReplaceSymbol().GetTaggedValue()));
@@ -4355,6 +4444,8 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString("PromiseReactionJob"), GetPromiseReactionJob().GetTaggedValue()));
     vec.push_back(
         std::make_pair(CString("PromiseResolveThenableJob"), GetPromiseResolveThenableJob().GetTaggedValue()));
+    vec.push_back(
+        std::make_pair(CString("DynamicImportJob"), GetDynamicImportJob().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("ScriptJobString"), globalConst->GetScriptJobString()));
     vec.push_back(std::make_pair(CString("PromiseString"), globalConst->GetPromiseString()));
     vec.push_back(std::make_pair(CString("IdentityString"), globalConst->GetIdentityString()));
@@ -4771,7 +4862,7 @@ void TSClassType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>>
     vec.push_back(std::make_pair(CString("InstanceType"), GetInstanceType()));
     vec.push_back(std::make_pair(CString("ConstructorType"), GetConstructorType()));
     vec.push_back(std::make_pair(CString("PrototypeType"), GetPrototypeType()));
-    vec.push_back(std::make_pair(CString("ExtensionGTRawData"), JSTaggedValue(GetExtensionGT().GetType())));
+    vec.push_back(std::make_pair(CString("ExtensionGT"), JSTaggedValue(GetExtensionGT().GetType())));
     vec.push_back(std::make_pair(CString("HasLinked"), JSTaggedValue(GetHasLinked())));
 }
 
@@ -4783,7 +4874,7 @@ void TSInterfaceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 
 void TSClassInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("classTypeIndex"), JSTaggedValue(GetClassGT().GetType())));
+    vec.push_back(std::make_pair(CString("ClassGT"), JSTaggedValue(GetClassGT().GetType())));
 }
 
 void TSImportType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4798,7 +4889,11 @@ void TSUnionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>>
 
 void TSFunctionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
+    vec.push_back(std::make_pair(CString("Name"), GetName()));
     vec.push_back(std::make_pair(CString("ParameterTypes"), GetParameterTypes()));
+    vec.push_back(std::make_pair(CString("ReturnGT"), JSTaggedValue(GetReturnGT().GetType())));
+    vec.push_back(std::make_pair(CString("ThisGT"), JSTaggedValue(GetThisGT().GetType())));
+    vec.push_back(std::make_pair(CString("BitFiled"), JSTaggedValue(GetBitField())));
 }
 
 void TSArrayType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4830,12 +4925,22 @@ void ImportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>>
     vec.push_back(std::make_pair(CString("LocalName"), GetLocalName()));
 }
 
-void ExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+void LocalExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("ExportName"), GetExportName()));
+    vec.push_back(std::make_pair(CString("LocalName"), GetLocalName()));
+}
+
+void IndirectExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("ExportName"), GetExportName()));
     vec.push_back(std::make_pair(CString("ModuleRequest"), GetModuleRequest()));
     vec.push_back(std::make_pair(CString("ImportName"), GetImportName()));
-    vec.push_back(std::make_pair(CString("LocalName"), GetLocalName()));
+}
+
+void StarExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("ModuleRequest"), GetModuleRequest()));
 }
 
 void ResolvedBinding::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

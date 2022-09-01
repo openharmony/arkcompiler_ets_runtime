@@ -29,8 +29,6 @@ config("ark_ecma_debugger_config") {
 
 debugger_sources = [
   "agent/debugger_impl.cpp",
-  "agent/heapprofiler_impl.cpp",
-  "agent/profiler_impl.cpp",
   "agent/runtime_impl.cpp",
   "agent/tracing_impl.cpp",
   "backend/debugger_executor.cpp",
@@ -47,6 +45,12 @@ debugger_sources = [
   "dispatcher.cpp",
   "protocol_handler.cpp",
 ]
+if (!is_mingw && !is_mac) {
+  debugger_sources += [
+    "agent/heapprofiler_impl.cpp",
+    "agent/profiler_impl.cpp",
+  ]
+}
 
 source_set("libark_ecma_debugger_set") {
   sources = debugger_sources
@@ -58,11 +62,31 @@ source_set("libark_ecma_debugger_set") {
     "//third_party/cJSON:cjson_static",
   ]
 
+  if (is_mingw || is_mac) {
+    if (is_mingw) {
+      platform = "windows"
+    } else {
+      platform = "mac"
+    }
+    deps += [
+      "$ark_root/libpandafile:libarkfile_static",
+      "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_$platform",
+    ]
+    defines = [ "ENABLE_HILOG" ]
+  }
+
   if (is_ohos && is_standard_system) {
     if (enable_hilog) {
       defines = [ "ENABLE_HILOG" ]
       include_dirs =
           [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
+    }
+    if (enable_leak_check) {
+      sources += [ "$js_root/ecmascript/dfx/native_dfx/backtrace.cpp" ]
+      defines += [
+        "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
+        "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
+      ]
     }
   }
 
@@ -83,7 +107,10 @@ ohos_shared_library("libark_ecma_debugger") {
     }
   }
 
-  output_extension = "so"
+  if (!is_mingw && !is_mac) {
+    output_extension = "so"
+  }
+
   if (!is_standard_system) {
     relative_install_dir = "ark"
   }

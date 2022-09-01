@@ -603,6 +603,11 @@ inline bool JSTaggedValue::IsJSListFormat() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSListFormat();
 }
 
+inline bool JSTaggedValue::IsMethod() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsMethod();
+}
+
 inline bool JSTaggedValue::IsJSAPIArrayList() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIArrayList();
@@ -691,6 +696,11 @@ inline bool JSTaggedValue::IsJSAPIListIterator() const
 inline bool JSTaggedValue::IsSpecialContainer() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsSpecialContainer();
+}
+
+inline bool JSTaggedValue::HasOrdinaryGet() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->HasOrdinaryGet();
 }
 
 inline bool JSTaggedValue::IsPromiseIteratorRecord() const
@@ -1071,6 +1081,11 @@ inline bool JSTaggedValue::IsIterator() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsIterator();
 }
 
+inline bool JSTaggedValue::IsAsyncIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsAsyncIterator();
+}
+
 inline bool JSTaggedValue::IsGeneratorFunction() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorFunction();
@@ -1151,6 +1166,11 @@ inline bool JSTaggedValue::IsClassInfoExtractor() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsClassInfoExtractor();
 }
 
+inline bool JSTaggedValue::IsTSType() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSType();
+}
+
 inline bool JSTaggedValue::IsTSObjectType() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSObjectType();
@@ -1221,9 +1241,20 @@ inline bool JSTaggedValue::IsImportEntry() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsImportEntry();
 }
 
-inline bool JSTaggedValue::IsExportEntry() const
+
+inline bool JSTaggedValue::IsLocalExportEntry() const
 {
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsExportEntry();
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsLocalExportEntry();
+}
+
+inline bool JSTaggedValue::IsIndirectExportEntry() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsIndirectExportEntry();
+}
+
+inline bool JSTaggedValue::IsStarExportEntry() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStarExportEntry();
 }
 
 inline bool JSTaggedValue::IsResolvedBinding() const

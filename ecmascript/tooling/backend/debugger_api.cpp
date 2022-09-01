@@ -22,8 +22,8 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/method.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tooling/backend/js_debugger.h"
 
@@ -76,9 +76,13 @@ uint32_t DebuggerApi::GetBytecodeOffset(const EcmaVM *ecmaVm)
     return FrameHandler(ecmaVm->GetJSThread()).GetBytecodeOffset();
 }
 
-JSMethod *DebuggerApi::GetMethod(const EcmaVM *ecmaVm)
+std::unique_ptr<PtMethod> DebuggerApi::GetMethod(const EcmaVM *ecmaVm)
 {
-    return FrameHandler(ecmaVm->GetJSThread()).GetMethod();
+    FrameHandler frameHandler(ecmaVm->GetJSThread());
+    Method* method = frameHandler.GetMethod();
+    std::unique_ptr<PtMethod> ptMethod = std::make_unique<PtMethod>(
+        method->GetJSPandaFile(), method->GetMethodId(), method->IsNativeWithCallField());
+    return ptMethod;
 }
 
 void DebuggerApi::SetVRegValue(FrameHandler *frameHandler, size_t index, Local<JSValueRef> value)
@@ -91,9 +95,27 @@ uint32_t DebuggerApi::GetBytecodeOffset(const FrameHandler *frameHandler)
     return frameHandler->GetBytecodeOffset();
 }
 
-JSMethod *DebuggerApi::GetMethod(const FrameHandler *frameHandler)
+Method *DebuggerApi::GetMethod(const FrameHandler *frameHandler)
 {
     return frameHandler->GetMethod();
+}
+
+bool DebuggerApi::IsNativeMethod(const EcmaVM *ecmaVm)
+{
+    FrameHandler frameHandler(ecmaVm->GetJSThread());
+    return DebuggerApi::IsNativeMethod(&frameHandler);
+}
+
+bool DebuggerApi::IsNativeMethod(const FrameHandler *frameHandler)
+{
+    Method* method = frameHandler->GetMethod();
+    return method->IsNativeWithCallField();
+}
+
+JSPandaFile *DebuggerApi::GetJSPandaFile(const EcmaVM *ecmaVm)
+{
+    Method *method = FrameHandler(ecmaVm->GetJSThread()).GetMethod();
+    return const_cast<JSPandaFile *>(method->GetJSPandaFile());
 }
 
 JSTaggedValue DebuggerApi::GetEnv(const FrameHandler *frameHandler)
@@ -108,7 +130,7 @@ JSTaggedType *DebuggerApi::GetSp(const FrameHandler *frameHandler)
 
 int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_view name)
 {
-    JSMethod *method = frameHandler->GetMethod();
+    Method *method = DebuggerApi::GetMethod(frameHandler);
     if (method->IsNativeWithCallField()) {
         LOG_DEBUGGER(ERROR) << "GetVregIndex: native frame not support";
         return -1;
@@ -186,12 +208,6 @@ bool DebuggerApi::RemoveBreakpoint(JSDebugger *debugger, const JSPtLocation &loc
     return debugger->RemoveBreakpoint(location);
 }
 
-// JSMethod
-std::string DebuggerApi::ParseFunctionName(const JSMethod *method)
-{
-    return method->ParseFunctionName();
-}
-
 // ScopeInfo
 Local<JSValueRef> DebuggerApi::GetProperties(const EcmaVM *vm, const FrameHandler *frameHandler,
                                              int32_t level, uint32_t slot)
@@ -264,7 +280,7 @@ Local<JSValueRef> DebuggerApi::GetGlobalValue(const EcmaVM *vm, Local<StringRef>
         return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, result));
     }
 
-    return JSValueRef::Exception(vm);
+    return Local<JSValueRef>();
 }
 
 bool DebuggerApi::SetGlobalValue(const EcmaVM *vm, Local<StringRef> name, Local<JSValueRef> value)
@@ -339,5 +355,20 @@ Local<JSValueRef> DebuggerApi::EvaluateViaFuncCall(EcmaVM *ecmaVm, Local<Functio
     mgr->SetEvalFrameHandler(nullptr);
 
     return result;
+}
+
+bool DebuggerApi::IsExceptionCaught(const EcmaVM *ecmaVm)
+{
+    FrameHandler frameHandler(ecmaVm->GetJSThread());
+    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            return false;
+        }
+        auto method = frameHandler.GetMethod();
+        if (ecmaVm->FindCatchBlock(method, frameHandler.GetBytecodeOffset())) {
+            return true;
+        }
+    }
+    return false;
 }
 }  // namespace panda::ecmascript::tooling

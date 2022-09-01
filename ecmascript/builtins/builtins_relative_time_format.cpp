@@ -161,8 +161,8 @@ JSTaggedValue BuiltinsRelativeTimeFormat::ResolvedOptions(EcmaRuntimeCallInfo *a
     auto ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSTaggedValue> ctor = env->GetObjectFunction();
-    JSHandle<JSObject> options(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    JSHandle<JSFunction> ctor(env->GetObjectFunction());
+    JSHandle<JSObject> options(factory->NewJSObjectByConstructor(ctor));
 
     // 4. perform resolvedOptions
     JSHandle<JSRelativeTimeFormat> relativeTimeFormat = JSHandle<JSRelativeTimeFormat>::Cast(thisValue);

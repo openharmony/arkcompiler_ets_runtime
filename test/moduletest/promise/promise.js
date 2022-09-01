@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:promise
+ * @tc.desc:test Promise
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var p = new Promise((resolve, reject) => {
     resolve(1479);
 })

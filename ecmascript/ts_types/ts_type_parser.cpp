@@ -59,13 +59,6 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseType(JSHandle<TaggedArray> &literal)
     return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Null());
 }
 
-void TSTypeParser::SetTypeRef(JSHandle<JSTaggedValue> type, uint32_t loaclId)
-{
-    if (!type->IsNull()) {
-        JSHandle<TSType>(type)->SetGT(CreateGT(moduleId_, loaclId));
-    }
-}
-
 JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSHandle<TaggedArray> &literal)
 {
     JSHandle<TSClassType> classType = factory_->NewTSClassType();
@@ -123,9 +116,11 @@ JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSHandle<TaggedArray> &
 
 JSHandle<TSClassInstanceType> TSTypeParser::ParseClassInstanceType(const JSHandle<TaggedArray> &literal)
 {
+    ASSERT(static_cast<TSTypeKind>(literal->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt()) ==
+                                   TSTypeKind::CLASS_INSTANCE);
     JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
-    uint32_t classIndex = literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt();
-    classInstanceType->SetClassGT(CreateGT(moduleId_, classIndex));
+    int32_t classTypeId = literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt();
+    classInstanceType->SetClassGT(CreateGT(moduleId_, classTypeId));
     return classInstanceType;
 }
 
@@ -191,26 +186,35 @@ JSHandle<TSFunctionType> TSTypeParser::ParseFunctionType(const JSHandle<TaggedAr
     ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::FUNCTION);
     index++;
 
-    index += TSFunctionType::FIELD_LENGTH;
-    JSHandle<JSTaggedValue> functionName(thread_, literal->Get(index++));
+    int32_t bitField = literal->Get(index++).GetInt();
 
-    uint32_t length = 0;
-    length = static_cast<uint32_t>(literal->Get(index++).GetInt());
+    JSHandle<JSTaggedValue> functionName(thread_, literal->Get(index++));
+    bool hasThisType = static_cast<bool>(literal->Get(index++).GetInt());
+    int32_t thisTypeId = 0;
+    if (hasThisType) {
+        thisTypeId = literal->Get(index++).GetInt();
+    }
+
+    int32_t length = literal->Get(index++).GetInt();
     JSHandle<TSFunctionType> functionType = factory_->NewTSFunctionType(length);
     JSHandle<TaggedArray> parameterTypes(thread_, functionType->GetParameterTypes());
     JSMutableHandle<JSTaggedValue> parameterTypeRef(thread_, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < length; ++i) {
+    for (int32_t i = 0; i < length; ++i) {
         auto typeId = literal->Get(index++).GetInt();
         parameterTypeRef.Update(JSTaggedValue(CreateGT(moduleId_, typeId).GetType()));
-        parameterTypes->Set(thread_, i + TSFunctionType::PARAMETER_START_ENTRY, parameterTypeRef);
+        parameterTypes->Set(thread_, i, parameterTypeRef);
+    }
+    int32_t returntypeId = literal->Get(index++).GetInt();
+
+    functionType->SetName(thread_, functionName);
+    if (hasThisType) {
+        functionType->SetThisGT(CreateGT(moduleId_, thisTypeId));
     }
 
-    auto returntypeId = literal->Get(index++);
-    auto returngt = CreateGT(moduleId_, returntypeId.GetInt());
-    JSHandle<JSTaggedValue> returnValueTypeRef = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(returngt.GetType()));
-    parameterTypes->Set(thread_, TSFunctionType::FUNCTION_NAME_OFFSET, functionName);
-    parameterTypes->Set(thread_, TSFunctionType::RETURN_VALUE_TYPE_OFFSET, returnValueTypeRef);
     functionType->SetParameterTypes(thread_, parameterTypes);
+    functionType->SetReturnGT(CreateGT(moduleId_, returntypeId));
+    functionType->SetBitField(bitField);
+
     return functionType;
 }
 
@@ -252,7 +256,7 @@ void TSTypeParser::FillPropertyTypes(JSHandle<TSObjLayoutInfo> &layOut, const JS
         value.Update(JSTaggedValue(gt.GetType()));
         layOut->SetKey(thread_, fieldIndex, key.GetTaggedValue(), value.GetTaggedValue());
         if (isField) {
-        index += 2;  // 2: ignore accessFlag and readonly
+            index += 2;  // 2: ignore accessFlag and readonly
         }
     }
 }

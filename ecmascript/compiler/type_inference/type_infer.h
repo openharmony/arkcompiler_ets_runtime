@@ -22,6 +22,10 @@
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
+namespace panda::ecmascript::tooling {
+    class JSPtExtractor;
+}  // namespace panda::ecmascript::tooling
+
 namespace panda::ecmascript::kungfu {
 class TypeInfer {
 public:
@@ -59,18 +63,17 @@ private:
     bool InferReturnUndefined(GateRef gate);
     bool InferReturnDyn(GateRef gate);
     bool InferLdObjByName(GateRef gate);
-    bool InferLdNewObjDynRange(GateRef gate);
+    bool InferNewObject(GateRef gate);
     bool SetStGlobalBcType(GateRef gate);
     bool InferLdStr(GateRef gate);
     bool InferCallFunction(GateRef gate);
     bool InferLdObjByValue(GateRef gate);
     bool InferGetNextPropName(GateRef gate);
     bool InferDefineGetterSetterByValue(GateRef gate);
-    bool InferNewObjSpread(GateRef gate);
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
 
-    inline GlobalTSTypeRef GetPropType(const GateType &type, const JSHandle<EcmaString> propertyName) const
+    inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
         return tsManager_->GetPropType(type, propertyName);
     }
@@ -98,6 +101,29 @@ private:
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     std::map<uint32_t, GateType> stringIdToGateType_;
+    friend class TypeFilter;
+};
+
+class TypeFilter {
+public:
+    using JSPtExtractor = tooling::JSPtExtractor;
+
+    TypeFilter(TypeInfer *infer)
+        : infer_(infer), circuit_(infer->circuit_), gateAccessor_(infer->gateAccessor_), builder_(infer->builder_),
+          methodLiteral_(builder_->GetMethod()) {}
+    ~TypeFilter() = default;
+
+    void Run() const;
+
+private:
+    void PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, const std::string &sourceFileName,
+                          const std::string &functionName) const;
+
+    TypeInfer *infer_ {nullptr};
+    Circuit *circuit_ {nullptr};
+    GateAccessor gateAccessor_;
+    BytecodeCircuitBuilder *builder_ {nullptr};
+    const MethodLiteral *methodLiteral_ {nullptr};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H

@@ -16,6 +16,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/space.h"
@@ -23,7 +24,6 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tests/test_helper.h"
-#include "generated/base_options.h"
 
 #include <csetjmp>
 #include <csignal>
@@ -52,9 +52,9 @@ public:
 
     void InitializeLogger()
     {
-        base_options::Options baseOptions("");
-        baseOptions.SetLogLevel("error");
-        panda::ecmascript::Log::Initialize(baseOptions);
+        panda::ecmascript::JSRuntimeOptions runtimeOptions;
+        runtimeOptions.SetLogLevel("error");
+        ecmascript::Log::Initialize(runtimeOptions);
     }
 
     void TearDown() override

@@ -23,7 +23,6 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/native_area_allocator.h"
@@ -31,7 +30,8 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
-struct JSMethod;
+struct MethodLiteral;
+class Method;
 class JSObject;
 class JSArray;
 class JSAPIPlainArray;
@@ -136,7 +136,9 @@ class JSAPILinkedListIterator;
 class JSAPIListIterator;
 class ModuleNamespace;
 class ImportEntry;
-class ExportEntry;
+class LocalExportEntry;
+class IndirectExportEntry;
+class StarExportEntry;
 class SourceTextModule;
 class CjsModule;
 class CjsRequire;
@@ -163,48 +165,21 @@ class ClassInfoExtractor;
 enum class CompletionRecordType : uint8_t;
 enum class PrimitiveType : uint8_t;
 enum class IterationKind : uint8_t;
+enum class MethodIndex : uint8_t;
 
 using ErrorType = base::ErrorType;
 using base::ErrorType;
 using DeleteEntryPoint = void (*)(void *, void *);
 
 enum class RemoveSlots { YES, NO };
-enum class MethodIndex : uint8_t {
-    BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
-    BUILTINS_GLOBAL_CALL_JS_PROXY,
-    BUILTINS_OBJECT_CREATE_DATA_PROPERTY_ON_OBJECT_FUNCTIONS,
-    BUILTINS_COLLATOR_ANONYMOUS_COLLATOR,
-    BUILTINS_DATE_TIME_FORMAT_ANONYMOUS_DATE_TIME_FORMAT,
-    BUILTINS_NUMBER_FORMAT_NUMBER_FORMAT_INTERNAL_FORMAT_NUMBER,
-    BUILTINS_PROXY_INVALIDATE_PROXY_FUNCTION,
-    BUILTINS_PROMISE_HANDLER_ASYNC_AWAIT_FULFILLED,
-    BUILTINS_PROMISE_HANDLER_ASYNC_AWAIT_REJECTED,
-    BUILTINS_PROMISE_HANDLER_RESOLVE_ELEMENT_FUNCTION,
-    BUILTINS_PROMISE_HANDLER_RESOLVE,
-    BUILTINS_PROMISE_HANDLER_REJECT,
-    BUILTINS_PROMISE_HANDLER_EXECUTOR,
-    BUILTINS_PROMISE_HANDLER_ANY_REJECT_ELEMENT_FUNCTION,
-    BUILTINS_PROMISE_HANDLER_ALL_SETTLED_RESOLVE_ELEMENT_FUNCTION,
-    BUILTINS_PROMISE_HANDLER_ALL_SETTLED_REJECT_ELEMENT_FUNCTION,
-    BUILTINS_PROMISE_HANDLER_THEN_FINALLY_FUNCTION,
-    BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION,
-    BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION,
-    BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION,
-    BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION,
-    BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION,
-    METHOD_END
-};
 
 constexpr uint8_t INVALID_BUILTINS_ID = 0xFF;
 
 class ObjectFactory {
 public:
-    explicit ObjectFactory(JSThread *thread, Heap *heap, Chunk *chunk);
-    ~ObjectFactory();
-    void GenerateInternalNativeMethods();
-    JSMethod *GetMethodByIndex(MethodIndex idx);
-    JSMethod *NewMethodForNativeFunction(const void *func, uint8_t builtinId = INVALID_BUILTINS_ID);
-    JSMethod *NewMethodForAOTFunction(const void *func, size_t numArgs, const JSPandaFile *pf, uint32_t methodId);
+    ObjectFactory(JSThread *thread, Heap *heap);
+    ~ObjectFactory() = default;
+    JSHandle<Method> NewMethodForNativeFunction(const void *func, uint8_t builtinId = INVALID_BUILTINS_ID);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
@@ -229,7 +204,7 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        uint8_t builtinId = INVALID_BUILTINS_ID);
     // use for method
-    JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, JSMethod *method,
+    JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method,
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
 
     JSHandle<JSFunction> NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr);
@@ -252,9 +227,9 @@ public:
     JSHandle<JSProxyRevocFunction> NewJSProxyRevocFunction(const JSHandle<JSProxy> &proxy);
 
     JSHandle<JSAsyncAwaitStatusFunction> NewJSAsyncAwaitStatusFunction(MethodIndex idx);
-    JSHandle<JSFunction> NewJSGeneratorFunction(JSMethod *method);
+    JSHandle<JSFunction> NewJSGeneratorFunction(const JSHandle<Method> &method);
 
-    JSHandle<JSAsyncFunction> NewAsyncFunction(JSMethod *method);
+    JSHandle<JSAsyncFunction> NewAsyncFunction(const JSHandle<Method> &method);
 
     JSHandle<JSGeneratorObject> NewJSGeneratorObject(JSHandle<JSTaggedValue> generatorFunction);
 
@@ -342,7 +317,7 @@ public:
                                     MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old, const JSHandle<JSTaggedValue> &env,
-                                          const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &constpool);
+                                          const JSHandle<JSObject> &obj);
 
     JSHandle<LayoutInfo> CreateLayoutInfo(int properties, MemSpaceType type = MemSpaceType::SEMI_SPACE,
                                           JSTaggedValue initVal = JSTaggedValue::Hole());
@@ -409,7 +384,7 @@ public:
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> NewJSAsyGenResNextRetProRstRejectedFtn();
 
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object, const JSHandle<JSTaggedValue> &env,
-                                          const JSHandle<JSTaggedValue> &constpool, bool canShareHClass = true);
+                                          bool canShareHClass = true);
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object);
     JSHandle<JSArray> CloneArrayLiteral(JSHandle<JSArray> object);
     JSHandle<JSFunction> CloneJSFuction(JSHandle<JSFunction> obj, FunctionKind kind);
@@ -448,20 +423,23 @@ public:
                                             const JSHandle<JSHClass> &objClass);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
-    JSHandle<JSFunction> NewJSFunctionByDynClass(JSMethod *method, const JSHandle<JSHClass> &clazz,
+    JSHandle<JSFunction> NewJSFunctionByDynClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                                  MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSFunctionByDynClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                  FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+    JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral);
 
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 const JSHandle<JSTaggedValue> &newTarget);
+    JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);
+
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
     JSHandle<MachineCode> NewMachineCodeObject(size_t length, const uint8_t *data);
-    JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSMethod *ctorMethod);
+    JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
 
     // ----------------------------------- new TSType ----------------------------------------
     JSHandle<TSObjLayoutInfo> CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal = JSTaggedValue::Hole());
@@ -544,17 +522,21 @@ public:
     JSHandle<ImportEntry> NewImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                          const JSHandle<JSTaggedValue> &importName,
                                          const JSHandle<JSTaggedValue> &localName);
-    JSHandle<ExportEntry> NewExportEntry();
-    JSHandle<ExportEntry> NewExportEntry(const JSHandle<JSTaggedValue> &exportName,
-                                         const JSHandle<JSTaggedValue> &moduleRequest,
-                                         const JSHandle<JSTaggedValue> &importName,
-                                         const JSHandle<JSTaggedValue> &localName);
+    JSHandle<LocalExportEntry> NewLocalExportEntry();
+    JSHandle<LocalExportEntry> NewLocalExportEntry(const JSHandle<JSTaggedValue> &exportName,
+                                                   const JSHandle<JSTaggedValue> &localName);
+    JSHandle<IndirectExportEntry> NewIndirectExportEntry();
+    JSHandle<IndirectExportEntry> NewIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
+                                                         const JSHandle<JSTaggedValue> &moduleRequest,
+                                                         const JSHandle<JSTaggedValue> &importName);
+    JSHandle<StarExportEntry> NewStarExportEntry();
+    JSHandle<StarExportEntry> NewStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest);
     JSHandle<SourceTextModule> NewSourceTextModule();
     JSHandle<ResolvedBinding> NewResolvedBindingRecord();
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &bindingName);
     JSHandle<CellRecord> NewCellRecord();
-    JSHandle<JSFunction> NewJSAsyncGeneratorFunction(JSMethod *method);
+    JSHandle<JSFunction> NewJSAsyncGeneratorFunction(const JSHandle<Method> &method);
     // --------------------------------------require--------------------------------------------
     JSHandle<CjsModule> NewCjsModule();
     JSHandle<CjsExports> NewCjsExports();
@@ -575,9 +557,6 @@ private:
     friend class GlobalEnvConstants;
     friend class EcmaString;
     friend class SnapshotProcessor;
-    void ClearNativeMethodsData();
-    JSHandle<JSFunction> NewJSFunctionImpl(JSMethod *method);
-    static void * InternalMethodTable[static_cast<uint8_t>(MethodIndex::METHOD_END)];
     void InitObjectFields(const TaggedObject *object);
 
     JSThread *thread_ {nullptr};
@@ -586,8 +565,6 @@ private:
 
     EcmaVM *vm_ {nullptr};
     Heap *heap_ {nullptr};
-    ChunkVector<JSMethod *> nativeMethods_;
-    ChunkVector<JSMethod *> internalNativeMethods_;
 
     NO_COPY_SEMANTIC(ObjectFactory);
     NO_MOVE_SEMANTIC(ObjectFactory);
@@ -658,6 +635,7 @@ private:
     friend class ClassInfoExtractor;
     friend class TSObjectType;
     friend class ModuleDataExtractor;
+    friend class ModuleDataAccessor;
 };
 
 class ClassLinkerFactory {

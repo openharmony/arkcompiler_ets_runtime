@@ -28,6 +28,8 @@
 #include <sys/time.h>
 
 namespace panda::ecmascript {
+const int USEC_PER_SEC = 1000 * 1000;
+const int NSEC_PER_USEC = 1000;
 SamplingProcessor::SamplingProcessor(SamplesRecord *generator, int interval, bool outToFile)
 {
     generator_ = generator;
@@ -69,9 +71,12 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
             usleep(ts);
             endTime = GetMicrosecondsTimeStamp();
         }
+        if (generator_->GetMethodNodeCount() + generator_->GetframeStackLength() >= MAX_NODE_COUNT) {
+            break;
+        }
         generator_->AddSample(endTime, outToFile_);
         if (outToFile_) {
-            if (generator_->GetMethodNodes().size() >= 10 || // 10:Number of nodes currently stored
+            if (generator_->GetMethodNodeCount() >= 10 || // 10:Number of nodes currently stored
                 generator_->GetSamples().size() == 100) { // 100:Number of Samples currently stored
                 generator_->WriteMethodsAndSampleInfo(false);
             }
@@ -97,7 +102,7 @@ uint64_t SamplingProcessor::GetMicrosecondsTimeStamp()
 {
     struct timespec time;
     clock_gettime(CLOCK_MONOTONIC, &time);
-    return time.tv_nsec / 1000; // 1000:Nanoseconds convert subtle
+    return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
 }
 
 void SamplingProcessor::WriteSampleDataToFile()

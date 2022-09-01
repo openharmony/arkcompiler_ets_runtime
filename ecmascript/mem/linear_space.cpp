@@ -51,7 +51,7 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 
 bool LinearSpace::Expand(bool isPromoted)
 {
-    if (committedSize_ >= initialCapacity_ + overShootSize_) {
+    if (committedSize_ >= initialCapacity_ + overShootSize_ + outOfMemoryOvershootSize_) {
         return false;
     }
 
@@ -203,8 +203,6 @@ void SemiSpace::SetOverShootSize(size_t size)
 
 bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC)
 {
-    static constexpr double growObjectSurvivalRate = 0.8;
-    static constexpr double shrinkObjectSurvivalRate = 0.2;
     static constexpr int growingFactor = 2;
     if (allocatedSizeSinceGC <= initialCapacity_ * growObjectSurvivalRate / growingFactor) {
         return false;

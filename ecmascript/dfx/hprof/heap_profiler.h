@@ -20,7 +20,7 @@
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/mem/chunk_containers.h"
+#include "ecmascript/mem/c_containers.h"
 #include "ecmascript/tooling/interface/file_stream.h"
 #include "ecmascript/tooling/interface/progress.h"
 
@@ -67,7 +67,7 @@ private:
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;
-    ChunkVector<HeapSnapshot *> hprofs_;
+    CVector<HeapSnapshot *> hprofs_;
     HeapSnapshotJSONSerializer *jsonSerializer_ {nullptr};
     std::unique_ptr<HeapTracker> heapTracker_;
 };

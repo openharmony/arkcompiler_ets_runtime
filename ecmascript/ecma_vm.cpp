@@ -16,7 +16,15 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
+#include "ecmascript/builtins/builtins_collator.h"
+#include "ecmascript/builtins/builtins_date_time_format.h"
+#include "ecmascript/builtins/builtins_global.h"
+#include "ecmascript/builtins/builtins_number_format.h"
+#include "ecmascript/builtins/builtins_object.h"
+#include "ecmascript/builtins/builtins_promise.h"
+#include "ecmascript/builtins/builtins_promise_handler.h"
+#include "ecmascript/builtins/builtins_proxy.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/call_signature.h"
@@ -41,6 +49,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/js_patch_manager.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -114,6 +123,7 @@ bool EcmaVM::Destroy(EcmaVM *vm)
 void EcmaVM::preFork()
 {
     heap_->CompactHeapBeforeFork();
+    heap_->AdjustSpaceSizeForAppSpawn();
     heap_->GetReadOnlySpace()->SetReadOnly();
     heap_->DisableParallelGC();
 }
@@ -129,7 +139,6 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
       nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
       heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
       chunk_(nativeAreaAllocator_.get()),
-      nativePointerList_(&chunk_),
       ecmaParamConfiguration_(std::move(config))
 {
     options_ = std::move(options);
@@ -156,7 +165,7 @@ bool EcmaVM::Initialize()
     heap_ = new Heap(this);
     heap_->Initialize();
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
-    factory_ = chunk_.New<ObjectFactory>(thread_, heap_, &chunk_);
+    factory_ = chunk_.New<ObjectFactory>(thread_, heap_);
     if (UNLIKELY(factory_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc factory_ failed";
         UNREACHABLE();
@@ -195,12 +204,13 @@ bool EcmaVM::Initialize()
 
     SetupRegExpResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
-    factory_->GenerateInternalNativeMethods();
+    GenerateInternalNativeMethods();
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     moduleManager_ = new ModuleManager(this);
     debuggerManager_->Initialize(this);
     tsManager_ = new TSManager(this);
     tsManager_->Initialize();
+    patchManager_ = new JSPatchManager();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Initialize();
@@ -328,6 +338,11 @@ EcmaVM::~EcmaVM()
         tsManager_ = nullptr;
     }
 
+    if (patchManager_ != nullptr) {
+        delete patchManager_;
+        patchManager_ = nullptr;
+    }
+
     if (snapshotEnv_ != nullptr) {
         delete snapshotEnv_;
         snapshotEnv_ = nullptr;
@@ -358,8 +373,9 @@ EcmaVM::CpuProfilingScope::CpuProfilingScope(EcmaVM* vm) : vm_(vm), profiler_(nu
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (vm_->GetJSOptions().EnableCpuProfiler()) {
-        profiler_ = CpuProfiler::GetInstance();
-        profiler_->CpuProfiler::StartCpuProfilerForFile(vm, "");
+        profiler_ = new CpuProfiler(vm);
+        vm->SetProfiler(profiler_);
+        profiler_->CpuProfiler::StartCpuProfilerForFile("");
     }
 #endif
 }
@@ -369,8 +385,21 @@ EcmaVM::CpuProfilingScope::~CpuProfilingScope()
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (profiler_ != nullptr) {
         profiler_->CpuProfiler::StopCpuProfilerForFile();
+        delete profiler_;
+        profiler_ = nullptr;
     }
 #endif
+}
+
+bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
+{
+    uint32_t pcOffset = panda_file::INVALID_OFFSET;
+    if (thread_->IsAsmInterpreter()) {
+        pcOffset = InterpreterAssembly::FindCatchBlock(method, pc);
+    } else {
+        pcOffset = EcmaInterpreter::FindCatchBlock(method, pc);
+    }
+    return pcOffset != panda_file::INVALID_OFFSET;
 }
 
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
@@ -510,7 +539,7 @@ JSHandle<JSTaggedValue> EcmaVM::GetAndClearEcmaUncaughtException() const
 
 JSHandle<JSTaggedValue> EcmaVM::GetEcmaUncaughtException() const
 {
-    if (thread_->GetException().IsHole()) {
+    if (!thread_->HasPendingException()) {
         return JSHandle<JSTaggedValue>();
     }
     JSHandle<JSTaggedValue> exceptionHandle(thread_, thread_->GetException());
@@ -635,6 +664,7 @@ void EcmaVM::ClearBufferData()
     nativePointerList_.clear();
 
     cachedConstpools_.clear();
+    internalNativeMethods_.clear();
 }
 
 bool EcmaVM::ExecutePromisePendingJob()
@@ -667,12 +697,14 @@ void EcmaVM::StopHeapTracking()
     heap_->StopHeapTracking();
 }
 
-void EcmaVM::Iterate(const RootVisitor &v)
+void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&frameworkProgram_)));
+    rv(Root::ROOT_VM,
+        ObjectSlot(ToUintPtr(&internalNativeMethods_.front())), ObjectSlot(ToUintPtr(&internalNativeMethods_.back())));
     moduleManager_->Iterate(v);
     tsManager_->Iterate(v);
     fileLoader_->Iterate(v);
@@ -705,7 +737,7 @@ void EcmaVM::LoadStubFile()
 
 void EcmaVM::LoadAOTFiles()
 {
-    std::string file = options_.GetAOTOutputFile() + ".aot";
+    std::string file = options_.GetAOTOutputFile() + ".an";
     LOG_ECMA(INFO) << "Try to load aot file" << file.c_str();
     fileLoader_->LoadAOTFile(file);
     fileLoader_->LoadSnapshotFile();
@@ -731,4 +763,50 @@ HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
     return heapProfile_;
 }
 #endif
+
+// NOLINTNEXTLINE(modernize-avoid-c-arrays)
+void *EcmaVM::InternalMethodTable[] = {
+    reinterpret_cast<void *>(builtins::BuiltinsGlobal::CallJsBoundFunction),
+    reinterpret_cast<void *>(builtins::BuiltinsGlobal::CallJsProxy),
+    reinterpret_cast<void *>(builtins::BuiltinsObject::CreateDataPropertyOnObjectFunctions),
+    reinterpret_cast<void *>(builtins::BuiltinsCollator::AnonymousCollator),
+    reinterpret_cast<void *>(builtins::BuiltinsDateTimeFormat::AnonymousDateTimeFormat),
+    reinterpret_cast<void *>(builtins::BuiltinsNumberFormat::NumberFormatInternalFormatNumber),
+    reinterpret_cast<void *>(builtins::BuiltinsProxy::InvalidateProxyFunction),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AsyncAwaitFulfilled),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AsyncAwaitRejected),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::ResolveElementFunction),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::Resolve),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::Reject),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::Executor),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AnyRejectElementFunction),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AllSettledResolveElementFunction),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AllSettledRejectElementFunction),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::ThenFinally),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::CatchFinally),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::valueThunkFunction),
+    reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::throwerFunction),
+    reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorFulfilledFunc),
+    reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorRejectedFunc)
+};
+
+void EcmaVM::GenerateInternalNativeMethods()
+{
+    size_t length = static_cast<size_t>(MethodIndex::METHOD_END);
+    for (size_t i = 0; i < length; i++) {
+        uint32_t numArgs = 2;  // function object and this
+        auto method = factory_->NewMethod(nullptr);
+        method->SetNativePointer(InternalMethodTable[i]);
+        method->SetNativeBit(true);
+        method->SetNumArgsWithCallField(numArgs);
+        internalNativeMethods_.emplace_back(method.GetTaggedValue());
+    }
+}
+
+JSTaggedValue EcmaVM::GetMethodByIndex(MethodIndex idx)
+{
+    auto index = static_cast<uint8_t>(idx);
+    ASSERT(index < internalNativeMethods_.size());
+    return internalNativeMethods_[index];
+}
 }  // namespace panda::ecmascript

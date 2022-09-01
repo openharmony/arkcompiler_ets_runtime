@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:spreadoperator
+ * @tc.desc:test spread (...)
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 // test spread Array
 var arr1 = [...Array(16).keys()];
 print(arr1.length);
@@ -74,3 +80,12 @@ let uint8 = new Uint8Array(2);
 print(...uint8);
 Uint8Array.prototype[Symbol.iterator] = iterFunc;
 print(...uint8);
+
+let fruits = ['Apple', 'Banana']
+print(...fruits)
+Array.prototype[Symbol.iterator] = function* () {
+    yield 1;
+    yield 2;
+    yield 3;
+}
+print(...fruits)

@@ -19,6 +19,12 @@
  * when the op is not found, should not generate cache.
  */
 
+/*
+ * @tc.name:globalthis
+ * @tc.desc:test global this
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 let res;
 for (let i = 0; i < 100; ++i) {
     res = globalThis.a;

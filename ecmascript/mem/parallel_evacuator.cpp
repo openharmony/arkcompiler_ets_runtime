@@ -126,7 +126,6 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region)
             if (address == 0) {
                 address = allocator->Allocate(size, OLD_SPACE);
                 actualPromoted = true;
-                promotedSize += size;
             }
         }
         LOG_ECMA_IF(address == 0, FATAL) << "Evacuate object failed:" << size;
@@ -250,7 +249,6 @@ void ParallelEvacuator::UpdateRecordWeakReference()
             }
             ObjectSlot slot(ToUintPtr(obj));
             JSTaggedValue value(slot.GetTaggedType());
-            ASSERT(value.IsWeak() || value.IsUndefined());
             if (value.IsWeak()) {
                 UpdateWeakObjectSlot(value.GetTaggedWeakRef(), slot);
             }
@@ -296,24 +294,9 @@ void ParallelEvacuator::UpdateRSet(Region *region)
 {
     auto cb = [this](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
-
-        if (UpdateObjectSlot(slot)) {
-            TaggedObject *object = slot.GetTaggedObject();
-            Region *valueRegion = Region::ObjectAddressToRange(object);
-
-            if (!valueRegion->InYoungSpace()) {
-                return false;
-            }
-            if (valueRegion->InNewToNewSet()) {
-                if (!valueRegion->Test(object)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
+        return UpdateOldToNewObjectSlot(slot);
     };
-    if (heap_->GetSweeper()->isSweeping()) {
+    if (heap_->GetSweeper()->IsSweeping()) {
         if (region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             // Region is safe while update remember set
             region->MergeRSetForConcurrentSweeping();

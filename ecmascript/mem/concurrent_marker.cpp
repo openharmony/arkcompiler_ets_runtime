@@ -137,6 +137,10 @@ void ConcurrentMarker::InitializeMarking()
     if (heap_->IsFullMark()) {
         heapObjectSize_ = heap_->GetHeapObjectSize();
         heap_->GetOldSpace()->SelectCSet();
+        heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
+            current->ClearMarkGCBitset();
+            current->ClearCrossRegionRSet();
+        });
         // The alive object size of Region in OldSpace will be recalculated.
         heap_->EnumerateNonNewSpaceRegions([](Region *current) {
             current->ResetAliveObject();
@@ -172,5 +176,8 @@ void ConcurrentMarker::FinishMarking(float spendTime)
         heapObjectSize_ = heap_->GetHeapObjectSize();
     }
     SetDuration(spendTime);
+    if (heap_->IsFullMarkRequested()) {
+        heap_->SetFullMarkRequestedState(false);
+    }
 }
 }  // namespace panda::ecmascript

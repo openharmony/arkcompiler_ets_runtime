@@ -38,6 +38,7 @@ enum MemSpaceType {
     COMPRESS_SPACE,
     LOCAL_SPACE,
     READ_ONLY_SPACE,
+    APPSPAWN_SPACE,
     SPACE_TYPE_LAST,  // Count of different types
 
     FREE_LIST_NUM = MACHINE_CODE_SPACE - OLD_SPACE + 1,
@@ -62,6 +63,8 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "compress space";
         case READ_ONLY_SPACE:
             return "read only space";
+        case APPSPAWN_SPACE:
+            return "appspawn space";
         default:
             return "unknown space";
     }
@@ -119,6 +122,16 @@ public:
         objectSize_ -= bytes;
     }
 
+    size_t GetOutOfMemoryOvershootSize() const
+    {
+        return outOfMemoryOvershootSize_;
+    }
+
+    void IncreaseOutOfMemoryOvershootSize(size_t size)
+    {
+        outOfMemoryOvershootSize_ += size;
+    }
+
     MemSpaceType GetSpaceType() const
     {
         return spaceType_;
@@ -172,7 +185,6 @@ public:
     inline void EnumerateRegionsWithRecord(const Callback &cb) const;
 
     inline void AddRegion(Region *region);
-    inline void AddRegionToFront(Region *region);
     inline void RemoveRegion(Region *region);
 
     virtual void Initialize() {};
@@ -190,6 +202,7 @@ protected:
     size_t maximumCapacity_ {0};
     size_t committedSize_ {0};
     size_t objectSize_ {0};
+    size_t outOfMemoryOvershootSize_ {0};
     Region *recordRegion_ {nullptr};
 };
 
@@ -205,7 +218,7 @@ public:
     size_t GetHeapObjectSize() const;
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
 
-    void RecliamHugeRegion();
+    void ReclaimHugeRegion();
 
 private:
     EcmaList<Region> hugeNeedFreeList_ {};

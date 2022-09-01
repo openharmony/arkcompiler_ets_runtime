@@ -15,8 +15,6 @@
 
 #include "pt_types.h"
 
-#include "ecmascript/dfx/cpu_profiler/samples_record.h"
-
 namespace panda::ecmascript::tooling {
 using ObjectType = RemoteObject::TypeName;
 using ObjectSubType = RemoteObject::SubTypeName;
@@ -76,6 +74,7 @@ const std::string ObjectClassName::Promise = "Promise";                // NOLINT
 const std::string ObjectClassName::Typedarray = "Typedarray";          // NOLINT (readability-identifier-naming)
 const std::string ObjectClassName::Arraybuffer = "Arraybuffer";        // NOLINT (readability-identifier-naming)
 const std::string ObjectClassName::Global = "global";                  // NOLINT (readability-identifier-naming)
+const std::string ObjectClassName::Generator = "Generator";            // NOLINT (readability-identifier-naming)
 
 const std::string RemoteObject::ObjectDescription = "Object";    // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::GlobalDescription = "global";    // NOLINT (readability-identifier-naming)
@@ -87,6 +86,7 @@ const std::string RemoteObject::StringIteratorDescription =  // NOLINT (readabil
     "StringIterator";
 const std::string RemoteObject::SetIteratorDescription = "SetIterator";  // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::MapIteratorDescription = "MapIterator";  // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::WeakRefDescription = "WeakRef";          // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::WeakMapDescription = "WeakMap";          // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::WeakSetDescription = "WeakSet";          // NOLINT (readability-identifier-naming)
 const std::string RemoteObject::JSPrimitiveNumberDescription =           // NOLINT (readability-identifier-naming)
@@ -97,6 +97,16 @@ const std::string RemoteObject::JSPrimitiveStringDescription =           // NOLI
     "String";
 const std::string RemoteObject::JSPrimitiveSymbolDescription =           // NOLINT (readability-identifier-naming)
     "Symbol";
+const std::string RemoteObject::DateTimeFormatDescription =                // NOLINT (readability-identifier-naming)
+    "DateTimeFormat";
+const std::string RemoteObject::JSIntlDescription = "Intl";                // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::NumberFormatDescription = "NumberFormat";  // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::CollatorDescription = "Collator";          // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::PluralRulesDescription = "PluralRules";    // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::JSLocaleDescription = "Locale";            // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::JSListFormatDescription = "ListFormat";    // NOLINT (readability-identifier-naming)
+const std::string RemoteObject::JSRelativeTimeFormatDescription =          // NOLINT (readability-identifier-naming)
+    "RelativeTimeFormat";
 
 std::unique_ptr<RemoteObject> RemoteObject::FromTagged(const EcmaVM *ecmaVm, Local<JSValueRef> tagged)
 {
@@ -110,6 +120,9 @@ std::unique_ptr<RemoteObject> RemoteObject::FromTagged(const EcmaVM *ecmaVm, Loc
     }
     if (tagged->IsSymbol()) {
         return std::make_unique<SymbolRemoteObject>(ecmaVm, Local<SymbolRef>(tagged));
+    }
+    if (tagged->IsGeneratorFunction()) {
+        return std::make_unique<GeneratorFunctionRemoteObject>(ecmaVm, Local<SymbolRef>(tagged));
     }
     if (tagged->IsFunction()) {
         return std::make_unique<FunctionRemoteObject>(ecmaVm, tagged);
@@ -225,6 +238,16 @@ FunctionRemoteObject::FunctionRemoteObject(const EcmaVM *ecmaVm, Local<JSValueRe
         .SetDescription(description);
 }
 
+GeneratorFunctionRemoteObject::GeneratorFunctionRemoteObject(const EcmaVM *ecmaVm, Local<JSValueRef> tagged)
+{
+    std::string description = DescriptionForGeneratorFunction(ecmaVm, tagged);
+    SetType(RemoteObject::TypeName::Function)
+        .SetClassName(RemoteObject::ClassName::Generator)
+        .SetValue(tagged)
+        .SetUnserializableValue(description)
+        .SetDescription(description);
+}
+
 ObjectRemoteObject::ObjectRemoteObject(const EcmaVM *ecmaVm, Local<JSValueRef> tagged,
                                        const std::string &classname)
 {
@@ -260,7 +283,7 @@ std::string ObjectRemoteObject::DescriptionForObject(const EcmaVM *ecmaVm, Local
         return DescriptionForDate(ecmaVm, Local<DateRef>(tagged));
     }
     if (tagged->IsMap()) {
-        return DescriptionForMap(Local<MapRef>(tagged));
+        return DescriptionForMap(ecmaVm, Local<MapRef>(tagged));
     }
     if (tagged->IsWeakMap()) {
         return RemoteObject::WeakMapDescription;
@@ -295,6 +318,21 @@ std::string ObjectRemoteObject::DescriptionForObject(const EcmaVM *ecmaVm, Local
     if (tagged->IsArrayBuffer()) {
         return DescriptionForArrayBuffer(ecmaVm, Local<ArrayBufferRef>(tagged));
     }
+    if (tagged->IsSharedArrayBuffer()) {
+        return DescriptionForSharedArrayBuffer(ecmaVm, Local<ArrayBufferRef>(tagged));
+    }
+    if (tagged->IsUint8Array()) {
+        return DescriptionForUint8Array(ecmaVm, Local<TypedArrayRef>(tagged));
+    }
+    if (tagged->IsInt8Array()) {
+        return DescriptionForInt8Array(ecmaVm, Local<TypedArrayRef>(tagged));
+    }
+    if (tagged->IsInt16Array()) {
+        return DescriptionForInt16Array(ecmaVm, Local<TypedArrayRef>(tagged));
+    }
+    if (tagged->IsInt32Array()) {
+        return DescriptionForInt32Array(ecmaVm, Local<TypedArrayRef>(tagged));
+    }
     if (tagged->IsJSPrimitiveRef() && tagged->IsJSPrimitiveNumber()) {
         return DescriptionForPrimitiveNumber(ecmaVm, tagged);
     }
@@ -303,6 +341,36 @@ std::string ObjectRemoteObject::DescriptionForObject(const EcmaVM *ecmaVm, Local
     }
     if (tagged->IsJSPrimitiveRef() && tagged->IsJSPrimitiveBoolean()) {
         return DescriptionForPrimitiveBoolean(ecmaVm, tagged);
+    }
+    if (tagged->IsGeneratorObject()) {
+        return DescriptionForGeneratorObject(ecmaVm, tagged);
+    }
+    if (tagged->IsWeakRef()) {
+        return DescriptionForWeakRef();
+    }
+    if (tagged->IsJSLocale()) {
+        return DescriptionForJSLocale();
+    }
+    if (tagged->IsJSDateTimeFormat()) {
+        return DescriptionForDateTimeFormat();
+    }
+    if (tagged->IsJSRelativeTimeFormat()) {
+        return DescriptionForJSRelativeTimeFormat();
+    }
+    if (tagged->IsJSIntl()) {
+        return RemoteObject::JSIntlDescription;
+    }
+    if (tagged->IsJSNumberFormat()) {
+        return DescriptionForNumberFormat();
+    }
+    if (tagged->IsJSCollator()) {
+        return DescriptionForCollator();
+    }
+    if (tagged->IsJSPluralRules()) {
+        return DescriptionForPluralRules();
+    }
+    if (tagged->IsJSListFormat()) {
+        return DescriptionForJSListFormat();
     }
     return RemoteObject::ObjectDescription;
 }
@@ -315,9 +383,9 @@ std::string ObjectRemoteObject::DescriptionForArray(const EcmaVM *ecmaVm, Local<
 
 std::string ObjectRemoteObject::DescriptionForRegexp(const EcmaVM *ecmaVm, Local<RegExpRef> tagged)
 {
-    std::string regexpSource = tagged->GetOriginalSource(ecmaVm)->ToString();
-    std::string description = "/" + regexpSource + "/";
-    return description;
+    std::string regExpSource = tagged->GetOriginalSource(ecmaVm)->ToString();
+    std::string regExpFlags = tagged->GetOriginalFlags();
+    return "/" + regExpSource + "/" + regExpFlags;
 }
 
 std::string ObjectRemoteObject::DescriptionForDate(const EcmaVM *ecmaVm, Local<DateRef> tagged)
@@ -326,9 +394,43 @@ std::string ObjectRemoteObject::DescriptionForDate(const EcmaVM *ecmaVm, Local<D
     return description;
 }
 
-std::string ObjectRemoteObject::DescriptionForMap(Local<MapRef> tagged)
+std::string ObjectRemoteObject::DescriptionForMap(const EcmaVM *ecmaVm, Local<MapRef> tagged)
 {
-    std::string description = ("Map(" + std::to_string(tagged->GetSize()) + ")");
+    int32_t len = tagged->GetSize();
+    std::string description = "Map(" + std::to_string(len) + ")";
+    if (!len) {
+        return description;
+    }
+    description += " {";
+    char cPre = '\'';
+    for (int32_t i = 0; i < len; ++i) {
+        // add Key
+        Local<JSValueRef> jsVKey = tagged->GetKey(ecmaVm, i);
+        Local<JSValueRef> jsVValue = tagged->GetValue(ecmaVm, i);
+        if (jsVKey->IsObject()) {
+            description += "Object";
+        } else if (jsVKey->IsString()) {
+            description += cPre + jsVKey->ToString(ecmaVm)->ToString() + cPre;
+        } else {
+            description += jsVKey->ToString(ecmaVm)->ToString();
+        }
+
+        description += " => ";
+        // add Value
+        if (jsVValue->IsObject()) {
+            description += "Object";
+        } else if (jsVValue->IsString()) {
+            description += cPre + jsVValue->ToString(ecmaVm)->ToString() + cPre;
+        } else {
+            description += jsVValue->ToString(ecmaVm)->ToString();
+        }
+        if (i == len - 1 || i >= 4) { // 4:The count of elements
+            description += len > 5 ? ", ..." : ""; // 5:The count of elements
+            break;
+        }
+        description += ", ";
+    }
+    description += "}";
     return description;
 }
 
@@ -378,6 +480,41 @@ std::string ObjectRemoteObject::DescriptionForArrayBuffer(const EcmaVM *ecmaVm, 
     return description;
 }
 
+std::string ObjectRemoteObject::DescriptionForSharedArrayBuffer(const EcmaVM *ecmaVm, Local<ArrayBufferRef> tagged)
+{
+    int32_t len = tagged->ByteLength(ecmaVm);
+    std::string description = ("SharedArrayBuffer(" + std::to_string(len) + ")");
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForUint8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
+{
+    int32_t len = static_cast<int32_t>(tagged->ByteLength(ecmaVm));
+    std::string description = ("Uint8Array(" + std::to_string(len) + ")");
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForInt8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
+{
+    int32_t len = static_cast<int32_t>(tagged->ByteLength(ecmaVm));
+    std::string description = ("Int8Array(" + std::to_string(len) + ")");
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForInt16Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
+{
+    int32_t len = tagged->ByteLength(ecmaVm) / static_cast<int32_t>(NumberSize::BYTES_OF_16BITS);
+    std::string description = ("Int16Array(" + std::to_string(len) + ")");
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForInt32Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
+{
+    int32_t len = tagged->ByteLength(ecmaVm) / static_cast<int32_t>(NumberSize::BYTES_OF_32BITS);
+    std::string description = ("Int32Array(" + std::to_string(len) + ")");
+    return description;
+}
+
 std::string ObjectRemoteObject::DescriptionForPrimitiveNumber(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged)
 {
     std::string strValue = tagged->ToString(ecmaVm)->ToString();
@@ -399,6 +536,69 @@ std::string ObjectRemoteObject::DescriptionForPrimitiveBoolean(const EcmaVM *ecm
     return description;
 }
 
+std::string ObjectRemoteObject::DescriptionForGeneratorObject(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged)
+{
+    Local<GeneratorObjectRef> genObjectRef = tagged->ToObject(ecmaVm);
+    // add Status
+    Local<JSValueRef> jsValueRef = genObjectRef->GetGeneratorState(ecmaVm);
+    std::string strState = genObjectRef->GetGeneratorState(ecmaVm)->ToString(ecmaVm)->ToString();
+    // add FuncName
+    jsValueRef = genObjectRef->GetGeneratorFunction(ecmaVm);
+    Local<JSValueRef> name = StringRef::NewFromUtf8(ecmaVm, "name");
+    std::string strFuncName = Local<ObjectRef>(jsValueRef)->Get(ecmaVm, name)->ToString(ecmaVm)->ToString();
+
+    std::string description = strFuncName + " {<" + strState + ">}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForWeakRef()
+{
+    std::string description = RemoteObject::WeakRefDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForDateTimeFormat()
+{
+    std::string description = RemoteObject::DateTimeFormatDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForNumberFormat()
+{
+    std::string description = RemoteObject::NumberFormatDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForCollator()
+{
+    std::string description = RemoteObject::CollatorDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForPluralRules()
+{
+    std::string description = RemoteObject::PluralRulesDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForJSLocale()
+{
+    std::string description = RemoteObject::JSLocaleDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForJSRelativeTimeFormat()
+{
+    std::string description = RemoteObject::JSRelativeTimeFormatDescription + " {}";
+    return description;
+}
+
+std::string ObjectRemoteObject::DescriptionForJSListFormat()
+{
+    std::string description = RemoteObject::JSListFormatDescription + " {}";
+    return description;
+}
+
 std::string SymbolRemoteObject::DescriptionForSymbol(const EcmaVM *ecmaVm, Local<SymbolRef> tagged) const
 {
     std::string description = "Symbol(" + tagged->GetDescription(ecmaVm)->ToString() + ")";
@@ -415,6 +615,20 @@ std::string FunctionRemoteObject::DescriptionForFunction(const EcmaVM *ecmaVm, L
     }
     Local<StringRef> name = tagged->GetName(ecmaVm);
     std::string description = "function " + name->ToString() + "( { " + sourceCode + " }";
+    return description;
+}
+
+std::string GeneratorFunctionRemoteObject::DescriptionForGeneratorFunction(const EcmaVM *ecmaVm,
+    Local<FunctionRef> tagged) const
+{
+    std::string sourceCode;
+    if (tagged->IsNative(ecmaVm)) {
+        sourceCode = "[native code]";
+    } else {
+        sourceCode = "[js code]";
+    }
+    Local<StringRef> name = tagged->GetName(ecmaVm);
+    std::string description = "function* " + name->ToString() + "( { " + sourceCode + " }";
     return description;
 }
 
@@ -2009,7 +2223,7 @@ std::unique_ptr<Profile> Profile::FromProfileInfo(const ProfileInfo &profileInfo
     profile->SetTimeDeltas(tmpTimeDeltas);
 
     std::vector<std::unique_ptr<ProfileNode>> profileNode;
-    size_t nodesLen = profileInfo.nodes.size();
+    size_t nodesLen = profileInfo.nodeCount;
     for (size_t i = 0; i < nodesLen; ++i) {
         const auto &cpuProfileNode = profileInfo.nodes[i];
         profileNode.push_back(ProfileNode::FromCpuProfileNode(cpuProfileNode));

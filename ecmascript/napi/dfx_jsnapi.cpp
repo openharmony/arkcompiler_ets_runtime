@@ -83,13 +83,13 @@ bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackT
     std::vector<JsFrameInfo> jf = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
     LOG_ECMA(INFO) <<"BuildJsStackInfoList JsFrameInfo";
     for (uint32_t i = 0; i < jf.size(); ++i) {
-        std::string functionname = jf[i].functionname;
-        std::string filename = jf[i].filename;
-        std::string lines = jf[i].lines;
-        std::string nativepointer = jf[i].nativepointer;
+        std::string functionname = jf[i].functionName;
+        std::string filename = jf[i].fileName;
+        std::string pos = jf[i].pos;
+        uintptr_t *nativepointer = jf[i].nativePointer;
         LOG_ECMA(INFO) << "BuildJsStackInfoList functionname: " << functionname;
         LOG_ECMA(INFO) << "BuildJsStackInfoList filenaem: " << filename;
-        LOG_ECMA(INFO) << "BuildJsStackInfoList lines: " << lines;
+        LOG_ECMA(INFO) << "BuildJsStackInfoList pos: " << pos;
         LOG_ECMA(INFO) << "BuildJsStackInfoList nativepointer: " << nativepointer;
     }
     stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(vm->GetAssociatedJSThread(), true);
@@ -175,55 +175,76 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 void DFXJSNApi::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName)
 {
-    panda::ecmascript::CpuProfiler* singleton = panda::ecmascript::CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return;
     }
-    singleton->StartCpuProfilerForFile(vm, fileName);
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        profiler = new CpuProfiler(vm);
+        const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
+    }
+    profiler->StartCpuProfilerForFile(fileName);
 }
 
-void DFXJSNApi::StopCpuProfilerForFile()
+void DFXJSNApi::StopCpuProfilerForFile(const EcmaVM *vm)
 {
-    panda::ecmascript::CpuProfiler* singleton = panda::ecmascript::CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return;
     }
-    singleton->StopCpuProfilerForFile();
-    delete singleton;
-    singleton = nullptr;
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        return;
+    }
+    profiler->StopCpuProfilerForFile();
+    delete profiler;
+    profiler = nullptr;
+    const_cast<EcmaVM *>(vm)->SetProfiler(nullptr);
 }
 
 void DFXJSNApi::StartCpuProfilerForInfo(const EcmaVM *vm)
 {
-    CpuProfiler *singleton = CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return;
     }
-    singleton->StartCpuProfilerForInfo(vm);
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        profiler = new CpuProfiler(vm);
+        const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
+    }
+    profiler->StartCpuProfilerForInfo();
 }
 
-std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo()
+std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo(const EcmaVM *vm)
 {
-    CpuProfiler *singleton = CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return nullptr;
     }
-    auto profile = singleton->StopCpuProfilerForInfo();
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        return nullptr;
+    }
+    auto profile = profiler->StopCpuProfilerForInfo();
     if (profile == nullptr) {
         LOG_DEBUGGER(ERROR) << "Transfer CpuProfiler::StopCpuProfilerImpl is failure";
     }
-    delete singleton;
-    singleton = nullptr;
+    delete profiler;
+    profiler = nullptr;
+    const_cast<EcmaVM *>(vm)->SetProfiler(nullptr);
     return profile;
 }
 
-void DFXJSNApi::SetCpuSamplingInterval(int interval)
+void DFXJSNApi::SetCpuSamplingInterval(const EcmaVM *vm, int interval)
 {
-    CpuProfiler *singleton = CpuProfiler::GetInstance();
-    if (singleton == nullptr) {
+    if (vm == nullptr) {
         return;
     }
-    singleton->SetCpuSamplingInterval(interval);
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        return;
+    }
+    profiler = new CpuProfiler(vm);
+    const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
+    profiler->SetCpuSamplingInterval(interval);
 }
 #endif
 
@@ -251,9 +272,12 @@ bool DFXJSNApi::CheckSafepoint(const EcmaVM *vm)
     return  thread->CheckSafepoint();
 }
 
-std::vector<JsFrameInfo> DFXJSNApi::BuildJsStackInfoList(const EcmaVM *vm)
+bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *vm, std::vector<JsFrameInfo>& jsFrames)
 {
-    std::vector<JsFrameInfo> jsframeinfo = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
-    return jsframeinfo;
+    jsFrames = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
+    if (jsFrames.size() > 0) {
+        return true;
+    }
+    return false;
 }
 } // namespace panda

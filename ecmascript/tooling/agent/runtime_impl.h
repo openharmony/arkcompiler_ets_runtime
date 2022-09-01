@@ -23,6 +23,7 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::tooling {
+enum class ArkInternalValueType {None, Entry, Scope, ScopeList};
 class RuntimeImpl final {
 public:
     RuntimeImpl(const EcmaVM *vm, ProtocolChannel *channel)
@@ -57,7 +58,7 @@ public:
         void GetProperties(const DispatchRequest &request);
         void CallFunctionOn(const DispatchRequest &request);
         void GetHeapUsage(const DispatchRequest &request);
-        
+
     private:
         using AgentHandler = void (RuntimeImpl::DispatcherImpl::*)(const DispatchRequest &request);
         std::unique_ptr<RuntimeImpl> runtime_ {};
@@ -78,6 +79,8 @@ private:
         const char* name, std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
     void AddTypedArrayRefs(Local<ArrayBufferRef> arrayBufferRef,
         std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void AddSharedArrayBufferRefs(Local<ArrayBufferRef> arrayBufferRef,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
     void GetProtoOrProtoType(Local<JSValueRef> value, bool isOwn, bool isAccessorOnly,
                              std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
     void GetAdditionalProperties(Local<JSValueRef> value,
@@ -94,7 +97,21 @@ private:
         std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
     void GetSetIteratorValue(Local<JSValueRef> value,
         std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
-
+    void GetGeneratorFunctionValue(Local<JSValueRef> value,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void GetGeneratorObjectValue(Local<JSValueRef> value,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void GetNumberFormatValue(Local<JSValueRef> value,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void GetCollatorValue(Local<JSValueRef> value,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void GetDateTimeFormatValue(Local<JSValueRef> value,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void AddInternalProperties(Local<ObjectRef> object, ArkInternalValueType type);
+    void GetMapValue(Local<JSValueRef> value,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void GetRegExpValue(Local<JSValueRef> value,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
     class Frontend {
     public:
         explicit Frontend(ProtocolChannel *channel) : channel_(channel) {}
@@ -113,6 +130,7 @@ private:
 
     RemoteObjectId curObjectId_ {0};
     std::unordered_map<RemoteObjectId, Global<JSValueRef>> properties_ {};
+    Global<MapRef> internalObjects_;
 
     friend class DebuggerImpl;
 };

@@ -27,7 +27,6 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] LocalScope scope(vm);
         int32_t instanceId = 0;
         const int32_t int32ByteLen = 4;
         if (size > int32ByteLen) {

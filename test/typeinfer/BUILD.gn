@@ -16,12 +16,14 @@ group("ark_typeinfer_test") {
   deps = [
     "add2dyn:add2dynAotTypeInferAction",
     "bitwise_op:bitwise_opAotTypeInferAction",
+    "builtins:builtinsAotTypeInferAction",
     "callarg0dyn:callarg0dynAotTypeInferAction",
     "callarg1dyn:callarg1dynAotTypeInferAction",
     "callargs2dyn:callargs2dynAotTypeInferAction",
     "callargs3dyn:callargs3dynAotTypeInferAction",
     "callirangedyn:callirangedynAotTypeInferAction",
     "callithisrange:callithisrangeAotTypeInferAction",
+    "class:classAotTypeInferAction",
     "createemptyarray:createemptyarrayAotTypeInferAction",
     "createemptyobject:createemptyobjectAotTypeInferAction",
     "createobjecthavingmethod:createobjecthavingmethodAotTypeInferAction",
@@ -52,5 +54,6 @@ group("ark_typeinfer_test") {
     "tryldglobalbyname:tryldglobalbynameAotTypeInferAction",
     "trystglobalbyname:trystglobalbynameAotTypeInferAction",
     "typeof:typeofAotTypeInferAction",
+    "variable_after_loops:variable_after_loopsAotTypeInferAction",
   ]
 }

@@ -19,38 +19,13 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_record.h"
+#include "ecmascript/module/js_module_entry.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
 enum class ModuleStatus : uint8_t { UNINSTANTIATED = 0x01, INSTANTIATING, INSTANTIATED, EVALUATING, EVALUATED };
 enum class ModuleTypes : uint8_t { ECMAMODULE = 0x01, CJSMODULE, UNKNOWN};
-
-class ImportEntry final : public Record {
-public:
-    CAST_CHECK(ImportEntry, IsImportEntry);
-
-    static constexpr size_t IMPORT_ENTRY_OFFSET = Record::SIZE;
-    ACCESSORS(ModuleRequest, IMPORT_ENTRY_OFFSET, MODULE_REQUEST_OFFSET);
-    ACCESSORS(ImportName, MODULE_REQUEST_OFFSET, IMPORT_NAME_OFFSET);
-    ACCESSORS(LocalName, IMPORT_NAME_OFFSET, SIZE);
-
-    DECL_DUMP()
-    DECL_VISIT_OBJECT(IMPORT_ENTRY_OFFSET, SIZE)
-};
-
-class ExportEntry final : public Record {
-public:
-    CAST_CHECK(ExportEntry, IsExportEntry);
-
-    static constexpr size_t EXPORT_ENTRY_OFFSET = Record::SIZE;
-    ACCESSORS(ExportName, EXPORT_ENTRY_OFFSET, EXPORT_NAME_OFFSET);
-    ACCESSORS(ModuleRequest, EXPORT_NAME_OFFSET, MODULE_REQUEST_OFFSET);
-    ACCESSORS(ImportName, MODULE_REQUEST_OFFSET, IMPORT_NAME_OFFSET);
-    ACCESSORS(LocalName, IMPORT_NAME_OFFSET, SIZE);
-
-    DECL_DUMP()
-    DECL_VISIT_OBJECT(EXPORT_ENTRY_OFFSET, SIZE)
-};
+enum class ModuleModes : uint8_t { ARRAYMODE = 0x01, DICTIONARYMODE};
 
 class SourceTextModule final : public ModuleRecord {
 public:
@@ -81,23 +56,23 @@ public:
 
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-                                     CVector<JSHandle<SourceTextModule>> &stack, int index);
+        CVector<JSHandle<SourceTextModule>> &stack, int index, const void *buffer = nullptr, size_t size = 0);
 
     // 15.2.1.16.5.2 ModuleExecution ( module )
-    static void ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module);
+    static void ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                const void *buffer = nullptr, size_t size = 0);
 
     // 15.2.1.18 Runtime Semantics: GetModuleNamespace ( module )
     static JSHandle<JSTaggedValue> GetModuleNamespace(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     static void AddImportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                               const JSHandle<ImportEntry> &importEntry);
+                               const JSHandle<ImportEntry> &importEntry, size_t idx, uint32_t len);
     static void AddLocalExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                    const JSHandle<ExportEntry> &exportEntry);
+                                    const JSHandle<LocalExportEntry> &exportEntry, size_t idx, uint32_t len);
     static void AddIndirectExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                       const JSHandle<ExportEntry> &exportEntry);
+                                       const JSHandle<IndirectExportEntry> &exportEntry, size_t idx, uint32_t len);
     static void AddStarExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                   const JSHandle<ExportEntry> &exportEntry);
-
+                                   const JSHandle<StarExportEntry> &exportEntry, size_t idx, uint32_t len);
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);
     ACCESSORS(Namespace, NAMESPACE_OFFSET, ECMA_MODULE_FILENAME);
@@ -118,23 +93,78 @@ public:
     // define BitField
     static constexpr size_t STATUS_BITS = 3;
     static constexpr size_t MODULE_TYPE = 2;
+    static constexpr size_t ELEMENT_MODE = 2;
     FIRST_BIT_FIELD(BitField, Status, ModuleStatus, STATUS_BITS)
     NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE, Status)
+    NEXT_BIT_FIELD(BitField, Modes, ModuleModes, ELEMENT_MODE, Types)
 
     DECL_DUMP()
     DECL_VISIT_OBJECT(SOURCE_TEXT_MODULE_OFFSET, EVALUATION_ERROR_OFFSET)
 
     // 15.2.1.16.5 Evaluate()
-    static int Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module);
+    static int Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                        const void *buffer = nullptr, size_t size = 0);
 
     // 15.2.1.16.4 Instantiate()
     static int Instantiate(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     JSTaggedValue GetModuleValue(JSThread *thread, JSTaggedValue key, bool isThrow);
-    JSTaggedValue FindExportName(JSThread *thread, const JSHandle<JSTaggedValue> &localName);
+    static JSTaggedValue GetModuleValueFromArray(const JSTaggedValue &sourceTextmodule, JSTaggedValue &key);
     void StoreModuleValue(JSThread *thread, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
     static constexpr size_t DEFAULT_DICTIONART_CAPACITY = 2;
+    static constexpr size_t DEFAULT_ARRAY_CAPACITY = 2;
+private:
+    void StoreModuleValueFromArray(JSThread *thread, const JSHandle<JSTaggedValue> &key,
+                                   const JSHandle<JSTaggedValue> &value);
+    static int FindEntryFromArray(const JSTaggedValue &dictionary, const JSTaggedValue &key);
+    static JSTaggedValue GetValueFromArray(const JSTaggedValue &dictionary, int entry);
+    static void SetValueFromArray(JSThread *thread, const JSHandle<JSTaggedValue> &dictionary,
+                                  int entry, const JSHandle<JSTaggedValue> &value);
+    static void SetExportName(JSThread *thread,
+                              const JSHandle<JSTaggedValue> &moduleRequest, const JSHandle<SourceTextModule> &module,
+                              CVector<std::string> &exportedNames, JSHandle<TaggedArray> &newExportStarSet);
+    static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread, const JSHandle<JSTaggedValue> &exportName,
+                                                     const JSHandle<JSTaggedValue> &moduleRequest,
+                                                     const JSHandle<SourceTextModule> &module,
+                                                     JSMutableHandle<JSTaggedValue> &starResolution,
+                                                     CVector<std::pair<JSHandle<SourceTextModule>,
+                                                     JSHandle<JSTaggedValue>>> &resolveSet);
+    static void UpdateNameDictionary(JSThread *thread, const JSHandle<JSTaggedValue> &exportName,
+                                     JSHandle<JSTaggedValue> &data, JSHandle<SourceTextModule> &module,
+                                     const JSHandle<JSTaggedValue> &value);
+    template <typename T>
+    static void AddExportName(JSThread *thread, const JSTaggedValue &exportEntry, CVector<std::string> &exportedNames);
+    static JSHandle<JSTaggedValue> ResolveLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
+                                                      const JSHandle<JSTaggedValue> &exportName,
+                                                      const JSHandle<SourceTextModule> &module);
+    static JSHandle<JSTaggedValue> ResolveIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
+                                                         const JSHandle<JSTaggedValue> &exportName,
+                                                         const JSHandle<SourceTextModule> &module,
+                                                         CVector<std::pair<JSHandle<SourceTextModule>,
+                                                         JSHandle<JSTaggedValue>>> &resolveSet);
+    static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
+    static JSTaggedValue FindByImport(const JSTaggedValue &importEntriesTv, const JSTaggedValue &key,
+                                      const JSTaggedValue &dictionary);
+    static JSTaggedValue FindArrayByImport(const JSTaggedValue &importEntriesTv, const JSTaggedValue &key,
+                                           const JSTaggedValue &dictionary);
+    static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
+                                      const JSTaggedValue &dictionary);
+    static JSTaggedValue FindArrayByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
+                                           const JSTaggedValue &dictionary);
+    static void StoreByLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &localExportEntriesTv,
+                                   const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &key,
+                                   JSMutableHandle<NameDictionary> &dataDict);
+    static void StoreArrayByLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &localExportEntriesTv,
+                                        const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &key,
+                                        JSMutableHandle<JSTaggedValue> &dataDict, JSHandle<SourceTextModule> &module);
+    static void StoreByIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &indirectExportEntriesTv,
+                                      const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &key,
+                                      JSMutableHandle<NameDictionary> &dataDict);
+    static void StoreArrayByIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &indirectExportEntriesTv,
+                                           const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &key,
+                                           JSMutableHandle<JSTaggedValue> &dataDict,
+                                           JSHandle<SourceTextModule> &module);
 };
 
 class ResolvedBinding final : public Record {

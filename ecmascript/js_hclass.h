@@ -91,7 +91,8 @@ class ProtoChangeDetails;
         JS_TYPE_ERROR,      /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_AGGREGATE_ERROR, /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_URI_ERROR,       /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_SYNTAX_ERROR,    /* JS_ERROR_LAST /////////////////////////////////////////////////////////////////////// */\
+        JS_SYNTAX_ERROR,    /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_OOM_ERROR,       /* JS_ERROR_LAST /////////////////////////////////////////////////////////////////////// */\
                                                                                                                        \
         JS_REG_EXP,  /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SET,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -102,6 +103,7 @@ class ProtoChangeDetails;
         JS_FINALIZATION_REGISTRY, /* //////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_DATE,     /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ITERATOR, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNCITERATOR, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FORIN_ITERATOR,       /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_MAP_ITERATOR,         /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SET_ITERATOR,         /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -200,7 +202,8 @@ class ProtoChangeDetails;
         PROTO_CHANGE_MARKER, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROTOTYPE_INFO,     /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TEMPLATE_MAP,       /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        PROGRAM, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */       \
+        PROGRAM,       /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        METHOD,     /* ////////////////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         PROMISE_CAPABILITY, /* JS_RECORD_FIRST //////////////////////////////////////////////////////////////////// */ \
         PROMISE_RECORD,     /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -213,7 +216,9 @@ class ProtoChangeDetails;
         MODULE_RECORD, /* //////////////////////////////////////////////////////////////////////////////-PADDING */    \
         SOURCE_TEXT_MODULE_RECORD, /* //////////////////////////////////////////////////////////////////-PADDING */    \
         IMPORTENTRY_RECORD, /* /////////////////////////////////////////////////////////////////////////-PADDING */    \
-        EXPORTENTRY_RECORD, /* /////////////////////////////////////////////////////////////////////////-PADDING */    \
+        LOCAL_EXPORTENTRY_RECORD, /* ///////////////////////////////////////////////////////////////////-PADDING */    \
+        INDIRECT_EXPORTENTRY_RECORD, /* ////////////////////////////////////////////////////////////////-PADDING */    \
+        STAR_EXPORTENTRY_RECORD, /* ////////////////////////////////////////////////////////////////////-PADDING */    \
         RESOLVEDBINDING_RECORD, /* /////////////////////////////////////////////////////////////////////-PADDING */    \
         CELL_RECORD,          /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         COMPLETION_RECORD, /* JS_RECORD_LAST /////////////////////////////////////////////////////////////////////// */\
@@ -239,7 +244,7 @@ class ProtoChangeDetails;
         ECMA_OBJECT_LAST = JS_PROXY,    /* /////////////////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
         JS_ERROR_FIRST = JS_ERROR,      /* ////////////////////////////////////////////////////////////////-PADDING */ \
-        JS_ERROR_LAST = JS_SYNTAX_ERROR, /* ////////////////////////////////////////////////////////////////-PADDING */\
+        JS_ERROR_LAST = JS_OOM_ERROR,    /* ////////////////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
         JS_ITERATOR_FIRST = JS_ITERATOR,      /* //////////////////////////////////////////////////////////-PADDING */ \
         JS_ITERATOR_LAST = JS_STRING_ITERATOR, /* //////////////////////////////////////////////////////////-PADDING */\
@@ -251,7 +256,10 @@ class ProtoChangeDetails;
         JS_TYPED_ARRAY_LAST = JS_BIGUINT64_ARRAY, /* ///////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
         MODULE_RECORD_FIRST = MODULE_RECORD, /* ///////////////////////////////////////////////////////////-PADDING */ \
-        MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD /* //////////////////////////////////////////////////-PADDING */
+        MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
+        TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        TS_TYPE_LAST = TS_INTERFACE_TYPE /* ///////////////////////////////////////////////////////////////-PADDING */
 
 
 enum class JSType : uint8_t {
@@ -275,7 +283,7 @@ public:
     using ClassConstructorBit = IsLiteralBit::NextFlag;                                    // 21
     using ClassPrototypeBit = ClassConstructorBit::NextFlag;                               // 22
     using GlobalConstOrBuiltinsObjectBit = ClassPrototypeBit::NextFlag;                    // 23
-    using IsTSTypeBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                          // 24
+    using IsAOTBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                             // 24
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
     static constexpr int MAX_CAPACITY_OF_OUT_OBJECTS =
@@ -403,9 +411,9 @@ public:
         IsDictionaryBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
-    inline void SetTSType(bool flag) const
+    inline void SetAOT(bool flag) const
     {
-        IsTSTypeBit::Set<uint32_t>(flag, GetBitFieldAddr());
+        IsAOTBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline bool IsJSObject() const
@@ -481,6 +489,11 @@ public:
     {
         JSType jsType = GetObjectType();
         return (JSType::JS_TYPED_ARRAY_FIRST < jsType && jsType <= JSType::JS_TYPED_ARRAY_LAST);
+    }
+
+    inline bool HasOrdinaryGet() const
+    {
+        return (IsTypedArray() || IsSpecialContainer() || IsModuleNamespace());
     }
 
     inline bool IsJSTypedArray() const
@@ -739,6 +752,12 @@ public:
     {
         return GetObjectType() == JSType::JS_LIST_FORMAT;
     }
+
+    inline bool IsMethod() const
+    {
+        return GetObjectType() == JSType::METHOD;
+    }
+
     // non ECMA standard jsapi containers.
     inline bool IsSpecialContainer() const
     {
@@ -871,6 +890,11 @@ public:
     {
         JSType jsType = GetObjectType();
         return jsType >= JSType::JS_ITERATOR_FIRST && jsType <= JSType::JS_ITERATOR_LAST;
+    }
+
+    inline bool IsAsyncIterator() const
+    {
+        return GetObjectType() == JSType::JS_ASYNCITERATOR;
     }
 
     inline bool IsForinIterator() const
@@ -1036,10 +1060,11 @@ public:
         return IsDictionaryBit::Decode(bits);
     }
 
-    inline bool IsTSType() const
+    // created from AOT
+    inline bool IsAOT() const
     {
         uint32_t bits = GetBitField();
-        return IsTSTypeBit::Decode(bits);
+        return IsAOTBit::Decode(bits);
     }
 
     inline bool IsGeneratorFunction() const
@@ -1168,6 +1193,12 @@ public:
         return GetObjectType() == JSType::MACHINE_CODE_OBJECT;
     }
 
+    inline bool IsTSType() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType >= JSType::TS_TYPE_FIRST && jsType <= JSType::TS_TYPE_LAST;
+    }
+
     inline bool IsTSObjectType() const
     {
         return GetObjectType() == JSType::TS_OBJECT_TYPE;
@@ -1239,9 +1270,19 @@ public:
         return GetObjectType() == JSType::IMPORTENTRY_RECORD;
     }
 
-    inline bool IsExportEntry() const
+    inline bool IsLocalExportEntry() const
     {
-        return GetObjectType() == JSType::EXPORTENTRY_RECORD;
+        return GetObjectType() == JSType::LOCAL_EXPORTENTRY_RECORD;
+    }
+
+    inline bool IsIndirectExportEntry() const
+    {
+        return GetObjectType() == JSType::INDIRECT_EXPORTENTRY_RECORD;
+    }
+
+    inline bool IsStarExportEntry() const
+    {
+        return GetObjectType() == JSType::STAR_EXPORTENTRY_RECORD;
     }
 
     inline bool IsResolvedBinding() const

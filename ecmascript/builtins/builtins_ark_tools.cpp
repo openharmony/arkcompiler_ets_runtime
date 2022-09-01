@@ -86,7 +86,7 @@ JSTaggedValue BuiltinsArkTools::IsTSHClass(EcmaRuntimeCallInfo *info)
     ASSERT(info->GetArgsNumber() == 1);
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
     JSHClass* hclass = object->GetTaggedObject()->GetClass();
-    bool isTSHClass = hclass->IsTSType();
+    bool isTSHClass = hclass->IsAOT();
     return GetTaggedBoolean(isTSHClass);
 }
 

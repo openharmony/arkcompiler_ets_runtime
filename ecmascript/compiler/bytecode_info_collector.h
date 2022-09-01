@@ -18,6 +18,7 @@
 
 #include "ecmascript/ecma_vm.h"
 
+#include "ecmascript/jspandafile/method_literal.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -28,10 +29,11 @@ public:
     enum FixInsIndex : uint8_t { FIX_ONE = 1, FIX_TWO = 2, FIX_FOUR = 4 };
 
     struct MethodPcInfo {
-        std::vector<const JSMethod *> methods;
+        std::vector<const MethodLiteral *> methods;
         std::map<uint8_t *, uint8_t *> byteCodeCurPrePc {};
         std::vector<CfgInfo> bytecodeBlockInfos {};
         std::map<const uint8_t *, int32_t> pcToBCOffset {};
+        uint32_t methodsSize {0};
     };
 
     struct BCInfo {
@@ -59,16 +61,17 @@ private:
     static void FixOpcode(uint8_t *pc);
 
     // need to remove in the future
-    static void UpdateICOffset(JSMethod *method, uint8_t *pc);
+    static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
 
     // need to remove in the future
     static void FixInstructionId32(const BytecodeInstruction &inst, uint32_t index, uint32_t fixOrder = 0);
 
     // need to remove in the future
-    static void TranslateBCIns(JSPandaFile *jsPandaFile, const BytecodeInstruction &bcIns, const JSMethod *method);
+    static void TranslateBCIns(JSPandaFile *jsPandaFile, const BytecodeInstruction &bcIns,
+                               const MethodLiteral *method);
 
     static void CollectMethodPcs(JSPandaFile *jsPandaFile, const uint32_t insSz, const uint8_t *insArr,
-                                 const JSMethod *method, std::vector<MethodPcInfo> &methodPcInfos);
+                                 const MethodLiteral *method, std::vector<MethodPcInfo> &methodPcInfos);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H

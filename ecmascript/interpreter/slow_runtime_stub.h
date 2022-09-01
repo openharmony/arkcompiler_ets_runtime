@@ -73,12 +73,6 @@ public:
 
     static JSTaggedValue CreateGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
     static JSTaggedValue SuspendGenerator(JSThread *thread, JSTaggedValue genObj, JSTaggedValue value);
-    static JSTaggedValue SuspendGeneratorHelper(JSThread *thread, JSHandle<JSGeneratorObject> generatorObjectHandle,
-                                                JSHandle<GeneratorContext> genContextHandle, JSTaggedValue value);
-    static JSTaggedValue SuspendAsyncGeneratorHelper(JSThread *thread,
-                                                     JSHandle<JSAsyncGeneratorObject> generatorObjectHandle,
-                                                     JSHandle<GeneratorContext> genContextHandle,
-                                                     JSTaggedValue value);
     static JSTaggedValue AsyncFunctionAwaitUncaught(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value);
     static JSTaggedValue AsyncFunctionResolveOrReject(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value,
                                                       bool is_resolve);
@@ -103,7 +97,7 @@ public:
     static JSTaggedValue CreateEmptyObject(JSThread *thread, ObjectFactory *factory, JSHandle<GlobalEnv> globalEnv);
     static JSTaggedValue CreateObjectWithBuffer(JSThread *thread, ObjectFactory *factory, JSObject *literal);
     static JSTaggedValue CreateObjectHavingMethod(JSThread *thread, ObjectFactory *factory, JSObject *literal,
-                                                  JSTaggedValue env, ConstantPool *constpool);
+                                                  JSTaggedValue env);
     static JSTaggedValue SetObjectWithProto(JSThread *thread, JSTaggedValue proto, JSTaggedValue obj);
     static JSTaggedValue CreateArrayWithBuffer(JSThread *thread, ObjectFactory *factory, JSArray *literal);
 
@@ -152,21 +146,26 @@ public:
                                    uint16_t length);
     static JSTaggedValue SuperCallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                          JSTaggedValue array);
+    static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier);
     static JSTaggedValue DefineMethod(JSThread *thread, JSFunction *func, JSTaggedValue homeObject);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
                                         JSTaggedValue thisFunc);
-    static JSTaggedValue NotifyInlineCache(JSThread *thread, JSFunction *func, JSMethod *method);
+    static JSTaggedValue NotifyInlineCache(JSThread *thread, JSFunction *func, Method *method);
     static JSTaggedValue ThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);
 
     static JSTaggedValue ResolveClass(JSThread *thread, JSTaggedValue ctor, TaggedArray *literal, JSTaggedValue base,
-                                      JSTaggedValue lexenv, ConstantPool *constpool);
+                                      JSTaggedValue lexenv);
     static JSTaggedValue CloneClassFromTemplate(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base,
-                                                JSTaggedValue lexenv, ConstantPool *constpool);
+                                                JSTaggedValue lexenv);
+    static JSTaggedValue CreateClassWithBuffer(JSThread *thread, JSTaggedValue base,
+                                               JSTaggedValue lexenv, JSTaggedValue constpool,
+                                               const uint16_t methodId);
     static JSTaggedValue SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length);
     static JSTaggedValue GetModuleNamespace(JSThread *thread, JSTaggedValue localName);
     static JSTaggedValue LdBigInt(JSThread *thread, JSTaggedValue numberBigInt);
     static JSTaggedValue ThrowTypeError(JSThread *thread, const char *message);
+    static JSTaggedValue SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base);
 
     static JSTaggedValue AsyncGeneratorResolve(JSThread *thread, JSTaggedValue asyncFuncObj,
                                                const JSTaggedValue value, JSTaggedValue flag);
@@ -177,7 +176,6 @@ public:
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);
     static JSTaggedValue GetCallSpreadArgs(JSThread *thread, JSTaggedValue array);
-    static JSTaggedValue SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_SLOW_RUNTIME_STUB_H

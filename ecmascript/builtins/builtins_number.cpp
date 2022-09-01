@@ -218,11 +218,11 @@ JSTaggedValue BuiltinsNumber::ParseInt(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsNumber::ToExponential(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Number, ToExponential);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Number, ToExponential);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let x be ? thisNumberValue(this value).
-    JSTaggedNumber value = ThisNumberValue(argv);
+    JSTaggedNumber value = ThisNumberValue(thread, argv);
     // 2. ReturnIfAbrupt(x).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -266,11 +266,11 @@ JSTaggedValue BuiltinsNumber::ToExponential(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsNumber::ToFixed(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Number, ToFixed);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Number, ToFixed);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let x be ? thisNumberValue(this value).
-    JSTaggedNumber value = ThisNumberValue(argv);
+    JSTaggedNumber value = ThisNumberValue(thread, argv);
     // 2. ReturnIfAbrupt(x).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. Let f be ToInteger(fractionDigits). (If fractionDigits is undefined, this step produces the value 0).
@@ -290,7 +290,8 @@ JSTaggedValue BuiltinsNumber::ToFixed(EcmaRuntimeCallInfo *argv)
     // 6. If x is NaN, return the String "NaN".
     double valueNumber = value.GetNumber();
     if (std::isnan(valueNumber)) {
-        return GetTaggedString(thread, "NaN");
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        return globalConst->GetNanCapitalString();
     }
     // 9. If x  1021, then
     //    a. Let m = ToString(x).
@@ -310,12 +311,12 @@ JSTaggedValue BuiltinsNumber::ToLocaleString(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Number, ToLocaleString);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let x be ? thisNumberValue(this value).
-    JSTaggedNumber x = ThisNumberValue(argv);
+    JSTaggedNumber x = ThisNumberValue(thread, argv);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 2. Let numberFormat be ? Construct(%NumberFormat%, « locales, options »).
-    JSHandle<JSTaggedValue> ctor = thread->GetEcmaVM()->GetGlobalEnv()->GetNumberFormatFunction();
+    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetNumberFormatFunction());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor);
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
     JSHandle<JSNumberFormat> numberFormat = JSHandle<JSNumberFormat>::Cast(obj);
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
@@ -332,11 +333,11 @@ JSTaggedValue BuiltinsNumber::ToLocaleString(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsNumber::ToPrecision(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Number, ToPrecision);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Number, ToPrecision);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let x be ? thisNumberValue(this value).
-    JSTaggedNumber value = ThisNumberValue(argv);
+    JSTaggedNumber value = ThisNumberValue(thread, argv);
     // 2. ReturnIfAbrupt(x).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -376,11 +377,11 @@ JSTaggedValue BuiltinsNumber::ToPrecision(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Number, ToString);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Number, ToString);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let x be ? thisNumberValue(this value).
-    JSTaggedNumber value = ThisNumberValue(argv);
+    JSTaggedNumber value = ThisNumberValue(thread, argv);
     // 2. ReturnIfAbrupt(x).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -425,17 +426,18 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsNumber::ValueOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Number, ValueOf);
-    // 1. Let x be ? thisNumberValue(this value).
-    JSTaggedValue x = ThisNumberValue(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Number, ValueOf);
+    // 1. Let x be ? thisNumberValue(this value).
+    JSTaggedValue x = ThisNumberValue(thread, argv);
+    
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return x;
 }
 
-JSTaggedNumber BuiltinsNumber::ThisNumberValue(EcmaRuntimeCallInfo *argv)
+JSTaggedNumber BuiltinsNumber::ThisNumberValue(JSThread *thread, EcmaRuntimeCallInfo *argv)
 {
-    BUILTINS_API_TRACE(argv->GetThread(), Number, ThisNumberValue);
+    BUILTINS_API_TRACE(thread, Number, ThisNumberValue);
     JSHandle<JSTaggedValue> value = GetThis(argv);
     if (value->IsNumber()) {
         return JSTaggedNumber(value.GetTaggedValue());
@@ -446,7 +448,6 @@ JSTaggedNumber BuiltinsNumber::ThisNumberValue(EcmaRuntimeCallInfo *argv)
             return JSTaggedNumber(primitive);
         }
     }
-    JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     THROW_TYPE_ERROR_AND_RETURN(thread, "not number type", JSTaggedNumber::Exception());
 }

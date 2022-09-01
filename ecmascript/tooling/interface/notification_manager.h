@@ -30,7 +30,7 @@ public:
 
     virtual void LoadModule(std::string_view name) = 0;
 
-    virtual void BytecodePcChanged(JSThread *thread, JSMethod *method,
+    virtual void BytecodePcChanged(JSThread *thread, JSHandle<Method> method,
                                    uint32_t bc_offset) = 0;
 
     virtual void VmStart() = 0;
@@ -61,10 +61,11 @@ public:
         }
     }
 
-    void BytecodePcChangedEvent(JSThread *thread, JSMethod *method, uint32_t bcOffset) const
+    void BytecodePcChangedEvent(JSThread *thread, Method *method, uint32_t bcOffset) const
     {
         if (UNLIKELY(listener_ != nullptr)) {
-            listener_->BytecodePcChanged(thread, method, bcOffset);
+            JSHandle<Method> methodHandle(thread, method);
+            listener_->BytecodePcChanged(thread, methodHandle, bcOffset);
         }
     }
 

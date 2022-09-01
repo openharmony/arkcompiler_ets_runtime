@@ -24,6 +24,9 @@ namespace panda::ecmascript::kungfu {
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define BUILTINS_STUB_LIST(V)                       \
     V(CharCodeAt)                                   \
+    V(IndexOf)                                      \
+    V(Substring)                                    \
+    V(CharAt)                                       \
 
 class BuiltinsStubCSigns {
 public:

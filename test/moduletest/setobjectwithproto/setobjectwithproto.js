@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:setobjectwithproto
+ * @tc.desc:test set object with proto
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var object = {
     __proto__: null
 };

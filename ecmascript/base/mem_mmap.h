@@ -16,17 +16,24 @@
 #ifndef ECMASCRIPT_BASE_MEM_MMAP_H
 #define ECMASCRIPT_BASE_MEM_MMAP_H
 
+#include <cstdlib>
+#include "ecmascript/common.h"
+
+#ifdef PANDA_TARGET_WINDOWS
+#define PROT_READ 0x1
+#define PROT_WRITE 0x2
+#define PROT_EXEC 0x4
+#define PROT_NONE 0x0
+#endif
+
 namespace panda::ecmascript::base {
 class MemMmap {
 public:
     MemMmap() = default;
     ~MemMmap() = default;
 
-#ifdef PANDA_TARGET_WINDOWS
-    static void *mmap(size_t size, int fd, off_t offset);
-#endif
-    static void *Mmap(size_t allocSize);
-    static void Munmap(void *addr, size_t allocSize);
+    static void* PUBLIC_API Mmap(size_t allocSize, bool executable = true);
+    static int PUBLIC_API Munmap(void *addr, size_t allocSize);
 };
 }  // namespace panda::ecmascript::base
 

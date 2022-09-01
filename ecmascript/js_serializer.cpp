@@ -260,6 +260,7 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
         case JSType::JS_AGGREGATE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
             return WriteJSError(value);
         case JSType::JS_DATE:
             return WriteJSDate(value);
@@ -344,6 +345,8 @@ bool JSSerializer::WriteJSErrorHeader(JSType type)
             return WriteType(SerializationUID::URI_ERROR);
         case JSType::JS_SYNTAX_ERROR:
             return WriteType(SerializationUID::SYNTAX_ERROR);
+        case JSType::JS_OOM_ERROR:
+            return WriteType(SerializationUID::OOM_ERROR);
         default:
             UNREACHABLE();
     }
@@ -969,6 +972,7 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
         case SerializationUID::AGGREGATE_ERROR:
         case SerializationUID::URI_ERROR:
         case SerializationUID::SYNTAX_ERROR:
+        case SerializationUID::OOM_ERROR:
             return ReadJSError(uid);
         case SerializationUID::JS_DATE:
             return ReadJSDate();
@@ -1046,7 +1050,10 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
             errorType = base::ErrorType::URI_ERROR;
             break;
         case SerializationUID::SYNTAX_ERROR:
-            errorType = base::ErrorType::URI_ERROR;
+            errorType = base::ErrorType::SYNTAX_ERROR;
+            break;
+        case SerializationUID::OOM_ERROR:
+            errorType = base::ErrorType::OOM_ERROR;
             break;
         default:
             UNREACHABLE();
@@ -1061,9 +1068,8 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSDate()
 {
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> dateFunction = env->GetDateFunction();
-    JSHandle<JSDate> date =
-        JSHandle<JSDate>::Cast(factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(dateFunction), dateFunction));
+    JSHandle<JSFunction> dateFunction(env->GetDateFunction());
+    JSHandle<JSDate> date = JSHandle<JSDate>::Cast(factory_->NewJSObjectByConstructor(dateFunction));
     JSHandle<JSTaggedValue> dateTag = JSHandle<JSTaggedValue>::Cast(date);
     referenceMap_.insert(std::pair(objectId_++, dateTag));
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(dateTag)) {
@@ -1139,9 +1145,8 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadEcmaString()
 JSHandle<JSTaggedValue> JSDeserializer::ReadPlainObject()
 {
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> objFunc(thread_, env->GetObjectFunction().GetObject<JSFunction>());
-    JSHandle<JSObject> jsObject =
-        thread_->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+    JSHandle<JSFunction> objFunc(env->GetObjectFunction());
+    JSHandle<JSObject> jsObject = thread_->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(objFunc);
     JSHandle<JSTaggedValue> objTag = JSHandle<JSTaggedValue>::Cast(jsObject);
     referenceMap_.insert(std::pair(objectId_++, objTag));
     if (!DefinePropertiesAndElements(objTag)) {
@@ -1184,9 +1189,8 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadNativeBindingObject()
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSMap()
 {
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> mapFunction = env->GetBuiltinsMapFunction();
-    JSHandle<JSMap> jsMap =
-        JSHandle<JSMap>::Cast(factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(mapFunction), mapFunction));
+    JSHandle<JSFunction> mapFunction(env->GetBuiltinsMapFunction());
+    JSHandle<JSMap> jsMap = JSHandle<JSMap>::Cast(factory_->NewJSObjectByConstructor(mapFunction));
     JSHandle<JSTaggedValue> mapTag = JSHandle<JSTaggedValue>::Cast(jsMap);
     referenceMap_.insert(std::pair(objectId_++, mapTag));
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(mapTag)) {
@@ -1215,9 +1219,8 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSMap()
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSSet()
 {
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> setFunction = env->GetBuiltinsSetFunction();
-    JSHandle<JSSet> jsSet =
-        JSHandle<JSSet>::Cast(factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(setFunction), setFunction));
+    JSHandle<JSFunction> setFunction(env->GetBuiltinsSetFunction());
+    JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(factory_->NewJSObjectByConstructor(setFunction));
     JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsSet);
     referenceMap_.insert(std::pair(objectId_++, setTag));
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(setTag)) {
@@ -1242,8 +1245,8 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSSet()
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSRegExp()
 {
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> regexpFunction = env->GetRegExpFunction();
-    JSHandle<JSObject> obj = factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(regexpFunction), regexpFunction);
+    JSHandle<JSFunction> regexpFunction(env->GetRegExpFunction());
+    JSHandle<JSObject> obj = factory_->NewJSObjectByConstructor(regexpFunction);
     JSHandle<JSRegExp> regExp = JSHandle<JSRegExp>::Cast(obj);
     JSHandle<JSTaggedValue> regexpTag = JSHandle<JSTaggedValue>::Cast(regExp);
     referenceMap_.insert(std::pair(objectId_++, regexpTag));
@@ -1321,7 +1324,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
             UNREACHABLE();
     }
     JSHandle<JSTypedArray> typedArray =
-        JSHandle<JSTypedArray>::Cast(factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(target), target));
+        JSHandle<JSTypedArray>::Cast(factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(target)));
     obj = JSHandle<JSObject>::Cast(typedArray);
     objTag = JSHandle<JSTaggedValue>::Cast(obj);
     referenceMap_.insert(std::pair(objectId_++, objTag));

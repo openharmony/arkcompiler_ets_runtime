@@ -89,12 +89,12 @@ private:
     Area *NewArea(size_t size);
     void ReleaseMemory();
 
-    uintptr_t ptr_{0};
-    uintptr_t end_{0};
+    uintptr_t ptr_ {0};
+    uintptr_t end_ {0};
 
-    Area *currentArea_{nullptr};
-    EcmaList<Area> areaList_{};
-    NativeAreaAllocator *allocator_{nullptr};
+    Area *currentArea_ {nullptr};
+    EcmaList<Area> areaList_ {};
+    NativeAreaAllocator *allocator_ {nullptr};
 };
 }  // namespace panda::ecmascript
 

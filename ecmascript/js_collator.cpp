@@ -366,9 +366,8 @@ JSHandle<JSObject> JSCollator::ResolvedOptions(JSThread *thread, const JSHandle<
     auto globalConst = thread->GlobalConstants();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
-    JSHandle<JSTaggedValue> ctor = env->GetObjectFunction();
-    JSHandle<JSFunction> funCtor = JSHandle<JSFunction>::Cast(env->GetObjectFunction());
-    JSHandle<JSObject> options(factory->NewJSObjectByConstructor(funCtor, ctor));
+    JSHandle<JSFunction> funCtor(env->GetObjectFunction());
+    JSHandle<JSObject> options(factory->NewJSObjectByConstructor(funCtor));
 
     // [[Locale]]
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();

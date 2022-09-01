@@ -46,21 +46,16 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.currentFrame_ = jsThread->glueData_.frameBase_ + maxStackSize;
     EcmaInterpreter::InitStackFrame(jsThread);
 
-    // init stack limit of asm interpreter
-    ASSERT(GetCurrentStackPosition() >
-        (EcmaParamConfiguration::GetDefalutStackSize() - EcmaParamConfiguration::GetDefalutReservedStackSize()));
-    // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
-    // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
-    // when push other data.
-    jsThread->glueData_.stackLimit_ = GetCurrentStackPosition() -
-        (EcmaParamConfiguration::GetDefalutStackSize() - EcmaParamConfiguration::GetDefalutReservedStackSize());
+    if (jsThread->IsAsmInterpreter()) {
+        jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
+    }
     return jsThread;
 }
 
 JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 {
     auto chunk = vm->GetChunk();
-    globalStorage_ = chunk->New<EcmaGlobalStorage>(this, chunk);
+    globalStorage_ = chunk->New<EcmaGlobalStorage>(this, vm->GetNativeAreaAllocator());
     propertiesCache_ = new PropertiesCache();
     vmThreadControl_ = new VmThreadControl();
 }
@@ -148,7 +143,7 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     FrameHandler frameHandler(this);
     frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
     // visit tagged handle storage roots
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
     IterateHandleWithCheck(visitor, rangeVisitor);
 #else
     if (currentHandleStorageIndex_ != -1) {
@@ -170,7 +165,7 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
 #endif
 }
 
-#if ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
 void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
 {
     size_t handleCount = 0;
@@ -389,7 +384,58 @@ void JSThread::CheckJSTaggedType(JSTaggedType value) const
 
 void JSThread::CollectBCOffsetInfo()
 {
-    FrameHandler frameHandler(this);
-    frameHandler.CollectBCOffsetInfo();
+    FrameBcCollector collector(this);
+    collector.CollectBCOffsetInfo();
+}
+
+// static
+size_t JSThread::GetAsmStackLimit()
+{
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+    // js stack limit
+    size_t result = GetCurrentStackPosition() - EcmaParamConfiguration::GetDefalutStackSize();
+    pthread_attr_t attr;
+    int ret = pthread_getattr_np(pthread_self(), &attr);
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "Get current thread attr failed";
+        return result;
+    }
+
+    void *stackAddr = nullptr;
+    size_t size = 0;
+    ret = pthread_attr_getstack(&attr, &stackAddr, &size);
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "Get current thread stack size failed";
+        if (pthread_attr_destroy(&attr) != 0) {
+            LOG_ECMA(ERROR) << "Destroy current thread attr failed";
+        }
+        return result;
+    }
+
+    uintptr_t threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr);
+    if (result < threadStackLimit) {
+        result = threadStackLimit;
+    }
+
+    uintptr_t threadStackStart = threadStackLimit + size;
+    LOG_ECMA(INFO) << "Current thread stack start:" << threadStackStart
+                   << " Used stack before js stack start:" << (threadStackStart - GetCurrentStackPosition())
+                   << " Current thread asm stack limit:" << result;
+    ret = pthread_attr_destroy(&attr);
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "Destroy current thread attr failed";
+    }
+
+    // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
+    // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
+    // when push other data.
+    result += EcmaParamConfiguration::GetDefaultReservedStackSize();
+    if (threadStackStart <= result) {
+        LOG_ECMA(FATAL) << "Too small stackSize to run jsvm";
+    }
+    return result;
+#else
+    return 0;
+#endif
 }
 }  // namespace panda::ecmascript

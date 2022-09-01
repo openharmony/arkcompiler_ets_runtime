@@ -21,6 +21,7 @@
 namespace panda::ecmascript::tooling {
 void DebuggerExecutor::Initialize(const EcmaVM *vm)
 {
+    [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
     Local<ObjectRef> globalObj = JSNApi::GetGlobalObject(vm);
     globalObj->Set(vm, StringRef::NewFromUtf8(vm, "debuggerSetValue"), FunctionRef::New(
         const_cast<panda::EcmaVM*>(vm), DebuggerExecutor::DebuggerSetValue));
@@ -45,7 +46,7 @@ Local<JSValueRef> DebuggerExecutor::DebuggerGetValue(JsiRuntimeCallInfo *runtime
     ASSERT(frameHandler);
 
     Local<JSValueRef> value = GetValue(vm, frameHandler.get(), Local<StringRef>(name));
-    if (!value.IsEmpty() && !value->IsException()) {
+    if (!value.IsEmpty()) {
         return value;
     }
 
@@ -56,7 +57,7 @@ Local<JSValueRef> DebuggerExecutor::DebuggerGetValue(JsiRuntimeCallInfo *runtime
 
     std::string varName = Local<StringRef>(name)->ToString();
     ThrowException(vm, varName + " is not defined");
-    return JSValueRef::Exception(vm);
+    return Local<JSValueRef>();
 }
 
 Local<JSValueRef> DebuggerExecutor::DebuggerSetValue(JsiRuntimeCallInfo *runtimeCallInfo)
@@ -81,7 +82,7 @@ Local<JSValueRef> DebuggerExecutor::DebuggerSetValue(JsiRuntimeCallInfo *runtime
 
     std::string varName = StringRef::Cast(*name)->ToString();
     ThrowException(vm, varName + " is not defined");
-    return JSValueRef::Exception(vm);
+    return Local<JSValueRef>();
 }
 
 Local<JSValueRef> DebuggerExecutor::GetValue(const EcmaVM *vm, const FrameHandler *frameHandler, Local<StringRef> name)
@@ -96,7 +97,7 @@ Local<JSValueRef> DebuggerExecutor::GetValue(const EcmaVM *vm, const FrameHandle
         return value;
     }
     value = GetGlobalValue(vm, name);
-    if (!value.IsEmpty() && !value->IsException()) {
+    if (!value.IsEmpty()) {
         return value;
     }
 

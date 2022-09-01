@@ -62,6 +62,15 @@ static constexpr size_t INT16_BITS = 16;
 static constexpr size_t INT8_BITS = 8;
 static constexpr size_t JS_DTOA_BUF_SIZE = 128;
 
+// help defines for random
+static constexpr int LEFT52 = 52 ;
+static constexpr int RIGHT12 = 12;
+static constexpr uint32_t USE_LEFT = 0x3ff;
+static constexpr int SECONDS_TO_SUBTLE = 1000000;
+static constexpr int RIGHT27 = 27;
+static constexpr int LEFT25 = 25;
+static constexpr uint64_t  GET_MULTIPLY = 0x2545F4914F6CDD1D;
+
 class NumberHelper {
 public:
     static inline JSTaggedType GetNaN()
@@ -104,6 +113,14 @@ private:
     static bool GotoNonspace(uint8_t **ptr, const uint8_t *end);
     static void GetBase(double d, int digits, int *decpt, char *buf, char *bufTmp, int size);
     static int GetMinmumDigits(double d, int *decpt, char *buf);
+};
+class RandomGenerator {
+public:
+    static uint64_t& GetRandomState();
+    static uint64_t XorShift64(uint64_t *pVal);
+    static void InitRandom();
+private:
+    static thread_local uint64_t randomState;
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_NUMBER_HELPER_H

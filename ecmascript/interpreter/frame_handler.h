@@ -18,10 +18,10 @@
 
 #include "ecmascript/frames.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/method.h"
 
 namespace panda {
 namespace ecmascript {
@@ -34,6 +34,7 @@ namespace kungfu {
 class FrameHandler {
 public:
     explicit FrameHandler(const JSThread *thread);
+
     explicit FrameHandler(const JSThread *thread, void *fp);
     ~FrameHandler() = default;
 
@@ -144,8 +145,8 @@ public:
     JSTaggedValue GetAcc() const;
     uint32_t GetNumberArgs();
     uint32_t GetBytecodeOffset() const;
-    JSMethod *GetMethod() const;
-    JSMethod *CheckAndGetMethod() const;
+    Method *GetMethod() const;
+    Method *CheckAndGetMethod() const;
     JSTaggedValue GetFunction() const;
     const uint8_t *GetPc() const;
     ConstantPool *GetConstpool() const;
@@ -170,10 +171,6 @@ public:
     void IterateAssembleStack(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor);
     void IterateEcmaRuntimeCallInfo(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
-
-    // for collecting bc offset in aot
-    void CollectBCOffsetInfo();
-    std::string GetAotExceptionFuncName(JSTaggedType* fp) const;
 
 private:
     FrameType GetFrameType() const
@@ -208,6 +205,19 @@ private:
     [[maybe_unused]] JSThread *thread_ {nullptr};
     const JSTaggedType *oldSp_ {nullptr};
 };
-} // namespace ecmascript
+
+class FrameBcCollector {
+public:
+    explicit FrameBcCollector(const JSThread *thread) : thread_(thread)
+    {
+    }
+    ~FrameBcCollector() = default;
+    // for collecting bc offset in aot
+    void CollectBCOffsetInfo();
+private:
+    std::string GetAotExceptionFuncName(JSTaggedType* fp) const;
+    const JSThread *thread_ {nullptr};
+};
+}; // namespace ecmascript
 }  // namespace panda
 #endif  // ECMASCRIPT_INTERPRETER_FRAME_HANDLER_H

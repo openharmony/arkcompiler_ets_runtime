@@ -24,7 +24,7 @@
 #include "ecmascript/tooling/interface/stream.h"
 
 namespace panda::ecmascript {
-HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), hprofs_(vm->GetChunk())
+HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm)
 {
     jsonSerializer_ =
         const_cast<NativeAreaAllocator *>(vm->GetNativeAreaAllocator())->New<HeapSnapshotJSONSerializer>();

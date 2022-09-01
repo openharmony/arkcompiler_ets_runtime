@@ -21,7 +21,7 @@
 #include <sstream>
 
 #include "ecmascript/snapshot/mem/encode_bit.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/object_xray.h"
 
@@ -34,7 +34,7 @@ class JSPandaFile;
 enum class SnapshotType {
     VM_ROOT,
     BUILTINS,
-    TS_LOADER
+    ETSO
 };
 
 using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;
@@ -52,7 +52,8 @@ public:
     void SerializeObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                          std::unordered_map<uint64_t, ObjectEncode> *data);
     void Relocate(SnapshotType type, const JSPandaFile *jsPandaFile, uint64_t rootObjSize);
-    void RelocateSpaceObject(Space* space, SnapshotType type, JSMethod* methods, size_t methodNums, size_t rootObjSize);
+    void RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
+                             size_t methodNums, size_t rootObjSize);
     void SerializePandaFileMethod();
     EncodeBit EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                  std::unordered_map<uint64_t, ObjectEncode> *data);
@@ -87,7 +88,6 @@ public:
         return oldLocalSpace_;
     }
 
-    void GeneratedNativeMethod();
     size_t GetNativeTableSize() const;
 
 private:
@@ -101,12 +101,12 @@ private:
     void DeserializeTaggedField(uint64_t *value);
     void DeserializeNativePointer(uint64_t *value);
     void DeserializeClassWord(TaggedObject *object);
-    void DeserializePandaMethod(uintptr_t begin, uintptr_t end, JSMethod *methods, size_t &methodNums, size_t &others);
+    void DeserializePandaMethod(uintptr_t begin, uintptr_t end, MethodLiteral *methods,
+                                size_t &methodNums, size_t &others);
     void DeserializeSpaceObject(uintptr_t beginAddr, Space* space, size_t spaceObjSize);
     void HandleRootObject(SnapshotType type, uintptr_t rootObjectAddr, size_t objType, size_t &constSpecialIndex);
 
     EncodeBit NativePointerToEncodeBit(void *nativePointer);
-    void *NativePointerEncodeBitToAddr(EncodeBit nativeBit);
     size_t SearchNativeMethodIndex(void *nativePointer);
     uintptr_t TaggedObjectEncodeBitToAddr(EncodeBit taggedBit);
     void WriteSpaceObjectToFile(Space* space, std::fstream &write);
@@ -129,6 +129,31 @@ private:
 
     NO_COPY_SEMANTIC(SnapshotProcessor);
     NO_MOVE_SEMANTIC(SnapshotProcessor);
+};
+
+class PUBLIC_API ConstantPoolProcessor {
+public:
+    ConstantPoolProcessor(EcmaVM *vm) : vm_(vm), index_(0) {}
+
+    void InitializeConstantPoolInfos(size_t nums);
+
+    void CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool);
+
+    static void RestoreConstantPoolInfo(JSThread *thread, JSTaggedValue constPoolInfo,
+                                        const JSPandaFile* pf, JSHandle<ConstantPool> constPool);
+
+    JSTaggedValue GetInfos() const
+    {
+        return infos_;
+    }
+
+private:
+    JSTaggedValue GenerateConstantPoolInfo(const JSHandle<ConstantPool> constantPool);
+
+    JSTaggedValue infos_ {JSTaggedValue::Hole()};
+    EcmaVM *vm_ {nullptr};
+    size_t index_ {0};
+    static const int ITEM_SIZE = 2;
 };
 }  // namespace panda::ecmascript
 

@@ -87,9 +87,9 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    JSHandle<JSFunction> constructor(GetConstructor(argv));
     JSHandle<JSDate> dateObject =
-        JSHandle<JSDate>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+        JSHandle<JSDate>::Cast(factory->NewJSObjectByConstructor(constructor, newTarget));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     dateObject->SetTimeValue(thread, timeValue);
     return JSTaggedValue(JSObject::Cast(static_cast<TaggedObject *>(*dateObject)));
@@ -264,8 +264,8 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let dateFormat be ? Construct(%DateTimeFormat%, « locales, options »).
-    JSHandle<JSTaggedValue> ctor = env->GetDateTimeFormatFunction();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor);
+    JSHandle<JSFunction> ctor(env->GetDateTimeFormatFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
     JSHandle<JSDateTimeFormat> dtf = JSDateTimeFormat::InitializeDateTimeFormat(
         thread, JSHandle<JSDateTimeFormat>::Cast(obj), locales, JSHandle<JSTaggedValue>::Cast(dateTimeOptions));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -307,8 +307,8 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let dateFormat be ? Construct(%DateTimeFormat%, « locales, options »).
-    JSHandle<JSTaggedValue> ctor = env->GetDateTimeFormatFunction();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor);
+    JSHandle<JSFunction> ctor(env->GetDateTimeFormatFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
     JSHandle<JSDateTimeFormat> dtf = JSDateTimeFormat::InitializeDateTimeFormat(
         thread, JSHandle<JSDateTimeFormat>::Cast(obj), locales, JSHandle<JSTaggedValue>::Cast(dateTimeOptions));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -350,8 +350,8 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let dateFormat be ? Construct(%DateTimeFormat%, « locales, options »).
-    JSHandle<JSTaggedValue> ctor = env->GetDateTimeFormatFunction();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor);
+    JSHandle<JSFunction> ctor(env->GetDateTimeFormatFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
     JSHandle<JSDateTimeFormat> dtf = JSDateTimeFormat::InitializeDateTimeFormat(
         thread, JSHandle<JSDateTimeFormat>::Cast(obj), locales, JSHandle<JSTaggedValue>::Cast(dateTimeOptions));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

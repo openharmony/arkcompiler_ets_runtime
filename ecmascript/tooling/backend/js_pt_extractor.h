@@ -16,10 +16,10 @@
 #ifndef ECMASCRIPT_TOOLING_BACKEND_JS_PT_EXTRACTOR_H
 #define ECMASCRIPT_TOOLING_BACKEND_JS_PT_EXTRACTOR_H
 
-#include "ecmascript/js_method.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 #include "ecmascript/tooling/backend/js_debugger_interface.h"
+#include "ecmascript/tooling/base/pt_method.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::tooling {
@@ -29,10 +29,11 @@ class JSPtExtractor : public DebugInfoExtractor {
 public:
     class SingleStepper {
     public:
-        enum class Type { INTO, OVER, OUT };
-        SingleStepper(const EcmaVM *ecmaVm, JSMethod *method, std::list<JSPtStepRange> stepRanges, Type type)
+        enum class Type { STEP_INTO, STEP_OVER, STEP_OUT };
+        SingleStepper(const EcmaVM *ecmaVm, std::unique_ptr<PtMethod> ptMethod,
+            std::list<JSPtStepRange> stepRanges, Type type)
             : ecmaVm_(ecmaVm),
-              method_(method),
+              method_(std::move(ptMethod)),
               stepRanges_(std::move(stepRanges)),
               stackDepth_(GetStackDepth()),
               type_(type)
@@ -49,7 +50,7 @@ public:
         bool InStepRange(uint32_t pc) const;
 
         const EcmaVM *ecmaVm_;
-        JSMethod *method_;
+        std::unique_ptr<PtMethod> method_;
         std::list<JSPtStepRange> stepRanges_;
         uint32_t stackDepth_;
         Type type_;

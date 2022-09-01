@@ -46,8 +46,8 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetConstantPool(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetFunctionExtraInfo(thread, JSTaggedValue::Undefined());
     func->SetFunctionKind(kind);
     func->SetStrict(strict);
@@ -66,9 +66,9 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
             if (kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
                 JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
                 ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-                JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+                JSHandle<JSFunction> objFun(env->GetObjectFunction());
                 JSHandle<JSObject> initialGeneratorFuncPrototype =
-                    factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+                    factory->NewJSObjectByConstructor(objFun);
                 JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
                 func->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
             }
@@ -89,8 +89,8 @@ JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, ObjectFa
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> funPro = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> funPro = factory->NewJSObjectByConstructor(objFun);
     func->SetFunctionPrototype(thread, funPro.GetTaggedValue());
 
     // set "constructor" in prototype
@@ -152,7 +152,11 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
 
 JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> &self)
 {
-    JSMethod *target = JSHandle<JSFunction>::Cast(self)->GetCallTarget();
+    JSTaggedValue method = JSHandle<JSFunction>::Cast(self)->GetMethod();
+    if (method.IsUndefined()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<Method> target = JSHandle<Method>(thread, method);
     if (target->GetPandaFile() == nullptr) {
         return JSTaggedValue::Undefined();
     }
@@ -342,6 +346,7 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     if (func->IsBase()) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         obj = JSHandle<JSTaggedValue>(factory->NewJSObjectByConstructor(func, newTarget));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
     info->SetThis(obj.GetTaggedValue());

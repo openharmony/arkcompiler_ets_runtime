@@ -276,22 +276,22 @@ inline GateRef StubBuilder::Load(VariableType type, GateRef base)
 // arithmetic
 inline GateRef StubBuilder::Int16Add(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::ADD), MachineType::I16, x, y);
+    return env_->GetBuilder()->Int16Add(x, y);
 }
 
 inline GateRef StubBuilder::Int32Add(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::ADD), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32Add(x, y);
 }
 
 inline GateRef StubBuilder::Int64Add(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::ADD), MachineType::I64, x, y);
+    return env_->GetBuilder()->Int64Add(x, y);
 }
 
 inline GateRef StubBuilder::DoubleAdd(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::ADD), MachineType::F64, x, y);
+    return env_->GetBuilder()->DoubleAdd(x, y);
 }
 
 inline GateRef StubBuilder::PtrAdd(GateRef x, GateRef y)
@@ -300,6 +300,11 @@ inline GateRef StubBuilder::PtrAdd(GateRef x, GateRef y)
         return Int32Add(x, y);
     }
     return Int64Add(x, y);
+}
+
+inline GateRef StubBuilder::PointerAdd(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::ADD), MachineType::ARCH, x, y);
 }
 
 inline GateRef StubBuilder::IntPtrAnd(GateRef x, GateRef y)
@@ -325,192 +330,194 @@ inline GateRef StubBuilder::PtrSub(GateRef x, GateRef y)
 
 inline GateRef StubBuilder::PointerSub(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::SUB), MachineType::ARCH, x, y);
+    return env_->GetBuilder()->PointerSub(x, y);
 }
 
 inline GateRef StubBuilder::Int16Sub(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::SUB), MachineType::I16, x, y);
+    return env_->GetBuilder()->Int16Sub(x, y);
 }
 
 inline GateRef StubBuilder::Int32Sub(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::SUB), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32Sub(x, y);
 }
 
 inline GateRef StubBuilder::Int64Sub(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::SUB), MachineType::I64, x, y);
+    return env_->GetBuilder()->Int64Sub(x, y);
 }
 
 inline GateRef StubBuilder::DoubleSub(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::SUB), MachineType::F64, x, y);
+    return env_->GetBuilder()->DoubleSub(x, y);
 }
 
 inline GateRef StubBuilder::Int32Mul(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::MUL), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32Mul(x, y);
 }
 
 inline GateRef StubBuilder::Int64Mul(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::MUL), MachineType::I64, x, y);
+    return env_->GetBuilder()->Int64Mul(x, y);
 }
 
 inline GateRef StubBuilder::DoubleMul(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::MUL), MachineType::F64, x, y);
+    return env_->GetBuilder()->DoubleMul(x, y);
 }
 
 inline GateRef StubBuilder::DoubleDiv(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::FDIV), MachineType::F64, x, y);
+    return env_->GetBuilder()->DoubleDiv(x, y);
 }
 
 inline GateRef StubBuilder::Int32Div(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::SDIV), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32Div(x, y);
 }
 
 inline GateRef StubBuilder::Int64Div(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::SDIV), MachineType::I64, x, y);
+    return env_->GetBuilder()->Int64Div(x, y);
 }
 
 inline GateRef StubBuilder::IntPtrDiv(GateRef x, GateRef y)
 {
-    return env_->Is32Bit() ? Int32Div(x, y) : Int64Div(x, y);
+    return env_->GetBuilder()->IntPtrDiv(x, y);
 }
 
 inline GateRef StubBuilder::Int32Mod(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::SMOD), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32Mod(x, y);
 }
 
 inline GateRef StubBuilder::DoubleMod(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::SMOD), MachineType::F64, x, y);
+    return env_->GetBuilder()->DoubleMod(x, y);
 }
 
 // bit operation
 inline GateRef StubBuilder::Int32Or(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::OR), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32Or(x, y);
 }
 
 inline GateRef StubBuilder::Int8And(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::AND), MachineType::I8, x, y);
+    return env_->GetBuilder()->Int8And(x, y);
 }
 
 inline GateRef StubBuilder::Int32And(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::AND), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32And(x, y);
 }
 
 inline GateRef StubBuilder::BoolAnd(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::AND), MachineType::I1, x, y);
+    return env_->GetBuilder()->BoolAnd(x, y);
 }
 
 inline GateRef StubBuilder::BoolOr(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::OR), MachineType::I1, x, y);
+    return env_->GetBuilder()->BoolOr(x, y);
 }
 
 inline GateRef StubBuilder::Int32Not(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::REV), MachineType::I32, x);
+    return env_->GetBuilder()->Int32Not(x);
+}
+
+inline GateRef StubBuilder::IntPtrNot(GateRef x)
+{
+    return env_->Is32Bit() ? Int32Not(x) : Int64Not(x);
 }
 
 inline GateRef StubBuilder::BoolNot(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::REV), MachineType::I1, x);
+    return env_->GetBuilder()->BoolNot(x);
 }
 
 inline GateRef StubBuilder::Int64Or(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::OR), MachineType::I64, x, y);
+    return env_->GetBuilder()->Int64Or(x, y);
 }
 
 inline GateRef StubBuilder::IntPtrOr(GateRef x, GateRef y)
 {
-    auto ptrsize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::OR), ptrsize, x, y);
+    return env_->GetBuilder()->IntPtrOr(x, y);
 }
 
 inline GateRef StubBuilder::Int64And(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::AND), MachineType::I64, x, y);
+    return env_->GetBuilder()->Int64And(x, y);
 }
 
 inline GateRef StubBuilder::Int16LSL(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::LSL), MachineType::I16, x, y);
+    return env_->GetBuilder()->Int16LSL(x, y);
 }
 
 inline GateRef StubBuilder::Int64Xor(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::XOR), MachineType::I64, x, y);
+    return env_->GetBuilder()->Int64Xor(x, y);
 }
 
 inline GateRef StubBuilder::Int32Xor(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::XOR), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32Xor(x, y);
 }
 
 inline GateRef StubBuilder::Int8LSR(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::LSR), MachineType::I8, x, y);
+    return env_->GetBuilder()->Int8LSR(x, y);
 }
 
 inline GateRef StubBuilder::Int64Not(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::REV), MachineType::I64, x);
+    return env_->GetBuilder()->Int64Not(x);
 }
 
 inline GateRef StubBuilder::Int32LSL(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::LSL), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32LSL(x, y);
 }
 
 inline GateRef StubBuilder::Int64LSL(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::LSL), MachineType::I64, x, y);
+    return env_->GetBuilder()->Int64LSL(x, y);
 }
 
 inline GateRef StubBuilder::IntPtrLSL(GateRef x, GateRef y)
 {
-    auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::LSL), ptrSize, x, y);
+    return env_->GetBuilder()->IntPtrLSL(x, y);
 }
 
 inline GateRef StubBuilder::Int32ASR(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::ASR), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32ASR(x, y);
 }
 
 inline GateRef StubBuilder::Int32LSR(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::LSR), MachineType::I32, x, y);
+    return env_->GetBuilder()->Int32LSR(x, y);
 }
 
 inline GateRef StubBuilder::Int64LSR(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::LSR), MachineType::I64, x, y);
+    return env_->GetBuilder()->Int64LSR(x, y);
 }
 
 inline GateRef StubBuilder::IntPtrLSR(GateRef x, GateRef y)
 {
-    auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(OpCode::LSR), ptrSize, x, y);
+    return env_->GetBuilder()->IntPtrLSR(x, y);
 }
 
 template<OpCode::Op Op, MachineType Type>
 inline GateRef StubBuilder::BinaryOp(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryArithmetic(OpCode(Op), Type, x, y);
+    return env_->GetBuilder()->BinaryOp<Op, Type>(x, y);
 }
 
 inline GateRef StubBuilder::TaggedIsInt(GateRef x)
@@ -528,6 +535,23 @@ inline GateRef StubBuilder::TaggedIsObject(GateRef x)
 {
     return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_MARK)),
                       Int64(JSTaggedValue::TAG_OBJECT));
+}
+
+inline GateRef StubBuilder::TaggedIsString(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsString(obj);
+}
+
+inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsStringOrSymbol(obj);
+}
+
+inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
+{
+    auto allHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
+    auto allString = env_->GetBuilder()->TaggedObjectBothAreString(x, y);
+    return env_->GetBuilder()->LogicAnd(allHeapObject, allString);
 }
 
 inline GateRef StubBuilder::TaggedIsNumber(GateRef x)
@@ -578,21 +602,17 @@ inline GateRef StubBuilder::TaggedIsGeneratorObject(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
 {
-    GateRef isHeapObj = TaggedIsHeapObject(x);
-    GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isGeneratorObj =
-        Int32Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ASYNC_GENERATOR_OBJECT)));
-    return BoolAnd(isHeapObj, isGeneratorObj);
+    return env_->GetBuilder()->TaggedIsAsyncGeneratorObject(x);
 }
 
 inline GateRef StubBuilder::TaggedIsPropertyBox(GateRef x)
 {
-    return BoolAnd(TaggedIsHeapObject(x), HclassIsPropertyBox(LoadHClass(x)));
+    return env_->GetBuilder()->TaggedIsPropertyBox(x);
 }
 
 inline GateRef StubBuilder::TaggedIsWeak(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_WEAK_MASK)), Int64(JSTaggedValue::TAG_WEAK));
+    return env_->GetBuilder()->TaggedIsWeak(x);
 }
 
 inline GateRef StubBuilder::TaggedIsPrototypeHandler(GateRef x)
@@ -602,9 +622,7 @@ inline GateRef StubBuilder::TaggedIsPrototypeHandler(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsTransitionHandler(GateRef x)
 {
-    return TruncInt32ToInt1(
-        Int32And(SExtInt1ToInt32(TaggedIsHeapObject(x)),
-                 SExtInt1ToInt32(HclassIsTransitionHandler(LoadHClass(x)))));
+    return env_->GetBuilder()->TaggedIsTransitionHandler(x);
 }
 
 inline GateRef StubBuilder::GetNextPositionForHash(GateRef last, GateRef count, GateRef size)
@@ -626,8 +644,8 @@ inline GateRef StubBuilder::DoubleIsINF(GateRef x)
     GateRef negativeInfinity = Double(-base::POSITIVE_INFINITY);
     GateRef diff1 = DoubleEqual(x, infinity);
     GateRef diff2 = DoubleEqual(x, negativeInfinity);
-    return TruncInt32ToInt1(Int32Or(Int32Equal(SExtInt1ToInt32(diff1), Int32(1)),
-        Int32Equal(SExtInt1ToInt32(diff2), Int32(1))));
+    return BoolOr(Int32Equal(SExtInt1ToInt32(diff1), Int32(1)),
+        Int32Equal(SExtInt1ToInt32(diff2), Int32(1)));
 }
 
 inline GateRef StubBuilder::TaggedIsNull(GateRef x)
@@ -653,8 +671,7 @@ inline GateRef StubBuilder::TaggedIsFalse(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsBoolean(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)),
-        Int64(JSTaggedValue::TAG_BOOLEAN_MASK));
+    return env_->GetBuilder()->TaggedIsBoolean(x);
 }
 
 inline GateRef StubBuilder::TaggedGetInt(GateRef x)
@@ -662,51 +679,39 @@ inline GateRef StubBuilder::TaggedGetInt(GateRef x)
     return TruncInt64ToInt32(Int64And(x, Int64(~JSTaggedValue::TAG_MARK)));
 }
 
-inline GateRef StubBuilder::Int8ToTaggedTypeNGC(GateRef x)
+inline GateRef StubBuilder::Int8ToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt8ToInt64(x);
     return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
 }
 
-inline GateRef StubBuilder::Int16ToTaggedNGC(GateRef x)
-{
-    GateRef val = SExtInt16ToInt64(x);
-    return ChangeInt64ToTagged(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
-}
-
-inline GateRef StubBuilder::Int16ToTaggedTypeNGC(GateRef x)
+inline GateRef StubBuilder::Int16ToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt16ToInt64(x);
     return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
 }
 
-inline GateRef StubBuilder::IntToTaggedNGC(GateRef x)
+inline GateRef StubBuilder::IntToTaggedPtr(GateRef x)
 {
     GateRef val = SExtInt32ToInt64(x);
-    return ChangeInt64ToTagged(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
+    return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
 }
 
-inline GateRef StubBuilder::IntToTaggedTypeNGC(GateRef x)
+inline GateRef StubBuilder::IntToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt32ToInt64(x);
     return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
 }
 
-inline GateRef StubBuilder::DoubleBuildTaggedWithNoGC(GateRef x)
+inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
-    return ChangeInt64ToTagged(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
-}
-
-inline GateRef StubBuilder::DoubleBuildTaggedTypeWithNoGC(GateRef x)
-{
-    GateRef val = CastDoubleToInt64(x);
-    return Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
+    return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
 inline GateRef StubBuilder::CastDoubleToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::BITCAST), MachineType::I64, x);
+    return env_->GetBuilder()->CastDoubleToInt64(x);
 }
 
 inline GateRef StubBuilder::TaggedTrue()
@@ -722,112 +727,112 @@ inline GateRef StubBuilder::TaggedFalse()
 // compare operation
 inline GateRef StubBuilder::Int8Equal(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::EQ), x, y);
+    return env_->GetBuilder()->Int8Equal(x, y);
 }
 
 inline GateRef StubBuilder::Int32Equal(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::EQ), x, y);
+    return env_->GetBuilder()->Int32Equal(x, y);
 }
 
 inline GateRef StubBuilder::Int32NotEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::NE), x, y);
+    return env_->GetBuilder()->Int32NotEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int64Equal(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::EQ), x, y);
+    return env_->GetBuilder()->Int64Equal(x, y);
 }
 
 inline GateRef StubBuilder::DoubleEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::EQ), x, y);
+    return env_->GetBuilder()->DoubleEqual(x, y);
 }
 
 inline GateRef StubBuilder::DoubleLessThan(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SLT), x, y);
+    return env_->GetBuilder()->DoubleLessThan(x, y);
 }
 
 inline GateRef StubBuilder::DoubleLessThanOrEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SLE), x, y);
+    return env_->GetBuilder()->DoubleLessThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::DoubleGreaterThan(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SGT), x, y);
+    return env_->GetBuilder()->DoubleGreaterThan(x, y);
 }
 
 inline GateRef StubBuilder::DoubleGreaterThanOrEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SGE), x, y);
+    return env_->GetBuilder()->DoubleGreaterThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int64NotEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::NE), x, y);
+    return env_->GetBuilder()->Int64NotEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int32GreaterThan(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SGT), x, y);
+    return env_->GetBuilder()->Int32GreaterThan(x, y);
 }
 
 inline GateRef StubBuilder::Int32LessThan(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SLT), x, y);
+    return env_->GetBuilder()->Int32LessThan(x, y);
 }
 
 inline GateRef StubBuilder::Int32GreaterThanOrEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SGE), x, y);
+    return env_->GetBuilder()->Int32GreaterThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int32LessThanOrEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SLE), x, y);
+    return env_->GetBuilder()->Int32LessThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int32UnsignedGreaterThan(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::UGT), x, y);
+    return env_->GetBuilder()->Int32UnsignedGreaterThan(x, y);
 }
 
 inline GateRef StubBuilder::Int32UnsignedLessThan(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::ULT), x, y);
+    return env_->GetBuilder()->Int32UnsignedLessThan(x, y);
 }
 
 inline GateRef StubBuilder::Int32UnsignedGreaterThanOrEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::UGE), x, y);
+    return env_->GetBuilder()->Int32UnsignedGreaterThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int64GreaterThan(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SGT), x, y);
+    return env_->GetBuilder()->Int64GreaterThan(x, y);
 }
 
 inline GateRef StubBuilder::Int64LessThan(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SLT), x, y);
+    return env_->GetBuilder()->Int64LessThan(x, y);
 }
 
 inline GateRef StubBuilder::Int64LessThanOrEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SLE), x, y);
+    return env_->GetBuilder()->Int64LessThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int64GreaterThanOrEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::SGE), x, y);
+    return env_->GetBuilder()->Int64GreaterThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int64UnsignedLessThanOrEqual(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BinaryLogic(OpCode(OpCode::ULE), x, y);
+    return env_->GetBuilder()->Int64UnsignedLessThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
@@ -838,7 +843,12 @@ inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
 // cast operation
 inline GateRef StubBuilder::ChangeInt64ToInt32(GateRef val)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT32), val);
+    return env_->GetBuilder()->ChangeInt64ToInt32(val);
+}
+
+inline GateRef StubBuilder::ChangeInt16ToInt8(GateRef val)
+{
+    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT8), val);
 }
 
 inline GateRef StubBuilder::ChangeInt64ToIntPtr(GateRef val)
@@ -938,25 +948,12 @@ inline GateRef StubBuilder::IsDictionaryMode(GateRef object)
 
 inline GateRef StubBuilder::IsDictionaryModeByHClass(GateRef hClass)
 {
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return Int32NotEqual(
-        Int32And(
-            Int32LSR(bitfield, Int32(JSHClass::IsDictionaryBit::START_BIT)),
-            Int32((1LU << JSHClass::IsDictionaryBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsDictionaryModeByHClass(hClass);
 }
 
 inline GateRef StubBuilder::IsDictionaryElement(GateRef hClass)
 {
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    // decode
-    return Int32NotEqual(
-        Int32And(
-            Int32LSR(bitfield, Int32(JSHClass::DictionaryElementBits::START_BIT)),
-            Int32((1LU << JSHClass::DictionaryElementBits::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsDictionaryElement(hClass);
 }
 
 inline GateRef StubBuilder::IsClassConstructorFromBitField(GateRef bitfield)
@@ -970,113 +967,49 @@ inline GateRef StubBuilder::IsClassConstructorFromBitField(GateRef bitfield)
 
 inline GateRef StubBuilder::IsClassConstructor(GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return IsClassConstructorFromBitField(bitfield);
+    return env_->GetBuilder()->IsClassConstructor(object);
 }
 
 inline GateRef StubBuilder::IsClassPrototype(GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    // decode
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::ClassPrototypeBit::START_BIT)),
-            Int32((1LU << JSHClass::ClassPrototypeBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsClassPrototype(object);
 }
 
 inline GateRef StubBuilder::IsExtensible(GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    // decode
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::ExtensibleBit::START_BIT)),
-                 Int32((1LU << JSHClass::ExtensibleBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsExtensible(object);
 }
 
 inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    auto ret = Int32And(
-        ZExtInt1ToInt32(
-            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST)))),
-        ZExtInt1ToInt32(
-            Int32GreaterThanOrEqual(objectType,
-                Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST)))));
-    return TruncInt32ToInt1(ret);
+    return env_->GetBuilder()->TaggedObjectIsEcmaObject(obj);
 }
 
 inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
 {
-    auto env = GetEnvironment();
-    Label subentry(env);
-    env->SubCfgEntry(&subentry);
-    Label exit(env);
-    Label isHeapObject(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        result = TaggedObjectIsEcmaObject(obj);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    auto isEcmaObject = TaggedObjectIsEcmaObject(obj);
+    return env_->GetBuilder()->LogicAnd(TaggedIsHeapObject(obj), isEcmaObject);
 }
 
 inline GateRef StubBuilder::IsJSObject(GateRef obj)
 {
-    auto env = GetEnvironment();
-    Label subentry(env);
-    env->SubCfgEntry(&subentry);
-    Label exit(env);
-    Label isHeapObject(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        GateRef objectType = GetObjectType(LoadHClass(obj));
-        auto ret1 = Int32And(
-            ZExtInt1ToInt32(
-                Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST)))),
-            ZExtInt1ToInt32(
-                Int32GreaterThanOrEqual(objectType,
-                    Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST)))));
-        result = TruncInt32ToInt1(ret1);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    return env_->GetBuilder()->IsJSObject(obj);
 }
 
 inline GateRef StubBuilder::IsJSFunctionBase(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    GateRef greater = ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_BASE))));
-    GateRef less = ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION))));
-    return TruncInt32ToInt1(Int32And(greater, less));
+    GateRef greater = Int32GreaterThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_BASE)));
+    GateRef less = Int32LessThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION)));
+    return BoolAnd(greater, less);
 }
 
 inline GateRef StubBuilder::IsConstructor(GateRef object)
 {
     GateRef hClass = LoadHClass(object);
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     // decode
     return Int32NotEqual(
@@ -1490,18 +1423,16 @@ inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 {
     // arraylist and vector has fast pass now
-    return TruncInt32ToInt1(Int32And(
-        ZExtInt1ToInt32(
-            Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)))),
-        ZExtInt1ToInt32(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))))));
+    return BoolAnd(
+        Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
+        Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
 }
 
 inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
 {
-    return TruncInt32ToInt1(Int32And(
-        ZExtInt1ToInt32(
-            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST)))),
-        ZExtInt1ToInt32(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))))));
+    return BoolAnd(
+            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+            Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))));
 }
 
 inline GateRef StubBuilder::IsAccessorInternal(GateRef value)
@@ -1569,126 +1500,117 @@ inline GateRef StubBuilder::TaggedCastToWeakReferentUnChecked(GateRef x)
 
 inline GateRef StubBuilder::ChangeInt32ToFloat64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F64, x);
+    return env_->GetBuilder()->ChangeInt32ToFloat64(x);
 }
 
 inline GateRef StubBuilder::ChangeUInt32ToFloat64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::UNSIGNED_INT_TO_FLOAT), MachineType::F64, x);
+    return env_->GetBuilder()->ChangeUInt32ToFloat64(x);
 }
 
 inline GateRef StubBuilder::ChangeFloat64ToInt32(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::FLOAT_TO_SIGNED_INT), MachineType::I32, x);
+    return env_->GetBuilder()->ChangeFloat64ToInt32(x);
 }
 
 inline GateRef StubBuilder::ChangeTaggedPointerToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TAGGED_TO_INT64), x);
+    return env_->GetBuilder()->ChangeTaggedPointerToInt64(x);
 }
 
-inline GateRef StubBuilder::ChangeInt64ToTagged(GateRef x)
+inline GateRef StubBuilder::Int64ToTaggedPtr(GateRef x)
 {
-    return env_->GetBuilder()->TaggedNumber(OpCode(OpCode::INT64_TO_TAGGED), x);
+    return env_->GetBuilder()->Int64ToTaggedPtr(x);
 }
 
 inline GateRef StubBuilder::CastInt64ToFloat64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::BITCAST), MachineType::F64, x);
+    return env_->GetBuilder()->CastInt64ToFloat64(x);
 }
 
 inline GateRef StubBuilder::SExtInt32ToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
+    return env_->GetBuilder()->SExtInt32ToInt64(x);
 }
 
 inline GateRef StubBuilder::SExtInt16ToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
+    return env_->GetBuilder()->SExtInt16ToInt64(x);
 }
 
 inline GateRef StubBuilder::SExtInt8ToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
+    return env_->GetBuilder()->SExtInt8ToInt64(x);
 }
 
 inline GateRef StubBuilder::SExtInt1ToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
+    return env_->GetBuilder()->SExtInt1ToInt64(x);
 }
 
 inline GateRef StubBuilder::SExtInt1ToInt32(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    return env_->GetBuilder()->SExtInt1ToInt32(x);
 }
 
 inline GateRef StubBuilder::ZExtInt8ToInt16(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT16), x);
+    return env_->GetBuilder()->ZExtInt8ToInt16(x);
 }
 
 inline GateRef StubBuilder::ZExtInt32ToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT64), x);
+    return env_->GetBuilder()->ZExtInt32ToInt64(x);
 }
 
 inline GateRef StubBuilder::ZExtInt1ToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT64), x);
+    return env_->GetBuilder()->ZExtInt1ToInt64(x);
 }
 
 inline GateRef StubBuilder::ZExtInt1ToInt32(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT32), x);
+    return env_->GetBuilder()->ZExtInt1ToInt32(x);
 }
 
 inline GateRef StubBuilder::ZExtInt8ToInt32(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT32), x);
+    return env_->GetBuilder()->ZExtInt8ToInt32(x);
 }
 
 inline GateRef StubBuilder::ZExtInt8ToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT64), x);
+    return env_->GetBuilder()->ZExtInt8ToInt64(x);
 }
 
 inline GateRef StubBuilder::ZExtInt8ToPtr(GateRef x)
 {
-    if (env_->IsArch32Bit()) {
-        return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT32), x);
-    }
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT64), x);
+    return env_->GetBuilder()->ZExtInt8ToPtr(x);
 }
 
 inline GateRef StubBuilder::ZExtInt16ToPtr(GateRef x)
 {
-    if (env_->IsArch32Bit()) {
-        return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT32), x);
-    }
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT64), x);
+    return env_->GetBuilder()->ZExtInt16ToPtr(x);
 }
 
 inline GateRef StubBuilder::SExtInt32ToPtr(GateRef x)
 {
-    if (env_->IsArch32Bit()) {
-        return x;
-    }
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
+    return env_->GetBuilder()->SExtInt32ToPtr(x);
 }
 
 inline GateRef StubBuilder::ZExtInt16ToInt32(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT32), x);
+    return env_->GetBuilder()->ZExtInt16ToInt32(x);
 }
 
 inline GateRef StubBuilder::ZExtInt16ToInt64(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::ZEXT_TO_INT64), x);
+    return env_->GetBuilder()->ZExtInt16ToInt64(x);
 }
 
 inline GateRef StubBuilder::TruncInt64ToInt32(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT32), x);
+    return env_->GetBuilder()->TruncInt64ToInt32(x);
 }
 
 inline GateRef StubBuilder::TruncPtrToInt32(GateRef x)
@@ -1701,12 +1623,12 @@ inline GateRef StubBuilder::TruncPtrToInt32(GateRef x)
 
 inline GateRef StubBuilder::TruncInt64ToInt1(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT1), x);
+    return env_->GetBuilder()->TruncInt64ToInt1(x);
 }
 
 inline GateRef StubBuilder::TruncInt32ToInt1(GateRef x)
 {
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT1), x);
+    return env_->GetBuilder()->TruncInt32ToInt1(x);
 }
 
 inline GateRef StubBuilder::GetGlobalConstantAddr(GateRef index)
@@ -1725,18 +1647,12 @@ inline GateRef StubBuilder::GetGlobalConstantString(ConstantIndex index)
 
 inline GateRef StubBuilder::IsCallableFromBitField(GateRef bitfield)
 {
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::CallableBit::START_BIT)),
-            Int32((1LU << JSHClass::CallableBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsCallableFromBitField(bitfield);
 }
 
 inline GateRef StubBuilder::IsCallable(GateRef obj)
 {
-    GateRef hclass = LoadHClass(obj);
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hclass, bitfieldOffset);
-    return IsCallableFromBitField(bitfield);
+    return env_->GetBuilder()->IsCallable(obj);
 }
 
 // GetOffset func in property_attribute.h
@@ -1850,30 +1766,30 @@ inline GateRef StubBuilder::GetMethodFromJSFunction(GateRef object)
     Label subentry(env);
     env->SubCfgEntry(&subentry);
 
-    DEFVARIABLE(methodOffset, VariableType::INT32(), Int32(0));
+    GateRef methodOffset;
     Label funcIsJSFunctionBase(env);
     Label funcIsJSProxy(env);
     Label getMethod(env);
     Branch(IsJSFunctionBase(object), &funcIsJSFunctionBase, &funcIsJSProxy);
     Bind(&funcIsJSFunctionBase);
     {
-        methodOffset = Int32(JSFunctionBase::METHOD_OFFSET);
+        methodOffset = IntPtr(JSFunctionBase::METHOD_OFFSET);
         Jump(&getMethod);
     }
     Bind(&funcIsJSProxy);
     {
-        methodOffset = Int32(JSProxy::METHOD_OFFSET);
+        methodOffset = IntPtr(JSProxy::METHOD_OFFSET);
         Jump(&getMethod);
     }
     Bind(&getMethod);
-    GateRef method = Load(VariableType::NATIVE_POINTER(), object, ChangeInt32ToIntPtr(*methodOffset));
+    GateRef method = Load(VariableType::JS_ANY(), object, methodOffset);
     env->SubCfgExit();
     return method;
 }
 
 inline GateRef StubBuilder::GetCallFieldFromMethod(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::GetCallFieldOffset(env_->IsArch32Bit()));
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     return Load(VariableType::INT64(), method, callFieldOffset);
 }
 
@@ -1918,11 +1834,11 @@ inline GateRef StubBuilder::GetPropertiesFromJSObject(GateRef object)
 inline GateRef StubBuilder::IsJSFunction(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    GateRef greater = ZExtInt1ToInt32(Int32GreaterThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST))));
-    GateRef less = ZExtInt1ToInt32(Int32LessThanOrEqual(objectType,
-        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST))));
-    return TruncInt32ToInt1(Int32And(greater, less));
+    GateRef greater = Int32GreaterThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST)));
+    GateRef less = Int32LessThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST)));
+    return BoolAnd(greater, less);
 }
 
 inline GateRef StubBuilder::IsBoundFunction(GateRef obj)
@@ -1933,33 +1849,33 @@ inline GateRef StubBuilder::IsBoundFunction(GateRef obj)
 
 inline GateRef StubBuilder::IsNativeMethod(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::GetCallFieldOffset(env_->Is32Bit()));
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int32(JSMethod::IsNativeBit::START_BIT)),
-            Int64((1LU << JSMethod::IsNativeBit::SIZE) - 1)),
+            Int64LSR(callfield, Int32(MethodLiteral::IsNativeBit::START_BIT)),
+            Int64((1LU << MethodLiteral::IsNativeBit::SIZE) - 1)),
         Int64(0));
 }
 
 inline GateRef StubBuilder::HasAotCode(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::GetCallFieldOffset(env_->Is32Bit()));
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int32(JSMethod::IsAotCodeBit::START_BIT)),
-            Int64((1LU << JSMethod::IsAotCodeBit::SIZE) - 1)),
+            Int64LSR(callfield, Int32(MethodLiteral::IsAotCodeBit::START_BIT)),
+            Int64((1LU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
         Int64(0));
 }
 
 inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)
 {
-    GateRef callFieldOffset = IntPtr(JSMethod::GetCallFieldOffset(env_->Is32Bit()));
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return TruncInt64ToInt32(Int64And(
-        Int64LSR(callfield, Int32(JSMethod::NumArgsBits::START_BIT)),
-        Int64((1LU << JSMethod::NumArgsBits::SIZE) - 1)));
+        Int64LSR(callfield, Int32(MethodLiteral::NumArgsBits::START_BIT)),
+        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1)));
 }
 
 inline GateRef StubBuilder::GetMethodFromJSProxy(GateRef proxy)
@@ -2017,8 +1933,41 @@ inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
 inline GateRef StubBuilder::GetBuiltinId(GateRef method)
 {
     // 7: builtinsIdOffset
-    GateRef builtinsIdOffset = PtrAdd(IntPtr(JSMethod::GetHotnessCounterOffset(env_->IsArch32Bit())), IntPtr(7));
+    GateRef builtinsIdOffset = PtrAdd(IntPtr(Method::LITERAL_INFO_OFFSET), IntPtr(7));
     return Load(VariableType::INT8(), method, builtinsIdOffset);
+}
+
+inline GateRef StubBuilder::ComputeSizeUtf8(GateRef length)
+{
+    return PtrAdd(IntPtr(EcmaString::DATA_OFFSET), length);
+}
+
+inline GateRef StubBuilder::ComputeSizeUtf16(GateRef length)
+{
+    return PtrAdd(IntPtr(EcmaString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
+}
+
+inline GateRef StubBuilder::AlignUp(GateRef x, GateRef alignment)
+{
+    GateRef x1 = PtrAdd(x, PtrSub(alignment, IntPtr(1)));
+    return IntPtrAnd(x1, IntPtrNot(PtrSub(alignment, IntPtr(1))));
+}
+
+inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bool compressed)
+{
+    GateRef len = Int32LSL(length, Int32(2));
+    GateRef mixLength;
+    if (compressed) {
+        mixLength = Int32Or(len, Int32(EcmaString::STRING_COMPRESSED));
+    } else {
+        mixLength = Int32Or(len, Int32(EcmaString::STRING_UNCOMPRESSED));
+    }
+    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
+}
+
+inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode)
+{
+    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::HASHCODE_OFFSET), rawHashcode);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

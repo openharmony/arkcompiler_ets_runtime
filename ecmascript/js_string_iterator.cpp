@@ -29,10 +29,9 @@ JSHandle<JSStringIterator> JSStringIterator::CreateStringIterator(const JSThread
     // 1. Assert: Type(string) is String.
     // 2. Let iterator be ObjectCreate(%StringIteratorPrototype%, [[IteratedString]], [[StringIteratorNextIndex]] ?.)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> strIterCtor = env->GetStringIterator();
+    JSHandle<JSFunction> strIterCtor(env->GetStringIterator());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSStringIterator> iterator = JSHandle<JSStringIterator>::Cast(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(strIterCtor), strIterCtor));
+    JSHandle<JSStringIterator> iterator(factory->NewJSObjectByConstructor(strIterCtor));
     // 3. Set iterator’s [[IteratedString]] internal slot to string.
     // 4. Set iterator’s [[StringIteratorNextIndex]] internal slot to 0.
     iterator->SetIteratedString(thread, string);

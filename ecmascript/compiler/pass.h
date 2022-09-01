@@ -107,8 +107,11 @@ class VerifierPass {
 public:
     bool Run(PassData* data, bool enableLog)
     {
-        Verifier::Run(data->GetCircuit(), enableLog);
-        return true;
+        bool isQualified = Verifier::Run(data->GetCircuit(), enableLog);
+        if (!isQualified) {
+            std::abort();
+        }
+        return isQualified;
     }
 };
 
@@ -127,11 +130,13 @@ public:
     {
         llvmImpl_ = std::make_unique<LLVMIRGeneratorImpl>(module, enableLog);
     }
-    bool Run(PassData *data, bool enableLog, LLVMModule *module, const JSMethod *method)
+    bool Run(PassData *data, bool enableLog, LLVMModule *module,
+             const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)
     {
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(llvmImpl_);
-        codegen.Run(data->GetCircuit(), data->GetScheduleResult(), module->GetCompilationConfig(), method);
+        codegen.Run(data->GetCircuit(), data->GetScheduleResult(), module->GetCompilationConfig(),
+                    methodLiteral, jsPandaFile);
         return true;
     }
 private:

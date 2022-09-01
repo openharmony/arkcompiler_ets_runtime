@@ -146,6 +146,10 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(std::map<std::pair<uint8_t
         auto tryEndOffset = try_block.GetStartPc() + try_block.GetLength();
         auto tryStartPc = const_cast<uint8_t *>(method_->GetBytecodeArray() + tryStartOffset);
         auto tryEndPc = const_cast<uint8_t *>(method_->GetBytecodeArray() + tryEndOffset);
+        // skip try blocks with same pc in start and end label
+        if (tryStartPc == tryEndPc) {
+            return true;
+        }
         byteCodeException[std::make_pair(tryStartPc, tryEndPc)] = {};
         uint32_t pcOffset = panda_file::INVALID_OFFSET;
         try_block.EnumerateCatchBlocks([&](panda_file::CodeDataAccessor::CatchBlock &catch_block) {
@@ -1714,6 +1718,13 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
+        case EcmaOpcode::DYNAMICIMPORT_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
         case EcmaOpcode::SUPERCALL_PREF_IMM16_V8: {
             uint16_t range = READ_INST_16_1();
             uint16_t v0 = READ_INST_8_3();
@@ -1792,7 +1803,7 @@ void BytecodeCircuitBuilder::InsertPhi()
         EnumerateBlock(bb, [this, &defsitesInfo, &bb]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR_PREF_V8)) {
-                auto numVRegs = method_->GetNumVregs() + method_->GetNumArgs();
+                auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     bytecodeInfo.vregOut.emplace_back(i);
                 }
@@ -1849,7 +1860,7 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size
         EnumerateBlock(bb, [this, &vregs]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR_PREF_V8)) {
-                auto numVRegs = method_->GetNumVregs() + method_->GetNumArgs();
+                auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     vregs.insert(i);
                 }
@@ -2062,8 +2073,8 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<StringId>(input)) {
-            size_t index = tsManager_->GetStringIdx(constantPool_, std::get<StringId>(input).GetId());
-            inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32, index,
+            inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32,
+                                                  std::get<StringId>(input).GetId(),
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<Immediate>(input)) {
@@ -2395,22 +2406,22 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
             circuit_.NewGate(OpCode(OpCode::VALUE_SELECTOR), MachineType::I64, bb.numOfLoopBacks,
                              std::vector<GateRef>(1 + bb.numOfLoopBacks, Circuit::NullGate()), GateType::AnyType());
         gateAcc_.NewIn(loopBackValue, 0, bb.mergeLoopBackEdges);
-        bb.loopBackIndex = 1;  // 1: start index of value inputs
+        size_t loopBackIndex = 1;  // 1: start index of value inputs
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predPc, isException] = bb.expandedPreds.at(i);
             if (bb.loopbackBlocks.count(predId)) {
-                gateAcc_.NewIn(loopBackValue, bb.loopBackIndex++, RenameVariable(predId, predPc, reg, acc));
+                gateAcc_.NewIn(loopBackValue, loopBackIndex++, RenameVariable(predId, predPc, reg, acc));
             }
         }
         auto forwardValue = circuit_.NewGate(
             OpCode(OpCode::VALUE_SELECTOR), MachineType::I64, bb.numOfStatePreds - bb.numOfLoopBacks,
             std::vector<GateRef>(1 + bb.numOfStatePreds - bb.numOfLoopBacks, Circuit::NullGate()), GateType::AnyType());
         gateAcc_.NewIn(forwardValue, 0, bb.mergeForwardEdges);
-        bb.forwardIndex = 1;  // 1: start index of value inputs
+        size_t forwardIndex = 1;  // 1: start index of value inputs
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predPc, isException] = bb.expandedPreds.at(i);
             if (!bb.loopbackBlocks.count(predId)) {
-                gateAcc_.NewIn(forwardValue, bb.forwardIndex++, RenameVariable(predId, predPc, reg, acc));
+                gateAcc_.NewIn(forwardValue, forwardIndex++, RenameVariable(predId, predPc, reg, acc));
             }
         }
         gateAcc_.NewIn(currentPhi, 1, forwardValue);   // 1: index of forward value input

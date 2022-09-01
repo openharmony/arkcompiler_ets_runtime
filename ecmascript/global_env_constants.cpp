@@ -16,7 +16,7 @@
 #include "ecmascript/global_env_constants.h"
 
 #include "ecmascript/accessor_data.h"
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
@@ -66,6 +66,7 @@
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/method.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_node.h"
@@ -149,8 +150,15 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
         ConstantIndex::IMPORT_ENTRY_CLASS_INDEX,
         factory->NewEcmaReadOnlyDynClass(dynClassClass, ImportEntry::SIZE, JSType::IMPORTENTRY_RECORD));
     SetConstant(
-        ConstantIndex::EXPORT_ENTRY_CLASS_INDEX,
-        factory->NewEcmaReadOnlyDynClass(dynClassClass, ExportEntry::SIZE, JSType::EXPORTENTRY_RECORD));
+        ConstantIndex::LOCAL_EXPORT_ENTRY_CLASS_INDEX,
+        factory->NewEcmaReadOnlyDynClass(dynClassClass, LocalExportEntry::SIZE, JSType::LOCAL_EXPORTENTRY_RECORD));
+    SetConstant(
+        ConstantIndex::INDIRECT_EXPORT_ENTRY_CLASS_INDEX,
+        factory->NewEcmaReadOnlyDynClass(dynClassClass, IndirectExportEntry::SIZE,
+                                         JSType::INDIRECT_EXPORTENTRY_RECORD));
+    SetConstant(
+        ConstantIndex::STAR_EXPORT_ENTRY_CLASS_INDEX,
+        factory->NewEcmaReadOnlyDynClass(dynClassClass, StarExportEntry::SIZE, JSType::STAR_EXPORTENTRY_RECORD));
     SetConstant(
         ConstantIndex::SOURCE_TEXT_MODULE_CLASS_INDEX,
         factory->NewEcmaReadOnlyDynClass(dynClassClass, SourceTextModule::SIZE, JSType::SOURCE_TEXT_MODULE_RECORD));
@@ -241,6 +249,8 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
     SetConstant(ConstantIndex::CELL_RECORD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, CellRecord::SIZE, JSType::CELL_RECORD));
     SetConstant(ConstantIndex::OBJECT_DYN_CLASS_INDEX, factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT));
+    SetConstant(ConstantIndex::JS_METHOD_CLASS_INDEX,
+                factory->NewEcmaDynClass(dynClassClass, Method::SIZE, JSType::METHOD));
 }
 
 void GlobalEnvConstants::InitGlobalConstantSpecial(JSThread *thread)
@@ -352,6 +362,7 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::URI_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("URIError"));
     SetConstant(ConstantIndex::SYNTAX_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("SyntaxError"));
     SetConstant(ConstantIndex::EVAL_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("EvalError"));
+    SetConstant(ConstantIndex::OOM_ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("OutOfMemoryError"));
     SetConstant(ConstantIndex::ERROR_FUNC_STRING_INDEX, factory->NewFromASCIINonMovable("errorfunc"));
     SetConstant(ConstantIndex::STACK_STRING_INDEX, factory->NewFromASCIINonMovable("stack"));
     SetConstant(ConstantIndex::STACK_EMPTY_STRING_INDEX, factory->NewFromASCIINonMovable("stackisempty"));

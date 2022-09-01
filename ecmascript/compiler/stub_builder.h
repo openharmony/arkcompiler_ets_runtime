@@ -105,6 +105,7 @@ public:
     GateRef PtrAdd(GateRef x, GateRef y);
     GateRef PtrSub(GateRef x, GateRef y);
     GateRef PointerSub(GateRef x, GateRef y);
+    GateRef PointerAdd(GateRef x, GateRef y);
     GateRef IntPtrEqual(GateRef x, GateRef y);
     GateRef Int16Sub(GateRef x, GateRef y);
     GateRef Int32Sub(GateRef x, GateRef y);
@@ -127,6 +128,7 @@ public:
     GateRef BoolAnd(GateRef x, GateRef y);
     GateRef BoolOr(GateRef x, GateRef y);
     GateRef Int32Not(GateRef x);
+    GateRef IntPtrNot(GateRef x);
     GateRef BoolNot(GateRef x);
     GateRef Int32Xor(GateRef x, GateRef y);
     GateRef FixLoadType(GateRef x);
@@ -164,6 +166,7 @@ public:
     GateRef TaggedIsPrototypeHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
+    GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     GateRef GetNextPositionForHash(GateRef last, GateRef count, GateRef size);
     GateRef DoubleIsNAN(GateRef x);
@@ -174,13 +177,11 @@ public:
     GateRef TaggedIsFalse(GateRef x);
     GateRef TaggedIsBoolean(GateRef x);
     GateRef TaggedGetInt(GateRef x);
-    GateRef Int8ToTaggedTypeNGC(GateRef x);
-    GateRef Int16ToTaggedNGC(GateRef x);
-    GateRef Int16ToTaggedTypeNGC(GateRef x);
-    GateRef IntToTaggedNGC(GateRef x);
-    GateRef IntToTaggedTypeNGC(GateRef x);
-    GateRef DoubleBuildTaggedWithNoGC(GateRef x);
-    GateRef DoubleBuildTaggedTypeWithNoGC(GateRef x);
+    GateRef Int8ToTaggedInt(GateRef x);
+    GateRef Int16ToTaggedInt(GateRef x);
+    GateRef IntToTaggedPtr(GateRef x);
+    GateRef IntToTaggedInt(GateRef x);
+    GateRef DoubleToTaggedDoublePtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
     GateRef TaggedTrue();
     GateRef TaggedFalse();
@@ -361,7 +362,8 @@ public:
     GateRef ChangeUInt32ToFloat64(GateRef x);
     GateRef ChangeFloat64ToInt32(GateRef x);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
-    GateRef ChangeInt64ToTagged(GateRef x);
+    GateRef Int64ToTaggedPtr(GateRef x);
+    GateRef ChangeInt16ToInt8(GateRef x);
     GateRef CastInt64ToFloat64(GateRef x);
     GateRef SExtInt32ToInt64(GateRef x);
     GateRef SExtInt16ToInt64(GateRef x);
@@ -463,6 +465,11 @@ public:
                                        GateRef jsType);
     GateRef TryStringOrSymbelToElementIndex(GateRef string);
     inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::initializer_list<GateRef>& args);
+    GateRef ComputeSizeUtf8(GateRef length);
+    GateRef ComputeSizeUtf16(GateRef length);
+    GateRef AlignUp(GateRef x, GateRef alignment);
+    inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
+    inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode::Op Op>

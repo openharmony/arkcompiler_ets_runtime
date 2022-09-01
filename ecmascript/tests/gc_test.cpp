@@ -85,32 +85,38 @@ HWTEST_F_L0(GCTest, ChangeGCParams)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
+#if !ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     EXPECT_TRUE(heap->GetConcurrentMarker()->IsEnabled());
-    EXPECT_TRUE(heap->GetSweeper()->ConcurrentSweepEnabled());
     uint32_t markTaskNum = heap->GetMaxMarkTaskCount();
+#endif
+    EXPECT_TRUE(heap->GetSweeper()->ConcurrentSweepEnabled());
     uint32_t evacuateTaskNum = heap->GetMaxEvacuateTaskCount();
 
     auto partialGc = heap->GetPartialGC();
     partialGc->RunPhases();
     heap->ChangeGCParams(true);
     heap->Prepare();
+#if !ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     uint32_t markTaskNumBackground = heap->GetMaxMarkTaskCount();
-    uint32_t evacuateTaskNumBackground = heap->GetMaxEvacuateTaskCount();
     EXPECT_TRUE(markTaskNum > markTaskNumBackground);
-    EXPECT_TRUE(evacuateTaskNum > evacuateTaskNumBackground);
     EXPECT_FALSE(heap->GetConcurrentMarker()->IsEnabled());
+#endif
+    uint32_t evacuateTaskNumBackground = heap->GetMaxEvacuateTaskCount();
+    EXPECT_TRUE(evacuateTaskNum > evacuateTaskNumBackground);
     EXPECT_FALSE(heap->GetSweeper()->ConcurrentSweepEnabled());
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::CONSERVATIVE);
 
     partialGc->RunPhases();
     heap->ChangeGCParams(false);
     heap->Prepare();
+#if !ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     uint32_t markTaskNumForeground = heap->GetMaxMarkTaskCount();
-    uint32_t evacuateTaskNumForeground = heap->GetMaxEvacuateTaskCount();
     EXPECT_EQ(markTaskNum, markTaskNumForeground);
+    EXPECT_TRUE(heap->GetConcurrentMarker()->IsEnabled());
+#endif
+    uint32_t evacuateTaskNumForeground = heap->GetMaxEvacuateTaskCount();
     EXPECT_EQ(evacuateTaskNum, evacuateTaskNumForeground);
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
-    EXPECT_TRUE(heap->GetConcurrentMarker()->IsEnabled());
     EXPECT_TRUE(heap->GetSweeper()->ConcurrentSweepEnabled());
 }
 
@@ -136,7 +142,9 @@ HWTEST_F_L0(GCTest, NotifyMemoryPressure)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
+#if !ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     uint32_t markTaskNum = heap->GetMaxMarkTaskCount();
+#endif
     uint32_t evacuateTaskNum = heap->GetMaxEvacuateTaskCount();
 
     auto partialGc = heap->GetPartialGC();
@@ -144,20 +152,24 @@ HWTEST_F_L0(GCTest, NotifyMemoryPressure)
     heap->ChangeGCParams(true);
     heap->NotifyMemoryPressure(true);
     heap->Prepare();
+#if !ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     uint32_t markTaskNumBackground = heap->GetMaxMarkTaskCount();
-    uint32_t evacuateTaskNumBackground = heap->GetMaxEvacuateTaskCount();
     EXPECT_TRUE(markTaskNum > markTaskNumBackground);
+    EXPECT_FALSE(heap->GetConcurrentMarker()->IsEnabled());
+#endif
+    uint32_t evacuateTaskNumBackground = heap->GetMaxEvacuateTaskCount();
     EXPECT_TRUE(evacuateTaskNum > evacuateTaskNumBackground);
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::PRESSURE);
-    EXPECT_FALSE(heap->GetConcurrentMarker()->IsEnabled());
     EXPECT_FALSE(heap->GetSweeper()->ConcurrentSweepEnabled());
 
     partialGc->RunPhases();
     heap->ChangeGCParams(false);
     heap->Prepare();
+#if !ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     uint32_t markTaskNumForeground = heap->GetMaxMarkTaskCount();
-    uint32_t evacuateTaskNumForeground = heap->GetMaxEvacuateTaskCount();
     EXPECT_EQ(markTaskNum, markTaskNumForeground);
+#endif
+    uint32_t evacuateTaskNumForeground = heap->GetMaxEvacuateTaskCount();
     EXPECT_EQ(evacuateTaskNum, evacuateTaskNumForeground);
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::PRESSURE);
 

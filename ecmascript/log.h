@@ -21,14 +21,13 @@
 #include <sstream>
 
 #include "ecmascript/common.h"
-#include "generated/base_options.h"
 
 #ifdef ENABLE_HILOG
 #include "hilog/log.h"
 
-constexpr static unsigned int DOMAIN = 0xD003F00;
+constexpr static unsigned int ARK_DOMAIN = 0xD003F00;
 constexpr static auto TAG = "ArkCompiler";
-constexpr static OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, DOMAIN, TAG};
+constexpr static OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, ARK_DOMAIN, TAG};
 
 #if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
 // print Debug level log if enable Verbose log
@@ -48,9 +47,10 @@ enum Level {
 };
 
 namespace panda::ecmascript {
+class JSRuntimeOptions;
 class PUBLIC_API Log {
 public:
-    static void Initialize(const panda::base_options::Options &options);
+    static void Initialize(const JSRuntimeOptions &options);
     static Level GetLevel()
     {
         return level_;
@@ -99,12 +99,16 @@ private:
     std::ostringstream stream_;
 };
 #endif // ENABLE_HILOG
+template<Level level>
 class StdLog {
 public:
     StdLog() = default;
     ~StdLog()
     {
         std::cerr << stream_.str().c_str() << std::endl;
+        if constexpr (level == FATAL) {
+            std::abort();
+        }
     }
 
     template<class type>
@@ -117,12 +121,43 @@ public:
 private:
     std::ostringstream stream_;
 };
-}  // namespace panda::ecmascript
+
+#ifdef PANDA_TARGET_ANDROID
+template<Level level>
+class PUBLIC_API AndroidLog {
+public:
+    AndroidLog() = default;
+    ~AndroidLog();
+
+    template<class type>
+    std::ostream &operator <<(type input)
+    {
+        stream_ << input;
+        return stream_;
+    }
+
+private:
+    std::ostringstream stream_;
+};
+#endif
 
 #ifdef ENABLE_HILOG
-#define LOG_ECMA(level) HiLogIsLoggable(DOMAIN, TAG, LOG_##level) && panda::ecmascript::HiLog<LOG_##level>()
+#if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
+static bool LOGGABLE_VERBOSE = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_VERBOSE);
 #else
-#define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog()
-#endif // ENABLE_HILOG
+static bool LOGGABLE_VERBOSE = false;
+#endif
+static bool LOGGABLE_DEBUG = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_DEBUG);
+static bool LOGGABLE_INFO = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_INFO);
+static bool LOGGABLE_WARN = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_WARN);
+static bool LOGGABLE_ERROR = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_ERROR);
+static bool LOGGABLE_FATAL = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_FATAL);
 
+#define LOG_ECMA(level) panda::ecmascript::LOGGABLE_##level && panda::ecmascript::HiLog<LOG_##level>()
+#elif defined(PANDA_TARGET_ANDROID)
+#define LOG_ECMA(level) panda::ecmascript::AndroidLog<(level)>()
+#else
+#define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog<(level)>()
+#endif
+}  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LOG_H

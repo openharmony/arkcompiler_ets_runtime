@@ -25,10 +25,10 @@
 #include "ecmascript/compiler/stub.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/verifier.h"
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
-#include "generated/base_options.h"
 #include "libpandabase/utils/pandargs.h"
 #include "libpandabase/utils/span.h"
 
@@ -169,13 +169,11 @@ int main(const int argc, const char **argv)
 {
     panda::Span<const char *> sp(argv, argc);
     panda::ecmascript::JSRuntimeOptions runtimeOptions;
-    panda::base_options::Options baseOptions(sp[0]);
     panda::PandArg<bool> help("help", false, "Print this message and exit");
     panda::PandArg<bool> options("options", false, "Print options");
     panda::PandArgParser paParser;
 
     runtimeOptions.AddOptions(&paParser);
-    baseOptions.AddOptions(&paParser);
 
     paParser.Add(&help);
     paParser.Add(&options);
@@ -190,7 +188,7 @@ int main(const int argc, const char **argv)
         return 1;
     }
 
-    panda::ecmascript::Log::Initialize(baseOptions);
+    panda::ecmascript::Log::Initialize(runtimeOptions);
 
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();

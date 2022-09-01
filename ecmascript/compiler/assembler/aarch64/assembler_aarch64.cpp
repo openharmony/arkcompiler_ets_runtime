@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include <cstdint>
+#include <map>
+
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
 
 #include "ecmascript/base/bit_helper.h"

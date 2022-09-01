@@ -1,0 +1,53 @@
+{
+  "prebuilts_download_dir": "../../OpenHarmony_canary_prebuilts",
+  "npm_install_path": ["ets_frontend/ts2panda"],
+  "node_modules_copy": [
+    {
+      "src": "ets_frontend/ts2panda/node_modules",
+      "dest": "prebuilts/build-tools/common/ts2abc/node_modules",
+      "use_symlink": "True"
+    }
+  ],
+  "file_handle_config": [
+    {
+      "src": "/prebuilts/clang/ohos/linux-x86_64/clang-530132-20220730",
+      "dest": "/prebuilts/clang/ohos/linux-x86_64/llvm",
+      "symlink_src": "/lib/clang/12.0.1",
+      "symlink_dest": "/lib/clang/current"
+    }
+  ],
+  "linux": {
+    "x86_64": {
+      "copy_config": [
+        {
+          "unzip_dir": "prebuilts/build-tools/linux-x86/bin",
+          "file_path": "/openharmony/compiler/gn/1717/linux/gn-linux-x86-1717.tar.gz",
+          "unzip_filename": "gn"
+        },
+        {
+          "unzip_dir": "prebuilts/build-tools/linux-x86/bin",
+          "file_path": "/openharmony/compiler/ninja/1.10.1/linux/ninja-linux-x86-1.10.1.tar.gz",
+          "unzip_filename": "ninja"
+        },
+        {
+          "unzip_dir": "prebuilts/ark_tools",
+          "file_path": "/openharmony/compiler/llvm_prebuilt_libs/ark_js_prebuilts_20220629.tar.gz",
+          "unzip_filename": "ark_js_prebuilts"
+        },
+        {
+          "unzip_dir": "prebuilts/build-tools/common/nodejs",
+          "file_path": "/nodejs/v12.18.4/node-v12.18.4-linux-x64.tar.gz",
+          "unzip_filename": "node-v12.18.4-linux-x64"
+        }
+      ],
+      "linux_copy_config": [
+        {
+          "unzip_dir": "prebuilts/clang/ohos/linux-x86_64",
+          "file_path": "/openharmony/compiler/clang/12.0.1-530132/linux/clang-530132-linux-x86_64-20220730.tar.bz2",
+          "unzip_filename": "llvm"
+        }
+      ]
+    }
+  }
+}
+

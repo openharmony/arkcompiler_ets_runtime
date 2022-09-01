@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:class
+ * @tc.desc:test class
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 class Parent {
     constructor(x) {
         this.x = x;

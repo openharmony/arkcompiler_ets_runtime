@@ -15,10 +15,6 @@
 
 #include "ecmascript/compiler/llvm_ir_builder.h"
 
-#include <cstring>
-#include <iostream>
-#include <set>
-
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
@@ -28,7 +24,7 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 
 #if defined(__clang__)
@@ -158,6 +154,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::SEXT_TO_INT64, &LLVMIRBuilder::HandleSExtInt},
         {OpCode::SEXT_TO_ARCH, &LLVMIRBuilder::HandleSExtInt},
         {OpCode::TRUNC_TO_INT1, &LLVMIRBuilder::HandleCastIntXToIntY},
+        {OpCode::TRUNC_TO_INT8, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::TRUNC_TO_INT32, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::TRUNC_TO_INT16, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::REV, &LLVMIRBuilder::HandleIntRev},
@@ -536,7 +533,7 @@ LLVMValueRef LLVMIRBuilder::GetFunctionFromGlobalValue([[maybe_unused]]LLVMValue
 
 bool LLVMIRBuilder::IsInterpreted()
 {
-    return circuit_->GetFrameType() == FrameType::INTERPRETER_FRAME;
+    return circuit_->GetFrameType() == FrameType::ASM_INTERPRETER_FRAME;
 }
 
 bool LLVMIRBuilder::IsOptimized()
@@ -972,7 +969,7 @@ void LLVMIRBuilder::LinkToLLVMCfg(int bbId, const OperandsVector &predecessors)
 void LLVMIRBuilder::HandleGoto(GateRef gate)
 {
     std::vector<GateRef> outs;
-    acc_.GetOutVector(gate, outs);
+    acc_.GetOutStateVector(gate, outs);
     int block = instID2bbID_[acc_.GetId(gate)];
     int bbOut = instID2bbID_[acc_.GetId(outs[0])];
     switch (acc_.GetOpCode(gate)) {
@@ -1133,7 +1130,7 @@ void LLVMIRBuilder::HandleBranch(GateRef gate)
     std::vector<GateRef> ins;
     acc_.GetInVector(gate, ins);
     std::vector<GateRef> outs;
-    acc_.GetOutVector(gate, outs);
+    acc_.GetOutStateVector(gate, outs);
     GateRef bTrue = (acc_.GetOpCode(outs[0]) == OpCode::IF_TRUE) ? outs[0] : outs[1];
     GateRef bFalse = (acc_.GetOpCode(outs[0]) == OpCode::IF_FALSE) ? outs[0] : outs[1];
     int bbTrue = instID2bbID_[acc_.GetId(bTrue)];
@@ -1191,7 +1188,7 @@ void LLVMIRBuilder::HandleSwitch(GateRef gate)
     std::vector<GateRef> ins;
     acc_.GetInVector(gate, ins);
     std::vector<GateRef> outs;
-    acc_.GetOutVector(gate, outs);
+    acc_.GetOutStateVector(gate, outs);
     VisitSwitch(gate, ins[1], outs);
 }
 
@@ -1321,17 +1318,9 @@ LLVMValueRef LLVMIRBuilder::VectorAdd(LLVMValueRef baseAddr, LLVMValueRef offset
     return result;
 }
 
-bool LLVMIRBuilder::IsGCRelated(GateType typeCode) const
-{
-    if ((typeCode.GetType() & (~GateType::GC_MASK)) == 0) {
-        return true;
-    }
-    return false;
-}
-
 LLVMTypeRef LLVMIRBuilder::ConvertLLVMTypeFromGate(GateRef gate) const
 {
-    if (IsGCRelated(acc_.GetGateType(gate))) {
+    if (acc_.IsGCRelated(gate)) {
         if (compCfg_->Is32Bit()) {
             return LLVMVectorType(LLVMPointerType(LLVMInt8Type(), 1), 2);
         } else {
@@ -1870,9 +1859,8 @@ void LLVMIRBuilder::HandleBitCast(GateRef gate)
 void LLVMIRBuilder::VisitBitCast(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    [[maybe_unused]] auto gateValCode = acc_.GetMachineType(gate);
-    [[maybe_unused]] auto e1ValCode = acc_.GetMachineType(e1);
-    ASSERT(GetBitWidthFromMachineType(gateValCode) == GetBitWidthFromMachineType(e1ValCode));
+    ASSERT(GetBitWidthFromMachineType(acc_.GetMachineType(gate)) ==
+           GetBitWidthFromMachineType(acc_.GetMachineType(e1)));
     auto returnType = ConvertLLVMTypeFromGate(gate);
     LLVMValueRef result = LLVMBuildBitCast(builder_, e1Value, returnType, "");
     gate2LValue_[gate] = result;
@@ -1934,7 +1922,6 @@ LLVMTypeRef LLVMModule::GetFuncType(const CallSignature *stubDescriptor)
     auto paramCount = stubDescriptor->GetParametersCount();
     int extraParameterCnt = 0;
     auto paramsType = stubDescriptor->GetParametersType();
-
     if (paramsType != nullptr) {
         LLVMTypeRef glueType = ConvertLLVMTypeFromVariableType(paramsType[0]);
         paramTys.push_back(glueType);
@@ -1995,7 +1982,7 @@ LLVMTypeRef LLVMModule::ConvertLLVMTypeFromVariableType(VariableType type)
     return machineTypeMap[type];
 }
 
-LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::JSMethod *method)
+LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)
 {
     LLVMTypeRef returnType = NewLType(MachineType::I64, GateType::TaggedValue());  // possibly get it for circuit
     LLVMTypeRef glue = NewLType(MachineType::I64, GateType::NJSValue());
@@ -2004,13 +1991,13 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::JSMethod *method)
     std::vector<LLVMTypeRef> paramTys = { glue, lexEnv, actualArgc };
     auto funcIndex = static_cast<uint32_t>(CommonArgIdx::FUNC);
     auto numOfComArgs = static_cast<uint32_t>(CommonArgIdx::NUM_OF_ARGS);
-    auto paramCount = method->GetNumArgs() + numOfComArgs;
+    auto paramCount = methodLiteral->GetNumArgs() + numOfComArgs;
     auto numOfRestArgs = paramCount - funcIndex;
     paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
     auto funcType = LLVMFunctionType(returnType, paramTys.data(), paramCount, false); // not variable args
-    CString name = method->GetMethodName();
-    auto function = LLVMAddFunction(module_, name.c_str(), funcType);
-    auto offsetInPandaFile = method->GetMethodId().GetOffset();
+    const char *name = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
+    auto function = LLVMAddFunction(module_, name, funcType);
+    auto offsetInPandaFile = methodLiteral->GetMethodId().GetOffset();
     SetFunction(offsetInPandaFile, function);
     return function;
 }

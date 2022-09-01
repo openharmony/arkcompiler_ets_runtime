@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:loadicbyvalue
+ * @tc.desc:test loadicbyvalue
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var i = 3;
 var obj = {3:"icsuccess"};
 function func1(a)

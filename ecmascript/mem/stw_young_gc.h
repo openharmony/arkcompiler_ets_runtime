@@ -17,7 +17,6 @@
 #define ECMASCRIPT_MEM_STW_YOUNG_GC_H
 
 #include "ecmascript/mem/allocator.h"
-#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/garbage_collector.h"
 #include "ecmascript/mem/heap.h"

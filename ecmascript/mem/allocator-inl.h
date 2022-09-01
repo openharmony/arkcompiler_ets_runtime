@@ -92,7 +92,6 @@ uintptr_t FreeListAllocator::Allocate(size_t size)
     auto ret = bpAllocator_.Allocate(size);
     if (LIKELY(ret != 0)) {
         allocationSizeAccumulator_ += size;
-        Region::ObjectAddressToRange(ret)->IncreaseAliveObject(size);
         return ret;
     }
     FreeObject *object = freeList_->Allocate(size);
@@ -112,15 +111,11 @@ uintptr_t FreeListAllocator::Allocate(FreeObject *object, size_t size)
     allocationSizeAccumulator_ += size;
     if (remainSize <= bpAllocator_.Available()) {
         Free(begin + size, remainSize);
-        Region::ObjectAddressToRange(begin)->IncreaseAliveObject(size);
         return begin;
     } else {
         FreeBumpPoint();
         bpAllocator_.Reset(begin, end);
         auto ret = bpAllocator_.Allocate(size);
-        if (ret != 0) {
-            Region::ObjectAddressToRange(ret)->IncreaseAliveObject(size);
-        }
         return ret;
     }
 }

@@ -155,4 +155,21 @@ void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
         objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHClass, visitor);
     }
 }
+
+uintptr_t CompressGCMarker::AllocateForwardAddress(uint32_t threadId, size_t size, TaggedObject *object)
+{
+    if (!isAppSpawn_) {
+        bool isPromoted = true;
+        return AllocateDstSpace(threadId, size, isPromoted);
+    }
+    if (Heap::ShouldMoveToRoSpace(JSTaggedValue(object))) {
+        if (JSTaggedValue(object).IsString()) {
+            // calculate and set hashcode for read-only ecmastring in advance
+            EcmaString::Cast(object)->GetHashcode();
+        }
+        return AllocateReadOnlySpace(size);
+    } else {
+        return AllocateAppSpawnSpace(size);
+    }
+}
 }  // namespace panda::ecmascript

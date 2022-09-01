@@ -18,6 +18,7 @@
 
 #include "ecmascript/tooling/agent/runtime_impl.h"
 #include "ecmascript/tooling/backend/js_pt_hooks.h"
+#include "ecmascript/tooling/base/pt_method.h"
 #include "ecmascript/tooling/base/pt_params.h"
 #include "ecmascript/tooling/backend/js_pt_extractor.h"
 #include "ecmascript/tooling/dispatcher.h"
@@ -140,13 +141,14 @@ private:
     std::unique_ptr<Scope> GetLocalScopeChain(const FrameHandler *frameHandler,
         std::unique_ptr<RemoteObject> *thisObj);
     std::unique_ptr<Scope> GetGlobalScopeChain();
-    void GetLocalVariables(const FrameHandler *frameHandler, const JSMethod *method,
-        Local<JSValueRef> &thisVal, Local<ObjectRef> &localObj);
+    void GetLocalVariables(const FrameHandler *frameHandler, panda_file::File::EntityId methodId,
+        const JSPandaFile *jsPandaFile, Local<JSValueRef> &thisVal, Local<ObjectRef> &localObj);
     void CleanUpOnPaused();
     void UpdateScopeObject(const FrameHandler *frameHandler, std::string_view varName, Local<JSValueRef> newVal);
     Local<JSValueRef> ConvertToLocal(const std::string &varValue);
     bool DecodeAndCheckBase64(const std::string &src, std::string &dest);
     bool IsSkipLine(const JSPtLocation &location);
+    bool CheckPauseOnException();
 
     class Frontend {
     public:
@@ -175,7 +177,7 @@ private:
 
     std::unordered_map<std::string, JSPtExtractor *> extractors_ {};
     std::unordered_map<ScriptId, std::unique_ptr<PtScript>> scripts_ {};
-    bool pauseOnException_ {false};
+    PauseOnExceptionsState pauseOnException_ {PauseOnExceptionsState::NONE};
     bool pauseOnNextByteCode_ {false};
     std::unique_ptr<JSPtExtractor::SingleStepper> singleStepper_ {nullptr};
 

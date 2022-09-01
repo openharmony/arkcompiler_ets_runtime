@@ -127,7 +127,6 @@ void ArkStackMapParser::ParseArkStackMap(const CallsiteHead& callsiteHead, Binar
         offset += sizeof(OffsetType);
         LOG_COMPILER(DEBUG) << " reg: " << std::dec << reg << " offset:" <<  offsetType;
         arkStackMaps.emplace_back(std::make_pair(reg, offsetType));
-        ASSERT(reg == GCStackMapRegisters::SP || reg == GCStackMapRegisters::FP);
     }
 }
 
@@ -267,7 +266,7 @@ void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint3
                                      std::vector<ARKDeopt>> &sizeAndArkDeopt)
 {
     ASSERT(deopt.size() % 2 == 0); // 2:<id, value>
-    int total = 0;
+    uint32_t total = 0;
     ARKDeopt v;
     for (size_t i = 0; i < deopt.size(); i += 2) { // 2:<id, value>
         ASSERT(std::holds_alternative<OffsetType>(deopt[i]));

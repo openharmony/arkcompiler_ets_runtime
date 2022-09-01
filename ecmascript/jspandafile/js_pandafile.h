@@ -18,8 +18,8 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/constpool_value.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 
 #include "libpandafile/file.h"
@@ -30,6 +30,8 @@ class JSPandaFile {
 public:
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
+    static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
+
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
     static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
@@ -49,16 +51,21 @@ public:
         return pf_;
     }
 
-    JSMethod *GetMethods() const
+    MethodLiteral* GetMethodLiterals() const
     {
-        return methods_;
+        return methodLiterals_;
     }
 
-    void SetMethodToMap(JSMethod *method)
+    void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
-        if (method != nullptr) {
-            methodMap_.emplace(method->GetMethodId().GetOffset(), method);
+        if (methodLiteral != nullptr) {
+            methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
         }
+    }
+
+    const CUnorderedMap<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
+    {
+        return methodLiteralMap_;
     }
 
     uint32_t GetNumMethods() const
@@ -88,7 +95,7 @@ public:
         mainMethodIndex_ = mainMethodIndex;
     }
 
-    JSMethod *FindMethods(uint32_t offset) const;
+    MethodLiteral* PUBLIC_API FindMethodLiteral(uint32_t offset) const;
 
     Span<const uint32_t> GetClasses() const
     {
@@ -126,12 +133,12 @@ public:
 
 private:
     void Initialize();
-    uint32_t constpoolIndex_ {0};
+    uint32_t constpoolIndex_ {1}; // Index 0 is JSPandaFile NativePointer.
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     uint32_t mainMethodIndex_ {0};
-    JSMethod *methods_ {nullptr};
-    CUnorderedMap<uint32_t, JSMethod *> methodMap_;
+    MethodLiteral *methodLiterals_ {nullptr};
+    CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     const panda_file::File *pf_ {nullptr};
     CString desc_;
     bool isModule_ {false};

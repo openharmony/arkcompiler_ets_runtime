@@ -28,12 +28,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
-
     bool isModule = jsPandaFile->IsModule();
     if (isModule) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
         EcmaVM *vm = thread->GetEcmaVM();
         ModuleManager *moduleManager = vm->GetModuleManager();
+        thread->GetEcmaVM()->GetModuleManager()->SetExecuteMode(false);
         JSHandle<SourceTextModule> moduleRecord = moduleManager->HostResolveImportedModule(filename);
         SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {
@@ -57,8 +57,19 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
     }
     bool isModule = jsPandaFile->IsModule();
     if (isModule) {
-        ModuleManager *moduleManager = thread->GetEcmaVM()->GetModuleManager();
-        moduleManager->AddResolveImportedModule(jsPandaFile, filename);
+        thread->GetEcmaVM()->GetModuleManager()->SetExecuteMode(true);
+        [[maybe_unused]] EcmaHandleScope scope(thread);
+        EcmaVM *vm = thread->GetEcmaVM();
+        ModuleManager *moduleManager = vm->GetModuleManager();
+        JSHandle<SourceTextModule> moduleRecord = moduleManager->HostResolveImportedModule(buffer, size, filename);
+        SourceTextModule::Instantiate(thread, moduleRecord);
+        if (thread->HasPendingException()) {
+            auto exception = thread->GetException();
+            vm->HandleUncaughtException(exception.GetTaggedObject());
+            return JSTaggedValue::Undefined();
+        }
+        SourceTextModule::Evaluate(thread, moduleRecord, buffer, size);
+        return JSTaggedValue::Undefined();
     }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile);
 }

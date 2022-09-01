@@ -44,6 +44,11 @@ public:
         *reinterpret_cast<JSTaggedType *>(slotAddress_) = value;
     }
 
+    void Clear()
+    {
+        *reinterpret_cast<JSTaggedType *>(slotAddress_) = JSTaggedValue::VALUE_UNDEFINED;
+    }
+
     TaggedObject *GetTaggedObject() const
     {
         return reinterpret_cast<TaggedObject *>(GetTaggedType());

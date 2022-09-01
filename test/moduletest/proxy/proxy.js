@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:proxy
+ * @tc.desc:test Proxy
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function add(a, b) {
     return a + b
 }

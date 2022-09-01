@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:builtins
+ * @tc.desc:test builtins
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 print("builtins ir start");
 var str1 = "wpydejkl";
 print(str1.charCodeAt(1.231));
@@ -20,4 +26,12 @@ print(str1.charCodeAt(undefined));
 print(str1.charCodeAt(new Date()));
 print(str1.charCodeAt(14));
 print(str1.charCodeAt(3));
+print(str1.indexOf("wpy"));
+print(str1.indexOf("py", 0));
+print(str1.indexOf("py", 5));
+print(str1.indexOf("hhh", 0));
+print(str1.indexOf("hjs", 19));
+print(str1.indexOf("jk", 3));
+print(str1.indexOf(undefined));
+print(str1.indexOf(null));
 print("builtins ir end");

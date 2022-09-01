@@ -29,6 +29,7 @@
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_collator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_object-inl.h"
@@ -571,6 +572,28 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, that_tag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    uint32_t argLength = argv->GetArgsNumber();
+    uint32_t localeIndex = 1;
+    uint32_t optionsIndex = 2;
+    // referenceStr.localeCompare(compareString[, locales[, options]])
+    if (argLength > localeIndex) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> ctor = env->GetCollatorFunction();
+        JSHandle<JSCollator> collator =
+            JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor)));
+        JSHandle<JSTaggedValue> localeHandle = BuiltinsString::GetCallArg(argv, localeIndex);
+        JSMutableHandle<JSTaggedValue> optionsHandle(thread, JSTaggedValue::Undefined());
+        if (argLength > optionsIndex) {
+            optionsHandle.Update(BuiltinsString::GetCallArg(argv, optionsIndex));
+        }
+        JSHandle<JSCollator> initCollator =
+            JSCollator::InitializeCollator(thread, collator, localeHandle, optionsHandle);
+        icu::Collator *icuCollator = initCollator->GetIcuCollator();
+        icuCollator->setStrength(icu::Collator::PRIMARY);
+        JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
+        return result;
+    }
     int32_t res = thisHandle->Compare(*thatHandle);
     return GetTaggedInt(res);
 }

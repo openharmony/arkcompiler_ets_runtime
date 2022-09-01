@@ -60,6 +60,8 @@ static constexpr size_t DEFAULT_REGION_MASK = DEFAULT_REGION_SIZE - 1;
 static constexpr size_t DEFAULT_MARK_STACK_SIZE = 4_KB;
 
 static constexpr double MIN_OBJECT_SURVIVAL_RATE = 0.75;
+static constexpr double growObjectSurvivalRate = 0.8;
+static constexpr double shrinkObjectSurvivalRate = 0.2;
 
 // Objects which are larger than half of the region size are huge objects.
 // Regular objects will be allocated on regular regions and migrated on spaces.
@@ -75,7 +77,7 @@ static constexpr size_t MAX_CHUNK_AREA_SIZE = 1_MB;
 
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);
-static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = base::math::GetIntLog2(TAGGED_TYPE_SIZE);
+static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = base::MathHelper::GetIntLog2(TAGGED_TYPE_SIZE);
 
 template<typename T>
 constexpr inline bool IsAligned(T value, size_t alignment)

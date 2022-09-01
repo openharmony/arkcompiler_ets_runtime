@@ -21,6 +21,7 @@
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_async_function.h"
 #include "ecmascript/builtins/builtins_async_generator.h"
+#include "ecmascript/builtins/builtins_async_iterator.h"
 #include "ecmascript/builtins/builtins_atomics.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_boolean.h"
@@ -129,6 +130,7 @@ using BuiltinsFinalizationRegistry = builtins::BuiltinsFinalizationRegistry;
 using BuiltinsArray = builtins::BuiltinsArray;
 using BuiltinsTypedArray = builtins::BuiltinsTypedArray;
 using BuiltinsIterator = builtins::BuiltinsIterator;
+using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using Error = builtins::BuiltinsError;
 using RangeError = builtins::BuiltinsRangeError;
 using ReferenceError = builtins::BuiltinsReferenceError;
@@ -137,6 +139,7 @@ using AggregateError = builtins::BuiltinsAggregateError;
 using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
+using OOMError = builtins::BuiltinsOOMError;
 using ErrorType = base::ErrorType;
 using Global = builtins::BuiltinsGlobal;
 using BuiltinsString = builtins::BuiltinsString;
@@ -187,8 +190,6 @@ using Deque = containers::ContainersDeque;
 using ContainerStack = panda::ecmascript::containers::ContainersStack;
 using ContainersPrivate = containers::ContainersPrivate;
 
-constexpr int METHOD_SIZE = sizeof(JSMethod);
-
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(nullptr),
@@ -220,6 +221,8 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(SyntaxError::ToString),
     reinterpret_cast<uintptr_t>(EvalError::EvalErrorConstructor),
     reinterpret_cast<uintptr_t>(EvalError::ToString),
+    reinterpret_cast<uintptr_t>(OOMError::OOMErrorConstructor),
+    reinterpret_cast<uintptr_t>(OOMError::ToString),
     reinterpret_cast<uintptr_t>(Number::NumberConstructor),
     reinterpret_cast<uintptr_t>(Number::ToExponential),
     reinterpret_cast<uintptr_t>(Number::ToFixed),
@@ -598,6 +601,10 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsIterator::Return),
     reinterpret_cast<uintptr_t>(BuiltinsIterator::Throw),
     reinterpret_cast<uintptr_t>(BuiltinsIterator::GetIteratorObj),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::Next),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::Return),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::Throw),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::GetAsyncIteratorObj),
     reinterpret_cast<uintptr_t>(JSForInIterator::Next),
     reinterpret_cast<uintptr_t>(JSRegExpIterator::Next),
     reinterpret_cast<uintptr_t>(JSSetIterator::Next),
@@ -640,6 +647,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(Promise::GetSpecies),
     reinterpret_cast<uintptr_t>(BuiltinsPromiseJob::PromiseReactionJob),
     reinterpret_cast<uintptr_t>(BuiltinsPromiseJob::PromiseResolveThenableJob),
+    reinterpret_cast<uintptr_t>(BuiltinsPromiseJob::DynamicImportJob),
     reinterpret_cast<uintptr_t>(Intl::GetCanonicalLocales),
     reinterpret_cast<uintptr_t>(Locale::LocaleConstructor),
     reinterpret_cast<uintptr_t>(Locale::Maximize),
@@ -1114,6 +1122,7 @@ void SnapshotProcessor::DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, 
     auto nonMovableSpace = heap->GetNonMovableSpace();
     auto machineCodeSpace = heap->GetMachineCodeSpace();
     auto snapshotSpace = heap->GetSnapshotSpace();
+
     DeserializeSpaceObject(oldSpaceBegin, oldSpace, oldSpaceObjSize);
     DeserializeSpaceObject(nonMovableBegin, nonMovableSpace, nonMovableObjSize);
     DeserializeSpaceObject(machineCodeBegin, machineCodeSpace, machineCodeObjSize);
@@ -1136,35 +1145,38 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         uint32_t regionIndex = *(reinterpret_cast<GCBitset *>(oldMarkGCBitsetAddr)->Words());
         regionIndexMap_.emplace(regionIndex, region);
 
-        size_t copyBytes = fileRegion->highWaterMark_ - fileRegion->packedData_.begin_;
+        size_t liveObjectSize = 0;
+        if (space->GetSpaceType() == MemSpaceType::SNAPSHOT_SPACE) {
+            liveObjectSize = fileRegion->highWaterMark_ - fileRegion->packedData_.begin_;
+        } else {
+            liveObjectSize = fileRegion->AliveObject();
+        }
         // Retrieve the data beginning address based on the serialized data format.
         uintptr_t copyFrom = oldMarkGCBitsetAddr +
             (fileRegion->packedData_.begin_ - ToUintPtr(fileRegion->packedData_.markGCBitset_));
-        ASSERT(copyBytes <= region->end_ - region->packedData_.begin_);
+        ASSERT(liveObjectSize <= region->end_ - region->packedData_.begin_);
 
         if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
-                     copyBytes,
+                     liveObjectSize,
                      ToVoidPtr(copyFrom),
-                     copyBytes) != EOK) {
+                     liveObjectSize) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
 
-        region->highWaterMark_ = region->packedData_.begin_ + copyBytes;
         // Other information like aliveObject size, wasted size etc. in the region object to restore.
-        region->aliveObject_ = fileRegion->AliveObject();
+        region->aliveObject_ = liveObjectSize;
         region->wasted_ = fileRegion->wasted_;
-
+        region->highWaterMark_ = region->packedData_.begin_ + liveObjectSize;
         region->SetGCFlag(RegionGCFlags::NEED_RELOCATE);
 
-        size_t liveObjectSize = region->GetHighWaterMark() - region->GetBegin();
         if (space->GetSpaceType() != MemSpaceType::SNAPSHOT_SPACE) {
             auto sparseSpace = reinterpret_cast<SparseSpace *>(space);
             region->InitializeFreeObjectSets();
             sparseSpace->FreeLiveRange(region, region->GetHighWaterMark(), region->GetEnd(), true);
             sparseSpace->IncreaseLiveObjectSize(liveObjectSize);
             sparseSpace->IncreaseAllocatedSize(liveObjectSize);
-            sparseSpace->AddRegionToFront(region);
+            sparseSpace->AddRegion(region);
         } else {
             auto snapshotSpace = reinterpret_cast<SnapshotSpace *>(space);
             snapshotSpace->IncreaseLiveObjectSize(liveObjectSize);
@@ -1178,6 +1190,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
     ASSERT(stringVector_.empty());
     auto oldSpace = const_cast<Heap *>(vm_->GetHeap())->GetOldSpace();
+    auto hugeSpace = const_cast<Heap *>(vm_->GetHeap())->GetHugeObjectSpace();
     auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
     auto stringClass = globalConst->GetStringClass();
     while (stringBegin < stringEnd) {
@@ -1188,7 +1201,12 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         if (strFromTable) {
             stringVector_.emplace_back(ToUintPtr(strFromTable));
         } else {
-            uintptr_t newObj = oldSpace->Allocate(strSize, false);
+            uintptr_t newObj = 0;
+            if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
+                newObj = hugeSpace->Allocate(strSize, vm_->GetJSThread());
+            } else {
+                newObj = oldSpace->Allocate(strSize, false);
+            }
             if (newObj == 0) {
                 LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldLocalSpace OOM";
             }
@@ -1206,17 +1224,17 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     }
 }
 
-void SnapshotProcessor::DeserializePandaMethod(uintptr_t begin, uintptr_t end, JSMethod *methods,
+void SnapshotProcessor::DeserializePandaMethod(uintptr_t begin, uintptr_t end, MethodLiteral *methods,
                                                size_t &methodNums, size_t &others)
 {
     for (size_t i = 0; i < others; i++) {
         pandaMethod_.emplace_back(begin);
-        auto method = reinterpret_cast<JSMethod *>(begin);
-        if (memcpy_s(methods + (--methodNums), METHOD_SIZE, method, METHOD_SIZE) != EOK) {
+        auto method = reinterpret_cast<Method *>(begin);
+        if (memcpy_s(methods + (--methodNums), Method::Size(), method, Method::Size()) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
-        begin += METHOD_SIZE;
+        begin += Method::Size();
         if (begin >= end) {
             others = others - i - 1;
         }
@@ -1236,7 +1254,7 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
             break;
         }
         case SnapshotType::BUILTINS: {
-            JSTaggedValue result(rootObjectAddr);
+            JSTaggedValue result(static_cast<JSTaggedType>(rootObjectAddr));
             auto constants = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
             size_t constCount = constants->GetConstantCount();
             while (constants->IsSpecialOrUndefined(constSpecialIndex)) {
@@ -1250,10 +1268,21 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
             constSpecialIndex++;
             break;
         }
-        case SnapshotType::TS_LOADER: {
-            if (JSType(objType) == JSType::HCLASS) {
+        case SnapshotType::ETSO: {
+            JSTaggedValue item = JSTaggedValue(rootObjectAddr);
+            if (item.IsTaggedArray()) {
+                JSHandle<TaggedArray> root(vm_->GetJSThread(), item);
                 TSManager *tsManager = vm_->GetTSManager();
-                tsManager->AddStaticHClassInRuntimePhase(JSTaggedValue(rootObjectAddr));
+
+                // Get ConstPoolInfo
+                JSTaggedValue constPoolInfo = root->Get(0);
+                tsManager->SetConstantPoolInfo(constPoolInfo);
+
+                // Get StaticHClass
+                uint32_t len = root->GetLength();
+                for (uint32_t i = 1; i < len; ++i) {
+                    tsManager->AddStaticHClassInRuntimePhase(root->Get(i));
+                }
             }
             break;
         }
@@ -1300,10 +1329,10 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
 void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFile, uint64_t rootObjSize)
 {
     size_t methodNums = 0;
-    JSMethod *methods = nullptr;
+    MethodLiteral *methods = nullptr;
     if (jsPandaFile) {
         methodNums = jsPandaFile->GetNumMethods();
-        methods = jsPandaFile->GetMethods();
+        methods = jsPandaFile->GetMethodLiterals();
     }
 
     auto heap = vm_->GetHeap();
@@ -1318,7 +1347,7 @@ void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFi
     RelocateSpaceObject(snapshotSpace, type, methods, methodNums, rootObjSize);
 }
 
-void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, JSMethod* methods,
+void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
                                             size_t methodNums, size_t rootObjSize)
 {
     size_t others = 0;
@@ -1424,8 +1453,20 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value)
         *value = vm_->GetSnapshotEnv()->FindEnvObjectByIndex(index);
         return;
     }
+
+    if (!encodeBit.IsReference()) {
+        return;
+    }
+
     if (encodeBit.IsReference() && !encodeBit.IsSpecial()) {
+        Region *rootRegion = Region::ObjectAddressToRange((uintptr_t)value);
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
+        Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
+        if (!rootRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+            // Should align with '8' in 64 and 32 bit platform
+            ASSERT((value % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+            rootRegion->InsertOldToNewRSet((uintptr_t)value);
+        }
         *value = taggedObjectAddr;
         return;
     }
@@ -1488,21 +1529,6 @@ EncodeBit SnapshotProcessor::NativePointerToEncodeBit(void *nativePointer)
     return native;
 }
 
-void *SnapshotProcessor::NativePointerEncodeBitToAddr(EncodeBit nativeBit)
-{
-    size_t index = nativeBit.GetNativePointerOrObjectIndex();
-    void *addr = nullptr;
-    size_t nativeTableSize = GetNativeTableSize();
-    if (index < nativeTableSize - Constants::PROGRAM_NATIVE_METHOD_BEGIN) {
-        addr = reinterpret_cast<void *>(vm_->GetFactory()->nativeMethods_.at(index));
-    } else if (index < nativeTableSize) {
-        addr = reinterpret_cast<void *>(g_nativeTable[index]);
-    } else {
-        addr = ToVoidPtr(pandaMethod_.at(index - nativeTableSize));
-    }
-    return addr;
-}
-
 size_t SnapshotProcessor::SearchNativeMethodIndex(void *nativePointer)
 {
     size_t nativeMethodSize = GetNativeTableSize() - Constants::PROGRAM_NATIVE_METHOD_BEGIN;
@@ -1513,9 +1539,8 @@ size_t SnapshotProcessor::SearchNativeMethodIndex(void *nativePointer)
     }
 
     // not found
-    auto nativeMethod = reinterpret_cast<JSMethod *>(nativePointer)->GetNativePointer();
     for (size_t i = 0; i < nativeMethodSize; i++) {
-        if (nativeMethod == reinterpret_cast<void *>(g_nativeTable[i])) {
+        if (nativePointer == reinterpret_cast<void *>(g_nativeTable[i])) {
             return i;
         }
     }
@@ -1546,9 +1571,7 @@ void SnapshotProcessor::DeserializeNativePointer(uint64_t *value)
     size_t index = native.GetNativePointerOrObjectIndex();
     uintptr_t addr = 0U;
     size_t nativeTableSize = GetNativeTableSize();
-    if (index < nativeTableSize - Constants::PROGRAM_NATIVE_METHOD_BEGIN) {
-        addr = reinterpret_cast<uintptr_t>(vm_->GetFactory()->nativeMethods_.at(index));
-    } else if (index < nativeTableSize) {
+    if (index < nativeTableSize) {
         addr = g_nativeTable[index];
     } else {
         addr = pandaMethod_.at(index - nativeTableSize);
@@ -1573,13 +1596,13 @@ void SnapshotProcessor::SerializePandaFileMethod()
     // panda methods
     for (auto &it : pandaMethod_) {
         // write method
-        size_t methodObjSize = METHOD_SIZE;
+        size_t methodObjSize = Method::Size();
         uintptr_t methodObj = factory->NewSpaceBySnapshotAllocator(methodObjSize);
         if (methodObj == 0) {
             LOG_ECMA(ERROR) << "SnapshotAllocator OOM";
             return;
         }
-        if (memcpy_s(ToVoidPtr(methodObj), methodObjSize, ToVoidPtr(it), METHOD_SIZE) != EOK) {
+        if (memcpy_s(ToVoidPtr(methodObj), methodObjSize, ToVoidPtr(it), Method::Size()) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
@@ -1666,16 +1689,61 @@ void SnapshotProcessor::EncodeTaggedObjectRange(ObjectSlot start, ObjectSlot end
     }
 }
 
-void SnapshotProcessor::GeneratedNativeMethod()  // NOLINT(readability-function-size)
-{
-    size_t nativeMethodSize = GetNativeTableSize() - Constants::PROGRAM_NATIVE_METHOD_BEGIN;
-    for (size_t i = 0; i < nativeMethodSize; i++) {
-        vm_->GetFactory()->NewMethodForNativeFunction(reinterpret_cast<void *>(g_nativeTable[i]));
-    }
-}
-
 size_t SnapshotProcessor::GetNativeTableSize() const
 {
     return sizeof(g_nativeTable) / sizeof(g_nativeTable[0]);
+}
+
+void ConstantPoolProcessor::InitializeConstantPoolInfos(size_t nums)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    infos_ = factory->NewTaggedArray(nums * ITEM_SIZE).GetTaggedValue();
+}
+
+void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool)
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<TaggedArray> array(thread, infos_);
+    ASSERT(index_ < array->GetLength());
+    JSHandle<ConstantPool> cp(thread, constantPool.GetTaggedValue());
+    array->Set(thread, index_++, JSTaggedValue(pf->GetFileUniqId()));
+    array->Set(thread, index_++, GenerateConstantPoolInfo(cp));
+}
+
+JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(const JSHandle<ConstantPool> constantPool)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    JSThread *thread = vm_->GetJSThread();
+
+    uint32_t len = constantPool->GetLength();
+    JSHandle<TaggedArray> valueArray = factory->NewTaggedArray(len * ITEM_SIZE);
+    
+    int index = 0;
+    for (uint32_t i = 0; i < len; ++i) {
+        JSTaggedValue item = constantPool->GetObjectFromCache(i);
+        if (item.GetTaggedObject()->GetClass()->IsString()) {
+            valueArray->Set(thread, index++, JSTaggedValue(i));
+            valueArray->Set(thread, index++, item);
+        }
+    }
+
+    valueArray = TaggedArray::SetCapacity(thread, valueArray, index);
+    return valueArray.GetTaggedValue();
+}
+
+void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSTaggedValue constPoolInfo,
+                                                    const JSPandaFile* pf, JSHandle<ConstantPool> constPool)
+{
+    JSTaggedValue fileUniqID(pf->GetFileUniqId());
+    JSHandle<TaggedArray> array(thread, constPoolInfo);
+    auto index = array->GetIdx(fileUniqID);
+    JSHandle<TaggedArray> valueArray(thread, array->Get(index + 1));
+
+    uint32_t len = valueArray->GetLength();
+    for (uint32_t i = 0; i < len; i += ITEM_SIZE) {
+        uint32_t valueIndex = static_cast<uint32_t>(valueArray->Get(i).GetInt());
+        JSTaggedValue value = valueArray->Get(i + 1);
+        constPool->Set(thread, valueIndex, value);
+    }
 }
 }  // namespace panda::ecmascript

@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:trycatch
+ * @tc.desc:test try-catch
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 try {
     var a = 1;
     a();

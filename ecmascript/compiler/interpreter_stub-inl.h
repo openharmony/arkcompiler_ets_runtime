@@ -107,15 +107,14 @@ GateRef InterpreterStubBuilder::ReadInst4_3(GateRef pc)
 GateRef InterpreterStubBuilder::ReadInstSigned8_0(GateRef pc)
 {
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
-    return GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    return GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
 }
 
 GateRef InterpreterStubBuilder::ReadInstSigned16_0(GateRef pc)
 {
     /* 2 : skip 8 bits of opcode and 8 bits of low bits */
     GateRef currentInst = Load(VariableType::INT8(), pc, IntPtr(2));
-    GateRef currentInst1 = GetEnvironment()->GetBuilder()->UnaryArithmetic(
-        OpCode(OpCode::SEXT_TO_INT32), currentInst);
+    GateRef currentInst1 = GetEnvironment()->GetBuilder()->SExtInt1ToInt32(currentInst);
     GateRef currentInst2 = Int32LSL(currentInst1, Int32(8));  // 8 : set as high 8 bits
     return Int32Add(currentInst2, ZExtInt8ToInt32(ReadInst8_0(pc)));
 }
@@ -124,7 +123,7 @@ GateRef InterpreterStubBuilder::ReadInstSigned32_0(GateRef pc)
 {
     /* 4 : skip 8 bits of opcode and 24 bits of low bits */
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(4));
-    GateRef currentInst = GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    GateRef currentInst = GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
     GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_2(pc)));
     GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));  // 8 : set as high 8 bits
@@ -229,7 +228,9 @@ GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
 
 GateRef InterpreterStubBuilder::GetConstpoolFromFunction(GateRef function)
 {
-    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::CONSTANT_POOL_OFFSET));
+    GateRef method = GetMethodFromJSFunction(function);
+    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
+    return Load(VariableType::JS_POINTER(), method, offset);
 }
 
 // only use for fast new, not universal API
@@ -289,8 +290,9 @@ void InterpreterStubBuilder::SetFunctionToFrame(GateRef glue, GateRef frame, Gat
 
 void InterpreterStubBuilder::SetConstantPoolToFunction(GateRef glue, GateRef function, GateRef value)
 {
-    Store(VariableType::INT64(), glue, function,
-          IntPtr(JSFunction::CONSTANT_POOL_OFFSET), value);
+    GateRef method = GetMethodFromJSFunction(function);
+    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
+    Store(VariableType::INT64(), glue, method, offset, value);
 }
 
 void InterpreterStubBuilder::SetResolvedToFunction(GateRef glue, GateRef function, GateRef value)
@@ -430,18 +432,19 @@ GateRef InterpreterStubBuilder::GetStartIdxAndNumArgs(GateRef sp, GateRef restId
     GateRef method = GetMethodFromJSFunction(function);
     GateRef callField = GetCallFieldFromMethod(method);
     // ASSERT: callField has "extra" bit.
-    GateRef numVregs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(JSMethod::NumVregsBits::START_BIT)),
-        Int64((1LLU << JSMethod::NumVregsBits::SIZE) - 1)));
-    GateRef haveFunc = Int64NotEqual(Int64And(Int64LSR(callField, Int64(JSMethod::HaveFuncBit::START_BIT)),
-        Int64((1LLU << JSMethod::HaveFuncBit::SIZE) - 1)), Int64(0));
-    GateRef haveNewTarget = Int64NotEqual(Int64And(Int64LSR(callField, Int64(JSMethod::HaveNewTargetBit::START_BIT)),
-        Int64((1LLU << JSMethod::HaveNewTargetBit::SIZE) - 1)), Int64(0));
-    GateRef haveThis = Int64NotEqual(Int64And(Int64LSR(callField, Int64(JSMethod::HaveThisBit::START_BIT)),
-        Int64((1LLU << JSMethod::HaveThisBit::SIZE) - 1)), Int64(0));
+    GateRef numVregs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(MethodLiteral::NumVregsBits::START_BIT)),
+        Int64((1LLU << MethodLiteral::NumVregsBits::SIZE) - 1)));
+    GateRef haveFunc = Int64NotEqual(Int64And(Int64LSR(callField, Int64(MethodLiteral::HaveFuncBit::START_BIT)),
+        Int64((1LLU << MethodLiteral::HaveFuncBit::SIZE) - 1)), Int64(0));
+    GateRef haveNewTarget = Int64NotEqual(
+        Int64And(Int64LSR(callField, Int64(MethodLiteral::HaveNewTargetBit::START_BIT)),
+        Int64((1LLU << MethodLiteral::HaveNewTargetBit::SIZE) - 1)), Int64(0));
+    GateRef haveThis = Int64NotEqual(Int64And(Int64LSR(callField, Int64(MethodLiteral::HaveThisBit::START_BIT)),
+        Int64((1LLU << MethodLiteral::HaveThisBit::SIZE) - 1)), Int64(0));
     GateRef copyArgs = Int32Add(Int32Add(ZExtInt1ToInt32(haveFunc), ZExtInt1ToInt32(haveNewTarget)),
                                 ZExtInt1ToInt32(haveThis));
-    numArgs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(JSMethod::NumArgsBits::START_BIT)),
-                                         Int64((1LLU << JSMethod::NumArgsBits::SIZE) - 1)));
+    numArgs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
+                                         Int64((1LLU << MethodLiteral::NumArgsBits::SIZE) - 1)));
     GateRef fp = Load(VariableType::NATIVE_POINTER(), state,
                       IntPtr(AsmInterpretedFrame::GetFpOffset(env->IsArch32Bit())));
     Label actualEqualDeclared(env);
@@ -596,18 +599,15 @@ GateRef InterpreterStubBuilder::FunctionIsResolved(GateRef object)
 
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
 {
-    auto env = GetEnvironment();
-    GateRef x = Load(VariableType::INT16(), method,
-                     IntPtr(JSMethod::GetHotnessCounterOffset(env->IsArch32Bit())));
-    return GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    GateRef x = Load(VariableType::INT16(), method, IntPtr(Method::LITERAL_INFO_OFFSET));
+    return GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
 }
 
 void InterpreterStubBuilder::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
 {
     auto env = GetEnvironment();
-    GateRef newValue = env->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT16), value);
-    Store(VariableType::INT16(), glue, method,
-          IntPtr(JSMethod::GetHotnessCounterOffset(env->IsArch32Bit())), newValue);
+    GateRef newValue = env->GetBuilder()->TruncInt64ToInt16(value);
+    Store(VariableType::INT16(), glue, method, IntPtr(Method::LITERAL_INFO_OFFSET), newValue);
 }
 
 void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,

@@ -66,39 +66,6 @@ public:
     {
         return Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(sizeof(JSTaggedType))));
     }
-
-    GateRef StringAt(GateRef obj, GateRef index)
-    {
-        auto env = GetEnvironment();
-        Label entry(env);
-        env->SubCfgEntry(&entry);
-        DEFVARIABLE(result, VariableType::INT32(), Int32(0));
-
-        Label exit(env);
-        Label isUtf16(env);
-        Label isUtf8(env);
-        Label doIntOp(env);
-        Label leftIsNumber(env);
-        Label rightIsNumber(env);
-        GateRef dataUtf16 = PtrAdd(obj, IntPtr(EcmaString::DATA_OFFSET));
-        Branch(IsUtf16String(obj), &isUtf16, &isUtf8);
-        Bind(&isUtf16);
-        {
-            result = ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(dataUtf16,
-                PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint16_t))))));
-            Jump(&exit);
-        }
-        Bind(&isUtf8);
-        {
-            result = ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(dataUtf16,
-                PtrMul(ChangeInt32ToIntPtr(index), IntPtr(sizeof(uint8_t))))));
-            Jump(&exit);
-        }
-        Bind(&exit);
-        auto ret = *result;
-        env->SubCfgExit();
-        return ret;
-    }
 };
 
 #define DECLARE_BUILTINS_STUB_CLASS(name)                                                           \

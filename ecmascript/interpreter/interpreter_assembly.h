@@ -19,7 +19,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"
@@ -39,7 +39,7 @@ public:
     static void InitStackFrame(JSThread *thread);
     static JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
     static JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
-    static uint32_t FindCatchBlock(JSMethod *caller, uint32_t pc);
+    static uint32_t FindCatchBlock(Method *caller, uint32_t pc);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
 
     static inline JSTaggedValue UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp);
@@ -66,7 +66,6 @@ static std::array<DispatchEntryPoint, BCStubEntries::BC_HANDLER_COUNT> asmDispat
 #define DEF_HANDLER(name) InterpreterAssembly::name,
     ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
 #undef DEF_HANDLER
-    InterpreterAssembly::HandleOverflow,
     InterpreterAssembly::HandleOverflow,
     InterpreterAssembly::HandleOverflow,
     InterpreterAssembly::HandleOverflow,

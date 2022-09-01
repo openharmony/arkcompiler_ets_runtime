@@ -23,8 +23,8 @@ namespace panda::ecmascript {
 class TSTypeParser {
 public:
     static constexpr size_t TYPE_KIND_INDEX_IN_LITERAL = 0;
-    static constexpr size_t USER_DEFINED_TYPE_OFFSET = 50;
     static constexpr size_t BUILDIN_TYPE_OFFSET = 20;
+    static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;
 
     explicit TSTypeParser(EcmaVM *vm, uint32_t moduleId, const JSHandle<EcmaString> fileName,
                           CVector<JSHandle<EcmaString>> &recordImportModules)
@@ -35,14 +35,27 @@ public:
 
     JSHandle<JSTaggedValue> ParseType(JSHandle<TaggedArray> &literal);
 
-    void SetTypeRef(JSHandle<JSTaggedValue> type, uint32_t loaclId);
+    void SetTypeGT(JSHandle<JSTaggedValue> type, uint32_t localId)
+    {
+        GlobalTSTypeRef gt = GlobalTSTypeRef(moduleId_, localId);
+        JSHandle<TSType>(type)->SetGT(gt);
+    }
 
     inline static GlobalTSTypeRef CreateGT(uint32_t moduleId, uint32_t typeId)
     {
-        if (typeId < USER_DEFINED_TYPE_OFFSET) {
-            return GlobalTSTypeRef(typeId);
+        if (typeId <= BUILDIN_TYPE_OFFSET) {
+            return GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, typeId);
         }
-        return GlobalTSTypeRef(moduleId, GetLocalIdInTypeTable(typeId));
+
+        if (typeId <= USER_DEFINED_TYPE_OFFSET) {
+            return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, typeId - BUILDIN_TYPE_OFFSET);
+        }
+
+        if (moduleId == TSModuleTable::BUILTINS_TABLE_ID) {
+            return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, typeId - BUILDIN_TYPE_OFFSET);
+        }
+
+        return GlobalTSTypeRef(moduleId, typeId - USER_DEFINED_TYPE_OFFSET);
     }
 
     inline CVector<JSHandle<EcmaString>> GetImportModules() const

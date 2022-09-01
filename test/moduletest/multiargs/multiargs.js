@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:multiargs
+ * @tc.desc:test multiple args
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function zero()
 {
     var a = '   0\n'

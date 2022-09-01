@@ -22,7 +22,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_method.h"
+#include "ecmascript/method.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
@@ -97,7 +97,7 @@ void AsmInterpreterCall::JSCallDispatch(ExtendedAssembler *assembler)
     CallNativeEntry(assembler);
     __ Bind(&callJSFunctionEntry);
     {
-        __ Tbnz(callFieldRegister, JSMethod::IsNativeBit::START_BIT, &callNativeEntry);
+        __ Tbnz(callFieldRegister, MethodLiteral::IsNativeBit::START_BIT, &callNativeEntry);
         // fast path
         __ Add(argvRegister, argvRegister, Immediate(NUM_MANDATORY_JSFUNC_ARGS * JSTaggedValue::TaggedTypeSize()));
         JSCallCommonEntry(assembler, JSCallMode::CALL_ENTRY);
@@ -193,10 +193,10 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
         // Reload pc to make sure stack trace is right
         __ Mov(temp, callTargetRegister);
-        __ Ldr(Register(X20), MemoryOperand(methodRegister, JSMethod::GetBytecodeArrayOffset(false)));
+        __ Ldr(Register(X20), MemoryOperand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         // Reload constpool and profileInfo to make sure gc map work normally
         __ Ldr(Register(X22), MemoryOperand(temp, JSFunction::PROFILE_TYPE_INFO_OFFSET));
-        __ Ldr(Register(X21), MemoryOperand(temp, JSFunction::CONSTANT_POOL_OFFSET));
+        __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
 
         __ Mov(temp, kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException);
         __ Add(temp, glueRegister, Operand(temp, UXTW, 3));  // 3： bc * 8
@@ -256,7 +256,7 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
 
     auto argc = kungfu::AssemblerModule::GetArgcFromJSCallMode(mode);
     Register declaredNumArgsRegister = __ AvailableRegister2();
-    __ Tbz(callFieldRegister, JSMethod::HaveExtraBit::START_BIT, &noExtraEntry);
+    __ Tbz(callFieldRegister, MethodLiteral::HaveExtraBit::START_BIT, &noExtraEntry);
     // extra entry
     {
         [[maybe_unused]] TempRegister1Scope scope1(assembler);
@@ -296,7 +296,7 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
     // declare < actual
     __ Bind(&pushArgsEntry);
     {
-        __ Tbnz(callFieldRegister, JSMethod::HaveExtraBit::START_BIT, fastPathEntry);
+        __ Tbnz(callFieldRegister, MethodLiteral::HaveExtraBit::START_BIT, fastPathEntry);
         // no extra branch
         // arg1, declare must be 0
         if (argc == 1) {
@@ -924,7 +924,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
         __ Tst(callFieldRegister, LogicalImmediate::Create(CALL_TYPE_MASK, RegXSize));
         __ B(Condition::EQ, &pushVregs);
     }
-    __ Tbz(callFieldRegister, JSMethod::HaveThisBit::START_BIT, &pushNewTarget);
+    __ Tbz(callFieldRegister, MethodLiteral::HaveThisBit::START_BIT, &pushNewTarget);
     if (!haveThis) {
         [[maybe_unused]] TempRegister1Scope scope1(assembler);
         Register tempRegister = __ TempRegister1();
@@ -936,7 +936,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     }
     __ Bind(&pushNewTarget);
     {
-        __ Tbz(callFieldRegister, JSMethod::HaveNewTargetBit::START_BIT, &pushCallTarget);
+        __ Tbz(callFieldRegister, MethodLiteral::HaveNewTargetBit::START_BIT, &pushCallTarget);
         if (!haveNewTarget) {
             [[maybe_unused]] TempRegister1Scope scope1(assembler);
             Register newTarget = __ TempRegister1();
@@ -949,7 +949,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     }
     __ Bind(&pushCallTarget);
     {
-        __ Tbz(callFieldRegister, JSMethod::HaveFuncBit::START_BIT, &pushVregs);
+        __ Tbz(callFieldRegister, MethodLiteral::HaveFuncBit::START_BIT, &pushVregs);
         __ Str(callTargetRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
     __ Bind(&pushVregs);
@@ -1006,10 +1006,10 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     if (glueRegister.GetId() != X19) {
         __ Mov(Register(X19), glueRegister);
     }
-    __ Ldrh(Register(X24, W), MemoryOperand(methodRegister, JSMethod::GetHotnessCounterOffset(false)));
+    __ Ldrh(Register(X24, W), MemoryOperand(methodRegister, Method::LITERAL_INFO_OFFSET));
     __ Mov(Register(X23), Immediate(JSTaggedValue::VALUE_HOLE));
     __ Ldr(Register(X22), MemoryOperand(callTargetRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET));
-    __ Ldr(Register(X21), MemoryOperand(callTargetRegister, JSFunction::CONSTANT_POOL_OFFSET));
+    __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
     __ Mov(Register(X20), pcRegister);
     __ Mov(Register(FP), newSpRegister);
 
@@ -1026,7 +1026,7 @@ void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register p
 {
     __ Mov(op, Immediate(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME)));
     __ Stp(prevSp, op, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));            // -16: frame type & prevSp
-    __ Ldr(pc, MemoryOperand(method, JSMethod::GetBytecodeArrayOffset(false)));
+    __ Ldr(pc, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     __ Stp(fp, pc, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));                // -16: pc & fp
     __ Ldr(op, MemoryOperand(callTarget, JSFunction::LEXICAL_ENV_OFFSET));
     __ Stp(op, Register(Zero), MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));    // -16: jumpSizeAfterCall & env
@@ -1037,18 +1037,18 @@ void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register p
 void AsmInterpreterCall::GetNumVregsFromCallField(ExtendedAssembler *assembler, Register callField, Register numVregs)
 {
     __ Mov(numVregs, callField);
-    __ Lsr(numVregs, numVregs, JSMethod::NumVregsBits::START_BIT);
-    __ And(numVregs.W(), numVregs.W(),
-        LogicalImmediate::Create(JSMethod::NumVregsBits::Mask() >> JSMethod::NumVregsBits::START_BIT, RegWSize));
+    __ Lsr(numVregs, numVregs, MethodLiteral::NumVregsBits::START_BIT);
+    __ And(numVregs.W(), numVregs.W(), LogicalImmediate::Create(
+        MethodLiteral::NumVregsBits::Mask() >> MethodLiteral::NumVregsBits::START_BIT, RegWSize));
 }
 
 void AsmInterpreterCall::GetDeclaredNumArgsFromCallField(ExtendedAssembler *assembler, Register callField,
     Register declaredNumArgs)
 {
     __ Mov(declaredNumArgs, callField);
-    __ Lsr(declaredNumArgs, declaredNumArgs, JSMethod::NumArgsBits::START_BIT);
-    __ And(declaredNumArgs.W(), declaredNumArgs.W(),
-        LogicalImmediate::Create(JSMethod::NumArgsBits::Mask() >> JSMethod::NumArgsBits::START_BIT, RegWSize));
+    __ Lsr(declaredNumArgs, declaredNumArgs, MethodLiteral::NumArgsBits::START_BIT);
+    __ And(declaredNumArgs.W(), declaredNumArgs.W(), LogicalImmediate::Create(
+        MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegWSize));
 }
 
 void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
@@ -1105,7 +1105,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     __ Mov(operatorRegister, Immediate(static_cast<int64_t>(FrameType::ASM_INTERPRETER_FRAME)));
     __ Stp(prevSpRegister, operatorRegister,
         MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));  // 2 : frameType and prevSp
-    __ Ldr(pcRegister, MemoryOperand(methodRegister, JSMethod::GetBytecodeArrayOffset(false)));
+    __ Ldr(pcRegister, MemoryOperand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     // offset need 8 align, GENERATOR_NREGS_OFFSET instead of GENERATOR_BC_OFFSET_OFFSET
     __ Ldr(operatorRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_NREGS_OFFSET));
     // 32: get high 32bit
@@ -1131,10 +1131,10 @@ void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newS
     __ Mov(Register(X19), glue);    // X19 - glue
     __ Mov(Register(FP), newSp);    // FP - sp
     __ Mov(Register(X20), pc);      // X20 - pc
-    __ Ldr(Register(X21), MemoryOperand(callTarget, JSFunction::CONSTANT_POOL_OFFSET));     // X21 - constantpool
+    __ Ldr(Register(X21), MemoryOperand(method, Method::CONSTANT_POOL_OFFSET));   // X21 - constantpool
     __ Ldr(Register(X22), MemoryOperand(callTarget, JSFunction::PROFILE_TYPE_INFO_OFFSET)); // X22 - profileTypeInfo
     __ Mov(Register(X23), Immediate(JSTaggedValue::Hole().GetRawData()));                   // X23 - acc
-    __ Ldr(Register(X24), MemoryOperand(method, JSMethod::GetHotnessCounterOffset(false))); // X24 - hotnessCounter
+    __ Ldr(Register(X24), MemoryOperand(method, Method::LITERAL_INFO_OFFSET)); // X24 - hotnessCounter
 
     // call the first bytecode handler
     __ Ldrb(temp.W(), MemoryOperand(pc, 0));
@@ -1160,7 +1160,7 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
     __ Sub(sp, sp, Immediate(2 * FRAME_SLOT_SIZE));
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_ENTRY_FRAME, temp, argv);
     // get native pointer
-    __ Ldr(nativeCode, MemoryOperand(method, JSMethod::GetBytecodeArrayOffset(false)));
+    __ Ldr(nativeCode, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     __ Mov(temp, argv);
     __ Sub(Register(X0), temp, Immediate(2 * FRAME_SLOT_SIZE));  // 2: skip argc & thread
     CallNativeInternal(assembler, nativeCode);

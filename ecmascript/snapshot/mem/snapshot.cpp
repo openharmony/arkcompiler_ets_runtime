@@ -26,6 +26,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/file_loader.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/heap.h"
@@ -34,6 +35,21 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
+void Snapshot::Serialize(const CString &fileName)
+{
+    JSThread *thread = vm_->GetJSThread();
+    TSManager *tsManager = vm_->GetTSManager();
+    CVector<JSTaggedType> staticHClassTable = tsManager->GetStaticHClassTable();
+    uint32_t staticHClassTableLen = staticHClassTable.size();
+    JSHandle<TaggedArray> root = vm_->GetFactory()->NewTaggedArray(staticHClassTableLen + 1);
+    
+    root->Set(thread, 0, tsManager->GetConstantPoolInfo());
+    for (uint32_t i = 0; i < staticHClassTableLen; ++i) {
+        root->Set(thread, i + 1, JSTaggedValue(staticHClassTable[i]));
+    }
+    Serialize(root.GetTaggedValue().GetTaggedObject(), nullptr, fileName);
+}
+
 void Snapshot::Serialize(TaggedObject *objectHeader, const panda_file::File *pf, const CString &fileName)
 {
     std::pair<bool, CString> filePath = VerifyFilePath(fileName, true);
@@ -145,7 +161,6 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     SnapshotProcessor processor(vm_);
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
-        processor.GeneratedNativeMethod();
     }
     auto readFile = ToUintPtr(mmap(nullptr, file_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
     auto hdr = *ToNativePtr<const Header>(readFile);
@@ -157,13 +172,6 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     uintptr_t stringEnd = stringBegin + hdr.stringSize;
     processor.DeserializeString(stringBegin, stringEnd);
 
-    if (type == SnapshotType::TS_LOADER) {
-        auto stringVector = processor.GetStringVector();
-        for (uint32_t i = 0; i < stringVector.size(); ++i) {
-            JSTaggedValue result(reinterpret_cast<EcmaString *>(stringVector[i]));
-            vm_->GetTSManager()->AddConstString(result);
-        }
-    }
     munmap(ToNativePtr<void>(readFile), hdr.pandaFileBegin);
     const JSPandaFile *jsPandaFile = nullptr;
     if (static_cast<uint32_t>(file_size) > hdr.pandaFileBegin) {

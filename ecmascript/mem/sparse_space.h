@@ -19,11 +19,14 @@
 #include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/mem_common.h"
 
-#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size) \
-    if (object != 0) {                      \
-        IncreaseLiveObjectSize(size);      \
-        return object;                      \
-    }
+#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
+    if (object != 0) {                                                        \
+        IncreaseLiveObjectSize(size);                                         \
+        if (!heap_->IsFullMark() || heap_->GetJSThread()->IsReadyToMark()) {  \
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
+        }                                                                     \
+        return object;                                                        \
+    }                                                                         \
 
 enum class SweepState : uint8_t {
     NO_SWEEP,
@@ -126,6 +129,21 @@ public:
         return std::max(committedSize_ / PARTIAL_GC_MAX_COLLECT_REGION_RATE, PARTIAL_GC_INITIAL_COLLECT_REGION_SIZE);
     }
 
+    size_t GetMergeSize() const
+    {
+        return mergeSize_;
+    }
+
+    void IncreaseMergeSize(size_t size)
+    {
+        mergeSize_ += size;
+    }
+
+    void ResetMergeSize()
+    {
+        mergeSize_ = 0;
+    }
+
     template<class Callback>
     void EnumerateCollectRegionSet(const Callback &cb) const
     {
@@ -138,12 +156,14 @@ public:
 
     void Merge(LocalSpace *localSpace);
 private:
+    static constexpr int64_t PARTIAL_GC_MAX_EVACUATION_SIZE = 4_MB;
     static constexpr unsigned long long PARTIAL_GC_MAX_COLLECT_REGION_RATE = 2_MB;
     static constexpr unsigned long long PARTIAL_GC_INITIAL_COLLECT_REGION_SIZE = 16;
     static constexpr size_t PARTIAL_GC_MIN_COLLECT_REGION_SIZE = 5;
 
     CVector<Region *> collectRegionSet_;
     os::memory::Mutex lock_;
+    size_t mergeSize_ {0};
 };
 
 class NonMovableSpace : public SparseSpace {
@@ -152,6 +172,16 @@ public:
     ~NonMovableSpace() override = default;
     NO_COPY_SEMANTIC(NonMovableSpace);
     NO_MOVE_SEMANTIC(NonMovableSpace);
+};
+
+class AppSpawnSpace : public SparseSpace {
+public:
+    explicit AppSpawnSpace(Heap *heap, size_t initialCapacity);
+    ~AppSpawnSpace() override = default;
+    NO_COPY_SEMANTIC(AppSpawnSpace);
+    NO_MOVE_SEMANTIC(AppSpawnSpace);
+
+    void IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const;
 };
 
 class LocalSpace : public SparseSpace {

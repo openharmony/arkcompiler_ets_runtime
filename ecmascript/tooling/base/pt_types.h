@@ -295,6 +295,7 @@ public:
         static const std::string Typedarray;      // NOLINT (readability-identifier-naming)
         static const std::string Arraybuffer;     // NOLINT (readability-identifier-naming)
         static const std::string Global;          // NOLINT (readability-identifier-naming)
+        static const std::string Generator;       // NOLINT (readability-identifier-naming)
         static bool Valid(const std::string &type)
         {
             return type == Object || type == Array || type == Regexp || type == Date || type == Map || type == Set ||
@@ -311,6 +312,7 @@ public:
     static const std::string StringIteratorDescription;  // NOLINT (readability-identifier-naming)
     static const std::string SetIteratorDescription;     // NOLINT (readability-identifier-naming)
     static const std::string MapIteratorDescription;     // NOLINT (readability-identifier-naming)
+    static const std::string WeakRefDescription;         // NOLINT (readability-identifier-naming)
     static const std::string WeakMapDescription;         // NOLINT (readability-identifier-naming)
     static const std::string WeakSetDescription;         // NOLINT (readability-identifier-naming)
     static const std::string JSPrimitiveRefDescription;     // NOLINT (readability-identifier-naming)
@@ -318,6 +320,14 @@ public:
     static const std::string JSPrimitiveBooleanDescription; // NOLINT (readability-identifier-naming)
     static const std::string JSPrimitiveStringDescription;  // NOLINT (readability-identifier-naming)
     static const std::string JSPrimitiveSymbolDescription;  // NOLINT (readability-identifier-naming)
+    static const std::string JSIntlDescription;             // NOLINT (readability-identifier-naming)
+    static const std::string DateTimeFormatDescription;     // NOLINT (readability-identifier-naming)
+    static const std::string NumberFormatDescription;       // NOLINT (readability-identifier-naming)
+    static const std::string CollatorDescription;           // NOLINT (readability-identifier-naming)
+    static const std::string PluralRulesDescription;        // NOLINT (readability-identifier-naming)
+    static const std::string JSLocaleDescription;              // NOLINT (readability-identifier-naming)
+    static const std::string JSListFormatDescription;          // NOLINT (readability-identifier-naming)
+    static const std::string JSRelativeTimeFormatDescription;  // NOLINT (readability-identifier-naming)
 
 private:
     NO_COPY_SEMANTIC(RemoteObject);
@@ -362,6 +372,15 @@ private:
     std::string DescriptionForFunction(const EcmaVM *ecmaVm, Local<FunctionRef> tagged) const;
 };
 
+class GeneratorFunctionRemoteObject final : public RemoteObject {
+public:
+    GeneratorFunctionRemoteObject(const EcmaVM *ecmaVm, Local<JSValueRef> tagged);
+    ~GeneratorFunctionRemoteObject() override = default;
+
+private:
+    std::string DescriptionForGeneratorFunction(const EcmaVM *ecmaVm, Local<FunctionRef> tagged) const;
+};
+
 class ObjectRemoteObject final : public RemoteObject {
 public:
     ObjectRemoteObject(const EcmaVM *ecmaVm, Local<JSValueRef> tagged, const std::string &classname);
@@ -371,19 +390,34 @@ public:
     static std::string DescriptionForObject(const EcmaVM *ecmaVm, Local<JSValueRef> tagged);
 
 private:
+    enum NumberSize : uint8_t { BYTES_OF_16BITS = 2, BYTES_OF_32BITS = 4, BYTES_OF_64BITS = 8 };
     static std::string DescriptionForArray(const EcmaVM *ecmaVm, Local<ArrayRef> tagged);
     static std::string DescriptionForRegexp(const EcmaVM *ecmaVm, Local<RegExpRef> tagged);
     static std::string DescriptionForDate(const EcmaVM *ecmaVm, Local<DateRef> tagged);
-    static std::string DescriptionForMap(Local<MapRef> tagged);
+    static std::string DescriptionForMap(const EcmaVM *ecmaVm, Local<MapRef> tagged);
     static std::string DescriptionForSet(Local<SetRef> tagged);
     static std::string DescriptionForError(const EcmaVM *ecmaVm, Local<JSValueRef> tagged);
     static std::string DescriptionForArrayIterator();
     static std::string DescriptionForMapIterator();
     static std::string DescriptionForSetIterator();
     static std::string DescriptionForArrayBuffer(const EcmaVM *ecmaVm, Local<ArrayBufferRef> tagged);
+    static std::string DescriptionForSharedArrayBuffer(const EcmaVM *ecmaVm, Local<ArrayBufferRef> tagged);
+    static std::string DescriptionForUint8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged);
+    static std::string DescriptionForInt8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged);
+    static std::string DescriptionForInt16Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged);
+    static std::string DescriptionForInt32Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged);
     static std::string DescriptionForPrimitiveNumber(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged);
     static std::string DescriptionForPrimitiveString(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged);
     static std::string DescriptionForPrimitiveBoolean(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged);
+    static std::string DescriptionForGeneratorObject(const EcmaVM *ecmaVm, const Local<JSValueRef> &tagged);
+    static std::string DescriptionForWeakRef();
+    static std::string DescriptionForDateTimeFormat();
+    static std::string DescriptionForNumberFormat();
+    static std::string DescriptionForCollator();
+    static std::string DescriptionForPluralRules();
+    static std::string DescriptionForJSLocale();
+    static std::string DescriptionForJSRelativeTimeFormat();
+    static std::string DescriptionForJSListFormat();
 };
 
 // Runtime.ExceptionDetails

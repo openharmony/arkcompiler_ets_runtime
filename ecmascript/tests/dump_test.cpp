@@ -417,6 +417,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_URI_ERROR:
             case JSType::JS_ARGUMENTS:
             case JSType::JS_SYNTAX_ERROR:
+            case JSType::JS_OOM_ERROR:
             case JSType::JS_OBJECT: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSObject::SIZE, 2U);
                 JSHandle<JSObject> jsObj = NewJSObject(thread, factory, globalEnv);
@@ -429,16 +430,16 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsRealm)
                 break;
             }
+            case JSType::METHOD: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, Method::SIZE, 1U);
+                break;
+            }
             case JSType::JS_FUNCTION_BASE: {
-#ifdef PANDA_TARGET_64
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 2U);
-#else
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 1U);
-#endif
                 break;
             }
             case JSType::JS_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 8U);
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 7U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc)
                 break;
@@ -927,12 +928,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::CLASS_INFO_EXTRACTOR: {
-#ifdef PANDA_TARGET_64
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 10U);
-#else
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 9U);
-#endif
-                JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(nullptr);
+                JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(
+                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
                 DUMP_FOR_HANDLE(classInfoExtractor)
                 break;
             }
@@ -973,7 +971,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::TS_FUNCTION_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSFunctionType::SIZE, 2U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSFunctionType::SIZE, 5U);
                 JSHandle<TSFunctionType> functionType = factory->NewTSFunctionType(1);
                 DUMP_FOR_HANDLE(functionType)
                 break;
@@ -1152,7 +1150,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_VECTOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIVector::SIZE, 1);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIVector::SIZE, 1U);
                 JSHandle<JSAPIVector> jsVector = NewJSAPIVector(factory, proto);
                 DUMP_FOR_HANDLE(jsVector)
                 break;
@@ -1211,10 +1209,22 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(importEntry);
                 break;
             }
-            case JSType::EXPORTENTRY_RECORD: {
-                CHECK_DUMP_FIELDS(Record::SIZE, ExportEntry::SIZE, 4U);
-                JSHandle<ExportEntry> exportEntry = factory->NewExportEntry();
-                DUMP_FOR_HANDLE(exportEntry);
+            case JSType::LOCAL_EXPORTENTRY_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, LocalExportEntry::SIZE, 2U);
+                JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry();
+                DUMP_FOR_HANDLE(localExportEntry);
+                break;
+            }
+            case JSType::INDIRECT_EXPORTENTRY_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, IndirectExportEntry::SIZE, 3U);
+                JSHandle<IndirectExportEntry> indirectExportEntry = factory->NewIndirectExportEntry();
+                DUMP_FOR_HANDLE(indirectExportEntry);
+                break;
+            }
+            case JSType::STAR_EXPORTENTRY_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, StarExportEntry::SIZE, 1U);
+                JSHandle<StarExportEntry> starExportEntry = factory->NewStarExportEntry();
+                DUMP_FOR_HANDLE(starExportEntry);
                 break;
             }
             case JSType::RESOLVEDBINDING_RECORD: {
@@ -1248,6 +1258,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_ITERATOR:
+            case JSType::JS_ASYNCITERATOR:
             case JSType::FREE_OBJECT_WITH_ONE_FIELD:
             case JSType::FREE_OBJECT_WITH_NONE_FIELD:
             case JSType::FREE_OBJECT_WITH_TWO_FIELD:

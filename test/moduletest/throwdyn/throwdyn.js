@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:throwdyn
+ * @tc.desc:test throwdyn
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function throwError() {
     throw "sub_error"
 }

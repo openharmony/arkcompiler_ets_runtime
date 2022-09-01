@@ -23,12 +23,13 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/tooling/backend/js_debugger_interface.h"
+#include "ecmascript/tooling/base/pt_method.h"
 
 namespace panda {
 namespace ecmascript {
 class FrameHandler;
 class EcmaVM;
-struct JSMethod;
+class Method;
 class JSThread;
 namespace tooling {
 class JSDebugger;
@@ -49,10 +50,15 @@ public:
     static uint32_t GetStackDepth(const EcmaVM *ecmaVm);
     static std::shared_ptr<FrameHandler> NewFrameHandler(const EcmaVM *ecmaVm);
     static bool StackWalker(const EcmaVM *ecmaVm, std::function<StackState(const FrameHandler *)> func);
+
     static uint32_t GetBytecodeOffset(const EcmaVM *ecmaVm);
-    static JSMethod *GetMethod(const EcmaVM *ecmaVm);
     static uint32_t GetBytecodeOffset(const FrameHandler *frameHandler);
-    static JSMethod *GetMethod(const FrameHandler *frameHandler);
+    static std::unique_ptr<PtMethod> GetMethod(const EcmaVM *ecmaVm);
+    static Method *GetMethod(const FrameHandler *frameHandler);
+    static bool IsNativeMethod(const EcmaVM *ecmaVm);
+    static bool IsNativeMethod(const FrameHandler *frameHandler);
+    static JSPandaFile *GetJSPandaFile(const EcmaVM *ecmaVm);
+
     static JSTaggedValue GetEnv(const FrameHandler *frameHandler);
     static JSTaggedType *GetSp(const FrameHandler *frameHandler);
     static int32_t GetVregIndex(const FrameHandler *frameHandler, std::string_view name);
@@ -72,6 +78,7 @@ public:
     static Local<JSValueRef> GetAndClearException(const EcmaVM *ecmaVm);
     static void SetException(const EcmaVM *ecmaVm, Local<JSValueRef> exception);
     static void ClearException(const EcmaVM *ecmaVm);
+    static bool IsExceptionCaught(const EcmaVM *ecmaVm);
 
     // NumberHelper
     static double StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix);
@@ -88,9 +95,6 @@ public:
         std::shared_ptr<FrameHandler> &frameHandler);
     static Local<FunctionRef> GenerateFuncFromBuffer(const EcmaVM *ecmaVm, const void *buffer, size_t size,
         std::string_view entryPoint);
-
-    // JSMethod
-    static std::string ParseFunctionName(const JSMethod *method);
 };
 }  // namespace panda::ecmascript::tooling
 

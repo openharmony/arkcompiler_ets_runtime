@@ -261,7 +261,7 @@ public:
         }
     };
 
-    ConstInWrapper ConstIns(GateRef gate)
+    ConstInWrapper ConstIns(GateRef gate) const
     {
         return { circuit_, gate };
     }
@@ -294,8 +294,11 @@ public:
 
     void GetInVector(GateRef gate, std::vector<GateRef>& ins) const;
     void GetOutVector(GateRef gate, std::vector<GateRef>& outs) const;
+    void GetOutStateVector(GateRef gate, std::vector<GateRef>& outStates) const;
+    void GetAllGates(std::vector<GateRef>& gates) const;
     size_t GetNumIns(GateRef gate) const;
     OpCode GetOpCode(GateRef gate) const;
+    bool IsGCRelated(GateRef gate) const;
     void SetOpCode(GateRef gate, OpCode::Op opcode);
     BitField GetBitField(GateRef gate) const;
     void SetBitField(GateRef gate, BitField bitField);
@@ -307,7 +310,6 @@ public:
     GateRef GetState(GateRef gate, size_t idx = 0) const;
     GateRef GetDep(GateRef gate, size_t idx = 0) const;
     size_t GetImmediateId(GateRef gate) const;
-    bool IsDependIn(const UseIterator &useIt) const;
     void SetDep(GateRef gate, GateRef depGate, size_t idx = 0);
     UseIterator ReplaceIn(const UseIterator &useIt, GateRef replaceGate);
     // Add for lowering
@@ -344,6 +346,10 @@ public:
     bool IsNotMarked(GateRef gate) const;
     void SetFinished(GateRef gate);
     void SetVisited(GateRef gate);
+    bool IsDependIn(const UseIterator &useIt) const;
+    bool IsValueIn(const UseIterator &useIt) const;
+    bool IsExceptionState(const UseIterator &useIt) const;
+    bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
 
 private:

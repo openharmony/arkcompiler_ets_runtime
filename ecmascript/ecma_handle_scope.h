@@ -18,6 +18,11 @@
 
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+#include "ecmascript/dfx/native_dfx/backtrace.h"
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/mem/clock_scope.h"
+#endif
 
 namespace panda::ecmascript {
 /*
@@ -30,12 +35,20 @@ public:
         thread_(thread), prevNext_(thread->handleScopeStorageNext_), prevEnd_(thread->handleScopeStorageEnd_),
         prevHandleStorageIndex_(thread->currentHandleStorageIndex_)
     {
-        thread->HandleScopeCountAdd();
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+        thread_->HandleScopeCountAdd();
+        prevHandleScope_ = thread->GetLastHandleScope();
+        thread_->SetLastHandleScope(this);
+#endif
     }
 
     inline ~EcmaHandleScope()
     {
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
         thread_->HandleScopeCountDec();
+        thread_->SetLastHandleScope(prevHandleScope_);
+        prevHandleScope_ = nullptr;
+#endif
         thread_->handleScopeStorageNext_ = prevNext_;
         if (thread_->handleScopeStorageEnd_ != prevEnd_) {
             thread_->handleScopeStorageEnd_ = prevEnd_;
@@ -45,8 +58,21 @@ public:
 
     static inline uintptr_t PUBLIC_API NewHandle(JSThread *thread, JSTaggedType value)
     {
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
         // Each Handle must be managed by HandleScope, otherwise it may cause Handle leakage.
-        ASSERT(thread->handleScopeCount_ > 0);
+        if (thread->handleScopeCount_ <= 0) {
+            LOG_ECMA(ERROR) << "New handle must be in handlescope" << thread->handleScopeCount_;
+        }
+        static const long MAYBE_HANDLE_LEAK_TIME_MS = 5000;
+        if (thread->GetLastHandleScope() != nullptr) {
+            float totalSpentTime = thread->GetLastHandleScope()->scope_.TotalSpentTime();
+            if (totalSpentTime >= MAYBE_HANDLE_LEAK_TIME_MS) {
+                LOG_ECMA(INFO) << "New handle in scope count:" << thread->handleScopeCount_
+                               << ", time:" << totalSpentTime << "ms";
+                PrintBacktrace(value);
+            }
+        }
+#endif
 #if ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK
         thread->CheckJSTaggedType(value);
 #endif
@@ -69,7 +95,11 @@ private:
     JSThread *thread_;
     JSTaggedType *prevNext_;
     JSTaggedType *prevEnd_;
-    int prevHandleStorageIndex_{-1};
+    int prevHandleStorageIndex_ {-1};
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
+    ClockScope scope_;
+    EcmaHandleScope *prevHandleScope_ {nullptr};
+#endif
 
     NO_COPY_SEMANTIC(EcmaHandleScope);
     NO_MOVE_SEMANTIC(EcmaHandleScope);
