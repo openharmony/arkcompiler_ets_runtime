@@ -349,18 +349,19 @@ private:
     V(StringsAreEquals)                     \
     V(BigIntEquals)                         \
     V(DebugPrint)                           \
+    V(DebugPrintInstruction)                \
     V(FatalPrint)                           \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
     V(FloatMod)                             \
     V(FindElementWithCache)                 \
     V(MarkingBarrier)                       \
-    V(CallArg0)                          \
-    V(CallArg1)                          \
-    V(CallArgs2)                         \
-    V(CallArgs3)                         \
-    V(CallThisRange)                    \
-    V(CallRange)                        \
+    V(CallArg0)                             \
+    V(CallArg1)                             \
+    V(CallArgs2)                            \
+    V(CallArgs3)                            \
+    V(CallThisRange)                        \
+    V(CallRange)                            \
     V(JSCall)                               \
     V(ConstructorJSCall)                    \
     V(JSFunctionEntry)                      \
