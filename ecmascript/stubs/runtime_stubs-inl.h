@@ -692,7 +692,6 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     cloneClass->SetHomeObject(thread, cloneClassPrototype);
-    cloneClass->SetCodeEntry(ctor->GetCodeEntry());
 
     if (!canShareHClass) {
         RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cloneClass), base);
@@ -721,13 +720,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
 
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literal);
     JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, extractor, constpool, lexenv);
-
-    // JSPandaFile is in the first index of constpool.
-    JSPandaFile *jsPandaFile = constantPool->GetJSPandaFile();
-    FileLoader *fileLoader = thread->GetEcmaVM()->GetFileLoader();
-    if (jsPandaFile->IsLoadedAOT()) {
-        fileLoader->SetAOTFuncEntry(jsPandaFile, cls);
-    }
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1609,17 +1601,59 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjRange(JSThread *thread, const JSHandle<
     return tagged;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
+JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<Method> &methodHandle)
 {
-    JSHandle<Method> method(thread, funcHandle->GetMethod());
-    FunctionKind kind = funcHandle->GetFunctionKind();
-
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, hclass, kind);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
+    JSHandle<JSFunction> jsFunc;
+    FunctionKind kind = methodHandle->GetFunctionKind();
+    switch (kind)
+    {
+        case FunctionKind::NORMAL_FUNCTION: {
+            auto hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass, kind, MemSpaceType::OLD_SPACE);
+            break;
+        }
+        case FunctionKind::ARROW_FUNCTION: {
+            auto normalClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, normalClass, kind, MemSpaceType::OLD_SPACE);
+            break;
+        }
+        case FunctionKind::GENERATOR_FUNCTION: {
+            auto generatorClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, generatorClass, kind, MemSpaceType::OLD_SPACE);
+            // 26.3.4.3 prototype
+            // Whenever a GeneratorFunction instance is created another ordinary object is also created and
+            // is the initial value of the generator function's "prototype" property.
+            JSHandle<JSFunction> objFun(env->GetObjectFunction());
+            JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
+            JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
+            jsFunc->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
+            break;
+        }
+        case FunctionKind::ASYNC_FUNCTION: {
+            auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass, kind, MemSpaceType::OLD_SPACE);
+            break;
+        }
+        case FunctionKind::ASYNC_GENERATOR_FUNCTION: {
+            auto asyncGeneratorClass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncGeneratorClass,
+                                                    kind, MemSpaceType::OLD_SPACE);
+            break;
+        }
+        case FunctionKind::ASYNC_ARROW_FUNCTION: {
+            // Add hclass for async arrow function
+            auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass,
+                                                    kind, MemSpaceType::OLD_SPACE);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     return jsFunc.GetTaggedValue();
 }
@@ -1706,87 +1740,17 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
     return restObj.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefineNCFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
-{
-    JSHandle<Method> method(thread, funcHandle->GetMethod());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, hclass, FunctionKind::ARROW_FUNCTION);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
-    return jsFunc.GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
-{
-    auto method = JSHandle<Method>(thread, funcHandle->GetMethod());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> jsFunc = factory->NewJSGeneratorFunction(method);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-
-    // 26.3.4.3 prototype
-    // Whenever a GeneratorFunction instance is created another ordinary object is also created and
-    // is the initial value of the generator function's "prototype" property.
-    JSHandle<JSFunction> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
-    JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
-    return jsFunc.GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::RuntimeDefineAsyncGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
-{
-    auto method = JSHandle<Method>(thread, funcHandle->GetMethod());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> jsFunc = factory->NewJSAsyncGeneratorFunction(method);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-
-    // 26.3.4.3 prototype
-    // Whenever a GeneratorFunction instance is created another ordinary object is also created and
-    // is the initial value of the generator function's "prototype" property.
-    JSHandle<JSFunction> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
-    JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
-
-    return jsFunc.GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::RuntimeDefineAsyncFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
-{
-    JSHandle<Method> method(thread, funcHandle->GetMethod());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, hclass, FunctionKind::ASYNC_FUNCTION);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
-    return jsFunc.GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<JSFunction> &funcHandle,
+JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
                                                 const JSHandle<JSTaggedValue> &homeObject)
 {
     ASSERT(homeObject->IsECMAObject());
-    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, hclass, FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass, FunctionKind::NORMAL_FUNCTION);
     jsFunc->SetHomeObject(thread, homeObject);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
     return jsFunc.GetTaggedValue();
 }
 

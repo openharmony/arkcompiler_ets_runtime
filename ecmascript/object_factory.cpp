@@ -526,7 +526,6 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> obj, Fun
     JSTaggedValue length = obj->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
     cloneFunc->SetModule(thread_, obj->GetModule());
-    cloneFunc->SetCodeEntry(obj->GetCodeEntry());
     return cloneFunc;
 }
 
@@ -1460,11 +1459,13 @@ JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral)
         method->SetCallField(methodLiteral->GetCallField());
         method->SetLiteralInfo(methodLiteral->GetLiteralInfo());
         method->SetNativePointerOrBytecodeArray(const_cast<void *>(methodLiteral->GetNativePointer()));
+        method->SetCodeEntry(methodLiteral->GetCodeEntry());
         method->SetExtraLiteralInfo(methodLiteral->GetExtraLiteralInfo());
     } else {
         method->SetCallField(0ULL);
         method->SetLiteralInfo(0ULL);
         method->SetNativePointerOrBytecodeArray(nullptr);
+        method->SetCodeEntry(0U);
         method->SetExtraLiteralInfo(0ULL);
     }
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
@@ -1493,8 +1494,8 @@ JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t c
     method->SetAotCodeBit(true);
     method->SetNativeBit(false);
     method->SetNumArgsWithCallField(numArgs);
+    method->SetCodeEntry(codeEntry);
     JSHandle<JSFunction> jsfunc = NewJSFunction(env, method, FunctionKind::NORMAL_FUNCTION);
-    jsfunc->SetCodeEntry(codeEntry);
     return jsfunc;
 }
 

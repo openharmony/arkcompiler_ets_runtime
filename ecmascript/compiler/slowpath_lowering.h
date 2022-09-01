@@ -238,9 +238,6 @@ private:
     void LowerStOwnByIndex(GateRef gate, GateRef glue);
     void LowerStOwnByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerDefineGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerDefineAsyncGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerDefineAsyncFunc(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerNewLexicalEnv(GateRef gate, GateRef glue);
     void LowerNewLexicalEnvWithName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerPopLexicalEnv(GateRef gate, GateRef glue);
@@ -273,7 +270,6 @@ private:
     void LowerTypeof(GateRef gate, GateRef glue);
     void LowerResumeGenerator(GateRef gate);
     void LowerGetResumeMode(GateRef gate);
-    void LowerDefineNCFunc(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetUnmappedArgs(GateRef gate, GateRef glue, GateRef actualArgc);
     void LowerCopyRestArgs(GateRef gate, GateRef glue, GateRef actualArgc);

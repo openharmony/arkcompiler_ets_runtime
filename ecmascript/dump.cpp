@@ -1327,9 +1327,6 @@ void JSFunction::Dump(std::ostream &os) const
     GetHomeObject().Dump(os);
     os << "\n";
 
-    os << " - CodeEntry: " << std::hex << GetCodeEntry() << "\n";
-    os << "\n";
-
     os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
     os << "\n";
     os << " - FunctionExtraInfo: ";
@@ -3331,6 +3328,8 @@ void Method::Dump(std::ostream &os) const
     os << "\n";
     os << " - ConstantPool: ";
     GetConstantPool().Dump(os);
+    os << "\n";
+    os << " - CodeEntry: " << std::hex << GetCodeEntry() << "\n";
     os << "\n";
 }
 

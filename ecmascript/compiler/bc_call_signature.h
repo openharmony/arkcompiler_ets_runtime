@@ -303,11 +303,6 @@ namespace panda::ecmascript::kungfu {
     T(HandleDeprecatedCallrangePrefImm16V8)                            \
     T(HandleDeprecatedCallspreadPrefV8V8V8)                            \
     T(HandleDeprecatedCallthisrangePrefImm16V8)                        \
-    T(HandleDeprecatedDefinefuncPrefId16Imm16V8)                       \
-    T(HandleDeprecatedDefinencfuncPrefId16Imm16V8)                     \
-    T(HandleDeprecatedDefinegeneratorfuncPrefId16Imm16V8)              \
-    T(HandleDeprecatedDefineasyncfuncPrefId16Imm16V8)                  \
-    T(HandleDeprecatedDefinemethodPrefId16Imm16V8)                     \
     T(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)     \
     T(HandleDeprecatedResumegeneratorPrefV8)                           \
     T(HandleDeprecatedGetresumemodePrefV8)                             \
@@ -334,8 +329,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleDeprecatedStlettoglobalrecordPrefId32)                     \
     T(HandleDeprecatedStclasstoglobalrecordPrefId32)                   \
     T(HandleDeprecatedLdhomeobjectPrefNone)                            \
-    T(HandleDeprecatedCreateobjecthavingmethodPrefImm16)               \
-    T(HandleDeprecatedDefineasyncgeneratorfuncPrefId16Imm16V8)
+    T(HandleDeprecatedCreateobjecthavingmethodPrefImm16)
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_WIDE_STUB_LIST(V, T, D)                        \

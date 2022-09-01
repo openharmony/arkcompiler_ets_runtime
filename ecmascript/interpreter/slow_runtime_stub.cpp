@@ -980,37 +980,12 @@ JSTaggedValue SlowRuntimeStub::StArraySpread(JSThread *thread, JSTaggedValue dst
     return RuntimeStubs::RuntimeStArraySpread(thread, dstHandle, index, srcHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::DefineGeneratorFunc(JSThread *thread, JSFunction *func)
+JSTaggedValue SlowRuntimeStub::DefineFunc(JSThread *thread, Method *method)
 {
-    INTERPRETER_TRACE(thread, DefineGeneratorFunc);
+    INTERPRETER_TRACE(thread, DefineFunc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
-
-    return RuntimeStubs::RuntimeDefineGeneratorFunc(thread, funcHandle);
-}
-
-JSTaggedValue SlowRuntimeStub::DefineAsyncFunc(JSThread *thread, JSFunction *func)
-{
-    INTERPRETER_TRACE(thread, DefineAsyncFunc);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
-    return RuntimeStubs::RuntimeDefineAsyncFunc(thread, funcHandle);
-}
-
-JSTaggedValue SlowRuntimeStub::DefineNCFunc(JSThread *thread, JSFunction *func)
-{
-    INTERPRETER_TRACE(thread, DefineNCFunc);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
-    return RuntimeStubs::RuntimeDefineNCFunc(thread, funcHandle);
-}
-
-JSTaggedValue SlowRuntimeStub::Definefunc(JSThread *thread, JSFunction *func)
-{
-    INTERPRETER_TRACE(thread, Definefunc);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
-    return RuntimeStubs::RuntimeDefinefunc(thread, funcHandle);
+    JSHandle<Method> methodHandle(thread, method);
+    return RuntimeStubs::RuntimeDefinefunc(thread, methodHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::GetSuperConstructor(JSThread *thread, JSTaggedValue ctor)
@@ -1101,13 +1076,13 @@ JSTaggedValue SlowRuntimeStub::SuperCallSpread(JSThread *thread, JSTaggedValue f
     return RuntimeStubs::RuntimeSuperCallSpread(thread, funcHandle, newTargetHandle, jsArray);
 }
 
-JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, JSFunction *func, JSTaggedValue homeObject)
+JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject)
 {
     INTERPRETER_TRACE(thread, DefineMethod);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
+    JSHandle<Method> methodHandle(thread, method);
     JSHandle<JSTaggedValue> homeObjectHandle(thread, homeObject);
-    return RuntimeStubs::RuntimeDefineMethod(thread, funcHandle, homeObjectHandle);
+    return RuntimeStubs::RuntimeDefineMethod(thread, methodHandle, homeObjectHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key,
@@ -1233,27 +1208,5 @@ JSTaggedValue SlowRuntimeStub::AsyncGeneratorResolve(JSThread *thread, JSTaggedV
     ASSERT(flag.IsBoolean());
     bool done = flag.IsTrue();
     return JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, asyncFuncObjHandle, valueHandle, done);
-}
-
-JSTaggedValue SlowRuntimeStub::DefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func)
-{
-    INTERPRETER_TRACE(thread, DefineAsyncGeneratorFunc);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<Method> method(thread, func->GetMethod());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> jsFunc = factory->NewJSAsyncGeneratorFunction(method);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    // 26.3.4.3 prototype
-    // Whenever a GeneratorFunction instance is created another ordinary object is also created and
-    // is the initial value of the generator function's "prototype" property.
-    JSHandle<JSFunction> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> initialAsyncGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
-    JSObject::SetPrototype(thread, initialAsyncGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetProtoOrHClass(thread, initialAsyncGeneratorFuncPrototype);
-
-    return jsFunc.GetTaggedValue();
 }
 }  // namespace panda::ecmascript

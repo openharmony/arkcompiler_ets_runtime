@@ -617,7 +617,7 @@ groups:
         prefix: ecma
         format: [pref_op_id_16_imm_16_v_8]
         properties: [method_id]
-      - sig: ecma.dynamicimport v:in:top
-        acc: out:top
+      - sig: ecma.dynamicimport
+        acc: inout:top
         prefix: ecma
-        format: [pref_op_v_8]
+        format: [pref_op_none]

@@ -151,6 +151,12 @@ public:
         return MethodLiteral::GetSlotSize(literalInfo);
     }
 
+    FunctionKind GetFunctionKind() const
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        return MethodLiteral::GetFunctionKind(extraLiteralInfo);
+    }
+
     uint8_t GetBuiltinId() const
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
@@ -179,6 +185,14 @@ public:
         return reinterpret_cast<const uint8_t *>(GetNativePointerOrBytecodeArray());
     }
 
+    // add for AOT
+    void SetCodeEntryAndMarkAOT(uintptr_t codeEntry)
+    {
+        SetAotCodeBit(true);
+        SetNativeBit(false);
+        SetCodeEntry(codeEntry);
+    }
+
     static constexpr size_t Size()
     {
         return sizeof(Method);
@@ -197,7 +211,8 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(CallField, uint64_t, CALL_FIELD_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     ACCESSORS_NATIVE_FIELD(
-        NativePointerOrBytecodeArray, void, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, LITERAL_INFO_OFFSET)
+        NativePointerOrBytecodeArray, void, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, CODE_ENTRY_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LITERAL_INFO_OFFSET)
     // hotness counter is encoded in a js method field, the first uint16_t in a uint64_t.
     ACCESSORS_PRIMITIVE_FIELD(LiteralInfo, uint64_t, LITERAL_INFO_OFFSET, EXTRA_LITERAL_INFO_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ExtraLiteralInfo, uint64_t, EXTRA_LITERAL_INFO_OFFSET, LAST_OFFSET)

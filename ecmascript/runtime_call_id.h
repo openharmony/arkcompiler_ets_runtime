@@ -77,8 +77,7 @@ namespace panda::ecmascript {
     V(Defineglobalvar)              \
     V(Definelocalvar)               \
     V(Definefuncexpr)               \
-    V(Definefunc)                \
-    V(DefineNCFunc)              \
+    V(DefineFunc)                \
     V(NewobjRange)               \
     V(Refeq)                     \
     V(Typeof)                    \
@@ -100,12 +99,10 @@ namespace panda::ecmascript {
     V(Ldlexenv)                  \
     V(GetPropIterator)              \
     V(CreateIterResultObj)          \
-    V(DefineGeneratorFunc)          \
     V(SuspendGenerator)             \
     V(ResumeGenerator)              \
     V(GetResumeMode)                \
     V(CreateGeneratorObj)           \
-    V(DefineAsyncFunc)              \
     V(DefineGetterSetterByValue)    \
     V(AsyncFunctionEnter)           \
     V(AsyncFunctionAwaitUncaught)   \
@@ -220,9 +217,6 @@ namespace panda::ecmascript {
     V(Tonumeric)                    \
     V(CreateAsyncGeneratorObj)      \
     V(AsyncGeneratorResolve)        \
-    V(DefineAsyncGeneratorFunc)     \
-    V(DefineGeneratorFuncWithMethodId) \
-    V(DefineAsyncGeneratorFuncWithMethodId) \
     V(GetSuperConstructor)          \
     V(DynamicImport)
 

@@ -450,7 +450,8 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
         __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), methodCallField);
         __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argument
-        __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
+        // TODO: Get from method
+        __ Mov(Operand(jsFuncReg, Method::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
         __ Movq(rsp, r8);
         Register envReg = r9;
         __ Movq(Operand(r8, FRAME_SLOT_SIZE), envReg); // get env
@@ -862,7 +863,8 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
     __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
     __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), methodCallField);
     __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argumentr
-    __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
+    // TODO: Get from method
+    __ Mov(Operand(jsFuncReg, Method::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
     __ Movq(rsp, r8);
     Register envReg = r9;
     __ Movq(Operand(r8, FRAME_SLOT_SIZE), envReg); // get env

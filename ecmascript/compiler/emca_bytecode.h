@@ -99,8 +99,6 @@ namespace panda::ecmascript::kungfu {
     V(SUPERCALLTHISRANGE)  \
     V(SUPERCALLARROWRANGE)  \
     V(DEFINEFUNC)  \
-    V(DEFINENCFUNC)  \
-    V(DEFINEASYNCFUNC)  \
     V(CALLARG0)  \
     V(CALLSPREAD)  \
     V(SUPERCALLSPREAD)  \
@@ -109,8 +107,6 @@ namespace panda::ecmascript::kungfu {
     V(CALLARGS3)  \
     V(CALLRANGE)  \
     V(DEFINEMETHOD)  \
-    V(DEFINEGENERATORFUNC) \
-    V(DEFINEASYNCGENERATORFUNC) \
     V(LDEXTERNALMODULEVAR)  \
     V(DEFINEGETTERSETTERBYVALUE)  \
     V(LDTHISBYNAME)  \

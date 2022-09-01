@@ -213,14 +213,11 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(NewLexicalEnv)                      \
     V(NewThisObject)                      \
     V(NewObjRange)                        \
-    V(Definefunc)                         \
+    V(DefineFunc)                         \
     V(CreateRegExpWithLiteral)            \
     V(ThrowIfSuperNotCorrectCall)         \
     V(CreateObjectHavingMethod)           \
     V(CreateObjectWithExcludedKeys)       \
-    V(DefineNCFunc)                       \
-    V(DefineGeneratorFunc)                \
-    V(DefineAsyncFunc)                    \
     V(DefineMethod)                       \
     V(ThrowSetterIsUndefinedException)    \
     V(ThrowNotCallableException)          \
@@ -238,7 +235,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(DynamicImport)                      \
     V(CreateAsyncGeneratorObj)            \
     V(AsyncGeneratorResolve)              \
-    V(DefineAsyncGeneratorFunc)           \
     V(NewLexicalEnvWithName)              \
     V(OptGetUnmapedArgs)                  \
     V(OptCopyRestArgs)                    \
@@ -509,7 +505,7 @@ private:
     static inline JSTaggedValue RuntimeNewObjRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                       const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx,
                                                       uint16_t length);
-    static inline JSTaggedValue RuntimeDefinefunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
+    static inline JSTaggedValue RuntimeDefinefunc(JSThread *thread, const JSHandle<Method> &methodHandle);
     static inline JSTaggedValue RuntimeCreateRegExpWithLiteral(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
                                                                uint8_t flags);
     static inline JSTaggedValue RuntimeThrowIfSuperNotCorrectCall(JSThread *thread, uint16_t index,
@@ -520,11 +516,7 @@ private:
     static inline JSTaggedValue RuntimeCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
                                                                     const JSHandle<JSTaggedValue> &objVal,
                                                                     uint16_t firstArgRegIdx);
-    static inline JSTaggedValue RuntimeDefineAsyncGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
-    static inline JSTaggedValue RuntimeDefineNCFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
-    static inline JSTaggedValue RuntimeDefineGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
-    static inline JSTaggedValue RuntimeDefineAsyncFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle);
-    static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, const JSHandle<JSFunction> &funcHandle,
+    static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
                                                     const JSHandle<JSTaggedValue> &homeObject);
     static inline JSTaggedValue RuntimeCallSpread(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                      const JSHandle<JSTaggedValue> &obj,

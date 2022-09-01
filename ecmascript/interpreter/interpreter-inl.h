@@ -146,14 +146,11 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define GET_ACC() (acc)                        // NOLINT(cppcoreguidelines-macro-usage)
 #define SET_ACC(val) (acc = val)               // NOLINT(cppcoreguidelines-macro-usage)
 
-#define GET_OBJ_FROM_CACHE(index) \
-    ConstantPool::GetObjectFromCache(thread, constpool, index)
+#define GET_METHOD_FROM_CACHE(index) \
+    ConstantPool::GetMethodFromCache(thread, constpool, index)
 
 #define GET_STR_FROM_CACHE(index) \
     ConstantPool::GetStringFromCache(thread, constpool, index)
-
-#define GET_METHOD_FROM_CACHE(index, type) \
-    ConstantPool::GetMethodFromCache(thread, constpool, index)
 
 #define GET_LITERA_FROM_CACHE(index, type) \
     ConstantPool::GetLiteralFromCache<type>(thread, constpool, index)
@@ -833,7 +830,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
                                                             static_cast<uint32_t>(args.size()) - 1,
                                                             static_cast<uint32_t>(args.size()) - 1,
                                                             args.data(),
-                                                            func->GetCodeEntry());
+                                                            method->GetCodeEntry());
     return JSTaggedValue(res);
 }
 
@@ -889,7 +886,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 9;
     constexpr size_t numWideOps = 18;
-    constexpr size_t numDeprecatedOps = 51;
+    constexpr size_t numDeprecatedOps = 45;
 
     static std::array<const void *, numOps> instDispatchTable {
 #include "templates/instruction_dispatch.inl"
@@ -2260,31 +2257,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(res);
         DISPATCH(STOWNBYVALUE_IMM8_V8_V8);
     }
-    HANDLE_OPCODE(DEPRECATED_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8) {
-        uint16_t methodId = READ_INST_16_1();
-        uint16_t length = READ_INST_16_3();
-        uint16_t v0 = READ_INST_8_5();
-        LOG_INST() << "define async gengerator function length: " << length
-                   << " v" << v0;
-        SAVE_ACC();
-        auto constpool = GetConstantPool(sp);
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(result != nullptr);
-
-        SAVE_PC();
-        auto res = SlowRuntimeStub::DefineAsyncGeneratorFunc(thread, result);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        result = JSFunction::Cast(res.GetTaggedObject());
-
-        result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
-        JSTaggedValue env = GET_VREG_VALUE(v0);
-        result->SetLexicalEnv(thread, env);
-
-        JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        result->SetModule(thread, currentFunc->GetModule());
-        SET_ACC(JSTaggedValue(result));
-        DISPATCH(DEPRECATED_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8);
-    }
     HANDLE_OPCODE(LDHOLE) {
         LOG_INST() << "intrinsic::ldhole";
         SET_ACC(JSTaggedValue::Hole());
@@ -3539,7 +3511,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << " imm:" << imm;
         SAVE_ACC();
         auto constpool = GetConstantPool(sp);
-        JSObject *result = JSObject::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
+        JSObject *result = JSObject::Cast(GET_METHOD_FROM_CACHE(imm).GetTaggedObject());
         RESTORE_ACC();
         JSTaggedValue env = GET_ACC();
 
@@ -4335,7 +4307,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::createarraywithbuffer"
                    << " imm:" << imm;
         auto constpool = GetConstantPool(sp);
-        JSArray *result = JSArray::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
+        JSArray *result = JSArray::Cast(GET_METHOD_FROM_CACHE(imm).GetTaggedObject());
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateArrayWithBuffer(thread, factory, result);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -4373,7 +4345,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::createobjectwithbuffer"
                    << " imm:" << imm;
         auto constpool = GetConstantPool(sp);
-        JSObject *result = JSObject::Cast(GET_OBJ_FROM_CACHE(imm).GetTaggedObject());
+        JSObject *result = JSObject::Cast(GET_METHOD_FROM_CACHE(imm).GetTaggedObject());
 
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
@@ -4637,17 +4609,20 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t length = READ_INST_8_3();
         LOG_INST() << "intrinsics::definefunc length: " << length;
         auto constpool = GetConstantPool(sp);
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(result != nullptr);
+        Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
+        ASSERT(method != nullptr);
 
-        result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+        auto res = SlowRuntimeStub::DefineFunc(thread, method);
+        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
+
+        jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue envHandle = state->env;
-        result->SetLexicalEnv(thread, envHandle);
+        jsFunc->SetLexicalEnv(thread, envHandle);
 
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        result->SetModule(thread, currentFunc->GetModule());
-        SET_ACC(JSTaggedValue(result));
+        jsFunc->SetModule(thread, currentFunc->GetModule());
+        SET_ACC(JSTaggedValue(jsFunc));
 
         DISPATCH(DEFINEFUNC_IMM8_ID16_IMM8);
     }
@@ -4655,123 +4630,24 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t methodId = READ_INST_16_2();
         uint16_t length = READ_INST_8_4();
         LOG_INST() << "intrinsics::definefunc length: " << length;
-        auto constpool = GetConstantPool(sp);
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(result != nullptr);
 
-        result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+        auto constpool = GetConstantPool(sp);
+        Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
+        ASSERT(method != nullptr);
+
+        auto res = SlowRuntimeStub::DefineFunc(thread, method);
+        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
+
+        jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue envHandle = state->env;
-        result->SetLexicalEnv(thread, envHandle);
+        jsFunc->SetLexicalEnv(thread, envHandle);
 
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        result->SetModule(thread, currentFunc->GetModule());
-        SET_ACC(JSTaggedValue(result));
+        jsFunc->SetModule(thread, currentFunc->GetModule());
+        SET_ACC(JSTaggedValue(jsFunc));
 
         DISPATCH(DEFINEFUNC_IMM16_ID16_IMM8);
-    }
-    HANDLE_OPCODE(DEPRECATED_DEFINEFUNC_PREF_ID16_IMM16_V8) {
-        uint16_t methodId = READ_INST_16_1();
-        uint16_t length = READ_INST_16_3();
-        uint16_t v0 = READ_INST_8_5();
-        LOG_INST() << "intrinsics::definefunc length: " << length
-                   << " v" << v0;
-        auto constpool = GetConstantPool(sp);
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(result != nullptr);
-
-        SAVE_PC();
-        auto res = SlowRuntimeStub::Definefunc(thread, result);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        result = JSFunction::Cast(res.GetTaggedObject());
-
-        result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
-        JSTaggedValue envHandle = GET_VREG_VALUE(v0);
-        result->SetLexicalEnv(thread, envHandle);
-
-        JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        result->SetModule(thread, currentFunc->GetModule());
-        SET_ACC(JSTaggedValue(result));
-
-        DISPATCH(DEPRECATED_DEFINEFUNC_PREF_ID16_IMM16_V8);
-    }
-    HANDLE_OPCODE(DEPRECATED_DEFINENCFUNC_PREF_ID16_IMM16_V8) {
-        uint16_t methodId = READ_INST_16_1();
-        uint16_t length = READ_INST_16_3();
-        uint16_t v0 = READ_INST_8_5();
-        LOG_INST() << "intrinsics::definencfunc length: " << length
-                   << " v" << v0;
-        SAVE_ACC();
-        auto constpool = GetConstantPool(sp);
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(result != nullptr);
-        RESTORE_ACC();
-
-        SAVE_PC();
-        auto res = SlowRuntimeStub::DefineNCFunc(thread, result);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        result = JSFunction::Cast(res.GetTaggedObject());
-        RESTORE_ACC();
-        JSTaggedValue homeObject = GET_ACC();
-
-        result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
-        JSTaggedValue env = GET_VREG_VALUE(v0);
-        result->SetLexicalEnv(thread, env);
-        result->SetHomeObject(thread, homeObject);
-
-        JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        result->SetModule(thread, currentFunc->GetModule());
-        SET_ACC(JSTaggedValue(result));
-
-        DISPATCH(DEPRECATED_DEFINENCFUNC_PREF_ID16_IMM16_V8);
-    }
-    HANDLE_OPCODE(DEPRECATED_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8) {
-        uint16_t methodId = READ_INST_16_1();
-        uint16_t length = READ_INST_16_3();
-        uint16_t v0 = READ_INST_8_5();
-        LOG_INST() << "define gengerator function length: " << length
-                   << " v" << v0;
-        auto constpool = GetConstantPool(sp);
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(result != nullptr);
-
-        SAVE_PC();
-        auto res = SlowRuntimeStub::DefineGeneratorFunc(thread, result);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        result = JSFunction::Cast(res.GetTaggedObject());
-
-        result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
-        JSTaggedValue env = GET_VREG_VALUE(v0);
-        result->SetLexicalEnv(thread, env);
-
-        JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        result->SetModule(thread, currentFunc->GetModule());
-        SET_ACC(JSTaggedValue(result));
-        DISPATCH(DEPRECATED_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8);
-    }
-    HANDLE_OPCODE(DEPRECATED_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8) {
-        uint16_t methodId = READ_INST_16_1();
-        uint16_t length = READ_INST_16_3();
-        uint16_t v0 = READ_INST_8_5();
-        LOG_INST() << "define async function length: " << length
-                   << " v" << v0;
-        auto constpool = GetConstantPool(sp);
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(result != nullptr);
-
-        SAVE_PC();
-        auto res = SlowRuntimeStub::DefineAsyncFunc(thread, result);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        result = JSFunction::Cast(res.GetTaggedObject());
-
-        result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
-        JSTaggedValue env = GET_VREG_VALUE(v0);
-        result->SetLexicalEnv(thread, env);
-
-        JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        result->SetModule(thread, currentFunc->GetModule());
-        SET_ACC(JSTaggedValue(result));
-        DISPATCH(DEPRECATED_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8);
     }
     HANDLE_OPCODE(DEFINEMETHOD_IMM8_ID16_IMM8) {
         uint16_t methodId = READ_INST_16_1();
@@ -4779,16 +4655,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::definemethod length: " << length;
         SAVE_ACC();
         auto constpool = GetConstantPool(sp);
-        JSFunction *result =
-            JSFunction::Cast(GET_METHOD_FROM_CACHE(methodId, ConstPoolType::METHOD).GetTaggedObject());
-        ASSERT(result != nullptr);
+        Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
+        ASSERT(method != nullptr);
         RESTORE_ACC();
 
         SAVE_PC();
         JSTaggedValue homeObject = GET_ACC();
-        auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
+        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        result = JSFunction::Cast(res.GetTaggedObject());
+        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         InterpretedFrame *state = GET_FRAME(sp);
@@ -4807,16 +4682,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::definemethod length: " << length;
         SAVE_ACC();
         auto constpool = GetConstantPool(sp);
-        JSFunction *result =
-            JSFunction::Cast(GET_METHOD_FROM_CACHE(methodId, ConstPoolType::METHOD).GetTaggedObject());
-        ASSERT(result != nullptr);
+        Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
+        ASSERT(method != nullptr);
         RESTORE_ACC();
 
         SAVE_PC();
         JSTaggedValue homeObject = GET_ACC();
-        auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
+        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        result = JSFunction::Cast(res.GetTaggedObject());
+        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
 
         result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
         InterpretedFrame *state = GET_FRAME(sp);
@@ -4828,33 +4702,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(JSTaggedValue(result));
 
         DISPATCH(DEFINEMETHOD_IMM16_ID16_IMM8);
-    }
-    HANDLE_OPCODE(DEPRECATED_DEFINEMETHOD_PREF_ID16_IMM16_V8) {
-        uint16_t methodId = READ_INST_16_1();
-        uint16_t length = READ_INST_16_3();
-        uint16_t v0 = READ_INST_8_5();
-        LOG_INST() << "intrinsics::definemethod length: " << length
-                   << " v" << v0;
-        SAVE_ACC();
-        auto constpool = GetConstantPool(sp);
-        JSFunction *result = JSFunction::Cast(GET_OBJ_FROM_CACHE(methodId).GetTaggedObject());
-        ASSERT(result != nullptr);
-        RESTORE_ACC();
-        SAVE_PC();
-        JSTaggedValue homeObject = GET_ACC();
-        auto res = SlowRuntimeStub::DefineMethod(thread, result, homeObject);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        result = JSFunction::Cast(res.GetTaggedObject());
-
-        result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
-        JSTaggedValue taggedCurEnv = GET_VREG_VALUE(v0);
-        result->SetLexicalEnv(thread, taggedCurEnv);
-
-        JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        result->SetModule(thread, currentFunc->GetModule());
-        SET_ACC(JSTaggedValue(result));
-
-        DISPATCH(DEPRECATED_DEFINEMETHOD_PREF_ID16_IMM16_V8);
     }
     HANDLE_OPCODE(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8) {
         uint16_t methodId = READ_INST_16_1();
@@ -6513,11 +6360,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(STPATCHVAR_IMM8_V8);
     }
     HANDLE_OPCODE(DYNAMICIMPORT) {
-        uint16_t v0 = READ_INST_8_0();
-
-        LOG_INST() << "intrinsics::dynamicimport"
-                   << " v" << v0;
-        JSTaggedValue specifier = GET_VREG_VALUE(v0);
+        LOG_INST() << "intrinsics::dynamicimport";
+        JSTaggedValue specifier = GET_ACC();
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -6969,13 +6813,8 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16, "WIDE_GETMODULENAMESPACE"},
         {EcmaOpcode::DEPRECATED_CALLSPREAD_PREF_V8_V8_V8, "DEPRECATED_CALLSPREAD"},
         {EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16, "WIDE_STMODULEVAR"},
-        {EcmaOpcode::DEPRECATED_DEFINEFUNC_PREF_ID16_IMM16_V8, "DEPRECATED_DEFINEFUNC"},
         {EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16, "WIDE_LDLOCALMODULEVAR"},
-        {EcmaOpcode::DEPRECATED_DEFINENCFUNC_PREF_ID16_IMM16_V8, "DEPRECATED_DEFINENCFUNC"},
         {EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16, "WIDE_LDEXTERNALMODULEVAR"},
-        {EcmaOpcode::DEPRECATED_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8, "DEPRECATED_DEFINEGENERATORFUNC"},
-        {EcmaOpcode::DEPRECATED_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8, "DEPRECATED_DEFINEASYNCFUNC"},
-        {EcmaOpcode::DEPRECATED_DEFINEMETHOD_PREF_ID16_IMM16_V8, "DEPRECATED_DEFINEMETHOD"},
         {EcmaOpcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8, "DEPRECATED_DEFINECLASSWITHBUFFER"},
         {EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8, "DEPRECATED_RESUMEGENERATOR"},
         {EcmaOpcode::DEPRECATED_GETRESUMEMODE_PREF_V8, "DEPRECATED_GETRESUMEMODE"},

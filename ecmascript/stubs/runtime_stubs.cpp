@@ -681,7 +681,7 @@ DEF_RUNTIME_STUBS(GetMethodFromCache)
     RUNTIME_STUBS_HEADER(GetMethodFromCache);
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
-    return ConstantPool::GetObjectFromCache(
+    return ConstantPool::GetMethodFromCache(
         thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
 }
 
@@ -1494,11 +1494,11 @@ DEF_RUNTIME_STUBS(NewObjRange)
                                  static_cast<uint16_t>(length.GetInt())).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(Definefunc)
+DEF_RUNTIME_STUBS(DefineFunc)
 {
-    RUNTIME_STUBS_HEADER(Definefunc);
-    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefinefunc(thread, func).GetRawData();
+    RUNTIME_STUBS_HEADER(DefineFunc);
+    JSHandle<Method> method = GetHArg<Method>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDefinefunc(thread, method).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateRegExpWithLiteral)
@@ -1537,40 +1537,12 @@ DEF_RUNTIME_STUBS(CreateObjectWithExcludedKeys)
         static_cast<uint16_t>(firstArgRegIdx.GetInt())).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(DefineNCFunc)
-{
-    RUNTIME_STUBS_HEADER(DefineNCFunc);
-    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefineNCFunc(thread, func).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(DefineGeneratorFunc)
-{
-    RUNTIME_STUBS_HEADER(DefineGeneratorFunc);
-    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefineGeneratorFunc(thread, func).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(DefineAsyncGeneratorFunc)
-{
-    RUNTIME_STUBS_HEADER(DefineAsyncGeneratorFunc);
-    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
-    return RuntimeDefineAsyncGeneratorFunc(thread, func).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(DefineAsyncFunc)
-{
-    RUNTIME_STUBS_HEADER(DefineAsyncFunc);
-    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefineAsyncFunc(thread, func).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(DefineMethod)
 {
     RUNTIME_STUBS_HEADER(DefineMethod);
-    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<Method> method = GetHArg<Method>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> homeObject = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeDefineMethod(thread, func, homeObject).GetRawData();
+    return RuntimeDefineMethod(thread, method, homeObject).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CallSpread)
