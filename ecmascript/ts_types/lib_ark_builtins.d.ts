@@ -153,7 +153,6 @@ declare class Function extends Object {
 
     call(this: Function, thisArg: any, ...args: any[]): any;
 
-    // fixme: Front-end not supported
     // [Symbol.hasInstance](value: any): boolean;
 }
 
@@ -296,7 +295,6 @@ declare class Date extends Object {
 
     static now(): number;
 
-    // fixme: Front-end not supported
     // 1. [Symbol.toPrimitive](hint: "default"): string;
     // 2. [Symbol.toPrimitive](hint: "string"): string;
     // 3. [Symbol.toPrimitive](hint: "number"): number;
@@ -464,13 +462,12 @@ declare class Set extends Object {
 
     values(): IterableIterator;
 
-    // fixme: Front-end not supported
     // 1. [Symbol.species]: SetConstructor;
     // 2. [Symbol.iterator](): IterableIterator<T>;
     // 3. [Symbol.toStringTag]: string;
 }
 
-declare class WeakSet extends object {
+declare class WeakSet extends Object {
     constructor(values?: readonly any[] | null): WeakSet;
 
     constructor(iterable: Iterable): WeakSet;
@@ -481,7 +478,6 @@ declare class WeakSet extends object {
 
     has(value: any): boolean;
 
-    // fixme: Front-end not supported
     // 1. [Symbol.toStringTag]: string;
 }
 
@@ -568,7 +564,6 @@ declare class Array extends Object {
 
     static of<T>(...items: T[]): T[];
 
-    // fixme: Front-end not supported
     // 1. [Symbol.species]: ArrayConstructor;
     // 2. [n: number]: T;
     // 3. [Symbol.unscopables]()
@@ -595,7 +590,6 @@ declare class SharedArrayBuffer extends Object {
 
     slice(begin: number, end?: number): SharedArrayBuffer;
 
-    // fixme: Front-end not supported
     // 1. [Symbol.species]: SharedArrayBuffer;
     // 2. [Symbol.toStringTag]: "SharedArrayBuffer";
 }
@@ -677,7 +671,6 @@ declare class String extends Object {
 
     static raw(template: { raw: readonly string[] | ArrayLike<string> }, ...substitutions: any[]): string;
 
-    // fixme: Front-end not supported
     // 1. [index: number]: string;
 }
 
@@ -720,48 +713,1101 @@ declare class Symbol extends Object {
 
     static matchAll: symbol;
 
-    // fixme: Front-end not supported
     // 1. [Symbol.toPrimitive](hint: string): symbol;
     // 2. [Symbol.toStringTag]: string;
 }
 
 
-declare class WeakRef extends object {
+declare class WeakRef extends Object {
     constructor(target: any): WeakRef;
 
     deref(): any | undefined;
 
-    // fixme: Front-end not supported
     // 1. [Symbol.toStringTag]: "WeakRef";
 }
 
-declare class Uint8ClampedArray { }
+declare class Uint8ClampedArray extends Object { 
+    BYTES_PER_ELEMENT: number;
 
-declare class Uint8Array { }
+    buffer: ArrayBufferLike;
 
-declare class TypedArray { }
+    byteLength: number;
 
-declare class Int8Array { }
+    byteOffset: number;
 
-declare class Uint16Array { }
+    length: number;
 
-declare class Uint32Array { }
+    prototype: Uint8ClampedArray;
 
-declare class Int16Array { }
+    constructor(length: number): Uint8ClampedArray;
 
-declare class Int32Array { }
+    constructor(array: ArrayLike<number> | ArrayBufferLike): Uint8ClampedArray;
 
-declare class Float32Array { }
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): Uint8ClampedArray;
 
-declare class Float64Array { }
+    constructor(elements: Iterable<number>): Uint8ClampedArray;
 
-declare class BigInt64Array { }
+    constructor(): Uint8ClampedArray;
 
-declare class BigUint64Array { }
+    static of(...items: number[]): Uint8ClampedArray;
 
-declare class DataView {}
+    static from(arrayLike: ArrayLike<number>): Uint8ClampedArray;
 
-declare class Atomics {}
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Uint8ClampedArray;
+
+    static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Uint8ClampedArray;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    every(predicate: (value: number, index: number, array: Uint8ClampedArray) => unknown, thisArg?: any): boolean;
+
+    fill(value: number, start?: number, end?: number): this;
+
+    filter(predicate: (value: number, index: number, array: Uint8ClampedArray) => any, thisArg?: any): Uint8ClampedArray;
+
+    find(predicate: (value: number, index: number, obj: Uint8ClampedArray) => boolean, thisArg?: any): number | undefined;
+
+    findIndex(predicate: (value: number, index: number, obj: Uint8ClampedArray) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: number, index: number, array: Uint8ClampedArray) => void, thisArg?: any): void;
+
+    indexOf(searchElement: number, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    lastIndexOf(searchElement: number, fromIndex?: number): number;
+
+    map(callbackfn: (value: number, index: number, array: Uint8ClampedArray) => number, thisArg?: any): Uint8ClampedArray;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint8ClampedArray) => U, initialValue?: U): U;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint8ClampedArray) => U, initialValue?: U): U;
+
+    reverse(): Uint8ClampedArray;
+
+    set(array: ArrayLike<number>, offset?: number): void;
+
+    slice(start?: number, end?: number): Uint8ClampedArray;
+
+    some(predicate: (value: number, index: number, array: Uint8ClampedArray) => unknown, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: number, b: number) => number): this;
+
+    subarray(begin?: number, end?: number): Uint8ClampedArray;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): Uint8ClampedArray;
+
+    entries(): IterableIterator<[number, number]>;
+
+    keys(): IterableIterator<number>;
+
+    values(): IterableIterator<number>;
+
+    includes(searchElement: number, fromIndex?: number): boolean;
+
+    //1.[index: number]: number;
+    //2.[Symbol.iterator](): IterableIterator<number>;
+    //3.[Symbol.toStringTag]: "Uint8ClampedArray";
+}
+
+declare class Uint8Array extends Object { 
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: Uint8Array;
+
+    constructor(length: number): Uint8Array;
+
+    constructor(array: ArrayLike<number> | ArrayBufferLike): Uint8Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): Uint8Array;
+
+    constructor(elements: Iterable<number>): Uint8Array;
+
+    constructor(): Uint8Array;
+
+    static of(...items: number[]): Uint8Array;
+
+    static from(arrayLike: ArrayLike<number>): Uint8Array;
+
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Uint8Array;
+
+    static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Uint8Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    every(predicate: (value: number, index: number, array: Uint8Array) => unknown, thisArg?: any): boolean;
+
+    fill(value: number, start?: number, end?: number): this;
+
+    filter(predicate: (value: number, index: number, array: Uint8Array) => any, thisArg?: any): Uint8Array;
+
+    find(predicate: (value: number, index: number, obj: Uint8Array) => boolean, thisArg?: any): number | undefined;
+
+    findIndex(predicate: (value: number, index: number, obj: Uint8Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: number, index: number, array: Uint8Array) => void, thisArg?: any): void;
+
+    indexOf(searchElement: number, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    lastIndexOf(searchElement: number, fromIndex?: number): number;
+
+    map(callbackfn: (value: number, index: number, array: Uint8Array) => number, thisArg?: any): Uint8Array;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint8Array) => U, initialValue?: U): U;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint8Array) => U, initialValue?: U): U;
+
+    reverse(): Uint8Array;
+
+    set(array: ArrayLike<number>, offset?: number): void;
+
+    slice(start?: number, end?: number): Uint8Array;
+
+    some(predicate: (value: number, index: number, array: Uint8Array) => unknown, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: number, b: number) => number): this;
+
+    subarray(begin?: number, end?: number): Uint8Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): Uint8Array;
+
+    entries(): IterableIterator<[number, number]>;
+
+    keys(): IterableIterator<number>;
+
+    values(): IterableIterator<number>;
+
+    includes(searchElement: number, fromIndex?: number): boolean;
+
+    //1.[index: number]: number;
+    //2.[Symbol.iterator](): IterableIterator<number>;
+    //3.[Symbol.toStringTag]: "Uint8Array";
+}
+
+declare class Int8Array extends Object {
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: Int8Array;
+
+    constructor(length: number): Int8Array;
+
+    constructor(array: ArrayLike<number> | ArrayBufferLike): Int8Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): Int8Array;
+
+    constructor(elements: Iterable<number>): Int8Array;
+
+    constructor(): Int8Array;
+
+    static of(...items: number[]): Int8Array;
+
+    static from(arrayLike: ArrayLike<number>): Int8Array;
+
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Int8Array;
+
+    static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Int8Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    every(predicate: (value: number, index: number, array: Int8Array) => unknown, thisArg?: any): boolean;
+
+    fill(value: number, start?: number, end?: number): this;
+
+    filter(predicate: (value: number, index: number, array: Int8Array) => any, thisArg?: any): Int8Array;
+
+    find(predicate: (value: number, index: number, obj: Int8Array) => boolean, thisArg?: any): number | undefined;
+
+    findIndex(predicate: (value: number, index: number, obj: Int8Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: number, index: number, array: Int8Array) => void, thisArg?: any): void;
+
+    indexOf(searchElement: number, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    lastIndexOf(searchElement: number, fromIndex?: number): number;
+
+    map(callbackfn: (value: number, index: number, array: Int8Array) => number, thisArg?: any): Int8Array;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Int8Array) => U, initialValue?: U): U;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Int8Array) => U, initialValue?: U): U;
+
+    reverse(): Int8Array;
+
+    set(array: ArrayLike<number>, offset?: number): void;
+
+    slice(start?: number, end?: number): Int8Array;
+
+    some(predicate: (value: number, index: number, array: Int8Array) => unknown, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: number, b: number) => number): this;
+
+    subarray(begin?: number, end?: number): Int8Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): Int8Array;
+
+    entries(): IterableIterator<[number, number]>;
+
+    keys(): IterableIterator<number>;
+
+    values(): IterableIterator<number>;
+
+    includes(searchElement: number, fromIndex?: number): boolean;
+
+    //1.[index: number]: number;
+    //2.[Symbol.iterator](): IterableIterator<number>;
+    //3.[Symbol.toStringTag]: "Int8Array";
+}
+
+declare class Uint16Array extends Object {
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: Uint16Array;
+
+    constructor(length: number): Uint16Array;
+
+    constructor(array: ArrayLike<number> | ArrayBufferLike): Uint16Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): Uint16Array;
+
+    constructor(elements: Iterable<number>): Uint16Array;
+
+    constructor(): Uint16Array;
+
+    static of(...items: number[]): Uint16Array;
+
+    static from(arrayLike: ArrayLike<number>): Uint16Array;
+
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Uint16Array;
+
+    static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Uint16Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    every(predicate: (value: number, index: number, array: Uint16Array) => unknown, thisArg?: any): boolean;
+
+    fill(value: number, start?: number, end?: number): this;
+
+    filter(predicate: (value: number, index: number, array: Uint16Array) => any, thisArg?: any): Uint16Array;
+
+    find(predicate: (value: number, index: number, obj: Uint16Array) => boolean, thisArg?: any): number | undefined;
+
+    findIndex(predicate: (value: number, index: number, obj: Uint16Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: number, index: number, array: Uint16Array) => void, thisArg?: any): void;
+
+    indexOf(searchElement: number, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    lastIndexOf(searchElement: number, fromIndex?: number): number;
+
+    map(callbackfn: (value: number, index: number, array: Uint16Array) => number, thisArg?: any): Uint16Array;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint16Array) => U, initialValue?: U): U;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint16Array) => U, initialValue?: U): U;
+
+    reverse(): Uint16Array;
+
+    set(array: ArrayLike<number>, offset?: number): void;
+
+    slice(start?: number, end?: number): Uint16Array;
+
+    some(predicate: (value: number, index: number, array: Uint16Array) => unknown, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: number, b: number) => number): this;
+
+    subarray(begin?: number, end?: number): Uint16Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): Uint16Array;
+
+    entries(): IterableIterator<[number, number]>;
+
+    keys(): IterableIterator<number>;
+
+    values(): IterableIterator<number>;
+
+    includes(searchElement: number, fromIndex?: number): boolean;
+
+    //1.[index: number]: number;
+    //2.[Symbol.iterator](): IterableIterator<number>;
+    //3.[Symbol.toStringTag]: "Uint16Array";
+}
+
+declare class Uint32Array extends Object {
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: Uint32Array;
+
+    constructor(length: number): Uint32Array;
+
+    constructor(array: ArrayLike<number> | ArrayBufferLike): Uint32Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): Uint32Array;
+
+    constructor(elements: Iterable<number>): Uint32Array;
+
+    constructor(): Uint32Array;
+
+    static of(...items: number[]): Uint32Array;
+
+    static from(arrayLike: ArrayLike<number>): Uint32Array;
+
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Uint32Array;
+
+    static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Uint32Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    every(predicate: (value: number, index: number, array: Uint32Array) => unknown, thisArg?: any): boolean;
+
+    fill(value: number, start?: number, end?: number): this;
+
+    filter(predicate: (value: number, index: number, array: Uint32Array) => any, thisArg?: any): Uint32Array;
+
+    find(predicate: (value: number, index: number, obj: Uint32Array) => boolean, thisArg?: any): number | undefined;
+
+    findIndex(predicate: (value: number, index: number, obj: Uint32Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: number, index: number, array: Uint32Array) => void, thisArg?: any): void;
+
+    indexOf(searchElement: number, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    lastIndexOf(searchElement: number, fromIndex?: number): number;
+
+    map(callbackfn: (value: number, index: number, array: Uint32Array) => number, thisArg?: any): Uint32Array;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint32Array) => U, initialValue?: U): U;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint32Array) => U, initialValue?: U): U;
+
+    reverse(): Uint32Array;
+
+    set(array: ArrayLike<number>, offset?: number): void;
+
+    slice(start?: number, end?: number): Uint32Array;
+
+    some(predicate: (value: number, index: number, array: Uint32Array) => unknown, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: number, b: number) => number): this;
+
+    subarray(begin?: number, end?: number): Uint32Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): Uint32Array;
+
+    entries(): IterableIterator<[number, number]>;
+
+    keys(): IterableIterator<number>;
+
+    values(): IterableIterator<number>;
+
+    includes(searchElement: number, fromIndex?: number): boolean;
+
+    //1.[index: number]: number;
+    //2.[Symbol.iterator](): IterableIterator<number>;
+    //3.[Symbol.toStringTag]: "Uint32Array";
+}
+
+declare class Int16Array extends Object {
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: Int16Array;
+
+    constructor(length: number): Int16Array;
+
+    constructor(array: ArrayLike<number> | ArrayBufferLike): Int16Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): Int16Array;
+
+    constructor(elements: Iterable<number>): Int16Array;
+
+    constructor(): Int16Array;
+
+    static of(...items: number[]): Int16Array;
+
+    static from(arrayLike: ArrayLike<number>): Int16Array;
+
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Int16Array;
+
+    static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Int16Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    every(predicate: (value: number, index: number, array: Int16Array) => unknown, thisArg?: any): boolean;
+
+    fill(value: number, start?: number, end?: number): this;
+
+    filter(predicate: (value: number, index: number, array: Int16Array) => any, thisArg?: any): Int16Array;
+
+    find(predicate: (value: number, index: number, obj: Int16Array) => boolean, thisArg?: any): number | undefined;
+
+    findIndex(predicate: (value: number, index: number, obj: Int16Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: number, index: number, array: Int16Array) => void, thisArg?: any): void;
+
+    indexOf(searchElement: number, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    lastIndexOf(searchElement: number, fromIndex?: number): number;
+
+    map(callbackfn: (value: number, index: number, array: Int16Array) => number, thisArg?: any): Int16Array;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Int16Array) => U, initialValue?: U): U;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Int16Array) => U, initialValue?: U): U;
+
+    reverse(): Int16Array;
+
+    set(array: ArrayLike<number>, offset?: number): void;
+
+    slice(start?: number, end?: number): Int16Array;
+
+    some(predicate: (value: number, index: number, array: Int16Array) => unknown, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: number, b: number) => number): this;
+
+    subarray(begin?: number, end?: number): Int16Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): Int16Array;
+
+    entries(): IterableIterator<[number, number]>;
+
+    keys(): IterableIterator<number>;
+
+    values(): IterableIterator<number>;
+
+    includes(searchElement: number, fromIndex?: number): boolean;
+
+    //1.[index: number]: number;
+    //2.[Symbol.iterator](): IterableIterator<number>;
+    //3.[Symbol.toStringTag]: "Int16Array";
+}
+
+declare class Int32Array extends Object {
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: Int32Array;
+
+    constructor(length: number): Int32Array;
+
+    constructor(array: ArrayLike<number> | ArrayBufferLike): Int32Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): Int32Array;
+
+    constructor(elements: Iterable<number>): Int32Array;
+
+    constructor(): Int32Array;
+
+    static of(...items: number[]): Int32Array;
+
+    static from(arrayLike: ArrayLike<number>): Int32Array;
+
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Int32Array;
+
+    static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Int32Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    every(predicate: (value: number, index: number, array: Int32Array) => unknown, thisArg?: any): boolean;
+
+    fill(value: number, start?: number, end?: number): this;
+
+    filter(predicate: (value: number, index: number, array: Int32Array) => any, thisArg?: any): Int32Array;
+
+    find(predicate: (value: number, index: number, obj: Int32Array) => boolean, thisArg?: any): number | undefined;
+
+    findIndex(predicate: (value: number, index: number, obj: Int32Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: number, index: number, array: Int32Array) => void, thisArg?: any): void;
+
+    indexOf(searchElement: number, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    lastIndexOf(searchElement: number, fromIndex?: number): number;
+
+    map(callbackfn: (value: number, index: number, array: Int32Array) => number, thisArg?: any): Int32Array;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Int32Array) => U, initialValue?: U): U;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Int32Array) => U, initialValue?: U): U;
+
+    reverse(): Int32Array;
+
+    set(array: ArrayLike<number>, offset?: number): void;
+
+    slice(start?: number, end?: number): Int32Array;
+
+    some(predicate: (value: number, index: number, array: Int32Array) => unknown, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: number, b: number) => number): this;
+
+    subarray(begin?: number, end?: number): Int32Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): Int32Array;
+
+    entries(): IterableIterator<[number, number]>;
+
+    keys(): IterableIterator<number>;
+
+    values(): IterableIterator<number>;
+
+    includes(searchElement: number, fromIndex?: number): boolean;
+
+    //1.[index: number]: number;
+    //2.[Symbol.iterator](): IterableIterator<number>;
+    //3.[Symbol.toStringTag]: "Int32Array";
+}
+
+declare class Float32Array extends Object {
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: Float32Array;
+
+    constructor(length: number): Float32Array;
+
+    constructor(array: ArrayLike<number> | ArrayBufferLike): Float32Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): Float32Array;
+
+    constructor(elements: Iterable<number>): Float32Array;
+
+    constructor(): Float32Array;
+
+    static of(...items: number[]): Float32Array;
+
+    static from(arrayLike: ArrayLike<number>): Float32Array;
+
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Float32Array;
+
+    static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Float32Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    every(predicate: (value: number, index: number, array: Float32Array) => unknown, thisArg?: any): boolean;
+
+    fill(value: number, start?: number, end?: number): this;
+
+    filter(predicate: (value: number, index: number, array: Float32Array) => any, thisArg?: any): Float32Array;
+
+    find(predicate: (value: number, index: number, obj: Float32Array) => boolean, thisArg?: any): number | undefined;
+
+    findIndex(predicate: (value: number, index: number, obj: Float32Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: number, index: number, array: Float32Array) => void, thisArg?: any): void;
+
+    indexOf(searchElement: number, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    lastIndexOf(searchElement: number, fromIndex?: number): number;
+
+    map(callbackfn: (value: number, index: number, array: Float32Array) => number, thisArg?: any): Float32Array;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Float32Array) => U, initialValue?: U): U;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Float32Array) => U, initialValue?: U): U;
+
+    reverse(): Float32Array;
+
+    set(array: ArrayLike<number>, offset?: number): void;
+
+    slice(start?: number, end?: number): Float32Array;
+
+    some(predicate: (value: number, index: number, array: Float32Array) => unknown, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: number, b: number) => number): this;
+
+    subarray(begin?: number, end?: number): Float32Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): Float32Array;
+
+    entries(): IterableIterator<[number, number]>;
+
+    keys(): IterableIterator<number>;
+
+    values(): IterableIterator<number>;
+
+    includes(searchElement: number, fromIndex?: number): boolean;
+
+    //1.[index: number]: number;
+    //2.[Symbol.iterator](): IterableIterator<number>;
+    //3.[Symbol.toStringTag]: "Float32Array";
+}
+
+declare class Float64Array extends Object {
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: Float64Array;
+
+    constructor(length: number): Float64Array;
+
+    constructor(array: ArrayLike<number> | ArrayBufferLike): Float64Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): Float64Array;
+
+    constructor(elements: Iterable<number>): Float64Array;
+
+    constructor(): Float64Array;
+
+    static of(...items: number[]): Float64Array;
+
+    static from(arrayLike: ArrayLike<number>): Float64Array;
+
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Float64Array;
+
+    static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Float64Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    every(predicate: (value: number, index: number, array: Float64Array) => unknown, thisArg?: any): boolean;
+
+    fill(value: number, start?: number, end?: number): this;
+
+    filter(predicate: (value: number, index: number, array: Float64Array) => any, thisArg?: any): Float64Array;
+
+    find(predicate: (value: number, index: number, obj: Float64Array) => boolean, thisArg?: any): number | undefined;
+
+    findIndex(predicate: (value: number, index: number, obj: Float64Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: number, index: number, array: Float64Array) => void, thisArg?: any): void;
+
+    indexOf(searchElement: number, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    lastIndexOf(searchElement: number, fromIndex?: number): number;
+
+    map(callbackfn: (value: number, index: number, array: Float64Array) => number, thisArg?: any): Float64Array;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Float64Array) => U, initialValue?: U): U;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Float64Array) => U, initialValue?: U): U;
+
+    reverse(): Float64Array;
+
+    set(array: ArrayLike<number>, offset?: number): void;
+
+    slice(start?: number, end?: number): Float64Array;
+
+    some(predicate: (value: number, index: number, array: Float64Array) => unknown, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: number, b: number) => number): this;
+
+    subarray(begin?: number, end?: number): Float64Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): Float64Array;
+
+    entries(): IterableIterator<[number, number]>;
+
+    keys(): IterableIterator<number>;
+
+    values(): IterableIterator<number>;
+
+    includes(searchElement: number, fromIndex?: number): boolean;
+
+    //1.[index: number]: number;
+    //2.[Symbol.iterator](): IterableIterator<number>;
+    //3.[Symbol.toStringTag]: "Float64Array";
+}
+
+declare class BigInt64Array extends Object {
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: BigInt64Array;
+
+    constructor(length?: number): BigInt64Array;
+
+    constructor(array: Iterable<bigint>): BigInt64Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): BigInt64Array;
+
+    static of(...items: bigint[]): BigInt64Array;
+
+    static from(arrayLike: ArrayLike<bigint>): BigInt64Array;
+
+    static from<U>(arrayLike: ArrayLike<U>, mapfn: (v: U, k: number) => bigint, thisArg?: any): BigInt64Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    entries(): IterableIterator<[number, bigint]>;
+
+    every(predicate: (value: bigint, index: number, array: BigInt64Array) => boolean, thisArg?: any): boolean;
+
+    fill(value: bigint, start?: number, end?: number): this;
+
+    filter(predicate: (value: bigint, index: number, array: BigInt64Array) => any, thisArg?: any): BigInt64Array;
+
+    find(predicate: (value: bigint, index: number, array: BigInt64Array) => boolean, thisArg?: any): bigint | undefined;
+
+    findIndex(predicate: (value: bigint, index: number, array: BigInt64Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: bigint, index: number, array: BigInt64Array) => void, thisArg?: any): void;
+
+    includes(searchElement: bigint, fromIndex?: number): boolean;
+
+    indexOf(searchElement: bigint, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    keys(): IterableIterator<number>;
+
+    lastIndexOf(searchElement: bigint, fromIndex?: number): number;
+
+    map(callbackfn: (value: bigint, index: number, array: BigInt64Array) => bigint, thisArg?: any): BigInt64Array;
+
+    reduce(callbackfn: (previousValue: bigint, currentValue: bigint, currentIndex: number, array: BigInt64Array) => bigint): bigint;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: bigint, currentIndex: number, array: BigInt64Array) => U, initialValue: U): U;
+
+    reduceRight(callbackfn: (previousValue: bigint, currentValue: bigint, currentIndex: number, array: BigInt64Array) => bigint): bigint;
+
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: bigint, currentIndex: number, array: BigInt64Array) => U, initialValue: U): U;
+
+    reverse(): this;
+
+    set(array: ArrayLike<bigint>, offset?: number): void;
+
+    slice(start?: number, end?: number): BigInt64Array;
+
+    some(predicate: (value: bigint, index: number, array: BigInt64Array) => boolean, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: bigint, b: bigint) => number | bigint): this;
+
+    subarray(begin?: number, end?: number): BigInt64Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): BigInt64Array;
+
+    values(): IterableIterator<bigint>;
+
+    //1.[Symbol.iterator](): IterableIterator<bigint>;
+    //2.[Symbol.toStringTag]: "BigInt64Array";
+    //3.[index: number]: bigint;
+}
+
+declare class BigUint64Array extends Object {
+    BYTES_PER_ELEMENT: number;
+
+    buffer: ArrayBufferLike;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    length: number;
+
+    prototype: BigUint64Array;
+
+    constructor(length?: number): BigUint64Array;
+
+    constructor(array: Iterable<bigint>): BigUint64Array;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number): BigUint64Array;
+
+    static of(...items: bigint[]): BigUint64Array;
+
+    static from(arrayLike: ArrayLike<bigint>): BigUint64Array;
+
+    static from<U>(arrayLike: ArrayLike<U>, mapfn: (v: U, k: number) => bigint, thisArg?: any): BigUint64Array;
+
+    copyWithin(target: number, start: number, end?: number): this;
+
+    entries(): IterableIterator<[number, bigint]>;
+
+    every(predicate: (value: bigint, index: number, array: BigUint64Array) => boolean, thisArg?: any): boolean;
+
+    fill(value: bigint, start?: number, end?: number): this;
+
+    filter(predicate: (value: bigint, index: number, array: BigUint64Array) => any, thisArg?: any): BigUint64Array;
+
+    find(predicate: (value: bigint, index: number, array: BigUint64Array) => boolean, thisArg?: any): bigint | undefined;
+
+    findIndex(predicate: (value: bigint, index: number, array: BigUint64Array) => boolean, thisArg?: any): number;
+
+    forEach(callbackfn: (value: bigint, index: number, array: BigUint64Array) => void, thisArg?: any): void;
+
+    includes(searchElement: bigint, fromIndex?: number): boolean;
+
+    indexOf(searchElement: bigint, fromIndex?: number): number;
+
+    join(separator?: string): string;
+
+    keys(): IterableIterator<number>;
+
+    lastIndexOf(searchElement: bigint, fromIndex?: number): number;
+
+    map(callbackfn: (value: bigint, index: number, array: BigUint64Array) => bigint, thisArg?: any): BigUint64Array;
+
+    reduce(callbackfn: (previousValue: bigint, currentValue: bigint, currentIndex: number, array: BigUint64Array) => bigint): bigint;
+
+    reduce<U>(callbackfn: (previousValue: U, currentValue: bigint, currentIndex: number, array: BigUint64Array) => U, initialValue: U): U;
+
+    reduceRight(callbackfn: (previousValue: bigint, currentValue: bigint, currentIndex: number, array: BigUint64Array) => bigint): bigint;
+    
+    reduceRight<U>(callbackfn: (previousValue: U, currentValue: bigint, currentIndex: number, array: BigUint64Array) => U, initialValue: U): U;
+
+    reverse(): this;
+
+    set(array: ArrayLike<bigint>, offset?: number): void;
+
+    slice(start?: number, end?: number): BigUint64Array;
+
+    some(predicate: (value: bigint, index: number, array: BigUint64Array) => boolean, thisArg?: any): boolean;
+
+    sort(compareFn?: (a: bigint, b: bigint) => number | bigint): this;
+
+    subarray(begin?: number, end?: number): BigUint64Array;
+
+    toLocaleString(): string;
+
+    toString(): string;
+
+    valueOf(): BigUint64Array;
+
+    values(): IterableIterator<bigint>;
+
+    //1.[Symbol.iterator](): IterableIterator<bigint>;
+    //2.[Symbol.toStringTag]: "BigUint64Array";
+    //3.[index: number]: bigint;
+}
+
+declare class DataView extends Object {
+    buffer: ArrayBuffer;
+
+    byteLength: number;
+
+    byteOffset: number;
+
+    prototype: DataView;
+
+    constructor(buffer: ArrayBufferLike, byteOffset?: number, byteLength?: number): DataView;
+
+    constructor(buffer: ArrayBuffer, byteOffset?: number, byteLength?: number): DataView;
+
+    getFloat32(byteOffset: number, littleEndian?: boolean): number;
+
+    getFloat64(byteOffset: number, littleEndian?: boolean): number;
+
+    getInt8(byteOffset: number): number;
+
+    getInt16(byteOffset: number, littleEndian?: boolean): number;
+
+    getInt32(byteOffset: number, littleEndian?: boolean): number;
+
+    getUint8(byteOffset: number): number;
+
+    getUint16(byteOffset: number, littleEndian?: boolean): number;
+
+    getUint32(byteOffset: number, littleEndian?: boolean): number;
+
+    getBigInt64(byteOffset: number, littleEndian?: boolean): bigint;
+
+    getBigUint64(byteOffset: number, littleEndian?: boolean): bigint;
+
+    setFloat32(byteOffset: number, value: number, littleEndian?: boolean): void;
+
+    setFloat64(byteOffset: number, value: number, littleEndian?: boolean): void;
+
+    setInt8(byteOffset: number, value: number): void;
+
+    setInt16(byteOffset: number, value: number, littleEndian?: boolean): void;
+
+    setInt32(byteOffset: number, value: number, littleEndian?: boolean): void;
+
+    setUint8(byteOffset: number, value: number): void;
+
+    setUint16(byteOffset: number, value: number, littleEndian?: boolean): void;
+
+    setUint32(byteOffset: number, value: number, littleEndian?: boolean): void;
+
+    setBigInt64(byteOffset: number, value: bigint, littleEndian?: boolean): void;
+
+    setBigUint64(byteOffset: number, value: bigint, littleEndian?: boolean): void;
+
+    //1.[Symbol.toStringTag]: string;
+}
+
+declare class Atomics extends Object {
+    add(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number, value: number): number;
+
+    and(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number, value: number): number;
+
+    compareExchange(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number, expectedValue: number, replacementValue: number): number;
+
+    exchange(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number, value: number): number;
+
+    isLockFree(size: number): boolean;
+
+    load(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number): number;
+
+    or(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number, value: number): number;
+
+    store(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number, value: number): number;
+
+    sub(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number, value: number): number;
+
+    wait(typedArray: Int32Array, index: number, value: number, timeout?: number): "ok" | "not-equal" | "timed-out";
+
+    notify(typedArray: Int32Array, index: number, count?: number): number;
+
+    xor(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number, value: number): number;
+
+    //1.[Symbol.toStringTag]: "Atomics";
+}
+
+declare class Map extends Object {
+    prototype: Map;
+
+    size: number;
+    
+    constructor(): Map;
+
+    constructor(entries?: readonly (readonly [any, any])[] | null): Map;
+
+    constructor(iterable: Iterable<readonly [any, any]>): Map;
+
+    clear(): void;
+
+    delete(key: any): boolean;
+
+    forEach(callbackfn: (value: any, key: any, map: Map<any, any>) => void, thisArg?: any): void;
+
+    get(key: any): any;
+
+    has(key: any): boolean;
+
+    set(key: any, value: any): this;
+
+    entries(): IterableIterator<[any, any]>;
+
+    keys(): IterableIterator<any>;
+
+    values(): IterableIterator<any>;
+
+    //1.[Symbol.iterator](): IterableIterator<[K, V]>;
+    //2.[Symbol.species]: MapConstructor;
+    //3.[Symbol.toStringTag]: string;
+    //4.[index: string]: T;
+}
 
 declare function parseFloat(string: string): number;
 
@@ -783,5 +1829,6 @@ declare function encodeURI(uri: string): string;
 
 declare function encodeURIComponent(uriComponent: string | number | boolean): string;
 
-// globalThis, ArkPrivate, undefined, Promise, Proxy, GeneratorFunction
-// namespace Intl, Reflect
+// globalThis, ArkPrivate
+// namespace, undefined
+// Intl, Reflect, Promise, TypedArray, Proxy
