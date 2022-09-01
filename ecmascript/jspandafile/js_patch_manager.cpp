@@ -25,7 +25,7 @@ bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileNam
     EcmaVM *vm = thread->GetEcmaVM();
 
     // Get base constpool.
-    baseFile_ = pfManager->LoadJSPandaFile(thread, ConvertToString(baseFileName), JSPandaFile::ENTRY_MAIN_FUNCTION);
+    baseFile_ = pfManager->FindJSPandaFile(ConvertToString(baseFileName));
     if (baseFile_ == nullptr) {
         return false;
     }
@@ -50,16 +50,14 @@ bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileNam
     return ReplaceMethod(thread, baseConstpool, patchConstpool, patchProgram);
 }
 
-bool JSPatchManager::LoadPatch(JSThread *thread,
-                               const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                               const std::string &baseFileName, const void *baseBuffer, size_t baseSize)
+bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer,
+                               size_t patchSize, const std::string &baseFileName)
 {
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     EcmaVM *vm = thread->GetEcmaVM();
 
     // Get base constpool.
-    baseFile_ = pfManager->LoadJSPandaFile(
-        thread, ConvertToString(baseFileName), JSPandaFile::ENTRY_MAIN_FUNCTION, baseBuffer, baseSize);
+    baseFile_ = pfManager->FindJSPandaFile(ConvertToString(baseFileName));
     if (baseFile_ == nullptr) {
         return false;
     }

@@ -63,6 +63,7 @@ public:
 
     void InsertJSPandaFile(const JSPandaFile *jsPandaFile);
 
+    const JSPandaFile *FindJSPandaFile(const CString &filename);
 private:
     JSPandaFileManager() = default;
 

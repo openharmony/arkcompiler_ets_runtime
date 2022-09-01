@@ -109,6 +109,12 @@ const JSPandaFile *JSPandaFileManager::FindJSPandaFileUnlocked(const CString &fi
     return iter->second.first;
 }
 
+const JSPandaFile *JSPandaFileManager::FindJSPandaFile(const CString &filename)
+{
+    os::memory::LockHolder lock(jsPandaFileLock_);
+    return FindJSPandaFileUnlocked(filename);
+}
+
 const JSPandaFile *JSPandaFileManager::GetJSPandaFile(const panda_file::File *pf)
 {
     os::memory::LockHolder lock(jsPandaFileLock_);

@@ -2418,13 +2418,12 @@ bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::
     return patchManager->LoadPatch(thread, patchFileName, baseFileName);
 }
 
-bool JSNApi::LoadPatch(EcmaVM *vm,
-                       const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                       const std::string &baseFileName, const void *baseBuffer, size_t baseSize)
+bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                       const std::string &baseFileName)
 {
     ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName, baseBuffer, baseSize);
+    return patchManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
 }
 
 bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)

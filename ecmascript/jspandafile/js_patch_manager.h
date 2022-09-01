@@ -31,9 +31,8 @@ public:
     }
 
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
-    bool LoadPatch(JSThread *thread,
-                   const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                   const std::string &baseFileName, const void *baseBuffer, size_t baseSize);
+    bool LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                   const std::string &baseFileName);
     bool UnLoadPatch(JSThread *thread, const std::string &patchFileName);
 
 private:
