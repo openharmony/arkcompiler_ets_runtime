@@ -82,6 +82,9 @@ void TypeLowering::Lower(GateRef gate)
         case TONUMERIC_PREF_V8:
             LowerToNumeric(gate);
             break;
+        case INCDYN_PREF_V8:
+            LowerTypeIncDyn(gate);
+            break;
         default:break;
     }
 }
@@ -1349,6 +1352,69 @@ void TypeLowering::LowerToNumeric(GateRef gate)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TypeLowering::LowerTypeIncDyn(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = acc_.GetGateType(value);
+
+    if (!valueType.IsTSType()) {
+        return;
+    }
+    if (!valueType.IsNumberType()) {
+        return;
+    }
+
+    std::map<GateRef, size_t> stateGateMap;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    Label valueIsInt(&builder_);
+    Label valueNotInt(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueNotInt);
+    builder_.Bind(&valueIsInt);
+    {
+        GateRef valueInt = builder_.TaggedCastToInt32(value);
+        Label valueNoOverflow(&builder_);
+        builder_.Branch(builder_.Equal(valueInt, builder_.Int32(INT32_MAX)), &valueNotInt, &valueNoOverflow);
+        builder_.Bind(&valueNoOverflow);
+        {
+            result = builder_.Int32ToTaggedPtr(builder_.Int32Add(valueInt, builder_.Int32(1)));
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&valueNotInt);
+    {
+        Label valueIsDouble(&builder_);
+        Label valueNotDouble(&builder_);
+        builder_.Branch(builder_.TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
+        builder_.Bind(&valueIsDouble);
+        {
+            GateRef valueDouble = builder_.TaggedCastToDouble(value);
+            result = builder_.DoubleToTaggedDoublePtr(builder_.DoubleAdd(valueDouble, builder_.Double(1.0)));
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&valueNotDouble);
+        builder_.Jump(&exit);
+    }
+    Label successExit(&builder_);
+    Label slowPath(&builder_);
+    builder_.Bind(&exit);
+    builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE), &slowPath, &successExit);
+    builder_.Bind(&slowPath);
+    {
+        // slow path
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&successExit);
+    }
+    builder_.Bind(&successExit);
     for (auto [state, index] : stateGateMap) {
         acc_.ReplaceIn(state, index, builder_.GetState());
     }

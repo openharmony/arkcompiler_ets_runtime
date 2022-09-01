@@ -152,6 +152,7 @@ private:
     void LowerTypeEqDyn(GateRef gate);
     void LowerTypeNotEqDyn(GateRef gate);
     void LowerToNumeric(GateRef gate);
+    void LowerTypeIncDyn(GateRef gate);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
