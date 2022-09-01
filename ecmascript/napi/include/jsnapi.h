@@ -1188,9 +1188,8 @@ public:
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
     static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
-    static bool LoadPatch(EcmaVM *vm,
-                          const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                          const std::string &baseFileName, const void *baseBuffer, size_t baseSize);
+    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                          const std::string &baseFileName);
     static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
 private:
     static int vmCount_;
