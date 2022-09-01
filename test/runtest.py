@@ -1,4 +1,4 @@
-#!/usr/bin/env
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -190,7 +190,7 @@ class ArkTest():
                     abc = import_file[0][1:].replace(".js", ".abc")
                     abc = os.path.abspath(f'{js_dir}/{abc}')
                     if module_abc_file.find(abc) < 0:
-                        module_abc_file += f':{abc}'
+                        module_abc_file = ''.join([module_abc_file, f':{abc}'])
         infile.close()
         os.system(f'mkdir -p {out_case_dir}')
         cmd_map = {
