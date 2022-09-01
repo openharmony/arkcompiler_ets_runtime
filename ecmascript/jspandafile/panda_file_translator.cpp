@@ -95,23 +95,26 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
 JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                                        std::string_view entryPoint)
 {
+    JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<Program> program = factory->NewProgram();
 
-    {
-        JSThread *thread = vm->GetJSThread();
-        EcmaHandleScope handleScope(thread);
-
-        // Parse constpool.
-        JSTaggedValue constpool = vm->FindConstpool(jsPandaFile);
-        if (constpool.IsHole()) {
-            CString entry = "";
-            if (!jsPandaFile->IsBundle()) {
-                entry = entryPoint.data();
-            }
-            constpool = ParseConstPool(vm, jsPandaFile, entry);
-            vm->SetConstpool(jsPandaFile, constpool);
+    JSHandle<ConstantPool> constpool;
+    // Parse constpool.
+    JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile);
+    if (constpoolVal.IsHole()) {
+        CString entry = "";
+        if (!jsPandaFile->IsBundle()) {
+            entry = entryPoint.data();
         }
+        constpool = ParseConstPool(vm, jsPandaFile, entry);
+        vm->SetConstpool(jsPandaFile, constpool.GetTaggedValue());
+    } else {
+        constpool = JSHandle<ConstantPool>(thread, constpoolVal);
+    }
+
+    {
+        EcmaHandleScope handleScope(thread);
 
         // Generate Program.
         uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data());
@@ -131,8 +134,8 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     return program;
 }
 
-JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                  const CString &entryPoint)
+JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
+                                                           const CString &entryPoint)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
@@ -140,6 +143,7 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
     JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex);
 
+    EcmaHandleScope handleScope(thread);
     // Put JSPandaFile at the first index of constpool.
     JSHandle<JSNativePointer> jsPandaFilePointer = factory->NewJSNativePointer(
         const_cast<JSPandaFile *>(jsPandaFile), JSPandaFileManager::RemoveJSPandaFile,
@@ -307,7 +311,7 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
         }
     }
 
-    return constpool.GetTaggedValue();
+    return constpool;
 }
 
 void PandaFileTranslator::FixOpcode(uint8_t *pc)

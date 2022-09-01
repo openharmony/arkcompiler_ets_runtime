@@ -123,8 +123,8 @@ if (defined(ark_standalone_build)) {
       # ts aot test and asm test
       if (is_standard_system) {
         deps += [
-          "//arkcompiler/ets_runtime/test/aottest:ark_aot_js_test",
-          "//arkcompiler/ets_runtime/test/aottest:ark_aot_test",
+          #"//arkcompiler/ets_runtime/test/aottest:ark_aot_js_test",
+          #"//arkcompiler/ets_runtime/test/aottest:ark_aot_test",
           "//arkcompiler/ets_runtime/test/moduletest:ark_asm_single_step_test",
           "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test",
           "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test",
@@ -268,7 +268,14 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  defines += [ "NDEBUG" ]
+  if (is_debug) {
+    cflags_cc += [
+      "-O0",
+      "-ggdb3",
+    ]
+  } else {
+    defines += [ "NDEBUG" ]
+  }
 
   if (run_with_asan) {
     defines += [ "RUN_WITH_ASAN" ]

@@ -79,7 +79,8 @@ group("ark_asm_test") {
     "async:asyncAsmAction",
     "bindfunction:bindfunctionAsmAction",
     "bitwiseop:bitwiseopAsmAction",
-    "builtins:builtinsAsmAction",
+
+    #"builtins:builtinsAsmAction",
     "callframe:callframeAsmAction",
     "calltype:calltypeAsmAction",
     "class:classAsmAction",

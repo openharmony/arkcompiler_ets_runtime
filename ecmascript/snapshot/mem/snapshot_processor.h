@@ -137,13 +137,13 @@ public:
 
     JSTaggedValue GetConstantPoolInfos(size_t nums);
 
-    void CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool);
+    void CollectConstantPoolInfo(const JSPandaFile* pf, JSHandle<JSTaggedValue> constantPool);
 
     static void RestoreConstantPoolInfo(JSThread *thread, JSHandle<TaggedArray> constPoolInfos,
                                         const JSPandaFile* pf, JSHandle<ConstantPool> constPool);
 
 private:
-    JSTaggedValue GenerateConstantPoolInfo(const JSHandle<ConstantPool> constantPool);
+    JSTaggedValue GenerateConstantPoolInfo(JSHandle<ConstantPool> constantPool);
 
     EcmaVM *vm_ {nullptr};
     size_t index_ {0};
