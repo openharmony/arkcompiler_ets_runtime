@@ -225,15 +225,6 @@ size_t GateAccessor::GetImmediateId(GateRef gate) const
     return imm;
 }
 
-bool GateAccessor::IsDependIn(const UseIterator &useIt) const
-{
-    Gate *gatePtr = circuit_->LoadGatePtr(*useIt);
-    size_t dependStartIndex = gatePtr->GetStateCount();
-    size_t dependEndIndex = gatePtr->GetDependCount() + dependStartIndex;
-    size_t index = useIt.GetIndex();
-    return index >= dependStartIndex && index < dependEndIndex;
-}
-
 void GateAccessor::SetDep(GateRef gate, GateRef depGate, size_t idx)
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -384,9 +375,42 @@ GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, G
     return circuit_->GetConstantGate(bitValue, bitfield, type);
 }
 
+bool GateAccessor::IsDependIn(const UseIterator &useIt) const
+{
+    size_t dependStartIndex = GetStateCount(*useIt);
+    size_t dependEndIndex = dependStartIndex + GetDependCount(*useIt);
+    size_t index = useIt.GetIndex();
+    return (index >= dependStartIndex && index < dependEndIndex);
+}
+
+bool GateAccessor::IsValueIn(const UseIterator &useIt) const
+{
+    size_t valueStartIndex = GetStateCount(*useIt) + GetDependCount(*useIt);
+    size_t valueEndIndex = valueStartIndex + GetInValueCount(*useIt);
+    size_t index = useIt.GetIndex();
+    return (index >= valueStartIndex && index < valueEndIndex);
+}
+
+bool GateAccessor::IsExceptionState(const UseIterator &useIt) const
+{
+    auto op = GetOpCode(*useIt);
+    bool isDependSelector = (op == OpCode::DEPEND_SELECTOR) &&
+                            (GetOpCode(GetIn(GetIn(*useIt, 0), useIt.GetIndex() - 1)) == OpCode::IF_EXCEPTION);
+    bool isReturn = (op == OpCode::RETURN && GetOpCode(GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION);
+    return isDependSelector || isReturn;
+}
+
+bool GateAccessor::IsDependIn(GateRef gate, size_t index) const
+{
+    size_t dependStartIndex = GetStateCount(gate);
+    size_t dependEndIndex = dependStartIndex + GetDependCount(gate);
+    return (index >= dependStartIndex && index < dependEndIndex);
+}
+
 bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
 {
     size_t valueStartIndex = GetStateCount(gate) + GetDependCount(gate);
-    return (index >= valueStartIndex && index < GetNumIns(gate));
+    size_t valueEndIndex = valueStartIndex + GetInValueCount(gate);
+    return (index >= valueStartIndex && index < valueEndIndex);
 }
 }  // namespace panda::ecmascript::kungfu

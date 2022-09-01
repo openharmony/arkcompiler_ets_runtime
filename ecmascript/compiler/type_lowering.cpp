@@ -94,7 +94,7 @@ void TypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std
             acc_.ReplaceStateIn(*useIt, successControl[0]);
             useIt = acc_.ReplaceIn(useIt, successControl[1]);
         } else if (op == OpCode::RETURN) {
-            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_SUCCESS) {
+            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) != OpCode::IF_EXCEPTION) {
                 acc_.ReplaceStateIn(*useIt, successControl[0]);
                 acc_.ReplaceDependIn(*useIt, successControl[1]);
                 acc_.ReplaceValueIn(*useIt, outir);
