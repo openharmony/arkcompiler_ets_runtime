@@ -1694,20 +1694,21 @@ size_t SnapshotProcessor::GetNativeTableSize() const
     return sizeof(g_nativeTable) / sizeof(g_nativeTable[0]);
 }
 
-void ConstantPoolProcessor::InitializeConstantPoolInfos(size_t nums)
+JSTaggedValue ConstantPoolProcessor::GetConstantPoolInfos(size_t nums)
 {
     ObjectFactory *factory = vm_->GetFactory();
-    infos_ = factory->NewTaggedArray(nums * ITEM_SIZE).GetTaggedValue();
+    return factory->NewTaggedArray(nums * ITEM_SIZE).GetTaggedValue();
 }
 
 void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool)
 {
     JSThread *thread = vm_->GetJSThread();
-    JSHandle<TaggedArray> array(thread, infos_);
+    JSHandle<TaggedArray> array = vm_->GetTSManager()->GetConstantPoolInfo();
     ASSERT(index_ < array->GetLength());
     JSHandle<ConstantPool> cp(thread, constantPool.GetTaggedValue());
     array->Set(thread, index_++, JSTaggedValue(pf->GetFileUniqId()));
-    array->Set(thread, index_++, GenerateConstantPoolInfo(cp));
+    auto value = GenerateConstantPoolInfo(cp);
+    array->Set(thread, index_++, value);
 }
 
 JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(const JSHandle<ConstantPool> constantPool)
@@ -1731,13 +1732,12 @@ JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(const JSHandle<Con
     return valueArray.GetTaggedValue();
 }
 
-void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSTaggedValue constPoolInfo,
+void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSHandle<TaggedArray> constPoolInfos,
                                                     const JSPandaFile* pf, JSHandle<ConstantPool> constPool)
 {
     JSTaggedValue fileUniqID(pf->GetFileUniqId());
-    JSHandle<TaggedArray> array(thread, constPoolInfo);
-    auto index = array->GetIdx(fileUniqID);
-    JSHandle<TaggedArray> valueArray(thread, array->Get(index + 1));
+    auto index = constPoolInfos->GetIdx(fileUniqID);
+    JSHandle<TaggedArray> valueArray(thread, constPoolInfos->Get(index + 1));
 
     uint32_t len = valueArray->GetLength();
     for (uint32_t i = 0; i < len; i += ITEM_SIZE) {

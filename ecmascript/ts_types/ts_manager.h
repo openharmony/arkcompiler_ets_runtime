@@ -242,9 +242,9 @@ public:
 
     void PUBLIC_API CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool);
 
-    JSTaggedValue PUBLIC_API GetConstantPoolInfo() const
+    JSHandle<TaggedArray> PUBLIC_API GetConstantPoolInfo() const
     {
-        return constantPoolInfo_;
+        return JSHandle<TaggedArray>(uintptr_t(&constantPoolInfo_));
     }
 
     void PUBLIC_API SetConstantPoolInfo(JSTaggedValue constantPoolInfo)
