@@ -587,7 +587,8 @@ enum class Opcode {
     DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32 = 11004,
     DEPRECATED_LDHOMEOBJECT_PREF_NONE = 11260,
     DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16 = 11516,
-    LAST = DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16
+    DEPRECATED_DYNAMICIMPORT_PREF_V8 = 11772,
+    LAST = DEPRECATED_DYNAMICIMPORT_PREF_V8
 };
 
 enum Flags : uint32_t {
@@ -880,7 +881,6 @@ inline size_t BytecodeInst<Mode>::GetSize() const
 {
     return Size(GetFormat());
 }
-
 /*
  * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -3406,6 +3406,8 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::PREF_NONE;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
         return BytecodeInst<Mode>::Format::PREF_IMM16;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
+        return BytecodeInst<Mode>::Format::PREF_V8;
     default:
         break;
     }
@@ -3990,6 +3992,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
+        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     default:
         return false;
     }
@@ -4574,6 +4578,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     default:
         return false;
     }
@@ -5157,6 +5163,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
     case BytecodeInst<Mode>::Opcode::DEPRECATED_LDHOMEOBJECT_PREF_NONE:
         return false;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
+        return false;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
         return false;
     default:
         return false;
@@ -6505,6 +6513,10 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << "deprecated.createobjecthavingmethod";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::PREF_IMM16, 0>();
         break;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
+        os << "deprecated.dynamicimport";
+        os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::PREF_V8, 0>();
+        break;
     }
     return os;
 }
@@ -7373,6 +7385,9 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
         break;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
         os << "DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16";
+        break;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
+        os << "DEPRECATED_DYNAMICIMPORT_PREF_V8";
         break;
     default:
         os << "(unknown opcode:) " << static_cast<uint16_t>(op);

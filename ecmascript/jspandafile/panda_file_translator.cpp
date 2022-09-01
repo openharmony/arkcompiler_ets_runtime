@@ -796,6 +796,12 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
             break;
         }
+        case OldBytecodeInst::Opcode::ECMA_DYNAMICIMPORT_PREF_V8: {
+            newOpcode = EcmaOpcode::DEPRECATED_DYNAMICIMPORT_PREF_V8;
+            *pc = static_cast<uint8_t>(deprecatedPrefOp);
+            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
+            break;
+        }
         // The same format has IC
         case OldBytecodeInst::Opcode::ECMA_TYPEOFDYN_PREF_NONE: {
             newOpcode = EcmaOpcode::TYPEOF_IMM8;
@@ -1142,11 +1148,6 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
         }
         case OldBytecodeInst::Opcode::ECMA_RETURNUNDEFINED_PREF_NONE: {
             newOpcode = EcmaOpcode::RETURNUNDEFINED;
-            *pc = static_cast<uint8_t>(newOpcode);
-            break;
-        }
-        case OldBytecodeInst::Opcode::ECMA_DYNAMICIMPORT_PREF_NONE: {
-            newOpcode = EcmaOpcode::DYNAMICIMPORT;
             *pc = static_cast<uint8_t>(newOpcode);
             break;
         }

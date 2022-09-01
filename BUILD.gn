@@ -91,7 +91,7 @@ if (defined(ark_standalone_build)) {
     deps += [ "//arkcompiler/ets_runtime/test/perform:perform" ]
   }
 
-  group("ark_js_host_unittest") {
+  group("ark_unittest") {
     testonly = true
     deps = []
     if (host_os != "mac") {
@@ -116,6 +116,15 @@ if (defined(ark_standalone_build)) {
           "//arkcompiler/ets_runtime/ecmascript/compiler/tests:host_unittest",
         ]
       }
+    }
+  }
+
+  group("ark_js_host_unittest") {
+    testonly = true
+    deps = []
+    if (host_os != "mac") {
+      # js unittest
+      deps += [ ":ark_unittest" ]
 
       # js bytecode test
       deps += [ "//arkcompiler/ets_runtime/test/moduletest:ark_js_moduletest" ]
@@ -123,11 +132,11 @@ if (defined(ark_standalone_build)) {
       # ts aot test and asm test
       if (is_standard_system) {
         deps += [
-          "//arkcompiler/ets_runtime/test/aottest:ark_aot_js_test",
-          "//arkcompiler/ets_runtime/test/aottest:ark_aot_test",
-          "//arkcompiler/ets_runtime/test/moduletest:ark_asm_single_step_test",
+          #"//arkcompiler/ets_runtime/test/aottest:ark_aot_js_test",
+          #"//arkcompiler/ets_runtime/test/aottest:ark_aot_test",
+          #"//arkcompiler/ets_runtime/test/moduletest:ark_asm_single_step_test",
           "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test",
-          "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test",
+          #"//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test",
         ]
       }
     }

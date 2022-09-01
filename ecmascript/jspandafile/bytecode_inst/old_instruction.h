@@ -1213,8 +1213,8 @@ public:
                 return Format::PREF_V8_V8_V8;
             case Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
                 return Format::PREF_ID16_IMM16_V8;
-            case Opcode::ECMA_DYNAMICIMPORT_PREF_NONE:
-                return Format::PREF_NONE    ;
+            case Opcode::ECMA_DYNAMICIMPORT_PREF_V8:
+                return Format::PREF_V8;
             default:
                 break;
         }
@@ -2023,7 +2023,7 @@ public:
                 return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
                 return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE) & flag) == flag;
-            case Opcode::ECMA_DYNAMICIMPORT_PREF_NONE:
+            case Opcode::ECMA_DYNAMICIMPORT_PREF_V8:
                 return ((Flags::ACC_READ | Flags::ACC_WRITE) & flag) == flag;
             default:
                 return false;

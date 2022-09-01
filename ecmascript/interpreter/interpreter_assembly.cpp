@@ -4172,6 +4172,19 @@ void InterpreterAssembly::HandleDynamicimport(
     SET_ACC(res);
     DISPATCH(DYNAMICIMPORT);
 }
+void InterpreterAssembly::HandleDeprecatedDynamicimportPrefV8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::dynamicimport"
+                << " v" << v0;
+    JSTaggedValue specifier = GET_VREG_VALUE(v0);
+    JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DYNAMICIMPORT);
+}
 void InterpreterAssembly::HandleCallargs3Imm8V8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)

@@ -2111,7 +2111,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
         while (static_cast<EcmaBytecode>(GetBytecodeInfo(*nextPcIter).opcode) == EcmaBytecode::NOP) {
             nextPcIter++;
         }
-        ASSERT(static_cast<EcmaBytecode>(GetBytecodeInfo(*nextPcIter).opcode) == EcmaBytecode::SUSPENDGENERATOR_V8);
+        ASSERT(static_cast<EcmaBytecode>(GetBytecodeInfo(*nextPcIter).opcode) == EcmaBytecode::SUSPENDGENERATOR);
         GateRef suspendGate = byteCodeToJSGate_.at(*nextPcIter);
         auto dependGate = gateAcc_.GetDep(suspendGate);
         auto newDependGate = circuit_.NewGate(OpCode(OpCode::SAVE_REGISTER), tmpReg, {dependGate, saveRegGate},
