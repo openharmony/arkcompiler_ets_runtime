@@ -39,6 +39,7 @@ using TimeStamp = uint8_t;
 using SecondaryOp = uint8_t;
 using BitField = uint64_t;
 using OutIdx = uint32_t;
+using BinaryOp = uint8_t;
 class Gate;
 struct Properties;
 class BytecodeCircuitBuilder;
@@ -58,6 +59,14 @@ enum MachineType { // Bit width
 };
 
 std::string MachineTypeToStr(MachineType machineType);
+
+enum class TypedBinOp : BinaryOp {
+    TYPED_ADD,
+    TYPED_SUB,
+    TYPED_MUL,
+    TYPED_LESS,
+    TYPED_LESSEQ,
+};
 
 class OpCode {
 public:
@@ -162,6 +171,9 @@ public:
         BITCAST,
         RESTORE_REGISTER,
         SAVE_REGISTER,
+        TYPE_CHECK,
+        TYPED_BINARY_OP,
+        TYPE_CONVERT,
 
         COMMON_CIR_FIRST = NOP,
         COMMON_CIR_LAST = DEPEND_AND,
