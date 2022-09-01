@@ -30,6 +30,8 @@ class JSPandaFile {
 public:
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
+    static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
+
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
     static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
@@ -49,16 +51,21 @@ public:
         return pf_;
     }
 
-    MethodLiteral* GetMethods() const
+    MethodLiteral* GetMethodLiterals() const
     {
-        return methods_;
+        return methodLiterals_;
     }
 
-    void SetMethodToMap(MethodLiteral *method)
+    void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
-        if (method != nullptr) {
-            methodMap_.emplace(method->GetMethodId().GetOffset(), method);
+        if (methodLiteral != nullptr) {
+            methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
         }
+    }
+
+    const CUnorderedMap<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
+    {
+        return methodLiteralMap_;
     }
 
     uint32_t GetNumMethods() const
@@ -88,7 +95,7 @@ public:
         mainMethodIndex_ = mainMethodIndex;
     }
 
-    MethodLiteral *FindMethods(uint32_t offset) const;
+    MethodLiteral* PUBLIC_API FindMethodLiteral(uint32_t offset) const;
 
     Span<const uint32_t> GetClasses() const
     {
@@ -130,8 +137,8 @@ private:
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     uint32_t mainMethodIndex_ {0};
-    MethodLiteral *methods_ {nullptr};
-    CUnorderedMap<uint32_t, MethodLiteral *> methodMap_;
+    MethodLiteral *methodLiterals_ {nullptr};
+    CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     const panda_file::File *pf_ {nullptr};
     CString desc_;
     bool isModule_ {false};

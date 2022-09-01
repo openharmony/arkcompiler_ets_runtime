@@ -39,12 +39,18 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         LOptions(optLevel_, true, relocMode_));
     CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
     TSManager *tsManager = vm_->GetTSManager();
-
+    uint32_t mainMethodIndex = bytecodeInfo.jsPandaFile->GetMainMethodIndex();
+    uint32_t skipMethodNum = 0;
+    auto mainMethod = bytecodeInfo.jsPandaFile->FindMethodLiteral(mainMethodIndex);
     bool enableLog = !log_->NoneMethod();
 
-    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableLog, aotModule, &cmpCfg, tsManager]
-        (const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> &constantPool,
+    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableLog, aotModule, &cmpCfg, tsManager,
+        &mainMethod, &skipMethodNum](const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> &constantPool,
         BytecodeInfoCollector::MethodPcInfo &methodPCInfo) {
+        if (methodPCInfo.methodsSize > maxAotMethodSize_ && methodPCInfo.methods[0] != mainMethod) {
+            skipMethodNum += methodPCInfo.methods.size();
+            return;
+        }
         for (auto method : methodPCInfo.methods) {
             const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
             if (log_->CertainMethod()) {
@@ -70,8 +76,8 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);
         }
     });
-
-    generator.AddModule(aotModule, aotModuleAssembler, bytecodeInfo.jsPandaFile);
+    LOG_COMPILER(INFO) << skipMethodNum << " large methods in '" << fileName << "' have been skipped";
+    generator.AddModule(aotModule, aotModuleAssembler, bytecodeInfo);
     return true;
 }
 
@@ -95,16 +101,20 @@ bool PassManager::CollectBCInfo(const std::string &fileName, BytecodeInfoCollect
         LOG_COMPILER(INFO) << fileName << " has no type info";
     }
 
+    JSThread *thread = vm_->GetJSThread();
+
     if (jsPandaFile->IsModule()) {
         ModuleManager *moduleManager = vm_->GetModuleManager();
-        moduleManager->HostResolveImportedModule(fileName.c_str());
+        CString moduleFileName = moduleManager->ResolveModuleFileName(fileName.c_str());
+        jsPandaFile =
+            const_cast<JSPandaFile *>(JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName,
+                                                                                         entry_));
     }
 
     auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile);
-    JSThread *thread = vm_->GetJSThread();
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
-    JSHandle<JSMethod> jsMethod(thread, mainFunc->GetMethod());
-    JSHandle<JSTaggedValue> constPool(thread, jsMethod->GetConstantPool());
+    JSHandle<Method> method(thread, mainFunc->GetMethod());
+    JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());
     bytecodeInfo->constantPool = constPool;
     return true;
 }

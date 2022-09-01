@@ -82,6 +82,7 @@ int Main(const int argc, const char **argv)
     LocalScope scope(vm);
     std::string entry = entrypoint.GetValue();
     arg_list_t pandaFileNames = files.GetValue();
+    runtimeOptions.ParseAbcListFile(pandaFileNames);
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string outputFileName = runtimeOptions.GetAOTOutputFile();
     size_t optLevel = runtimeOptions.GetOptLevel();
@@ -89,6 +90,7 @@ int Main(const int argc, const char **argv)
     std::string logOption = runtimeOptions.GetCompilerLogOption();
     std::string logMethodsList = runtimeOptions.GetMethodsListForLog();
     bool isEnableBcTrace = runtimeOptions.IsEnableByteCodeTrace();
+    size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
     BytecodeStubCSigns::Initialize();
     CommonStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
@@ -96,15 +98,16 @@ int Main(const int argc, const char **argv)
     CompilerLog log(logOption, isEnableBcTrace);
     AotMethodLogList logList(logMethodsList);
     AOTFileGenerator generator(&log, &logList, vm);
-    PassManager passManager(vm, entry, triple, optLevel, relocMode, &log, &logList);
+    vm->GetTSManager()->SetConstantPoolInfo(generator.GetConstantPoolInfos(pandaFileNames));
+    PassManager passManager(vm, entry, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize);
     for (const auto &fileName : pandaFileNames) {
         LOG_COMPILER(INFO) << "AOT start to execute ark file: " << fileName;
         if (passManager.Compile(fileName, generator) == false) {
             ret = false;
-            break;
+            continue;
         }
     }
-    generator.SaveAOTFile(outputFileName + ".aot");
+    generator.SaveAOTFile(outputFileName + ".an");
     generator.SaveSnapshotFile();
 
     JSNApi::DestroyJSVM(vm);

@@ -122,6 +122,16 @@ public:
         objectSize_ -= bytes;
     }
 
+    size_t GetOutOfMemoryOvershootSize() const
+    {
+        return outOfMemoryOvershootSize_;
+    }
+
+    void IncreaseOutOfMemoryOvershootSize(size_t size)
+    {
+        outOfMemoryOvershootSize_ += size;
+    }
+
     MemSpaceType GetSpaceType() const
     {
         return spaceType_;
@@ -175,7 +185,6 @@ public:
     inline void EnumerateRegionsWithRecord(const Callback &cb) const;
 
     inline void AddRegion(Region *region);
-    inline void AddRegionToFront(Region *region);
     inline void RemoveRegion(Region *region);
 
     virtual void Initialize() {};
@@ -193,6 +202,7 @@ protected:
     size_t maximumCapacity_ {0};
     size_t committedSize_ {0};
     size_t objectSize_ {0};
+    size_t outOfMemoryOvershootSize_ {0};
     Region *recordRegion_ {nullptr};
 };
 

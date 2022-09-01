@@ -691,6 +691,17 @@ HWTEST_F_L0(JSNApiTests, SyntaxError)
     ASSERT_TRUE(thread_->HasPendingException());
 }
 
+HWTEST_F_L0(JSNApiTests, OOMError)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<JSValueRef> error = Exception::OOMError(vm_, message);
+    ASSERT_TRUE(error->IsError());
+
+    JSNApi::ThrowException(vm_, error);
+    ASSERT_TRUE(thread_->HasPendingException());
+}
+
 HWTEST_F_L0(JSNApiTests, InheritPrototype_001)
 {
     LocalScope scope(vm_);
@@ -796,7 +807,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_003)
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     auto factory = vm_->GetFactory();
 
-    JSHandle<JSMethod> invokeSelf =
+    JSHandle<Method> invokeSelf =
         factory->NewMethodForNativeFunction(reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf));
     // father type
     JSHandle<JSHClass> protoDynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
@@ -842,9 +853,9 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
     JSHandle<JSTaggedValue> deleteMethod = JSObject::GetMethod(thread_, weakSet, deleteString);
     JSHandle<JSTaggedValue> addMethod = JSObject::GetMethod(thread_, weakSet, addString);
 
-    JSHandle<JSMethod> invokeSelf =
+    JSHandle<Method> invokeSelf =
         factory->NewMethodForNativeFunction(reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf));
-    JSHandle<JSMethod> ctor =
+    JSHandle<Method> ctor =
         factory->NewMethodForNativeFunction(reinterpret_cast<void *>(BuiltinsFunction::FunctionConstructor));
 
     JSHandle<JSHClass> protoDynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());

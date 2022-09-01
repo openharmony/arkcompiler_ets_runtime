@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
-#include <cstdint>
-extern const uint8_t _binary_stub_aot_start[1] = {0x0};
-extern const uint32_t _binary_stub_aot_length = 1;
+declare function AssertType(value:any, type:string):void;
+{
+    let a : boolean[] = [];
+    let b = a.push(false);
+    AssertType(b, "number");
+    let c : number[] = [1, 2, 3];
+    let d = c.indexOf(2);
+    AssertType(d, "number");
+}

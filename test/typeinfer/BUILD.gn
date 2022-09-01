@@ -23,6 +23,7 @@ group("ark_typeinfer_test") {
     "callargs3dyn:callargs3dynAotTypeInferAction",
     "callirangedyn:callirangedynAotTypeInferAction",
     "callithisrange:callithisrangeAotTypeInferAction",
+    "class:classAotTypeInferAction",
     "createemptyarray:createemptyarrayAotTypeInferAction",
     "createemptyobject:createemptyobjectAotTypeInferAction",
     "createobjecthavingmethod:createobjecthavingmethodAotTypeInferAction",
@@ -44,6 +45,8 @@ group("ark_typeinfer_test") {
     "mod2dyn:mod2dynAotTypeInferAction",
     "mul2dyn:mul2dynAotTypeInferAction",
     "newobjdynrange:newobjdynrangeAotTypeInferAction",
+    "parainfer:parainferAotTypeInferAction",
+    "phiwithloop:phiwithloopAotTypeInferAction",
     "stconsttoglobalrecord:stconsttoglobalrecordAotTypeInferAction",
     "stglobalvar:stglobalvarAotTypeInferAction",
     "stlettoglobalrecord:stlettoglobalrecordAotTypeInferAction",
@@ -52,6 +55,8 @@ group("ark_typeinfer_test") {
     "throwdyn_2:throwdyn_2AotTypeInferAction",
     "tryldglobalbyname:tryldglobalbynameAotTypeInferAction",
     "trystglobalbyname:trystglobalbynameAotTypeInferAction",
+    "tsarraytobuiltin:tsarraytobuiltinAotTypeInferAction",
     "typeof:typeofAotTypeInferAction",
+    "variable_after_loops:variable_after_loopsAotTypeInferAction",
   ]
 }

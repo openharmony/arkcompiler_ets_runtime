@@ -38,7 +38,9 @@ void TSManager::DecodeTSTypes(const JSPandaFile *jsPandaFile)
     }
 }
 
-TSManager::TSManager(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory())
+TSManager::TSManager(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),
+                                   assertTypes_(vm_->GetJSOptions().AssertTypes()),
+                                   printAnyTypes_(vm_->GetJSOptions().PrintAnyTypes())
 {
     JSHandle<TSModuleTable> mTable = factory_->NewTSModuleTable(TSModuleTable::DEFAULT_TABLE_CAPACITY);
     SetTSModuleTable(mTable);
@@ -279,8 +281,7 @@ GlobalTSTypeRef TSManager::AddUnionToInferTable(JSHandle<TSUnionType> unionType)
                                                                             JSHandle<TSType>(unionType));
     SetInferTypeTable(newITable);
 
-    int localId = newITable->GetNumberOfTypes() - 1;
-    GlobalTSTypeRef gt = GlobalTSTypeRef(TSModuleTable::INFER_TABLE_ID, localId);
+    GlobalTSTypeRef gt = GlobalTSTypeRef(TSModuleTable::INFER_TABLE_ID, newITable->GetNumberOfTypes());
     unionType->SetGT(gt);
     return gt;
 }
@@ -330,10 +331,7 @@ GlobalTSTypeRef TSManager::GetOrCreateUnionType(CVector<GlobalTSTypeRef> unionTy
 void TSManager::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalModuleTable_)));
-    uint64_t length = constantStringTable_.size();
-    for (uint64_t i = 0; i < length; i++) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(constantStringTable_.data()[i]))));
-    }
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&constantPoolInfo_)));
 
     uint64_t hclassTableLength = staticHClassTable_.size();
     for (uint64_t i = 0; i < hclassTableLength; i++) {
@@ -398,6 +396,27 @@ GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
     return functionType->GetReturnGT();
 }
 
+GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
+{
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    // handle buintin types if builtins.dts is not enabled
+    if (tsType->IsUndefined()) {
+        return GlobalTSTypeRef::Default();
+    }
+
+    ASSERT(tsType->IsTSClassType());
+    JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
+    classInstanceType->SetClassGT(gt);
+    JSHandle<TSTypeTable> iTable = GetInferTypeTable();
+    JSHandle<TSTypeTable> newITable = TSTypeTable::PushBackTypeToInferTable(thread_, iTable,
+                                                                            JSHandle<TSType>(classInstanceType));
+    SetInferTypeTable(newITable);
+    auto instanceGT = GlobalTSTypeRef(TSModuleTable::INFER_TABLE_ID, newITable->GetNumberOfTypes());
+    classInstanceType->SetGT(instanceGT);
+    ASSERT(GetTypeKind(instanceGT) == TSTypeKind::CLASS_INSTANCE);
+    return instanceGT;
+}
+
 GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
 {
     ASSERT(GetTypeKind(gt) == TSTypeKind::ARRAY);
@@ -405,36 +424,6 @@ GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
     ASSERT(tsType->IsTSArrayType());
     JSHandle<TSArrayType> arrayType = JSHandle<TSArrayType>(tsType);
     return arrayType->GetElementGT();
-}
-
-size_t TSManager::AddConstString(JSTaggedValue string)
-{
-    auto it = std::find(constantStringTable_.begin(), constantStringTable_.end(), string.GetRawData());
-    if (it != constantStringTable_.end()) {
-        return it - constantStringTable_.begin();
-    } else {
-        constantStringTable_.emplace_back(string.GetRawData());
-        return constantStringTable_.size() - 1;
-    }
-}
-
-// add string to constantstringtable and get its index
-size_t TSManager::GetStringIdx(JSHandle<JSTaggedValue> constPool, const uint16_t id)
-{
-    JSHandle<ConstantPool> newConstPool(thread_, constPool.GetTaggedValue());
-    auto str = newConstPool->GetObjectFromCache(id);
-    return AddConstString(str);
-}
-
-bool TSManager::IsTypeVerifyEnabled() const
-{
-    return vm_->GetJSOptions().EnableTypeInferVerify();
-}
-
-std::string TSManager::GetStdStringById(size_t index) const
-{
-    std::string str = GetStringById(index)->GetCString().get();
-    return str;
 }
 
 void TSManager::GenerateStaticHClass(JSHandle<TSTypeTable> tsTypeTable)
@@ -471,8 +460,8 @@ JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
 
 std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
 {
+    ASSERT(gateType.IsTSType());
     GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());
-    ASSERT(gt.GetFlag() == 0);
     auto typeKind = GetTypeKind(gt);
     switch (typeKind) {
         case TSTypeKind::PRIMITIVE:

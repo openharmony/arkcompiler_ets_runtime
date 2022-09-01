@@ -109,6 +109,11 @@ size_t GateAccessor::GetNumValueIn(GateRef gate) const
     return gatePtr->GetInValueCount();
 }
 
+bool GateAccessor::IsGCRelated(GateRef gate) const
+{
+    return GetGateType(gate).IsGCRelated();
+}
+
 GateRef GateAccessor::GetIn(GateRef gate, size_t idx) const
 {
     return circuit_->GetIn(gate, idx);
@@ -141,6 +146,30 @@ void GateAccessor::GetOutVector(GateRef gate, std::vector<GateRef>& outs) const
             outs.push_back(ref);
         }
     }
+}
+
+void GateAccessor::GetOutStateVector(GateRef gate, std::vector<GateRef>& outStates) const
+{
+    const Gate *curGate = circuit_->LoadGatePtrConst(gate);
+    if (!curGate->IsFirstOutNull()) {
+        const Out *curOut = curGate->GetFirstOutConst();
+        GateRef ref = circuit_->GetGateRef(curOut->GetGateConst());
+        if (circuit_->GetOpCode(ref).IsState()) {
+            outStates.push_back(ref);
+        }
+        while (!curOut->IsNextOutNull()) {
+            curOut = curOut->GetNextOutConst();
+            ref = circuit_->GetGateRef(curOut->GetGateConst());
+            if (circuit_->GetOpCode(ref).IsState()) {
+                outStates.push_back(ref);
+            }
+        }
+    }
+}
+
+void GateAccessor::GetAllGates(std::vector<GateRef>& gates) const
+{
+    circuit_->GetAllGates(gates);
 }
 
 bool GateAccessor::IsInGateNull(GateRef gate, size_t idx) const
@@ -194,15 +223,6 @@ size_t GateAccessor::GetImmediateId(GateRef gate) const
     ASSERT(gatePtr->GetMachineType() == MachineType::I64);
     size_t imm = gatePtr->GetBitField();
     return imm;
-}
-
-bool GateAccessor::IsDependIn(const UseIterator &useIt) const
-{
-    Gate *gatePtr = circuit_->LoadGatePtr(*useIt);
-    size_t dependStartIndex = gatePtr->GetStateCount();
-    size_t dependEndIndex = gatePtr->GetDependCount() + dependStartIndex;
-    size_t index = useIt.GetIndex();
-    return index >= dependStartIndex && index < dependEndIndex;
 }
 
 void GateAccessor::SetDep(GateRef gate, GateRef depGate, size_t idx)
@@ -355,9 +375,42 @@ GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, G
     return circuit_->GetConstantGate(bitValue, bitfield, type);
 }
 
+bool GateAccessor::IsDependIn(const UseIterator &useIt) const
+{
+    size_t dependStartIndex = GetStateCount(*useIt);
+    size_t dependEndIndex = dependStartIndex + GetDependCount(*useIt);
+    size_t index = useIt.GetIndex();
+    return (index >= dependStartIndex && index < dependEndIndex);
+}
+
+bool GateAccessor::IsValueIn(const UseIterator &useIt) const
+{
+    size_t valueStartIndex = GetStateCount(*useIt) + GetDependCount(*useIt);
+    size_t valueEndIndex = valueStartIndex + GetInValueCount(*useIt);
+    size_t index = useIt.GetIndex();
+    return (index >= valueStartIndex && index < valueEndIndex);
+}
+
+bool GateAccessor::IsExceptionState(const UseIterator &useIt) const
+{
+    auto op = GetOpCode(*useIt);
+    bool isDependSelector = (op == OpCode::DEPEND_SELECTOR) &&
+                            (GetOpCode(GetIn(GetIn(*useIt, 0), useIt.GetIndex() - 1)) == OpCode::IF_EXCEPTION);
+    bool isReturn = (op == OpCode::RETURN && GetOpCode(GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION);
+    return isDependSelector || isReturn;
+}
+
+bool GateAccessor::IsDependIn(GateRef gate, size_t index) const
+{
+    size_t dependStartIndex = GetStateCount(gate);
+    size_t dependEndIndex = dependStartIndex + GetDependCount(gate);
+    return (index >= dependStartIndex && index < dependEndIndex);
+}
+
 bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
 {
     size_t valueStartIndex = GetStateCount(gate) + GetDependCount(gate);
-    return (index >= valueStartIndex && index < GetNumIns(gate));
+    size_t valueEndIndex = valueStartIndex + GetInValueCount(gate);
+    return (index >= valueStartIndex && index < valueEndIndex);
 }
 }  // namespace panda::ecmascript::kungfu

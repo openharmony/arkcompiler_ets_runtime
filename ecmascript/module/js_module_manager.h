@@ -32,28 +32,45 @@ public:
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value);
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value, JSTaggedValue jsFunc);
     JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
-    JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencingModule);
-    JSHandle<SourceTextModule> PUBLIC_API HostResolveImportedModule(const CString &referencingModule);
+    JSHandle<SourceTextModule> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
+    JSHandle<SourceTextModule> HostResolveImportedModule(std::string &baseFilename, std::string &moduleFilename);
+    JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
+    JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
+    JSHandle<SourceTextModule> HostGetImportedModule(JSHandle<EcmaString> &referencingHandle);
+    bool IsImportedModuleLoaded(JSTaggedValue referencing);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName, JSTaggedValue currentFunc);
+    JSTaggedValue GetCurrentModule();
+    JSTaggedValue GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule);
+
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
-    bool resolveImportedModule(JSTaggedValue referencingModule);
     void Iterate(const RootVisitor &v);
+    bool GetCurrentMode() const
+    {
+        return isExecuteBuffer_;
+    }
+    void SetExecuteMode(bool mode)
+    {
+        isExecuteBuffer_ = mode;
+    }
+    void ConcatFileName(std::string &dirPath, std::string &requestPath, std::string &fileName);
+
+    // use for AOT PassManager
+    PUBLIC_API CString ResolveModuleFileName(const CString &fileName);
 
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
 
-    JSTaggedValue GetCurrentModule();
     JSTaggedValue GetModuleValueOutterInternal(JSTaggedValue key, JSTaggedValue currentModule);
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   JSTaggedValue key, JSTaggedValue value);
-    JSTaggedValue GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 
     EcmaVM *vm_ {nullptr};
     JSTaggedValue resolvedModules_ {JSTaggedValue::Hole()};
+    bool isExecuteBuffer_ = false;
 
     friend class EcmaVM;
 };

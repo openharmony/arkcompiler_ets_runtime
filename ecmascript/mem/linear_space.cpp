@@ -51,7 +51,7 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 
 bool LinearSpace::Expand(bool isPromoted)
 {
-    if (committedSize_ >= initialCapacity_ + overShootSize_) {
+    if (committedSize_ >= initialCapacity_ + overShootSize_ + outOfMemoryOvershootSize_) {
         return false;
     }
 

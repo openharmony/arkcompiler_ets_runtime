@@ -74,7 +74,8 @@ public:
         parser->Add(&icuDataPath_);
         parser->Add(&startupTime_);
         parser->Add(&enableRuntimeStat_);
-        parser->Add(&typeInferVerify_);
+        parser->Add(&assertTypes_);
+        parser->Add(&printAnyTypes_);
         parser->Add(&builtinsDTS_);
         parser->Add(&enablebcTrace_);
         parser->Add(&logLevel_);
@@ -84,6 +85,8 @@ public:
         parser->Add(&logError_);
         parser->Add(&logFatal_);
         parser->Add(&logComponents_);
+        parser->Add(&maxAotMethodSize_);
+        parser->Add(&abcFilelist_);
     }
 
     bool EnableArkTools() const
@@ -479,14 +482,24 @@ public:
         return startupTime_.WasSet();
     }
 
-    bool EnableTypeInferVerify() const
+    bool AssertTypes() const
     {
-        return typeInferVerify_.GetValue();
+        return assertTypes_.GetValue();
     }
 
-    void SetEnableTypeInferVerify(bool value)
+    void SetAssertTypes(bool value)
     {
-        typeInferVerify_.SetValue(value);
+        assertTypes_.SetValue(value);
+    }
+
+    bool PrintAnyTypes() const
+    {
+        return printAnyTypes_.GetValue();
+    }
+
+    void SetPrintAnyTypes(bool value)
+    {
+        printAnyTypes_.SetValue(value);
     }
 
     bool WasSetBuiltinsDTS() const
@@ -619,13 +632,48 @@ public:
         return logFatal_.WasSet();
     }
 
+    size_t GetMaxAotMethodSize() const
+    {
+        return maxAotMethodSize_.GetValue();
+    }
+
+    std::string GetAbcListFile() const
+    {
+        return abcFilelist_.GetValue();
+    }
+
+    void SetAbcListFile(std::string value)
+    {
+        abcFilelist_.SetValue(std::move(value));
+    }
+
+    bool WasSetAbcListFile() const
+    {
+        return abcFilelist_.WasSet();
+    }
+
+    void ParseAbcListFile(std::vector<std::string> &moduleList) const
+    {
+        std::ifstream moduleFile(abcFilelist_.GetValue());
+        if (moduleFile.is_open()) {
+            char moduleName[FILENAME_MAX];
+            while (!moduleFile.eof()) {
+                moduleFile.getline(moduleName, FILENAME_MAX);
+                if (moduleName[0] != '\0') {
+                    moduleList.emplace_back(std::string(moduleName));
+                }
+            }
+            moduleFile.close();
+        }
+    }
+
 private:
     PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
         R"(Enable cpuprofiler to sample call stack and output to json file. Default: false)"};
     PandArg<std::string> stubFile_ {"stub-file",
-        R"(stub.aot)",
-        R"(Path of file includes common stubs module compiled by stub compiler. Default: "stub.aot")"};
+        R"(stub.an)",
+        R"(Path of file includes common stubs module compiled by stub compiler. Default: "stub.an")"};
     PandArg<bool> enableForceGc_ {"enable-force-gc", true, R"(enable force gc when allocating object)"};
     PandArg<bool> forceFullGc_ {"force-full-gc",
         true,
@@ -682,8 +730,10 @@ private:
         R"(specific method list for compiler log output, only used when compiler-log)"};
     PandArg<bool> enableRuntimeStat_ {"enable-runtime-stat", false,
         R"(enable statistics of runtime state. Default: false)"};
-    PandArg<bool> typeInferVerify_ {"typeinfer-verify", false,
-        R"(Enable type verify for type inference tests. Default: false)"};
+    PandArg<bool> assertTypes_ {"assert-types", false,
+        R"(Enable type assertion for type inference tests. Default: false)"};
+    PandArg<bool> printAnyTypes_ {"print-any-types", false,
+        R"(Enable TypeFilter to print any types after type inference. Default: false)"};
     PandArg<bool> isWorker_ {"IsWorker", false,
         R"(whether is worker vm)"};
     PandArg<std::string> builtinsDTS_ {"builtins-dts",
@@ -723,6 +773,10 @@ private:
         "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler", "pandafile",
         "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue", "jvmti", "aot",
         "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+    PandArg<uint32_t> maxAotMethodSize_ {"maxAotMethodSize", 32_KB,
+        R"(enable aot to skip too large method. Default size: 32 KB)"};
+    PandArg<std::string> abcFilelist_ {"abc-list-file",  R"(none)",
+        R"(abc's list file. )"};
 };
 }  // namespace panda::ecmascript
 

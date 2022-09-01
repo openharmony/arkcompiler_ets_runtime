@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:assignproxy
+ * @tc.desc:test assign for proxy
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var log = "";
 var proxy = new Proxy({"cc":"dd", "ee":"ff"}, {
 get: function(target, propertyKey, receiver) {

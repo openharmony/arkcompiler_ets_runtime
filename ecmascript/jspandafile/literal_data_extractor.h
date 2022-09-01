@@ -38,7 +38,7 @@ public:
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                                     JSHandle<JSTaggedValue> constpool);
     static JSHandle<JSFunction> DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                      JSHandle<JSMethod> method, FunctionKind kind, uint16_t length);
+                                                      JSHandle<Method> method, FunctionKind kind, uint16_t length);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_LITERAL_DATA_EXTRACTOR_H

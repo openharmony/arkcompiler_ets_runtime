@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/compiler/type_inference/type_infer.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript::kungfu {
 void TypeInfer::TraverseCircuit()
@@ -47,15 +49,20 @@ void TypeInfer::TraverseCircuit()
         circuit_->PrintAllGates(*builder_);
     }
 
-    if (tsManager_->IsTypeVerifyEnabled()) {
+    if (tsManager_->AssertTypes()) {
         Verify();
+    }
+
+    if (tsManager_->PrintAnyTypes()) {
+        TypeFilter filter(this);
+        filter.Run();
     }
 }
 
 bool TypeInfer::UpdateType(GateRef gate, const GateType type)
 {
     auto preType = gateAccessor_.GetGateType(gate);
-    if (type.IsTSType() && type != preType) {
+    if (type.IsTSType() && !type.IsAnyType() && type != preType) {
         gateAccessor_.SetGateType(gate, type);
         return true;
     }
@@ -111,6 +118,7 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::OR2DYN_PREF_V8:
         case EcmaOpcode::XOR2DYN_PREF_V8:
         case EcmaOpcode::TONUMBER_PREF_V8:
+        case EcmaOpcode::TONUMERIC_PREF_V8:
         case EcmaOpcode::NEGDYN_PREF_V8:
         case EcmaOpcode::NOTDYN_PREF_V8:
         case EcmaOpcode::INCDYN_PREF_V8:
@@ -183,8 +191,9 @@ bool TypeInfer::Infer(GateRef gate)
             return InferGetNextPropName(gate);
         case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_PREF_V8_V8_V8_V8:
             return InferDefineGetterSetterByValue(gate);
+        case EcmaOpcode::NEWOBJDYNRANGE_PREF_IMM16_V8:
         case EcmaOpcode::NEWOBJSPREADDYN_PREF_V8_V8:
-            return InferNewObjSpread(gate);
+            return InferNewObject(gate);
         case EcmaOpcode::SUPERCALL_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLSPREAD_PREF_V8:
             return InferSuperCall(gate);
@@ -203,9 +212,13 @@ bool TypeInfer::InferPhiGate(GateRef gate)
     auto ins = gateAccessor_.ConstIns(gate);
     for (auto it =  ins.begin(); it != ins.end(); it++) {
         // assuming that VALUE_SELECTOR is NO_DEPEND and NO_ROOT
-        if (gateAccessor_.GetOpCode(*it) == OpCode::MERGE ||
-            gateAccessor_.GetOpCode(*it) == OpCode::LOOP_BEGIN) {
+        if (gateAccessor_.GetOpCode(*it) == OpCode::MERGE) {
             continue;
+        }
+        if (gateAccessor_.GetOpCode(*it) == OpCode::LOOP_BEGIN) {
+            auto loopInGate = gateAccessor_.GetValueIn(gate);
+            auto loopInType = gateAccessor_.GetGateType(loopInGate);
+            return UpdateType(gate, loopInType);
         }
         auto valueInType = gateAccessor_.GetGateType(*it);
         if (valueInType.IsAnyType()) {
@@ -354,10 +367,16 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
     if (objType.IsTSType()) {
+        if (tsManager_->IsArrayTypeKind(objType)) {
+            auto builtinGt = GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, TSManager::BUILTIN_ARRAY_ID);
+            auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
+            objType = GateType(builtinInstanceType);
+        }
         // If this object has no gt type, we cannot get its internal property type
         if (IsObjectOrClass(objType)) {
+            auto constantPool = builder_->GetConstantPool().GetObject<ConstantPool>();
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
-            auto name = tsManager_->GetStringById(index);
+            auto name = constantPool->GetObjectFromCache(index);
             auto type = GetPropType(objType, name);
             return UpdateType(gate, type);
         }
@@ -365,14 +384,15 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     return false;
 }
 
-bool TypeInfer::InferLdNewObjDynRange(GateRef gate)
+bool TypeInfer::InferNewObject(GateRef gate)
 {
-    // If the instance does not allocate a local register, there is no type.
-    // We assign the type of the class to it.
     if (gateAccessor_.GetGateType(gate).IsAnyType()) {
         ASSERT(gateAccessor_.GetNumValueIn(gate) > 0);
-        auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
-        return UpdateType(gate, objType);
+        auto classType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+        if (tsManager_->IsClassTypeKind(classType)) {
+            auto classInstanceType = tsManager_->CreateClassInstanceType(classType);
+            return UpdateType(gate, classInstanceType);
+        }
     }
     return false;
 }
@@ -427,16 +447,6 @@ bool TypeInfer::InferDefineGetterSetterByValue(GateRef gate)
     // 0 : the index of obj
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, objType);
-}
-
-bool TypeInfer::InferNewObjSpread(GateRef gate)
-{
-    if (gateAccessor_.GetGateType(gate).IsAnyType()) {
-        // 0 : the index of func
-        auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
-        return UpdateType(gate, funcType);
-    }
-    return false;
 }
 
 bool TypeInfer::InferSuperCall(GateRef gate)
@@ -497,9 +507,10 @@ void TypeInfer::TypeCheck(GateRef gate) const
         return;
     }
     auto funcName = gateAccessor_.GetValueIn(func, 0);
-    if (tsManager_->GetStdStringById(gateAccessor_.GetBitField(funcName)) ==  "AssertType") {
+    auto constantPool = builder_->GetConstantPool().GetObject<ConstantPool>();
+    if (constantPool->GetStdStringByIdx(gateAccessor_.GetBitField(funcName)) ==  "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gateAccessor_.GetValueIn(gate, 2), 0);
-        auto expectedTypeStr = tsManager_->GetStdStringById(gateAccessor_.GetBitField(expectedGate));
+        auto expectedTypeStr = constantPool->GetStdStringByIdx(gateAccessor_.GetBitField(expectedGate));
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {
@@ -527,6 +538,61 @@ void TypeInfer::PrintType(GateRef gate) const
     auto typeRef = GlobalTSTypeRef(type.GetType());
     log += "moduleId: " + std::to_string(typeRef.GetModuleId()) + ", ";
     log += "localId: " + std::to_string(typeRef.GetLocalId());
+    LOG_COMPILER(INFO) << log;
+}
+
+void TypeFilter::Run() const
+{
+    LOG_COMPILER(INFO) << "================== filter any types outputs ==================";
+    const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+    EntityId methodId = methodLiteral_->GetMethodId();
+
+    JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
+    const std::string functionName = methodLiteral_->ParseFunctionName(jsPandaFile, methodId);
+
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+    for (const auto &gate : gateList) {
+        GateType type = gateAccessor_.GetGateType(gate);
+        if (infer_->ShouldInfer(gate) && type.IsAnyType()) {
+            PrintAnyTypeGate(gate, debugExtractor, sourceFileName, functionName);
+        }
+    }
+}
+
+void TypeFilter::PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, const std::string &sourceFileName,
+                                  const std::string &functionName) const
+{
+    std::string log("[TypeFilter] ");
+    log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
+    OpCode op = gateAccessor_.GetOpCode(gate);
+    if (op != OpCode::VALUE_SELECTOR) {
+    // handle ByteCode gate: print gate id, bytecode and line number in source code.
+        log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
+
+        int32_t lineNumber = 0;
+        auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
+            lineNumber = line + 1;
+            return true;
+        };
+
+        const auto &gateToBytecode = builder_->GetGateToBytecode();
+        const uint8_t *pc = gateToBytecode.at(gate).second;
+
+        uint32_t offset = pc - methodLiteral_->GetBytecodeArray();
+        debugExtractor->MatchLineWithOffset(callbackLineFunc, methodLiteral_->GetMethodId(), offset);
+
+        log += "at " + functionName + " (" + sourceFileName +  ":" + std::to_string(lineNumber) + ")";
+    } else {
+    // handle phi gate: print gate id and input gates id list.
+        log += "phi gate, ins: ";
+        auto ins = gateAccessor_.ConstIns(gate);
+        for (auto it =  ins.begin(); it != ins.end(); it++) {
+            log += std::to_string(gateAccessor_.GetId(*it)) + " ";
+        }
+    }
+
     LOG_COMPILER(INFO) << log;
 }
 }  // namespace panda::ecmascript

@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:getunmappedargs
+ * @tc.desc:test arguments
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 function Foo() {
     print(arguments[0])
     print(arguments[1])

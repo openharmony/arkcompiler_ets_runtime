@@ -117,7 +117,7 @@ public:
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();
     void SetUpForBuiltinsStubs();
-    LLVMValueRef AddFunc(const panda::ecmascript::MethodLiteral *method, const JSPandaFile *jsPandaFile);
+    LLVMValueRef AddFunc(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile);
     LLVMModuleRef GetModule() const
     {
         return module_;
@@ -286,7 +286,6 @@ private:
     LLVMValueRef CanonicalizeToInt(LLVMValueRef value);
     LLVMValueRef CanonicalizeToPtr(LLVMValueRef value);
     LLVMValueRef GetCurrentFrameType(LLVMValueRef currentSpFrameAddr);
-    bool IsGCRelated(GateType typeCode) const;
     void SetFunctionCallConv();
 
     bool IsLogEnabled() const

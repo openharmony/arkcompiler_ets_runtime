@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_JS_TAGGED_VALUE_H
 #define ECMASCRIPT_JS_TAGGED_VALUE_H
 
-#include <limits.h>
-
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/mem_common.h"
@@ -47,21 +45,7 @@ enum class ComparisonResult {
     UNDEFINED  // at least one of x or y was undefined or NaN
 };
 
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define RETURN_TAGGED_VALUE_IF_ABRUPT(thread) RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
-
 using JSTaggedType = uint64_t;
-
-static const JSTaggedType NULL_POINTER = 0x05ULL;
-
-static inline JSTaggedType ReinterpretDoubleToTaggedType(double value)
-{
-    return base::bit_cast<JSTaggedType>(value);
-}
-static inline double ReinterpretTaggedTypeToDouble(JSTaggedType value)
-{
-    return base::bit_cast<double>(value);
-}
 
 //  Every double with all of its exponent bits set and its highest mantissa bit set is a quiet NaN.
 //  That leaves 51 bits unaccounted for. We’ll avoid one of those so that we don’t step on Intel’s
@@ -86,9 +70,10 @@ static inline double ReinterpretTaggedTypeToDouble(JSTaggedType value)
 
 class JSTaggedValue {
 public:
+    static constexpr size_t BIT_PER_BYTE = 8;
     static constexpr size_t TAG_BITS_SIZE = 16;  // 16 means bit numbers of 0xFFFF
     static constexpr size_t TAG_BITS_SHIFT = base::BitNumbers<JSTaggedType>() - TAG_BITS_SIZE;
-    static_assert((TAG_BITS_SHIFT + TAG_BITS_SIZE) == sizeof(JSTaggedType) * CHAR_BIT, "Insufficient bits!");
+    static_assert((TAG_BITS_SHIFT + TAG_BITS_SIZE) == sizeof(JSTaggedType) * BIT_PER_BYTE, "Insufficient bits!");
     static constexpr JSTaggedType TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
     // int tag
     static constexpr JSTaggedType TAG_INT = TAG_MARK;
@@ -123,6 +108,19 @@ public:
         return JSTaggedValue(object);
     }
 
+    static const JSTaggedType NULL_POINTER = VALUE_HOLE;
+    static const JSTaggedType INVALID_VALUE_LIMIT = 0x40000ULL;
+
+    static inline JSTaggedType CastDoubleToTagged(double value)
+    {
+        return base::bit_cast<JSTaggedType>(value);
+    }
+
+    static inline double CastTaggedToDouble(JSTaggedType value)
+    {
+        return base::bit_cast<double>(value);
+    }
+
     static inline constexpr size_t TaggedTypeSize()
     {
         return sizeof(JSTaggedType);
@@ -134,7 +132,7 @@ public:
 
     explicit JSTaggedValue(void *) = delete;
 
-    constexpr JSTaggedValue() : value_(NULL_POINTER) {}
+    constexpr JSTaggedValue() : value_(JSTaggedValue::NULL_POINTER) {}
 
     constexpr explicit JSTaggedValue(JSTaggedType v) : value_(v) {}
 
@@ -155,8 +153,8 @@ public:
     explicit JSTaggedValue(double v)
     {
         ASSERT_PRINT(!IsImpureNaN(v), "pureNaN will break the encoding of tagged double: "
-                                          << std::hex << ReinterpretDoubleToTaggedType(v));
-        value_ = ReinterpretDoubleToTaggedType(v) + DOUBLE_ENCODE_OFFSET;
+                                          << std::hex << CastDoubleToTagged(v));
+        value_ = CastDoubleToTagged(v) + DOUBLE_ENCODE_OFFSET;
     }
 
     explicit JSTaggedValue(const TaggedObject *v) : value_(static_cast<JSTaggedType>(ToUintPtr(v))) {}
@@ -229,10 +227,15 @@ public:
         return ((value_ & TAG_HEAPOBJECT_MASK) == 0U);
     }
 
+    inline bool IsInvalidValue() const
+    {
+        return value_ <= INVALID_VALUE_LIMIT;
+    }
+
     inline double GetDouble() const
     {
         ASSERT_PRINT(IsDouble(), "can not convert JSTaggedValue to Double : " << std::hex << value_);
-        return ReinterpretTaggedTypeToDouble(value_ - DOUBLE_ENCODE_OFFSET);
+        return CastTaggedToDouble(value_ - DOUBLE_ENCODE_OFFSET);
     }
 
     inline int GetInt() const
@@ -402,6 +405,7 @@ public:
     static uint8_t ToUint8(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static uint8_t ToUint8Clamp(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<EcmaString> ToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
+    static JSHandle<EcmaString> ToString(JSThread *thread, JSTaggedValue val);
     static JSHandle<JSObject> ToObject(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<JSTaggedValue> ToPropertyKey(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedNumber ToLength(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
@@ -543,6 +547,7 @@ public:
     bool IsJSMapIterator() const;
     bool IsJSArrayIterator() const;
     bool IsIterator() const;
+    bool IsAsyncIterator() const;
     bool IsGeneratorFunction() const;
     bool IsAsyncGeneratorFunction() const;
     bool IsGeneratorObject() const;
@@ -580,7 +585,7 @@ public:
     bool IsJSPluralRules() const;
     bool IsJSDisplayNames() const;
     bool IsJSListFormat() const;
-    bool IsJSMethod() const;
+    bool IsMethod() const;
 
     // non ECMA standard jsapis
     bool IsJSAPIArrayList() const;
@@ -612,7 +617,7 @@ public:
     bool IsJSAPIListIterator() const;
     bool IsJSAPILinkedListIterator() const;
     bool IsSpecialContainer() const;
-
+    bool HasOrdinaryGet() const;
     bool IsPrototypeHandler() const;
     bool IsTransitionHandler() const;
     bool IsPropertyBox() const;

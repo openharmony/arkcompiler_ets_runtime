@@ -425,7 +425,13 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeHasInstance)
     TestHelper::TearDownFrame(thread, prev);
 }
 
-// Function.prototype.call.toString()
+/**
+ * @tc.name: FunctionPrototypeToString
+ * @tc.desc: Create msgs through "CreateEcmaRuntimeCallInfo" function, Set ArgsNumber and CallArg, then call
+ *           the "FunctionPrototypeToString" function to get the result of Function.prototype.call.toString().
+ * @tc.type: FUNC
+ * @tc.require: issueI5INW1
+ */
 HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeToString)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();

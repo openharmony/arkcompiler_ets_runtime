@@ -482,7 +482,7 @@ void CircuitBuilder::SetResolvedToFunction(GateRef glue, GateRef function, GateR
 void CircuitBuilder::SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef method = GetMethodFromFunction(function);
-    GateRef offset = IntPtr(JSMethod::CONSTANT_POOL_OFFSET);
+    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
     Store(VariableType::INT64(), glue, method, offset, value);
 }
 

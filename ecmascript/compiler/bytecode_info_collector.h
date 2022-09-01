@@ -33,6 +33,7 @@ public:
         std::map<uint8_t *, uint8_t *> byteCodeCurPrePc {};
         std::vector<CfgInfo> bytecodeBlockInfos {};
         std::map<const uint8_t *, int32_t> pcToBCOffset {};
+        uint32_t methodsSize {0};
     };
 
     struct BCInfo {
@@ -66,7 +67,8 @@ private:
     static void FixInstructionId32(const BytecodeInstruction &inst, uint32_t index, uint32_t fixOrder = 0);
 
     // need to remove in the future
-    static void TranslateBCIns(JSPandaFile *jsPandaFile, const BytecodeInstruction &bcIns, const MethodLiteral *method);
+    static void TranslateBCIns(JSPandaFile *jsPandaFile, const BytecodeInstruction &bcIns,
+                               const MethodLiteral *method);
 
     static void CollectMethodPcs(JSPandaFile *jsPandaFile, const uint32_t insSz, const uint8_t *insArr,
                                  const MethodLiteral *method, std::vector<MethodPcInfo> &methodPcInfos);

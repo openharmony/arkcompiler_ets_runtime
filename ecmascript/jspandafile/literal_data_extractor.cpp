@@ -91,12 +91,12 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
             case LiteralTag::METHODAFFILIATE: {
                 uint16_t length = std::get<uint16_t>(value);
-                auto method = jsPandaFile->FindMethods(methodId);
-                ASSERT(method != nullptr);
+                auto methodLiteral = jsPandaFile->FindMethodLiteral(methodId);
+                ASSERT(methodLiteral != nullptr);
 
-                JSHandle<JSMethod> jsMethod = factory->NewJSMethod(method);
-                jsMethod->SetConstantPool(thread, constpool.GetTaggedValue());
-                JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, jsMethod, kind, length);
+                JSHandle<Method> method = factory->NewMethod(methodLiteral);
+                method->SetConstantPool(thread, constpool.GetTaggedValue());
+                JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
                 jt = jsFunc.GetTaggedValue();
                 break;
             }
@@ -175,12 +175,12 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 }
                 case LiteralTag::METHODAFFILIATE: {
                     uint16_t length = std::get<uint16_t>(value);
-                    auto method = jsPandaFile->FindMethods(methodId);
-                    ASSERT(method != nullptr);
+                    auto methodLiteral = jsPandaFile->FindMethodLiteral(methodId);
+                    ASSERT(methodLiteral != nullptr);
 
-                    JSHandle<JSMethod> jsMethod = factory->NewJSMethod(method);
-                    jsMethod->SetConstantPool(thread, constpool.GetTaggedValue());
-                    JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, jsMethod, kind, length);
+                    JSHandle<Method> method = factory->NewMethod(methodLiteral);
+                    method->SetConstantPool(thread, constpool.GetTaggedValue());
+                    JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
                     jt = jsFunc.GetTaggedValue();
                     break;
                 }
@@ -208,7 +208,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
 }
 
 JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                                 JSHandle<JSMethod> method,
+                                                                 JSHandle<Method> method,
                                                                  FunctionKind kind, uint16_t length)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

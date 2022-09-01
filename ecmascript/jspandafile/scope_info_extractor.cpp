@@ -24,7 +24,7 @@ JSTaggedValue ScopeInfoExtractor::GenerateScopeInfo(JSThread *thread, uint16_t s
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSMethod *method = FrameHandler(thread).GetMethod();
+    Method *method = FrameHandler(thread).GetMethod();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     JSHandle<JSTaggedValue> constpool(thread, method->GetConstantPool());
     JSHandle<TaggedArray> elementsLiteral =

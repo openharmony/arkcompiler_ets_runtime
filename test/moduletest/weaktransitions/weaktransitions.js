@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:weaktransitions
+ * @tc.desc:test weak transitions
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var count = 0;
 
 function addProperty(obj, index) {

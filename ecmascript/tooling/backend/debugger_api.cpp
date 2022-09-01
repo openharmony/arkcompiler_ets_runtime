@@ -22,8 +22,8 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/method.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tooling/backend/js_debugger.h"
 
@@ -79,9 +79,9 @@ uint32_t DebuggerApi::GetBytecodeOffset(const EcmaVM *ecmaVm)
 std::unique_ptr<PtMethod> DebuggerApi::GetMethod(const EcmaVM *ecmaVm)
 {
     FrameHandler frameHandler(ecmaVm->GetJSThread());
-    JSMethod* jsMethod = frameHandler.GetMethod();
+    Method* method = frameHandler.GetMethod();
     std::unique_ptr<PtMethod> ptMethod = std::make_unique<PtMethod>(
-        jsMethod->GetJSPandaFile(), jsMethod->GetMethodId(), jsMethod->IsNativeWithCallField());
+        method->GetJSPandaFile(), method->GetMethodId(), method->IsNativeWithCallField());
     return ptMethod;
 }
 
@@ -95,7 +95,7 @@ uint32_t DebuggerApi::GetBytecodeOffset(const FrameHandler *frameHandler)
     return frameHandler->GetBytecodeOffset();
 }
 
-JSMethod *DebuggerApi::GetMethod(const FrameHandler *frameHandler)
+Method *DebuggerApi::GetMethod(const FrameHandler *frameHandler)
 {
     return frameHandler->GetMethod();
 }
@@ -108,14 +108,14 @@ bool DebuggerApi::IsNativeMethod(const EcmaVM *ecmaVm)
 
 bool DebuggerApi::IsNativeMethod(const FrameHandler *frameHandler)
 {
-    JSMethod* jsMethod = frameHandler->GetMethod();
-    return jsMethod->IsNativeWithCallField();
+    Method* method = frameHandler->GetMethod();
+    return method->IsNativeWithCallField();
 }
 
 JSPandaFile *DebuggerApi::GetJSPandaFile(const EcmaVM *ecmaVm)
 {
-    JSMethod *jsMethod = FrameHandler(ecmaVm->GetJSThread()).GetMethod();
-    return const_cast<JSPandaFile *>(jsMethod->GetJSPandaFile());
+    Method *method = FrameHandler(ecmaVm->GetJSThread()).GetMethod();
+    return const_cast<JSPandaFile *>(method->GetJSPandaFile());
 }
 
 JSTaggedValue DebuggerApi::GetEnv(const FrameHandler *frameHandler)
@@ -130,7 +130,7 @@ JSTaggedType *DebuggerApi::GetSp(const FrameHandler *frameHandler)
 
 int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_view name)
 {
-    JSMethod *method = DebuggerApi::GetMethod(frameHandler);
+    Method *method = DebuggerApi::GetMethod(frameHandler);
     if (method->IsNativeWithCallField()) {
         LOG_DEBUGGER(ERROR) << "GetVregIndex: native frame not support";
         return -1;

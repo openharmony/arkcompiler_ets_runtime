@@ -156,7 +156,7 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
     if (method.IsUndefined()) {
         return JSTaggedValue::Undefined();
     }
-    JSHandle<JSMethod> target = JSHandle<JSMethod>(thread, method);
+    JSHandle<Method> target = JSHandle<Method>(thread, method);
     if (target->GetPandaFile() == nullptr) {
         return JSTaggedValue::Undefined();
     }

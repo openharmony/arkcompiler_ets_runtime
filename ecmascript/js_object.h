@@ -23,11 +23,11 @@
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/method.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array.h"
@@ -328,7 +328,7 @@ public:
 
     void SetCallable(bool flag);
     bool IsCallable() const;
-    JSMethod *GetCallTarget() const;
+    Method *GetCallTarget() const;
 
     static constexpr size_t HASH_OFFSET = TaggedObjectSize();
     static constexpr size_t SIZE = HASH_OFFSET + sizeof(JSTaggedType);

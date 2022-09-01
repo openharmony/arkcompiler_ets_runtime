@@ -27,6 +27,7 @@
 
 namespace panda::ecmascript {
 const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
+const int MAX_NODE_COUNT = 2000; // 2000:the maximum size of the array
 struct FrameInfo {
     std::string codeType = "";
     std::string functionName = "";
@@ -45,7 +46,8 @@ struct CpuProfileNode {
 struct ProfileInfo {
     uint64_t startTime = 0;
     uint64_t stopTime = 0;
-    CVector<struct CpuProfileNode> nodes;
+    struct CpuProfileNode nodes[MAX_NODE_COUNT];
+    int nodeCount = 0;
     CVector<int> samples;
     CVector<int> timeDeltas;
 };
@@ -62,10 +64,10 @@ struct FrameInfoTemp {
     int lineNumber = 0;
     int scriptId = 0;
     char url[500] = {0}; // 500:the maximum size of the url
-    JSMethod *method = nullptr;
+    Method *method = nullptr;
 };
 struct MethodKey {
-    JSMethod *method = nullptr;
+    Method *method = nullptr;
     int parentId = 0;
     bool operator< (const MethodKey &methodKey) const
     {
@@ -80,7 +82,8 @@ public:
 
     void AddSample(uint64_t sampleTimeStamp, bool outToFile);
     void WriteMethodsAndSampleInfo(bool timeEnd);
-    CVector<struct CpuProfileNode> GetMethodNodes() const;
+    int GetMethodNodeCount() const;
+    int GetframeStackLength() const;
     CDeque<struct SampleInfo> GetSamples() const;
     std::string GetSampleData() const;
     void SetThreadStartTime(uint64_t threadStartTime);
@@ -99,15 +102,15 @@ public:
     int SemPost(int index);
     int SemWait(int index);
     int SemDestroy(int index);
-    const CMap<JSMethod *, struct FrameInfo> &GetStackInfo() const;
-    void InsertStackInfo(JSMethod *method, struct FrameInfo &codeEntry);
-    void PushFrameStack(JSMethod *method, int count);
+    const CMap<Method *, struct FrameInfo> &GetStackInfo() const;
+    void InsertStackInfo(Method *method, struct FrameInfo &codeEntry);
+    void PushFrameStack(Method *method, int count);
     void PushStackInfo(const FrameInfoTemp &frameInfoTemp, int index);
     std::ofstream fileHandle_;
 private:
     void WriteAddNodes();
     void WriteAddSamples();
-    struct FrameInfo GetMethodInfo(JSMethod *method);
+    struct FrameInfo GetMethodInfo(Method *method);
     struct FrameInfo GetGcInfo();
     void FrameInfoTempToMap();
 
@@ -123,8 +126,8 @@ private:
     std::string sampleData_ = "";
     std::string fileName_ = "";
     sem_t sem_[2]; // 2 : sem_ size is two.
-    CMap<JSMethod *, struct FrameInfo> stackInfoMap_;
-    JSMethod *frameStack_[MAX_ARRAY_COUNT] = {};
+    CMap<Method *, struct FrameInfo> stackInfoMap_;
+    Method *frameStack_[MAX_ARRAY_COUNT] = {};
     int frameStackLength_ = 0;
     CMap<std::string, int> scriptIdMap_;
     FrameInfoTemp frameInfoTemps_[MAX_ARRAY_COUNT] = {};

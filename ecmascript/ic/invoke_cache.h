@@ -44,7 +44,7 @@ public:
     static bool SetPolyInlineCallCacheSlot(JSThread *thread, ProfileTypeInfo *profileTypeInfo, uint32_t slotId,
                                            uint8_t length, JSTaggedValue calleeArray);
 
-    static bool DecideCanBeInlined(JSMethod *method);
+    static bool DecideCanBeInlined(Method *method);
 };
 }  // namespace panda::ecmascript
 

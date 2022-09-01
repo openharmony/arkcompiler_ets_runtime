@@ -36,6 +36,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/js_patch_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
@@ -58,6 +59,7 @@
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/log.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_map_allocator.h"
@@ -67,6 +69,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
+#include "ecmascript/regexp/regexp_parser.h"
 
 #include "ohos/init_data.h"
 #include "utils/pandargs.h"
@@ -74,7 +77,6 @@
 #include "os/mutex.h"
 
 namespace panda {
-using ecmascript::CString;
 using ecmascript::ECMAObject;
 using ecmascript::EcmaString;
 using ecmascript::ErrorType;
@@ -90,7 +92,7 @@ using ecmascript::JSFunction;
 using ecmascript::JSFunctionBase;
 using ecmascript::JSHClass;
 using ecmascript::JSMap;
-using ecmascript::JSMethod;
+using ecmascript::Method;
 using ecmascript::JSNativePointer;
 using ecmascript::JSObject;
 using ecmascript::JSPandaFile;
@@ -105,6 +107,7 @@ using ecmascript::JSTaggedNumber;
 using ecmascript::JSTaggedType;
 using ecmascript::JSTaggedValue;
 using ecmascript::JSThread;
+using ecmascript::LinkedHashMap;
 using ecmascript::ObjectFactory;
 using ecmascript::PromiseCapability;
 using ecmascript::PropertyDescriptor;
@@ -133,6 +136,7 @@ using ecmascript::GeneratorContext;
 using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
+using ecmascript::RegExpParser;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -442,6 +446,7 @@ void JSNApi::DeleteSerializationData(void *data)
 {
     ecmascript::SerializationData *value = reinterpret_cast<ecmascript::SerializationData *>(data);
     delete value;
+    value = nullptr;
 }
 
 void HostPromiseRejectionTracker(const EcmaVM *vm,
@@ -470,6 +475,12 @@ void JSNApi::SetHostResolvePathTracker(EcmaVM *vm,
                                        std::function<std::string(std::string dirPath, std::string requestPath)> cb)
 {
     vm->SetResolvePathCallback(cb);
+}
+
+void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
+    std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)> cb)
+{
+    vm->SetResolveBufferCallback(cb);
 }
 
 void JSNApi::SetNativePtrGetter(EcmaVM *vm, void* cb)
@@ -1206,7 +1217,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     [[maybe_unused]] LocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
-    JSHandle<JSMethod> method = JSHandle<JSMethod>(thread, func->GetMethod());
+    JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     ecmascript::tooling::JSPtExtractor *debugExtractor =
                                         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
@@ -1230,7 +1241,7 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
-    JSHandle<JSMethod> method = JSHandle<JSMethod>(thread, func->GetMethod());
+    JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
     return method->IsNativeWithCallField();
 }
 
@@ -1589,6 +1600,88 @@ Local<StringRef> RegExpRef::GetOriginalSource(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(sourceHandle);
 }
 
+std::string RegExpRef::GetOriginalFlags()
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue regExpFlags = regExp->GetOriginalFlags();
+    uint32_t regExpFlagsInt = static_cast<uint32_t>(regExpFlags.GetInt());
+    std::string strFlags = "";
+    if (regExpFlagsInt & RegExpParser::FLAG_GLOBAL) {
+        strFlags += "g";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_IGNORECASE) {
+        strFlags += "i";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_MULTILINE) {
+        strFlags += "m";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_DOTALL) {
+        strFlags += "s";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_UTF16) {
+        strFlags += "u";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_STICKY) {
+        strFlags += "y";
+    }
+    std::sort(strFlags.begin(), strFlags.end());
+    return strFlags;
+}
+
+Local<JSValueRef> RegExpRef::IsGlobal(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_GLOBAL;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsIgnoreCase(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_IGNORECASE;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsMultiline(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_MULTILINE;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsDotAll(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_DOTALL;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsUtf16(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_UTF16;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsStick(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_STICKY;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
 Local<DateRef> DateRef::New(const EcmaVM *vm, double time)
 {
     JSThread *thread = vm->GetJSThread();
@@ -1620,6 +1713,33 @@ double DateRef::GetTime()
         LOG_ECMA(ERROR) << "Not a Date Object";
     }
     return date->GetTime().GetDouble();
+}
+
+Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
+{
+    JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(),
+                map->Get(JSNApiHelper::ToJSTaggedValue(*key))));
+}
+
+void MapRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
+{
+    JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    JSMap::Set(vm->GetJSThread(), map, JSNApiHelper::ToJSHandle(key), JSNApiHelper::ToJSHandle(value));
+}
+
+Local<MapRef> MapRef::New(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsMapFunction();
+    JSHandle<JSMap> map =
+        JSHandle<JSMap>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashMap> hashMap = LinkedHashMap::Create(thread);
+    map->SetLinkedMap(thread, hashMap);
+    JSHandle<JSTaggedValue> mapTag = JSHandle<JSTaggedValue>::Cast(map);
+    return JSNApiHelper::ToLocal<MapRef>(mapTag);
 }
 
 int32_t MapRef::GetSize()
@@ -2195,6 +2315,20 @@ bool JSValueRef::IsGeneratorObject()
     return rst;
 }
 
+bool JSValueRef::IsModuleNamespaceObject()
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    bool rst = obj->IsModuleNamespace();
+    return rst;
+}
+
+bool JSValueRef::IsSharedArrayBuffer()
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    bool rst = obj->IsSharedArrayBuffer();
+    return rst;
+}
+
 bool JSValueRef::IsJSLocale()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSLocale();
@@ -2279,5 +2413,28 @@ JsiRuntimeCallInfo::JsiRuntimeCallInfo(ecmascript::EcmaRuntimeCallInfo* ecmaInfo
 EcmaVM *JsiRuntimeCallInfo::GetVM() const
 {
     return thread_->GetEcmaVM();
+}
+
+// ---------------------------------------Hot Patch----------------------------------------------------
+bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName)
+{
+    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    JSThread *thread = vm->GetJSThread();
+    return patchManager->LoadPatch(thread, patchFileName, baseFileName);
+}
+
+bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                       const std::string &baseFileName)
+{
+    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    JSThread *thread = vm->GetJSThread();
+    return patchManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
+}
+
+bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
+{
+    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    JSThread *thread = vm->GetJSThread();
+    return patchManager->UnLoadPatch(thread, patchFileName);
 }
 }  // namespace panda

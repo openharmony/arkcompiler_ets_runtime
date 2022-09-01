@@ -117,6 +117,9 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorName(JSThread *thread, const JSHand
             case ErrorType::SYNTAX_ERROR:
                 errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledSyntaxErrorString());
                 break;
+            case ErrorType::OOM_ERROR:
+                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledOOMErrorString());
+                break;
             default:
                 errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledErrorString());
                 break;
@@ -203,7 +206,7 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
 
         auto function = frameHandler.GetFunction();
         if (function.IsJSFunctionBase() || function.IsJSProxy()) {
-            JSMethod *method = ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
+            Method *method = ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
             if (!method->IsNativeWithCallField()) {
                 return JSHandle<JSTaggedValue>(thread, function);
             }

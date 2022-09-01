@@ -16,32 +16,19 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_H
 #define ECMASCRIPT_COMPILER_TYPE_H
 
-#include <cstdint>
-
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
 namespace panda::ecmascript::kungfu {
 class GateType {
 public:
-    static constexpr uint32_t GC_MASK = ~(1 << 30); // 30 : the 30-th bit is unset implies GC-related type
-    static constexpr uint32_t NO_GC_MASK = ~(1 << 29); // 29 : the 29-th bit is unset implies NO-GC-related type
+    constexpr explicit GateType(uint32_t type = 0) : type_(type)
+    {
+    }
 
-    // 31 : the 31-st bit is set implies MIR type
-    static constexpr uint32_t MIR_BASE_BITS = (1 << 31) | (1 << 30) | (1 << 29);
-    static constexpr uint32_t EMPTY_TYPE_OFFSET = 1; // 1 : means offset of empty type
-
-    static constexpr uint32_t NJS_VALUE = MIR_BASE_BITS;
-    static constexpr uint32_t TAGGED_VALUE = MIR_BASE_BITS & GC_MASK & NO_GC_MASK; // (100)
-    static constexpr uint32_t TAGGED_POINTER = MIR_BASE_BITS & GC_MASK; // (101)
-    static constexpr uint32_t TAGGED_NPOINTER = MIR_BASE_BITS & NO_GC_MASK; // (110)
-
-    static constexpr uint32_t EMPTY = NJS_VALUE + EMPTY_TYPE_OFFSET;
-
-    constexpr explicit GateType(uint32_t type = 0) : type_(type) {}
-
-    explicit GateType(GlobalTSTypeRef gt) : type_(gt.GetType()) {}
-
-    constexpr explicit GateType(TSPrimitiveType primitiveType) : type_(static_cast<uint32_t>(primitiveType)) {}
+    explicit GateType(GlobalTSTypeRef gt) : type_(0)
+    {
+        type_ |= gt.GetType();
+    }
 
     ~GateType() = default;
 
@@ -50,136 +37,134 @@ public:
         return type_;
     }
 
-    static inline constexpr GateType NJSValue()
+    static GateType NJSValue()
     {
         return GateType(NJS_VALUE);
     }
 
-    static inline constexpr GateType TaggedValue()
+    static GateType TaggedValue()
     {
         return GateType(TAGGED_VALUE);
     }
 
-    static inline constexpr GateType TaggedPointer()
+    static GateType TaggedPointer()
     {
         return GateType(TAGGED_POINTER);
     }
 
-    static inline constexpr GateType TaggedNPointer()
+    static GateType TaggedNPointer()
     {
         return GateType(TAGGED_NPOINTER);
     }
 
-    static inline constexpr GateType Empty()
+    static GateType Empty()
     {
         return GateType(EMPTY);
     }
 
-    static inline constexpr GateType AnyType()
+    static GateType AnyType()
     {
-        return GateType(TSPrimitiveType::ANY);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::ANY));
+        return GateType(r);
     }
 
-    static inline constexpr GateType NumberType()
+    static GateType NumberType()
     {
-        return GateType(TSPrimitiveType::NUMBER);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::NUMBER));
+        return GateType(r);
     }
 
-    static inline constexpr GateType BooleanType()
+    static GateType BooleanType()
     {
-        return GateType(TSPrimitiveType::BOOLEAN);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::BOOLEAN));
+        return GateType(r);
     }
 
-    static inline constexpr GateType VoidType()
+    static GateType VoidType()
     {
-        return GateType(TSPrimitiveType::VOID_TYPE);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::VOID_TYPE));
+        return GateType(r);
     }
 
-    static inline constexpr GateType StringType()
+    static GateType StringType()
     {
-        return GateType(TSPrimitiveType::STRING);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::STRING));
+        return GateType(r);
     }
 
-    static inline constexpr GateType SymbolType()
+    static GateType SymbolType()
     {
-        return GateType(TSPrimitiveType::SYMBOL);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::SYMBOL));
+        return GateType(r);
     }
 
-    static inline constexpr GateType NullType()
+    static GateType NullType()
     {
-        return GateType(TSPrimitiveType::NULL_TYPE);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::NULL_TYPE));
+        return GateType(r);
     }
 
-    static inline constexpr GateType UndefinedType()
+    static GateType UndefinedType()
     {
-        return GateType(TSPrimitiveType::UNDEFINED);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::UNDEFINED));
+        return GateType(r);
     }
 
-    static inline constexpr GateType IntType()
+    static GateType IntType()
     {
-        return GateType(TSPrimitiveType::INT);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::INT));
+        return GateType(r);
     }
 
-    static inline constexpr GateType BigIntType()
+    static GateType BigIntType()
     {
-        return GateType(TSPrimitiveType::BIG_INT);
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::BIG_INT));
+        return GateType(r);
     }
 
-    bool inline IsTSType() const
+    bool IsAnyType() const
     {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(GetType());
-        // 0: TS type
-        return gt.GetFlag() == 0;
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::ANY));
     }
 
-    bool inline IsAnyType() const
+    bool IsNumberType() const
     {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::ANY);
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NUMBER));
     }
 
-    bool inline IsNumberType() const
+    bool IsStringType() const
     {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::NUMBER);
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::STRING));
     }
 
-    bool inline IsBooleanType() const
+    bool IsNullType() const
     {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::BOOLEAN);
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NULL_TYPE));
     }
 
-    bool inline IsVoidType() const
+    bool IsUndefinedType() const
     {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::VOID_TYPE);
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::UNDEFINED));
     }
 
-    bool inline IsStringType() const
+    bool IsGCRelated() const
     {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::STRING);
-    }
-
-    bool inline IsSymbolType() const
-    {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::SYMBOL);
-    }
-
-    bool inline IsNullType() const
-    {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::NULL_TYPE);
-    }
-
-    bool inline IsUndefinedType() const
-    {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::UNDEFINED);
-    }
-
-    bool inline IsIntType() const
-    {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::INT);
-    }
-
-    bool inline IsBigIntType() const
-    {
-        return type_ == static_cast<uint32_t>(TSPrimitiveType::BIG_INT);
+        return (type_ & (~GateType::GC_MASK)) == 0;
     }
 
     bool operator ==(const GateType &other) const
@@ -212,7 +197,40 @@ public:
         return type_ >= other.type_;
     }
 
+    bool IsTSType() const
+    {
+        return (type_ & MIR_TYPE_MASK) == 0;
+    }
+
+    bool IsIRType() const
+    {
+        return (type_ & MIR_TYPE_MASK) != 0;
+    }
+
+    GlobalTSTypeRef GetGTRef() const
+    {
+        uint32_t r = type_ & (~MIR_TYPE_MASK);
+        return GlobalTSTypeRef(r);
+    }
+
 private:
+    static constexpr uint32_t GC_MASK = ~(1 << 30); // 30 : the 30-th bit is unset implies GC-related type
+    static constexpr uint32_t NO_GC_MASK = ~(1 << 29); // 29 : the 29-th bit is unset implies NO-GC-related type
+    // 31 : the 31-st bit is set implies MIR type
+    static constexpr uint32_t MIR_BASE_BITS = (1 << 31) | (1 << 30) | (1 << 29);
+    static constexpr uint32_t EMPTY_TYPE = 1 << 28; // 1 : means offset of empty type
+    static constexpr uint32_t MIR_TYPE_MASK = MIR_BASE_BITS | EMPTY_TYPE;
+
+    static constexpr uint32_t NJS_VALUE = MIR_BASE_BITS; // (1110)
+    static constexpr uint32_t TAGGED_VALUE = MIR_BASE_BITS & GC_MASK & NO_GC_MASK; // (1000)
+    static constexpr uint32_t TAGGED_POINTER = MIR_BASE_BITS & GC_MASK; // (1010)
+    static constexpr uint32_t TAGGED_NPOINTER = MIR_BASE_BITS & NO_GC_MASK; // (1100)
+    static constexpr uint32_t EMPTY = NJS_VALUE + EMPTY_TYPE; // (1111)
+    static constexpr uint32_t SIZE_BITS = 4;
+
+    static constexpr uint32_t VALID_BITS = sizeof(uint32_t) * 8;
+    static_assert((SIZE_BITS + GlobalTSTypeRef::GetSizeBits()) <= VALID_BITS);
+
     uint32_t type_ {0};
 };
 

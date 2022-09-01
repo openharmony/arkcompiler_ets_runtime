@@ -48,6 +48,8 @@ public:
         return Get(index);
     }
 
+    std::string PUBLIC_API GetStdStringByIdx(size_t index) const;
+
     DECL_DUMP()
 };
 }  // namespace ecmascript

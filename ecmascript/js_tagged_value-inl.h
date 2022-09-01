@@ -603,9 +603,9 @@ inline bool JSTaggedValue::IsJSListFormat() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSListFormat();
 }
 
-inline bool JSTaggedValue::IsJSMethod() const
+inline bool JSTaggedValue::IsMethod() const
 {
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSMethod();
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsMethod();
 }
 
 inline bool JSTaggedValue::IsJSAPIArrayList() const
@@ -696,6 +696,11 @@ inline bool JSTaggedValue::IsJSAPIListIterator() const
 inline bool JSTaggedValue::IsSpecialContainer() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsSpecialContainer();
+}
+
+inline bool JSTaggedValue::HasOrdinaryGet() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->HasOrdinaryGet();
 }
 
 inline bool JSTaggedValue::IsPromiseIteratorRecord() const
@@ -1074,6 +1079,11 @@ inline bool JSTaggedValue::IsJSAPIVectorIterator() const
 inline bool JSTaggedValue::IsIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsIterator();
+}
+
+inline bool JSTaggedValue::IsAsyncIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsAsyncIterator();
 }
 
 inline bool JSTaggedValue::IsGeneratorFunction() const

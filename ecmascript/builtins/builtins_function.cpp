@@ -263,7 +263,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
     if (thisValue->IsJSObject() && thisValue->IsCallable()) {
         JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(thisValue);
-        JSHandle<JSMethod> method(thread, func->GetMethod());
+        JSHandle<Method> method(thread, func->GetMethod());
         if (method->IsNativeWithCallField()) {
             JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
             JSHandle<EcmaString> methodName(JSObject::GetProperty(thread, thisValue, nameKey).GetValue());
@@ -276,7 +276,11 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
         tooling::JSPtExtractor *debugExtractor =
                 JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
         const std::string &sourceCode = debugExtractor->GetSourceCode(method->GetMethodId());
-        return GetTaggedString(thread, sourceCode.c_str());
+        if (!sourceCode.empty()) {
+            return GetTaggedString(thread, sourceCode.c_str());
+        } else {
+            return GetTaggedString(thread, "Cannot get source code of funtion");
+        }
     }
 
     THROW_TYPE_ERROR_AND_RETURN(thread,

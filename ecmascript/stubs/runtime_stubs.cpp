@@ -812,6 +812,17 @@ DEF_RUNTIME_STUBS(CloneClassFromTemplate)
     return RuntimeCloneClassFromTemplate(thread, ctor, base, lexenv).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CreateClassWithBuffer)
+{
+    RUNTIME_STUBS_HEADER(CreateClassWithBuffer);
+    JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
+    return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
+                                        static_cast<uint16_t>(methodId.GetInt())).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
 {
     RUNTIME_STUBS_HEADER(SetClassConstructorLength);
@@ -828,8 +839,8 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     thread->CheckSafepoint();
     auto profileTypeInfo = thisFunc->GetProfileTypeInfo();
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
-        auto method = thisFunc->GetCallTarget();
-        auto res = RuntimeNotifyInlineCache(thread, thisFunc, method);
+        uint32_t slotSize = thisFunc->GetCallTarget()->GetSlotSize();
+        auto res = RuntimeNotifyInlineCache(thread, thisFunc, slotSize);
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
@@ -1269,14 +1280,6 @@ DEF_RUNTIME_STUBS(Mod2Dyn)
     return RuntimeMod2Dyn(thread, left, right).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(LoadValueFromConstantStringTable)
-{
-    RUNTIME_STUBS_HEADER(LoadValueFromConstantStringTable);
-    JSTaggedValue id = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    auto tsManager = thread->GetEcmaVM()->GetTSManager();
-    return tsManager->GetStringById(id.GetInt()).GetTaggedValue().GetRawData();
-}
-
 DEF_RUNTIME_STUBS(JumpToCInterpreter)
 {
     RUNTIME_STUBS_HEADER(JumpToCInterpreter);
@@ -1302,7 +1305,7 @@ DEF_RUNTIME_STUBS(NotifyBytecodePcChanged)
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             continue;
         }
-        JSMethod *method = frameHandler.GetMethod();
+        Method *method = frameHandler.GetMethod();
         // Skip builtins method
         if (method->IsNativeWithCallField()) {
             continue;
@@ -1604,7 +1607,7 @@ DEF_RUNTIME_STUBS(CallNative)
     auto cachedFpValue = frame->callsiteFp;
     frame->callsiteFp = reinterpret_cast<uintptr_t>(sp);
 
-    JSMethod *method = ECMAObject::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    Method *method = ECMAObject::Cast(state->function.GetTaggedObject())->GetCallTarget();
     EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(sp);
     JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
         const_cast<void *>(method->GetNativePointer()))(ecmaRuntimeCallInfo);
@@ -1625,6 +1628,13 @@ DEF_RUNTIME_STUBS(ToNumeric)
     RUNTIME_STUBS_HEADER(ToNumeric);
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeToNumeric(thread, value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(DynamicImport)
+{
+    RUNTIME_STUBS_HEADER(DynamicImport);
+    JSTaggedValue specifier = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeDynamicImport(thread, specifier).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(NewLexicalEnvWithNameDyn)
@@ -1828,6 +1838,81 @@ bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)
 {
     return BigInt::Equal(JSTaggedValue(left), JSTaggedValue(right));
+}
+
+JSTaggedValue RuntimeStubs::NewObject(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<JSTaggedValue> func(info->GetFunction());
+    if (!func->IsHeapObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "function is nullptr", JSTaggedValue::Exception());
+    }
+
+    if (!func->IsJSFunction()) {
+        if (func->IsBoundFunction()) {
+            JSTaggedValue result = JSBoundFunction::ConstructInternal(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return result;
+        }
+
+        if (func->IsJSProxy()) {
+            JSTaggedValue jsObj = JSProxy::ConstructInternal(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return jsObj;
+        }
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Constructed NonConstructable", JSTaggedValue::Exception());
+    }
+
+    JSTaggedValue result = JSFunction::ConstructInternal(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return result;
+}
+
+void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContext> context)
+{
+    FrameHandler frameHandler(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t nregs = frameHandler.GetNumberArgs();
+    JSHandle<TaggedArray> regsArray = factory->NewTaggedArray(nregs);
+    for (uint32_t i = 0; i < nregs; i++) {
+        JSTaggedValue value = frameHandler.GetVRegValue(i);
+        regsArray->Set(thread, i, value);
+    }
+    context->SetRegsArray(thread, regsArray.GetTaggedValue());
+    context->SetMethod(thread, frameHandler.GetFunction());
+
+    context->SetAcc(thread, frameHandler.GetAcc());
+    context->SetLexicalEnv(thread, thread->GetCurrentLexenv());
+    context->SetNRegs(nregs);
+    context->SetBCOffset(frameHandler.GetBytecodeOffset());
+}
+
+JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    JSHandle<JSBoundFunction> boundFunc(info->GetFunction());
+    JSHandle<JSFunction> targetFunc(thread, boundFunc->GetBoundTarget());
+    if (targetFunc->IsClassConstructor()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "class constructor cannot called without 'new'",
+                                    JSTaggedValue::Exception());
+    }
+
+    JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());
+    const int32_t boundLength = static_cast<int32_t>(boundArgs->GetLength());
+    const int32_t argsLength = info->GetArgsNumber() + boundLength;
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *runtimeInfo = EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(targetFunc),
+        info->GetThis(), undefined, argsLength);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (boundLength == 0) {
+        runtimeInfo->SetCallArg(argsLength, 0, info, 0);
+    } else {
+        // 0 ~ boundLength is boundArgs; boundLength ~ argsLength is args of EcmaRuntimeCallInfo.
+        runtimeInfo->SetCallArg(boundLength, boundArgs);
+        runtimeInfo->SetCallArg(argsLength, boundLength, info, 0);
+    }
+    return EcmaInterpreter::Execute(runtimeInfo);
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

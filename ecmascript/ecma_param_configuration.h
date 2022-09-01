@@ -54,6 +54,7 @@ public:
             defaultMachineCodeSpaceSize_ = 2_MB;
             semiSpaceTriggerConcurrentMark_ = 1_MB;
             semiSpaceOvershootSize_ = 2_MB;
+            outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 2_MB;
             minGrowingStep_ = 4_MB;
             maxStackSize_ = 128_KB;
@@ -66,6 +67,7 @@ public:
             defaultMachineCodeSpaceSize_ = 2_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceOvershootSize_ = 2_MB;
+            outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 4_MB;
             minGrowingStep_ = 8_MB;
             maxStackSize_ = 128_KB;
@@ -78,6 +80,7 @@ public:
             defaultMachineCodeSpaceSize_ = 8_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceOvershootSize_ = 2_MB;
+            outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 8_MB;
             minGrowingStep_ = 16_MB;
             maxStackSize_ = 128_KB;
@@ -129,6 +132,11 @@ public:
         return semiSpaceOvershootSize_;
     }
 
+    size_t GetOutOfMemoryOvershootSize() const
+    {
+        return outOfMemoryOvershootSize_;
+    }
+
     size_t GetMinAllocLimitGrowingStep() const
     {
         return minAllocLimitGrowingStep_;
@@ -149,7 +157,7 @@ public:
         return DEFAULT_STACK_SIZE;
     }
 
-    static size_t GetDefalutReservedStackSize()
+    static size_t GetDefaultReservedStackSize()
     {
         return DEFAULT_RESERVED_STACK_SIZE;
     }
@@ -170,6 +178,7 @@ private:
     size_t defaultMachineCodeSpaceSize_ {0};
     size_t semiSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceOvershootSize_ {0};
+    size_t outOfMemoryOvershootSize_ {0};
     size_t minAllocLimitGrowingStep_ {0};
     size_t minGrowingStep_ {0};
     uint32_t maxStackSize_ {0};

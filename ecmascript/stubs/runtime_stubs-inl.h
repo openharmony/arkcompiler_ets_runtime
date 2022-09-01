@@ -25,7 +25,6 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/frame_handler.h"
-#include "ecmascript/interpreter/slow_runtime_helper.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
@@ -37,6 +36,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/ts_types/ts_manager.h"
+#include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 
@@ -248,7 +248,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjSpreadDyn(JSThread *thread, const JSHan
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, newTarget, length);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(length, argsArray);
-    return SlowRuntimeHelper::NewObject(info);
+    return NewObject(info);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreateIterResultObj(JSThread *thread, const JSHandle<JSTaggedValue> &value,
@@ -266,6 +266,19 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionAwaitUncaught(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> &value)
 {
     JSAsyncFunction::AsyncFunctionAwait(thread, asyncFuncObj, value);
+    if (asyncFuncObj->IsAsyncGeneratorObject()) {
+        JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObj);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSAsyncGeneratorObject> generator = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
+        JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue());
+        if (queue->Empty()) {
+            return JSTaggedValue::Undefined();
+        }
+        JSHandle<AsyncGeneratorRequest> next(thread, queue->Front());
+        JSHandle<PromiseCapability> completion(thread, next->GetCapability());
+        JSHandle<JSPromise> promise(thread, completion->GetPromise());
+        return promise.GetTaggedValue();
+    }
     JSHandle<JSAsyncFuncObject> asyncFuncObjHandle(asyncFuncObj);
     JSHandle<JSPromise> promise(thread, asyncFuncObjHandle->GetPromise());
 
@@ -703,6 +716,38 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     return cloneClass.GetTaggedValue();
 }
 
+// clone class may need re-set inheritance relationship due to extends may be a variable.
+JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
+                                                         const JSHandle<JSTaggedValue> &base,
+                                                         const JSHandle<JSTaggedValue> &lexenv,
+                                                         const JSHandle<JSTaggedValue> &constpool,
+                                                         const uint16_t methodId)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
+    JSHandle<JSTaggedValue> method(thread, constantPool->Get(methodId));
+    JSHandle<TaggedArray> literal(thread, constantPool->Get(methodId + 1));
+    JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
+
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literal);
+    JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, extractor, constpool, lexenv);
+
+    // JSPandaFile is in the first index of constpool.
+    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(
+        JSNativePointer::Cast(constantPool->Get(0).GetTaggedObject())->GetExternalPointer());
+    FileLoader *fileLoader = thread->GetEcmaVM()->GetFileLoader();
+    if (jsPandaFile->IsLoadedAOT()) {
+        fileLoader->SetAOTFuncEntry(jsPandaFile, cls);
+    }
+
+    RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    return cls.GetTaggedValue();
+}
+
 JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                    const JSHandle<JSTaggedValue> &ctor,
                                                                    const JSHandle<JSTaggedValue> &base)
@@ -771,9 +816,8 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassConstructorLength(JSThread *thread, J
 }
 
 JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<JSFunction> &func,
-                                                     JSMethod *method)
+                                                     uint32_t icSlotSize)
 {
-    uint32_t icSlotSize = method->GetSlotSize();
     if (icSlotSize == 0) {
         return JSTaggedValue::Undefined();
     }
@@ -868,7 +912,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
         JSHandle<JSAsyncGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
         // save stack, should copy cur_frame, function execute over will free cur_frame
-        SlowRuntimeHelper::SaveFrameToContext(thread, genContextHandle);
+        SaveFrameToContext(thread, genContextHandle);
 
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
@@ -882,7 +926,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
         // save stack, should copy cur_frame, function execute over will free cur_frame
-        SlowRuntimeHelper::SaveFrameToContext(thread, genContextHandle);
+        SaveFrameToContext(thread, genContextHandle);
 
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
@@ -1119,6 +1163,11 @@ JSTaggedValue RuntimeStubs::RuntimeToNumber(JSThread *thread, const JSHandle<JST
 JSTaggedValue RuntimeStubs::RuntimeToNumeric(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     return JSTaggedValue::ToNumeric(thread, value).GetTaggedValue();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, JSTaggedValue specifier)
+{
+    return SlowRuntimeStub::DynamicImport(thread, specifier);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeEqDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
@@ -1576,7 +1625,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjDynRange(JSThread *thread, const JSHand
 
 JSTaggedValue RuntimeStubs::RuntimeDefinefuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    JSHandle<JSMethod> method(thread, funcHandle->GetMethod());
+    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1672,7 +1721,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
 
 JSTaggedValue RuntimeStubs::RuntimeDefineNCFuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    JSHandle<JSMethod> method(thread, funcHandle->GetMethod());
+    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1685,7 +1734,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineNCFuncDyn(JSThread *thread, const JSHan
 
 JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    auto method = JSHandle<JSMethod>(thread, funcHandle->GetMethod());
+    auto method = JSHandle<Method>(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1706,7 +1755,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, const J
 
 JSTaggedValue RuntimeStubs::RuntimeDefineAsyncGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    auto method = JSHandle<JSMethod>(thread, funcHandle->GetMethod());
+    auto method = JSHandle<Method>(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1727,7 +1776,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineAsyncGeneratorFunc(JSThread *thread, co
 
 JSTaggedValue RuntimeStubs::RuntimeDefineAsyncFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
 {
-    JSHandle<JSMethod> method(thread, funcHandle->GetMethod());
+    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1742,7 +1791,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
                                                 const JSHandle<JSTaggedValue> &homeObject)
 {
     ASSERT(homeObject->IsECMAObject());
-    JSHandle<JSMethod> method(thread, funcHandle->GetMethod());
+    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -2283,7 +2332,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSMethod *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
+    Method *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     JSHandle<JSTaggedValue> constpool(thread, JSTaggedValue::Undefined());
     JSHandle<TaggedArray> elementsLiteral =

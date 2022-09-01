@@ -129,19 +129,19 @@ JSTaggedValue FrameHandler::GetAcc() const
 uint32_t FrameHandler::GetBytecodeOffset() const
 {
     ASSERT(IsInterpretedFrame());
-    JSMethod *method = GetMethod();
+    Method *method = GetMethod();
     auto offset = GetPc() - method->GetBytecodeArray();
     return static_cast<uint32_t>(offset);
 }
 
-JSMethod *FrameHandler::GetMethod() const
+Method *FrameHandler::GetMethod() const
 {
     ASSERT(IsInterpretedFrame());
     auto function = GetFunction();
     return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
 }
 
-JSMethod *FrameHandler::CheckAndGetMethod() const
+Method *FrameHandler::CheckAndGetMethod() const
 {
     ASSERT(IsInterpretedFrame());
     auto function = GetFunction();
@@ -426,7 +426,7 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
 std::string FrameBcCollector::GetAotExceptionFuncName(JSTaggedType* argv) const
 {
     JSTaggedValue func = JSTaggedValue(*(argv)); // 3: skip returnaddr and argc
-    JSMethod *method = JSFunction::Cast(func.GetTaggedObject())->GetCallTarget();
+    Method *method = JSFunction::Cast(func.GetTaggedObject())->GetCallTarget();
     return method->GetMethodName();
 }
 
@@ -454,6 +454,7 @@ void FrameBcCollector::CollectBCOffsetInfo()
             case FrameType::BUILTIN_CALL_LEAVE_FRAME:
             case FrameType::LEAVE_FRAME:
             case FrameType::OPTIMIZED_ENTRY_FRAME:
+            case FrameType::ASM_INTERPRETER_BRIDGE_FRAME:
             case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_FRAME:
             case FrameType::INTERPRETER_CONSTRUCTOR_FRAME:

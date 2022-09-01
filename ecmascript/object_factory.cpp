@@ -15,7 +15,7 @@
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_macros.h"
@@ -132,16 +132,17 @@ using AggregateError = builtins::BuiltinsAggregateError;
 using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
+using OOMError = builtins::BuiltinsOOMError;
 using ErrorType = base::ErrorType;
 using ErrorHelper = base::ErrorHelper;
 
 ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap)
     : thread_(thread), vm_(thread->GetEcmaVM()), heap_(heap) {}
 
-JSHandle<JSMethod> ObjectFactory::NewMethodForNativeFunction(const void *func, uint8_t builtinId)
+JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, uint8_t builtinId)
 {
     uint32_t numArgs = 2;  // function object and this
-    auto method = NewJSMethod(nullptr);
+    auto method = NewMethod(nullptr);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
     if (builtinId != INVALID_BUILTINS_ID) {
@@ -513,7 +514,7 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> obj, Fun
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSHClass> jshclass(thread_, obj->GetJSHClass());
-    JSHandle<JSMethod> method(thread_, obj->GetMethod());
+    JSHandle<Method> method(thread_, obj->GetMethod());
     JSHandle<JSFunction> cloneFunc = NewJSFunctionByDynClass(method, jshclass, kind);
     if (kind == FunctionKind::GENERATOR_FUNCTION) {
         JSHandle<JSFunction> objFun(env->GetObjectFunction());
@@ -543,7 +544,7 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
     ASSERT_PRINT(kind == FunctionKind::CLASS_CONSTRUCTOR || kind == FunctionKind::DERIVED_CONSTRUCTOR,
                  "cloned function is not class");
 
-    JSHandle<JSMethod> method(thread_, ctor->GetMethod());
+    JSHandle<Method> method(thread_, ctor->GetMethod());
     JSHandle<JSFunction> cloneCtor = NewJSFunctionByDynClass(method, hclass, kind);
 
     for (uint32_t i = 0; i < hclass->GetInlinedProperties(); i++) {
@@ -730,7 +731,7 @@ JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const c
     ASSERT_PRINT(errorType == ErrorType::ERROR || errorType == ErrorType::EVAL_ERROR ||
                      errorType == ErrorType::RANGE_ERROR || errorType == ErrorType::REFERENCE_ERROR ||
                      errorType == ErrorType::SYNTAX_ERROR || errorType == ErrorType::TYPE_ERROR ||
-                     errorType == ErrorType::URI_ERROR,
+                     errorType == ErrorType::URI_ERROR || errorType == ErrorType::OOM_ERROR,
                  "The error type is not in the valid range.");
     if (data != nullptr) {
         JSHandle<EcmaString> handleMsg = NewFromUtf8(data);
@@ -780,6 +781,9 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
         case ErrorType::SYNTAX_ERROR:
             nativeConstructor = env->GetSyntaxErrorFunction();
             break;
+        case ErrorType::OOM_ERROR:
+            nativeConstructor = env->GetOOMErrorFunction();
+            break;
         default:
             nativeConstructor = env->GetErrorFunction();
             break;
@@ -792,7 +796,7 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread_, ctor, nativePrototype, undefined, 1, needCheckStack);
     info->SetCallArg(message.GetTaggedValue());
-    JSMethod *method = JSHandle<ECMAObject>::Cast(ctor)->GetCallTarget();
+    Method *method = JSHandle<ECMAObject>::Cast(ctor)->GetCallTarget();
     JSTaggedValue obj = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
     JSHandle<JSObject> handleNativeInstanceObj(thread_, obj);
     auto sp = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
@@ -813,11 +817,13 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
 {
     if (!constructor->HasFunctionPrototype() ||
         (constructor->GetProtoOrDynClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
-        JSHandle<JSHClass> jshclass = JSFunction::GetInstanceJSHClass(thread_, constructor, JSHandle<JSTaggedValue>(constructor));
+        JSHandle<JSHClass> jshclass = JSFunction::GetInstanceJSHClass(thread_, constructor,
+                                                                      JSHandle<JSTaggedValue>(constructor));
         return NewJSObjectWithInit(jshclass);
     }
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSObject> result = NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
+    JSHandle<JSObject> result =
+        NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
     if (thread_->HasPendingException()) {
         LOG_FULL(FATAL) << "NewJSObjectByConstructor should not throw Exception! ";
     }
@@ -860,6 +866,8 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_AGGREGATE_ERROR:
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
+        case JSType::JS_OOM_ERROR:
+        case JSType::JS_ASYNCITERATOR:
         case JSType::JS_ITERATOR: {
             break;
         }
@@ -1324,12 +1332,12 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
                                                   FunctionKind kind, uint8_t builtinId)
 {
-    JSHandle<JSMethod> target = NewMethodForNativeFunction(nativeFunc, builtinId);
+    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, builtinId);
     return NewJSFunction(env, target, kind);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env,
-                                                  const JSHandle<JSMethod> &method, FunctionKind kind)
+                                                  const JSHandle<Method> &method, FunctionKind kind)
 {
     JSHandle<JSHClass> dynclass;
     if (kind == FunctionKind::BASE_CONSTRUCTOR) {
@@ -1406,7 +1414,7 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     return functionClass;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(const JSHandle<JSMethod> &method,
+JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(const JSHandle<Method> &method,
                                                             const JSHandle<JSHClass> &clazz,
                                                             FunctionKind kind, MemSpaceType type)
 {
@@ -1434,33 +1442,33 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(const JSHandle<JSMet
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByDynClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                             FunctionKind kind)
 {
-    JSHandle<JSMethod> jsMethod = NewMethodForNativeFunction(func);
+    JSHandle<Method> method = NewMethodForNativeFunction(func);
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, kind);
-    function->SetMethod(thread_, jsMethod);
+    function->SetMethod(thread_, method);
     return function;
 }
 
-JSHandle<JSMethod> ObjectFactory::NewJSMethod(const MethodLiteral *method)
+JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral)
 {
     NewObjectHook();
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetJSMethodClass().GetTaggedObject()));
-    JSHandle<JSMethod> jsMethod(thread_, header);
-    if (method != nullptr) {
-        jsMethod->SetCallField(method->GetCallField());
-        jsMethod->SetLiteralInfo(method->GetLiteralInfo());
-        jsMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(method->GetNativePointer()));
+    TaggedObject *header = heap_->AllocateOldOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetMethodClass().GetTaggedObject()));
+    JSHandle<Method> method(thread_, header);
+    if (methodLiteral != nullptr) {
+        method->SetCallField(methodLiteral->GetCallField());
+        method->SetLiteralInfo(methodLiteral->GetLiteralInfo());
+        method->SetNativePointerOrBytecodeArray(const_cast<void *>(methodLiteral->GetNativePointer()));
     }
-    jsMethod->SetConstantPool(thread_, JSTaggedValue::Undefined());
-    return jsMethod;
+    method->SetConstantPool(thread_, JSTaggedValue::Undefined());
+    return method;
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc)
 {
-    JSHandle<JSMethod> target = NewMethodForNativeFunction(nativeFunc);
+    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc);
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetNativeErrorFunctionClass());
     return NewJSFunctionByDynClass(target, dynclass, FunctionKind::BUILTIN_CONSTRUCTOR);
 }
@@ -1468,7 +1476,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSNativeErrorFunction(const JSHandle<Glob
 JSHandle<JSFunction> ObjectFactory::NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
                                                                   const void *nativeFunc)
 {
-    JSHandle<JSMethod> target = NewMethodForNativeFunction(nativeFunc);
+    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc);
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetSpecificTypedArrayFunctionClass());
     return NewJSFunctionByDynClass(target, dynclass, FunctionKind::BUILTIN_CONSTRUCTOR);
 }
@@ -1476,7 +1484,7 @@ JSHandle<JSFunction> ObjectFactory::NewSpecificTypedArrayFunction(const JSHandle
 JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t codeEntry)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSMethod> method = NewMethodForNativeFunction(reinterpret_cast<void *>(codeEntry));
+    JSHandle<Method> method = NewMethodForNativeFunction(reinterpret_cast<void *>(codeEntry));
     method->SetAotCodeBit(true);
     method->SetNativeBit(false);
     method->SetNumArgsWithCallField(numArgs);
@@ -1559,7 +1567,7 @@ JSHandle<JSAsyncAwaitStatusFunction> ObjectFactory::NewJSAsyncAwaitStatusFunctio
     return awaitFunction;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSGeneratorFunction(const JSHandle<JSMethod> &method)
+JSHandle<JSFunction> ObjectFactory::NewJSGeneratorFunction(const JSHandle<Method> &method)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
 
@@ -1598,7 +1606,7 @@ JSHandle<JSAsyncGeneratorObject> ObjectFactory::NewJSAsyncGeneratorObject(JSHand
     return generatorObject;
 }
 
-JSHandle<JSAsyncFunction> ObjectFactory::NewAsyncFunction(const JSHandle<JSMethod> &method)
+JSHandle<JSAsyncFunction> ObjectFactory::NewAsyncFunction(const JSHandle<Method> &method)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
@@ -2903,14 +2911,14 @@ JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length, const u
     return codeObj;
 }
 
-JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(MethodLiteral *ctorMethod)
+JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTaggedValue> method)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetClassInfoExtractorHClass().GetTaggedObject()));
     JSHandle<ClassInfoExtractor> obj(thread_, header);
     obj->ClearBitField();
-    obj->SetConstructorMethod(ctorMethod);
+    obj->SetConstructorMethod(thread_, method.GetTaggedValue());
     JSHandle<TaggedArray> emptyArray = EmptyArray();
     obj->SetPrototypeHClass(thread_, JSTaggedValue::Undefined());
     obj->SetNonStaticKeys(thread_, emptyArray, SKIP_BARRIER);
@@ -3687,7 +3695,7 @@ JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<Tag
     return array;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSAsyncGeneratorFunction(const JSHandle<JSMethod> &method)
+JSHandle<JSFunction> ObjectFactory::NewJSAsyncGeneratorFunction(const JSHandle<Method> &method)
 {
     NewObjectHook();
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();

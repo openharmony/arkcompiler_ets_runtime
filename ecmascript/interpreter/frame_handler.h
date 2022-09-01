@@ -18,10 +18,10 @@
 
 #include "ecmascript/frames.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_method.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/method.h"
 
 namespace panda {
 namespace ecmascript {
@@ -145,8 +145,8 @@ public:
     JSTaggedValue GetAcc() const;
     uint32_t GetNumberArgs();
     uint32_t GetBytecodeOffset() const;
-    JSMethod *GetMethod() const;
-    JSMethod *CheckAndGetMethod() const;
+    Method *GetMethod() const;
+    Method *CheckAndGetMethod() const;
     JSTaggedValue GetFunction() const;
     const uint8_t *GetPc() const;
     ConstantPool *GetConstpool() const;

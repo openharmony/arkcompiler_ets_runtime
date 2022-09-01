@@ -13,5 +13,11 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:require
+ * @tc.desc:test require
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var objC = "objC_mes";
 module.exports.c = objC;

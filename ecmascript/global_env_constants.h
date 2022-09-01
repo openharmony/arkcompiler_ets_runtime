@@ -102,10 +102,11 @@ class JSThread;
     V(JSTaggedValue, LinkedNode, LINKED_NODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, RBTreeNode, RB_TREENODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, JSAPIIteratorFuncDynClass, JS_API_ITERATOR_FUNC_DYN_CLASS_INDEX, ecma_roots_class)               \
+    V(JSTaggedValue, JSAPIAsyncIteratorFuncDynClass, JS_API_ASYNCITERATOR_FUNC_DYN_CLASS_INDEX, ecma_roots_class)     \
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, ObjectDynClass, OBJECT_DYN_CLASS_INDEX, initial_object_dynclass)                                 \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
-    V(JSTaggedValue, JSMethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)
+    V(JSTaggedValue, MethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \
@@ -225,6 +226,7 @@ class JSThread;
     V(JSTaggedValue, URIErrorString, URI_ERROR_STRING_INDEX, URIError)                                                \
     V(JSTaggedValue, SyntaxErrorString, SYNTAX_ERROR_STRING_INDEX, SyntaxError)                                       \
     V(JSTaggedValue, EvalErrorString, EVAL_ERROR_STRING_INDEX, EvalError)                                             \
+    V(JSTaggedValue, OOMErrorString, OOM_ERROR_STRING_INDEX, OOMError)                                                \
     V(JSTaggedValue, ErrorFuncString, ERROR_FUNC_STRING_INDEX, errorfunc)                                             \
     V(JSTaggedValue, StackString, STACK_STRING_INDEX, stack)                                                          \
     V(JSTaggedValue, StackEmptyString, STACK_EMPTY_STRING_INDEX, stackisempty)                                        \

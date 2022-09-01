@@ -460,6 +460,9 @@ public:
     bool IsAsyncGeneratorFunction();
     bool IsAsyncGeneratorObject();
 
+    bool IsModuleNamespaceObject();
+    bool IsSharedArrayBuffer();
+
     bool IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value);
     Local<StringRef> Typeof(const EcmaVM *vm);
     bool InstanceOf(const EcmaVM *vm, Local<JSValueRef> value);
@@ -831,6 +834,13 @@ public:
 class PUBLIC_API RegExpRef : public ObjectRef {
 public:
     Local<StringRef> GetOriginalSource(const EcmaVM *vm);
+    std::string GetOriginalFlags();
+    Local<JSValueRef> IsGlobal(const EcmaVM *vm);
+    Local<JSValueRef> IsIgnoreCase(const EcmaVM *vm);
+    Local<JSValueRef> IsMultiline(const EcmaVM *vm);
+    Local<JSValueRef> IsDotAll(const EcmaVM *vm);
+    Local<JSValueRef> IsUtf16(const EcmaVM *vm);
+    Local<JSValueRef> IsStick(const EcmaVM *vm);
 };
 
 class PUBLIC_API DateRef : public ObjectRef {
@@ -843,8 +853,11 @@ public:
 class PUBLIC_API MapRef : public ObjectRef {
 public:
     int32_t GetSize();
+    Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
     Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+    static Local<MapRef> New(const EcmaVM *vm);
+    void Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
 };
 
 class PUBLIC_API SetRef : public ObjectRef {
@@ -907,6 +920,7 @@ public:
     static Local<JSValueRef> TypeError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> AggregateError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> EvalError(const EcmaVM *vm, Local<StringRef> message);
+    static Local<JSValueRef> OOMError(const EcmaVM *vm, Local<StringRef> message);
 };
 
 using LOG_PRINT = int (*)(int id, int level, const char *tag, const char *fmt, const char *message);
@@ -1163,6 +1177,8 @@ public:
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetHostResolvePathTracker(EcmaVM *vm,
                                           std::function<std::string(std::string dirPath, std::string requestPath)> cb);
+    static void SetHostResolveBufferTracker(EcmaVM *vm,
+        std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)> cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
@@ -1173,6 +1189,10 @@ public:
     static void postFork(EcmaVM *vm);
     static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
 
+    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
+    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                          const std::string &baseFileName);
+    static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
 private:
     static int vmCount_;
     static bool initialize_;

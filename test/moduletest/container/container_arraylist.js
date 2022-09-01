@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:container
+ * @tc.desc:test container
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 var arrayList = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     arrayList = ArkPrivate.Load(ArkPrivate.ArrayList);

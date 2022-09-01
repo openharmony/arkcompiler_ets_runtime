@@ -31,11 +31,11 @@ class GCBitset {
 public:
     using GCBitsetWord = uint32_t;
     static constexpr uint32_t BYTE_PER_WORD = sizeof(GCBitsetWord);
-    static constexpr uint32_t BYTE_PER_WORD_LOG2 = base::math::GetIntLog2(BYTE_PER_WORD);
+    static constexpr uint32_t BYTE_PER_WORD_LOG2 = base::MathHelper::GetIntLog2(BYTE_PER_WORD);
     static constexpr uint32_t BIT_PER_BYTE = 8;
-    static constexpr uint32_t BIT_PER_BYTE_LOG2 = base::math::GetIntLog2(BIT_PER_BYTE);
+    static constexpr uint32_t BIT_PER_BYTE_LOG2 = base::MathHelper::GetIntLog2(BIT_PER_BYTE);
     static constexpr uint32_t BIT_PER_WORD = BYTE_PER_WORD * BIT_PER_BYTE;
-    static constexpr uint32_t BIT_PER_WORD_LOG2 = base::math::GetIntLog2(BIT_PER_WORD);
+    static constexpr uint32_t BIT_PER_WORD_LOG2 = base::MathHelper::GetIntLog2(BIT_PER_WORD);
     static constexpr uint32_t BIT_PER_WORD_MASK = BIT_PER_WORD - 1;
 
     GCBitset() = default;

@@ -107,15 +107,14 @@ GateRef InterpreterStubBuilder::ReadInst4_3(GateRef pc)
 GateRef InterpreterStubBuilder::ReadInstSigned8_0(GateRef pc)
 {
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
-    return GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    return GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
 }
 
 GateRef InterpreterStubBuilder::ReadInstSigned16_0(GateRef pc)
 {
     /* 2 : skip 8 bits of opcode and 8 bits of low bits */
     GateRef currentInst = Load(VariableType::INT8(), pc, IntPtr(2));
-    GateRef currentInst1 = GetEnvironment()->GetBuilder()->UnaryArithmetic(
-        OpCode(OpCode::SEXT_TO_INT32), currentInst);
+    GateRef currentInst1 = GetEnvironment()->GetBuilder()->SExtInt1ToInt32(currentInst);
     GateRef currentInst2 = Int32LSL(currentInst1, Int32(8));  // 8 : set as high 8 bits
     return Int32Add(currentInst2, ZExtInt8ToInt32(ReadInst8_0(pc)));
 }
@@ -124,7 +123,7 @@ GateRef InterpreterStubBuilder::ReadInstSigned32_0(GateRef pc)
 {
     /* 4 : skip 8 bits of opcode and 24 bits of low bits */
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(4));
-    GateRef currentInst = GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    GateRef currentInst = GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
     GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_2(pc)));
     GateRef currentInst3 = Int32LSL(currentInst2, Int32(8));  // 8 : set as high 8 bits
@@ -230,7 +229,7 @@ GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
 GateRef InterpreterStubBuilder::GetConstpoolFromFunction(GateRef function)
 {
     GateRef method = GetMethodFromJSFunction(function);
-    GateRef offset = IntPtr(JSMethod::CONSTANT_POOL_OFFSET);
+    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
     return Load(VariableType::JS_POINTER(), method, offset);
 }
 
@@ -292,7 +291,7 @@ void InterpreterStubBuilder::SetFunctionToFrame(GateRef glue, GateRef frame, Gat
 void InterpreterStubBuilder::SetConstantPoolToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef method = GetMethodFromJSFunction(function);
-    GateRef offset = IntPtr(JSMethod::CONSTANT_POOL_OFFSET);
+    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
     Store(VariableType::INT64(), glue, method, offset, value);
 }
 
@@ -600,15 +599,15 @@ GateRef InterpreterStubBuilder::FunctionIsResolved(GateRef object)
 
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
 {
-    GateRef x = Load(VariableType::INT16(), method, IntPtr(JSMethod::LITERAL_INFO_OFFSET));
-    return GetEnvironment()->GetBuilder()->UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    GateRef x = Load(VariableType::INT16(), method, IntPtr(Method::LITERAL_INFO_OFFSET));
+    return GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
 }
 
 void InterpreterStubBuilder::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
 {
     auto env = GetEnvironment();
-    GateRef newValue = env->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT16), value);
-    Store(VariableType::INT16(), glue, method, IntPtr(JSMethod::LITERAL_INFO_OFFSET), newValue);
+    GateRef newValue = env->GetBuilder()->TruncInt64ToInt16(value);
+    Store(VariableType::INT16(), glue, method, IntPtr(Method::LITERAL_INFO_OFFSET), newValue);
 }
 
 void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,

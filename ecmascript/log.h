@@ -122,10 +122,42 @@ private:
     std::ostringstream stream_;
 };
 
+#ifdef PANDA_TARGET_ANDROID
+template<Level level>
+class PUBLIC_API AndroidLog {
+public:
+    AndroidLog() = default;
+    ~AndroidLog();
+
+    template<class type>
+    std::ostream &operator <<(type input)
+    {
+        stream_ << input;
+        return stream_;
+    }
+
+private:
+    std::ostringstream stream_;
+};
+#endif
+
 #ifdef ENABLE_HILOG
-#define LOG_ECMA(level) HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_##level) && panda::ecmascript::HiLog<LOG_##level>()
-#else // ENABLE_HILOG
+#if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
+static bool LOGGABLE_VERBOSE = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_VERBOSE);
+#else
+static bool LOGGABLE_VERBOSE = false;
+#endif
+static bool LOGGABLE_DEBUG = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_DEBUG);
+static bool LOGGABLE_INFO = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_INFO);
+static bool LOGGABLE_WARN = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_WARN);
+static bool LOGGABLE_ERROR = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_ERROR);
+static bool LOGGABLE_FATAL = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_FATAL);
+
+#define LOG_ECMA(level) panda::ecmascript::LOGGABLE_##level && panda::ecmascript::HiLog<LOG_##level>()
+#elif defined(PANDA_TARGET_ANDROID)
+#define LOG_ECMA(level) panda::ecmascript::AndroidLog<(level)>()
+#else
 #define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog<(level)>()
-#endif // ENABLE_HILOG
+#endif
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LOG_H

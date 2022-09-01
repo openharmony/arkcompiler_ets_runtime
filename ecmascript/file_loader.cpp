@@ -33,8 +33,8 @@
 #include "ecmascript/mem/region.h"
 #include "ecmascript/base/mem_mmap.h"
 
-extern const uint8_t _binary_stub_aot_start[];
-extern const uint32_t _binary_stub_aot_length;
+extern const uint8_t _binary_stub_an_start[];
+extern const uint32_t _binary_stub_an_length;
 
 namespace panda::ecmascript {
 void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
@@ -163,11 +163,11 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
     // by calling NewMachineCodeObject.
     //  then MachineCode will support movable, code is saved to MachineCode and stackmap is saved
     // to different heap which will be freed when stackmap is parsed by EcmaVM is started.
-    if (_binary_stub_aot_length <= 1) {
-        LOG_FULL(FATAL) << "stub.aot length <= 1, is default and invalid.";
+    if (_binary_stub_an_length <= 1) {
+        LOG_FULL(FATAL) << "stub.an length <= 1, is default and invalid.";
         return false;
     }
-    BinaryBufferParser binBufparser((uint8_t *)_binary_stub_aot_start, _binary_stub_aot_length);
+    BinaryBufferParser binBufparser((uint8_t *)_binary_stub_an_start, _binary_stub_an_length);
     binBufparser.ParseBuffer(&entryNum_, sizeof(entryNum_));
     entries_.resize(entryNum_);
     binBufparser.ParseBuffer(entries_.data(), sizeof(FuncEntryDes) * entryNum_);
@@ -314,7 +314,7 @@ void FileLoader::LoadSnapshotFile()
     CString snapshotPath = snapshotArg + ".etso";
     Snapshot snapshot(vm_);
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-    snapshot.Deserialize(SnapshotType::TS_LOADER, snapshotPath);
+    snapshot.Deserialize(SnapshotType::ETSO, snapshotPath);
 #endif
 }
 
@@ -330,7 +330,7 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex();
     auto fileHash = jsPandaFile->GetFileUniqId();
     auto mainEntry = GetAOTFuncEntry(fileHash, mainFuncMethodId);
-    MethodLiteral *mainMethod = jsPandaFile->FindMethods(mainFuncMethodId);
+    MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
     mainFunc->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
@@ -338,9 +338,12 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
 
 void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func)
 {
-    JSMethod *method = func->GetCallTarget();
+    Method *method = func->GetCallTarget();
     uint32_t methodId = method->GetMethodId().GetOffset();
     auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
+    if (!codeEntry) {
+        return;
+    }
     func->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
@@ -459,6 +462,30 @@ FileLoader::FileLoader(EcmaVM *vm) : vm_(vm), factory_(vm->GetFactory())
 {
     bool enableLog = vm->GetJSOptions().WasSetCompilerLogOption();
     arkStackMapParser_ = new kungfu::ArkStackMapParser(enableLog);
+}
+
+JSTaggedValue FileLoader::GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    CString relativePath = ConvertToString(relativePathVal);
+    CString absPath;
+    if (!GetAbsolutePath(relativePath, absPath)) {
+        LOG_FULL(FATAL) << "Get Absolute Path failed";
+        return JSTaggedValue::Hole();
+    }
+    JSTaggedValue absPathVal = factory->NewFromUtf8(absPath).GetTaggedValue();
+    return absPathVal;
+}
+
+bool FileLoader::GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr)
+{
+    std::string relativePath = CstringConvertToStdString(relativePathCstr);
+    std::string absPath = "";
+    if (GetAbsolutePath(relativePath, absPath)) {
+        absPathCstr = ConvertToString(absPath);
+        return true;
+    }
+    return false;
 }
 
 bool FileLoader::GetAbsolutePath(const std::string &relativePath, std::string &absPath)

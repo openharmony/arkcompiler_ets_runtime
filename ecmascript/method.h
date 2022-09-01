@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,9 +28,9 @@
 namespace panda::ecmascript {
 class JSPandaFile;
 using EntityId = panda_file::File::EntityId;
-class JSMethod : public TaggedObject {
+class Method : public TaggedObject {
 public:
-    CAST_CHECK(JSMethod, IsJSMethod);
+    CAST_CHECK(Method, IsMethod);
 
     void SetNumArgsWithCallField(uint32_t numargs)
     {
@@ -177,6 +177,11 @@ public:
     const uint8_t *GetBytecodeArray() const
     {
         return reinterpret_cast<const uint8_t *>(GetNativePointerOrBytecodeArray());
+    }
+
+    static constexpr size_t Size()
+    {
+        return sizeof(Method);
     }
 
     const JSPandaFile *PUBLIC_API GetJSPandaFile() const;

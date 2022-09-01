@@ -83,7 +83,7 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 
 bool SparseSpace::Expand()
 {
-    if (committedSize_ >= maximumCapacity_) {
+    if (committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_) {
         LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;
     }
@@ -360,6 +360,7 @@ void OldSpace::Merge(LocalSpace *localSpace)
 {
     localSpace->FreeBumpPoint();
     os::memory::LockHolder lock(lock_);
+    size_t oldCommittedSize = committedSize_;
     localSpace->EnumerateRegions([&](Region *region) {
         localSpace->DetachFreeObjectSet(region);
         localSpace->RemoveRegion(region);
@@ -368,8 +369,12 @@ void OldSpace::Merge(LocalSpace *localSpace)
         IncreaseLiveObjectSize(region->AliveObject());
         allocator_->CollectFreeObjectSet(region);
     });
-    if (committedSize_ >= maximumCapacity_) {
-        LOG_ECMA_MEM(FATAL) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
+    if (committedSize_ > maximumCapacity_ + outOfMemoryOvershootSize_) {
+        LOG_ECMA_MEM(ERROR) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
+        heap_->ShouldThrowOOMError(true);
+        IncreaseMergeSize(committedSize_- oldCommittedSize);
+        // if throw OOM, temporarily increase space size to avoid vm crash
+        IncreaseOutOfMemoryOvershootSize(committedSize_ - maximumCapacity_ - outOfMemoryOvershootSize_);
     }
 
     localSpace->GetRegionList().Clear();

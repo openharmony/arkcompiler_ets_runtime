@@ -64,9 +64,9 @@ bool JSDebugger::RemoveBreakpoint(const JSPtLocation &location)
     return true;
 }
 
-void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<JSMethod> method, uint32_t bcOffset)
+void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset)
 {
-    ASSERT(bcOffset < method->GetCodeSize() && "code size of current JSMethod less then bcOffset");
+    ASSERT(bcOffset < method->GetCodeSize() && "code size of current Method less then bcOffset");
     HandleExceptionThrowEvent(thread, method, bcOffset);
 
     // Step event is reported before breakpoint, according to the spec.
@@ -75,7 +75,7 @@ void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<JSMethod> method, 
     }
 }
 
-bool JSDebugger::HandleBreakpoint(JSHandle<JSMethod> method, uint32_t bcOffset)
+bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
 {
     auto breakpoint = FindBreakpoint(method, bcOffset);
     if (hooks_ == nullptr || !breakpoint.has_value()) {
@@ -108,7 +108,7 @@ bool JSDebugger::HandleBreakpoint(JSHandle<JSMethod> method, uint32_t bcOffset)
     return true;
 }
 
-void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, JSHandle<JSMethod> method, uint32_t bcOffset)
+void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Method> method, uint32_t bcOffset)
 {
     if (hooks_ == nullptr || !thread->HasPendingException()) {
         return;
@@ -120,7 +120,7 @@ void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, JSHandle<JSMe
     hooks_->Exception(throwLocation);
 }
 
-bool JSDebugger::HandleStep(JSHandle<JSMethod> method, uint32_t bcOffset)
+bool JSDebugger::HandleStep(JSHandle<Method> method, uint32_t bcOffset)
 {
     if (hooks_ == nullptr) {
         return false;
@@ -132,7 +132,7 @@ bool JSDebugger::HandleStep(JSHandle<JSMethod> method, uint32_t bcOffset)
     return hooks_->SingleStep(location);
 }
 
-std::optional<JSBreakpoint> JSDebugger::FindBreakpoint(JSHandle<JSMethod> method, uint32_t bcOffset) const
+std::optional<JSBreakpoint> JSDebugger::FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const
 {
     for (const auto &bp : breakpoints_) {
         if ((bp.GetBytecodeOffset() == bcOffset) &&
@@ -165,13 +165,13 @@ std::unique_ptr<PtMethod> JSDebugger::FindMethod(const JSPtLocation &location) c
     ::panda::ecmascript::JSPandaFileManager::GetInstance()->EnumerateJSPandaFiles([&ptMethod, location](
         const panda::ecmascript::JSPandaFile *jsPandaFile) {
         if (jsPandaFile->GetJSPandaFileDesc() == location.GetPandaFile()) {
-            MethodLiteral *methodsData = jsPandaFile->GetMethods();
+            MethodLiteral *methodsData = jsPandaFile->GetMethodLiterals();
             uint32_t numberMethods = jsPandaFile->GetNumMethods();
             for (uint32_t i = 0; i < numberMethods; ++i) {
                 if (methodsData[i].GetMethodId() == location.GetMethodId()) {
-                    MethodLiteral *method = methodsData + i;
+                    MethodLiteral *methodLiteral = methodsData + i;
                     ptMethod = std::make_unique<PtMethod>(jsPandaFile,
-                        method->GetMethodId(), method->IsNativeWithCallField());
+                        methodLiteral->GetMethodId(), methodLiteral->IsNativeWithCallField());
                     return false;
                 }
             }

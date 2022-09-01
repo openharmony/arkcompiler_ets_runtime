@@ -350,6 +350,10 @@
     THROW_ERROR(thread, ErrorType::TYPE_ERROR, message)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define THROW_OOM_ERROR(thread, message)               \
+    THROW_ERROR(thread, ErrorType::OOM_ERROR, message)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_REJECT_PROMISE_IF_ABRUPT(thread, value, capability)                                 \
     do {                                                                                           \
         const GlobalEnvConstants *globalConst = (thread)->GlobalConstants();                       \

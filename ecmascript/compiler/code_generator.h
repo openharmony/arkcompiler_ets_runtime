@@ -29,7 +29,7 @@ public:
     virtual void GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, size_t index,
         const CompilationConfig *cfg) = 0;
     virtual void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-        const MethodLiteral *method, const JSPandaFile *jsPandaFile) = 0;
+        const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile) = 0;
 };
 
 class CodeGenerator {
@@ -40,10 +40,10 @@ public:
     {
         impl_->GenerateCodeForStub(circuit, graph, index, cfg);
     }
-    void Run(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg, const MethodLiteral *method,
-             const JSPandaFile *jsPandaFile)
+    void Run(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
+             const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)
     {
-        impl_->GenerateCode(circuit, graph, cfg, method, jsPandaFile);
+        impl_->GenerateCode(circuit, graph, cfg, methodLiteral, jsPandaFile);
     }
 private:
     std::unique_ptr<CodeGeneratorImpl> impl_{nullptr};

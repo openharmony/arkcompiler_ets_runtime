@@ -417,6 +417,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_URI_ERROR:
             case JSType::JS_ARGUMENTS:
             case JSType::JS_SYNTAX_ERROR:
+            case JSType::JS_OOM_ERROR:
             case JSType::JS_OBJECT: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSObject::SIZE, 2U);
                 JSHandle<JSObject> jsObj = NewJSObject(thread, factory, globalEnv);
@@ -429,16 +430,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsRealm)
                 break;
             }
-            case JSType::JS_METHOD: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSMethod::SIZE, 1U);
+            case JSType::METHOD: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, Method::SIZE, 1U);
                 break;
             }
             case JSType::JS_FUNCTION_BASE: {
-#ifdef PANDA_TARGET_64
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 2U);
-#else
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 1U);
-#endif
                 break;
             }
             case JSType::JS_FUNCTION: {
@@ -931,12 +928,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::CLASS_INFO_EXTRACTOR: {
-#ifdef PANDA_TARGET_64
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 10U);
-#else
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 9U);
-#endif
-                JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(nullptr);
+                JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(
+                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
                 DUMP_FOR_HANDLE(classInfoExtractor)
                 break;
             }
@@ -1156,7 +1150,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_VECTOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIVector::SIZE, 1);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIVector::SIZE, 1U);
                 JSHandle<JSAPIVector> jsVector = NewJSAPIVector(factory, proto);
                 DUMP_FOR_HANDLE(jsVector)
                 break;
@@ -1264,6 +1258,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_ITERATOR:
+            case JSType::JS_ASYNCITERATOR:
             case JSType::FREE_OBJECT_WITH_ONE_FIELD:
             case JSType::FREE_OBJECT_WITH_NONE_FIELD:
             case JSType::FREE_OBJECT_WITH_TWO_FIELD:

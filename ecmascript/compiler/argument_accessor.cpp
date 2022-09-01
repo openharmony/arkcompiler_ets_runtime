@@ -26,7 +26,7 @@ void ArgumentAccessor::NewArg(const size_t argIndex)
     circuit_->NewGate(OpCode(OpCode::ARG), MachineType::I64, argIndex, { argRoot_ }, GateType::TaggedValue());
 }
 
-// jsmethod must be set
+// method must be set
 size_t ArgumentAccessor::GetActualNumArgs() const
 {
     ASSERT(method_ != nullptr);
@@ -34,7 +34,7 @@ size_t ArgumentAccessor::GetActualNumArgs() const
     return static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS) + numArgs;
 }
 
-// jsmethod must be set
+// method must be set
 GateRef ArgumentAccessor::GetArgGate(const size_t currentVreg) const
 {
     ASSERT(method_ != nullptr);

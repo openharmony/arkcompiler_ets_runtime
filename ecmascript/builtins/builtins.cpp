@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 
 #ifdef PANDA_TARGET_WINDOWS
 #ifdef ERROR
@@ -29,6 +29,7 @@
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_async_function.h"
+#include "ecmascript/builtins/builtins_async_iterator.h"
 #include "ecmascript/builtins/builtins_async_generator.h"
 #include "ecmascript/builtins/builtins_atomics.h"
 #include "ecmascript/builtins/builtins_bigint.h"
@@ -144,6 +145,7 @@ using AggregateError = builtins::BuiltinsAggregateError;
 using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
+using OOMError = builtins::BuiltinsOOMError;
 using ErrorType = base::ErrorType;
 using Global = builtins::BuiltinsGlobal;
 using BuiltinsString = builtins::BuiltinsString;
@@ -162,6 +164,7 @@ using Promise = builtins::BuiltinsPromise;
 using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
 using ErrorType = base::ErrorType;
+using RandomGenerator = base::RandomGenerator;
 using DataView = builtins::BuiltinsDataView;
 using Intl = builtins::BuiltinsIntl;
 using Locale = builtins::BuiltinsLocale;
@@ -179,6 +182,7 @@ using BuiltinsCjsRequire = builtins::BuiltinsCjsRequire;
 using ContainersPrivate = containers::ContainersPrivate;
 using SharedArrayBuffer = builtins::BuiltinsSharedArrayBuffer;
 
+using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
 void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
@@ -296,6 +300,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializeAtomics(env, objFuncPrototypeVal);
     InitializeJson(env, objFuncPrototypeVal);
     InitializeIterator(env, objFuncDynclass);
+    InitializeAsyncIterator(env, objFuncDynclass);
     InitializeProxy(env);
     InitializeReflect(env, objFuncPrototypeVal);
     InitializeAsyncFunction(env, objFuncDynclass);
@@ -554,6 +559,8 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetNoneAttributeProperty(symbolFunction, "toStringTag", toStringTagSymbol);
     JSHandle<JSTaggedValue> iteratorSymbol(factory_->NewPublicSymbolWithChar("Symbol.iterator"));
     SetNoneAttributeProperty(symbolFunction, "iterator", iteratorSymbol);
+    JSHandle<JSTaggedValue> asyncIteratorSymbol(factory_->NewPublicSymbolWithChar("Symbol.asyncIterator"));
+    SetNoneAttributeProperty(symbolFunction, "asyncIterator", asyncIteratorSymbol);
     JSHandle<JSTaggedValue> matchSymbol(factory_->NewPublicSymbolWithChar("Symbol.match"));
     SetNoneAttributeProperty(symbolFunction, "match", matchSymbol);
     JSHandle<JSTaggedValue> matchAllSymbol(factory_->NewPublicSymbolWithChar("Symbol.matchAll"));
@@ -595,6 +602,7 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     env->SetIsConcatSpreadableSymbol(thread_, isConcatSpreadableSymbol);
     env->SetToStringTagSymbol(thread_, toStringTagSymbol);
     env->SetIteratorSymbol(thread_, iteratorSymbol);
+    env->SetAsyncIteratorSymbol(thread_, asyncIteratorSymbol);
     env->SetMatchSymbol(thread_, matchSymbol);
     env->SetMatchAllSymbol(thread_, matchAllSymbol);
     env->SetReplaceSymbol(thread_, replaceSymbol);
@@ -652,6 +660,7 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     SetNoneAttributeProperty(symbolFunction, "isConcatSpreadable", env->GetIsConcatSpreadableSymbol());
     SetNoneAttributeProperty(symbolFunction, "toStringTag", env->GetToStringTagSymbol());
     SetNoneAttributeProperty(symbolFunction, "iterator", env->GetIteratorSymbol());
+    SetNoneAttributeProperty(symbolFunction, "asyncIterator", env->GetAsyncIteratorSymbol());
     SetNoneAttributeProperty(symbolFunction, "match", env->GetMatchSymbol());
     SetNoneAttributeProperty(symbolFunction, "matchAll", env->GetMatchAllSymbol());
     SetNoneAttributeProperty(symbolFunction, "replace", env->GetReplaceSymbol());
@@ -684,6 +693,7 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     realm->SetIsConcatSpreadableSymbol(thread_, env->GetIsConcatSpreadableSymbol());
     realm->SetToStringTagSymbol(thread_, env->GetToStringTagSymbol());
     realm->SetIteratorSymbol(thread_, env->GetIteratorSymbol());
+    realm->SetAsyncIteratorSymbol(thread_, env->GetAsyncIteratorSymbol());
     realm->SetMatchSymbol(thread_, env->GetMatchSymbol());
     realm->SetMatchAllSymbol(thread_, env->GetMatchAllSymbol());
     realm->SetReplaceSymbol(thread_, env->GetReplaceSymbol());
@@ -1003,6 +1013,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceDynclass, JSType::JS_URI_ERROR);
     InitializeError(env, errorNativeFuncInstanceDynclass, JSType::JS_SYNTAX_ERROR);
     InitializeError(env, errorNativeFuncInstanceDynclass, JSType::JS_EVAL_ERROR);
+    InitializeError(env, errorNativeFuncInstanceDynclass, JSType::JS_OOM_ERROR);
 }
 
 void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm) const
@@ -1019,6 +1030,7 @@ void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm)
     SetErrorWithRealm(realm, JSType::JS_URI_ERROR);
     SetErrorWithRealm(realm, JSType::JS_SYNTAX_ERROR);
     SetErrorWithRealm(realm, JSType::JS_EVAL_ERROR);
+    SetErrorWithRealm(realm, JSType::JS_OOM_ERROR);
 }
 
 void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType &errorTag) const
@@ -1063,6 +1075,11 @@ void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType 
             nativeErrorFunction = env->GetSyntaxErrorFunction();
             nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledSyntaxErrorString());
             realm->SetSyntaxErrorFunction(thread_, nativeErrorFunction);
+            break;
+        case JSType::JS_OOM_ERROR:
+            nativeErrorFunction = env->GetOOMErrorFunction();
+            nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledOOMErrorString());
+            realm->SetOOMErrorFunction(thread_, nativeErrorFunction);
             break;
         default:
             break;
@@ -1118,6 +1135,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
             GeneralUpdateError(&errorParameter, SyntaxError::SyntaxErrorConstructor, SyntaxError::ToString,
                                "SyntaxError", JSType::JS_SYNTAX_ERROR);
             break;
+        case JSType::JS_OOM_ERROR:
+            GeneralUpdateError(&errorParameter, OOMError::OOMErrorConstructor, OOMError::ToString,
+                               "OutOfMemoryError", JSType::JS_OOM_ERROR);
+            break;
         default:
             break;
     }
@@ -1163,8 +1184,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
         env->SetURIErrorFunction(thread_, nativeErrorFunction);
     } else if (errorTag == JSType::JS_SYNTAX_ERROR) {
         env->SetSyntaxErrorFunction(thread_, nativeErrorFunction);
-    } else {
+    } else if (errorTag == JSType::JS_EVAL_ERROR) {
         env->SetEvalErrorFunction(thread_, nativeErrorFunction);
+    } else {
+        env->SetOOMErrorFunction(thread_, nativeErrorFunction);
     }
 }  // namespace panda::ecmascript
 
@@ -1477,6 +1500,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> mathDynclass = factory_->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathDynclass);
+    RandomGenerator::InitRandom();
     SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE);
     SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE);
     SetFunction(env, mathObject, "acosh", Math::Acosh, FunctionLength::ONE);
@@ -1568,7 +1592,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     stringFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, stringFuncInstanceDynclass.GetTaggedValue());
 
     // String.prototype method
-    SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE);
+    SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE,
+                static_cast<uint8_t>(BUILTINS_STUB_ID(CharAt)));
     SetFunction(env, stringFuncPrototype, "charCodeAt", BuiltinsString::CharCodeAt, FunctionLength::ONE,
                 static_cast<uint8_t>(BUILTINS_STUB_ID(CharCodeAt)));
     SetFunction(env, stringFuncPrototype, "codePointAt", BuiltinsString::CodePointAt, FunctionLength::ONE);
@@ -1591,7 +1616,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetFunction(env, stringFuncPrototype, "slice", BuiltinsString::Slice, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "split", BuiltinsString::Split, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "startsWith", BuiltinsString::StartsWith, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "substring", BuiltinsString::Substring, FunctionLength::TWO);
+    SetFunction(env, stringFuncPrototype, "substring", BuiltinsString::Substring, FunctionLength::TWO,
+                static_cast<uint8_t>(BUILTINS_STUB_ID(Substring)));
     SetFunction(env, stringFuncPrototype, "substr", BuiltinsString::SubStr, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "toLocaleLowerCase", BuiltinsString::ToLocaleLowerCase, FunctionLength::ZERO);
     SetFunction(env, stringFuncPrototype, "toLocaleUpperCase", BuiltinsString::ToLocaleUpperCase, FunctionLength::ZERO);
@@ -1681,6 +1707,31 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     InitializeArrayIterator(env, iteratorFuncDynclass);
     InitializeStringIterator(env, iteratorFuncDynclass);
     InitializeRegexpIterator(env, iteratorFuncDynclass);
+}
+
+void Builtins::InitializeAsyncIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncDynclass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    // AsyncIterator.prototype
+    JSHandle<JSObject> asyncIteratorPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
+    // AsyncIterator.prototype.next()
+    SetFunction(env, asyncIteratorPrototype, "next", BuiltinsAsyncIterator::Next, FunctionLength::ONE);
+    // AsyncIterator.prototype.return()
+    SetFunction(env, asyncIteratorPrototype, "return", BuiltinsAsyncIterator::Return, FunctionLength::ONE);
+    // AsyncIterator.prototype.throw()
+    SetFunction(env, asyncIteratorPrototype, "throw", BuiltinsAsyncIterator::Throw, FunctionLength::ONE);
+    // %AsyncIteratorPrototype% [ @@AsyncIterator ]
+    SetFunctionAtSymbol(env, asyncIteratorPrototype, env->GetAsyncIteratorSymbol(), "[Symbol.asyncIterator]",
+                        BuiltinsAsyncIterator::GetAsyncIteratorObj, FunctionLength::ZERO);
+    env->SetAsyncIteratorPrototype(thread_, asyncIteratorPrototype);
+
+    // AsyncIterator.dynclass
+    JSHandle<JSHClass> asyncIteratorFuncDynclass =
+        factory_->NewEcmaDynClass(JSObject::SIZE,
+                                  JSType::JS_ASYNCITERATOR, JSHandle<JSTaggedValue>(asyncIteratorPrototype));
+
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    globalConst->SetConstant(ConstantIndex::JS_API_ASYNCITERATOR_FUNC_DYN_CLASS_INDEX, asyncIteratorFuncDynclass);
 }
 
 void Builtins::InitializeForinIterator(const JSHandle<GlobalEnv> &env,
@@ -2534,6 +2585,8 @@ void Builtins::InitializePromiseJob(const JSHandle<GlobalEnv> &env)
     env->SetPromiseReactionJob(thread_, func);
     func = NewFunction(env, keyString, BuiltinsPromiseJob::PromiseResolveThenableJob, FunctionLength::THREE);
     env->SetPromiseResolveThenableJob(thread_, func);
+    func = NewFunction(env, keyString, BuiltinsPromiseJob::DynamicImportJob, FunctionLength::FOUR);
+    env->SetDynamicImportJob(thread_, func);
 }
 
 void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncDynclass) const
@@ -2914,7 +2967,7 @@ void Builtins::InitializeAsyncGenerator(const JSHandle<GlobalEnv> &env,
                                         const JSHandle<JSHClass> &objFuncDynclass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSObject> asyncGeneratorFuncPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
 
     // GeneratorObject.prototype method
@@ -2931,7 +2984,12 @@ void Builtins::InitializeAsyncGenerator(const JSHandle<GlobalEnv> &env,
     // 27.6.1.5 AsyncGenerator.prototype [ @@toStringTag ]
     SetStringTagSymbol(env, asyncGeneratorFuncPrototype, "AsyncGenerator");
 
+    PropertyDescriptor descriptor(thread_, env->GetAsyncIteratorPrototype(), true, false, false);
+    JSObject::DefineOwnProperty(thread_, asyncGeneratorFuncPrototype,
+                                globalConst->GetHandledPrototypeString(), descriptor);
     env->SetAsyncGeneratorPrototype(thread_, asyncGeneratorFuncPrototype);
+    JSObject::SetPrototype(thread_, asyncGeneratorFuncPrototype, env->GetAsyncIteratorPrototype());
+
     JSHandle<JSObject> initialAsyncGeneratorFuncPrototype = factory_->NewJSObjectWithInit(objFuncDynclass);
     JSObject::SetPrototype(thread_, initialAsyncGeneratorFuncPrototype,
                            JSHandle<JSTaggedValue>(asyncGeneratorFuncPrototype));

@@ -270,7 +270,7 @@ public:
     void GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, size_t index,
                              const CompilationConfig *cfg) override;
     void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-        const MethodLiteral *method, const JSPandaFile *jsPandaFile) override;
+        const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile) override;
 
     bool IsLogEnabled() const
     {

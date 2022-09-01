@@ -16,7 +16,7 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/builtins.h"
+#include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
 #include "ecmascript/builtins/builtins_global.h"
@@ -49,6 +49,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/js_patch_manager.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -209,6 +210,7 @@ bool EcmaVM::Initialize()
     debuggerManager_->Initialize(this);
     tsManager_ = new TSManager(this);
     tsManager_->Initialize();
+    patchManager_ = new JSPatchManager();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Initialize();
@@ -336,6 +338,11 @@ EcmaVM::~EcmaVM()
         tsManager_ = nullptr;
     }
 
+    if (patchManager_ != nullptr) {
+        delete patchManager_;
+        patchManager_ = nullptr;
+    }
+
     if (snapshotEnv_ != nullptr) {
         delete snapshotEnv_;
         snapshotEnv_ = nullptr;
@@ -384,7 +391,7 @@ EcmaVM::CpuProfilingScope::~CpuProfilingScope()
 #endif
 }
 
-bool EcmaVM::FindCatchBlock(JSMethod *method, uint32_t pc) const
+bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
 {
     uint32_t pcOffset = panda_file::INVALID_OFFSET;
     if (thread_->IsAsmInterpreter()) {
@@ -730,7 +737,7 @@ void EcmaVM::LoadStubFile()
 
 void EcmaVM::LoadAOTFiles()
 {
-    std::string file = options_.GetAOTOutputFile() + ".aot";
+    std::string file = options_.GetAOTOutputFile() + ".an";
     LOG_ECMA(INFO) << "Try to load aot file" << file.c_str();
     fileLoader_->LoadAOTFile(file);
     fileLoader_->LoadSnapshotFile();
@@ -788,7 +795,7 @@ void EcmaVM::GenerateInternalNativeMethods()
     size_t length = static_cast<size_t>(MethodIndex::METHOD_END);
     for (size_t i = 0; i < length; i++) {
         uint32_t numArgs = 2;  // function object and this
-        auto method = factory_->NewJSMethod(nullptr);
+        auto method = factory_->NewMethod(nullptr);
         method->SetNativePointer(InternalMethodTable[i]);
         method->SetNativeBit(true);
         method->SetNumArgsWithCallField(numArgs);

@@ -24,6 +24,12 @@
 #endif
 
 namespace panda::ecmascript {
+Taskpool *Taskpool::GetCurrentTaskpool()
+{
+    static Taskpool taskpool;
+    return &taskpool;
+}
+
 void Taskpool::Initialize(int threadNum)
 {
     os::memory::LockHolder lock(mutex_);

@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/*
+ * @tc.name:globalaccessor
+ * @tc.desc:test global accessor
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
 Object.defineProperty(globalThis, "window", {
     value: globalThis
 });

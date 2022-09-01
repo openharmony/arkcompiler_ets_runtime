@@ -82,4 +82,4 @@ LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/ark/ark:out/hispark_taurus/clang_x6
 
 **[arkcompiler\_ets\_runtime](https://gitee.com/openharmony/arkcompiler_ets_runtime)**
 
-[arkcompiler\_ets\_frontend_](https://gitee.com/openharmony/arkcompiler_ets_frontend)
+[arkcompiler\_ets\_frontend](https://gitee.com/openharmony/arkcompiler_ets_frontend)

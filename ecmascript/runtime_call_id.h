@@ -118,6 +118,7 @@ namespace panda::ecmascript {
     V(Trystobjprop)                 \
     V(GetTemplateObject)            \
     V(GetIterator)                  \
+    V(GetAsyncIterator)             \
     V(ThrowIfNotObject)             \
     V(ThrowThrowNotExists)          \
     V(CreateObjectWithExcludedKeys) \
@@ -226,7 +227,9 @@ namespace panda::ecmascript {
     V(DefineAsyncGeneratorFunc)     \
     V(DefineGeneratorFuncWithMethodId) \
     V(DefineAsyncGeneratorFuncWithMethodId) \
-    V(GetSuperConstructor)
+    V(GetSuperConstructor)          \
+    V(DynamicImport)
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define BUILTINS_API_LIST(V)                   \
     V(Array, Constructor)                     \
@@ -319,6 +322,11 @@ namespace panda::ecmascript {
     V(Iterator, Throw)                        \
     V(Iterator, Return)                       \
     V(Iterator, GetObj)                       \
+    V(AsyncIterator, Constructor)             \
+    V(AsyncIterator, Next)                    \
+    V(AsyncIterator, Throw)                   \
+    V(AsyncIterator, Return)                  \
+    V(AsyncIterator, GetObj)                  \
     V(Json, Parse)                            \
     V(Json, Stringify)                        \
     V(Map, Constructor)                       \

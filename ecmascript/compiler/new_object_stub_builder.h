@@ -37,6 +37,7 @@ public:
     void NewJSObject(Variable *result, Label *exit, GateRef hclass);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
+    void AllocStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
 private:
     void AllocateInYoung(Variable *result, Label *exit);
     void InitializeWithSpeicalValue(Label *exit,

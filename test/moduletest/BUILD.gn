@@ -27,6 +27,7 @@ group("ark_js_moduletest") {
     "class:classAction",
     "compareobjecthclass:compareobjecthclassAction",
     "container:containerAction",
+    "dynamicimport:dynamicimportAction",
     "dyninstruction:dyninstructionAction",
     "ecmastringtable:ecmastringtableAction",
     "fortest:fortestAction",
@@ -36,6 +37,7 @@ group("ark_js_moduletest") {
     "globalrecord:globalrecordAction",
     "globalthis:globalthisAction",
     "helloworld:helloworldAction",
+    "ldmodulensbyic:ldmodulensbyicAction",
     "lexicalenv:lexicalenvAction",
     "linkedhashtable:linkedhashtableAction",
     "loadicbyvalue:loadicbyvalueAction",
@@ -60,7 +62,9 @@ group("ark_js_moduletest") {
     "yieldstar:yieldstarAction",
   ]
   if (!is_debug) {
-    deps += [ "weaktransitions:weaktransitionsAction" ]
+    deps += [
+      # "weaktransitions:weaktransitionsAsmAction",
+    ]
   }
 }
 
@@ -81,6 +85,7 @@ group("ark_asm_test") {
     "class:classAsmAction",
     "compareobjecthclass:compareobjecthclassAsmAction",
     "container:containerAsmAction",
+    "dynamicimport:dynamicimportAction",
     "dyninstruction:dyninstructionAsmAction",
     "ecmastringtable:ecmastringtableAsmAction",
     "fortest:fortestAsmAction",
@@ -90,6 +95,7 @@ group("ark_asm_test") {
     "globalrecord:globalrecordAsmAction",
     "globalthis:globalthisAsmAction",
     "helloworld:helloworldAsmAction",
+    "ldmodulensbyic:ldmodulensbyicAction",
     "lexicalenv:lexicalenvAsmAction",
     "linkedhashtable:linkedhashtableAsmAction",
     "loadicbyvalue:loadicbyvalueAsmAction",
@@ -132,6 +138,7 @@ group("ark_asm_single_step_test") {
     "class:classAsmSingleStepAction",
     "compareobjecthclass:compareobjecthclassAsmSingleStepAction",
     "container:containerAsmSingleStepAction",
+    "dynamicimport:dynamicimportAction",
     "dyninstruction:dyninstructionAsmSingleStepAction",
     "ecmastringtable:ecmastringtableAsmSingleStepAction",
     "fortest:fortestAsmSingleStepAction",
@@ -141,6 +148,7 @@ group("ark_asm_single_step_test") {
     "globalrecord:globalrecordAsmSingleStepAction",
     "globalthis:globalthisAsmSingleStepAction",
     "helloworld:helloworldAsmSingleStepAction",
+    "ldmodulensbyic:ldmodulensbyicAction",
     "lexicalenv:lexicalenvAsmSingleStepAction",
     "loadicbyvalue:loadicbyvalueAsmSingleStepAction",
     "module:moduleAsmSingleStepAction",

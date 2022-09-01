@@ -156,15 +156,9 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     }
     // 5. Let usingIterator be ? GetMethod(source, @@iterator).
     JSHandle<JSTaggedValue> source = GetCallArg(argv, 0);
-    if (!source->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the source is not an object.", JSTaggedValue::Exception());
-    }
-    JSHandle<JSObject> sourceObj(source);
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
-    JSHandle<JSTaggedValue> usingIterator =
-        JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(sourceObj), iteratorSymbol);
+    JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, source, iteratorSymbol);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     // 6. If usingIterator is not undefined, then
     //   a. Let values be ? IterableToList(source, usingIterator).
     //   b. Let len be the number of elements in values.
@@ -1325,29 +1319,48 @@ JSTaggedValue BuiltinsTypedArray::Sort(EcmaRuntimeCallInfo *argv)
     uint32_t len = JSHandle<JSTypedArray>::Cast(thisObjHandle)->GetArrayLength();
 
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
+    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> key1(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> key2(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 1; i < len; i++) {
+        uint32_t beginIndex = 0;
+        uint32_t endIndex = i;
+        key.Update(JSTaggedValue(i));
+        presentValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
+                                                                    key.GetTaggedValue()));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        while (beginIndex < endIndex) {
+            uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
+            key1.Update(JSTaggedValue(middleIndex));
+            middleValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
+                                                                       key1.GetTaggedValue()));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            int32_t compareResult = TypedArrayHelper::SortCompare(thread, callbackFnHandle, buffer,
+                                                                  middleValue, presentValue);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            compareResult > 0 ? (endIndex = middleIndex) : (beginIndex = middleIndex + 1);
+        }
 
-    uint32_t i = 0;
-    while (i < len - 1) {
-        uint32_t j = len - 1;
-        while (j > i) {
-            JSHandle<JSTaggedValue> xValue = JSTaggedValue::GetProperty(thread, thisObjVal, j - 1).GetValue();
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            JSHandle<JSTaggedValue> yValue = JSTaggedValue::GetProperty(thread, thisObjVal, j).GetValue();
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            int32_t compareResult;
-            compareResult = TypedArrayHelper::SortCompare(thread, callbackFnHandle, buffer, xValue, yValue);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (compareResult > 0) {
-                JSTaggedValue::SetProperty(thread, thisObjVal, j - 1, yValue, true);
+        if (endIndex >= 0 && endIndex < i) {
+            for (uint32_t j = i; j > endIndex; j--) {
+                key2.Update(JSTaggedValue(j - 1));
+                previousValue.Update(
+                    FastRuntimeStub::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
+                                                            key2.GetTaggedValue()));
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                JSTaggedValue::SetProperty(thread, thisObjVal, j, xValue, true);
+                FastRuntimeStub::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), j,
+                                                        previousValue.GetTaggedValue());
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
-            j--;
+            FastRuntimeStub::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), endIndex,
+                                                    presentValue.GetTaggedValue());
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
-        i++;
     }
-    return JSTaggedValue::ToObject(thread, thisHandle).GetTaggedValue();
+    return thisObjHandle.GetTaggedValue();
 }
 
 // 22.2.3.26 %TypedArray%.prototype.subarray( [ begin [ , end ] ] )
