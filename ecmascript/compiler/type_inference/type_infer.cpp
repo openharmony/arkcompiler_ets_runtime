@@ -212,9 +212,13 @@ bool TypeInfer::InferPhiGate(GateRef gate)
     auto ins = gateAccessor_.ConstIns(gate);
     for (auto it =  ins.begin(); it != ins.end(); it++) {
         // assuming that VALUE_SELECTOR is NO_DEPEND and NO_ROOT
-        if (gateAccessor_.GetOpCode(*it) == OpCode::MERGE ||
-            gateAccessor_.GetOpCode(*it) == OpCode::LOOP_BEGIN) {
+        if (gateAccessor_.GetOpCode(*it) == OpCode::MERGE) {
             continue;
+        }
+        if (gateAccessor_.GetOpCode(*it) == OpCode::LOOP_BEGIN) {
+            auto loopInGate = gateAccessor_.GetValueIn(gate);
+            auto loopInType = gateAccessor_.GetGateType(loopInGate);
+            return UpdateType(gate, loopInType);
         }
         auto valueInType = gateAccessor_.GetGateType(*it);
         if (valueInType.IsAnyType()) {
@@ -363,6 +367,11 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
     if (objType.IsTSType()) {
+        if (tsManager_->IsArrayTypeKind(objType)) {
+            auto builtinGt = GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, TSManager::BUILTIN_ARRAY_ID);
+            auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
+            objType = GateType(builtinInstanceType);
+        }
         // If this object has no gt type, we cannot get its internal property type
         if (IsObjectOrClass(objType)) {
             auto constantPool = builder_->GetConstantPool().GetObject<ConstantPool>();

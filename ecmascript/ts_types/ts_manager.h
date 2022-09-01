@@ -273,6 +273,8 @@ public:
     IS_TSTYPEKIND_METHOD_LIST(IS_TSTYPEKIND)
 #undef IS_TSTYPEKIND
 
+    static constexpr int BUILTIN_ARRAY_ID = 24;
+
 private:
 
     NO_COPY_SEMANTIC(TSManager);
