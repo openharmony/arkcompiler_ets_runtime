@@ -29,5 +29,8 @@ a b c
 1 2 3
 0 0
 1 2 3
+foo
+foo
 Apple Banana
+1 2 3
 1 2 3
