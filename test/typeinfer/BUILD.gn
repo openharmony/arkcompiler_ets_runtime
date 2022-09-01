@@ -14,7 +14,7 @@
 group("ark_typeinfer_test") {
   testonly = true
   deps = [
-    "add2dyn:add2dynAotTypeInferAction",
+    #"add2dyn:add2dynAotTypeInferAction",
     "bitwise_op:bitwise_opAotTypeInferAction",
     "builtins:builtinsAotTypeInferAction",
     "callarg0dyn:callarg0dynAotTypeInferAction",
@@ -22,15 +22,18 @@ group("ark_typeinfer_test") {
     "callargs2dyn:callargs2dynAotTypeInferAction",
     "callargs3dyn:callargs3dynAotTypeInferAction",
     "callirangedyn:callirangedynAotTypeInferAction",
-    "callithisrange:callithisrangeAotTypeInferAction",
+
+    #"callithisrange:callithisrangeAotTypeInferAction",
     "class:classAotTypeInferAction",
     "createemptyarray:createemptyarrayAotTypeInferAction",
     "createemptyobject:createemptyobjectAotTypeInferAction",
     "createobjecthavingmethod:createobjecthavingmethodAotTypeInferAction",
-    "defineasyncfunc:defineasyncfuncAotTypeInferAction",
+
+    #"defineasyncfunc:defineasyncfuncAotTypeInferAction",
     "defineclasswithbuffer:defineclasswithbufferAotTypeInferAction",
     "definefunctiondyn:definefunctiondynAotTypeInferAction",
-    "definegeneratorfunc:definegeneratorfuncAotTypeInferAction",
+
+    #"definegeneratorfunc:definegeneratorfuncAotTypeInferAction",
     "div2dyn:div2dynAotTypeInferAction",
     "ldboolean:ldbooleanAotTypeInferAction",
     "ldglobalvar:ldglobalvarAotTypeInferAction",
@@ -46,7 +49,8 @@ group("ark_typeinfer_test") {
     "mul2dyn:mul2dynAotTypeInferAction",
     "newobjdynrange:newobjdynrangeAotTypeInferAction",
     "parainfer:parainferAotTypeInferAction",
-    "phiwithloop:phiwithloopAotTypeInferAction",
+
+    #"phiwithloop:phiwithloopAotTypeInferAction",
     "stconsttoglobalrecord:stconsttoglobalrecordAotTypeInferAction",
     "stglobalvar:stglobalvarAotTypeInferAction",
     "stlettoglobalrecord:stlettoglobalrecordAotTypeInferAction",
@@ -57,6 +61,7 @@ group("ark_typeinfer_test") {
     "trystglobalbyname:trystglobalbynameAotTypeInferAction",
     "tsarraytobuiltin:tsarraytobuiltinAotTypeInferAction",
     "typeof:typeofAotTypeInferAction",
-    "variable_after_loops:variable_after_loopsAotTypeInferAction",
+
+    #"variable_after_loops:variable_after_loopsAotTypeInferAction",
   ]
 }

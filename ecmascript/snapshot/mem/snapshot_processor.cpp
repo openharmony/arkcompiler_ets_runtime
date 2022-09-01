@@ -80,6 +80,7 @@
 #include "ecmascript/containers/containers_treemap.h"
 #include "ecmascript/containers/containers_treeset.h"
 #include "ecmascript/containers/containers_vector.h"
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -1459,12 +1460,12 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value)
     }
 
     if (encodeBit.IsReference() && !encodeBit.IsSpecial()) {
-        Region *rootRegion = Region::ObjectAddressToRange((uintptr_t)value);
+        Region *rootRegion = Region::ObjectAddressToRange(ToUintPtr(value));
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
         Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
         if (!rootRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
             // Should align with '8' in 64 and 32 bit platform
-            ASSERT((value % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+            ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);
         }
         *value = taggedObjectAddr;
@@ -1700,7 +1701,7 @@ JSTaggedValue ConstantPoolProcessor::GetConstantPoolInfos(size_t nums)
     return factory->NewTaggedArray(nums * ITEM_SIZE).GetTaggedValue();
 }
 
-void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool)
+void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, JSHandle<JSTaggedValue> constantPool)
 {
     JSThread *thread = vm_->GetJSThread();
     JSHandle<TaggedArray> array = vm_->GetTSManager()->GetConstantPoolInfo();
@@ -1711,7 +1712,7 @@ void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, const
     array->Set(thread, index_++, value);
 }
 
-JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(const JSHandle<ConstantPool> constantPool)
+JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(JSHandle<ConstantPool> constantPool)
 {
     ObjectFactory *factory = vm_->GetFactory();
     JSThread *thread = vm_->GetJSThread();

@@ -48,7 +48,7 @@ private:
     static void FixInstructionId32(const BytecodeInstruction &inst, uint32_t index, uint32_t fixOrder = 0);
     static void FixOpcode(uint8_t *pc);
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
-    static JSTaggedValue ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint);
+    static JSHandle<ConstantPool> ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_PANDA_FILE_TRANSLATOR_H

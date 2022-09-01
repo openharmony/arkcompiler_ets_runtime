@@ -81,7 +81,7 @@ CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const 
 JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
     JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest)
 {
-    DISALLOW_GARBAGE_COLLECTION
+    DISALLOW_GARBAGE_COLLECTION;
     auto moduleManager = thread->GetEcmaVM()->GetModuleManager();
     if (moduleManager->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
         return moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue());
