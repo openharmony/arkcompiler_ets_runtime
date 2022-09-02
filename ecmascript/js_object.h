@@ -400,6 +400,9 @@ public:
     // 7.3.23 EnumerableOwnPropertyNames ( O, kind )
     static JSHandle<TaggedArray> EnumerableOwnPropertyNames(JSThread *thread, const JSHandle<JSObject> &obj,
                                                             PropertyKind kind);
+    static void EnumerableOwnPropertyNamesHelper(JSThread *thread, const JSHandle<JSObject> &obj,
+        const JSHandle<TaggedArray> &arr, JSHandle<TaggedArray> &properties,
+        uint32_t &index, bool &fastMode, PropertyKind kind);
 
     static JSHandle<GlobalEnv> GetFunctionRealm(JSThread *thread, const JSHandle<JSTaggedValue> &object);
 
@@ -629,7 +632,8 @@ private:
     static uint32_t ComputePropertyCapacity(uint32_t oldCapacity);
 
     static JSTaggedValue ShouldGetValueFromBox(ObjectOperator *op);
-    static JSHandle<TaggedArray> GetOwnEnumerableNamesInFastMode(JSThread *thread, const JSHandle<JSObject> &obj);
+    static std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> GetOwnEnumerableNamesInFastMode(
+        JSThread *thread, const JSHandle<JSObject> &obj, uint32_t *copyLengthOfKeys, uint32_t *copyLengthOfElements);
     static bool CheckHClassHit(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &cls);
     static uint32_t SetValuesOrEntries(JSThread *thread, const JSHandle<TaggedArray> &prop, uint32_t index,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,

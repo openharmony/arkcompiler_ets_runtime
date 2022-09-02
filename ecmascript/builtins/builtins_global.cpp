@@ -23,8 +23,9 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/interpreter/slow_runtime_helper.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::builtins {
@@ -515,7 +516,7 @@ JSTaggedValue BuiltinsGlobal::CallJsBoundFunction(EcmaRuntimeCallInfo *msg)
     JSHandle<JSBoundFunction> boundFunc(GetConstructor(msg));
     JSHandle<JSTaggedValue> thisObj(thread, boundFunc->GetBoundThis());
     msg->SetThis(thisObj.GetTaggedValue());
-    return SlowRuntimeHelper::CallBoundFunction(msg);
+    return RuntimeStubs::CallBoundFunction(msg);
 }
 
 JSTaggedValue BuiltinsGlobal::CallJsProxy(EcmaRuntimeCallInfo *msg)

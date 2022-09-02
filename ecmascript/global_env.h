@@ -105,6 +105,7 @@ class JSThread;
     V(JSTaggedValue, IsConcatSpreadableSymbol, ISCONCAT_SYMBOL_INDEX)                               \
     V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                         \
+    V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                              \
     V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                               \
     V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                        \
     V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                           \
@@ -116,6 +117,7 @@ class JSThread;
     V(JSTaggedValue, HoleySymbol, HOLEY_SYMBOL_OFFSET)                                              \
     V(JSTaggedValue, ElementICSymbol, ELEMENT_IC_SYMBOL_OFFSET)                                     \
     V(JSTaggedValue, IteratorPrototype, ITERATOR_PROTOTYPE_INDEX)                                   \
+    V(JSTaggedValue, AsyncIteratorPrototype, ASYNC_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, ForinIteratorPrototype, FORIN_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, ForinIteratorClass, FOR_IN_ITERATOR_CLASS_INDEX)                               \
     V(JSTaggedValue, StringIterator, STRING_ITERATOR_INDEX)                                         \

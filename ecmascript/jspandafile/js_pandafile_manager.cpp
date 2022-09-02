@@ -89,11 +89,12 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
     return jsPandaFile;
 }
 
-JSHandle<Program> JSPandaFileManager::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile)
+JSHandle<Program> JSPandaFileManager::GenerateProgram(
+    EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
 
-    JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile);
+    JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
     return program;
 }
 
@@ -107,6 +108,12 @@ const JSPandaFile *JSPandaFileManager::FindJSPandaFileUnlocked(const CString &fi
         return nullptr;
     }
     return iter->second.first;
+}
+
+const JSPandaFile *JSPandaFileManager::FindJSPandaFile(const CString &filename)
+{
+    os::memory::LockHolder lock(jsPandaFileLock_);
+    return FindJSPandaFileUnlocked(filename);
 }
 
 const JSPandaFile *JSPandaFileManager::GetJSPandaFile(const panda_file::File *pf)
@@ -212,13 +219,16 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
         newJsPandaFile->SetLoadedAOTStatus(true);
     }
 
-    CString methodName;
-    auto pos = entryPoint.find_last_of("::");
-    if (pos != std::string_view::npos) {
-        methodName = entryPoint.substr(pos + 1);
-    } else {
-        // default use func_main_0 as entryPoint
-        methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
+    CString methodName = entryPoint.data();
+    if (newJsPandaFile->IsBundle()) {
+        // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
+        auto pos = entryPoint.find_last_of("::");
+        if (pos != std::string_view::npos) {
+            methodName = entryPoint.substr(pos + 1);
+        } else {
+            // default use func_main_0 as entryPoint
+            methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
+        }
     }
 
     PandaFileTranslator::TranslateClasses(newJsPandaFile, methodName);

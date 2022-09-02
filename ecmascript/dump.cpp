@@ -224,6 +224,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "DataView";
         case JSType::JS_ITERATOR:
             return "Iterator";
+        case JSType::JS_ASYNCITERATOR:
+            return "AsyncIterator";
         case JSType::JS_FORIN_ITERATOR:
             return "ForinInterator";
         case JSType::JS_MAP_ITERATOR:
@@ -718,6 +720,8 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             JSIntlBoundFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ITERATOR:
+            break;
+        case JSType::JS_ASYNCITERATOR:
             break;
         case JSType::JS_FORIN_ITERATOR:
             JSForInIterator::Cast(obj)->Dump(os);
@@ -2188,6 +2192,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetToStringTagSymbol().GetTaggedValue().Dump(os);
     os << " - IteratorSymbol: ";
     GetIteratorSymbol().GetTaggedValue().Dump(os);
+    os << " - AsyncIteratorSymbol: ";
+    GetAsyncIteratorSymbol().GetTaggedValue().Dump(os);
     os << " - MatchSymbol: ";
     GetMatchSymbol().GetTaggedValue().Dump(os);
     os << " - MatchAllSymbol: ";
@@ -3160,6 +3166,9 @@ void SourceTextModule::Dump(std::ostream &os) const
     os << " - EcmaModuleFilename: ";
     GetEcmaModuleFilename().Dump(os);
     os << "\n";
+    os << " - EcmaModuleRecordName: ";
+    GetEcmaModuleRecordName().Dump(os);
+    os << "\n";
     os << " - RequestedModules: ";
     GetRequestedModules().Dump(os);
     os << "\n";
@@ -3521,6 +3530,7 @@ static void DumpObject(TaggedObject *obj,
             CompletionRecord::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_ITERATOR:
+        case JSType::JS_ASYNCITERATOR:
         case JSType::JS_FORIN_ITERATOR:
         case JSType::JS_MAP_ITERATOR:
         case JSType::JS_SET_ITERATOR:
@@ -4365,6 +4375,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString("IsConcatSpreadableSymbol"), GetIsConcatSpreadableSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("ToStringTagSymbol"), GetToStringTagSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("IteratorSymbol"), GetIteratorSymbol().GetTaggedValue()));
+    vec.push_back(std::make_pair(CString("AsyncIteratorSymbol"), GetAsyncIteratorSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("MatchSymbol"), GetMatchSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("MatchAllSymbol"), GetMatchAllSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("ReplaceSymbol"), GetReplaceSymbol().GetTaggedValue()));
@@ -4888,6 +4899,7 @@ void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
     vec.push_back(std::make_pair(CString("Environment"), GetEnvironment()));
     vec.push_back(std::make_pair(CString("Namespace"), GetNamespace()));
     vec.push_back(std::make_pair(CString("EcmaModuleFilename"), GetEcmaModuleFilename()));
+    vec.push_back(std::make_pair(CString("EcmaModuleRecordName"), GetEcmaModuleRecordName()));
     vec.push_back(std::make_pair(CString("RequestedModules"), GetRequestedModules()));
     vec.push_back(std::make_pair(CString("ImportEntries"), GetImportEntries()));
     vec.push_back(std::make_pair(CString("LocalExportEntries"), GetLocalExportEntries()));

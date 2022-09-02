@@ -422,13 +422,13 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
     return JSTaggedValue(res);
 }
 
-Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile)
+Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     JSTaggedValue result;
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<Program> program;
     if (jsPandaFile != frameworkPandaFile_) {
-        program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile);
+        program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
     } else {
         program = JSHandle<Program>(thread_, frameworkProgram_);
         frameworkProgram_ = JSTaggedValue::Hole();
@@ -438,13 +438,17 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         return Unexpected(false);
     }
     // for debugger
-    debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc());
+    debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
     JSHandle<JSFunction> func = JSHandle<JSFunction>(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
-    if (jsPandaFile->IsModule()) {
+    if (jsPandaFile->IsModule(entryPoint.data())) {
         global = JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
-        JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(jsPandaFile->GetJSPandaFileDesc());
+        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+        if (!jsPandaFile->IsBundle()) {
+            moduleName = entryPoint.data();
+        }
+        JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
         func->SetModule(thread_, module);
     }
 
@@ -452,7 +456,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         thread_->SetPrintBCOffset(true);
         result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile);
     } else {
-        if (jsPandaFile->IsCjs()) {
+        if (jsPandaFile->IsCjs(entryPoint.data())) {
             CJSExecution(func, global, jsPandaFile);
         } else {
             JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();

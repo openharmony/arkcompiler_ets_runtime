@@ -25,7 +25,6 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/frame_handler.h"
-#include "ecmascript/interpreter/slow_runtime_helper.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
@@ -248,7 +247,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjApply(JSThread *thread, const JSHandle<
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, length);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(length, argsArray);
-    return SlowRuntimeHelper::NewObject(info);
+    return NewObject(info);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreateIterResultObj(JSThread *thread, const JSHandle<JSTaggedValue> &value,
@@ -266,6 +265,19 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionAwaitUncaught(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> &value)
 {
     JSAsyncFunction::AsyncFunctionAwait(thread, asyncFuncObj, value);
+    if (asyncFuncObj->IsAsyncGeneratorObject()) {
+        JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObj);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSAsyncGeneratorObject> generator = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
+        JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue());
+        if (queue->Empty()) {
+            return JSTaggedValue::Undefined();
+        }
+        JSHandle<AsyncGeneratorRequest> next(thread, queue->Front());
+        JSHandle<PromiseCapability> completion(thread, next->GetCapability());
+        JSHandle<JSPromise> promise(thread, completion->GetPromise());
+        return promise.GetTaggedValue();
+    }
     JSHandle<JSAsyncFuncObject> asyncFuncObjHandle(asyncFuncObj);
     JSHandle<JSPromise> promise(thread, asyncFuncObjHandle->GetPromise());
 
@@ -887,7 +899,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
         JSHandle<JSAsyncGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
         // save stack, should copy cur_frame, function execute over will free cur_frame
-        SlowRuntimeHelper::SaveFrameToContext(thread, genContextHandle);
+        SaveFrameToContext(thread, genContextHandle);
 
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
@@ -901,7 +913,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
         // save stack, should copy cur_frame, function execute over will free cur_frame
-        SlowRuntimeHelper::SaveFrameToContext(thread, genContextHandle);
+        SaveFrameToContext(thread, genContextHandle);
 
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
@@ -1756,7 +1768,7 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
                                                  const JSHandle<JSTaggedValue> &obj,
                                                  const JSHandle<JSTaggedValue> &array)
 {
-    if ((!obj->IsUndefined() && !obj->IsECMAObject()) || !func->IsJSFunction() || !array->IsJSArray()) {
+    if ((!obj->IsUndefined() && !obj->IsECMAObject()) || !func->IsCallable() || !array->IsJSArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "cannot Callspread", JSTaggedValue::Exception());
     }
 
@@ -1892,7 +1904,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetCallSpreadArgs(JSThread *thread, const JSH
         nextArg.Update(JSIterator::IteratorValue(thread, next).GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (UNLIKELY(argvIndex + 1 >= argvMayMaxLength)) {
-            argvMayMaxLength = argvMayMaxLength + (argvMayMaxLength >> 1U);
+            argvMayMaxLength = argvMayMaxLength + (argvMayMaxLength >> 1U) + 1U;
             argv = argv->SetCapacity(thread, argv, argvMayMaxLength);
         }
         argv->Set(thread, argvIndex++, nextArg);

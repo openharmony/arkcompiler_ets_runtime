@@ -547,6 +547,7 @@ public:
     bool IsJSMapIterator() const;
     bool IsJSArrayIterator() const;
     bool IsIterator() const;
+    bool IsAsyncIterator() const;
     bool IsGeneratorFunction() const;
     bool IsAsyncGeneratorFunction() const;
     bool IsGeneratorObject() const;

@@ -94,7 +94,7 @@ void TypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std
             acc_.ReplaceStateIn(*useIt, successControl[0]);
             useIt = acc_.ReplaceIn(useIt, successControl[1]);
         } else if (op == OpCode::RETURN) {
-            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) == OpCode::IF_SUCCESS) {
+            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) != OpCode::IF_EXCEPTION) {
                 acc_.ReplaceStateIn(*useIt, successControl[0]);
                 acc_.ReplaceDependIn(*useIt, successControl[1]);
                 acc_.ReplaceValueIn(*useIt, outir);
@@ -255,12 +255,12 @@ GateRef TypeLowering::FastAddOrSubOrMul(GateRef left, GateRef right)
             GateRef newDoubleLeft = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
             GateRef newDoubleRight = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
             GateRef middleRet = BinaryOp<Op, MachineType::F64>(newDoubleLeft, newDoubleRight);
-            result = DoubleBuildTaggedWithNoGC(middleRet);
+            result = DoubleToTaggedDoublePtr(middleRet);
             builder_.Jump(&exit);
         }
         builder_.Bind(&notOverflow);
         {
-            result = builder_.TaggedNGC(res);
+            result = builder_.ToTaggedIntPtr(res);
             builder_.Jump(&exit);
         }
     }
@@ -268,7 +268,7 @@ GateRef TypeLowering::FastAddOrSubOrMul(GateRef left, GateRef right)
     {
         // Other situations
         auto res = BinaryOp<Op, MachineType::F64>(*doubleLeft, *doubleRight);
-        result = DoubleBuildTaggedWithNoGC(res);
+        result = DoubleToTaggedDoublePtr(res);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -283,14 +283,14 @@ GateRef TypeLowering::BinaryOp(GateRef x, GateRef y)
     return builder_.BinaryArithmetic(OpCode(Op), Type, x, y);
 }
 
-GateRef TypeLowering::DoubleBuildTaggedWithNoGC(GateRef gate)
+GateRef TypeLowering::DoubleToTaggedDoublePtr(GateRef gate)
 {
-    return builder_.DoubleToTaggedNGC(gate);
+    return builder_.DoubleToTaggedDoublePtr(gate);
 }
 
 GateRef TypeLowering::ChangeInt32ToFloat64(GateRef gate)
 {
-    return builder_.UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F64, gate);
+    return builder_.ChangeInt32ToFloat64(gate);
 }
 
 void TypeLowering::LowerTypeNewObjRange(GateRef gate, GateRef glue)
@@ -308,7 +308,7 @@ void TypeLowering::LowerTypeNewObjRange(GateRef gate, GateRef glue)
     GlobalTSTypeRef gt = GlobalTSTypeRef(ctorType.GetType());
     std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap = tsManager_->GetGtHClassIndexMap();
     int64_t index = gtHClassIndexMap[gt];
-    GateRef ihcIndex = builder_.TaggedTypeNGC(builder_.Int64(index));
+    GateRef ihcIndex = builder_.ToTaggedInt(builder_.Int64(index));
 
     size_t range = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args(range + 1);

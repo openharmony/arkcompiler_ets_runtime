@@ -46,8 +46,6 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
     MethodLiteral *methodLiterals = jsPandaFile->GetMethodLiterals();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     size_t methodIdx = 0;
-    panda_file::File::StringData sd = {static_cast<uint32_t>(methodName.size()),
-                                       reinterpret_cast<const uint8_t *>(methodName.c_str())};
     std::set<const uint8_t *> translatedCode;
     Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
     for (const uint32_t index : classIndexes) {
@@ -56,7 +54,8 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        cda.EnumerateMethods([jsPandaFile, &translatedCode, &sd, methodLiterals, &methodIdx, pf]
+        CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
+        cda.EnumerateMethods([jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, methodName, &desc]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
             auto methodId = mda.GetMethodId();
@@ -66,9 +65,16 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
             uint32_t codeSize = codeDataAccessor.GetCodeSize();
 
-            uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex();
-            if (mainMethodIndex == 0 && pf->GetStringData(mda.GetNameId()) == sd) {
-                jsPandaFile->UpdateMainMethodIndex(methodId.GetOffset());
+            CString name = reinterpret_cast<const char *>(pf->GetStringData(mda.GetNameId()).data);
+            if (jsPandaFile->IsBundle()) {
+                if (name == methodName) {
+                    jsPandaFile->UpdateMainMethodIndex(mda.GetMethodId().GetOffset());
+                }
+            } else {
+                if (name == JSPandaFile::ENTRY_FUNCTION_NAME) {
+                    jsPandaFile->UpdateMainMethodIndex(
+                        mda.GetMethodId().GetOffset(), desc.substr(1, desc.size() - 2)); // 2 : skip symbol "L" and ";"
+                }
             }
 
             InitializeMemory(methodLiteral, jsPandaFile, methodId);
@@ -117,47 +123,54 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
     }
 }
 
-JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile)
+JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
+                                                       std::string_view entryPoint)
 {
+    JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<Program> program = factory->NewProgram();
 
-    {
-        JSThread *thread = vm->GetJSThread();
-        EcmaHandleScope handleScope(thread);
+    uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data());
+    int32_t index = 0;
+    int32_t total = 1;
+    if (jsPandaFile->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
+        panda_file::IndexAccessor indexAccessor(
+            *jsPandaFile->GetPandaFile(), panda_file::File::EntityId(mainMethodIndex));
+        index = indexAccessor.GetHeaderIndex();
+        total = indexAccessor.GetNumHeaders();
+#endif
+    }
 
-        uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex();
-        int32_t index = 0;
-        int32_t total = 1;
+    JSHandle<ConstantPool> constpool;
+    // Parse constpool.
+    JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, index);
+    if (constpoolVal.IsHole()) {
         if (jsPandaFile->IsNewVersion()) {
 #ifdef NEW_INSTRUCTION_DEFINE
-            panda_file::IndexAccessor indexAccessor(
-                *jsPandaFile->GetPandaFile(), panda_file::File::EntityId(mainMethodIndex));
-            index = indexAccessor.GetHeaderIndex();
-            total = indexAccessor.GetNumHeaders();
+            constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
 #endif
-        }
-
-        JSTaggedValue constpool = vm->FindConstpool(jsPandaFile, index);
-        if (constpool.IsHole()) {
-            if (jsPandaFile->IsNewVersion()) {
-#ifdef NEW_INSTRUCTION_DEFINE
-                constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
-#endif
-            } else {
-                constpool = ParseConstPool(vm, jsPandaFile);
+        } else {
+            CString entry = "";
+            if (!jsPandaFile->IsBundle()) {
+                entry = entryPoint.data();
             }
-            vm->AddConstpool(jsPandaFile, constpool, index, total);
+            constpool = ParseConstPool(vm, jsPandaFile, entry);
         }
+        vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);
+    } else {
+        constpool = JSHandle<ConstantPool>(thread, constpoolVal);
+    }
 
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    {
+        EcmaHandleScope handleScope(thread);
 
         auto methodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
         if (methodLiteral == nullptr) {
             program->SetMainFunction(thread, JSTaggedValue::Undefined());
         } else {
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
-
             JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
             JSHandle<JSFunction> mainFunc =
                 factory->NewJSFunctionByHClass(method, hclass, FunctionKind::BASE_CONSTRUCTOR);
@@ -169,13 +182,15 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     return program;
 }
 
-JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
+JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
+                                                           const CString &entryPoint)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
     JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex + 1);
 
+    EcmaHandleScope handleScope(thread);
     // Put JSPandaFile at the last index of constpool.
     JSHandle<JSNativePointer> jsPandaFilePointer = factory->NewJSNativePointer(
         const_cast<JSPandaFile *>(jsPandaFile), JSPandaFileManager::RemoveJSPandaFile,
@@ -189,7 +204,7 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     if (isLoadedAOT) {
-        JSTaggedValue constPoolInfo = vm->GetTSManager()->GetConstantPoolInfo();
+        JSHandle<TaggedArray> constPoolInfo = vm->GetTSManager()->GetConstantPoolInfo();
         ConstantPoolProcessor::RestoreConstantPoolInfo(vm->GetJSThread(), constPoolInfo, jsPandaFile, constpool);
     }
 #endif
@@ -299,7 +314,7 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
         } else if (value.GetConstpoolType() == ConstPoolType::ARRAY_LITERAL) {
             size_t index = it.first;
             JSHandle<TaggedArray> literal =LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool));
+                thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool), entryPoint);
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, literal);
             }
@@ -311,7 +326,7 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
         } else if (value.GetConstpoolType() == ConstPoolType::CLASS_LITERAL) {
             size_t index = it.first;
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool));
+                thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool), entryPoint);
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, literal);
             }
@@ -319,7 +334,7 @@ JSTaggedValue PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile 
         }
     }
 
-    return constpool.GetTaggedValue();
+    return constpool;
 }
 
 #define ADD_NOP_INST(pc, oldLen, newOpcode)                              \

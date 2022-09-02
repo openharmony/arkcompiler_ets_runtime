@@ -23,11 +23,15 @@
 #include "ecmascript/mem/c_containers.h"
 
 #include "libpandafile/file.h"
-
 namespace panda {
 namespace ecmascript {
 class JSPandaFile {
 public:
+    struct JSRecordInfo {
+        uint32_t mainMethodIndex {0};
+        bool isCjs {false};
+        int moduleRecordIdx {-1};
+    };
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
     static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
@@ -37,6 +41,15 @@ public:
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char TYPE_FLAG[] = "typeFlag";
     static constexpr char TYPE_SUMMARY_INDEX[] = "typeSummaryIndex";
+    
+    static constexpr char IS_COMMON_JS[] = "isCommonjs";
+    static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
+    static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
+    static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
+    static constexpr char MERGE_ABC_PATH[] = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    static constexpr char NODE_MODULES[] = "node_modules";
+    static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
+    static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
@@ -78,9 +91,13 @@ public:
         return constpoolIndex_;
     }
 
-    uint32_t GetMainMethodIndex() const
+    uint32_t GetMainMethodIndex(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
-        return mainMethodIndex_;
+        auto info = jsRecordInfo_.find(recordName);
+        if (info != jsRecordInfo_.end()) {
+            return info->second.mainMethodIndex;
+        }
+        return 0;
     }
 
     const CUnorderedMap<uint32_t, uint64_t> &GetConstpoolMap() const
@@ -90,14 +107,24 @@ public:
 
     uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset);
 
-    void UpdateMainMethodIndex(uint32_t mainMethodIndex)
+    void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
     {
-        mainMethodIndex_ = mainMethodIndex;
+        auto info = jsRecordInfo_.find(recordName);
+        if (info != jsRecordInfo_.end()) {
+            info->second.mainMethodIndex = mainMethodIndex;
+        }
     }
 
-    MethodLiteral *FindMethodLiteral(uint32_t offset) const
+    MethodLiteral *FindMethodLiteral(uint32_t offset) const;
+
+    int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
-        return methodLiteralMap_.at(offset);
+        auto info = jsRecordInfo_.find(recordName);
+        if (info != jsRecordInfo_.end()) {
+            return info->second.moduleRecordIdx;
+        }
+        // The array subscript will not have a negative number, and returning -1 means the search failed
+        return -1;
     }
 
     Span<const uint32_t> GetClasses() const
@@ -105,14 +132,13 @@ public:
         return pf_->GetClasses();
     }
 
-    bool PUBLIC_API IsModule() const
-    {
-        return isModule_;
-    }
+    bool PUBLIC_API IsModule(const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
-    bool IsCjs() const
+    bool IsCjs(const CString &recordName = ENTRY_FUNCTION_NAME) const;
+
+    bool IsBundle() const
     {
-        return isCjs_;
+        return isBundle_;
     }
 
     bool HasTSTypes() const
@@ -145,26 +171,42 @@ public:
         return isNewVersion_;
     }
 
+    bool HasRecord(const CString &recordName) const
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info != jsRecordInfo_.end()) {
+            return true;
+        }
+        return false;
+    }
+    void checkIsBundle();
+
+    CString FindrecordName(const CString &record) const;
+
+    static std::string ParseOhmUrl(std::string fileName);
+
 private:
-    void Initialize();
+    void InitializeUnMergedPF();
+    void InitializeMergedPF();
 
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
 
-    uint32_t constpoolIndex_ {0};
+    uint32_t constpoolIndex_ {0}; // Index 0 is JSPandaFile NativePointer.
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
-    uint32_t mainMethodIndex_ {0};
     MethodLiteral *methodLiterals_ {nullptr};
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     const panda_file::File *pf_ {nullptr};
     CString desc_;
-    bool isModule_ {false};
-    bool isCjs_ {false};
     bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
     uint32_t typeSummaryIndex_ {0};
     bool isNewVersion_ {true};
+
+    // marge abc
+    bool isBundle_ {true}; // isBundle means app compile mode is JSBundle
+    CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
 };
 }  // namespace ecmascript
 }  // namespace panda

@@ -65,7 +65,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        cda.EnumerateMethods([methods, &methodIdx, pf, &processedInsns, jsPandaFile, &methodPcInfos, &sd]
+        cda.EnumerateMethods([methods, &methodIdx, pf, &processedInsns, jsPandaFile, &methodPcInfos, &sd, methodName]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
             ASSERT(codeId.has_value());
@@ -76,7 +76,7 @@ void BytecodeInfoCollector::ProcessClasses(JSPandaFile *jsPandaFile, const CStri
 
             uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex();
             if (mainMethodIndex == 0 && pf->GetStringData(mda.GetNameId()) == sd) {
-                jsPandaFile->UpdateMainMethodIndex(mda.GetMethodId().GetOffset());
+                jsPandaFile->UpdateMainMethodIndex(mda.GetMethodId().GetOffset(), methodName);
             }
 
             new (methodLiteral) MethodLiteral(jsPandaFile, mda.GetMethodId());

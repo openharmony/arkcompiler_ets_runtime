@@ -834,6 +834,13 @@ public:
 class PUBLIC_API RegExpRef : public ObjectRef {
 public:
     Local<StringRef> GetOriginalSource(const EcmaVM *vm);
+    std::string GetOriginalFlags();
+    Local<JSValueRef> IsGlobal(const EcmaVM *vm);
+    Local<JSValueRef> IsIgnoreCase(const EcmaVM *vm);
+    Local<JSValueRef> IsMultiline(const EcmaVM *vm);
+    Local<JSValueRef> IsDotAll(const EcmaVM *vm);
+    Local<JSValueRef> IsUtf16(const EcmaVM *vm);
+    Local<JSValueRef> IsStick(const EcmaVM *vm);
 };
 
 class PUBLIC_API DateRef : public ObjectRef {
@@ -997,7 +1004,6 @@ public:
     {
         return isWorker_;
     }
-
 private:
     std::string GetGcType() const
     {
@@ -1181,7 +1187,11 @@ public:
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
     static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
+    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                          const std::string &baseFileName);
     static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
+    static bool IsBundle(EcmaVM *vm);
+    static void SetBundle(EcmaVM *vm, bool value);
 private:
     static int vmCount_;
     static bool initialize_;

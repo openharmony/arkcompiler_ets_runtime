@@ -33,7 +33,7 @@ public:
 
     ~JSPandaFileManager();
 
-    JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+    JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
     const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint);
 
@@ -63,6 +63,7 @@ public:
 
     void InsertJSPandaFile(const JSPandaFile *jsPandaFile);
 
+    const JSPandaFile *FindJSPandaFile(const CString &filename);
 private:
     JSPandaFileManager() = default;
 

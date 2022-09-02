@@ -395,6 +395,16 @@ public:
         exceptionBCList_.clear();
     }
 
+    bool IsBundle() const
+    {
+        return isBundle_;
+    }
+
+    void SetBundle(bool value)
+    {
+        isBundle_ = value;
+    }
+
 #if !WIN_OR_MAC_PLATFORM
     void DeleteHeapProfile();
     HeapProfilerInterface *GetOrNewHeapProfile();
@@ -445,7 +455,7 @@ private:
 
     void SetMicroJobQueue(job::MicroJobQueue *queue);
 
-    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile);
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                           const JSPandaFile *jsPandaFile);
@@ -472,7 +482,6 @@ private:
     bool globalConstInitialized_ {false};
     GCStats *gcStats_ {nullptr};
     bool isUncaughtExceptionRegistered_ {false};
-
     // VM memory management.
     EcmaStringTable *stringTable_ {nullptr};
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
@@ -505,7 +514,8 @@ private:
 
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
-
+    // merge abc
+    bool isBundle_ {true}; // isBundle means app compile mode is JSBundle
 #if !WIN_OR_MAC_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif

@@ -135,22 +135,16 @@ class PUBLIC_API ConstantPoolProcessor {
 public:
     ConstantPoolProcessor(EcmaVM *vm) : vm_(vm), index_(0) {}
 
-    void InitializeConstantPoolInfos(size_t nums);
+    JSTaggedValue GetConstantPoolInfos(size_t nums);
 
-    void CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool);
+    void CollectConstantPoolInfo(const JSPandaFile* pf, JSHandle<JSTaggedValue> constantPool);
 
-    static void RestoreConstantPoolInfo(JSThread *thread, JSTaggedValue constPoolInfo,
+    static void RestoreConstantPoolInfo(JSThread *thread, JSHandle<TaggedArray> constPoolInfos,
                                         const JSPandaFile* pf, JSHandle<ConstantPool> constPool);
 
-    JSTaggedValue GetInfos() const
-    {
-        return infos_;
-    }
-
 private:
-    JSTaggedValue GenerateConstantPoolInfo(const JSHandle<ConstantPool> constantPool);
+    JSTaggedValue GenerateConstantPoolInfo(JSHandle<ConstantPool> constantPool);
 
-    JSTaggedValue infos_ {JSTaggedValue::Hole()};
     EcmaVM *vm_ {nullptr};
     size_t index_ {0};
     static const int ITEM_SIZE = 2;

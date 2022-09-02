@@ -177,13 +177,11 @@ public:
     GateRef TaggedIsFalse(GateRef x);
     GateRef TaggedIsBoolean(GateRef x);
     GateRef TaggedGetInt(GateRef x);
-    GateRef Int8ToTaggedTypeNGC(GateRef x);
-    GateRef Int16ToTaggedNGC(GateRef x);
-    GateRef Int16ToTaggedTypeNGC(GateRef x);
-    GateRef IntToTaggedNGC(GateRef x);
-    GateRef IntToTaggedTypeNGC(GateRef x);
-    GateRef DoubleBuildTaggedWithNoGC(GateRef x);
-    GateRef DoubleBuildTaggedTypeWithNoGC(GateRef x);
+    GateRef Int8ToTaggedInt(GateRef x);
+    GateRef Int16ToTaggedInt(GateRef x);
+    GateRef IntToTaggedPtr(GateRef x);
+    GateRef IntToTaggedInt(GateRef x);
+    GateRef DoubleToTaggedDoublePtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
     GateRef TaggedTrue();
     GateRef TaggedFalse();
@@ -364,7 +362,7 @@ public:
     GateRef ChangeUInt32ToFloat64(GateRef x);
     GateRef ChangeFloat64ToInt32(GateRef x);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
-    GateRef ChangeInt64ToTagged(GateRef x);
+    GateRef Int64ToTaggedPtr(GateRef x);
     GateRef ChangeInt16ToInt8(GateRef x);
     GateRef CastInt64ToFloat64(GateRef x);
     GateRef SExtInt32ToInt64(GateRef x);

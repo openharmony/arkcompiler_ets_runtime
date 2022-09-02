@@ -66,7 +66,7 @@ public:
     }
 
 #ifdef NEW_INSTRUCTION_DEFINE
-    static JSTaggedValue CreateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, uint32_t methodId)
+    static JSHandle<ConstantPool> CreateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, uint32_t methodId)
     {
         const panda_file::File::IndexHeader *mainIndex =
             jsPandaFile->GetPandaFile()->GetIndexHeader(panda_file::File::EntityId(methodId));
@@ -86,7 +86,7 @@ public:
             factory->NewJSNativePointer(const_cast<panda_file::File::IndexHeader *>(mainIndex));
         constpool->Set(vm->GetJSThread(), mainIndex->method_idx_size, indexHeaderPointer.GetTaggedValue());
 
-        return constpool.GetTaggedValue();
+        return constpool;
     }
 
     panda_file::File::IndexHeader *GetIndexHeader() const
@@ -131,7 +131,7 @@ public:
             auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
             JSTaggedValue newConstpool = vm->FindConstpool(jsPandaFile, constpoolIndex);
             if (newConstpool.IsHole()) {
-                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, id.GetOffset());
+                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, id.GetOffset()).GetTaggedValue();
                 vm->AddConstpool(jsPandaFile, newConstpool, constpoolIndex);
             }
             method->SetConstantPool(thread, newConstpool);
@@ -167,7 +167,7 @@ public:
             auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
             JSTaggedValue newConstpool = vm->FindConstpool(jsPandaFile, constpoolIndex);
             if (newConstpool.IsHole()) {
-                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, id.GetOffset());
+                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, id.GetOffset()).GetTaggedValue();
                 vm->AddConstpool(jsPandaFile, newConstpool, constpoolIndex);
             }
             method->SetConstantPool(thread, newConstpool);
@@ -200,14 +200,16 @@ public:
 
             panda_file::IndexAccessor newIndexAccessor(*pf, literalId);
             auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
+            JSHandle<ConstantPool> newConstpoolHandle;
             JSTaggedValue newConstpool = vm->FindConstpool(jsPandaFile, constpoolIndex);
             if (newConstpool.IsHole()) {
-                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, literalId.GetOffset());
-                vm->AddConstpool(jsPandaFile, newConstpool, constpoolIndex);
+                newConstpoolHandle = ConstantPool::CreateConstPool(vm, jsPandaFile, literalId.GetOffset());
+                vm->AddConstpool(jsPandaFile, newConstpoolHandle.GetTaggedValue(), constpoolIndex);
+            } else {
+                newConstpoolHandle = JSHandle<ConstantPool>(thread, newConstpool);
             }
-            JSHandle<JSTaggedValue> newConstpoolHandle(thread, newConstpool);
             JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, literalId, newConstpoolHandle);
+                thread, jsPandaFile, literalId, JSHandle<JSTaggedValue>(newConstpoolHandle));
 
             val = literalArray.GetTaggedValue();
             constpool->Set(thread, literal, val);

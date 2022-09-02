@@ -62,7 +62,7 @@ public:
      * \brief called by the ecmavm when panda file is loaded
      * @param pandaFileName Path to panda file that is loaded
      */
-    virtual void LoadModule(std::string_view pandaFileName) = 0;
+    virtual void LoadModule(std::string_view pandaFileName, std::string_view entryPoint) = 0;
 
     /**
      * \brief called before executing pending job

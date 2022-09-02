@@ -24,17 +24,33 @@ namespace panda::ecmascript {
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thread, const CString &filename,
                                                                    std::string_view entryPoint)
 {
-    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, entryPoint);
+    CString entry = entryPoint.data();
+    CString name = filename;
+#if ECMASCRIPT_ENABLE_MERGE_ABC
+    if (!thread->GetEcmaVM()->IsBundle()) {
+        entry = JSPandaFile::ParseOhmUrl(filename.c_str());
+        name = JSPandaFile::MERGE_ABC_PATH;
+    }
+#endif
+    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str());
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
-    bool isModule = jsPandaFile->IsModule();
+    if (jsPandaFile->IsBundle()) {
+        entry = JSPandaFile::ENTRY_FUNCTION_NAME;
+    }
+    bool isModule = jsPandaFile->IsModule(entry.c_str());
     if (isModule) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
         EcmaVM *vm = thread->GetEcmaVM();
         ModuleManager *moduleManager = vm->GetModuleManager();
-        thread->GetEcmaVM()->GetModuleManager()->SetExecuteMode(false);
-        JSHandle<SourceTextModule> moduleRecord = moduleManager->HostResolveImportedModule(filename);
+        moduleManager->SetExecuteMode(false);
+        JSHandle<SourceTextModule> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
+        if (jsPandaFile->IsBundle()) {
+            moduleRecord = moduleManager->HostResolveImportedModule(name);
+        } else {
+            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry.c_str());
+        }
         SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {
             auto exception = thread->GetException();
@@ -44,7 +60,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         SourceTextModule::Evaluate(thread, moduleRecord);
         return JSTaggedValue::Undefined();
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile);
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str());
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
@@ -55,13 +71,24 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
-    bool isModule = jsPandaFile->IsModule();
+    CString entry;
+    if (jsPandaFile->IsBundle()) {
+        entry = JSPandaFile::ENTRY_FUNCTION_NAME;
+    } else {
+        entry = entryPoint.data();
+    }
+    bool isModule = jsPandaFile->IsModule(entry.data());
     if (isModule) {
-        thread->GetEcmaVM()->GetModuleManager()->SetExecuteMode(true);
         [[maybe_unused]] EcmaHandleScope scope(thread);
         EcmaVM *vm = thread->GetEcmaVM();
         ModuleManager *moduleManager = vm->GetModuleManager();
-        JSHandle<SourceTextModule> moduleRecord = moduleManager->HostResolveImportedModule(buffer, size, filename);
+        moduleManager->SetExecuteMode(true);
+        JSHandle<SourceTextModule> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
+        if (jsPandaFile->IsBundle()) {
+            moduleRecord = moduleManager->HostResolveImportedModule(buffer, size, filename);
+        } else {
+            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(filename, entryPoint.data());
+        }
         SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {
             auto exception = thread->GetException();
@@ -71,14 +98,15 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
         SourceTextModule::Evaluate(thread, moduleRecord, buffer, size);
         return JSTaggedValue::Undefined();
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile);
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str());
 }
 
-Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, const JSPandaFile *jsPandaFile)
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                           std::string_view entryPoint)
 {
     // For Ark application startup
     EcmaVM *vm = thread->GetEcmaVM();
-    Expected<JSTaggedValue, bool> result = vm->InvokeEcmaEntrypoint(jsPandaFile);
+    Expected<JSTaggedValue, bool> result = vm->InvokeEcmaEntrypoint(jsPandaFile, entryPoint);
     return result;
 }
 }  // namespace panda::ecmascript

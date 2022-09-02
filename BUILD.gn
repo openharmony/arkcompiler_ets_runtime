@@ -277,7 +277,14 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  defines += [ "NDEBUG" ]
+  if (is_debug) {
+    cflags_cc += [
+      "-O0",
+      "-ggdb3",
+    ]
+  } else {
+    defines += [ "NDEBUG" ]
+  }
 
   if (run_with_asan) {
     defines += [ "RUN_WITH_ASAN" ]
@@ -384,6 +391,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_generator.cpp",
   "ecmascript/builtins/builtins_global.cpp",
   "ecmascript/builtins/builtins_iterator.cpp",
+  "ecmascript/builtins/builtins_async_iterator.cpp",
   "ecmascript/builtins/builtins_json.cpp",
   "ecmascript/builtins/builtins_map.cpp",
   "ecmascript/builtins/builtins_math.cpp",
@@ -444,7 +452,6 @@ ecma_source = [
   "ecmascript/interpreter/frame_handler.cpp",
   "ecmascript/interpreter/interpreter.cpp",
   "ecmascript/interpreter/interpreter_assembly.cpp",
-  "ecmascript/interpreter/slow_runtime_helper.cpp",
   "ecmascript/interpreter/slow_runtime_stub.cpp",
   "ecmascript/jobs/micro_job_queue.cpp",
   "ecmascript/jspandafile/js_pandafile.cpp",

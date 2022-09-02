@@ -168,7 +168,7 @@ GateRef CircuitBuilder::SExtInt8ToInt64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
 }
 
-GateRef CircuitBuilder::ChangeInt64ToTagged(GateRef x)
+GateRef CircuitBuilder::Int64ToTaggedPtr(GateRef x)
 {
     return TaggedNumber(OpCode(OpCode::INT64_TO_TAGGED), x);
 }
@@ -178,6 +178,7 @@ GateRef CircuitBuilder::IsSpecial(GateRef x, JSTaggedType type)
 {
     return Equal(x, Int64(type));
 }
+
 GateRef CircuitBuilder::TaggedIsInt(GateRef x)
 {
     return Equal(Int64And(x, Int64(JSTaggedValue::TAG_MARK)),
@@ -303,32 +304,26 @@ GateRef CircuitBuilder::TaggedGetInt(GateRef x)
     return TruncInt64ToInt32(Int64And(x, Int64(~JSTaggedValue::TAG_MARK)));
 }
 
-GateRef CircuitBuilder::TaggedTypeNGC(GateRef x)
+GateRef CircuitBuilder::ToTaggedInt(GateRef x)
 {
     return Int64Or(x, Int64(JSTaggedValue::TAG_INT));
 }
 
-GateRef CircuitBuilder::TaggedNGC(GateRef x)
+GateRef CircuitBuilder::ToTaggedIntPtr(GateRef x)
 {
-    return ChangeInt64ToTagged(Int64Or(x, Int64(JSTaggedValue::TAG_INT)));
+    return Int64ToTaggedPtr(Int64Or(x, Int64(JSTaggedValue::TAG_INT)));
 }
 
-GateRef CircuitBuilder::DoubleToTaggedNGC(GateRef x)
+GateRef CircuitBuilder::DoubleToTaggedDoublePtr(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
-    return ChangeInt64ToTagged(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
+    return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
-GateRef CircuitBuilder::DoubleToTaggedTypeNGC(GateRef x)
+GateRef CircuitBuilder::DoubleToTaggedDouble(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
     return Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
-}
-
-GateRef CircuitBuilder::Tagged(GateRef x)
-{
-    acc_.SetGateType(x, GateType::TaggedValue());
-    return Int64Or(x, Int64(JSTaggedValue::TAG_INT));
 }
 
 GateRef CircuitBuilder::DoubleToTagged(GateRef x)

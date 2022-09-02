@@ -30,12 +30,19 @@ public:
         reservedBaseInfo_.clear();
     }
 
-    bool LoadPatch(JSThread *thread, const CString &patchFileName, const CString &baseFileName);
-    bool UnLoadPatch(JSThread *thread, const CString &patchFileName);
+    bool LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
+    bool LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                   const std::string &baseFileName);
+    bool UnLoadPatch(JSThread *thread, const std::string &patchFileName);
 
 private:
+    bool ReplaceMethod(JSThread *thread,
+                       const JSHandle<ConstantPool> &baseConstpool,
+                       const JSHandle<ConstantPool> &patchConstpool,
+                       const JSHandle<Program> &patchProgram);
+
     const JSPandaFile *baseFile_ {nullptr};
-    CString patchFileName_;
+    const JSPandaFile *patchFile_ {nullptr};
 
     // key: base constpool index, value: base methodLiteral.
     CUnorderedMap<uint32_t, MethodLiteral *> reservedBaseInfo_ {}; // for unload patch.

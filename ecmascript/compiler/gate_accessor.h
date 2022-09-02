@@ -310,7 +310,6 @@ public:
     GateRef GetState(GateRef gate, size_t idx = 0) const;
     GateRef GetDep(GateRef gate, size_t idx = 0) const;
     size_t GetImmediateId(GateRef gate) const;
-    bool IsDependIn(const UseIterator &useIt) const;
     void SetDep(GateRef gate, GateRef depGate, size_t idx = 0);
     UseIterator ReplaceIn(const UseIterator &useIt, GateRef replaceGate);
     // Add for lowering
@@ -347,6 +346,10 @@ public:
     bool IsNotMarked(GateRef gate) const;
     void SetFinished(GateRef gate);
     void SetVisited(GateRef gate);
+    bool IsDependIn(const UseIterator &useIt) const;
+    bool IsValueIn(const UseIterator &useIt) const;
+    bool IsExceptionState(const UseIterator &useIt) const;
+    bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
 
 private:

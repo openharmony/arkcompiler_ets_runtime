@@ -71,9 +71,12 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
             usleep(ts);
             endTime = GetMicrosecondsTimeStamp();
         }
+        if (generator_->GetMethodNodeCount() + generator_->GetframeStackLength() >= MAX_NODE_COUNT) {
+            break;
+        }
         generator_->AddSample(endTime, outToFile_);
         if (outToFile_) {
-            if (generator_->GetMethodNodes().size() >= 10 || // 10:Number of nodes currently stored
+            if (generator_->GetMethodNodeCount() >= 10 || // 10:Number of nodes currently stored
                 generator_->GetSamples().size() == 100) { // 100:Number of Samples currently stored
                 generator_->WriteMethodsAndSampleInfo(false);
             }

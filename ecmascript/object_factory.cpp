@@ -866,6 +866,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
+        case JSType::JS_ASYNCITERATOR:
         case JSType::JS_ITERATOR: {
             break;
         }
@@ -3584,6 +3585,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetEnvironment(thread_, undefinedValue);
     obj->SetNamespace(thread_, undefinedValue);
     obj->SetEcmaModuleFilename(thread_, undefinedValue);
+    obj->SetEcmaModuleRecordName(thread_, undefinedValue);
     obj->SetRequestedModules(thread_, undefinedValue);
     obj->SetImportEntries(thread_, undefinedValue);
     obj->SetLocalExportEntries(thread_, undefinedValue);

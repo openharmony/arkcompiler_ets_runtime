@@ -36,17 +36,18 @@ public:
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
                                    JSHandle<JSTaggedValue> constpool);
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
-                                                    JSHandle<JSTaggedValue> constpool);
+                                                    JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
 #ifdef NEW_INSTRUCTION_DEFINE
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
                                    JSHandle<JSTaggedValue> constpool);
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                     panda_file::File::EntityId index,
-                                                    JSHandle<JSTaggedValue> constpool);
+                                                    JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
 #endif
     static JSHandle<JSFunction> DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                      JSHandle<Method> method, FunctionKind kind, uint16_t length);
+                                                      JSHandle<Method> method, FunctionKind kind, uint16_t length,
+                                                      const CString &entryPoint = "");
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_LITERAL_DATA_EXTRACTOR_H
