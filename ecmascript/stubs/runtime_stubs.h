@@ -254,7 +254,9 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(JSObjectGetMethod)                  \
     V(DebugAOTPrint)                      \
     V(OptLdSuperByValue)                  \
-    V(OptStSuperByValue)
+    V(OptStSuperByValue)                  \
+    V(BigIntEqual)                        \
+    V(StringEqual)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

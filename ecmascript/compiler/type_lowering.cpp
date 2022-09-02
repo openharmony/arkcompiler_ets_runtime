@@ -70,6 +70,15 @@ void TypeLowering::Lower(GateRef gate)
         case GREATEREQDYN_PREF_V8:
             LowerTypeGreaterEqDyn(gate);
             break;
+        case DIV2DYN_PREF_V8:
+            LowerTypeDiv2Dyn(gate);
+            break;
+        case EQDYN_PREF_V8:
+            LowerTypeEqDyn(gate);
+            break;
+        case NOTEQDYN_PREF_V8:
+            LowerTypeNotEqDyn(gate);
+            break;
         default:break;
     }
 }
@@ -333,12 +342,6 @@ GateRef TypeLowering::IntToTaggedNGc(GateRef x)
     return builder_.ToTaggedIntPtr(val);
 }
 
-GateRef TypeLowering::DoubleIsNAN(GateRef x)
-{
-    GateRef isEqual = builder_.Equal(x, x);
-    return builder_.Equal(builder_.SExtInt1ToInt32(isEqual), builder_.Int32(0));
-}
-
 GateRef TypeLowering::DoubleIsINF(GateRef x)
 {
     GateRef infinity = builder_.Double(base::POSITIVE_INFINITY);
@@ -446,11 +449,11 @@ GateRef TypeLowering::GeneralMod(GateRef left, GateRef right, GateRef glue)
             builder_.Bind(&rightNotZero);
             {
                 Label rightNotNan(&builder_);
-                builder_.Branch(DoubleIsNAN(*doubleRight), &rightIsZeroOrNanOrLeftIsNanOrInf, &rightNotNan);
+                builder_.Branch(builder_.DoubleIsNAN(*doubleRight), &rightIsZeroOrNanOrLeftIsNanOrInf, &rightNotNan);
                 builder_.Bind(&rightNotNan);
                 {
                     Label leftNotNan(&builder_);
-                    builder_.Branch(DoubleIsNAN(*doubleLeft), &rightIsZeroOrNanOrLeftIsNanOrInf, &leftNotNan);
+                    builder_.Branch(builder_.DoubleIsNAN(*doubleLeft), &rightIsZeroOrNanOrLeftIsNanOrInf, &leftNotNan);
                     builder_.Bind(&leftNotNan);
                     builder_.Branch(DoubleIsINF(*doubleLeft), &rightIsZeroOrNanOrLeftIsNanOrInf,
                                     &rightNotZeroAndNanAndLeftNotNanAndInf);
@@ -658,6 +661,225 @@ GateRef TypeLowering::LessEq(GateRef left, GateRef right)
     {
         result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
         builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef TypeLowering::FastDiv(GateRef left, GateRef right)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+    DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+    Label leftIsNumber(&builder_);
+    Label leftNotNumberOrRightNotNumber(&builder_);
+    Label leftIsNumberAndRightIsNumber(&builder_);
+    Label leftIsDoubleAndRightIsDouble(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    builder_.Bind(&leftIsNumber);
+    {
+        Label rightIsNumber(&builder_);
+        builder_.Branch(builder_.TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        builder_.Bind(&rightIsNumber);
+        {
+            Label leftIsInt(&builder_);
+            Label leftNotInt(&builder_);
+            builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftNotInt);
+            builder_.Bind(&leftIsInt);
+            {
+                doubleLeft = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+                builder_.Jump(&leftIsNumberAndRightIsNumber);
+            }
+            builder_.Bind(&leftNotInt);
+            {
+                doubleLeft = builder_.TaggedCastToDouble(left);
+                builder_.Jump(&leftIsNumberAndRightIsNumber);
+            }
+        }
+    }
+    builder_.Bind(&leftNotNumberOrRightNotNumber);
+    builder_.Jump(&exit);
+    builder_.Bind(&leftIsNumberAndRightIsNumber);
+    {
+        Label rightIsInt(&builder_);
+        Label rightNotInt(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightNotInt);
+        builder_.Bind(&rightIsInt);
+        {
+            doubleRight = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+            builder_.Jump(&leftIsDoubleAndRightIsDouble);
+        }
+        builder_.Bind(&rightNotInt);
+        {
+            doubleRight = builder_.TaggedCastToDouble(right);
+            builder_.Jump(&leftIsDoubleAndRightIsDouble);
+        }
+    }
+    builder_.Bind(&leftIsDoubleAndRightIsDouble);
+    {
+        Label rightIsZero(&builder_);
+        Label rightNotZero(&builder_);
+        builder_.Branch(builder_.Equal(*doubleRight, builder_.Double(0.0)), &rightIsZero, &rightNotZero);
+        builder_.Bind(&rightIsZero);
+        {
+            Label leftIsZero(&builder_);
+            Label leftNotZero(&builder_);
+            Label leftIsZeroOrNan(&builder_);
+            Label leftNotZeroAndNotNan(&builder_);
+            builder_.Branch(builder_.Equal(*doubleLeft, builder_.Double(0.0)), &leftIsZero, &leftNotZero);
+            builder_.Bind(&leftIsZero);
+            {
+                builder_.Jump(&leftIsZeroOrNan);
+            }
+            builder_.Bind(&leftNotZero);
+            {
+                Label leftIsNan(&builder_);
+                builder_.Branch(builder_.DoubleIsNAN(*doubleLeft), &leftIsNan, &leftNotZeroAndNotNan);
+                builder_.Bind(&leftIsNan);
+                {
+                    builder_.Jump(&leftIsZeroOrNan);
+                }
+            }
+            builder_.Bind(&leftIsZeroOrNan);
+            {
+                result = DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
+                builder_.Jump(&exit);
+            }
+            builder_.Bind(&leftNotZeroAndNotNan);
+            {
+                GateRef intLeftTmp = builder_.CastDoubleToInt64(*doubleLeft);
+                GateRef intRightTmp = builder_.CastDoubleToInt64(*doubleRight);
+                GateRef flagBit = builder_.Int64And(builder_.Int64Xor(intLeftTmp, intRightTmp),
+                                                    builder_.Int64(base::DOUBLE_SIGN_MASK));
+                GateRef tmpResult =
+                    builder_.Int64Xor(flagBit, builder_.CastDoubleToInt64(builder_.Double(base::POSITIVE_INFINITY)));
+                result = DoubleToTaggedDoublePtr(builder_.CastInt64ToFloat64(tmpResult));
+                builder_.Jump(&exit);
+            }
+        }
+        builder_.Bind(&rightNotZero);
+        {
+            result = DoubleToTaggedDoublePtr(BinaryOp<OpCode::FDIV, MachineType::F64>(*doubleLeft, *doubleRight));
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    Label leftEqRight(&builder_);
+    Label leftNotEqRight(&builder_);
+    Label exit(&builder_);
+
+    builder_.Branch(builder_.Equal(left, right), &leftEqRight, &leftNotEqRight);
+    builder_.Bind(&leftEqRight);
+    {
+        Label leftIsDouble(&builder_);
+        Label leftNotDoubleOrLeftNotNan(&builder_);
+        builder_.Branch(builder_.TaggedIsDouble(left), &leftIsDouble, &leftNotDoubleOrLeftNotNan);
+        builder_.Bind(&leftIsDouble);
+        {
+            GateRef doubleLeft = builder_.TaggedCastToDouble(left);
+            Label leftIsNan(&builder_);
+            builder_.Branch(builder_.DoubleIsNAN(doubleLeft), &leftIsNan, &leftNotDoubleOrLeftNotNan);
+            builder_.Bind(&leftIsNan);
+            {
+                result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                builder_.Jump(&exit);
+            }
+        }
+        builder_.Bind(&leftNotDoubleOrLeftNotNan);
+        {
+            result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&leftNotEqRight);
+    {
+        Label leftIsNumber(&builder_);
+        Label leftNotNumberOrLeftNotIntOrRightNotInt(&builder_);
+        builder_.Branch(builder_.TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrLeftNotIntOrRightNotInt);
+        builder_.Bind(&leftIsNumber);
+        {
+            Label leftIsInt(&builder_);
+            builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftNotNumberOrLeftNotIntOrRightNotInt);
+            {
+                builder_.Bind(&leftIsInt);
+                {
+                    Label rightIsInt(&builder_);
+                    builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &leftNotNumberOrLeftNotIntOrRightNotInt);
+                    builder_.Bind(&rightIsInt);
+                    {
+                        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                        builder_.Jump(&exit);
+                    }
+                }
+            }
+        }
+        builder_.Bind(&leftNotNumberOrLeftNotIntOrRightNotInt);
+        {
+            Label rightIsUndefinedOrNull(&builder_);
+            Label leftOrRightNotUndefinedOrNull(&builder_);
+            builder_.Branch(builder_.TaggedIsUndefinedOrNull(right), &rightIsUndefinedOrNull,
+                            &leftOrRightNotUndefinedOrNull);
+            builder_.Bind(&rightIsUndefinedOrNull);
+            {
+                Label leftIsHeapObject(&builder_);
+                Label leftNotHeapObject(&builder_);
+                builder_.Branch(builder_.TaggedIsHeapObject(left), &leftIsHeapObject, &leftNotHeapObject);
+                builder_.Bind(&leftIsHeapObject);
+                {
+                    result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&leftNotHeapObject);
+                {
+                    Label leftIsUndefinedOrNull(&builder_);
+                    builder_.Branch(builder_.TaggedIsUndefinedOrNull(left), &leftIsUndefinedOrNull,
+                                    &leftOrRightNotUndefinedOrNull);
+                    builder_.Bind(&leftIsUndefinedOrNull);
+                    {
+                        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+                        builder_.Jump(&exit);
+                    }
+                }
+            }
+            builder_.Bind(&leftOrRightNotUndefinedOrNull);
+            {
+                Label leftIsBoolean(&builder_);
+                Label leftNotBooleanOrRightNotSpecial(&builder_);
+                builder_.Branch(builder_.TaggedIsBoolean(left), &leftIsBoolean, &leftNotBooleanOrRightNotSpecial);
+                builder_.Bind(&leftIsBoolean);
+                {
+                    Label rightIsSpecial(&builder_);
+                    builder_.Branch(builder_.TaggedIsSpecial(right), &rightIsSpecial, &leftNotBooleanOrRightNotSpecial);
+                    builder_.Bind(&rightIsSpecial);
+                    {
+                        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                        builder_.Jump(&exit);
+                    }
+                }
+                builder_.Bind(&leftNotBooleanOrRightNotSpecial);
+                {
+                    builder_.Jump(&exit);
+                }
+            }
+        }
     }
     builder_.Bind(&exit);
     auto ret = *result;
@@ -946,6 +1168,113 @@ void TypeLowering::LowerTypeGreaterEqDyn(GateRef gate)
     Label successExit(&builder_);
     builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE),
                     &slowPath, &successExit);
+    builder_.Bind(&slowPath);
+    {
+        // slow path
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&successExit);
+    }
+    builder_.Bind(&successExit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TypeLowering::LowerTypeEqDyn(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    ASSERT(acc_.GetGateType(left).IsTSType() && acc_.GetGateType(right).IsTSType());
+
+    std::map<GateRef, size_t> stateGateMap;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = FastEqual(left, right);
+    Label successExit(&builder_);
+    Label slowPath(&builder_);
+    builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE), &slowPath, &successExit);
+    builder_.Bind(&slowPath);
+    {
+        // slow path
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&successExit);
+    }
+    builder_.Bind(&successExit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TypeLowering::LowerTypeNotEqDyn(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    ASSERT(acc_.GetGateType(left).IsTSType() && acc_.GetGateType(right).IsTSType());
+
+    std::map<GateRef, size_t> stateGateMap;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = FastEqual(left, right);
+    Label successExit(&builder_);
+    Label slowPath(&builder_);
+    Label fastPath(&builder_);
+    builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE), &slowPath, &fastPath);
+    builder_.Bind(&slowPath);
+    {
+        // slow path
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&successExit);
+    }
+    builder_.Bind(&fastPath);
+    {
+        Label resultIsTrue(&builder_);
+        Label resultIsFalse(&builder_);
+        builder_.Branch(builder_.TaggedIsTrue(*result), &resultIsTrue, &resultIsFalse);
+        builder_.Bind(&resultIsTrue);
+        {
+            result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+            builder_.Jump(&successExit);
+        }
+        builder_.Bind(&resultIsFalse);
+        {
+            result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+            builder_.Jump(&successExit);
+        }
+    }
+    builder_.Bind(&successExit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TypeLowering::LowerTypeDiv2Dyn(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateType leftType = acc_.GetGateType(left);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType rightType = acc_.GetGateType(right);
+    ASSERT(leftType.IsTSType() && rightType.IsTSType());
+
+    if (!leftType.IsNumberType() || !rightType.IsNumberType()) {
+        return;
+    }
+
+    std::map<GateRef, size_t> stateGateMap;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = FastDiv(left, right);
+    Label successExit(&builder_);
+    Label slowPath(&builder_);
+    builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE), &slowPath, &successExit);
     builder_.Bind(&slowPath);
     {
         // slow path

@@ -11,16 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("aot_type_test") {
-  testonly = true
-  deps = [
-    "typeadd:typeaddAotAction",
-    "typediv:typedivAotAction",
-    "typeequal:typeequalAotAction",
-    "typelogicalop:typelogicalopAotAction",
-    "typemod:typemodAotAction",
-    "typemul:typemulAotAction",
-    "typenotequal:typenotequalAotAction",
-    "typesub:typesubAotAction",
-  ]
-}
+false
+false
+true
+true
