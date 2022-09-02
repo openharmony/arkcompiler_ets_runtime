@@ -326,6 +326,12 @@ GateRef CircuitBuilder::DoubleToTaggedDouble(GateRef x)
     return Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
 }
 
+GateRef CircuitBuilder::DoubleIsNAN(GateRef x)
+{
+    GateRef diff = Equal(x, x);
+    return Equal(SExtInt1ToInt32(diff), Int32(0));
+}
+
 GateRef CircuitBuilder::DoubleToTagged(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
@@ -494,6 +500,30 @@ GateRef CircuitBuilder::IsCallable(GateRef obj)
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     return IsCallableFromBitField(bitfield);
+}
+
+GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label bothAreHeapObjet(env_);
+    Label bothAreStringType(env_);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    Branch(BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y)), &bothAreHeapObjet, &exit);
+    Bind(&bothAreHeapObjet);
+    {
+        Branch(TaggedObjectBothAreString(x, y), &bothAreStringType, &exit);
+        Bind(&bothAreStringType);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
 }
 
 GateRef CircuitBuilder::LogicAnd(GateRef x, GateRef y)

@@ -279,6 +279,7 @@ private:
     void LowerAsyncGeneratorResolve(GateRef gate, GateRef glue);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
     void DebugPrintBC(GateRef gate, GateRef glue, GateRef index);
+    GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

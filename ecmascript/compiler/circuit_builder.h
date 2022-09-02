@@ -337,6 +337,7 @@ public:
     inline GateRef DoubleToTaggedDoublePtr(GateRef x);
     inline GateRef DoubleToTaggedDouble(GateRef x);
     inline GateRef DoubleToTagged(GateRef x);
+    inline GateRef DoubleIsNAN(GateRef x);
     inline GateRef TaggedTrue();
     inline GateRef TaggedFalse();
     inline GateRef SExtInt8ToInt64(GateRef x);
@@ -379,11 +380,16 @@ public:
     inline GateRef IsCallableFromBitField(GateRef bitfield);
     inline GateRef LogicAnd(GateRef x, GateRef y);
     inline GateRef LogicOr(GateRef x, GateRef y);
+    inline GateRef BothAreString(GateRef x, GateRef y);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetFunctionBitFieldFromJSFunction(GateRef function);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
-    void SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value);
+    GateRef FunctionIsResolved(GateRef function);
+    GateRef GetLengthFromString(GateRef value);
+    GateRef GetHashcodeFromString(GateRef glue, GateRef value);
+    GateRef IsUtf16String(GateRef string);
+    GateRef TaggedIsBigInt(GateRef obj);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetLexicalEnv(GateRef function);
     void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
