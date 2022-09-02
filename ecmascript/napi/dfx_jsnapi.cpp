@@ -279,7 +279,7 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     if (hostVm->GetJSThread()->GetThreadId() == tid) {
         vm = const_cast<EcmaVM*>(hostVm);
     } else {
-        vm = hostVm->GetWorkerList(tid);
+        vm = hostVm->GetWorkerVm(tid);
         if (vm == nullptr) {
             return true;
         }
