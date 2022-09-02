@@ -400,7 +400,7 @@ public:
         WorkerList_.emplace(tid, workerVm);
     }
 
-    EcmaVM *GetWorkerList(uint32_t tid) const
+    EcmaVM *GetWorkerVm(uint32_t tid) const
     {
         EcmaVM *workerVm = nullptr;
         if (!WorkerList_.empty()) {
