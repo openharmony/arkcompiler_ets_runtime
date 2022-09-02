@@ -124,7 +124,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
 }
 
 JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                               size_t index, JSHandle<JSTaggedValue> constpool)
+                                                               size_t index, JSHandle<JSTaggedValue> constpool,
+                                                               const CString &entryPoint)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
@@ -139,7 +140,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     uint32_t methodId;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        index, [literals, &pos, factory, thread, jsPandaFile, &methodId, &kind, &constpool]
+        index, [literals, &pos, factory, thread, jsPandaFile, &methodId, &kind, &constpool, &entryPoint]
         (const panda_file::LiteralDataAccessor::LiteralValue &value, const LiteralTag &tag) {
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
@@ -180,7 +181,8 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
 
                     JSHandle<Method> method = factory->NewMethod(methodLiteral);
                     method->SetConstantPool(thread, constpool.GetTaggedValue());
-                    JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
+                    JSHandle<JSFunction> jsFunc =
+                        DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entryPoint);
                     jt = jsFunc.GetTaggedValue();
                     break;
                 }
@@ -209,7 +211,8 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
 
 JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                                  JSHandle<Method> method,
-                                                                 FunctionKind kind, uint16_t length)
+                                                                 FunctionKind kind, uint16_t length,
+                                                                 const CString &entryPoint)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -231,8 +234,11 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
     if (jsPandaFile->IsModule()) {
         EcmaVM *vm = thread->GetEcmaVM();
-        JSHandle<SourceTextModule> module =
-            vm->GetModuleManager()->HostGetImportedModule(jsPandaFile->GetJSPandaFileDesc());
+        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+        if (!entryPoint.empty()) {
+            moduleName = entryPoint;
+        }
+        JSHandle<SourceTextModule> module = vm->GetModuleManager()->HostGetImportedModule(moduleName);
         jsFunc->SetModule(thread, module.GetTaggedValue());
     }
     return jsFunc;

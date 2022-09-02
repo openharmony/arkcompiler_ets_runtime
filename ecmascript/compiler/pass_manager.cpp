@@ -111,7 +111,7 @@ bool PassManager::CollectBCInfo(const std::string &fileName, BytecodeInfoCollect
                                                                                          entry_));
     }
 
-    auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile);
+    auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile, JSPandaFile::ENTRY_FUNCTION_NAME);
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
     JSHandle<Method> method(thread, mainFunc->GetMethod());
     JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());

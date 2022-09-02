@@ -36,7 +36,8 @@ public:
     ~DebuggerImpl();
 
     // event
-    bool NotifyScriptParsed(ScriptId scriptId, const std::string &fileName);
+    bool NotifyScriptParsed(ScriptId scriptId, const std::string &fileName,
+                            std::string_view entryPoint = "func_main_0");
     bool NotifySingleStep(const JSPtLocation &location);
     void NotifyPaused(std::optional<JSPtLocation> location, PauseReason reason);
     void NotifyPendingJobEntry();

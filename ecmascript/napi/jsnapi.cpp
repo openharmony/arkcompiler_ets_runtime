@@ -532,9 +532,15 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
 
 Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)
 {
+    std::string entry = file;
+#if ECMASCRIPT_ENABLE_MERGE_ABC
+    if (!vm->IsBundle()) {
+        entry = ecmascript::JSPandaFile::ParseOhmUrl(file.c_str());
+    }
+#endif
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
-    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostResolveImportedModule(file.c_str());
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry.c_str());
 
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
@@ -1221,8 +1227,15 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     ecmascript::tooling::JSPtExtractor *debugExtractor =
                                         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
+    if (!jsPandaFile->IsBundle()) {
+        JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
+        JSTaggedValue recordName =
+            ecmascript::SourceTextModule::Cast(function->GetModule().GetTaggedObject())->GetEcmaModuleRecordName();
+        entry = ConvertToString(recordName);
+    }
     const std::string &allSourceCode = debugExtractor->GetSourceCode(panda_file::File::EntityId(
-        jsPandaFile->GetMainMethodIndex()));
+        jsPandaFile->GetMainMethodIndex(entry)));
     std::string sourceCode = StringHelper::GetSpecifiedLine(allSourceCode, lineNumber);
     uint32_t codeLen = sourceCode.length();
     if (codeLen == 0 || sourceCode == "ANDA") {
@@ -2436,5 +2449,18 @@ bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
     ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
     JSThread *thread = vm->GetJSThread();
     return patchManager->UnLoadPatch(thread, patchFileName);
+}
+
+bool JSNApi::IsBundle([[maybe_unused]]EcmaVM *vm)
+{
+#if ECMASCRIPT_ENABLE_MERGE_ABC
+    return vm->IsBundle();
+#endif
+    return true;
+}
+
+void JSNApi::SetBundle(EcmaVM *vm, bool value)
+{
+    vm->SetBundle(value);
 }
 }  // namespace panda

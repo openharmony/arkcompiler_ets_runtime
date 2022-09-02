@@ -73,7 +73,7 @@ HWTEST_F_L0(JSPtHooksTest, LoadModuleTest)
 {
     auto debugger = std::make_unique<DebuggerImpl>(ecmaVm, nullptr, nullptr);
     std::unique_ptr<JSPtHooks> jspthooks = std::make_unique<JSPtHooks>(debugger.get());
-    jspthooks->LoadModule("pandafile/test.abc");
+    jspthooks->LoadModule("pandafile/test.abc", "func_main_0");
     ASSERT_NE(jspthooks, nullptr);
 }
 
