@@ -410,6 +410,8 @@ public:
             }
         }
         return workerVm;
+    }
+    
     bool IsBundle() const
     {
         return isBundle_;
