@@ -183,7 +183,11 @@ void JSPandaFile::InitializeMergedPF()
 
 MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
 {
-    return methodLiteralMap_.at(offset);
+    auto iter = methodLiteralMap_.find(offset);
+    if (iter == methodLiteralMap_.end()) {
+        return nullptr;
+    }
+    return iter->second;
 }
 
 bool JSPandaFile::IsModule(const CString &recordName) const
