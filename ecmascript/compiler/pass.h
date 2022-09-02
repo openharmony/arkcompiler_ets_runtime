@@ -109,7 +109,8 @@ public:
     {
         bool isQualified = Verifier::Run(data->GetCircuit(), enableLog);
         if (!isQualified) {
-            std::abort();
+            LOG_FULL(FATAL) << "VerifierPass fail";
+            UNREACHABLE();
         }
         return isQualified;
     }
