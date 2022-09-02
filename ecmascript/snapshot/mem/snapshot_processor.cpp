@@ -80,7 +80,6 @@
 #include "ecmascript/containers/containers_treemap.h"
 #include "ecmascript/containers/containers_treeset.h"
 #include "ecmascript/containers/containers_vector.h"
-#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
