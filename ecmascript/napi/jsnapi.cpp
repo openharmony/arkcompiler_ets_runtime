@@ -1073,9 +1073,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
-    JSHandle<JSNativePointer> extraInfo =
-        factory->NewJSNativePointer(reinterpret_cast<void *>(nativeFunc), deleter, data);
-    current->SetFunctionExtraInfo(thread, extraInfo.GetTaggedValue());
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
     current->SetCallNative(callNative);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
@@ -1097,9 +1095,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     current->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
                                      accessor.GetTaggedValue());
 
-    JSHandle<JSNativePointer> extraInfo =
-        factory->NewJSNativePointer(reinterpret_cast<void *>(nativeFunc), deleter, data);
-    current->SetFunctionExtraInfo(thread, extraInfo.GetTaggedValue());
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
 
     JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, factory, current);
     clsPrototype.GetTaggedValue().GetTaggedObject()->GetClass()->SetClassPrototype(true);
@@ -1904,11 +1900,11 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
     }
     [[maybe_unused]] LocalScope scope(thread->GetEcmaVM());
     JSHandle<JSFunction> function(constructor);
-    JSHandle<JSTaggedValue> extraInfoValue(thread, function->GetFunctionExtraInfo());
-    if (!extraInfoValue->IsJSNativePointer()) {
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (!extraInfoValue.IsJSNativePointer()) {
         return JSTaggedValue::False();
     }
-    JSHandle<JSNativePointer> extraInfo(extraInfoValue);
+    JSHandle<JSNativePointer> extraInfo(thread, extraInfoValue);
     // callBack
     FunctionCallback nativeFunc = reinterpret_cast<FunctionCallback>(extraInfo->GetExternalPointer());
 

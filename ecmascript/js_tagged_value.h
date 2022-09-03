@@ -490,6 +490,7 @@ public:
     bool IsString() const;
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;
+    bool IsConstantPool() const;
     bool IsLinkedNode() const;
     bool IsRBTreeNode() const;
     bool IsNativePointer() const;

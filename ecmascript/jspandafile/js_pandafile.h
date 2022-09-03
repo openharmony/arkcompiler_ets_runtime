@@ -41,7 +41,7 @@ public:
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char TYPE_FLAG[] = "typeFlag";
     static constexpr char TYPE_SUMMARY_INDEX[] = "typeSummaryIndex";
-    
+
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
     static constexpr char MODULE_DEFAULE_ETS[] = "ets/";

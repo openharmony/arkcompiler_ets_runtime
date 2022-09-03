@@ -2216,12 +2216,9 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &ol
 JSHandle<ConstantPool> ObjectFactory::NewConstantPool(uint32_t capacity)
 {
     NewObjectHook();
-    if (capacity == 0) {
-        return JSHandle<ConstantPool>::Cast(EmptyArray());
-    }
-    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), capacity);
+    size_t size = ConstantPool::ComputeSize(capacity);
     auto header = heap_->AllocateOldOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetConstantPoolClass().GetTaggedObject()), size);
     JSHandle<ConstantPool> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Hole(), capacity);
     return array;

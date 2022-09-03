@@ -185,6 +185,7 @@ class ProtoChangeDetails;
         TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LEXICAL_ENV,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_DICTIONARY, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        CONSTANT_POOL, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LINKED_NODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         RB_TREENODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         FREE_OBJECT_WITH_ONE_FIELD, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -462,7 +463,20 @@ public:
     inline bool IsTaggedArray() const
     {
         JSType jsType = GetObjectType();
-        return jsType == JSType::TAGGED_ARRAY || jsType == JSType::TAGGED_DICTIONARY || jsType == JSType::LEXICAL_ENV;
+        switch (jsType) {
+            case JSType::TAGGED_ARRAY:
+            case JSType::TAGGED_DICTIONARY:
+            case JSType::LEXICAL_ENV:
+            case JSType::CONSTANT_POOL:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    inline bool IsConstantPool() const
+    {
+        return GetObjectType() == JSType::CONSTANT_POOL;
     }
 
     inline bool IsDictionary() const

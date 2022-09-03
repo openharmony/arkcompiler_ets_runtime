@@ -307,6 +307,7 @@ public:
     inline GateRef TaggedCastToIntPtr(GateRef x);
     inline GateRef TaggedCastToDouble(GateRef x);
     inline GateRef ChangeTaggedPointerToInt64(GateRef x);
+    inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     // bit operation
     inline GateRef IsSpecial(GateRef x, JSTaggedType type);

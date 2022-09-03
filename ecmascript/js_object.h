@@ -324,6 +324,10 @@ private:
 
 class ECMAObject : public TaggedObject {
 public:
+    static constexpr int HASH_INDEX = 0;
+    static constexpr int FUNCTION_EXTRAL_INDEX = 1;
+    static constexpr int RESOLVED_MAX_SIZE = 2;
+
     CAST_CHECK(ECMAObject, IsECMAObject);
 
     void SetCallable(bool flag);

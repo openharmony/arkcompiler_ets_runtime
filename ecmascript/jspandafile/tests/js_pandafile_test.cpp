@@ -181,7 +181,7 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
     EXPECT_EQ(index3, 2U);
 
     uint32_t conPoolIndex = pf->GetConstpoolIndex();
-    EXPECT_EQ(conPoolIndex, 3U); // 4 : 2 + 1, Index of the next insertion position
+    EXPECT_EQ(conPoolIndex, 3U);
 
     CUnorderedMap<uint32_t, uint64_t> constpoolMap = pf->GetConstpoolMap();
     ConstPoolValue constPoolValue1(constpoolMap.at(methodId[0].GetOffset()));
@@ -246,7 +246,7 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId class_id = file->GetClassId(typeDesc);
     EXPECT_TRUE(class_id.IsValid());
- 
+
     const File::Header *header = file->GetHeader();
     Span fileData(file->GetBase(), header->file_size);
     Span class_idx_data = fileData.SubSpan(header->class_idx_off, header->num_classes * sizeof(uint32_t));

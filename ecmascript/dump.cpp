@@ -138,6 +138,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "LexicalEnv";
         case JSType::TAGGED_DICTIONARY:
             return "TaggedDictionary";
+        case JSType::CONSTANT_POOL:
+            return "ConstantPool";
         case JSType::STRING:
             return "BaseString";
         case JSType::JS_NATIVE_POINTER:
@@ -440,6 +442,21 @@ static void DumpArrayClass(const TaggedArray *arr, std::ostream &os)
     }
 }
 
+static void DumpConstantPoolClass(const ConstantPool *pool, std::ostream &os)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = pool->GetCacheLength();
+    os << " <ConstantPool[" << std::dec << len << "]>\n";
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(pool->GetObjectFromCache(i));
+        if (!val.IsHole()) {
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
+            val.DumpTaggedValue(os);
+            os << "\n";
+        }
+    }
+}
+
 static void DumpStringClass(const EcmaString *str, std::ostream &os)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -547,6 +564,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::TEMPLATE_MAP:
         case JSType::LEXICAL_ENV:
             DumpArrayClass(TaggedArray::Cast(obj), os);
+            break;
+        case JSType::CONSTANT_POOL:
+            DumpConstantPoolClass(ConstantPool::Cast(obj), os);
             break;
         case JSType::STRING:
             DumpStringClass(EcmaString::Cast(obj), os);
@@ -3357,6 +3377,18 @@ static void DumpArrayClass(const TaggedArray *arr,
     }
 }
 
+static void DumpConstantPoolClass(const ConstantPool *arr,
+                                  std::vector<std::pair<CString, JSTaggedValue>> &vec)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = arr->GetCacheLength();
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(arr->GetObjectFromCache(i));
+        CString str = ToCString(i);
+        vec.push_back(std::make_pair(str, val));
+    }
+}
+
 static void DumpStringClass(const EcmaString *str,
                             std::vector<std::pair<CString, JSTaggedValue>> &vec)
 {
@@ -3385,6 +3417,9 @@ static void DumpObject(TaggedObject *obj,
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
             DumpArrayClass(TaggedArray::Cast(obj), vec);
+            return;
+        case JSType::CONSTANT_POOL:
+            DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
             return;
         case JSType::STRING:
             DumpStringClass(EcmaString::Cast(obj), vec);

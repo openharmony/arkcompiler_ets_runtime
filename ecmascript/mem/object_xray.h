@@ -332,6 +332,9 @@ public:
             case JSType::LEXICAL_ENV:
                 TaggedArray::Cast(object)->VisitRangeSlot(visitor);
                 break;
+            case JSType::CONSTANT_POOL:
+                ConstantPool::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::GLOBAL_ENV:
                 GlobalEnv::Cast(object)->VisitRangeSlot(visitor);
                 break;

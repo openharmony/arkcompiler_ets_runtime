@@ -75,12 +75,12 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     JSHandle<JSFunction> numberFunc(env->GetNumberFunction());
     JSHandle<EcmaString> str1 = factory->NewFromASCII("str11");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("str22");
-    constpool->Set(thread, 0, funcFunc.GetTaggedValue());
-    constpool->Set(thread, 1, dateFunc.GetTaggedValue());
-    constpool->Set(thread, 2, str1.GetTaggedValue());
-    constpool->Set(thread, 3, numberFunc.GetTaggedValue());
-    constpool->Set(thread, 4, str2.GetTaggedValue());
-    constpool->Set(thread, 5, str1.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 0, funcFunc.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 1, dateFunc.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 2, str1.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 3, numberFunc.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 4, str2.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 5, str1.GetTaggedValue());
 
     CString fileName = "snapshot";
     Snapshot snapshotSerialize(ecmaVm);
@@ -94,9 +94,9 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
               constpool1->GetClass()->SizeFromJSHClass(constpool1));
-    EXPECT_TRUE(constpool1->Get(0).IsJSFunction());
-    EXPECT_TRUE(constpool1->Get(1).IsJSFunction());
-    EXPECT_TRUE(constpool1->Get(3).IsJSFunction());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsJSFunction());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(1).IsJSFunction());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(3).IsJSFunction());
     EcmaString *str11 = reinterpret_cast<EcmaString *>(constpool1->Get(2).GetTaggedObject());
     EcmaString *str22 = reinterpret_cast<EcmaString *>(constpool1->Get(4).GetTaggedObject());
     EcmaString *str33 = reinterpret_cast<EcmaString *>(constpool1->Get(5).GetTaggedObject());
@@ -112,19 +112,19 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     JSHandle<ConstantPool> constpool = factory->NewConstantPool(400);
     for (int i = 0; i < 100; i++) {
         JSHandle<TaggedArray> array = factory->NewTaggedArray(10, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
-        constpool->Set(thread, i, array.GetTaggedValue());
+        constpool->SetObjectToCache(thread, i, array.GetTaggedValue());
     }
     for (int i = 0; i < 100; i++) {
         JSHandle<TaggedArray> array = factory->NewTaggedArray(10, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
-        constpool->Set(thread, i + 100, array.GetTaggedValue());
+        constpool->SetObjectToCache(thread, i + 100, array.GetTaggedValue());
     }
     for (int i = 0; i < 100; i++) {
         JSHandle<MachineCode> codeObj = factory->NewMachineCodeObject(0, nullptr);
-        constpool->Set(thread, i + 200, codeObj.GetTaggedValue());
+        constpool->SetObjectToCache(thread, i + 200, codeObj.GetTaggedValue());
     }
     for (int i = 0; i < 100; i++) {
         JSHandle<ConstantPool> constpool1 = factory->NewConstantPool(10);
-        constpool->Set(thread, i + 300, constpool1.GetTaggedValue());
+        constpool->SetObjectToCache(thread, i + 300, constpool1.GetTaggedValue());
     }
 
     CString fileName = "snapshot";
@@ -139,15 +139,15 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
               constpool1->GetClass()->SizeFromJSHClass(constpool1));
-    EXPECT_TRUE(constpool1->Get(0).IsTaggedArray());
-    EXPECT_TRUE(constpool1->Get(100).IsTaggedArray());
-    EXPECT_TRUE(constpool1->Get(200).IsMachineCodeObject());
-    EXPECT_TRUE(constpool1->Get(300).IsTaggedArray());
-    auto obj1 = constpool1->Get(0).GetTaggedObject();
+    EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsTaggedArray());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(100).IsTaggedArray());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(200).IsMachineCodeObject());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(300).IsTaggedArray());
+    auto obj1 = constpool1->GetObjectFromCache(0).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
-    auto obj2 = constpool1->Get(100).GetTaggedObject();
+    auto obj2 = constpool1->GetObjectFromCache(100).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
-    auto obj3 = constpool1->Get(200).GetTaggedObject();
+    auto obj3 = constpool1->GetObjectFromCache(200).GetTaggedObject();
     auto region = Region::ObjectAddressToRange(obj3);
     EXPECT_TRUE(region->InMachineCodeSpace());
 
@@ -161,23 +161,23 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
     JSHandle<ConstantPool> constpool2 = factory->NewConstantPool(400);
     for (int i = 0; i < 100; i++) {
         JSHandle<TaggedArray> array = factory->NewTaggedArray(10, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
-        constpool1->Set(thread, i, array.GetTaggedValue());
-        constpool2->Set(thread, i, array.GetTaggedValue());
+        constpool1->SetObjectToCache(thread, i, array.GetTaggedValue());
+        constpool2->SetObjectToCache(thread, i, array.GetTaggedValue());
     }
     for (int i = 0; i < 100; i++) {
         JSHandle<TaggedArray> array = factory->NewTaggedArray(10, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
-        constpool1->Set(thread, i + 100, array.GetTaggedValue());
-        constpool2->Set(thread, i + 100, array.GetTaggedValue());
+        constpool1->SetObjectToCache(thread, i + 100, array.GetTaggedValue());
+        constpool2->SetObjectToCache(thread, i + 100, array.GetTaggedValue());
     }
     for (int i = 0; i < 100; i++) {
         JSHandle<MachineCode> codeObj = factory->NewMachineCodeObject(0, nullptr);
-        constpool1->Set(thread, i + 200, codeObj.GetTaggedValue());
-        constpool2->Set(thread, i + 200, codeObj.GetTaggedValue());
+        constpool1->SetObjectToCache(thread, i + 200, codeObj.GetTaggedValue());
+        constpool2->SetObjectToCache(thread, i + 200, codeObj.GetTaggedValue());
     }
     for (int i = 0; i < 100; i++) {
         JSHandle<ConstantPool> constpool3 = factory->NewConstantPool(10);
-        constpool1->Set(thread, i + 300, constpool3.GetTaggedValue());
-        constpool2->Set(thread, i + 300, constpool3.GetTaggedValue());
+        constpool1->SetObjectToCache(thread, i + 300, constpool3.GetTaggedValue());
+        constpool2->SetObjectToCache(thread, i + 300, constpool3.GetTaggedValue());
     }
 
     CString fileName1 = "snapshot1";
@@ -193,14 +193,14 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
 
     auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
     auto constpool = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
-    EXPECT_TRUE(constpool->Get(0).IsTaggedArray());
-    EXPECT_TRUE(constpool->Get(100).IsTaggedArray());
-    EXPECT_TRUE(constpool->Get(200).IsMachineCodeObject());
-    auto obj1 = constpool->Get(0).GetTaggedObject();
+    EXPECT_TRUE(constpool->GetObjectFromCache(0).IsTaggedArray());
+    EXPECT_TRUE(constpool->GetObjectFromCache(100).IsTaggedArray());
+    EXPECT_TRUE(constpool->GetObjectFromCache(200).IsMachineCodeObject());
+    auto obj1 = constpool->GetObjectFromCache(0).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
-    auto obj2 = constpool->Get(100).GetTaggedObject();
+    auto obj2 = constpool->GetObjectFromCache(100).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
-    auto obj3 = constpool->Get(200).GetTaggedObject();
+    auto obj3 = constpool->GetObjectFromCache(200).GetTaggedObject();
     auto region = Region::ObjectAddressToRange(obj3);
     EXPECT_TRUE(region->InMachineCodeSpace());
 

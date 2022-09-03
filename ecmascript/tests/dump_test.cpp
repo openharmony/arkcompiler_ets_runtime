@@ -443,7 +443,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 7U);
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 6U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc)
                 break;
@@ -790,6 +790,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::LEXICAL_ENV: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray)
+                break;
+            }
+            case JSType::CONSTANT_POOL: {
+                JSHandle<ConstantPool> constantPool = factory->NewConstantPool(4);
+                DUMP_FOR_HANDLE(constantPool)
                 break;
             }
             case JSType::TAGGED_DICTIONARY: {

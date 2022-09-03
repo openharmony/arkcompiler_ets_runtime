@@ -610,6 +610,24 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             ++iter;
         }
     }
+
+    auto iterator = cachedConstpools_.begin();
+    while (iterator != cachedConstpools_.end()) {
+        auto &constpools = iterator->second;
+        auto size = constpools.size();
+        for (uint32_t i = 0; i < size; i++) {
+            if (constpools[i].IsHeapObject()) {
+                TaggedObject *obj = constpools[i].GetTaggedObject();
+                auto fwd = visitor(obj);
+                if (fwd == nullptr) {
+                    auto constantPool = ConstantPool::Cast(obj);
+                    JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
+                    constpools[i] = JSTaggedValue::Hole();
+                }
+            }
+        }
+        ++iterator;
+    }
 }
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
@@ -641,6 +659,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
                 TaggedObject *obj = constpools[i].GetTaggedObject();
                 auto fwd = visitor(obj);
                 if (fwd == nullptr) {
+                    auto constantPool = ConstantPool::Cast(obj);
+                    JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
                     constpools[i] = JSTaggedValue::Hole();
                 } else if (fwd != obj) {
                     constpools[i] = JSTaggedValue(fwd);
