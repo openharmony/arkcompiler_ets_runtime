@@ -43,6 +43,7 @@ void Snapshot::Serialize(const CString &fileName)
     uint32_t staticHClassTableLen = staticHClassTable.size();
     JSHandle<TaggedArray> root = vm_->GetFactory()->NewTaggedArray(staticHClassTableLen + 1);
     
+    tsManager->SortConstantPoolInfos();
     root->Set(thread, 0, tsManager->GetConstantPoolInfo());
     for (uint32_t i = 0; i < staticHClassTableLen; ++i) {
         root->Set(thread, i + 1, JSTaggedValue(staticHClassTable[i]));
