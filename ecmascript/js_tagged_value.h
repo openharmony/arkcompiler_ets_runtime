@@ -499,6 +499,7 @@ public:
     bool IsSymbol() const;
     bool IsJSObject() const;
     bool IsJSGlobalObject() const;
+    bool IsGlobalPatch() const;
     bool IsJSError() const;
     bool IsArray(JSThread *thread) const;
     bool IsJSArray() const;

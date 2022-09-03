@@ -522,6 +522,7 @@ public:
 
     JSHClass *GetJSHClass() const;
     bool IsJSGlobalObject() const;
+    bool IsGlobalPatch() const;
     bool IsConstructor() const;
     bool IsECMAObject() const;
     bool IsJSError() const;
