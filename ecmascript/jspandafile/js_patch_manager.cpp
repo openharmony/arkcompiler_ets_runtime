@@ -19,6 +19,11 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
+JSPatchManager::~JSPatchManager()
+{
+    ClearReservedInfo();
+}
+
 bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName)
 {
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
@@ -99,36 +104,55 @@ bool JSPatchManager::ReplaceMethod(JSThread *thread,
         auto methodId = patch->GetMethodId();
         const char *patchMethodName = MethodLiteral::GetMethodName(patchFile_, methodId);
 
-        for (uint32_t index = 0; index < baseConstpoolSize; index++) { // 1: first value is JSPandaFile.
+        for (uint32_t index = 0; index < baseConstpoolSize; index++) {
             JSTaggedValue constpoolValue = baseConstpool->GetObjectFromCache(index);
-            if (!constpoolValue.IsJSFunctionBase()) {
-                continue;
+            // For class inner function modified.
+            if (constpoolValue.IsMethod()) {
+                JSHandle<TaggedArray> classLiteral(thread, baseConstpool->GetObjectFromCache(index + 1));
+                CUnorderedMap<uint32_t, MethodLiteral *> classLiteralInfo;
+                for (uint32_t i = 0; i < classLiteral->GetLength(); i++) {
+                    JSTaggedValue literalItem = classLiteral->Get(thread, i);
+                    if (!literalItem.IsJSFunctionBase()) {
+                        continue;
+                    }
+                    JSFunctionBase *func = JSFunctionBase::Cast(literalItem.GetTaggedObject());
+                    Method *baseMethod = Method::Cast(func->GetMethod().GetTaggedObject());
+                    if (std::strcmp(patchMethodName, baseMethod->GetMethodName()) != 0) {
+                        continue;
+                    }
+
+                    // Save base MethodLiteral and constpool index.
+                    MethodLiteral *base = baseFile_->FindMethodLiteral(baseMethod->GetMethodId().GetOffset());
+                    ASSERT(base != nullptr);
+                    classLiteralInfo.emplace(i, base);
+                    reservedBaseClassInfo_.emplace(index, classLiteralInfo);
+
+                    ReplaceMethodInner(thread, baseMethod, patch, patchConstpool.GetTaggedValue());
+                }
             }
+            // For function modified.
+            if (constpoolValue.IsJSFunctionBase()) {
+                JSFunctionBase *func = JSFunctionBase::Cast(constpoolValue.GetTaggedObject());
+                Method *baseMethod = Method::Cast(func->GetMethod().GetTaggedObject());
+                if (std::strcmp(patchMethodName, baseMethod->GetMethodName()) != 0) {
+                    continue;
+                }
 
-            JSFunctionBase *func = JSFunctionBase::Cast(constpoolValue.GetTaggedObject());
-            JSHandle<Method> baseMethod(thread, func->GetMethod());
-            if (std::strcmp(patchMethodName, baseMethod->GetMethodName()) != 0) {
-                continue;
+                // Save base MethodLiteral and constpool index.
+                MethodLiteral *base = baseFile_->FindMethodLiteral(baseMethod->GetMethodId().GetOffset());
+                ASSERT(base != nullptr);
+                reservedBaseMethodInfo_.emplace(index, base);
+
+                ReplaceMethodInner(thread, baseMethod, patch, patchConstpool.GetTaggedValue());
             }
-
-            // Save base MethodLiteral and constpool index.
-            MethodLiteral *base = baseFile_->FindMethodLiteral(baseMethod->GetMethodId().GetOffset());
-            ASSERT(base != nullptr);
-            reservedBaseInfo_.emplace(index, base);
-
-            // Replace base method.
-            baseMethod->SetCallField(patch->GetCallField());
-            baseMethod->SetLiteralInfo(patch->GetLiteralInfo());
-            baseMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(patch->GetNativePointer()));
-            baseMethod->SetConstantPool(thread, patchConstpool.GetTaggedValue());
         }
     }
 
-    if (reservedBaseInfo_.empty()) {
+    if (reservedBaseMethodInfo_.empty() && reservedBaseClassInfo_.empty()) {
         return false;
     }
 
-    // Call patch_main_0 for newly function.
+    // For add a new function, Call patch_main_0.
     if (!patchProgram->GetMainFunction().IsUndefined()) {
         JSHandle<JSTaggedValue> global = thread->GetEcmaVM()->GetGlobalEnv()->GetJSGlobalObject();
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
@@ -142,8 +166,11 @@ bool JSPatchManager::ReplaceMethod(JSThread *thread,
 
 bool JSPatchManager::UnLoadPatch(JSThread *thread, const std::string &patchFileName)
 {
-    if ((ConvertToString(patchFileName) != patchFile_->GetJSPandaFileDesc()) ||
-        (reservedBaseInfo_.empty())) {
+    if (ConvertToString(patchFileName) != patchFile_->GetJSPandaFileDesc()) {
+        return false;
+    }
+
+    if (reservedBaseMethodInfo_.empty() && reservedBaseClassInfo_.empty()) {
         return false;
     }
 
@@ -152,22 +179,49 @@ bool JSPatchManager::UnLoadPatch(JSThread *thread, const std::string &patchFileN
     if (baseConstpoolValue.IsHole()) {
         return false;
     }
-    JSHandle<ConstantPool> baseConstpool(thread, baseConstpoolValue);
 
-    for (const auto& item : reservedBaseInfo_) {
+    ConstantPool *baseConstpool = ConstantPool::Cast(baseConstpoolValue.GetTaggedObject());
+    for (const auto& item : reservedBaseMethodInfo_) {
         uint32_t constpoolIndex = item.first;
         MethodLiteral *base = item.second;
 
         JSTaggedValue value = baseConstpool->GetObjectFromCache(constpoolIndex);
         ASSERT(value.IsJSFunctionBase());
-        JSHandle<JSFunction> func(thread, value);
-        JSHandle<Method> method(thread, func->GetMethod());
+        JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
+        Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
 
-        method->SetCallField(base->GetCallField());
-        method->SetLiteralInfo(base->GetLiteralInfo());
-        method->SetNativePointerOrBytecodeArray(const_cast<void *>(base->GetNativePointer()));
-        method->SetConstantPool(thread, baseConstpool.GetTaggedValue());
+        ReplaceMethodInner(thread, method, base, baseConstpoolValue);
     }
+
+    for (const auto& item : reservedBaseClassInfo_) {
+        uint32_t constpoolIndex = item.first;
+        CUnorderedMap<uint32_t, MethodLiteral *> classLiteralInfo = item.second;
+        JSHandle<TaggedArray> classLiteral(thread, baseConstpool->GetObjectFromCache(constpoolIndex + 1));
+
+        for (const auto& classItem : classLiteralInfo) {
+            MethodLiteral *base = classItem.second;
+
+            JSTaggedValue value = classLiteral->Get(thread, classItem.first);
+            ASSERT(value.IsJSFunctionBase());
+            JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
+            Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
+
+            ReplaceMethodInner(thread, method, base, baseConstpoolValue);
+        }
+    }
+
+    ClearReservedInfo();
     return true;
+}
+
+void JSPatchManager::ReplaceMethodInner(JSThread *thread,
+                                        Method* destMethod,
+                                        MethodLiteral *srcMethodLiteral,
+                                        JSTaggedValue srcConstpool)
+{
+    destMethod->SetCallField(srcMethodLiteral->GetCallField());
+    destMethod->SetLiteralInfo(srcMethodLiteral->GetLiteralInfo());
+    destMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(srcMethodLiteral->GetNativePointer()));
+    destMethod->SetConstantPool(thread, srcConstpool);
 }
 }  // namespace panda::ecmascript

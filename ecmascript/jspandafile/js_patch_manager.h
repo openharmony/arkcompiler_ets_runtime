@@ -25,9 +25,12 @@ namespace panda::ecmascript {
 class JSPatchManager {
 public:
     JSPatchManager() = default;
-    ~JSPatchManager()
+    ~JSPatchManager();
+
+    void ClearReservedInfo()
     {
-        reservedBaseInfo_.clear();
+        reservedBaseMethodInfo_.clear();
+        reservedBaseClassInfo_.clear();
     }
 
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
@@ -40,12 +43,22 @@ private:
                        const JSHandle<ConstantPool> &baseConstpool,
                        const JSHandle<ConstantPool> &patchConstpool,
                        const JSHandle<Program> &patchProgram);
+    void ReplaceMethodInner(JSThread *thread,
+                            Method  *destMethod,
+                            MethodLiteral *srcMethodLiteral,
+                            JSTaggedValue srcConstpool);
 
     const JSPandaFile *baseFile_ {nullptr};
     const JSPandaFile *patchFile_ {nullptr};
 
+    // For method unload patch.
     // key: base constpool index, value: base methodLiteral.
-    CUnorderedMap<uint32_t, MethodLiteral *> reservedBaseInfo_ {}; // for unload patch.
+    CUnorderedMap<uint32_t, MethodLiteral *> reservedBaseMethodInfo_ {};
+
+    // For class unload patch.
+    // key: base constpool index.
+    // key: class literal tagged array index, value: base methodLiteral.
+    CUnorderedMap<uint32_t, CUnorderedMap<uint32_t, MethodLiteral *>> reservedBaseClassInfo_ {};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PATCH_MANAGER_H
