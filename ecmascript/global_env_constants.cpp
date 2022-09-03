@@ -94,6 +94,8 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
     SetConstant(ConstantIndex::STRING_CLASS_INDEX, factory->NewEcmaReadOnlyDynClass(dynClassClass, 0, JSType::STRING));
     SetConstant(ConstantIndex::ARRAY_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, 0, JSType::TAGGED_ARRAY));
+    SetConstant(ConstantIndex::CONSTANT_POOL_CLASS_INDEX,
+                factory->NewEcmaReadOnlyDynClass(dynClassClass, 0, JSType::CONSTANT_POOL));
     InitGlobalConstantSpecial(thread);
     SetConstant(ConstantIndex::DICTIONARY_CLASS_INDEX,
                 factory->NewEcmaReadOnlyDynClass(dynClassClass, 0, JSType::TAGGED_DICTIONARY));

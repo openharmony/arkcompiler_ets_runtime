@@ -290,14 +290,13 @@ void JSPandaFileManager::JSPandaFileAllocator::FreeBuffer(void *mem)
     free(mem);
 }
 
-void JSPandaFileManager::RemoveJSPandaFile(void *pointer, void *data)
+void JSPandaFileManager::RemoveJSPandaFile(void *pointer)
 {
-    if (pointer == nullptr || data == nullptr) {
+    if (pointer == nullptr) {
         return;
     }
     auto jsPandaFile = static_cast<JSPandaFile *>(pointer);
     // dec ref in filemanager
-    JSPandaFileManager *jsPandaFileManager = static_cast<JSPandaFileManager *>(data);
-    jsPandaFileManager->DecreaseRefJSPandaFile(jsPandaFile);
+    JSPandaFileManager::GetInstance()->DecreaseRefJSPandaFile(jsPandaFile);
 }
 }  // namespace panda::ecmascript

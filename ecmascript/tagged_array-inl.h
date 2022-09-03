@@ -140,6 +140,7 @@ void TaggedArray::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t l
 {
     ASSERT(initValue.IsSpecial());
     SetLength(length);
+    SetExtractLength(0);
     for (uint32_t i = 0; i < length; i++) {
         size_t offset = JSTaggedValue::TaggedTypeSize() * i;
         Barriers::SetDynPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());

@@ -41,7 +41,7 @@ public:
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char TYPE_FLAG[] = "typeFlag";
     static constexpr char TYPE_SUMMARY_INDEX[] = "typeSummaryIndex";
-    
+
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
     static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
@@ -180,7 +180,7 @@ public:
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
-    uint32_t constpoolIndex_ {1}; // Index 0 is JSPandaFile NativePointer.
+    uint32_t constpoolIndex_ {0};
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     MethodLiteral *methodLiterals_ {nullptr};

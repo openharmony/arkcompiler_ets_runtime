@@ -2264,7 +2264,7 @@ DECLARE_ASM_HANDLER(HandleStConstToGlobalRecordPrefId32)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst32_1(pc);
-    GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+    GateRef propKey = GetObjectFromConstPool(constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedTrue() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(PREF_ID32));
@@ -2275,7 +2275,7 @@ DECLARE_ASM_HANDLER(HandleStLetToGlobalRecordPrefId32)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst32_1(pc);
-    GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+    GateRef propKey = GetObjectFromConstPool(constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(PREF_ID32));
@@ -2286,7 +2286,7 @@ DECLARE_ASM_HANDLER(HandleStClassToGlobalRecordPrefId32)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst32_1(pc);
-    GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+    GateRef propKey = GetObjectFromConstPool(constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord), { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(PREF_ID32));
 }
@@ -2942,7 +2942,7 @@ DECLARE_ASM_HANDLER(HandleLdObjByNamePrefId32V8)
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst32_1(pc);
-        GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+        GateRef propKey = GetObjectFromConstPool(constpool, stringId);
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
                              { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
         Jump(&checkException);
@@ -2971,14 +2971,14 @@ DECLARE_ASM_HANDLER(HandleStObjByNamePrefId32V8)
     Bind(&tryFastPath);
     {
         GateRef stringId = ReadInst32_1(pc);
-        GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+        GateRef propKey = GetObjectFromConstPool(constpool, stringId);
         result = SetPropertyByName(glue, receiver, propKey, acc, false);
         Branch(TaggedIsHole(*result), &slowPath, &checkException);
     }
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst32_1(pc);
-        GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+        GateRef propKey = GetObjectFromConstPool(constpool, stringId);
         GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByName),
             { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
         result = ChangeTaggedPointerToInt64(ret);
@@ -3037,7 +3037,7 @@ DECLARE_ASM_HANDLER(HandleStOwnByNamePrefId32V8)
 {
     auto env = GetEnvironment();
     GateRef stringId = ReadInst32_1(pc);
-    GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+    GateRef propKey = GetObjectFromConstPool(constpool, stringId);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_5(pc)));
     DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
     Label checkResult(env);
@@ -3076,7 +3076,7 @@ DECLARE_ASM_HANDLER(HandleStOwnByNameWithNameSetPrefId32V8)
     auto env = GetEnvironment();
     GateRef stringId = ReadInst32_1(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_5(pc)));
-    GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+    GateRef propKey = GetObjectFromConstPool(constpool, stringId);
     Label isJSObject(env);
     Label notJSObject(env);
     Label notClassConstructor(env);
@@ -3154,7 +3154,7 @@ DECLARE_ASM_HANDLER(HandleLdaStrId32)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst32_0(pc);
-    varAcc = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+    varAcc = GetObjectFromConstPool(constpool, stringId);
     DISPATCH_WITH_ACC(ID32);
 }
 
@@ -4225,7 +4225,7 @@ DECLARE_ASM_HANDLER(InterpreterGetPropertyByName)
 
     GateRef receiver = acc;
     GateRef stringId = ReadInst32_1(pc);
-    GateRef propKey = GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, stringId);
+    GateRef propKey = GetObjectFromConstPool(constpool, stringId);
     result = GetPropertyByName(glue, receiver, propKey);
 
     Branch(TaggedIsHole(*result), &slowPath, &checkResult);

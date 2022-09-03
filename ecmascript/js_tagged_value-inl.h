@@ -458,6 +458,11 @@ inline bool JSTaggedValue::IsTaggedArray() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTaggedArray();
 }
 
+inline bool JSTaggedValue::IsConstantPool() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsConstantPool();
+}
+
 inline bool JSTaggedValue::IsLinkedNode() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsLinkedNode();
