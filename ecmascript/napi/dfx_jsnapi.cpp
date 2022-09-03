@@ -281,7 +281,8 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     } else {
         vm = hostVm->GetWorkerVm(tid);
         if (vm == nullptr) {
-            return true;
+            return false;
+            LOG_ECMA(ERROR) << "WorkerVm is nullptr or has been damaged!";
         }
     }
     jsFrames = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
