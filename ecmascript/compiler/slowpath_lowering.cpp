@@ -3060,7 +3060,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8)));
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
-    GateRef methodId = acc_.GetValueIn(gate, 0);
+    GateRef methodId = builder_.SExtInt16ToInt64(acc_.GetValueIn(gate, 0));
     GateRef length = acc_.GetValueIn(gate, 2);
 
     GateRef lexicalEnv = acc_.GetValueIn(gate, 3);
