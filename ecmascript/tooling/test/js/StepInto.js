@@ -23,8 +23,27 @@ function countToTen() {
     a = 7;
     a = 8;
     a = 9;
+    next();
     a = 10;
 }
 
+function next() {
+    print("B->next");
+    var a = 1;
+    a = 2;
+    next_c();
+    a = 3;
+}
+
+function next_c() {
+    print("C->next");
+    var a = 1;
+    a = 2;
+    a = 3;
+}
+
+print("A->countToTen");
 countToTen();
-var b = 10
+var b = 10;
+b = 11;
+print("D->end");
