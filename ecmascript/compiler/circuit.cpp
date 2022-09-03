@@ -18,7 +18,8 @@
 #include "ecmascript/compiler/circuit.h"
 
 namespace panda::ecmascript::kungfu {
-Circuit::Circuit() : space_(nullptr), circuitSize_(0), gateCount_(0), time_(1), dataSection_()
+Circuit::Circuit(bool isArch64) : space_(nullptr), circuitSize_(0), gateCount_(0), time_(1),
+                                  dataSection_(), isArch64_(isArch64)
 {
     space_ = panda::ecmascript::base::MemMmap::Mmap(CIRCUIT_SPACE, false);
     NewGate(OpCode(OpCode::CIRCUIT_ROOT), 0, {}, GateType::Empty());  // circuit root
@@ -231,7 +232,7 @@ void Circuit::SetMark(GateRef gate, MarkCode mark) const
 
 bool Circuit::Verify(GateRef gate) const
 {
-    return LoadGatePtrConst(gate)->Verify();
+    return LoadGatePtrConst(gate)->Verify(IsArch64());
 }
 
 GateRef Circuit::NullGate()

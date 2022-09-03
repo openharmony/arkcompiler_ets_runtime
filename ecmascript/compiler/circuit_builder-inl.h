@@ -89,11 +89,6 @@ GateRef CircuitBuilder::ChangeUInt32ToFloat64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::UNSIGNED_INT_TO_FLOAT), MachineType::F64, x);
 }
 
-GateRef CircuitBuilder::PointerSub(GateRef x, GateRef y)
-{
-    return BinaryArithmetic(OpCode(OpCode::SUB), MachineType::ARCH, x, y);
-}
-
 GateRef CircuitBuilder::Int8Equal(GateRef x, GateRef y)
 {
     return BinaryLogic(OpCode(OpCode::EQ), x, y);

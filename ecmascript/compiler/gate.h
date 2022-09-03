@@ -358,7 +358,7 @@ public:
     void PrintByteCode(std::string bytecode) const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckNullInput() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckStateInput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckValueInput() const;
+    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckValueInput(bool isArch64) const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckDependInput() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckStateOutput() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckBranchOutput() const;
@@ -366,7 +366,7 @@ public:
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckSelector() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckRelay() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> SpecialCheck() const;
-    [[nodiscard]] bool Verify() const;
+    [[nodiscard]] bool Verify(bool isArch64) const;
     [[nodiscard]] MarkCode GetMark(TimeStamp stamp) const;
     void SetMark(MarkCode mark, TimeStamp stamp);
     [[nodiscard]] MachineType GetMachineType() const;

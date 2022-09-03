@@ -181,8 +181,9 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
     Bind(&receiverIsHeapObject);
     {
         GateRef hclass = LoadHClass(receiver);
-        Branch(Int64Equal(TaggedCastToWeakReferentUnChecked(firstValue), hclass),
-               &hclassEqualFirstValue, &hclassNotEqualFirstValue);
+        Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+               &hclassEqualFirstValue,
+               &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
         {
             Return(LoadICWithHandler(glue, receiver, receiver, secondValue));
@@ -222,8 +223,9 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
     Bind(&receiverIsHeapObject);
     {
         GateRef hclass = LoadHClass(receiver);
-        Branch(Int64Equal(TaggedCastToWeakReferentUnChecked(firstValue), hclass),
-            &hclassEqualFirstValue, &hclassNotEqualFirstValue);
+        Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+               &hclassEqualFirstValue,
+               &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
         Return(LoadElement(receiver, key));
         Bind(&hclassNotEqualFirstValue);
@@ -259,8 +261,9 @@ void TryStoreICByNameStubBuilder::GenerateCircuit()
     Bind(&receiverIsHeapObject);
     {
         GateRef hclass = LoadHClass(receiver);
-        Branch(Int64Equal(TaggedCastToWeakReferentUnChecked(firstValue), hclass),
-               &hclassEqualFirstValue, &hclassNotEqualFirstValue);
+        Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+               &hclassEqualFirstValue,
+               &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
         {
             Return(StoreICWithHandler(glue, receiver, receiver, value, secondValue));
@@ -298,8 +301,9 @@ void TryStoreICByValueStubBuilder::GenerateCircuit()
     Bind(&receiverIsHeapObject);
     {
         GateRef hclass = LoadHClass(receiver);
-        Branch(Int64Equal(TaggedCastToWeakReferentUnChecked(firstValue), hclass),
-            &hclassEqualFirstValue, &hclassNotEqualFirstValue);
+        Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+               &hclassEqualFirstValue,
+               &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
         Return(ICStoreElement(glue, receiver, key, value, secondValue));
         Bind(&hclassNotEqualFirstValue);

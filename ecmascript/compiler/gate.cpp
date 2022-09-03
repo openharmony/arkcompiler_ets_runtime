@@ -434,7 +434,7 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckStateInput() const
     return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckValueInput() const
+std::optional<std::pair<std::string, size_t>> Gate::CheckValueInput(bool isArch64) const
 {
     size_t valueStart = GetStateCount() + GetDependCount();
     size_t valueEnd = valueStart + GetInValueCount();
@@ -446,6 +446,9 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckValueInput() const
         }
         if (actualIn == MachineType::FLEX) {
             actualIn = GetInGateConst(idx)->GetMachineType();
+        }
+        if (actualIn == MachineType::ARCH) {
+            actualIn = isArch64 ? MachineType::I64 : MachineType::I32;
         }
 
         if ((expectedIn != actualIn) && (expectedIn != ANYVALUE)) {
@@ -610,7 +613,7 @@ std::optional<std::pair<std::string, size_t>> Gate::SpecialCheck() const
     return std::nullopt;
 }
 
-bool Gate::Verify() const
+bool Gate::Verify(bool isArch64) const
 {
     std::string errorString;
     size_t highlightIdx = -1;
@@ -630,7 +633,7 @@ bool Gate::Verify() const
         }
     }
     if (!failed) {
-        auto ret = CheckValueInput();
+        auto ret = CheckValueInput(isArch64);
         if (ret.has_value()) {
             failed = true;
             std::tie(errorString, highlightIdx) = ret.value();
