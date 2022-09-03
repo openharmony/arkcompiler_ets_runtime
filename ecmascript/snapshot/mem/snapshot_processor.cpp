@@ -1705,7 +1705,10 @@ void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, JSHan
     JSHandle<TaggedArray> array = vm_->GetTSManager()->GetConstantPoolInfo();
     ASSERT(index_ < array->GetLength());
     JSHandle<ConstantPool> cp(thread, constantPool.GetTaggedValue());
-    array->Set(thread, index_++, JSTaggedValue(pf->GetFileUniqId()));
+
+    std::string keyStr = std::to_string(pf->GetFileUniqId());
+    JSHandle<EcmaString> key = vm_->GetFactory()->NewFromStdString(keyStr);
+    array->Set(thread, index_++, key);
     auto value = GenerateConstantPoolInfo(cp);
     array->Set(thread, index_++, value);
 }
@@ -1734,9 +1737,23 @@ JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(JSHandle<ConstantP
 void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSHandle<TaggedArray> constPoolInfos,
                                                     const JSPandaFile* pf, JSHandle<ConstantPool> constPool)
 {
-    JSTaggedValue fileUniqID(pf->GetFileUniqId());
-    auto index = constPoolInfos->GetIdx(fileUniqID);
-    JSHandle<TaggedArray> valueArray(thread, constPoolInfos->Get(index + 1));
+    std::string keyStr = std::to_string(pf->GetFileUniqId());
+    JSHandle<EcmaString> key = thread->GetEcmaVM()->GetFactory()->NewFromStdString(keyStr);
+    uint32_t keyHash = key->GetHashcode();
+    int leftBound = BinarySearch(constPoolInfos, keyHash);
+    int rightBound = BinarySearch(constPoolInfos, keyHash, false);
+    if (leftBound == -1 || rightBound == -1) {
+        LOG_FULL(FATAL) << "restore constant pool fail";
+    }
+
+    TaggedArray *valueArray = nullptr;
+    while (leftBound <= rightBound) {
+        EcmaString *nowStr = EcmaString::Cast(constPoolInfos->Get(leftBound * ITEM_SIZE).GetTaggedObject());
+        if (EcmaString::StringsAreEqual(nowStr, *key)) {
+            valueArray = TaggedArray::Cast(constPoolInfos->Get(leftBound * ITEM_SIZE + 1).GetTaggedObject());
+        }
+        leftBound++;
+    }
 
     uint32_t len = valueArray->GetLength();
     for (uint32_t i = 0; i < len; i += ITEM_SIZE) {
@@ -1744,5 +1761,38 @@ void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSHandle<T
         JSTaggedValue value = valueArray->Get(i + 1);
         constPool->SetObjectToCache(thread, valueIndex, value);
     }
+}
+
+int ConstantPoolProcessor::BinarySearch(JSHandle<TaggedArray> constPoolInfos, uint32_t target, bool findLeftBound)
+{
+    int len = constPoolInfos->GetLength() / ITEM_SIZE - 1;
+    if (len < 0) {
+        LOG_FULL(FATAL) << "constantPoolInfos should not be empty";
+    }
+    int left = 0;
+    int right = len;
+
+    while (left <= right) {
+        int middle = left + (right - left) / 2;
+        EcmaString *middleStr = EcmaString::Cast(constPoolInfos->Get(middle * ITEM_SIZE).GetTaggedObject());
+        uint32_t nowHashCode = middleStr->GetHashcode();
+        if (target < nowHashCode) right = middle - 1;
+        else if(target > nowHashCode) left = middle + 1;
+        else {
+            if (findLeftBound) {
+                right = middle - 1;
+            } else {
+                left = middle + 1;
+            }
+        }
+    }
+
+    int finalIdx = findLeftBound? left: right;
+    if (finalIdx > len || finalIdx < 0) return -1;
+
+    EcmaString *finalStr = EcmaString::Cast(constPoolInfos->Get(finalIdx * ITEM_SIZE).GetTaggedObject());
+    uint32_t finalStrHashCode = finalStr->GetHashcode();
+
+    return finalStrHashCode == target? finalIdx: -1;
 }
 }  // namespace panda::ecmascript

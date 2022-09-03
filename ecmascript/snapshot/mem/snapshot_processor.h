@@ -145,6 +145,10 @@ public:
 private:
     JSTaggedValue GenerateConstantPoolInfo(JSHandle<ConstantPool> constantPool);
 
+    static int BinarySearch(JSHandle<TaggedArray> constPoolInfos, uint32_t target, bool findLeftBound = true);
+
+    static bool EcmaStringsAreEqual(const JSTaggedValue &x, const JSTaggedValue &y);
+
     EcmaVM *vm_ {nullptr};
     size_t index_ {0};
     static const int ITEM_SIZE = 2;
