@@ -171,13 +171,10 @@ inline JSTaggedValue JSTaggedValue::ToBigInt64(JSThread *thread, const JSHandle<
 {
     JSHandle<BigInt> value(thread, ToBigInt(thread, tagged));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<BigInt> exponent = BigInt::Int32ToBigInt(thread, 64); // 64 : bits
-    JSHandle<BigInt> exponentone = BigInt::Int32ToBigInt(thread, 63); // 63 : bits
-    JSHandle<BigInt> base = BigInt::Int32ToBigInt(thread, 2); // 2 : base value
-    JSHandle<BigInt> tVal  = BigInt::Exponentiate(thread, base, exponent);
+    JSHandle<BigInt> tVal = BigInt::GetUint64MaxBigint(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<BigInt> int64bitVal = BigInt::FloorMod(thread, value, tVal);
-    JSHandle<BigInt> resValue = BigInt::Exponentiate(thread, base, exponentone);
+    JSHandle<BigInt> resValue = BigInt::GetInt64MaxBigint(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!BigInt::LessThan(int64bitVal.GetTaggedValue(), resValue.GetTaggedValue())) {
         return BigInt::Subtract(thread, int64bitVal, tVal).GetTaggedValue();
@@ -190,9 +187,12 @@ inline JSTaggedValue JSTaggedValue::ToBigUint64(JSThread *thread, const JSHandle
 {
     JSHandle<BigInt> value(thread, ToBigInt(thread, tagged));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<BigInt> exponent = BigInt::Int32ToBigInt(thread, 64); // 64 : exponet value
-    JSHandle<BigInt> base = BigInt::Int32ToBigInt(thread, 2); // 2 : base value
-    JSHandle<BigInt> tVal = BigInt::Exponentiate(thread, base, exponent);
+    bool signFlag = value->GetSign();
+    uint32_t len = value->GetLength();
+    if (!signFlag && len <= 2) { // 2:2 int equal int64
+        return value.GetTaggedValue();
+    }
+    JSHandle<BigInt> tVal = BigInt::GetUint64MaxBigint(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return BigInt::FloorMod(thread, value, tVal).GetTaggedValue();
 }
