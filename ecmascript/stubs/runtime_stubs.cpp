@@ -1633,8 +1633,9 @@ DEF_RUNTIME_STUBS(ToNumeric)
 DEF_RUNTIME_STUBS(DynamicImport)
 {
     RUNTIME_STUBS_HEADER(DynamicImport);
-    JSTaggedValue specifier = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDynamicImport(thread, specifier).GetRawData();
+    JSHandle<JSTaggedValue> specifier = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> currentFunc = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the zeroth parameter
+    return RuntimeDynamicImport(thread, specifier, currentFunc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(NewLexicalEnvWithNameDyn)

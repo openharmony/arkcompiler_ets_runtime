@@ -4149,7 +4149,8 @@ DECLARE_ASM_HANDLER(HandleDynamicImportPrefV8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef v0 = ReadInst8_1(pc);
     GateRef specifier = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { specifier });
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { specifier, currentFunc });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(PREF_V8));
 }
 

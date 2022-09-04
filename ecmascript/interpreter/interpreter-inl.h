@@ -3575,7 +3575,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << " v" << v0;
         JSTaggedValue specifier = GET_VREG_VALUE(v0);
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+        JSTaggedValue thisFunc = GetThisFunction(sp);
+        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(BytecodeInstruction::Format::PREF_V8);

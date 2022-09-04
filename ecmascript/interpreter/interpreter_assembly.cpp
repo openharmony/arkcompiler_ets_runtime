@@ -3444,7 +3444,8 @@ void InterpreterAssembly::HandleDynamicImportPrefV8(
     LOG_INST() << "intrinsics::dynamicimport"
                 << " v" << v0;
     JSTaggedValue specifier = GET_VREG_VALUE(v0);
-    JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
