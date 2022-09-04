@@ -631,29 +631,37 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const 
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
     JSHandle<ECMAObject> obj(thread, this);
     JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(nativeFunc, deleter, data);
-    if (value->IsTaggedArray()) {
+    if (!HasHash()) {
+        Barriers::SetDynObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+        return;
+    }
+    if (value->IsHeapObject()) {
+        if (value->IsJSNativePointer()) {
+            Barriers::SetDynObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+            return;
+        }
         JSHandle<TaggedArray> array(value);
 
-        uint32_t nativeFieldCount = array->GetExtractLength();
+        uint32_t nativeFieldCount = array->GetExtraLength();
         if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
-            array->Set(thread, nativeFieldCount + FUNCTION_EXTRAL_INDEX, pointer);
+            array->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
         } else {
             JSHandle<TaggedArray> newArray =
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(nativeFieldCount + RESOLVED_MAX_SIZE);
-            newArray->SetExtractLength(nativeFieldCount);
+            newArray->SetExtraLength(nativeFieldCount);
             for (uint32_t i = 0; i < nativeFieldCount; i++) {
                 newArray->Set(thread, i, array->Get(i));
             }
             newArray->Set(thread, nativeFieldCount + HASH_INDEX, array->Get(nativeFieldCount + HASH_INDEX));
-            newArray->Set(thread, nativeFieldCount + FUNCTION_EXTRAL_INDEX, pointer);
+            newArray->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
             Barriers::SetDynObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         }
     } else {
         JSHandle<TaggedArray> newArray =
             thread->GetEcmaVM()->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
-        newArray->SetExtractLength(0);
+        newArray->SetExtraLength(0);
         newArray->Set(thread, HASH_INDEX, value);
-        newArray->Set(thread, FUNCTION_EXTRAL_INDEX, pointer);
+        newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
         Barriers::SetDynObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
     }
 }
@@ -662,11 +670,17 @@ JSTaggedValue JSFunction::GetFunctionExtraInfo() const
 {
     JSTaggedType hashField = Barriers::GetDynValue<JSTaggedType>(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
-    if (value.IsTaggedArray()) {
-        TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
-        uint32_t nativeFieldCount = array->GetExtractLength();
-        if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
-            return array->Get(nativeFieldCount + FUNCTION_EXTRAL_INDEX);
+    if (value.IsHeapObject()) {
+        if (value.IsTaggedArray()) {
+            TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
+            uint32_t nativeFieldCount = array->GetExtraLength();
+            if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
+                return array->Get(nativeFieldCount + FUNCTION_EXTRA_INDEX);
+            }
+        } else if (value.IsJSNativePointer()) {
+            return value;
+        } else {
+            UNREACHABLE();
         }
     }
     return JSTaggedValue::Undefined();

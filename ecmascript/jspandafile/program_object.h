@@ -63,11 +63,11 @@ public:
         return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + RESERVED_POOL_LENGTH);
     }
 
-    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity)
+    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength = 0)
     {
         ASSERT(initValue.IsSpecial());
         SetLength(capacity + RESERVED_POOL_LENGTH);
-        SetExtractLength(0);
+        SetExtraLength(extraLength);
         for (uint32_t i = 0; i < capacity; i++) {
             size_t offset = JSTaggedValue::TaggedTypeSize() * i;
             Barriers::SetDynPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());

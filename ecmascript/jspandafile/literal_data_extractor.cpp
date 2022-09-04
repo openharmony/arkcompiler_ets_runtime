@@ -23,8 +23,6 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 
-#include "libpandafile/literal_data_accessor-inl.h"
-
 namespace panda::ecmascript {
 using LiteralTag = panda_file::LiteralTag;
 using StringData = panda_file::StringData;
@@ -123,17 +121,36 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
     });
 }
 
+JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreTypeForClass(JSThread *thread,
+    const JSPandaFile *jsPandaFile, size_t index, JSHandle<JSTaggedValue> constpool, const CString &entryPoint)
+{
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
+    panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
+    uint32_t num = lda.GetLiteralValsNum(index) / 2;  // 2: half
+    // The num is 1, indicating that the current class has no member variable.
+    if (num == 1) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        return factory->EmptyArray();
+    }
+    return EnumerateLiteralVals(thread, lda, jsPandaFile, index, constpool, entryPoint);
+}
+
 JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                                size_t index, JSHandle<JSTaggedValue> constpool,
                                                                const CString &entryPoint)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     LOG_ECMA(VERBOSE) << "Panda File" << jsPandaFile->GetJSPandaFileDesc();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
     panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
+    return EnumerateLiteralVals(thread, lda, jsPandaFile, index, constpool, entryPoint);
+}
 
+JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
+    const JSPandaFile *jsPandaFile, size_t index, JSHandle<JSTaggedValue> constpool, const CString &entryPoint)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t num = lda.GetLiteralValsNum(index) / 2;  // 2: half
     JSHandle<TaggedArray> literals = factory->NewOldSpaceTaggedArray(num);
     uint32_t pos = 0;

@@ -136,11 +136,11 @@ inline bool TaggedArray::HasDuplicateEntry() const
     return false;
 }
 
-void TaggedArray::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length)
+void TaggedArray::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length, uint32_t extraLength)
 {
     ASSERT(initValue.IsSpecial());
     SetLength(length);
-    SetExtractLength(0);
+    SetExtraLength(extraLength);
     for (uint32_t i = 0; i < length; i++) {
         size_t offset = JSTaggedValue::TaggedTypeSize() * i;
         Barriers::SetDynPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
