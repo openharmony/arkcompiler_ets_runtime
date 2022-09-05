@@ -44,7 +44,10 @@ public:
         NO_MOVE_SEMANTIC(SingleStepper);
 
         bool StepComplete(uint32_t bcOffset) const;
-
+        Type GetStepperType() const
+        {
+            return type_;
+        }
     private:
         uint32_t GetStackDepth() const;
         bool InStepRange(uint32_t pc) const;

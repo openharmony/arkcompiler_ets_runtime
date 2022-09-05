@@ -1169,6 +1169,8 @@ public:
     static bool StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
     static bool StopDebugger(EcmaVM *vm);
+    static bool IsMixedDebugEnabled(const EcmaVM *vm);
+    static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
