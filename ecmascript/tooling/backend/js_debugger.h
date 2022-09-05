@@ -126,7 +126,13 @@ public:
         }
         hooks_->PendingJobEntry();
     }
-
+    void NativeCalling(const void *nativeAddress) override
+    {
+        if (hooks_ == nullptr) {
+            return;
+        }
+        hooks_->NativeCalling(nativeAddress);
+    }
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
     std::optional<JSBreakpoint> FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;

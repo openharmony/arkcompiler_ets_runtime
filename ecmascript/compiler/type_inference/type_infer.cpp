@@ -45,8 +45,7 @@ void TypeInfer::TraverseCircuit()
     }
 
     if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "TypeInfer:======================================================";
-        circuit_->PrintAllGates(*builder_);
+        PrintAllGatesTypes();
     }
 
     if (tsManager_->AssertTypes()) {
@@ -54,8 +53,7 @@ void TypeInfer::TraverseCircuit()
     }
 
     if (tsManager_->PrintAnyTypes()) {
-        TypeFilter filter(this);
-        filter.Run();
+        FilterAnyTypeGates();
     }
 }
 
@@ -489,15 +487,38 @@ bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
     return false;
 }
 
+void TypeInfer::PrintAllGatesTypes() const
+{
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+
+    const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+    const MethodLiteral *methodLiteral = builder_->GetMethod();
+    EntityId methodId = builder_->GetMethod()->GetMethodId();
+    JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
+    const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+
+    std::string log;
+    for (const auto &gate : gateList) {
+        auto op = gateAccessor_.GetOpCode(gate);
+        const auto &gateToBytecode = builder_->GetGateToBytecode();
+        if ((op == OpCode::VALUE_SELECTOR) || (( op == OpCode::JS_BYTECODE || op == OpCode::CONSTANT ||
+                                                 op == OpCode::RETURN) &&
+                                                 gateToBytecode.find(gate) != gateToBytecode.end()))  {
+            log += CollectGateTypeLogInfo(gate, debugExtractor, "[TypePrinter] ");
+        }
+    }
+
+    LOG_COMPILER(INFO) << "[TypePrinter] [" << sourceFileName << ":" << functionName << "] begin:";
+    LOG_COMPILER(INFO) << log << "[TypePrinter] end";
+}
+
 void TypeInfer::Verify() const
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
     for (const auto &gate : gateList) {
-        auto type = gateAccessor_.GetGateType(gate);
-        if (ShouldInfer(gate) && type.IsTSType() && !type.IsAnyType()) {
-            PrintType(gate);
-        }
         auto op = gateAccessor_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
             TypeCheck(gate);
@@ -530,62 +551,65 @@ void TypeInfer::TypeCheck(GateRef gate) const
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {
-            PrintType(valueGate);
-            std::string log("[TypeInfer][Error] ");
-            log += "gate id: "+ std::to_string(gateAccessor_.GetId(valueGate)) + ", ";
-            log += "expected type: " + expectedTypeStr;
-            LOG_COMPILER(FATAL) << log;
-            std::abort();
+            const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+            const MethodLiteral *methodLiteral = builder_->GetMethod();
+            EntityId methodId = builder_->GetMethod()->GetMethodId();
+            JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+            const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
+            const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+
+            std::string log = CollectGateTypeLogInfo(valueGate, debugExtractor, "[TypeAssertion] ");
+            log += "[TypeAssertion] but expected type: " + expectedTypeStr + "\n";
+
+            LOG_COMPILER(ERROR) << "[TypeAssertion] [" << sourceFileName << ":" << functionName << "] begin:";
+            LOG_COMPILER(FATAL) << log << " compiler: [TypeAssertion] end";
         }
     }
 }
 
-void TypeInfer::PrintType(GateRef gate) const
+void TypeInfer::FilterAnyTypeGates() const
 {
-    std::string log("[TypeInfer] ");
-    log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
-    auto op = gateAccessor_.GetOpCode(gate);
-    log += "opcode: " + op.Str() + ", ";
-    if (op != OpCode::VALUE_SELECTOR) {
-        log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
-    }
-    auto type = gateAccessor_.GetGateType(gate);
-    log += "type: " + tsManager_->GetTypeStr(type) + ", ";
-    auto typeRef = GlobalTSTypeRef(type.GetType());
-    log += "moduleId: " + std::to_string(typeRef.GetModuleId()) + ", ";
-    log += "localId: " + std::to_string(typeRef.GetLocalId());
-    LOG_COMPILER(INFO) << log;
-}
-
-void TypeFilter::Run() const
-{
-    LOG_COMPILER(INFO) << "================== filter any types outputs ==================";
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
-    EntityId methodId = methodLiteral_->GetMethodId();
+    const MethodLiteral *methodLiteral = builder_->GetMethod();
+    EntityId methodId = methodLiteral->GetMethodId();
 
-    JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    tooling::JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
-    const std::string functionName = methodLiteral_->ParseFunctionName(jsPandaFile, methodId);
+    const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
 
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
+    std::string log;
     for (const auto &gate : gateList) {
         GateType type = gateAccessor_.GetGateType(gate);
-        if (infer_->ShouldInfer(gate) && type.IsAnyType()) {
-            PrintAnyTypeGate(gate, debugExtractor, sourceFileName, functionName);
+        if (ShouldInfer(gate) && type.IsAnyType()) {
+            log += CollectGateTypeLogInfo(gate, debugExtractor, "[TypeFilter] ");
         }
     }
+
+    LOG_COMPILER(INFO) << "[TypeFilter] [" << sourceFileName << ":" << functionName << "] begin:";
+    LOG_COMPILER(INFO) << log << "[TypeFilter] end";
 }
 
-void TypeFilter::PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, const std::string &sourceFileName,
-                                  const std::string &functionName) const
+std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, JSPtExtractor *debugExtractor,
+                                              const std::string &logPreFix) const
 {
-    std::string log("[TypeFilter] ");
+    std::string log(logPreFix);
     log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
     OpCode op = gateAccessor_.GetOpCode(gate);
+    log += "op: " + op.Str() + ", ";
     if (op != OpCode::VALUE_SELECTOR) {
     // handle ByteCode gate: print gate id, bytecode and line number in source code.
         log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
+        GateType type = gateAccessor_.GetGateType(gate);
+        if (type.IsTSType()) {
+            log += "type: " + tsManager_->GetTypeStr(type) + ", ";
+            if (!tsManager_->IsPrimitiveTypeKind(type)) {
+                GlobalTSTypeRef gt = GlobalTSTypeRef(type.GetType());
+                log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
+                log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
+            }
+        }
 
         int32_t lineNumber = 0;
         auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
@@ -595,11 +619,12 @@ void TypeFilter::PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, c
 
         const auto &gateToBytecode = builder_->GetGateToBytecode();
         const uint8_t *pc = gateToBytecode.at(gate).second;
+        const MethodLiteral *methodLiteral = builder_->GetMethod();
 
-        uint32_t offset = pc - methodLiteral_->GetBytecodeArray();
-        debugExtractor->MatchLineWithOffset(callbackLineFunc, methodLiteral_->GetMethodId(), offset);
+        uint32_t offset = pc - methodLiteral->GetBytecodeArray();
+        debugExtractor->MatchLineWithOffset(callbackLineFunc, methodLiteral->GetMethodId(), offset);
 
-        log += "at " + functionName + " (" + sourceFileName +  ":" + std::to_string(lineNumber) + ")";
+        log += "at line: " + std::to_string(lineNumber);
     } else {
     // handle phi gate: print gate id and input gates id list.
         log += "phi gate, ins: ";
@@ -609,6 +634,7 @@ void TypeFilter::PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, c
         }
     }
 
-    LOG_COMPILER(INFO) << log;
+    log += "\n compiler: ";
+    return log;
 }
 }  // namespace panda::ecmascript

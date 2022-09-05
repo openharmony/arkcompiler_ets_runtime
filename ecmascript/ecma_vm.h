@@ -77,7 +77,7 @@ class CjsModuleCache;
 class SlowRuntimeStub;
 class RequireManager;
 struct CJSInfo;
-class JSPatchManager;
+class QuickFixLoader;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -447,9 +447,9 @@ public:
     // For Internal Native MethodLiteral.
     JSTaggedValue GetMethodByIndex(MethodIndex idx);
 
-    JSPatchManager *GetPatchManager() const
+    QuickFixLoader *GetQuickFixLoader() const
     {
-        return patchManager_;
+        return quickFixLoader_;
     }
 protected:
 
@@ -564,7 +564,7 @@ private:
     CVector<JSTaggedValue> internalNativeMethods_;
 
     // For repair patch.
-    JSPatchManager *patchManager_;
+    QuickFixLoader *quickFixLoader_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;

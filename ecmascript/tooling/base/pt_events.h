@@ -218,6 +218,35 @@ private:
     NO_MOVE_SEMANTIC(Resumed);
 };
 
+class NativeCalling final : public PtBaseEvents {
+public:
+    NativeCalling() = default;
+    ~NativeCalling() override = default;
+    std::unique_ptr<PtJson> ToJson() const override;
+
+    std::string GetName() const override
+    {
+        return "Debugger.nativeCalling";
+    }
+
+    const void *GetNativeAddress() const
+    {
+        return nativeAddress_;
+    }
+
+    NativeCalling &SetNativeAddress(const void *nativeAddress)
+    {
+        nativeAddress_ = nativeAddress;
+        return *this;
+    }
+
+private:
+    NO_COPY_SEMANTIC(NativeCalling);
+    NO_MOVE_SEMANTIC(NativeCalling);
+
+    const void *nativeAddress_ { nullptr };
+};
+
 class ScriptFailedToParse final : public PtBaseEvents {
 public:
     ScriptFailedToParse() = default;

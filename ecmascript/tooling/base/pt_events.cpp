@@ -73,6 +73,18 @@ std::unique_ptr<PtJson> Resumed::ToJson() const
     return object;
 }
 
+std::unique_ptr<PtJson> NativeCalling::ToJson() const
+{
+    std::unique_ptr<PtJson> result = PtJson::CreateObject();
+
+    std::unique_ptr<PtJson> object = PtJson::CreateObject();
+    result->Add("nativeAddress", reinterpret_cast<int64_t>(GetNativeAddress()));
+    object->Add("method", GetName().c_str());
+    object->Add("params", result);
+
+    return object;
+}
+
 std::unique_ptr<PtJson> ScriptFailedToParse::ToJson() const
 {
     std::unique_ptr<PtJson> result = PtJson::CreateObject();

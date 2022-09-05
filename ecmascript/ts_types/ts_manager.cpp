@@ -532,7 +532,7 @@ void TSManager::SortConstantPoolInfos()
         indexTable.emplace_back(std::make_pair(key->GetHashcode(), indexTable.size()));
     }
 
-    std::sort(indexTable.begin(), indexTable.end(), [](std::pair<uint32_t, uint32_t> first, 
+    std::sort(indexTable.begin(), indexTable.end(), [](std::pair<uint32_t, uint32_t> first,
     std::pair<uint32_t, uint32_t> second) {
         return first.first < second.first;
     });
@@ -549,9 +549,9 @@ void TSManager::SortConstantPoolInfos()
         changeIdx = i;
         while (nowIdx != indexTable[changeIdx].second) {
             tempIdx = indexTable[changeIdx].second;
-            oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE, 
+            oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE,
                                       oldConstantPoolInfos->Get(tempIdx * CONSTANTPOOL_INFO_ITEM_SIZE));
-            oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1, 
+            oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1,
                                       oldConstantPoolInfos->Get(tempIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1));
             indexTable[changeIdx].second = changeIdx;
             changeIdx = tempIdx;
