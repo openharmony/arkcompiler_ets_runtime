@@ -395,7 +395,7 @@ private:
     static std::string DescriptionForRegexp(const EcmaVM *ecmaVm, Local<RegExpRef> tagged);
     static std::string DescriptionForDate(const EcmaVM *ecmaVm, Local<DateRef> tagged);
     static std::string DescriptionForMap(const EcmaVM *ecmaVm, Local<MapRef> tagged);
-    static std::string DescriptionForSet(Local<SetRef> tagged);
+    static std::string DescriptionForSet(const EcmaVM *ecmaVm, Local<SetRef> tagged);
     static std::string DescriptionForError(const EcmaVM *ecmaVm, Local<JSValueRef> tagged);
     static std::string DescriptionForArrayIterator();
     static std::string DescriptionForMapIterator();
