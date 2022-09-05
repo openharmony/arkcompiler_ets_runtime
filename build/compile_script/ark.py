@@ -259,7 +259,7 @@ class Config(object):
         --es2021 
         --libs-dir ../out/%s:../prebuilts/clang/ohos/linux-x86_64/llvm/lib 
         --ark-tool=../out/%s/ark_js_vm 
-        --ark-frontend=ts2panda'''%(self.test_dir, self.test_dir)
+        --ark-frontend=ts2panda''' % (self.test_dir, self.test_dir)
 
         if ("-test262" in self.tests):
             print("=== come to test ===")
@@ -367,9 +367,11 @@ def Main(argvs):
         for config in configs:
             pass_code = configs[config].RunTest()
     if pass_code == 0:
-        _Notify('\033[32mDone!\033[0m', '\033[32mARK_{} compilation finished successfully.\033[0m'.format(argvs[1].split('.')[0]))
+        _Notify('\033[32mDone!\033[0m',
+            '\033[32mARK_{} compilation finished successfully.\033[0m'.format(argvs[1].split('.')[0]))
     else:
-        _Notify('\033[31mError!\033[0m', '\033[31mARK_{} compilation finished with errors.\033[0m'.format(argvs[1].split('.')[0]))
+        _Notify('\033[31mError!\033[0m',
+            '\033[31mARK_{} compilation finished with errors.\033[0m'.format(argvs[1].split('.')[0]))
     return pass_code
 
 if __name__ == "__main__":

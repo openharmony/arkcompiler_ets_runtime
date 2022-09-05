@@ -124,7 +124,8 @@ def _hwcloud_download(args, config, bin_dir, code_dir):
         with ThreadPoolExecutor(max_workers=cnt) as pool:
             tasks = dict()
             for config_info in config:
-                unzip_dir, huaweicloud_url, unzip_filename, md5_huaweicloud_url, bin_file = _config_parse(config_info, args.tool_repo)
+                unzip_dir, huaweicloud_url, unzip_filename, md5_huaweicloud_url, bin_file = _config_parse(config_info,
+                    args.tool_repo)
                 abs_unzip_dir = os.path.join(code_dir, unzip_dir)
                 if not os.path.exists(abs_unzip_dir):
                     os.makedirs(abs_unzip_dir)
@@ -139,14 +140,16 @@ def _hwcloud_download(args, config, bin_dir, code_dir):
                     if os.path.exists(local_file):
                         if _check_sha256(huaweicloud_url, local_file):
                             progress.console.log('{}, Sha256 check download OK.'.format(local_file), style='green')
-                            task = pool.submit(_uncompress, args, local_file, code_dir, unzip_dir, unzip_filename, args.mark_file_path)
+                            task = pool.submit(_uncompress, args, local_file, code_dir, unzip_dir, unzip_filename,
+                                args.mark_file_path)
                             tasks[task] = os.path.basename(huaweicloud_url)
                         else:
                             os.remove(local_file)
                     else:
                         filename = huaweicloud_url.split("/")[-1]
                         task_id = progress.add_task("download", filename=filename, start=False)
-                        task = pool.submit(_copy_url, args, task_id, huaweicloud_url, local_file, code_dir, unzip_dir, unzip_filename, args.mark_file_path)
+                        task = pool.submit(_copy_url, args, task_id, huaweicloud_url, local_file, code_dir, unzip_dir,
+                            unzip_filename, args.mark_file_path)
                         tasks[task] = os.path.basename(huaweicloud_url)
             for task in as_completed(tasks):
                 progress.console.log('{}, download and decompress completed'.format(tasks.get(task)), style='green')
@@ -218,7 +221,8 @@ def main():
     parser.add_argument('--skip-ssl', action='store_true', help='skip ssl authentication')
     parser.add_argument('--unsafe-perm', action='store_true', help='add "--unsafe-perm" for npm install')
     parser.add_argument('--tool-repo', default='https://repo.huaweicloud.com', help='prebuilt file download source')
-    parser.add_argument('--npm-registry', default='https://repo.huaweicloud.com/repository/npm/', help='npm download source')
+    parser.add_argument('--npm-registry', default='https://repo.huaweicloud.com/repository/npm/',
+                        help='npm download source')
     parser.add_argument('--host-cpu', help='host cpu', required=True)
     parser.add_argument('--host-platform', help='host platform', required=True)
     args = parser.parse_args()
