@@ -56,13 +56,18 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #endif
 
 #if ECMASCRIPT_ENABLE_INTERPRETER_LOG
-#define LOG_INST() LOG_INTERPRETER(DEBUG)
+#define HANDLE_OPCODE(opcode)           \
+    HANDLE_##opcode:                    \
+    {                                   \
+        BytecodeInstruction inst(pc);   \
+        LOG_INTERPRETER(DEBUG) << inst; \
+    }
 #else
-#define LOG_INST() false && LOG_INTERPRETER(DEBUG)
+#define HANDLE_OPCODE(opcode)       \
+    HANDLE_##opcode:
 #endif
 
-#define HANDLE_OPCODE(opcode) \
-    HANDLE_##opcode:
+#define LOG_INST() false && LOG_INTERPRETER(DEBUG)
 
 #define DEBUG_HANDLE_OPCODE(opcode) \
     DEBUG_HANDLE_##opcode:
@@ -1517,6 +1522,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue res = FastRuntimeStub::FastTypeOf(thread, GET_ACC());
         SET_ACC(res);
         DISPATCH(TYPEOF_IMM8);
+    }
+    HANDLE_OPCODE(TYPEOF_IMM16) {
+        LOG_INST() << "intrinsics::typeof";
+        JSTaggedValue res = FastRuntimeStub::FastTypeOf(thread, GET_ACC());
+        SET_ACC(res);
+        DISPATCH(TYPEOF_IMM16);
     }
     HANDLE_OPCODE(GETPROPITERATOR) {
         LOG_INST() << "intrinsics::getpropiterator";
@@ -6199,10 +6210,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(DEPRECATED_ASYNCFUNCTIONREJECT_PREF_V8_V8_V8);
     }
     // TODO: Implement code of 16bits ic slot bytecode
-    HANDLE_OPCODE(TYPEOF_IMM16) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(TYPEOF_IMM16);
-    }
     HANDLE_OPCODE(CLOSEITERATOR_IMM16_V8) {
         LOG_FULL(FATAL) << "not implement";
         DISPATCH(CLOSEITERATOR_IMM16_V8);

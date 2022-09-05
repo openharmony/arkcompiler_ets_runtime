@@ -221,7 +221,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
         } else if (value.GetConstpoolType() == ConstPoolType::BASE_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
-            methodLiteral->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
+            methodLiteral->SetFunctionKind(FunctionKind::BASE_CONSTRUCTOR);
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntry(jsPandaFile, *method);

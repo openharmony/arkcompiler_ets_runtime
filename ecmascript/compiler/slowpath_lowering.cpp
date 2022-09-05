@@ -2963,7 +2963,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFun
     }
 
     GateRef hclass = builder_.LoadHClass(*result);
-    builder_.SetPropertyInlinedProps(glue, *result, hclass, builder_.TaggedNGC(length),
+    builder_.SetPropertyInlinedProps(glue, *result, hclass, builder_.ToTaggedInt(length),
         builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
     builder_.SetLexicalEnvToFunction(glue, *result, v0);
     builder_.SetModuleToFunction(glue, *result, builder_.GetModuleFromFunction(jsFunc));
@@ -3249,7 +3249,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
     }
 
     GateRef hclass = builder_.LoadHClass(*method);
-    builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.TaggedNGC(length),
+    builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.ToTaggedInt(length),
         builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
     builder_.SetLexicalEnvToFunction(glue, *method, env);
     builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
