@@ -36,7 +36,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/js_patch_manager.h"
+#include "ecmascript/jspandafile/quick_fix_loader.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
@@ -2437,24 +2437,35 @@ EcmaVM *JsiRuntimeCallInfo::GetVM() const
 // ---------------------------------------Hot Patch----------------------------------------------------
 bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName)
 {
-    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->LoadPatch(thread, patchFileName, baseFileName);
+    return quickFixLoader->LoadPatch(thread, patchFileName, baseFileName);
 }
 
 bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                        const std::string &baseFileName)
 {
-    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
+    return quickFixLoader->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
 }
 
 bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
 {
-    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->UnLoadPatch(thread, patchFileName);
+    return quickFixLoader->UnLoadPatch(thread, patchFileName);
+}
+
+/*
+ * check whether the exception is caused by quickfix methods.
+ */
+bool JSNApi::IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName)
+{
+    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> exceptionInfo = JSNApiHelper::ToJSHandle(exception);
+    return quickFixLoader->IsQuickFixCausedException(thread, exceptionInfo, patchFileName);
 }
 
 bool JSNApi::IsBundle([[maybe_unused]]EcmaVM *vm)

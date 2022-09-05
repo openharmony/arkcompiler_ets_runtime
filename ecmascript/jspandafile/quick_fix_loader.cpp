@@ -12,20 +12,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/jspandafile/js_patch_manager.h"
+#include "ecmascript/jspandafile/quick_fix_loader.h"
 
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/mem/c_string.h"
 
 namespace panda::ecmascript {
-JSPatchManager::~JSPatchManager()
+QuickFixLoader::~QuickFixLoader()
 {
     ClearReservedInfo();
 }
 
-bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName)
+bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName)
 {
+    if (hasLoadedPatch_) {
+        LOG_ECMA(ERROR) << "Cannot repeat load patch";
+        return false;
+    }
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     EcmaVM *vm = thread->GetEcmaVM();
 
@@ -56,9 +61,13 @@ bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileNam
     return ReplaceMethod(thread, baseConstpool, patchConstpool, patchProgram);
 }
 
-bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer,
+bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer,
                                size_t patchSize, const std::string &baseFileName)
 {
+    if (hasLoadedPatch_) {
+        LOG_ECMA(ERROR) << "Cannot repeat load patch";
+        return false;
+    }
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     EcmaVM *vm = thread->GetEcmaVM();
 
@@ -90,7 +99,7 @@ bool JSPatchManager::LoadPatch(JSThread *thread, const std::string &patchFileNam
     return ReplaceMethod(thread, baseConstpool, patchConstpool, patchProgram);
 }
 
-bool JSPatchManager::ReplaceMethod(JSThread *thread,
+bool QuickFixLoader::ReplaceMethod(JSThread *thread,
                                    const JSHandle<ConstantPool> &baseConstpool,
                                    const JSHandle<ConstantPool> &patchConstpool,
                                    const JSHandle<Program> &patchProgram)
@@ -161,10 +170,11 @@ bool JSPatchManager::ReplaceMethod(JSThread *thread,
             EcmaInterpreter::NewRuntimeCallInfo(thread, func, global, undefined, 0);
         EcmaInterpreter::Execute(info);
     }
+    hasLoadedPatch_ = true;
     return true;
 }
 
-bool JSPatchManager::UnLoadPatch(JSThread *thread, const std::string &patchFileName)
+bool QuickFixLoader::UnLoadPatch(JSThread *thread, const std::string &patchFileName)
 {
     if (ConvertToString(patchFileName) != patchFile_->GetJSPandaFileDesc()) {
         return false;
@@ -211,10 +221,11 @@ bool JSPatchManager::UnLoadPatch(JSThread *thread, const std::string &patchFileN
     }
 
     ClearReservedInfo();
+    hasLoadedPatch_ = false;
     return true;
 }
 
-void JSPatchManager::ReplaceMethodInner(JSThread *thread,
+void QuickFixLoader::ReplaceMethodInner(JSThread *thread,
                                         Method* destMethod,
                                         MethodLiteral *srcMethodLiteral,
                                         JSTaggedValue srcConstpool)
@@ -223,5 +234,52 @@ void JSPatchManager::ReplaceMethodInner(JSThread *thread,
     destMethod->SetLiteralInfo(srcMethodLiteral->GetLiteralInfo());
     destMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(srcMethodLiteral->GetNativePointer()));
     destMethod->SetConstantPool(thread, srcConstpool);
+}
+
+bool QuickFixLoader::IsQuickFixCausedException(JSThread *thread,
+                                               const JSHandle<JSTaggedValue> &exceptionInfo,
+                                               const std::string &patchFileName)
+{
+    if (patchFile_ == nullptr || ConvertToString(patchFileName) != patchFile_->GetJSPandaFileDesc()) {
+        return false;
+    }
+
+    // get and parse stackinfo.
+    JSHandle<JSTaggedValue> stackKey = thread->GlobalConstants()->GetHandledStackString();
+    JSHandle<EcmaString> stack(JSObject::GetProperty(thread, exceptionInfo, stackKey).GetValue());
+    CString stackInfo = ConvertToString(*stack);
+    CUnorderedSet<CString> methodNames = ParseStackInfo(stackInfo);
+
+    // check whether the methodNames contains a patch method name.
+    CUnorderedMap<uint32_t, MethodLiteral *> patchMethodLiterals = patchFile_->GetMethodLiteralMap();
+    for (const auto &item : patchMethodLiterals) {
+        MethodLiteral *patch = item.second;
+        auto methodId = patch->GetMethodId();
+        const char *patchMethodName = MethodLiteral::GetMethodName(patchFile_, methodId);
+        if (std::strcmp(patchMethodName, JSPandaFile::ENTRY_FUNCTION_NAME) != 0 &&
+            methodNames.find(CString(patchMethodName)) != methodNames.end()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+CUnorderedSet<CString> QuickFixLoader::ParseStackInfo(const CString &stackInfo)
+{
+    const uint32_t methodNameOffsetToFirstIndex = 5; // offset of the starting position of methodname to firstIndex.
+    uint32_t lineIndex = 0; // index of "\n".
+    uint32_t firstIndex = 0; // index of "at".
+    uint32_t nextIndex = 0; // index of "(".
+
+    CUnorderedSet<CString> methodNames {}; // method names are from exception stack information.
+    while (lineIndex != stackInfo.length() - 1) {
+        firstIndex = stackInfo.find("  at ", lineIndex + 1);
+        nextIndex = stackInfo.find("(", lineIndex + 1);
+        CString methodName = stackInfo.substr(firstIndex + methodNameOffsetToFirstIndex,
+            nextIndex - firstIndex - methodNameOffsetToFirstIndex - 1);
+        methodNames.emplace(methodName);
+        lineIndex = stackInfo.find("\n", lineIndex + 1);
+    }
+    return methodNames;
 }
 }  // namespace panda::ecmascript
