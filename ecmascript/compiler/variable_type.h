@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_MACHINE_TYPE_H
 #define ECMASCRIPT_COMPILER_MACHINE_TYPE_H
 
-#include "gate.h"
+#include "ecmascript/compiler/gate.h"
 
 namespace panda::ecmascript::kungfu {
 class VariableType {

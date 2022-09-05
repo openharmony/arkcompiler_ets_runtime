@@ -347,7 +347,6 @@ public:
     inline GateRef ChangeUInt32ToFloat64(GateRef x);
     inline GateRef ChangeInt32ToFloat64(GateRef x);
     // Pointer/Arithmetic/Logic Operations
-    inline GateRef PointerSub(GateRef x, GateRef y);
     inline GateRef IntPtrDiv(GateRef x, GateRef y);
     inline GateRef IntPtrOr(GateRef x, GateRef y);
     inline GateRef IntPtrLSL(GateRef x, GateRef y);

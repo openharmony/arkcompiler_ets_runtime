@@ -142,7 +142,7 @@ public:
                                    uint16_t length);
     static JSTaggedValue SuperCallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                          JSTaggedValue array);
-    static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier);
+    static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue func);
     static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,

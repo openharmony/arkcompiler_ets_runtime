@@ -66,7 +66,7 @@ public:
     static size_t GetHeapUsedSize(const EcmaVM *vm);
     static void NotifyApplicationState(EcmaVM *vm, bool inBackground);
     static void NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure);
-    static bool BuildJsStackInfoList(const EcmaVM *vm, std::vector<JsFrameInfo>& jsFrames);
+    static bool BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames);
 
     // profile generator
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

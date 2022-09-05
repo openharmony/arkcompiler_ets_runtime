@@ -449,7 +449,7 @@ private:
     static inline JSTaggedValue RuntimeStGlobalVar(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
                                                    const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &value);
-    static inline JSTaggedValue RuntimeDynamicImport(JSThread *thread, JSTaggedValue specifier);
+    static inline JSTaggedValue RuntimeDynamicImport(JSThread *thread, const JSHandle<JSTaggedValue> &specifier, const JSHandle<JSTaggedValue> &func);
     static inline JSTaggedValue RuntimeToNumeric(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                              const JSHandle<JSTaggedValue> &right);

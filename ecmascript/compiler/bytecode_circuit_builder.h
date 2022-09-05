@@ -419,9 +419,11 @@ public:
                                     JSHandle<JSTaggedValue> &constantPool,
                                     const MethodLiteral *methodLiteral,
                                     BytecodeInfoCollector::MethodPcInfo &methodPCInfo,
-                                    TSManager *tsManager, bool enableLog)
-        : file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()), method_(methodLiteral), constantPool_(constantPool),
-          gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
+                                    TSManager *tsManager,
+                                    const CompilationConfig* cconfig,
+                                    bool enableLog)
+        : circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()), method_(methodLiteral),
+          constantPool_(constantPool), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)

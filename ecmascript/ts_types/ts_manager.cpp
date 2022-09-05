@@ -518,6 +518,50 @@ std::string TSManager::GetPrimitiveStr(const GlobalTSTypeRef &gt) const
     }
 }
 
+void TSManager::SortConstantPoolInfos()
+{
+    JSHandle<TaggedArray> oldConstantPoolInfos = JSHandle<TaggedArray>(uintptr_t(&constantPoolInfo_));
+
+    uint32_t len = oldConstantPoolInfos->GetLength();
+    std::vector<std::pair<uint32_t, uint32_t>> indexTable;
+    uint32_t tableLen = len / CONSTANTPOOL_INFO_ITEM_SIZE;
+    indexTable.reserve(tableLen);
+
+    for (uint32_t i = 0; i < len; i += CONSTANTPOOL_INFO_ITEM_SIZE) {
+        EcmaString *key = EcmaString::Cast(oldConstantPoolInfos->Get(i).GetTaggedObject());
+        indexTable.emplace_back(std::make_pair(key->GetHashcode(), indexTable.size()));
+    }
+
+    std::sort(indexTable.begin(), indexTable.end(), [](std::pair<uint32_t, uint32_t> first, 
+    std::pair<uint32_t, uint32_t> second) {
+        return first.first < second.first;
+    });
+
+    uint32_t nowIdx = 0;
+    uint32_t changeIdx = 0;
+    uint32_t tempIdx = 0;
+    JSThread* thread = vm_->GetJSThread();
+    for (uint32_t i = 0; i < tableLen; ++i) {
+        nowIdx = i;
+        JSTaggedValue tempKey = oldConstantPoolInfos->Get(nowIdx * CONSTANTPOOL_INFO_ITEM_SIZE);
+        JSTaggedValue tempValue = oldConstantPoolInfos->Get(nowIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1);
+
+        changeIdx = i;
+        while (nowIdx != indexTable[changeIdx].second) {
+            tempIdx = indexTable[changeIdx].second;
+            oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE, 
+                                      oldConstantPoolInfos->Get(tempIdx * CONSTANTPOOL_INFO_ITEM_SIZE));
+            oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1, 
+                                      oldConstantPoolInfos->Get(tempIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1));
+            indexTable[changeIdx].second = changeIdx;
+            changeIdx = tempIdx;
+        }
+        oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE, tempKey);
+        oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1, tempValue);
+        indexTable[changeIdx].second = changeIdx;
+    }
+}
+
 void TSModuleTable::Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

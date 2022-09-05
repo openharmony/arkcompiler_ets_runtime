@@ -37,8 +37,9 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
             {
                 Label tryPoly(env);
                 GateRef hclass = LoadHClass(receiver_);
-                Branch(Int64Equal(TaggedCastToWeakReferentUnChecked(firstValue), hclass),
-                       tryICHandler, &tryPoly);
+                Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+                       tryICHandler,
+                       &tryPoly);
                 Bind(&tryPoly);
                 {
                     cachedHandler->WriteVariable(CheckPolyHClass(firstValue, hclass));
@@ -74,8 +75,9 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
             {
                 Label tryPoly(env);
                 GateRef hclass = LoadHClass(receiver_);
-                Branch(Int64Equal(TaggedCastToWeakReferentUnChecked(firstValue), hclass),
-                       tryElementIC, &tryPoly);
+                Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+                       tryElementIC,
+                       &tryPoly);
                 Bind(&tryPoly);
                 {
                     Label firstIsKey(env);

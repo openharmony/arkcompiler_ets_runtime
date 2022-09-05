@@ -6394,8 +6394,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(DYNAMICIMPORT) {
         LOG_INST() << "intrinsics::dynamicimport";
         JSTaggedValue specifier = GET_ACC();
+        JSTaggedValue thisFunc = GetThisFunction(sp);
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(DYNAMICIMPORT);
@@ -6404,8 +6405,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t v0 = READ_INST_8_1();
         LOG_INST() << "intrinsics::dynamicimport";
         JSTaggedValue specifier = GET_VREG_VALUE(v0);
+        JSTaggedValue thisFunc = GetThisFunction(sp);
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(DEPRECATED_DYNAMICIMPORT_PREF_V8);

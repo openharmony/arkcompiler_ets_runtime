@@ -252,6 +252,8 @@ public:
         constantPoolInfo_ = constantPoolInfo;
     }
 
+    void PUBLIC_API SortConstantPoolInfos();
+
 #define IS_TSTYPEKIND_METHOD_LIST(V)              \
     V(Primitive, TSTypeKind::PRIMITIVE)           \
     V(Class, TSTypeKind::CLASS)                   \
@@ -276,6 +278,7 @@ public:
     static constexpr int BUILTIN_ARRAY_ID = 24;
 
 private:
+    static constexpr uint32_t CONSTANTPOOL_INFO_ITEM_SIZE = 2;
 
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);

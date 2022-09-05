@@ -130,9 +130,10 @@ GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, Gate
                 Jump(&afterLoop);
                 Bind(&propsNumNotZero);
                 GateRef elementAddr = GetPropertiesAddrFromLayoutInfo(layoutInfo);
-                GateRef keyInProperty = Load(VariableType::INT64(), elementAddr,
-                    PtrMul(ChangeInt32ToIntPtr(*i),
-                        IntPtr(sizeof(panda::ecmascript::Properties))));
+                GateRef keyInProperty = Load(VariableType::INT64(),
+                                             elementAddr,
+                                             PtrMul(ChangeInt32ToIntPtr(*i),
+                                                    IntPtr(sizeof(panda::ecmascript::Properties))));
                 Label equal(env);
                 Label notEqual(env);
                 Label afterEqualCon(env);
@@ -172,7 +173,7 @@ GateRef StubBuilder::FindElementFromNumberDictionary(GateRef glue, GateRef eleme
     Label exit(env);
     GateRef capcityoffset =
         PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()),
-            IntPtr(TaggedHashTable<NumberDictionary>::SIZE_INDEX));
+               IntPtr(TaggedHashTable<NumberDictionary>::SIZE_INDEX));
     GateRef dataoffset = IntPtr(TaggedArray::DATA_OFFSET);
     GateRef capacity = TaggedCastToInt32(Load(VariableType::INT64(), elements,
                                               PtrAdd(dataoffset, capcityoffset)));
@@ -229,7 +230,7 @@ GateRef StubBuilder::FindEntryFromNameDictionary(GateRef glue, GateRef elements,
     DEFVARIABLE(result, VariableType::INT32(), Int32(-1));
     GateRef capcityoffset =
         PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()),
-            IntPtr(TaggedHashTable<NumberDictionary>::SIZE_INDEX));
+               IntPtr(TaggedHashTable<NumberDictionary>::SIZE_INDEX));
     GateRef dataoffset = IntPtr(TaggedArray::DATA_OFFSET);
     GateRef capacity = TaggedCastToInt32(Load(VariableType::INT64(), elements,
                                               PtrAdd(dataoffset, capcityoffset)));
@@ -338,7 +339,7 @@ GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef ele
     DEFVARIABLE(result, VariableType::INT32(), Int32(-1));
     GateRef capcityoffset =
         PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()),
-            IntPtr(TaggedHashTable<NumberDictionary>::SIZE_INDEX));
+               IntPtr(TaggedHashTable<NumberDictionary>::SIZE_INDEX));
     GateRef dataoffset = IntPtr(TaggedArray::DATA_OFFSET);
     GateRef capacity = TaggedCastToInt32(Load(VariableType::INT64(), elements,
                                               PtrAdd(dataoffset, capcityoffset)));
@@ -982,14 +983,15 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
             Label marking(env);
             bool isArch32 = GetEnvironment()->Is32Bit();
             GateRef stateBitFieldAddr = Int64Add(glue,
-                Int64(JSThread::GlueData::GetStateBitFieldOffset(isArch32)));
+                                                 Int64(JSThread::GlueData::GetStateBitFieldOffset(isArch32)));
             GateRef stateBitField = Load(VariableType::INT64(), stateBitFieldAddr, Int64(0));
             Branch(Int64Equal(stateBitField, Int64(0)), &exit, &marking);
 
             Bind(&marking);
-            UpdateLeaveFrameAndCallNGCRuntime(glue,
-                RTSTUB_ID(MarkingBarrier), {
-                glue, slotAddr, objectRegion, TaggedCastToIntPtr(value), valueRegion });
+            UpdateLeaveFrameAndCallNGCRuntime(
+                glue,
+                RTSTUB_ID(MarkingBarrier),
+                { glue, slotAddr, objectRegion, TaggedCastToIntPtr(value), valueRegion });
             Jump(&exit);
         }
     }
@@ -1294,7 +1296,7 @@ GateRef StubBuilder::CheckPolyHClass(GateRef cachedValue, GateRef hclass)
             Bind(&iLessLength);
             {
                 GateRef element = GetValueFromTaggedArray(VariableType::JS_ANY(), cachedValue, *i);
-                Branch(Int64Equal(TaggedCastToWeakReferentUnChecked(element), hclass), &hasHclass, &loopEnd);
+                Branch(Equal(LoadObjectFromWeakRef(element), hclass), &hasHclass, &loopEnd);
                 Bind(&hasHclass);
                 result = GetValueFromTaggedArray(VariableType::JS_ANY(), cachedValue,
                                                  Int32Add(*i, Int32(1)));
@@ -1633,9 +1635,11 @@ void StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, Gate
     Branch(HandlerBaseIsInlinedProperty(handler), &handlerIsInlinedProperty, &handlerNotInlinedProperty);
     Bind(&handlerIsInlinedProperty);
     {
-        Store(VariableType::JS_ANY(), glue, receiver,
-            PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
-            value);
+        Store(VariableType::JS_ANY(),
+              glue,
+              receiver,
+              PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
+              value);
         Jump(&exit);
     }
     Bind(&handlerNotInlinedProperty);
@@ -1679,9 +1683,11 @@ void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef va
         }
         Bind(&indexLessCapacity);
         {
-            Store(VariableType::JS_ANY(), glue, PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET)),
-                PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
-                value);
+            Store(VariableType::JS_ANY(),
+                  glue,
+                  PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET)),
+                  PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
+                  value);
             Jump(&exit);
         }
     }
@@ -2180,7 +2186,7 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
         Branch(TaggedIsWeak(transition), &isWeak, &notWeak);
         Bind(&isWeak);
         {
-            GateRef transitionHClass = TaggedCastToWeakReferentUnChecked(transition);
+            GateRef transitionHClass = LoadObjectFromWeakRef(transition);
             GateRef propNums = GetNumberOfPropsFromHClass(transitionHClass);
             GateRef last = Int32Sub(propNums, Int32(1));
             GateRef layoutInfo = GetLayoutFromHClass(transitionHClass);
@@ -2225,8 +2231,8 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
                 &valueUndefined);
             Bind(&valueNotUndefined);
             {
-                GateRef newHClass = TaggedCastToWeakReferentUnChecked(value);
-                result = Int64ToTaggedPtr(newHClass);
+                GateRef newHClass = LoadObjectFromWeakRef(value);
+                result = newHClass;
 #if ECMASCRIPT_ENABLE_IC
                 NotifyHClassChanged(glue, hclass, newHClass);
 #endif
