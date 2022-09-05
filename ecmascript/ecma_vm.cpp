@@ -49,7 +49,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/js_patch_manager.h"
+#include "ecmascript/jspandafile/quick_fix_loader.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -210,7 +210,7 @@ bool EcmaVM::Initialize()
     debuggerManager_->Initialize(this);
     tsManager_ = new TSManager(this);
     tsManager_->Initialize();
-    patchManager_ = new JSPatchManager();
+    quickFixLoader_ = new QuickFixLoader();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Initialize();
@@ -338,9 +338,9 @@ EcmaVM::~EcmaVM()
         tsManager_ = nullptr;
     }
 
-    if (patchManager_ != nullptr) {
-        delete patchManager_;
-        patchManager_ = nullptr;
+    if (quickFixLoader_ != nullptr) {
+        delete quickFixLoader_;
+        quickFixLoader_ = nullptr;
     }
 
     if (snapshotEnv_ != nullptr) {

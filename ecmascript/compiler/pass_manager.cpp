@@ -43,9 +43,9 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     uint32_t mainMethodIndex = bytecodeInfo.jsPandaFile->GetMainMethodIndex();
     uint32_t skipMethodNum = 0;
     auto mainMethod = bytecodeInfo.jsPandaFile->FindMethodLiteral(mainMethodIndex);
-    bool enableLog = !log_->NoneMethod();
+    bool enableMethodLog = !log_->NoneMethod();
 
-    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableLog, aotModule, &cmpCfg, tsManager,
+    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, &cmpCfg, tsManager,
         &mainMethod, &skipMethodNum](const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> &constantPool,
         BytecodeInfoCollector::MethodPcInfo &methodPCInfo) {
         if (methodPCInfo.methodsSize > maxAotMethodSize_ && methodPCInfo.methods[0] != mainMethod) {
@@ -55,19 +55,19 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         for (auto method : methodPCInfo.methods) {
             const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
             if (log_->CertainMethod()) {
-                enableLog = logList_->IncludesMethod(fileName, methodName);
+                enableMethodLog = logList_->IncludesMethod(fileName, methodName);
             }
 
-            if (enableLog) {
+            if (enableMethodLog) {
                 LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
                                 << methodName << "] log:" << "\033[0m";
             }
 
             BytecodeCircuitBuilder builder(jsPandaFile, constantPool, method, methodPCInfo, tsManager,
-                                           &cmpCfg, enableLog && log_->OutputCIR());
+                                           &cmpCfg, enableMethodLog && log_->OutputCIR());
             builder.BytecodeToCircuit();
-            PassData data(builder.GetCircuit());
-            PassRunner<PassData> pipeline(&data, enableLog && log_->OutputCIR());
+            PassData data(builder.GetCircuit(), log_, enableMethodLog);
+            PassRunner<PassData> pipeline(&data);
             pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
             pipeline.RunPass<TypeInferPass>(&builder, tsManager);
             pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);

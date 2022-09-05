@@ -411,6 +411,24 @@ private:
     std::optional<std::list<std::unique_ptr<LocationRange>>> skipList_ {};
 };
 
+class SetMixedDebugParams : public PtBaseParams {
+public:
+    SetMixedDebugParams() = default;
+    ~SetMixedDebugParams() override = default;
+    static std::unique_ptr<SetMixedDebugParams> Create(const PtJson &params);
+
+    bool GetEnabled() const
+    {
+        return enabled_;
+    }
+
+private:
+    NO_COPY_SEMANTIC(SetMixedDebugParams);
+    NO_MOVE_SEMANTIC(SetMixedDebugParams);
+
+    bool enabled_ { false };
+};
+
 class GetPropertiesParams : public PtBaseParams {
 public:
     GetPropertiesParams() = default;

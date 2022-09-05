@@ -475,7 +475,7 @@ std::string ObjectRemoteObject::DescriptionForError(const EcmaVM *ecmaVm, Local<
     if (strMessage.empty()) {
         return strName;
     } else {
-        return strName + ": "+ strMessage;
+        return strName + ": " + strMessage;
     }
 }
 

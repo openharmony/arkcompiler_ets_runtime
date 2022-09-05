@@ -1765,7 +1765,7 @@ void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSHandle<T
 
 int ConstantPoolProcessor::BinarySearch(JSHandle<TaggedArray> constPoolInfos, uint32_t target, bool findLeftBound)
 {
-    int len = constPoolInfos->GetLength() / ITEM_SIZE - 1;
+    int len = static_cast<int>(constPoolInfos->GetLength()) / ITEM_SIZE - 1;
     if (len < 0) {
         LOG_FULL(FATAL) << "constantPoolInfos should not be empty";
     }
