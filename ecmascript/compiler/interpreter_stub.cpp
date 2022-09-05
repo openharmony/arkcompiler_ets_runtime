@@ -5909,6 +5909,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         SetLexicalEnvToFunction(glue, *result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+        SetHomeObjectToFunction(glue, *result, GetHomeObjectFromFunction(currentFunc));
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
     }
@@ -5919,7 +5920,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_2(pc);
-    GateRef length = ReadInst16_4(pc);
+    GateRef length = ReadInst8_4(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { *result, acc });
@@ -5928,13 +5929,14 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     Bind(&notException);
     {
         GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedInt(length),
+        SetPropertyInlinedProps(glue, *result, hclass, Int8ToTaggedInt(length),
             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
         auto frame = GetFrame(sp);
         GateRef envHandle = GetEnvFromFrame(frame);
         SetLexicalEnvToFunction(glue, *result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
+        SetHomeObjectToFunction(glue, *result, GetHomeObjectFromFunction(currentFunc));
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
     }

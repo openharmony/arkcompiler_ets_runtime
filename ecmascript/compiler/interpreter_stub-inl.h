@@ -244,6 +244,11 @@ GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::ECMA_MODULE_OFFSET));
 }
 
+GateRef InterpreterStubBuilder::GetHomeObjectFromFunction(GateRef function)
+{
+    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::HOME_OBJECT_OFFSET));
+}
+
 GateRef InterpreterStubBuilder::GetConstpoolFromFunction(GateRef function)
 {
     GateRef method = GetMethodFromJSFunction(function);

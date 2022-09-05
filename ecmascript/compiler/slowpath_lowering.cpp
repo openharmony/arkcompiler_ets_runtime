@@ -725,6 +725,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
 
     // set bc size
     GateRef bcSizeOffset = builder_.IntPtr(GeneratorContext::GENERATOR_BC_OFFSET_OFFSET);
+    // TODO: add bytecode size here
     GateRef bcSizeGate = acc_.GetValueIn(gate, 0); // saved bc_offset
     bcSizeGate = builder_.TruncInt64ToInt32(bcSizeGate);
     builder_.Store(VariableType::INT32(), glue, context, bcSizeOffset, bcSizeGate);

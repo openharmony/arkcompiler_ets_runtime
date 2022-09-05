@@ -67,6 +67,9 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
     HANDLE_##opcode:
 #endif
 
+#define FIRST_HANDLE_OPCODE(opcode) \
+    HANDLE_##opcode:
+
 #define LOG_INST() false && LOG_INTERPRETER(DEBUG)
 
 #define DEBUG_HANDLE_OPCODE(opcode) \
@@ -3632,13 +3635,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::nop";
         DISPATCH(NOP);
     }
-    HANDLE_OPCODE(THROW) {
+    FIRST_HANDLE_OPCODE(THROW) {
         DISPATCH_THROW();
     }
-    HANDLE_OPCODE(WIDE) {
+    FIRST_HANDLE_OPCODE(WIDE) {
         DISPATCH_WIDE();
     }
-    HANDLE_OPCODE(DEPRECATED) {
+    FIRST_HANDLE_OPCODE(DEPRECATED) {
         DISPATCH_DEPRECATED();
     }
     HANDLE_OPCODE(THROW_PREF_NONE) {
@@ -4632,6 +4635,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
         jsFunc->SetModule(thread, currentFunc->GetModule());
+        jsFunc->SetHomeObject(thread, currentFunc->GetHomeObject());
         SET_ACC(JSTaggedValue(jsFunc));
 
         DISPATCH(DEFINEFUNC_IMM8_ID16_IMM8);
@@ -4655,6 +4659,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
         jsFunc->SetModule(thread, currentFunc->GetModule());
+        jsFunc->SetHomeObject(thread, currentFunc->GetHomeObject());
         SET_ACC(JSTaggedValue(jsFunc));
 
         DISPATCH(DEFINEFUNC_IMM16_ID16_IMM8);
