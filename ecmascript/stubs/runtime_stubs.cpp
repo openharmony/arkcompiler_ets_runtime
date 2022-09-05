@@ -1870,6 +1870,21 @@ DEF_RUNTIME_STUBS(StringEqual)
     return JSTaggedValue::VALUE_FALSE;
 }
 
+DEF_RUNTIME_STUBS(LdPatchVar)
+{
+    RUNTIME_STUBS_HEADER(LdPatchVar);
+    JSTaggedValue idx = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeLdPatchVar(thread, idx.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(StPatchVar)
+{
+    RUNTIME_STUBS_HEADER(StPatchVar);
+    JSTaggedValue idx = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeStPatchVar(thread, idx.GetInt(), value).GetRawData();
+}
+
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);

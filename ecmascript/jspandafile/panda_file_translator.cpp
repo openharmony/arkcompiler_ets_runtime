@@ -536,6 +536,18 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
             break;
         }
+        case OldBytecodeInst::Opcode::ECMA_LDPATCHVAR_PREF_IMM16: {
+            newOpcode = EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16;
+            *pc = static_cast<uint8_t>(widePrefOp);
+            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
+            break;
+        }
+        case OldBytecodeInst::Opcode::ECMA_STPATCHVAR_PREF_IMM16: {
+            newOpcode = EcmaOpcode::WIDE_STPATCHVAR_PREF_IMM16;
+            *pc = static_cast<uint8_t>(widePrefOp);
+            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
+            break;
+        }
         // Translate to deprecated
         case OldBytecodeInst::Opcode::ECMA_STCLASSTOGLOBALRECORD_PREF_ID32: {
             newOpcode = EcmaOpcode::DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32;

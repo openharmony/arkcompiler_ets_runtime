@@ -6369,6 +6369,22 @@ DECLARE_ASM_HANDLER(ThrowStackOverflowException)
     CallRuntime(glue, RTSTUB_ID(ThrowStackOverflowException), {});
     DISPATCH_LAST();
 }
+
+DECLARE_ASM_HANDLER(HandleWideLdPatchVarPrefImm16)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef index = ReadInst16_1(pc);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(LdPatchVar), { IntToTaggedInt(index) });
+    CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(WIDE_LDPATCHVAR_PREF_IMM16));
+}
+
+DECLARE_ASM_HANDLER(HandleWideStPatchVarPrefImm16)
+{
+    GateRef index = ReadInst16_1(pc);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StPatchVar), { IntToTaggedInt(index), acc });
+    CHECK_EXCEPTION(result, INT_PTR(WIDE_STPATCHVAR_PREF_IMM16));
+}
 #undef DECLARE_ASM_HANDLER
 #undef DISPATCH
 #undef DISPATCH_WITH_ACC

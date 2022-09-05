@@ -2381,5 +2381,23 @@ OptimizedJSFunctionFrame *RuntimeStubs::GetOptimizedJSFunctionFrame(JSThread *th
     ASSERT(it.GetFrameType()  == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
     return it.GetFrame<OptimizedJSFunctionFrame>();
 }
+
+JSTaggedValue RuntimeStubs::RuntimeLdPatchVar(JSThread *thread, uint32_t index)
+{
+    JSHandle<JSTaggedValue> globalPatch = thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalPatch();
+
+    OperationResult res = JSTaggedValue::GetProperty(thread, globalPatch, index);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return res.GetValue().GetTaggedValue();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeStPatchVar(JSThread *thread, uint32_t index, const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<JSTaggedValue> globalPatch = thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalPatch();
+
+    JSTaggedValue::SetProperty(thread, globalPatch, index, value, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return JSTaggedValue::True();
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

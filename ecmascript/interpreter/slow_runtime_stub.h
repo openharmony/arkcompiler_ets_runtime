@@ -166,6 +166,10 @@ public:
     static JSTaggedValue AsyncGeneratorResolve(JSThread *thread, JSTaggedValue asyncFuncObj,
                                                const JSTaggedValue value, JSTaggedValue flag);
     static JSTaggedValue CreateAsyncGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
+
+    static JSTaggedValue LdPatchVar(JSThread *thread, uint32_t index);
+    static JSTaggedValue StPatchVar(JSThread *thread, uint32_t index, JSTaggedValue value);
+
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);
     static JSTaggedValue GetCallSpreadArgs(JSThread *thread, JSTaggedValue array);

@@ -885,7 +885,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 9;
-    constexpr size_t numWideOps = 18;
+    constexpr size_t numWideOps = 20;
     constexpr size_t numDeprecatedOps = 46;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -6391,6 +6391,28 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_FULL(FATAL) << "not implement";
         DISPATCH(STPATCHVAR_IMM8_V8);
     }
+    HANDLE_OPCODE(WIDE_LDPATCHVAR_PREF_IMM16) {
+        uint16_t index = READ_INST_16_1();
+        LOG_INST() << "intrinsics::ldpatchvar" << " imm: " << index;
+
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::LdPatchVar(thread, index);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(WIDE_LDPATCHVAR_PREF_IMM16);
+    }
+    HANDLE_OPCODE(WIDE_STPATCHVAR_PREF_IMM16) {
+        uint16_t index = READ_INST_16_1();
+        LOG_INST() << "intrinsics::stpatchvar" << " imm: " << index;
+        JSTaggedValue value = GET_ACC();
+
+        SAVE_ACC();
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::StPatchVar(thread, index, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+        DISPATCH(WIDE_STPATCHVAR_PREF_IMM16);
+    }
     HANDLE_OPCODE(DYNAMICIMPORT) {
         LOG_INST() << "intrinsics::dynamicimport";
         JSTaggedValue specifier = GET_ACC();
@@ -6859,6 +6881,8 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16, "WIDE_STMODULEVAR"},
         {EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16, "WIDE_LDLOCALMODULEVAR"},
         {EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16, "WIDE_LDEXTERNALMODULEVAR"},
+        {EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16, "LDPATCHVAR"},
+        {EcmaOpcode::WIDE_STPATCHVAR_PREF_IMM16, "STPATCHVAR"},
         {EcmaOpcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8, "DEPRECATED_DEFINECLASSWITHBUFFER"},
         {EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8, "DEPRECATED_RESUMEGENERATOR"},
         {EcmaOpcode::DEPRECATED_GETRESUMEMODE_PREF_V8, "DEPRECATED_GETRESUMEMODE"},

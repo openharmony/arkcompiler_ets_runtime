@@ -228,6 +228,8 @@ DispatchResponse RuntimeImpl::GetProperties(const GetPropertiesParams &params,
         GetMapValue(value, outPropertyDesc);
     } else if (value->IsRegExp()) {
         GetRegExpValue(value, outPropertyDesc);
+    } else if (value->IsSet()) {
+        GetSetValue(value, outPropertyDesc);
     }
     Local<ArrayRef> keys = Local<ObjectRef>(value)->GetOwnPropertyNames(vm_);
     int32_t length = keys->Length(vm_);
@@ -564,6 +566,29 @@ void RuntimeImpl::GetMapValue(Local<JSValueRef> value,
         objRef->Set(vm_, StringRef::NewFromUtf8(vm_, "value"), jsValue);
         AddInternalProperties(objRef, ArkInternalValueType::Entry);
         ArrayRef::SetValueAt(vm_, jsValueRef, i, objRef);
+    }
+    AddInternalProperties(jsValueRef, ArkInternalValueType::Entry);
+    SetKeyValue(jsValueRef, outPropertyDesc, "[[Entries]]");
+}
+
+void RuntimeImpl::GetSetValue(Local<JSValueRef> value,
+    std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
+{
+    Local<SetRef> setRef = value->ToObject(vm_);
+    int32_t len = setRef->GetSize();
+    Local<JSValueRef> jsValueRef = NumberRef::New(vm_, len);
+    SetKeyValue(jsValueRef, outPropertyDesc, "size");
+    jsValueRef = ArrayRef::New(vm_, len);
+    for (int32_t i = 0; i < len; i++) {
+        Local<JSValueRef> elementRef = setRef->GetValue(vm_, i);
+        if (elementRef->IsObject()) {
+            Local<ObjectRef> objRef = ObjectRef::New(vm_);
+            objRef->Set(vm_, StringRef::NewFromUtf8(vm_, "value"), elementRef);
+            AddInternalProperties(objRef, ArkInternalValueType::Entry);
+            ArrayRef::SetValueAt(vm_, jsValueRef, i, objRef);
+        } else {
+            ArrayRef::SetValueAt(vm_, jsValueRef, i, elementRef);
+        }
     }
     AddInternalProperties(jsValueRef, ArkInternalValueType::Entry);
     SetKeyValue(jsValueRef, outPropertyDesc, "[[Entries]]");

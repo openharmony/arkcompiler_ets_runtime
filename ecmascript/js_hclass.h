@@ -176,6 +176,7 @@ class ProtoChangeDetails;
         JS_CJS_MODULE, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_EXPORTS, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_REQUIRE, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        GLOBAL_PATCH,   /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_GLOBAL_OBJECT, /* JS_OBJECT_LAST/////////////////////////////////////////////////////////////////-PADDING */\
         JS_PROXY, /* ECMA_OBJECT_LAST ////////////////////////////////////////////////////////////////////////////// */\
                                                                                                                        \
@@ -1054,6 +1055,11 @@ public:
     inline bool IsJSGlobalObject() const
     {
         return GetObjectType() == JSType::JS_GLOBAL_OBJECT;
+    }
+
+    inline bool IsGlobalPatch() const
+    {
+        return GetObjectType() == JSType::GLOBAL_PATCH;
     }
 
     inline bool IsClassPrototype() const

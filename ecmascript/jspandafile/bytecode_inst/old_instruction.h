@@ -1215,6 +1215,10 @@ public:
                 return Format::PREF_ID16_IMM16_V8;
             case Opcode::ECMA_DYNAMICIMPORT_PREF_V8:
                 return Format::PREF_V8;
+            case Opcode::ECMA_LDPATCHVAR_PREF_IMM16:
+                return Format::PREF_IMM16;
+            case Opcode::ECMA_STPATCHVAR_PREF_IMM16:
+                return Format::PREF_IMM16;
             default:
                 break;
         }
@@ -2025,6 +2029,10 @@ public:
                 return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::ECMA_DYNAMICIMPORT_PREF_V8:
                 return ((Flags::ACC_READ | Flags::ACC_WRITE) & flag) == flag;
+            case Opcode::ECMA_LDPATCHVAR_PREF_IMM16:
+                return (Flags::ACC_WRITE & flag) == flag;
+            case Opcode::ECMA_STPATCHVAR_PREF_IMM16:
+                return (Flags::ACC_READ & flag) == flag;
             default:
                 return false;
         }

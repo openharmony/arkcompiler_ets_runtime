@@ -263,7 +263,9 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(OptLdSuperByValue)                  \
     V(OptStSuperByValue)                  \
     V(BigIntEqual)                        \
-    V(StringEqual)
+    V(StringEqual)                        \
+    V(LdPatchVar)                         \
+    V(StPatchVar)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -579,6 +581,9 @@ private:
     static JSTaggedValue NewObject(EcmaRuntimeCallInfo *info);
     static void SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContext> context);
 
+    static inline JSTaggedValue RuntimeLdPatchVar(JSThread *thread, uint32_t index);
+    static inline JSTaggedValue RuntimeStPatchVar(JSThread *thread, uint32_t index,
+                                                  const JSHandle<JSTaggedValue> &value);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

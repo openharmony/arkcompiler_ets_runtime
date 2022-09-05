@@ -765,6 +765,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(globalObject)
                 break;
             }
+            case JSType::GLOBAL_PATCH: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, GlobalPatch::SIZE, 0U);
+                JSHandle<JSTaggedValue> globalPatch = globalEnv->GetGlobalPatch();
+                DUMP_FOR_HANDLE(globalPatch)
+                break;
+            }
             case JSType::JS_PROXY: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSProxy::SIZE, 3U);
                 JSHandle<JSTaggedValue> emptyObj(thread, NewJSObject(thread, factory, globalEnv).GetTaggedValue());

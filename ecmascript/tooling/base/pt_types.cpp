@@ -289,7 +289,7 @@ std::string ObjectRemoteObject::DescriptionForObject(const EcmaVM *ecmaVm, Local
         return RemoteObject::WeakMapDescription;
     }
     if (tagged->IsSet()) {
-        return DescriptionForSet(Local<SetRef>(tagged));
+        return DescriptionForSet(ecmaVm, Local<SetRef>(tagged));
     }
     if (tagged->IsWeakSet()) {
         return RemoteObject::WeakSetDescription;
@@ -434,9 +434,33 @@ std::string ObjectRemoteObject::DescriptionForMap(const EcmaVM *ecmaVm, Local<Ma
     return description;
 }
 
-std::string ObjectRemoteObject::DescriptionForSet(Local<SetRef> tagged)
+std::string ObjectRemoteObject::DescriptionForSet(const EcmaVM *ecmaVm, Local<SetRef> tagged)
 {
+    int32_t len = tagged->GetSize();
     std::string description = ("Set(" + std::to_string(tagged->GetSize()) + ")");
+    if (!len) {
+        return description;
+    }
+    description += " {";
+    char cPre = '\'';
+    for (int32_t i = 0; i < len; ++i) {
+        // add Key
+        Local<JSValueRef> jsValue = tagged->GetValue(ecmaVm, i);
+        // add Value
+        if (jsValue->IsObject()) {
+            description += "Object";
+        } else if (jsValue->IsString()) {
+            description += cPre + jsValue->ToString(ecmaVm)->ToString() + cPre;
+        } else {
+            description += jsValue->ToString(ecmaVm)->ToString();
+        }
+        if (i == len - 1 || i >= 4) { // 4:The count of elements
+            description += len > 5 ? ", ..." : ""; // 5:The count of elements
+            break;
+        }
+        description += ", ";
+    }
+    description += "}";
     return description;
 }
 

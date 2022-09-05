@@ -351,7 +351,9 @@ namespace panda::ecmascript::kungfu {
     T(HandleWideGetmodulenamespacePrefImm16)                           \
     T(HandleWideStmodulevarPrefImm16)                                  \
     T(HandleWideLdlocalmodulevarPrefImm16)                             \
-    T(HandleWideLdexternalmodulevarPrefImm16)
+    T(HandleWideLdexternalmodulevarPrefImm16)                          \
+    T(HandleWideLdPatchVarPrefImm16)                                   \
+    T(HandleWideStPatchVarPrefImm16)
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_THROW_STUB_LIST(V, T, D)                       \
