@@ -115,7 +115,7 @@ public:
         }
     }
 
-    MethodLiteral *FindMethodLiteral(uint32_t offset) const;
+    PUBLIC_API MethodLiteral *FindMethodLiteral(uint32_t offset) const;
 
     int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {

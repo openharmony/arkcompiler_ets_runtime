@@ -19,9 +19,7 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/jspandafile/method_literal.h"
-#ifdef ENABLE_OLD_BYTECODE_AOT
 #include "ecmascript/jspandafile/bytecode_inst/old_instruction.h"
-#endif
 
 namespace panda::ecmascript::kungfu {
 struct CfgInfo;
@@ -59,7 +57,6 @@ private:
     static void ProcessClasses(JSPandaFile *jsPandaFile, const CString &methodName,
                                std::vector<MethodPcInfo> &methodPcInfos);
 
-#ifdef ENABLE_OLD_BYTECODE_AOT
     static void AddNopInst(uint8_t *pc, int number);
 
     // need to remove in the future
@@ -73,7 +70,6 @@ private:
 
     // need to remove in the future
     static void TranslateBCIns(JSPandaFile *jsPandaFile, const OldBytecodeInst &bcIns, const MethodLiteral *method);
-#endif
 
     static void CollectMethodPcs(JSPandaFile *jsPandaFile, const uint32_t insSz, const uint8_t *insArr,
                                  const MethodLiteral *method, std::vector<MethodPcInfo> &methodPcInfos);
