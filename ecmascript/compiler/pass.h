@@ -29,7 +29,8 @@
 namespace panda::ecmascript::kungfu {
 class PassData {
 public:
-    explicit PassData(Circuit* circuit) : circuit_(circuit) {}
+    explicit PassData(Circuit *circuit, const CompilerLog *log, bool enableMethodLog)
+        : circuit_(circuit), log_(log), enableMethodLog_(enableMethodLog) {}
     virtual ~PassData() = default;
     const ControlFlowGraph &GetScheduleResult() const
     {
@@ -46,34 +47,46 @@ public:
         return circuit_;
     }
 
+    const CompilerLog *GetLog() const
+    {
+        return log_;
+    }
+
+    bool GetEnableMethodLog() const
+    {
+        return enableMethodLog_;
+    }
+
 private:
-    Circuit* circuit_;
+    Circuit *circuit_ {nullptr};
     ControlFlowGraph cfg_;
+    const CompilerLog *log_ {nullptr};
+    bool enableMethodLog_ {false};
 };
 
 template<typename T1>
 class PassRunner {
 public:
-    explicit PassRunner(T1* data, bool log = false) : data_(data), enableLog_(log) {}
+    explicit PassRunner(T1* data) : data_(data) {}
     virtual ~PassRunner() = default;
     template<typename T2, typename... Args>
     bool RunPass(Args... args)
     {
         T2 pass;
-        return pass.Run(data_, enableLog_, std::forward<Args>(args)...);
+        return pass.Run(data_, std::forward<Args>(args)...);
     }
 
 private:
     T1* data_;
-    bool enableLog_;
 };
 
 class TypeInferPass {
 public:
-    bool Run(PassData* data, bool enableLog, BytecodeCircuitBuilder *builder, TSManager *tsManager)
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder, TSManager *tsManager)
     {
-        TypeInfer typeInfer(builder, data->GetCircuit(), tsManager, enableLog);
         if (builder->HasTypes()) {
+            bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
+            TypeInfer typeInfer(builder, data->GetCircuit(), tsManager, enableLog);
             typeInfer.TraverseCircuit();
         }
         return true;
@@ -82,9 +95,9 @@ public:
 
 class TypeLoweringPass {
 public:
-    bool Run(PassData *data, bool enableLog, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg,
-             TSManager *tsManager)
+    bool Run(PassData *data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg, TSManager *tsManager)
     {
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         TypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog);
         if (builder->HasTypes()) {
             lowering.RunTypeLowering();
@@ -95,8 +108,9 @@ public:
 
 class SlowPathLoweringPass {
 public:
-    bool Run(PassData* data, bool enableLog, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
     {
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         SlowPathLowering lowering(builder, data->GetCircuit(), cmpCfg, enableLog);
         lowering.CallRuntimeLowering();
         return true;
@@ -105,8 +119,9 @@ public:
 
 class VerifierPass {
 public:
-    bool Run(PassData* data, bool enableLog)
+    bool Run(PassData* data)
     {
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         bool isQualified = Verifier::Run(data->GetCircuit(), enableLog);
         if (!isQualified) {
             LOG_FULL(FATAL) << "VerifierPass fail";
@@ -118,8 +133,9 @@ public:
 
 class SchedulingPass {
 public:
-    bool Run(PassData* data, bool enableLog)
+    bool Run(PassData* data)
     {
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         data->SetScheduleResult(Scheduler::Run(data->GetCircuit(), enableLog));
         return true;
     }
@@ -131,9 +147,11 @@ public:
     {
         llvmImpl_ = std::make_unique<LLVMIRGeneratorImpl>(module, enableLog);
     }
-    bool Run(PassData *data, bool enableLog, LLVMModule *module,
+
+    bool Run(PassData *data, LLVMModule *module,
              const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)
     {
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(llvmImpl_);
         codegen.Run(data->GetCircuit(), data->GetScheduleResult(), module->GetCompilationConfig(),
@@ -146,8 +164,9 @@ private:
 
 class AsyncFunctionLoweringPass {
 public:
-    bool Run(PassData* data, bool enableLog, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
     {
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         AsyncFunctionLowering lowering(builder, data->GetCircuit(), cmpCfg, enableLog);
         if (lowering.IsAsyncRelated()) {
             lowering.ProcessAll();
