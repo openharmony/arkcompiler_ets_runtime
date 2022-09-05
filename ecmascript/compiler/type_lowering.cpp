@@ -89,6 +89,55 @@ void TypeLowering::Lower(GateRef gate)
     }
 }
 
+void TypeLowering::LowerType(GateRef gate)
+{
+    auto op = OpCode::Op(acc_.GetOpCode(gate));
+    switch (op) {
+        case OpCode::TYPE_CHECK:
+            LowerTypeCheck(gate);
+            break;
+        case OpCode::TYPED_BINARY_OP:
+            LowerTypedBinaryOp(gate);
+            break;
+        default:
+            break;
+    }
+}
+
+void TypeLowering::LowerTypeCheck(GateRef gate)
+{
+    auto type = GateType(static_cast<uint32_t>(acc_.GetBitField(gate)));
+    if (type.IsNumberType()) {
+        // lower number check
+        return;
+    }
+}
+
+void TypeLowering::LowerTypedBinaryOp(GateRef gate)
+{
+    auto opGate = acc_.GetValueIn(gate, 2);
+    auto op = static_cast<TypedBinOp>(acc_.GetBitField(opGate));
+    switch (op) {
+        case TypedBinOp::TYPED_ADD:
+            LowerTypeAdd(gate);
+            break;
+        default:
+            break;
+    }
+}
+
+void TypeLowering::LowerTypeAdd(GateRef gate)
+{
+    auto mergeType = acc_.GetBitField(gate);
+    auto temp = mergeType >> 32;
+    auto typeLeft = GateType(static_cast<uint32_t>(temp));
+    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << 32)));
+    if (typeLeft.IsNumberType() && typeRight.IsNumberType()) {
+        // lower number add
+        return;
+    }
+}
+
 void TypeLowering::RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap)
 {
     acc_.ReplaceStateIn(hir, builder_.GetState());

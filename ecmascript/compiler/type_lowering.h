@@ -18,11 +18,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 // TypeLowering Process
@@ -117,6 +113,11 @@ private:
     }
 
     void Lower(GateRef gate);
+    void LowerType(GateRef gate);
+    void LowerTypeCheck(GateRef gate);
+    void LowerTypedBinaryOp(GateRef gate);
+    void LowerTypeAdd(GateRef gate);
+
     void GenerateSuccessMerge(std::vector<GateRef> &successControl);
     void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
