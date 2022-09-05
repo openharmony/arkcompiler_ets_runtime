@@ -221,6 +221,16 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     JSHandle<JSObject> globalObject = factory_->NewNonMovableJSObject(globalObjFuncDynclass);
     env->SetJSGlobalObject(thread_, globalObject);
 
+    // GLobalPatch.prototype_or_dynclass
+    JSHandle<JSHClass> globalPatchFuncDynclass =
+        factory_->NewEcmaDynClass(JSObject::SIZE, JSType::GLOBAL_PATCH, 0);
+    globalPatchFuncDynclass->SetPrototype(thread_, objFuncPrototypeVal.GetTaggedValue());
+    globalPatchFuncDynclass->SetIsDictionaryMode(true);
+
+    // init global patch
+    JSHandle<JSObject> globalPatch = factory_->NewNonMovableJSObject(globalPatchFuncDynclass);
+    env->SetGlobalPatch(thread, globalPatch);
+
     // initialize Function, forbidden change order
     InitializeFunction(env, emptyFuncDynclass);
 

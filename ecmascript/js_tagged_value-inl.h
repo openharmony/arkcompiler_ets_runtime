@@ -1161,6 +1161,11 @@ inline bool JSTaggedValue::IsJSGlobalObject() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSGlobalObject();
 }
 
+inline bool JSTaggedValue::IsGlobalPatch() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsGlobalPatch();
+}
+
 inline bool JSTaggedValue::IsMachineCodeObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsMachineCodeObject();
@@ -1245,7 +1250,6 @@ inline bool JSTaggedValue::IsImportEntry() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsImportEntry();
 }
-
 
 inline bool JSTaggedValue::IsLocalExportEntry() const
 {

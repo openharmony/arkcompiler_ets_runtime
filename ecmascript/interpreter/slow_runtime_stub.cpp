@@ -19,7 +19,6 @@
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/ic/profile_type_info.h"
-#include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -958,7 +957,6 @@ JSTaggedValue SlowRuntimeStub::SuperCall(JSThread *thread, JSTaggedValue func, J
 {
     INTERPRETER_TRACE(thread, SuperCall);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    FrameHandler frameHandler(thread);
 
     JSHandle<JSTaggedValue> funcHandle(thread, func);
     JSHandle<JSTaggedValue> newTargetHandle(thread, newTarget);
@@ -1126,5 +1124,22 @@ JSTaggedValue SlowRuntimeStub::DefineAsyncGeneratorFunc(JSThread *thread, JSFunc
     JSHandle<JSFunction> funcHandle(thread, func);
 
     return RuntimeStubs::RuntimeDefineAsyncGeneratorFunc(thread, funcHandle);
+}
+
+JSTaggedValue SlowRuntimeStub::LdPatchVar(JSThread *thread, uint32_t index)
+{
+    INTERPRETER_TRACE(thread, LdPatchVar);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    return RuntimeStubs::RuntimeLdPatchVar(thread, index);
+}
+
+JSTaggedValue SlowRuntimeStub::StPatchVar(JSThread *thread, uint32_t index, JSTaggedValue value)
+{
+    INTERPRETER_TRACE(thread, StPatchVar);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> valueHandle(thread, value);
+    return RuntimeStubs::RuntimeStPatchVar(thread, index, valueHandle);
 }
 }  // namespace panda::ecmascript

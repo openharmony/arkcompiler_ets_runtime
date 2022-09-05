@@ -388,6 +388,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Realm");
         case JSType::JS_GLOBAL_OBJECT:
             return GetString("GlobalObject");
+        case JSType::GLOBAL_PATCH:
+            return GetString("GlobalPatch");
         case JSType::JS_INTL:
             return GetString("JSIntl");
         case JSType::JS_LOCALE:

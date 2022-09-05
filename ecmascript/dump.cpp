@@ -420,6 +420,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "CommonJSRequire";
         case JSType::METHOD:
             return "Method";
+        case JSType::GLOBAL_PATCH:
+            return "GlobalPatch";
         default: {
             CString ret = "unknown type ";
             return ret + static_cast<char>(type);
@@ -586,6 +588,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
+        case JSType::GLOBAL_PATCH:
             JSObject::Cast(obj)->Dump(os);
             break;
         case JSType::JS_FUNCTION_BASE:
@@ -2205,6 +2208,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetAsyncFunctionPrototype().GetTaggedValue().Dump(os);
     os << " - JSGlobalObject: ";
     GetJSGlobalObject().GetTaggedValue().Dump(os);
+    os << " - GlobalPatch: ";
+    GetGlobalPatch().GetTaggedValue().Dump(os);
     os << " - EmptyArray: ";
     globalConst->GetEmptyArray().Dump(os);
     os << " - EmptyString ";
@@ -3445,6 +3450,7 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
         case JSType::JS_GLOBAL_OBJECT:
+        case JSType::GLOBAL_PATCH:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_FUNCTION_BASE:
@@ -4510,6 +4516,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString(
         "LinkedListIteratorPrototype"), globalConst->GetLinkedListIteratorPrototype()));
     vec.push_back(std::make_pair(CString("ListIteratorPrototype"), globalConst->GetListIteratorPrototype()));
+    vec.push_back(std::make_pair(CString("GlobalPatch"), GetGlobalPatch().GetTaggedValue()));
 }
 
 void JSDataView::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
