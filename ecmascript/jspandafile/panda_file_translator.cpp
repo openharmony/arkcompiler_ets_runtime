@@ -1406,40 +1406,40 @@ void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
             U_FALLTHROUGH;
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
-            U_FALLTHROUGH;
-        case EcmaOpcode::ADD2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::SUB2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::MUL2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::DIV2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::MOD2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::SHL2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::SHR2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::ASHR2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::AND2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::OR2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::XOR2_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::EQ_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::NOTEQ_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::LESS_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::LESSEQ_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::GREATER_IMM8_V8:
-            U_FALLTHROUGH;
-        case EcmaOpcode::GREATEREQ_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::ADD2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::SUB2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::MUL2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::DIV2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::MOD2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::SHL2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::SHR2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::ASHR2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::AND2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::OR2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::XOR2_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::EQ_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::NOTEQ_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::LESS_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::LESSEQ_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::GREATER_IMM8_V8:
+        //     U_FALLTHROUGH;
+        // case EcmaOpcode::GREATEREQ_IMM8_V8:
             offset = methodLiteral->UpdateSlotSizeWith8Bit(1);
             break;
         // case EcmaOpcode::LDOBJBYVALUE_IMM8_V8_V8:
@@ -1473,7 +1473,15 @@ void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *
             return;
     }
 
-    *(pc + 1) = offset;
+    if (opcode == EcmaOpcode::LDGLOBALVAR_IMM16_ID16 || opcode == EcmaOpcode::STGLOBALVAR_IMM16_ID16) {
+        uint16_t icSlot = static_cast<uint16_t>(offset);
+        if (memcpy_s(pc + 1, sizeof(uint16_t), &icSlot, sizeof(uint16_t)) != EOK) {
+            LOG_FULL(FATAL) << "UpdateICOffset memcpy_s fail";
+            UNREACHABLE();
+        }
+    } else {
+        *(pc + 1) = offset;
+    }
 }
 
 void PandaFileTranslator::FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder)

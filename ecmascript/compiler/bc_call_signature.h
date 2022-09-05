@@ -57,7 +57,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleOverflowF8)                                 \
     T(HandleOverflowF9)                                 \
     T(HandleOverflowFA)                                 \
-    T(HandleOverflowFB)
+    T(HandleOverflowFB)                                 \
+    T(HandleOverflowFC)
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_BC_STUB_LIST(V, T, D)           \

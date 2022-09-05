@@ -1974,10 +1974,12 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     context->SetRegsArray(thread, regsArray.GetTaggedValue());
     context->SetMethod(thread, frameHandler.GetFunction());
 
+    BytecodeInstruction ins(frameHandler.GetPc());
+    auto offset = ins.GetSize();
     context->SetAcc(thread, frameHandler.GetAcc());
     context->SetLexicalEnv(thread, thread->GetCurrentLexenv());
     context->SetNRegs(nregs);
-    context->SetBCOffset(frameHandler.GetBytecodeOffset());
+    context->SetBCOffset(frameHandler.GetBytecodeOffset() + offset);
 }
 
 JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)

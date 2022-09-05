@@ -291,6 +291,8 @@ HWTEST_F_L0(JSPandaFileTest, GetFileUniqId)
     )";
     const CString fileName = "test.pa";
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
-    EXPECT_EQ(pf->GetFileUniqId(), 2886575167U); // merge_hashes(FILENAME_HASH, GetHash32(GetHeader(), headerSize))
+    EXPECT_EQ(pf->GetFileUniqId(), merge_hashes(panda_file::File::CalcFilenameHash(""),
+        GetHash32(reinterpret_cast<const uint8_t *>(pf->GetPandaFile()->GetHeader()),
+        sizeof(panda_file::File::Header))));
 }
 }  // namespace panda::test

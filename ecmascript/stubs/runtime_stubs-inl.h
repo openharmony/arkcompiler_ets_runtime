@@ -1619,6 +1619,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
     FunctionKind kind = methodHandle->GetFunctionKind();
     switch (kind)
     {
+        case FunctionKind::NORMAL_FUNCTION:
         case FunctionKind::BASE_CONSTRUCTOR: {
             auto hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
             jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass, kind, MemSpaceType::OLD_SPACE);

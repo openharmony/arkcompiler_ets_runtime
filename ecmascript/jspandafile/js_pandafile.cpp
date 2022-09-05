@@ -36,6 +36,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor) 
 #else
     InitializeUnMergedPF();
 #endif
+    isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
 }
 
 void JSPandaFile::checkIsBundle()
@@ -179,7 +180,6 @@ void JSPandaFile::InitializeMergedPF()
     }
     methodLiterals_ =
         static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
-    isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
 }
 
 MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const

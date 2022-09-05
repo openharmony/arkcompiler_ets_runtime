@@ -529,7 +529,7 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
 
 void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index, int32_t total)
 {
-    ASSERT(constpool.IsTaggedArray());
+    ASSERT(constpool.IsConstantPool());
     if (cachedConstpools_.find(jsPandaFile) == cachedConstpools_.end()) {
         cachedConstpools_[jsPandaFile] = CVector<JSTaggedValue>(total);
         cachedConstpools_[jsPandaFile].reserve(total);

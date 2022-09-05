@@ -4216,13 +4216,43 @@ DECLARE_ASM_HANDLER(HandleLdglobalvarImm16Id16)
     Label dispatch(env);
     Label slowPath(env);
     GateRef globalObject = GetGlobalObject(glue);
-
-    result = CallRuntime(glue, RTSTUB_ID(GetGlobalOwnProperty), { propKey });
-    Branch(TaggedIsHole(*result), &slowPath, &dispatch);
-    Bind(&slowPath);
+    Label icAvailable(env);
+    Label icNotAvailable(env);
+    Branch(TaggedIsUndefined(profileTypeInfo), &icNotAvailable, &icAvailable);
+    Bind(&icAvailable);
     {
-        result = CallRuntime(glue, RTSTUB_ID(LdGlobalVar), { globalObject, propKey });
-        Jump(&checkResult);
+        GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+        GateRef handler = GetValueFromTaggedArray(VariableType::JS_ANY(), profileTypeInfo, slotId);
+        Label isHeapObject(env);
+        Label notHeapObject(env);
+        Label ldMiss(env);
+        Branch(TaggedIsHeapObject(handler), &isHeapObject, &notHeapObject);
+        Bind(&isHeapObject);
+        {
+            result = LoadGlobal(handler);
+            Branch(TaggedIsHole(*result), &ldMiss, &checkResult);
+        }
+        Bind(&notHeapObject);
+        {
+            Branch(TaggedIsHole(handler), &icNotAvailable, &ldMiss);
+        }
+        Bind(&ldMiss);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(LoadMiss),
+                                 { profileTypeInfo, globalObject, propKey, IntToTaggedInt(slotId),
+                                   IntToTaggedInt(Int32(static_cast<int>(ICKind::NamedGlobalLoadIC))) });
+            Jump(&checkResult);
+        }
+    }
+    Bind(&icNotAvailable);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(GetGlobalOwnProperty), { propKey });
+        Branch(TaggedIsHole(*result), &slowPath, &dispatch);
+        Bind(&slowPath);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(LdGlobalVar), { globalObject, propKey });
+            Jump(&checkResult);
+        }
     }
     Bind(&checkResult);
     {
@@ -4235,11 +4265,47 @@ DECLARE_ASM_HANDLER(HandleLdglobalvarImm16Id16)
 
 DECLARE_ASM_HANDLER(HandleStglobalvarImm16Id16)
 {
+    auto env = GetEnvironment();
+
     GateRef stringId = ReadInst16_2(pc);
     GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
-    GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalVar), { propKey, acc });
-    CHECK_EXCEPTION(result, INT_PTR(STGLOBALVAR_IMM16_ID16));
+    Label checkResult(env);
+
+    Label icAvailable(env);
+    Label icNotAvailable(env);
+    Branch(TaggedIsUndefined(profileTypeInfo), &icNotAvailable, &icAvailable);
+    Bind(&icAvailable);
+    {
+        GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+        GateRef handler = GetValueFromTaggedArray(VariableType::JS_ANY(), profileTypeInfo, slotId);
+        Label isHeapObject(env);
+        Label stMiss(env);
+        Branch(TaggedIsHeapObject(handler), &isHeapObject, &stMiss);
+        Bind(&isHeapObject);
+        {
+            result = StoreGlobal(glue, acc, handler);
+            Branch(TaggedIsHole(*result), &stMiss, &checkResult);
+        }
+        Bind(&stMiss);
+        {
+            GateRef globalObject = GetGlobalObject(glue);
+            result = CallRuntime(glue, RTSTUB_ID(StoreMiss),
+                                 { profileTypeInfo, globalObject, propKey, acc, IntToTaggedInt(slotId),
+                                   IntToTaggedInt(Int32(static_cast<int>(ICKind::NamedGlobalStoreIC))) });
+            Jump(&checkResult);
+        }
+    }
+    Bind(&icNotAvailable);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StGlobalVar), { propKey, acc });
+        Jump(&checkResult);
+    }
+    Bind(&checkResult);
+    {
+        CHECK_EXCEPTION(*result, INT_PTR(STGLOBALVAR_IMM16_ID16));
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleCreateregexpwithliteralImm8Id16Imm8)

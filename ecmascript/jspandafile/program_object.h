@@ -81,7 +81,7 @@ public:
         LOG_ECMA_IF(mainIndex == nullptr, FATAL) << "Unknown methodId: " << methodId;
 
         ObjectFactory *factory = vm->GetFactory();
-        JSHandle<ConstantPool> constpool = factory->NewConstantPool(mainIndex->method_idx_size + 2);
+        JSHandle<ConstantPool> constpool = factory->NewConstantPool(mainIndex->method_idx_size + RESERVED_POOL_LENGTH);
 
         constpool->SetJSPandaFile(jsPandaFile);
         constpool->SetIndexHeader(mainIndex);
@@ -351,19 +351,19 @@ public:
     std::string PUBLIC_API GetStdStringByIdx(size_t index) const;
 
     DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength());
-    DECL_VISIT_NATIVE_FIELD(GetLastOffset() - JSTaggedValue::TaggedTypeSize(), GetLastOffset());
+    DECL_VISIT_NATIVE_FIELD(GetLastOffset() - JSTaggedValue::TaggedTypeSize() * RESERVED_POOL_LENGTH, GetLastOffset());
 
     DECL_DUMP()
 
 private:
     inline size_t GetJSPandaFileOffset() const
     {
-        return GetLastOffset() - JS_PANDA_FILE_INDEX;
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - JS_PANDA_FILE_INDEX);
     }
 #ifdef NEW_INSTRUCTION_DEFINE
     inline size_t GetIndexHeaderOffset() const
     {
-        return GetLastOffset() - INDEX_HEADER_INDEX;
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - INDEX_HEADER_INDEX);
     }
 #endif
 
