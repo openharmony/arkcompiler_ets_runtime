@@ -561,7 +561,9 @@ enum class Opcode {
     DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8 = 4604,
     WIDE_LDEXTERNALMODULEVAR_PREF_IMM16 = 4605,
     DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8 = 4860,
+    WIDE_LDPATCHVAR_PREF_IMM16 = 4861,
     DEPRECATED_RESUMEGENERATOR_PREF_V8 = 5116,
+    WIDE_STPATCHVAR_PREF_IMM16 = 5117,
     DEPRECATED_GETRESUMEMODE_PREF_V8 = 5372,
     DEPRECATED_GETTEMPLATEOBJECT_PREF_V8 = 5628,
     DEPRECATED_DELOBJPROP_PREF_V8_V8 = 5884,
@@ -587,7 +589,8 @@ enum class Opcode {
     DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32 = 11004,
     DEPRECATED_LDHOMEOBJECT_PREF_NONE = 11260,
     DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16 = 11516,
-    LAST = DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16
+    DEPRECATED_DYNAMICIMPORT_PREF_V8 = 11772,
+    LAST = DEPRECATED_DYNAMICIMPORT_PREF_V8
 };
 
 enum Flags : uint32_t {
@@ -880,7 +883,6 @@ inline size_t BytecodeInst<Mode>::GetSize() const
 {
     return Size(GetFormat());
 }
-
 /*
  * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -3032,12 +3034,12 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::IMM8_V8;
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         return BytecodeInst<Mode>::Format::IMM16_V8;
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
+        return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
         return BytecodeInst<Mode>::Format::IMM8;
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
         return BytecodeInst<Mode>::Format::IMM8_V8;
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
-        return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         return BytecodeInst<Mode>::Format::IMM8_ID16_ID16_IMM16_V8;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
@@ -3354,8 +3356,12 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::PREF_IMM16;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8:
         return BytecodeInst<Mode>::Format::PREF_ID16_IMM16_IMM16_V8_V8;
+    case BytecodeInst<Mode>::Opcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        return BytecodeInst<Mode>::Format::PREF_IMM16;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_RESUMEGENERATOR_PREF_V8:
         return BytecodeInst<Mode>::Format::PREF_V8;
+    case BytecodeInst<Mode>::Opcode::WIDE_STPATCHVAR_PREF_IMM16:
+        return BytecodeInst<Mode>::Format::PREF_IMM16;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_GETRESUMEMODE_PREF_V8:
         return BytecodeInst<Mode>::Format::PREF_V8;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_GETTEMPLATEOBJECT_PREF_V8:
@@ -3406,6 +3412,8 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::PREF_NONE;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
         return BytecodeInst<Mode>::Format::PREF_IMM16;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
+        return BytecodeInst<Mode>::Format::PREF_V8;
     default:
         break;
     }
@@ -3616,12 +3624,12 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::IC_SLOT | Flags::TWO_SLOT | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::IC_SLOT | Flags::TWO_SLOT | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
+        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
-        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::IC_SLOT | Flags::ONE_SLOT | Flags::LITERALARRAY_ID | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
@@ -3938,7 +3946,11 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_RESUMEGENERATOR_PREF_V8:
+        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::WIDE_STPATCHVAR_PREF_IMM16:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_GETRESUMEMODE_PREF_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
@@ -3990,6 +4002,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
+        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     default:
         return false;
     }
@@ -4200,11 +4214,11 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
-        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
@@ -4522,7 +4536,11 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_RESUMEGENERATOR_PREF_V8:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::WIDE_STPATCHVAR_PREF_IMM16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_GETRESUMEMODE_PREF_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
@@ -4573,6 +4591,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
     case BytecodeInst<Mode>::Opcode::DEPRECATED_LDHOMEOBJECT_PREF_NONE:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     default:
         return false;
@@ -4784,11 +4804,11 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         return false;
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
+        return false;
     case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
         return false;
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
-        return false;
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return false;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         return false;
@@ -5106,7 +5126,11 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8:
         return false;
+    case BytecodeInst<Mode>::Opcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        return false;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_RESUMEGENERATOR_PREF_V8:
+        return false;
+    case BytecodeInst<Mode>::Opcode::WIDE_STPATCHVAR_PREF_IMM16:
         return false;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_GETRESUMEMODE_PREF_V8:
         return false;
@@ -5157,6 +5181,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
     case BytecodeInst<Mode>::Opcode::DEPRECATED_LDHOMEOBJECT_PREF_NONE:
         return false;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
+        return false;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
         return false;
     default:
         return false;
@@ -5635,6 +5661,9 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM16_V8, 0>();
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::IMM16_V8, 0>();
         break;
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
+        os << "dynamicimport";
+        break;
     case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
         os << "ldpatchvar";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
@@ -5643,9 +5672,6 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << "stpatchvar";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_V8, 0>();
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::IMM8_V8, 0>();
-        break;
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
-        os << "dynamicimport";
         break;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         os << "defineclasswithbuffer";
@@ -6381,9 +6407,17 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::PREF_ID16_IMM16_IMM16_V8_V8, 0>();
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::PREF_ID16_IMM16_IMM16_V8_V8, 1>();
         break;
+    case BytecodeInst<Mode>::Opcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        os << "wide.ldpatchvar";
+        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::PREF_IMM16, 0>();
+        break;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_RESUMEGENERATOR_PREF_V8:
         os << "deprecated.resumegenerator";
         os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::PREF_V8, 0>();
+        break;
+    case BytecodeInst<Mode>::Opcode::WIDE_STPATCHVAR_PREF_IMM16:
+        os << "wide.stpatchvar";
+        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::PREF_IMM16, 0>();
         break;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_GETRESUMEMODE_PREF_V8:
         os << "deprecated.getresumemode";
@@ -6504,6 +6538,10 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
         os << "deprecated.createobjecthavingmethod";
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::PREF_IMM16, 0>();
+        break;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
+        os << "deprecated.dynamicimport";
+        os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::PREF_V8, 0>();
         break;
     }
     return os;
@@ -6813,14 +6851,14 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         os << "STTHISBYVALUE_IMM16_V8";
         break;
+    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
+        os << "DYNAMICIMPORT";
+        break;
     case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
         os << "LDPATCHVAR_IMM8";
         break;
     case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
         os << "STPATCHVAR_IMM8_V8";
-        break;
-    case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
-        os << "DYNAMICIMPORT";
         break;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         os << "DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8";
@@ -7296,8 +7334,14 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8:
         os << "DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8";
         break;
+    case BytecodeInst<Mode>::Opcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        os << "WIDE_LDPATCHVAR_PREF_IMM16";
+        break;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_RESUMEGENERATOR_PREF_V8:
         os << "DEPRECATED_RESUMEGENERATOR_PREF_V8";
+        break;
+    case BytecodeInst<Mode>::Opcode::WIDE_STPATCHVAR_PREF_IMM16:
+        os << "WIDE_STPATCHVAR_PREF_IMM16";
         break;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_GETRESUMEMODE_PREF_V8:
         os << "DEPRECATED_GETRESUMEMODE_PREF_V8";
@@ -7373,6 +7417,9 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
         break;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16:
         os << "DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16";
+        break;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_DYNAMICIMPORT_PREF_V8:
+        os << "DEPRECATED_DYNAMICIMPORT_PREF_V8";
         break;
     default:
         os << "(unknown opcode:) " << static_cast<uint16_t>(op);

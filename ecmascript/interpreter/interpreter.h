@@ -70,7 +70,6 @@ public:
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
     static inline int16_t GetHotnessCounter(uint32_t codeSize);
 };
-
 // if modify EcmaOpcode, please update GetEcmaOpcodeStr()
 inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode);
 }  // namespace panda::ecmascript

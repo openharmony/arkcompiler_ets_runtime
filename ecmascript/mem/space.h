@@ -185,7 +185,6 @@ public:
     inline void EnumerateRegionsWithRecord(const Callback &cb) const;
 
     inline void AddRegion(Region *region);
-    inline void AddRegionToFront(Region *region);
     inline void RemoveRegion(Region *region);
 
     virtual void Initialize() {};

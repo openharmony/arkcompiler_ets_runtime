@@ -226,6 +226,157 @@ bool LatticeUpdateRule::UpdateReachabilityLattice(GateRef gate, const Reachabili
     return false;
 }
 
+uint64_t LatticeUpdateRuleSCCP::RunBoolArithmetic(bool valueA, bool valueB, OpCode::Op op)
+{
+    switch (op) {
+        case OpCode::ADD:
+            return (valueA + valueB);
+        case OpCode::SUB:
+            return (valueA - valueB);
+        case OpCode::MUL:
+            return (valueA * valueB);
+        case OpCode::AND:
+            return (valueA & valueB);
+        case OpCode::XOR:
+            return (valueA ^ valueB);
+        case OpCode::OR:
+            return (valueA | valueB);
+        case OpCode::EQ:
+            return (valueA == valueB ? 1 : 0);
+        case OpCode::NE:
+            return (valueA != valueB ? 1 : 0);
+        default:
+            LOG_COMPILER(ERROR) << "unexpected op!";
+            return 0;
+    }
+    return 0;
+}
+
+template<class T>
+uint64_t LatticeUpdateRuleSCCP::RunFixedPointArithmetic(T valueA, T valueB, OpCode::Op op)
+{
+    static_assert(std::is_unsigned<T>::value, "T should be an unsigned type");
+    using make_signed_t = typename std::make_signed<T>::type;
+    switch (op) {
+        case OpCode::ADD:
+            return (valueA + valueB);
+        case OpCode::SUB:
+            return (valueA - valueB);
+        case OpCode::MUL:
+            return (valueA * valueB);
+        case OpCode::SDIV:
+            return (static_cast<make_signed_t>(valueA) / static_cast<make_signed_t>(valueB));
+        case OpCode::UDIV:
+            return (valueA / valueB);
+        case OpCode::SMOD:
+            return (static_cast<make_signed_t>(valueA) % static_cast<make_signed_t>(valueB));
+        case OpCode::UMOD:
+            return (valueA % valueB);
+        case OpCode::AND:
+            return (valueA & valueB);
+        case OpCode::XOR:
+            return (valueA ^ valueB);
+        case OpCode::OR:
+            return (valueA | valueB);
+        case OpCode::LSL:
+            return (valueA << valueB);
+        case OpCode::LSR:
+            return (valueA >> valueB);
+        case OpCode::ASR:
+            return (static_cast<make_signed_t>(valueA) >> static_cast<make_signed_t>(valueB));
+        case OpCode::SLT:
+            return (static_cast<make_signed_t>(valueA) < static_cast<make_signed_t>(valueB));
+        case OpCode::ULT:
+            return (valueA < valueB);
+        case OpCode::SLE:
+            return (static_cast<make_signed_t>(valueA) <= static_cast<make_signed_t>(valueB));
+        case OpCode::ULE:
+            return (valueA <= valueB);
+        case OpCode::SGT:
+            return (static_cast<make_signed_t>(valueA) > static_cast<make_signed_t>(valueB));
+        case OpCode::UGT:
+            return (valueA > valueB);
+        case OpCode::SGE:
+            return (static_cast<make_signed_t>(valueA) >= static_cast<make_signed_t>(valueB));
+        case OpCode::UGE:
+            return (valueA >= valueB);
+        case OpCode::EQ:
+            return (valueA == valueB ? 1 : 0);
+        case OpCode::NE:
+            return (valueA != valueB ? 1 : 0);
+        default:
+            LOG_COMPILER(ERROR) << "unexpected op!";
+            return 0;
+    }
+    return 0;
+}
+
+template<class T>
+double LatticeUpdateRuleSCCP::RunFloatingPointArithmetic(T valueA, T valueB, OpCode::Op op)
+{
+    switch (op) {
+        case OpCode::ADD:
+            return (valueA + valueB);
+        case OpCode::SUB:
+            return (valueA - valueB);
+        case OpCode::MUL:
+            return (valueA * valueB);
+        case OpCode::FDIV:
+            return (valueA / valueB);
+        case OpCode::FMOD:
+            return fmod(valueA, valueB);
+        case OpCode::FLT:
+            return (valueA < valueB);
+        case OpCode::FLE:
+            return (valueA <= valueB);
+        case OpCode::FGT:
+            return (valueA > valueB);
+        case OpCode::FGE:
+            return (valueA >= valueB);
+        case OpCode::EQ:
+            return (valueA == valueB ? 1 : 0);
+        case OpCode::NE:
+            return (valueA != valueB ? 1 : 0);
+        default:
+            LOG_COMPILER(ERROR) << "unexpected op!";
+            return 0;
+    }
+    return 0;
+}
+
+uint64_t LatticeUpdateRuleSCCP::RunBasicArithmetic(ValueLattice operandA, ValueLattice operandB,
+                                                   OpCode::Op op, MachineType machineType)
+{
+    auto valueA = operandA.GetValue().value();
+    auto valueB = operandB.GetValue().value();
+    if (machineType == MachineType::I1) {
+        return static_cast<bool>(RunBoolArithmetic(static_cast<bool>(valueA),
+                                                   static_cast<bool>(valueB), op));
+    } else if (machineType == MachineType::I8) {
+        return static_cast<uint8_t>(RunFixedPointArithmetic(static_cast<uint8_t>(valueA),
+                                                            static_cast<uint8_t>(valueB), op));
+    } else if (machineType == MachineType::I16) {
+        return static_cast<uint16_t>(RunFixedPointArithmetic(static_cast<uint16_t>(valueA),
+                                                             static_cast<uint16_t>(valueB), op));
+    } else if (machineType == MachineType::I32) {
+        return static_cast<uint32_t>(RunFixedPointArithmetic(static_cast<uint32_t>(valueA),
+                                                             static_cast<uint32_t>(valueB), op));
+    } else if (machineType == MachineType::I64) {
+        return RunFixedPointArithmetic(static_cast<uint64_t>(valueA), static_cast<uint64_t>(valueB), op);
+    } else if (machineType == MachineType::F32) {
+        float valueA_ = base::bit_cast<float>(static_cast<uint32_t>(valueA));
+        float valueB_ = base::bit_cast<float>(static_cast<uint32_t>(valueB));
+        return base::bit_cast<uint64_t>(RunFloatingPointArithmetic(valueA_, valueB_, op));
+    } else if (machineType == MachineType::F64) {
+        double valueA_ = base::bit_cast<double>(static_cast<uint64_t>(valueA));
+        double valueB_ = base::bit_cast<double>(static_cast<uint64_t>(valueB));
+        return base::bit_cast<uint64_t>(RunFloatingPointArithmetic(valueA_, valueB_, op));
+    } else {
+        LOG_COMPILER(ERROR) << "unexpected machineType!";
+    }
+    return 0;
+}
+
 bool LatticeUpdateRuleSCCP::Run(GateRef gate)
 {
     const std::map<OpCode::Op, std::function<bool(void)>> functionTable = {
@@ -697,7 +848,9 @@ bool LatticeUpdateRuleSCCP::RunAdd(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() + operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::ADD, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunSub(GateRef gate)
@@ -710,7 +863,9 @@ bool LatticeUpdateRuleSCCP::RunSub(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() - operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SUB, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunMul(GateRef gate)
@@ -720,10 +875,16 @@ bool LatticeUpdateRuleSCCP::RunMul(GateRef gate)
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
+    if ((operandA.IsMid() && operandA.GetValue().value() == 0) ||
+        (operandB.IsMid() && operandB.GetValue().value() == 0)) {
+        return UpdateValueLattice(gate, ValueLattice(0));
+    }
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() * operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::MUL, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunExp(GateRef gate)
@@ -761,9 +922,9 @@ bool LatticeUpdateRuleSCCP::RunSDiv(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<int64_t>(operandA.GetValue().value())
-                                               / static_cast<int64_t>(operandB.GetValue().value())));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SDIV, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunSMod(GateRef gate)
@@ -776,9 +937,9 @@ bool LatticeUpdateRuleSCCP::RunSMod(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<int64_t>(operandA.GetValue().value())
-                                               % static_cast<int64_t>(operandB.GetValue().value())));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SMOD, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunUDiv(GateRef gate)
@@ -791,7 +952,9 @@ bool LatticeUpdateRuleSCCP::RunUDiv(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() / operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::UDIV, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunUMod(GateRef gate)
@@ -804,7 +967,9 @@ bool LatticeUpdateRuleSCCP::RunUMod(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() % operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::UMOD, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunFDiv(GateRef gate)
@@ -817,9 +982,9 @@ bool LatticeUpdateRuleSCCP::RunFDiv(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-        ValueLattice(base::bit_cast<uint64_t>((base::bit_cast<double>(operandA.GetValue().value()) /
-                                               base::bit_cast<double>(operandB.GetValue().value())))));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FDIV, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunFMod(GateRef gate)
@@ -832,9 +997,9 @@ bool LatticeUpdateRuleSCCP::RunFMod(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-        ValueLattice(base::bit_cast<uint64_t>(fmod(base::bit_cast<double>(operandA.GetValue().value()),
-                                                   base::bit_cast<double>(operandB.GetValue().value())))));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FMOD, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunAnd(GateRef gate)
@@ -847,7 +1012,9 @@ bool LatticeUpdateRuleSCCP::RunAnd(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() & operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::AND, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunXor(GateRef gate)
@@ -860,7 +1027,9 @@ bool LatticeUpdateRuleSCCP::RunXor(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() ^ operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::XOR, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunOr(GateRef gate)
@@ -873,7 +1042,9 @@ bool LatticeUpdateRuleSCCP::RunOr(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() | operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::OR, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunLSL(GateRef gate)
@@ -886,7 +1057,9 @@ bool LatticeUpdateRuleSCCP::RunLSL(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() << operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::LSL, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunLSR(GateRef gate)
@@ -899,7 +1072,9 @@ bool LatticeUpdateRuleSCCP::RunLSR(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() >> operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::LSR, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunASR(GateRef gate)
@@ -912,9 +1087,9 @@ bool LatticeUpdateRuleSCCP::RunASR(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<int64_t>(operandA.GetValue().value())
-                                               >> static_cast<int64_t>(operandB.GetValue().value())));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::ASR, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunSLT(GateRef gate)
@@ -927,9 +1102,9 @@ bool LatticeUpdateRuleSCCP::RunSLT(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<int64_t>(operandA.GetValue().value())
-                                               < static_cast<int64_t>(operandB.GetValue().value())));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SLT, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunSLE(GateRef gate)
@@ -942,9 +1117,9 @@ bool LatticeUpdateRuleSCCP::RunSLE(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<int64_t>(operandA.GetValue().value())
-                                               <= static_cast<int64_t>(operandB.GetValue().value())));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SLE, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunSGT(GateRef gate)
@@ -957,9 +1132,9 @@ bool LatticeUpdateRuleSCCP::RunSGT(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<int64_t>(operandA.GetValue().value())
-                                               > static_cast<int64_t>(operandB.GetValue().value())));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SGT, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunSGE(GateRef gate)
@@ -972,9 +1147,9 @@ bool LatticeUpdateRuleSCCP::RunSGE(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<int64_t>(operandA.GetValue().value())
-                                               >= static_cast<int64_t>(operandB.GetValue().value())));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SGE, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunULT(GateRef gate)
@@ -987,7 +1162,9 @@ bool LatticeUpdateRuleSCCP::RunULT(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() < operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::ULT, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunULE(GateRef gate)
@@ -1000,7 +1177,9 @@ bool LatticeUpdateRuleSCCP::RunULE(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() <= operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::ULE, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunUGT(GateRef gate)
@@ -1013,7 +1192,9 @@ bool LatticeUpdateRuleSCCP::RunUGT(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() > operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::UGT, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunUGE(GateRef gate)
@@ -1026,7 +1207,9 @@ bool LatticeUpdateRuleSCCP::RunUGE(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() >= operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::UGE, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunFLT(GateRef gate)
@@ -1039,9 +1222,9 @@ bool LatticeUpdateRuleSCCP::RunFLT(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<uint64_t>(base::bit_cast<double>(operandA.GetValue().value())
-                                  < base::bit_cast<double>(operandB.GetValue().value()))));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FLT, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunFLE(GateRef gate)
@@ -1054,9 +1237,9 @@ bool LatticeUpdateRuleSCCP::RunFLE(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<uint64_t>(base::bit_cast<double>(operandA.GetValue().value())
-                                  <= base::bit_cast<double>(operandB.GetValue().value()))));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FLE, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunFGT(GateRef gate)
@@ -1069,9 +1252,9 @@ bool LatticeUpdateRuleSCCP::RunFGT(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<uint64_t>(base::bit_cast<double>(operandA.GetValue().value())
-                                  > base::bit_cast<double>(operandB.GetValue().value()))));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FGT, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunFGE(GateRef gate)
@@ -1084,9 +1267,9 @@ bool LatticeUpdateRuleSCCP::RunFGE(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate,
-                              ValueLattice(static_cast<uint64_t>(base::bit_cast<double>(operandA.GetValue().value())
-                                  >= base::bit_cast<double>(operandB.GetValue().value()))));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FGE, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunEQ(GateRef gate)
@@ -1099,7 +1282,9 @@ bool LatticeUpdateRuleSCCP::RunEQ(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() == operandB.GetValue().value()));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::EQ, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunNE(GateRef gate)
@@ -1112,7 +1297,9 @@ bool LatticeUpdateRuleSCCP::RunNE(GateRef gate)
     if (operandA.IsBot() || operandB.IsBot()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
-    return UpdateValueLattice(gate, ValueLattice(operandA.GetValue().value() != operandB.GetValue().value() ? 1 : 0));
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = RunBasicArithmetic(operandA, operandB, OpCode::NE, machineType);
+    return UpdateValueLattice(gate, ValueLattice(value));
 }
 
 bool LatticeUpdateRuleSCCP::RunLoad(GateRef gate)

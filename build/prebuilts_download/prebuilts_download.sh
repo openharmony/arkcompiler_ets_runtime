@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Copyright (c) 2022 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -130,7 +130,7 @@ script_path=$(cd $(dirname $0);pwd)
 code_dir=$(dirname ${script_path})
 pip3 install --trusted-host $trusted_host -i $pypi_url rich
 echo "prebuilts_download start"
-python3 "${code_dir}/newprebuilts/prebuilts_download.py" $wget_ssl_check $tool_repo $npm_registry $help $cpu $platform $npm_para
+python3 "${code_dir}/prebuilts_download/prebuilts_download.py" $wget_ssl_check $tool_repo $npm_registry $help $cpu $platform $npm_para
 echo "prebuilts_download end"
 
 echo -e "\n"

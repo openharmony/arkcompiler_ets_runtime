@@ -4100,6 +4100,35 @@ void InterpreterAssembly::HandleLdpatchvarImm8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
 }
+void InterpreterAssembly::HandleWideLdPatchVarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint32_t index = READ_INST_16_1();
+    LOG_INST() << "intrinsics::ldpatchvar" << " imm: " << index;
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdPatchVar(thread, index);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(WIDE_LDPATCHVAR_PREF_IMM16);
+}
+
+void InterpreterAssembly::HandleWideStPatchVarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint32_t index = READ_INST_16_1();
+    LOG_INST() << "intrinsics::stpatchvar" << " imm: " << index;
+    JSTaggedValue value = GET_ACC();
+
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StPatchVar(thread, index, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(WIDE_STPATCHVAR_PREF_IMM16);
+}
 void InterpreterAssembly::HandleStthisbyvalueImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -4167,7 +4196,22 @@ void InterpreterAssembly::HandleDynamicimport(
 {
     LOG_INST() << "intrinsics::dynamicimport";
     JSTaggedValue specifier = GET_ACC();
-    JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DYNAMICIMPORT);
+}
+void InterpreterAssembly::HandleDeprecatedDynamicimportPrefV8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::dynamicimport"
+                << " v" << v0;
+    JSTaggedValue specifier = GET_VREG_VALUE(v0);
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
     DISPATCH(DYNAMICIMPORT);
@@ -4305,6 +4349,7 @@ void InterpreterAssembly::HandleNop(
     LOG_INST() << "intrinsics::nop";
     DISPATCH(NOP);
 }
+
 void InterpreterAssembly::ExceptionHandler(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)

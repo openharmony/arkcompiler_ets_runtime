@@ -212,9 +212,9 @@ public:
         EcmaVM* vm) : FileGenerator(log, logList), vm_(vm), cpProcessor_(vm) {};
     ~AOTFileGenerator() override = default;
 
-    void InitializeConstantPoolInfos(const arg_list_t pandaFileNames)
+    JSTaggedValue GetConstantPoolInfos(const arg_list_t pandaFileNames)
     {
-        cpProcessor_.InitializeConstantPoolInfos(pandaFileNames.size());
+        return cpProcessor_.GetConstantPoolInfos(pandaFileNames.size());
     }
 
     void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, const BytecodeInfoCollector::BCInfo &bytecodeInfo)

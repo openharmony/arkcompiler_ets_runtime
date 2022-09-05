@@ -885,8 +885,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 9;
-    constexpr size_t numWideOps = 18;
-    constexpr size_t numDeprecatedOps = 45;
+    constexpr size_t numWideOps = 20;
+    constexpr size_t numDeprecatedOps = 46;
 
     static std::array<const void *, numOps> instDispatchTable {
 #include "templates/instruction_dispatch.inl"
@@ -3614,39 +3614,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         thread->SetCurrentSPFrame(sp);
         DISPATCH_OFFSET(0);
     }
-    // TODO: Implement code of 16bits ic slot bytecode
-    HANDLE_OPCODE(TYPEOF_IMM16) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(TYPEOF_IMM16);
-    }
-    HANDLE_OPCODE(CLOSEITERATOR_IMM16_V8) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(CLOSEITERATOR_IMM16_V8);
-    }
-    HANDLE_OPCODE(STOWNBYVALUE_IMM16_V8_V8) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(STOWNBYVALUE_IMM16_V8_V8);
-    }
-    HANDLE_OPCODE(STSUPERBYVALUE_IMM16_V8_V8) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(STSUPERBYVALUE_IMM16_V8_V8);
-    }
-    HANDLE_OPCODE(TRYSTGLOBALBYNAME_IMM16_ID16) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
-    }
-    HANDLE_OPCODE(STSUPERBYNAME_IMM16_ID16_V8) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(STSUPERBYNAME_IMM16_ID16_V8);
-    }
-    HANDLE_OPCODE(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
-    }
-    HANDLE_OPCODE(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
-    }
     HANDLE_OPCODE(OVERFLOW) {
         LOG_INTERPRETER(FATAL) << "opcode overflow";
     }
@@ -6231,6 +6198,39 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(DEPRECATED_ASYNCFUNCTIONREJECT_PREF_V8_V8_V8);
     }
+    // TODO: Implement code of 16bits ic slot bytecode
+    HANDLE_OPCODE(TYPEOF_IMM16) {
+        LOG_FULL(FATAL) << "not implement";
+        DISPATCH(TYPEOF_IMM16);
+    }
+    HANDLE_OPCODE(CLOSEITERATOR_IMM16_V8) {
+        LOG_FULL(FATAL) << "not implement";
+        DISPATCH(CLOSEITERATOR_IMM16_V8);
+    }
+    HANDLE_OPCODE(STOWNBYVALUE_IMM16_V8_V8) {
+        LOG_FULL(FATAL) << "not implement";
+        DISPATCH(STOWNBYVALUE_IMM16_V8_V8);
+    }
+    HANDLE_OPCODE(STSUPERBYVALUE_IMM16_V8_V8) {
+        LOG_FULL(FATAL) << "not implement";
+        DISPATCH(STSUPERBYVALUE_IMM16_V8_V8);
+    }
+    HANDLE_OPCODE(TRYSTGLOBALBYNAME_IMM16_ID16) {
+        LOG_FULL(FATAL) << "not implement";
+        DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
+    }
+    HANDLE_OPCODE(STSUPERBYNAME_IMM16_ID16_V8) {
+        LOG_FULL(FATAL) << "not implement";
+        DISPATCH(STSUPERBYNAME_IMM16_ID16_V8);
+    }
+    HANDLE_OPCODE(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8) {
+        LOG_FULL(FATAL) << "not implement";
+        DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
+    }
+    HANDLE_OPCODE(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8) {
+        LOG_FULL(FATAL) << "not implement";
+        DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
+    }
     HANDLE_OPCODE(JSTRICTEQZ_IMM8) {
         LOG_FULL(FATAL) << "not implement";
         DISPATCH(JSTRICTEQZ_IMM8);
@@ -6391,14 +6391,48 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_FULL(FATAL) << "not implement";
         DISPATCH(STPATCHVAR_IMM8_V8);
     }
+    HANDLE_OPCODE(WIDE_LDPATCHVAR_PREF_IMM16) {
+        uint16_t index = READ_INST_16_1();
+        LOG_INST() << "intrinsics::ldpatchvar" << " imm: " << index;
+
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::LdPatchVar(thread, index);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(WIDE_LDPATCHVAR_PREF_IMM16);
+    }
+    HANDLE_OPCODE(WIDE_STPATCHVAR_PREF_IMM16) {
+        uint16_t index = READ_INST_16_1();
+        LOG_INST() << "intrinsics::stpatchvar" << " imm: " << index;
+        JSTaggedValue value = GET_ACC();
+
+        SAVE_ACC();
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::StPatchVar(thread, index, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+        DISPATCH(WIDE_STPATCHVAR_PREF_IMM16);
+    }
     HANDLE_OPCODE(DYNAMICIMPORT) {
         LOG_INST() << "intrinsics::dynamicimport";
         JSTaggedValue specifier = GET_ACC();
+        JSTaggedValue thisFunc = GetThisFunction(sp);
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(DYNAMICIMPORT);
+    }
+    HANDLE_OPCODE(DEPRECATED_DYNAMICIMPORT_PREF_V8) {
+        uint16_t v0 = READ_INST_8_1();
+        LOG_INST() << "intrinsics::dynamicimport";
+        JSTaggedValue specifier = GET_VREG_VALUE(v0);
+        JSTaggedValue thisFunc = GetThisFunction(sp);
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(DEPRECATED_DYNAMICIMPORT_PREF_V8);
     }
 #include "templates/debugger_instruction_handler.inl"
 }
@@ -6847,6 +6881,8 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16, "WIDE_STMODULEVAR"},
         {EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16, "WIDE_LDLOCALMODULEVAR"},
         {EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16, "WIDE_LDEXTERNALMODULEVAR"},
+        {EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16, "LDPATCHVAR"},
+        {EcmaOpcode::WIDE_STPATCHVAR_PREF_IMM16, "STPATCHVAR"},
         {EcmaOpcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8, "DEPRECATED_DEFINECLASSWITHBUFFER"},
         {EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8, "DEPRECATED_RESUMEGENERATOR"},
         {EcmaOpcode::DEPRECATED_GETRESUMEMODE_PREF_V8, "DEPRECATED_GETRESUMEMODE"},

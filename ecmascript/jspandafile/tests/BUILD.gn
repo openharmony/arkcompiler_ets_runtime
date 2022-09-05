@@ -33,8 +33,8 @@ host_unittest_action("JSPandaFileTest") {
 
   deps = [
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
-    "//arkcompiler/runtime_core/assembler:libarkassembler",
-    "//arkcompiler/runtime_core/libpandafile:libarkfile",
+    "//arkcompiler/runtime_core/assembler:libarkassembler_static",
+    "//arkcompiler/runtime_core/libpandafile:libarkfile_static",
     sdk_libc_secshared_dep,
   ]
 }

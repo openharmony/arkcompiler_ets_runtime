@@ -89,11 +89,6 @@ GateRef CircuitBuilder::ChangeUInt32ToFloat64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::UNSIGNED_INT_TO_FLOAT), MachineType::F64, x);
 }
 
-GateRef CircuitBuilder::PointerSub(GateRef x, GateRef y)
-{
-    return BinaryArithmetic(OpCode(OpCode::SUB), MachineType::ARCH, x, y);
-}
-
 GateRef CircuitBuilder::Int8Equal(GateRef x, GateRef y)
 {
     return BinaryLogic(OpCode(OpCode::EQ), x, y);
@@ -168,9 +163,15 @@ GateRef CircuitBuilder::SExtInt8ToInt64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
 }
 
-GateRef CircuitBuilder::ChangeInt64ToTagged(GateRef x)
+GateRef CircuitBuilder::Int64ToTaggedPtr(GateRef x)
 {
     return TaggedNumber(OpCode(OpCode::INT64_TO_TAGGED), x);
+}
+
+GateRef CircuitBuilder::Int32ToTaggedPtr(GateRef x)
+{
+    GateRef val = SExtInt32ToInt64(x);
+    return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
 }
 
 // bit operation
@@ -178,6 +179,7 @@ GateRef CircuitBuilder::IsSpecial(GateRef x, JSTaggedType type)
 {
     return Equal(x, Int64(type));
 }
+
 GateRef CircuitBuilder::TaggedIsInt(GateRef x)
 {
     return Equal(Int64And(x, Int64(JSTaggedValue::TAG_MARK)),
@@ -303,32 +305,32 @@ GateRef CircuitBuilder::TaggedGetInt(GateRef x)
     return TruncInt64ToInt32(Int64And(x, Int64(~JSTaggedValue::TAG_MARK)));
 }
 
-GateRef CircuitBuilder::TaggedTypeNGC(GateRef x)
+GateRef CircuitBuilder::ToTaggedInt(GateRef x)
 {
     return Int64Or(x, Int64(JSTaggedValue::TAG_INT));
 }
 
-GateRef CircuitBuilder::TaggedNGC(GateRef x)
+GateRef CircuitBuilder::ToTaggedIntPtr(GateRef x)
 {
-    return ChangeInt64ToTagged(Int64Or(x, Int64(JSTaggedValue::TAG_INT)));
+    return Int64ToTaggedPtr(Int64Or(x, Int64(JSTaggedValue::TAG_INT)));
 }
 
-GateRef CircuitBuilder::DoubleToTaggedNGC(GateRef x)
+GateRef CircuitBuilder::DoubleToTaggedDoublePtr(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
-    return ChangeInt64ToTagged(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
+    return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
-GateRef CircuitBuilder::DoubleToTaggedTypeNGC(GateRef x)
+GateRef CircuitBuilder::DoubleToTaggedDouble(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
     return Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
 }
 
-GateRef CircuitBuilder::Tagged(GateRef x)
+GateRef CircuitBuilder::DoubleIsNAN(GateRef x)
 {
-    acc_.SetGateType(x, GateType::TaggedValue());
-    return Int64Or(x, Int64(JSTaggedValue::TAG_INT));
+    GateRef diff = Equal(x, x);
+    return Equal(SExtInt1ToInt32(diff), Int32(0));
 }
 
 GateRef CircuitBuilder::DoubleToTagged(GateRef x)
@@ -499,6 +501,30 @@ GateRef CircuitBuilder::IsCallable(GateRef obj)
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     return IsCallableFromBitField(bitfield);
+}
+
+GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label bothAreHeapObjet(env_);
+    Label bothAreStringType(env_);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    Branch(BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y)), &bothAreHeapObjet, &exit);
+    Bind(&bothAreHeapObjet);
+    {
+        Branch(TaggedObjectBothAreString(x, y), &bothAreStringType, &exit);
+        Bind(&bothAreStringType);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
 }
 
 GateRef CircuitBuilder::LogicAnd(GateRef x, GateRef y)

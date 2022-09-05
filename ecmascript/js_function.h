@@ -189,6 +189,10 @@ public:
         GetClass()->SetClassConstructor(flag);
     }
 
+    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data);
+
+    JSTaggedValue GetFunctionExtraInfo() const;
+
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     static JSHClass *GetOrCreateInitialJSHClass(JSThread *thread, const JSHandle<JSFunction> &fun);
@@ -198,8 +202,7 @@ public:
     static constexpr size_t PROTO_OR_DYNCLASS_OFFSET = JSFunctionBase::SIZE;
     ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, HOME_OBJECT_OFFSET)
-    ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, FUNCTION_EXTRA_INFO_OFFSET)
-    ACCESSORS(FunctionExtraInfo, FUNCTION_EXTRA_INFO_OFFSET, PROFILE_TYPE_INFO_OFFSET)
+    ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, PROFILE_TYPE_INFO_OFFSET)
     ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, ECMA_MODULE_OFFSET)
     ACCESSORS(Module, ECMA_MODULE_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
@@ -310,7 +313,7 @@ public:
     CAST_CHECK(JSPromiseAnyRejectElementFunction, IsJSPromiseAnyRejectElementFunction);
 
     static constexpr size_t ERRORS_OFFSET = JSFunction::SIZE;
-    
+
     ACCESSORS(Errors, ERRORS_OFFSET, CAPABILITY_OFFSET);
     ACCESSORS(Capability, CAPABILITY_OFFSET, REMAINING_ELEMENTS_OFFSET);
     ACCESSORS(RemainingElements, REMAINING_ELEMENTS_OFFSET, ALREADY_CALLED_OFFSET);

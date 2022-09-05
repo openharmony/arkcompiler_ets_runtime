@@ -1402,6 +1402,20 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaBytecode::NOP: {
             break;
         }
+        case EcmaOpcode::LDPATCHVAR_PREF_IMM16: {
+            uint32_t index = READ_INST_16_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
+        case EcmaOpcode::STPATCHVAR_PREF_IMM16: {
+            uint32_t index = READ_INST_16_1();
+            info.accIn = true;
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
         default: {
             LOG_COMPILER(ERROR) << "Error bytecode: " << opcode << ", pls check bytecode offset.";
             UNREACHABLE();
@@ -2111,7 +2125,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
         while (static_cast<EcmaBytecode>(GetBytecodeInfo(*nextPcIter).opcode) == EcmaBytecode::NOP) {
             nextPcIter++;
         }
-        ASSERT(static_cast<EcmaBytecode>(GetBytecodeInfo(*nextPcIter).opcode) == EcmaBytecode::SUSPENDGENERATOR_V8);
+        ASSERT(static_cast<EcmaBytecode>(GetBytecodeInfo(*nextPcIter).opcode) == EcmaBytecode::SUSPENDGENERATOR);
         GateRef suspendGate = byteCodeToJSGate_.at(*nextPcIter);
         auto dependGate = gateAcc_.GetDep(suspendGate);
         auto newDependGate = circuit_.NewGate(OpCode(OpCode::SAVE_REGISTER), tmpReg, {dependGate, saveRegGate},

@@ -36,7 +36,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     }
     auto aotModule = new LLVMModule("aot_" + fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
-        LOptions(optLevel_, true, relocMode_));
+                                                LOptions(optLevel_, true, relocMode_));
     CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
     TSManager *tsManager = vm_->GetTSManager();
     uint32_t mainMethodIndex = bytecodeInfo.jsPandaFile->GetMainMethodIndex();
@@ -63,7 +63,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             }
 
             BytecodeCircuitBuilder builder(jsPandaFile, constantPool, method, methodPCInfo, tsManager,
-                                        enableLog && log_->OutputCIR());
+                                           &cmpCfg, enableLog && log_->OutputCIR());
             builder.BytecodeToCircuit();
             PassData data(builder.GetCircuit());
             PassRunner<PassData> pipeline(&data, enableLog && log_->OutputCIR());
@@ -111,7 +111,7 @@ bool PassManager::CollectBCInfo(const std::string &fileName, BytecodeInfoCollect
                                                                                          entry_));
     }
 
-    auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile);
+    auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile, JSPandaFile::ENTRY_FUNCTION_NAME);
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
     JSHandle<Method> method(thread, mainFunc->GetMethod());
     JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());

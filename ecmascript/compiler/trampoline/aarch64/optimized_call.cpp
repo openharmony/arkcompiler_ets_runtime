@@ -614,6 +614,7 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
     Register codeAddress(X3);
     Register argV(X4);
     Register env(X5);
+    Register method(X6);
     Label directCallCodeEntry;
     const int64_t argoffsetSlot = static_cast<int64_t>(CommonArgIdx::FUNC) - 1;
     __ Mov(Register(X5), jsfunc);
@@ -626,7 +627,8 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
     __ Cmp(arg2.W(), expectedNumArgs);
     __ Add(argV, sp, Immediate(argoffsetSlot * FRAME_SLOT_SIZE));  // skip env and numArgs
     // TODO: Get from method
-    __ Ldr(codeAddress, MemoryOperand(Register(X5), Method::CODE_ENTRY_OFFSET));
+    __ Ldr(method, MemoryOperand(Register(X5), JSFunctionBase::METHOD_OFFSET)); // get method
+    __ Ldr(codeAddress, MemoryOperand(method, Method::CODE_ENTRY_OFFSET)); // get codeAddress
     __ Ldr(env, MemoryOperand(sp, 0));
     __ B(Condition::HS, &directCallCodeEntry);
     __ CallAssemblerStub(RTSTUB_ID(OptimizedCallOptimized), true);

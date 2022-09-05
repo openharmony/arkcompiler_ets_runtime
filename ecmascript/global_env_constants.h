@@ -37,6 +37,7 @@ class JSThread;
     V(JSTaggedValue, FreeObjectWithTwoFieldClass, FREE_OBJECT_WITH_TWO_FIELD_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, StringClass, STRING_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX, ecma_roots_class)                                                 \
+    V(JSTaggedValue, ConstantPoolClass, CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, DictionaryClass, DICTIONARY_CLASS_INDEX, ecma_roots_class)                                       \
     V(JSTaggedValue, BigIntClass, BIGINT_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, JSNativePointerClass, JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                           \
@@ -101,9 +102,10 @@ class JSThread;
     V(JSTaggedValue, JSAPITreeSetIteratorClass, JS_API_TREE_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, LinkedNode, LINKED_NODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, RBTreeNode, RB_TREENODE_CLASS_INDEX, ecma_roots_class)                                           \
-    V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_DYN_CLASS_INDEX, ecma_roots_class)               \
+    V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)                     \
+    V(JSTaggedValue, JSAPIAsyncIteratorFuncHClass, JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
-    V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                 \
+    V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, MethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)
 

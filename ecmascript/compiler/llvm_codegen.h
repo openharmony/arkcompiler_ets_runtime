@@ -127,6 +127,10 @@ struct CodeInfo {
     {
         uint8_t *addr = nullptr;
         auto curSec = ElfSection(sectionName);
+        // rodata section needs 16 bytes alignment
+        if (curSec.InRodataSection()) {
+            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        }
         addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size) : AllocaInNotReqSecBuffer(size);
         if (curSec.isValidAOTSec()) {
             secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);

@@ -126,7 +126,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
         // optimize the circuit
         auto optimizeResult = solver.Run(&circuit, false);
         EXPECT_EQ(optimizeResult, true);
-        // check optimization result (returned value is constant 2)
+        // check optimization result (returned value is constant 1)
         EXPECT_TRUE(solver.GetReachabilityLattice(ret).IsReachable());
         EXPECT_TRUE(solver.GetValueLattice(acc.GetIn(ret, 2)).GetValue() == 1);
     }
@@ -209,6 +209,103 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSubgraphRewriteFramework)
     auto returnValue = acc.GetIn(ret, 2);
     EXPECT_TRUE(acc.GetOpCode(returnValue) == OpCode(OpCode::CONSTANT));
     EXPECT_TRUE(acc.GetBitField(returnValue) == (numOfUses) * (numOfConstants) * (numOfConstants - 1) / 2);
+}
+
+HWTEST_F_L0(CircuitOptimizerTests, TestLatticeUpdateRuleSCCP)
+{
+    Circuit circuit;
+    GateAccessor acc(&circuit);
+    auto constantA = circuit.NewGate(OpCode(OpCode::CONSTANT),
+                                     MachineType::I32,
+                                     -8848,
+                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
+                                     GateType::NJSValue());
+    auto constantB = circuit.NewGate(OpCode(OpCode::CONSTANT),
+                                     MachineType::I32,
+                                     4,
+                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
+                                     GateType::NJSValue());
+    auto newX = circuit.NewGate(OpCode(OpCode::SDIV),
+                                MachineType::I32,
+                                0,
+                                {constantA, constantB},
+                                GateType::NJSValue());
+    auto ret = circuit.NewGate(OpCode(OpCode::RETURN),
+                               0,
+                               {Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY)),
+                                Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY)),
+                                newX,
+                                Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST))},
+                               GateType::Empty());
+    {
+        int32_t x = -8848;
+        int32_t y = 4;
+        ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
+        ecmascript::kungfu::LatticeEquationsSystemSolverFramework solver(&rule);
+        // optimize the circuit
+        auto optimizeResult = solver.Run(&circuit, false);
+        EXPECT_EQ(optimizeResult, true);
+        // check optimization result (returned value is constant -2212)
+        EXPECT_TRUE(solver.GetReachabilityLattice(ret).IsReachable());
+        EXPECT_EQ(solver.GetValueLattice(acc.GetIn(ret, 2)).GetValue(),
+                  ecmascript::base::bit_cast<uint32_t>(x / y));
+    }
+    {
+        acc.SetOpCode(newX, OpCode(OpCode::UDIV));
+        uint32_t x = -8848;
+        uint32_t y = 4;
+        ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
+        ecmascript::kungfu::LatticeEquationsSystemSolverFramework solver(&rule);
+        // optimize the circuit
+        auto optimizeResult = solver.Run(&circuit, false);
+        EXPECT_EQ(optimizeResult, true);
+        // check optimization result (returned value is constant 1073739612)
+        EXPECT_TRUE(solver.GetReachabilityLattice(ret).IsReachable());
+        EXPECT_EQ(solver.GetValueLattice(acc.GetIn(ret, 2)).GetValue(), x / y);
+    }
+    {
+        // modify the initial type of constantA to int8_t
+        acc.SetMachineType(constantA, MachineType::I8);
+        // modify the initial value of constantA to 200
+        acc.SetBitField(constantA, 200);
+        // modify the initial type of constantB to int8_t
+        acc.SetMachineType(constantB, MachineType::I8);
+        // modify the initial value of constantB to 200
+        acc.SetBitField(constantB, 200);
+        acc.SetMachineType(newX, MachineType::I8);
+        acc.SetOpCode(newX, OpCode(OpCode::ADD));
+        ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
+        ecmascript::kungfu::LatticeEquationsSystemSolverFramework solver(&rule);
+        // optimize the circuit
+        auto optimizeResult = solver.Run(&circuit, false);
+        EXPECT_EQ(optimizeResult, true);
+        // check optimization result (returned value is constant 144)
+        EXPECT_TRUE(solver.GetReachabilityLattice(ret).IsReachable());
+        EXPECT_EQ(solver.GetValueLattice(acc.GetIn(ret, 2)).GetValue(), 144);
+    }
+    {
+        float x = 9.6;
+        float y = 6.9;
+        // modify the initial type of constantA to float
+        acc.SetMachineType(constantA, MachineType::F32);
+        // modify the initial value of constantA to 9.6
+        acc.SetBitField(constantA, ecmascript::base::bit_cast<uint32_t>(x));
+        // modify the initial type of constantB to float
+        acc.SetMachineType(constantB, MachineType::F32);
+        // modify the initial value of constantB to 6.9
+        acc.SetBitField(constantB, ecmascript::base::bit_cast<uint32_t>(y));
+        acc.SetMachineType(newX, MachineType::F32);
+        acc.SetOpCode(newX, OpCode(OpCode::FMOD));
+        ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
+        ecmascript::kungfu::LatticeEquationsSystemSolverFramework solver(&rule);
+        // optimize the circuit
+        auto optimizeResult = solver.Run(&circuit, false);
+        EXPECT_EQ(optimizeResult, true);
+        // check optimization result (returned value is constant 2.7)
+        EXPECT_TRUE(solver.GetReachabilityLattice(ret).IsReachable());
+        EXPECT_EQ(ecmascript::base::bit_cast<double>(solver.GetValueLattice(acc.GetIn(ret, 2)).GetValue().value()),
+                  fmod(x, y));
+    }
 }
 
 HWTEST_F_L0(CircuitOptimizerTests, TestSmallSizeGlobalValueNumbering) {

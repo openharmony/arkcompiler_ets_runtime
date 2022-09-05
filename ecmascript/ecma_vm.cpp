@@ -422,13 +422,13 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
     return JSTaggedValue(res);
 }
 
-Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile)
+Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     JSTaggedValue result;
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<Program> program;
     if (jsPandaFile != frameworkPandaFile_) {
-        program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile);
+        program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
     } else {
         program = JSHandle<Program>(thread_, frameworkProgram_);
         frameworkProgram_ = JSTaggedValue::Hole();
@@ -438,13 +438,17 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         return Unexpected(false);
     }
     // for debugger
-    debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc());
+    debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
     JSHandle<JSFunction> func = JSHandle<JSFunction>(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
-    if (jsPandaFile->IsModule()) {
+    if (jsPandaFile->IsModule(entryPoint.data())) {
         global = JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
-        JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(jsPandaFile->GetJSPandaFileDesc());
+        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+        if (!jsPandaFile->IsBundle()) {
+            moduleName = entryPoint.data();
+        }
+        JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
         func->SetModule(thread_, module);
     }
 
@@ -452,7 +456,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         thread_->SetPrintBCOffset(true);
         result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile);
     } else {
-        if (jsPandaFile->IsCjs()) {
+        if (jsPandaFile->IsCjs(entryPoint.data())) {
             CJSExecution(func, global, jsPandaFile);
         } else {
             JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
@@ -525,7 +529,7 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
 
 void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index, int32_t total)
 {
-    ASSERT(constpool.IsTaggedArray());
+    ASSERT(constpool.IsConstantPool());
     if (cachedConstpools_.find(jsPandaFile) == cachedConstpools_.end()) {
         cachedConstpools_[jsPandaFile] = CVector<JSTaggedValue>(total);
         cachedConstpools_[jsPandaFile].reserve(total);
@@ -606,6 +610,24 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             ++iter;
         }
     }
+
+    auto iterator = cachedConstpools_.begin();
+    while (iterator != cachedConstpools_.end()) {
+        auto &constpools = iterator->second;
+        auto size = constpools.size();
+        for (uint32_t i = 0; i < size; i++) {
+            if (constpools[i].IsHeapObject()) {
+                TaggedObject *obj = constpools[i].GetTaggedObject();
+                auto fwd = visitor(obj);
+                if (fwd == nullptr) {
+                    auto constantPool = ConstantPool::Cast(obj);
+                    JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
+                    constpools[i] = JSTaggedValue::Hole();
+                }
+            }
+        }
+        ++iterator;
+    }
 }
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
@@ -637,6 +659,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
                 TaggedObject *obj = constpools[i].GetTaggedObject();
                 auto fwd = visitor(obj);
                 if (fwd == nullptr) {
+                    auto constantPool = ConstantPool::Cast(obj);
+                    JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
                     constpools[i] = JSTaggedValue::Hole();
                 } else if (fwd != obj) {
                     constpools[i] = JSTaggedValue(fwd);

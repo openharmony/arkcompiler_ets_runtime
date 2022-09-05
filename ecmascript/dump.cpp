@@ -138,6 +138,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "LexicalEnv";
         case JSType::TAGGED_DICTIONARY:
             return "TaggedDictionary";
+        case JSType::CONSTANT_POOL:
+            return "ConstantPool";
         case JSType::STRING:
             return "BaseString";
         case JSType::JS_NATIVE_POINTER:
@@ -224,6 +226,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "DataView";
         case JSType::JS_ITERATOR:
             return "Iterator";
+        case JSType::JS_ASYNCITERATOR:
+            return "AsyncIterator";
         case JSType::JS_FORIN_ITERATOR:
             return "ForinInterator";
         case JSType::JS_MAP_ITERATOR:
@@ -416,6 +420,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "CommonJSRequire";
         case JSType::METHOD:
             return "Method";
+        case JSType::GLOBAL_PATCH:
+            return "GlobalPatch";
         default: {
             CString ret = "unknown type ";
             return ret + static_cast<char>(type);
@@ -430,6 +436,21 @@ static void DumpArrayClass(const TaggedArray *arr, std::ostream &os)
     os << " <TaggedArray[" << std::dec << len << "]>\n";
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(arr->Get(i));
+        if (!val.IsHole()) {
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
+            val.DumpTaggedValue(os);
+            os << "\n";
+        }
+    }
+}
+
+static void DumpConstantPoolClass(const ConstantPool *pool, std::ostream &os)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = pool->GetCacheLength();
+    os << " <ConstantPool[" << std::dec << len << "]>\n";
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(pool->GetObjectFromCache(i));
         if (!val.IsHole()) {
             os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
             val.DumpTaggedValue(os);
@@ -546,6 +567,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::LEXICAL_ENV:
             DumpArrayClass(TaggedArray::Cast(obj), os);
             break;
+        case JSType::CONSTANT_POOL:
+            DumpConstantPoolClass(ConstantPool::Cast(obj), os);
+            break;
         case JSType::STRING:
             DumpStringClass(EcmaString::Cast(obj), os);
             os << "\n";
@@ -564,6 +588,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
+        case JSType::GLOBAL_PATCH:
             JSObject::Cast(obj)->Dump(os);
             break;
         case JSType::JS_FUNCTION_BASE:
@@ -718,6 +743,8 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             JSIntlBoundFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ITERATOR:
+            break;
+        case JSType::JS_ASYNCITERATOR:
             break;
         case JSType::JS_FORIN_ITERATOR:
             JSForInIterator::Cast(obj)->Dump(os);
@@ -2172,6 +2199,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetAsyncFunctionPrototype().GetTaggedValue().Dump(os);
     os << " - JSGlobalObject: ";
     GetJSGlobalObject().GetTaggedValue().Dump(os);
+    os << " - GlobalPatch: ";
+    GetGlobalPatch().GetTaggedValue().Dump(os);
     os << " - EmptyArray: ";
     globalConst->GetEmptyArray().Dump(os);
     os << " - EmptyString ";
@@ -2188,6 +2217,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetToStringTagSymbol().GetTaggedValue().Dump(os);
     os << " - IteratorSymbol: ";
     GetIteratorSymbol().GetTaggedValue().Dump(os);
+    os << " - AsyncIteratorSymbol: ";
+    GetAsyncIteratorSymbol().GetTaggedValue().Dump(os);
     os << " - MatchSymbol: ";
     GetMatchSymbol().GetTaggedValue().Dump(os);
     os << " - MatchAllSymbol: ";
@@ -3160,6 +3191,9 @@ void SourceTextModule::Dump(std::ostream &os) const
     os << " - EcmaModuleFilename: ";
     GetEcmaModuleFilename().Dump(os);
     os << "\n";
+    os << " - EcmaModuleRecordName: ";
+    GetEcmaModuleRecordName().Dump(os);
+    os << "\n";
     os << " - RequestedModules: ";
     GetRequestedModules().Dump(os);
     os << "\n";
@@ -3348,6 +3382,18 @@ static void DumpArrayClass(const TaggedArray *arr,
     }
 }
 
+static void DumpConstantPoolClass(const ConstantPool *arr,
+                                  std::vector<std::pair<CString, JSTaggedValue>> &vec)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = arr->GetCacheLength();
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(arr->GetObjectFromCache(i));
+        CString str = ToCString(i);
+        vec.push_back(std::make_pair(str, val));
+    }
+}
+
 static void DumpStringClass(const EcmaString *str,
                             std::vector<std::pair<CString, JSTaggedValue>> &vec)
 {
@@ -3377,6 +3423,9 @@ static void DumpObject(TaggedObject *obj,
         case JSType::LEXICAL_ENV:
             DumpArrayClass(TaggedArray::Cast(obj), vec);
             return;
+        case JSType::CONSTANT_POOL:
+            DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
+            return;
         case JSType::STRING:
             DumpStringClass(EcmaString::Cast(obj), vec);
             return;
@@ -3394,6 +3443,7 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
         case JSType::JS_GLOBAL_OBJECT:
+        case JSType::GLOBAL_PATCH:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_FUNCTION_BASE:
@@ -3521,6 +3571,7 @@ static void DumpObject(TaggedObject *obj,
             CompletionRecord::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_ITERATOR:
+        case JSType::JS_ASYNCITERATOR:
         case JSType::JS_FORIN_ITERATOR:
         case JSType::JS_MAP_ITERATOR:
         case JSType::JS_SET_ITERATOR:
@@ -4365,6 +4416,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString("IsConcatSpreadableSymbol"), GetIsConcatSpreadableSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("ToStringTagSymbol"), GetToStringTagSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("IteratorSymbol"), GetIteratorSymbol().GetTaggedValue()));
+    vec.push_back(std::make_pair(CString("AsyncIteratorSymbol"), GetAsyncIteratorSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("MatchSymbol"), GetMatchSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("MatchAllSymbol"), GetMatchAllSymbol().GetTaggedValue()));
     vec.push_back(std::make_pair(CString("ReplaceSymbol"), GetReplaceSymbol().GetTaggedValue()));
@@ -4454,6 +4506,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
     vec.push_back(std::make_pair(CString(
         "LinkedListIteratorPrototype"), globalConst->GetLinkedListIteratorPrototype()));
     vec.push_back(std::make_pair(CString("ListIteratorPrototype"), globalConst->GetListIteratorPrototype()));
+    vec.push_back(std::make_pair(CString("GlobalPatch"), GetGlobalPatch().GetTaggedValue()));
 }
 
 void JSDataView::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4888,6 +4941,7 @@ void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
     vec.push_back(std::make_pair(CString("Environment"), GetEnvironment()));
     vec.push_back(std::make_pair(CString("Namespace"), GetNamespace()));
     vec.push_back(std::make_pair(CString("EcmaModuleFilename"), GetEcmaModuleFilename()));
+    vec.push_back(std::make_pair(CString("EcmaModuleRecordName"), GetEcmaModuleRecordName()));
     vec.push_back(std::make_pair(CString("RequestedModules"), GetRequestedModules()));
     vec.push_back(std::make_pair(CString("ImportEntries"), GetImportEntries()));
     vec.push_back(std::make_pair(CString("LocalExportEntries"), GetLocalExportEntries()));

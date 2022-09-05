@@ -107,8 +107,12 @@ class VerifierPass {
 public:
     bool Run(PassData* data, bool enableLog)
     {
-        Verifier::Run(data->GetCircuit(), enableLog);
-        return true;
+        bool isQualified = Verifier::Run(data->GetCircuit(), enableLog);
+        if (!isQualified) {
+            LOG_FULL(FATAL) << "VerifierPass fail";
+            UNREACHABLE();
+        }
+        return isQualified;
     }
 };
 

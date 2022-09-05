@@ -73,12 +73,6 @@ public:
 
     static JSTaggedValue CreateGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
     static JSTaggedValue SuspendGenerator(JSThread *thread, JSTaggedValue genObj, JSTaggedValue value);
-    static JSTaggedValue SuspendGeneratorHelper(JSThread *thread, JSHandle<JSGeneratorObject> generatorObjectHandle,
-                                                JSHandle<GeneratorContext> genContextHandle, JSTaggedValue value);
-    static JSTaggedValue SuspendAsyncGeneratorHelper(JSThread *thread,
-                                                     JSHandle<JSAsyncGeneratorObject> generatorObjectHandle,
-                                                     JSHandle<GeneratorContext> genContextHandle,
-                                                     JSTaggedValue value);
     static JSTaggedValue AsyncFunctionAwaitUncaught(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value);
     static JSTaggedValue AsyncFunctionResolveOrReject(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value,
                                                       bool is_resolve);
@@ -148,7 +142,7 @@ public:
                                    uint16_t length);
     static JSTaggedValue SuperCallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                          JSTaggedValue array);
-    static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier);
+    static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue func);
     static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
@@ -172,6 +166,10 @@ public:
     static JSTaggedValue AsyncGeneratorResolve(JSThread *thread, JSTaggedValue asyncFuncObj,
                                                const JSTaggedValue value, JSTaggedValue flag);
     static JSTaggedValue CreateAsyncGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
+
+    static JSTaggedValue LdPatchVar(JSThread *thread, uint32_t index);
+    static JSTaggedValue StPatchVar(JSThread *thread, uint32_t index, JSTaggedValue value);
+
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);
     static JSTaggedValue GetCallSpreadArgs(JSThread *thread, JSTaggedValue array);

@@ -21,6 +21,7 @@
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_async_function.h"
 #include "ecmascript/builtins/builtins_async_generator.h"
+#include "ecmascript/builtins/builtins_async_iterator.h"
 #include "ecmascript/builtins/builtins_atomics.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_boolean.h"
@@ -129,6 +130,7 @@ using BuiltinsFinalizationRegistry = builtins::BuiltinsFinalizationRegistry;
 using BuiltinsArray = builtins::BuiltinsArray;
 using BuiltinsTypedArray = builtins::BuiltinsTypedArray;
 using BuiltinsIterator = builtins::BuiltinsIterator;
+using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using Error = builtins::BuiltinsError;
 using RangeError = builtins::BuiltinsRangeError;
 using ReferenceError = builtins::BuiltinsReferenceError;
@@ -599,6 +601,10 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsIterator::Return),
     reinterpret_cast<uintptr_t>(BuiltinsIterator::Throw),
     reinterpret_cast<uintptr_t>(BuiltinsIterator::GetIteratorObj),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::Next),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::Return),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::Throw),
+    reinterpret_cast<uintptr_t>(BuiltinsAsyncIterator::GetAsyncIteratorObj),
     reinterpret_cast<uintptr_t>(JSForInIterator::Next),
     reinterpret_cast<uintptr_t>(JSRegExpIterator::Next),
     reinterpret_cast<uintptr_t>(JSSetIterator::Next),
@@ -969,7 +975,6 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(JSFunction::NameGetter),
     reinterpret_cast<uintptr_t>(JSArray::LengthSetter),
     reinterpret_cast<uintptr_t>(JSArray::LengthGetter),
-    reinterpret_cast<uintptr_t>(JSPandaFileManager::RemoveJSPandaFile),
     reinterpret_cast<uintptr_t>(JSPandaFileManager::GetInstance)
 };
 
@@ -1116,6 +1121,7 @@ void SnapshotProcessor::DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, 
     auto nonMovableSpace = heap->GetNonMovableSpace();
     auto machineCodeSpace = heap->GetMachineCodeSpace();
     auto snapshotSpace = heap->GetSnapshotSpace();
+
     DeserializeSpaceObject(oldSpaceBegin, oldSpace, oldSpaceObjSize);
     DeserializeSpaceObject(nonMovableBegin, nonMovableSpace, nonMovableObjSize);
     DeserializeSpaceObject(machineCodeBegin, machineCodeSpace, machineCodeObjSize);
@@ -1138,35 +1144,38 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         uint32_t regionIndex = *(reinterpret_cast<GCBitset *>(oldMarkGCBitsetAddr)->Words());
         regionIndexMap_.emplace(regionIndex, region);
 
-        size_t copyBytes = fileRegion->highWaterMark_ - fileRegion->packedData_.begin_;
+        size_t liveObjectSize = 0;
+        if (space->GetSpaceType() == MemSpaceType::SNAPSHOT_SPACE) {
+            liveObjectSize = fileRegion->highWaterMark_ - fileRegion->packedData_.begin_;
+        } else {
+            liveObjectSize = fileRegion->AliveObject();
+        }
         // Retrieve the data beginning address based on the serialized data format.
         uintptr_t copyFrom = oldMarkGCBitsetAddr +
             (fileRegion->packedData_.begin_ - ToUintPtr(fileRegion->packedData_.markGCBitset_));
-        ASSERT(copyBytes <= region->end_ - region->packedData_.begin_);
+        ASSERT(liveObjectSize <= region->end_ - region->packedData_.begin_);
 
         if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
-                     copyBytes,
+                     liveObjectSize,
                      ToVoidPtr(copyFrom),
-                     copyBytes) != EOK) {
+                     liveObjectSize) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
 
-        region->highWaterMark_ = region->packedData_.begin_ + copyBytes;
         // Other information like aliveObject size, wasted size etc. in the region object to restore.
-        region->aliveObject_ = fileRegion->AliveObject();
+        region->aliveObject_ = liveObjectSize;
         region->wasted_ = fileRegion->wasted_;
-
+        region->highWaterMark_ = region->packedData_.begin_ + liveObjectSize;
         region->SetGCFlag(RegionGCFlags::NEED_RELOCATE);
 
-        size_t liveObjectSize = region->GetHighWaterMark() - region->GetBegin();
         if (space->GetSpaceType() != MemSpaceType::SNAPSHOT_SPACE) {
             auto sparseSpace = reinterpret_cast<SparseSpace *>(space);
             region->InitializeFreeObjectSets();
             sparseSpace->FreeLiveRange(region, region->GetHighWaterMark(), region->GetEnd(), true);
             sparseSpace->IncreaseLiveObjectSize(liveObjectSize);
             sparseSpace->IncreaseAllocatedSize(liveObjectSize);
-            sparseSpace->AddRegionToFront(region);
+            sparseSpace->AddRegion(region);
         } else {
             auto snapshotSpace = reinterpret_cast<SnapshotSpace *>(space);
             snapshotSpace->IncreaseLiveObjectSize(liveObjectSize);
@@ -1449,7 +1458,14 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value)
     }
 
     if (encodeBit.IsReference() && !encodeBit.IsSpecial()) {
+        Region *rootRegion = Region::ObjectAddressToRange(ToUintPtr(value));
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
+        Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
+        if (!rootRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+            // Should align with '8' in 64 and 32 bit platform
+            ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+            rootRegion->InsertOldToNewRSet((uintptr_t)value);
+        }
         *value = taggedObjectAddr;
         return;
     }
@@ -1677,30 +1693,34 @@ size_t SnapshotProcessor::GetNativeTableSize() const
     return sizeof(g_nativeTable) / sizeof(g_nativeTable[0]);
 }
 
-void ConstantPoolProcessor::InitializeConstantPoolInfos(size_t nums)
+JSTaggedValue ConstantPoolProcessor::GetConstantPoolInfos(size_t nums)
 {
     ObjectFactory *factory = vm_->GetFactory();
-    infos_ = factory->NewTaggedArray(nums * ITEM_SIZE).GetTaggedValue();
+    return factory->NewTaggedArray(nums * ITEM_SIZE).GetTaggedValue();
 }
 
-void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool)
+void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, JSHandle<JSTaggedValue> constantPool)
 {
     JSThread *thread = vm_->GetJSThread();
-    JSHandle<TaggedArray> array(thread, infos_);
+    JSHandle<TaggedArray> array = vm_->GetTSManager()->GetConstantPoolInfo();
     ASSERT(index_ < array->GetLength());
     JSHandle<ConstantPool> cp(thread, constantPool.GetTaggedValue());
-    array->Set(thread, index_++, JSTaggedValue(pf->GetFileUniqId()));
-    array->Set(thread, index_++, GenerateConstantPoolInfo(cp));
+
+    std::string keyStr = std::to_string(pf->GetFileUniqId());
+    JSHandle<EcmaString> key = vm_->GetFactory()->NewFromStdString(keyStr);
+    array->Set(thread, index_++, key);
+    auto value = GenerateConstantPoolInfo(cp);
+    array->Set(thread, index_++, value);
 }
 
-JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(const JSHandle<ConstantPool> constantPool)
+JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(JSHandle<ConstantPool> constantPool)
 {
     ObjectFactory *factory = vm_->GetFactory();
     JSThread *thread = vm_->GetJSThread();
 
-    uint32_t len = constantPool->GetLength();
+    uint32_t len = constantPool->GetCacheLength();
     JSHandle<TaggedArray> valueArray = factory->NewTaggedArray(len * ITEM_SIZE);
-    
+
     int index = 0;
     for (uint32_t i = 0; i < len; ++i) {
         JSTaggedValue item = constantPool->GetObjectFromCache(i);
@@ -1714,19 +1734,65 @@ JSTaggedValue ConstantPoolProcessor::GenerateConstantPoolInfo(const JSHandle<Con
     return valueArray.GetTaggedValue();
 }
 
-void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSTaggedValue constPoolInfo,
+void ConstantPoolProcessor::RestoreConstantPoolInfo(JSThread *thread, JSHandle<TaggedArray> constPoolInfos,
                                                     const JSPandaFile* pf, JSHandle<ConstantPool> constPool)
 {
-    JSTaggedValue fileUniqID(pf->GetFileUniqId());
-    JSHandle<TaggedArray> array(thread, constPoolInfo);
-    auto index = array->GetIdx(fileUniqID);
-    JSHandle<TaggedArray> valueArray(thread, array->Get(index + 1));
+    std::string keyStr = std::to_string(pf->GetFileUniqId());
+    JSHandle<EcmaString> key = thread->GetEcmaVM()->GetFactory()->NewFromStdString(keyStr);
+    uint32_t keyHash = key->GetHashcode();
+    int leftBound = BinarySearch(constPoolInfos, keyHash);
+    int rightBound = BinarySearch(constPoolInfos, keyHash, false);
+    if (leftBound == -1 || rightBound == -1) {
+        LOG_FULL(FATAL) << "restore constant pool fail";
+    }
+
+    TaggedArray *valueArray = nullptr;
+    while (leftBound <= rightBound) {
+        EcmaString *nowStr = EcmaString::Cast(constPoolInfos->Get(leftBound * ITEM_SIZE).GetTaggedObject());
+        if (EcmaString::StringsAreEqual(nowStr, *key)) {
+            valueArray = TaggedArray::Cast(constPoolInfos->Get(leftBound * ITEM_SIZE + 1).GetTaggedObject());
+        }
+        leftBound++;
+    }
 
     uint32_t len = valueArray->GetLength();
     for (uint32_t i = 0; i < len; i += ITEM_SIZE) {
-        uint32_t valueIndex = valueArray->Get(i).GetInt();
+        uint32_t valueIndex = static_cast<uint32_t>(valueArray->Get(i).GetInt());
         JSTaggedValue value = valueArray->Get(i + 1);
-        constPool->Set(thread, valueIndex, value);
+        constPool->SetObjectToCache(thread, valueIndex, value);
     }
+}
+
+int ConstantPoolProcessor::BinarySearch(JSHandle<TaggedArray> constPoolInfos, uint32_t target, bool findLeftBound)
+{
+    int len = constPoolInfos->GetLength() / ITEM_SIZE - 1;
+    if (len < 0) {
+        LOG_FULL(FATAL) << "constantPoolInfos should not be empty";
+    }
+    int left = 0;
+    int right = len;
+
+    while (left <= right) {
+        int middle = left + (right - left) / 2;
+        EcmaString *middleStr = EcmaString::Cast(constPoolInfos->Get(middle * ITEM_SIZE).GetTaggedObject());
+        uint32_t nowHashCode = middleStr->GetHashcode();
+        if (target < nowHashCode) right = middle - 1;
+        else if(target > nowHashCode) left = middle + 1;
+        else {
+            if (findLeftBound) {
+                right = middle - 1;
+            } else {
+                left = middle + 1;
+            }
+        }
+    }
+
+    int finalIdx = findLeftBound? left: right;
+    if (finalIdx > len || finalIdx < 0) return -1;
+
+    EcmaString *finalStr = EcmaString::Cast(constPoolInfos->Get(finalIdx * ITEM_SIZE).GetTaggedObject());
+    uint32_t finalStrHashCode = finalStr->GetHashcode();
+
+    return finalStrHashCode == target? finalIdx: -1;
 }
 }  // namespace panda::ecmascript

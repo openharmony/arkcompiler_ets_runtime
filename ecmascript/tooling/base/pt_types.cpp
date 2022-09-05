@@ -289,7 +289,7 @@ std::string ObjectRemoteObject::DescriptionForObject(const EcmaVM *ecmaVm, Local
         return RemoteObject::WeakMapDescription;
     }
     if (tagged->IsSet()) {
-        return DescriptionForSet(Local<SetRef>(tagged));
+        return DescriptionForSet(ecmaVm, Local<SetRef>(tagged));
     }
     if (tagged->IsWeakSet()) {
         return RemoteObject::WeakSetDescription;
@@ -383,9 +383,9 @@ std::string ObjectRemoteObject::DescriptionForArray(const EcmaVM *ecmaVm, Local<
 
 std::string ObjectRemoteObject::DescriptionForRegexp(const EcmaVM *ecmaVm, Local<RegExpRef> tagged)
 {
-    std::string regexpSource = tagged->GetOriginalSource(ecmaVm)->ToString();
-    std::string description = "/" + regexpSource + "/";
-    return description;
+    std::string regExpSource = tagged->GetOriginalSource(ecmaVm)->ToString();
+    std::string regExpFlags = tagged->GetOriginalFlags();
+    return "/" + regExpSource + "/" + regExpFlags;
 }
 
 std::string ObjectRemoteObject::DescriptionForDate(const EcmaVM *ecmaVm, Local<DateRef> tagged)
@@ -425,7 +425,7 @@ std::string ObjectRemoteObject::DescriptionForMap(const EcmaVM *ecmaVm, Local<Ma
             description += jsVValue->ToString(ecmaVm)->ToString();
         }
         if (i == len - 1 || i >= 4) { // 4:The count of elements
-            description += len > 5? ", ..." : ""; // 5:The count of elements
+            description += len > 5 ? ", ..." : ""; // 5:The count of elements
             break;
         }
         description += ", ";
@@ -434,9 +434,33 @@ std::string ObjectRemoteObject::DescriptionForMap(const EcmaVM *ecmaVm, Local<Ma
     return description;
 }
 
-std::string ObjectRemoteObject::DescriptionForSet(Local<SetRef> tagged)
+std::string ObjectRemoteObject::DescriptionForSet(const EcmaVM *ecmaVm, Local<SetRef> tagged)
 {
+    int32_t len = tagged->GetSize();
     std::string description = ("Set(" + std::to_string(tagged->GetSize()) + ")");
+    if (!len) {
+        return description;
+    }
+    description += " {";
+    char cPre = '\'';
+    for (int32_t i = 0; i < len; ++i) {
+        // add Key
+        Local<JSValueRef> jsValue = tagged->GetValue(ecmaVm, i);
+        // add Value
+        if (jsValue->IsObject()) {
+            description += "Object";
+        } else if (jsValue->IsString()) {
+            description += cPre + jsValue->ToString(ecmaVm)->ToString() + cPre;
+        } else {
+            description += jsValue->ToString(ecmaVm)->ToString();
+        }
+        if (i == len - 1 || i >= 4) { // 4:The count of elements
+            description += len > 5 ? ", ..." : ""; // 5:The count of elements
+            break;
+        }
+        description += ", ";
+    }
+    description += "}";
     return description;
 }
 
@@ -489,28 +513,28 @@ std::string ObjectRemoteObject::DescriptionForSharedArrayBuffer(const EcmaVM *ec
 
 std::string ObjectRemoteObject::DescriptionForUint8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
 {
-    int32_t len = tagged->ByteLength(ecmaVm);
+    int32_t len = static_cast<int32_t>(tagged->ByteLength(ecmaVm));
     std::string description = ("Uint8Array(" + std::to_string(len) + ")");
     return description;
 }
 
 std::string ObjectRemoteObject::DescriptionForInt8Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
 {
-    int32_t len = tagged->ByteLength(ecmaVm);
+    int32_t len = static_cast<int32_t>(tagged->ByteLength(ecmaVm));
     std::string description = ("Int8Array(" + std::to_string(len) + ")");
     return description;
 }
 
 std::string ObjectRemoteObject::DescriptionForInt16Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
 {
-    int32_t len = tagged->ByteLength(ecmaVm) / NumberSize::BYTES_OF_16BITS;
+    int32_t len = tagged->ByteLength(ecmaVm) / static_cast<int32_t>(NumberSize::BYTES_OF_16BITS);
     std::string description = ("Int16Array(" + std::to_string(len) + ")");
     return description;
 }
 
 std::string ObjectRemoteObject::DescriptionForInt32Array(const EcmaVM *ecmaVm, Local<TypedArrayRef> tagged)
 {
-    int32_t len = tagged->ByteLength(ecmaVm) / NumberSize::BYTES_OF_32BITS;
+    int32_t len = tagged->ByteLength(ecmaVm) / static_cast<int32_t>(NumberSize::BYTES_OF_32BITS);
     std::string description = ("Int32Array(" + std::to_string(len) + ")");
     return description;
 }
@@ -2223,7 +2247,7 @@ std::unique_ptr<Profile> Profile::FromProfileInfo(const ProfileInfo &profileInfo
     profile->SetTimeDeltas(tmpTimeDeltas);
 
     std::vector<std::unique_ptr<ProfileNode>> profileNode;
-    size_t nodesLen = profileInfo.nodes.size();
+    size_t nodesLen = profileInfo.nodeCount;
     for (size_t i = 0; i < nodesLen; ++i) {
         const auto &cpuProfileNode = profileInfo.nodes[i];
         profileNode.push_back(ProfileNode::FromCpuProfileNode(cpuProfileNode));

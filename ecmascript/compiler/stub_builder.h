@@ -63,7 +63,6 @@ public:
     GateRef Hole(VariableType type = VariableType::JS_ANY());
     GateRef Null(VariableType type = VariableType::JS_ANY());
     GateRef Exception(VariableType type = VariableType::JS_ANY());
-    GateRef PtrMul(GateRef x, GateRef y);
     // parameter
     GateRef Argument(size_t index);
     GateRef Int1Argument(size_t index);
@@ -104,8 +103,7 @@ public:
     GateRef DoubleAdd(GateRef x, GateRef y);
     GateRef PtrAdd(GateRef x, GateRef y);
     GateRef PtrSub(GateRef x, GateRef y);
-    GateRef PointerSub(GateRef x, GateRef y);
-    GateRef PointerAdd(GateRef x, GateRef y);
+    GateRef PtrMul(GateRef x, GateRef y);
     GateRef IntPtrEqual(GateRef x, GateRef y);
     GateRef Int16Sub(GateRef x, GateRef y);
     GateRef Int32Sub(GateRef x, GateRef y);
@@ -177,18 +175,17 @@ public:
     GateRef TaggedIsFalse(GateRef x);
     GateRef TaggedIsBoolean(GateRef x);
     GateRef TaggedGetInt(GateRef x);
-    GateRef Int8ToTaggedTypeNGC(GateRef x);
-    GateRef Int16ToTaggedNGC(GateRef x);
-    GateRef Int16ToTaggedTypeNGC(GateRef x);
-    GateRef IntToTaggedNGC(GateRef x);
-    GateRef IntToTaggedTypeNGC(GateRef x);
-    GateRef DoubleBuildTaggedWithNoGC(GateRef x);
-    GateRef DoubleBuildTaggedTypeWithNoGC(GateRef x);
+    GateRef Int8ToTaggedInt(GateRef x);
+    GateRef Int16ToTaggedInt(GateRef x);
+    GateRef IntToTaggedPtr(GateRef x);
+    GateRef IntToTaggedInt(GateRef x);
+    GateRef DoubleToTaggedDoublePtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
     GateRef TaggedTrue();
     GateRef TaggedFalse();
     // compare operation
     GateRef Int8Equal(GateRef x, GateRef y);
+    GateRef Equal(GateRef x, GateRef y);
     GateRef Int32Equal(GateRef x, GateRef y);
     GateRef Int32NotEqual(GateRef x, GateRef y);
     GateRef Int64Equal(GateRef x, GateRef y);
@@ -359,12 +356,12 @@ public:
     GateRef TaggedCastToInt64(GateRef x);
     GateRef TaggedCastToInt32(GateRef x);
     GateRef TaggedCastToDouble(GateRef x);
-    GateRef TaggedCastToWeakReferentUnChecked(GateRef x);
+    GateRef LoadObjectFromWeakRef(GateRef x);
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);
     GateRef ChangeFloat64ToInt32(GateRef x);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
-    GateRef ChangeInt64ToTagged(GateRef x);
+    GateRef Int64ToTaggedPtr(GateRef x);
     GateRef ChangeInt16ToInt8(GateRef x);
     GateRef CastInt64ToFloat64(GateRef x);
     GateRef SExtInt32ToInt64(GateRef x);

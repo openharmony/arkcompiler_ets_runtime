@@ -22,7 +22,6 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
-    T(HandleOverflowD7)                                 \
     T(HandleOverflowD8)                                 \
     T(HandleOverflowD9)                                 \
     T(HandleOverflowDA)                                 \
@@ -58,7 +57,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleOverflowF8)                                 \
     T(HandleOverflowF9)                                 \
     T(HandleOverflowFA)                                 \
-    T(HandleOverflowFB)
+    T(HandleOverflowFB)                                 \
+    T(HandleOverflowFC)
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_BC_STUB_LIST(V, T, D)           \
@@ -329,7 +329,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleDeprecatedStlettoglobalrecordPrefId32)                     \
     T(HandleDeprecatedStclasstoglobalrecordPrefId32)                   \
     T(HandleDeprecatedLdhomeobjectPrefNone)                            \
-    T(HandleDeprecatedCreateobjecthavingmethodPrefImm16)
+    T(HandleDeprecatedCreateobjecthavingmethodPrefImm16)               \
+    T(HandleDeprecatedDynamicimportPrefV8)
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_WIDE_STUB_LIST(V, T, D)                        \
@@ -350,7 +351,9 @@ namespace panda::ecmascript::kungfu {
     T(HandleWideGetmodulenamespacePrefImm16)                           \
     T(HandleWideStmodulevarPrefImm16)                                  \
     T(HandleWideLdlocalmodulevarPrefImm16)                             \
-    T(HandleWideLdexternalmodulevarPrefImm16)
+    T(HandleWideLdexternalmodulevarPrefImm16)                          \
+    T(HandleWideLdPatchVarPrefImm16)                                   \
+    T(HandleWideStPatchVarPrefImm16)
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_THROW_STUB_LIST(V, T, D)                       \

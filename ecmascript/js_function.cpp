@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_promise.h"
@@ -38,7 +39,6 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetFunctionExtraInfo(thread, JSTaggedValue::Undefined());
     func->SetFunctionKind(kind);
     func->SetCallNative(false);
 
@@ -609,5 +609,53 @@ bool JSFunction::NameSetter(JSThread *thread, const JSHandle<JSObject> &self, co
     }
     self->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, value.GetTaggedValue());
     return true;
+}
+
+void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data)
+{
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    EcmaVM *vm = thread->GetEcmaVM();
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
+    JSHandle<ECMAObject> obj(thread, this);
+    JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(nativeFunc, deleter, data);
+    if (value->IsTaggedArray()) {
+        JSHandle<TaggedArray> array(value);
+
+        uint32_t nativeFieldCount = array->GetExtractLength();
+        if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
+            array->Set(thread, nativeFieldCount + FUNCTION_EXTRAL_INDEX, pointer);
+        } else {
+            JSHandle<TaggedArray> newArray =
+                thread->GetEcmaVM()->GetFactory()->NewTaggedArray(nativeFieldCount + RESOLVED_MAX_SIZE);
+            newArray->SetExtractLength(nativeFieldCount);
+            for (uint32_t i = 0; i < nativeFieldCount; i++) {
+                newArray->Set(thread, i, array->Get(i));
+            }
+            newArray->Set(thread, nativeFieldCount + HASH_INDEX, array->Get(nativeFieldCount + HASH_INDEX));
+            newArray->Set(thread, nativeFieldCount + FUNCTION_EXTRAL_INDEX, pointer);
+            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+        }
+    } else {
+        JSHandle<TaggedArray> newArray =
+            thread->GetEcmaVM()->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
+        newArray->SetExtractLength(0);
+        newArray->Set(thread, HASH_INDEX, value);
+        newArray->Set(thread, FUNCTION_EXTRAL_INDEX, pointer);
+        Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+    }
+}
+
+JSTaggedValue JSFunction::GetFunctionExtraInfo() const
+{
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedValue value(hashField);
+    if (value.IsTaggedArray()) {
+        TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
+        uint32_t nativeFieldCount = array->GetExtractLength();
+        if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
+            return array->Get(nativeFieldCount + FUNCTION_EXTRAL_INDEX);
+        }
+    }
+    return JSTaggedValue::Undefined();
 }
 }  // namespace panda::ecmascript

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -81,11 +81,11 @@ class ArkTest():
             self.type = self.args.type
 
         product_dir = f'{self.ohdir}/out/{self.product}'
-        libs_dir_x64_release = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib'
+        libs_dir_x64_release = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib:'
                                 f'{product_dir}/clang_x64/ark/ark:'
                                 f'{product_dir}/clang_x64/ark/ark_js_runtime:'
                                 f'{product_dir}/clang_x64/thirdparty/icu')
-        libs_dir_x64_debug = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib'
+        libs_dir_x64_debug = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib:'
                               f'{product_dir}/clang_x64/exe.unstripped/clang_x64/ark/ark:'
                               f'{product_dir}/clang_x64/exe.unstripped/clang_x64/ark/ark_js_runtime:'
                               f'{product_dir}/clang_x64/lib.unstripped/clang_x64/ark/ark:'
@@ -190,7 +190,7 @@ class ArkTest():
                     abc = import_file[0][1:].replace(".js", ".abc")
                     abc = os.path.abspath(f'{js_dir}/{abc}')
                     if module_abc_file.find(abc) < 0:
-                        module_abc_file += f':{abc}'
+                        module_abc_file = ''.join([module_abc_file, f':{abc}'])
         infile.close()
         os.system(f'mkdir -p {out_case_dir}')
         cmd_map = {

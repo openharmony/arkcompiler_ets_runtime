@@ -45,62 +45,97 @@ public:
     DECL_DUMP()
 };
 
+/*
+ *       ConstantPool
+ *      +------------+
+ *      |  hClass    +
+ *      +------------+
+ *      |  length    |
+ *      +------------+
+ *      |  cache...  |
+ *      +------------+
+ *      |js_pandafile|
+ *      +------------+
+ */
 class ConstantPool : public TaggedArray {
 public:
+    static constexpr size_t JS_PANDA_FILE_INDEX = 1;
+#ifdef NEW_INSTRUCTION_DEFINE
+    static constexpr size_t INDEX_HEADER_INDEX = 2;
+    static constexpr size_t RESERVED_POOL_LENGTH = INDEX_HEADER_INDEX;
+#else
+    static constexpr size_t RESERVED_POOL_LENGTH = JS_PANDA_FILE_INDEX;
+#endif
+
     static ConstantPool *Cast(TaggedObject *object)
     {
-        ASSERT(JSTaggedValue(object).IsTaggedArray());
+        ASSERT(JSTaggedValue(object).IsConstantPool());
         return static_cast<ConstantPool *>(object);
     }
 
-    JSPandaFile *GetJSPandaFile() const
-    {
-        auto size = GetLength();
-        JSTaggedValue fileValue = GetObjectFromCache(size - 1);
-        if (!fileValue.IsJSNativePointer()) {
-            return nullptr;
-        }
-
-        void *nativePointer = JSNativePointer::Cast(fileValue.GetTaggedObject())->GetExternalPointer();
-        return static_cast<JSPandaFile *>(nativePointer);
-    }
-
 #ifdef NEW_INSTRUCTION_DEFINE
-    static JSTaggedValue CreateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, uint32_t methodId)
+    static JSHandle<ConstantPool> CreateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, uint32_t methodId)
     {
         const panda_file::File::IndexHeader *mainIndex =
             jsPandaFile->GetPandaFile()->GetIndexHeader(panda_file::File::EntityId(methodId));
         LOG_ECMA_IF(mainIndex == nullptr, FATAL) << "Unknown methodId: " << methodId;
 
         ObjectFactory *factory = vm->GetFactory();
-        JSHandle<ConstantPool> constpool = factory->NewConstantPool(mainIndex->method_idx_size + 2);
+        JSHandle<ConstantPool> constpool = factory->NewConstantPool(mainIndex->method_idx_size + RESERVED_POOL_LENGTH);
 
-        // Put JSPandaFile at the last index of constpool.
-        JSHandle<JSNativePointer> jsPandaFilePointer = factory->NewJSNativePointer(
-            const_cast<JSPandaFile *>(jsPandaFile), JSPandaFileManager::RemoveJSPandaFile,
-            JSPandaFileManager::GetInstance(), true);
-        constpool->Set(vm->GetJSThread(), mainIndex->method_idx_size + 1, jsPandaFilePointer.GetTaggedValue());
+        constpool->SetJSPandaFile(jsPandaFile);
+        constpool->SetIndexHeader(mainIndex);
 
-        // Put IndexHeader before JSPandaFile.
-        JSHandle<JSNativePointer> indexHeaderPointer =
-            factory->NewJSNativePointer(const_cast<panda_file::File::IndexHeader *>(mainIndex));
-        constpool->Set(vm->GetJSThread(), mainIndex->method_idx_size, indexHeaderPointer.GetTaggedValue());
-
-        return constpool.GetTaggedValue();
+        return constpool;
     }
 
-    panda_file::File::IndexHeader *GetIndexHeader() const
+    inline void SetIndexHeader(const panda_file::File::IndexHeader *indexHeadre)
     {
-        auto size = GetLength();
-        JSTaggedValue fileValue = GetObjectFromCache(size - 2);
-        if (!fileValue.IsJSNativePointer()) {
-            return nullptr;
-        }
+        Barriers::SetPrimitive(GetData(), GetIndexHeaderOffset(), indexHeadre);
+    }
 
-        void *nativePointer = JSNativePointer::Cast(fileValue.GetTaggedObject())->GetExternalPointer();
-        return static_cast<panda_file::File::IndexHeader *>(nativePointer);
+    inline panda_file::File::IndexHeader *GetIndexHeader() const
+    {
+        return Barriers::GetValue<panda_file::File::IndexHeader *>(GetData(), GetIndexHeaderOffset());
     }
 #endif
+
+    static size_t ComputeSize(uint32_t cacheSize)
+    {
+        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + RESERVED_POOL_LENGTH);
+    }
+
+    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity)
+    {
+        ASSERT(initValue.IsSpecial());
+        SetLength(capacity + RESERVED_POOL_LENGTH);
+        SetExtractLength(0);
+        for (uint32_t i = 0; i < capacity; i++) {
+            size_t offset = JSTaggedValue::TaggedTypeSize() * i;
+            Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
+        }
+        SetJSPandaFile(nullptr);
+    }
+
+    inline uint32_t GetCacheLength() const
+    {
+        return GetLength() - RESERVED_POOL_LENGTH;
+    }
+
+    inline void SetJSPandaFile(const void *jsPandaFile)
+    {
+        Barriers::SetPrimitive(GetData(), GetJSPandaFileOffset(), jsPandaFile);
+    }
+
+    inline JSPandaFile *GetJSPandaFile() const
+    {
+        return Barriers::GetValue<JSPandaFile *>(GetData(), GetJSPandaFileOffset());
+    }
+
+    inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
+    {
+        Set(thread, index, value);
+    }
 
     inline JSTaggedValue GetObjectFromCache(uint32_t index) const
     {
@@ -131,7 +166,7 @@ public:
             auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
             JSTaggedValue newConstpool = vm->FindConstpool(jsPandaFile, constpoolIndex);
             if (newConstpool.IsHole()) {
-                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, id.GetOffset());
+                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, id.GetOffset()).GetTaggedValue();
                 vm->AddConstpool(jsPandaFile, newConstpool, constpoolIndex);
             }
             method->SetConstantPool(thread, newConstpool);
@@ -167,7 +202,7 @@ public:
             auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
             JSTaggedValue newConstpool = vm->FindConstpool(jsPandaFile, constpoolIndex);
             if (newConstpool.IsHole()) {
-                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, id.GetOffset());
+                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, id.GetOffset()).GetTaggedValue();
                 vm->AddConstpool(jsPandaFile, newConstpool, constpoolIndex);
             }
             method->SetConstantPool(thread, newConstpool);
@@ -200,14 +235,16 @@ public:
 
             panda_file::IndexAccessor newIndexAccessor(*pf, literalId);
             auto constpoolIndex = newIndexAccessor.GetHeaderIndex();
+            JSHandle<ConstantPool> newConstpoolHandle;
             JSTaggedValue newConstpool = vm->FindConstpool(jsPandaFile, constpoolIndex);
             if (newConstpool.IsHole()) {
-                newConstpool = ConstantPool::CreateConstPool(vm, jsPandaFile, literalId.GetOffset());
-                vm->AddConstpool(jsPandaFile, newConstpool, constpoolIndex);
+                newConstpoolHandle = ConstantPool::CreateConstPool(vm, jsPandaFile, literalId.GetOffset());
+                vm->AddConstpool(jsPandaFile, newConstpoolHandle.GetTaggedValue(), constpoolIndex);
+            } else {
+                newConstpoolHandle = JSHandle<ConstantPool>(thread, newConstpool);
             }
-            JSHandle<JSTaggedValue> newConstpoolHandle(thread, newConstpool);
             JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, literalId, newConstpoolHandle);
+                thread, jsPandaFile, literalId, JSHandle<JSTaggedValue>(newConstpoolHandle));
 
             val = literalArray.GetTaggedValue();
             constpool->Set(thread, literal, val);
@@ -313,7 +350,27 @@ public:
 
     std::string PUBLIC_API GetStdStringByIdx(size_t index) const;
 
+    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength());
+    DECL_VISIT_NATIVE_FIELD(GetLastOffset() - JSTaggedValue::TaggedTypeSize() * RESERVED_POOL_LENGTH, GetLastOffset());
+
     DECL_DUMP()
+
+private:
+    inline size_t GetJSPandaFileOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - JS_PANDA_FILE_INDEX);
+    }
+#ifdef NEW_INSTRUCTION_DEFINE
+    inline size_t GetIndexHeaderOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - INDEX_HEADER_INDEX);
+    }
+#endif
+
+    inline size_t GetLastOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * GetLength() + DATA_OFFSET;
+    }
 };
 }  // namespace ecmascript
 }  // namespace panda

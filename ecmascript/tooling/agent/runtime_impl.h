@@ -110,6 +110,10 @@ private:
     void AddInternalProperties(Local<ObjectRef> object, ArkInternalValueType type);
     void GetMapValue(Local<JSValueRef> value,
         std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void GetSetValue(Local<JSValueRef> value,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
+    void GetRegExpValue(Local<JSValueRef> value,
+        std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc);
     class Frontend {
     public:
         explicit Frontend(ProtocolChannel *channel) : channel_(channel) {}

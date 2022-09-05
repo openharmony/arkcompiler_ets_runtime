@@ -418,6 +418,15 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::IsUtf16String(GateRef string)
+{
+    // compressedStringsEnabled fixed to true constant
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    return Int32Equal(
+        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32(EcmaString::STRING_UNCOMPRESSED));
+}
+
 GateRef CircuitBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(cmpCfg_->Is32Bit()));
@@ -442,11 +451,51 @@ GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, offset);
 }
 
-void CircuitBuilder::SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value)
+GateRef CircuitBuilder::GetLengthFromString(GateRef value)
 {
-    GateRef method = GetMethodFromFunction(function);
-    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
-    Store(VariableType::INT64(), glue, method, offset, value);
+    GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    return Int32LSR(len, Int32(2));  // 2 : 2 means len must be right shift 2 bits
+}
+
+GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label noRawHashcode(env_);
+    Label exit(env_);
+    DEFVAlUE(hashcode, env_, VariableType::INT32(), Int32(0));
+    hashcode = Load(VariableType::INT32(), value, IntPtr(EcmaString::HASHCODE_OFFSET));
+    Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
+    Bind(&noRawHashcode);
+    {
+        hashcode = TaggedCastToInt32(CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }));
+        Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *hashcode;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    Label isHeapObject(env_);
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        result = Int32Equal(GetObjectType(LoadHClass(obj)),
+                            Int32(static_cast<int32_t>(JSType::BIGINT)));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
 }
 
 void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value)

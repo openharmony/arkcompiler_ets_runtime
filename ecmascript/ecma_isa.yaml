@@ -617,7 +617,15 @@ groups:
         prefix: ecma
         format: [pref_op_id_16_imm_16_v_8]
         properties: [method_id]
-      - sig: ecma.dynamicimport
-        acc: inout:top
+      - sig: ecma.dynamicimport v:in:top
+        acc: out:top
         prefix: ecma
-        format: [pref_op_none]
+        format: [pref_op_v_8]
+      - sig: ecma.ldpatchvar imm
+        acc: out:top
+        prefix: ecma
+        format: [pref_op_imm_16]
+      - sig: ecma.stpatchvar imm
+        acc: in:top
+        prefix: ecma
+        format: [pref_op_imm_16]

@@ -34,6 +34,9 @@ class ObjectFactory;
 class JSBoundFunction;
 class JSProxy;
 
+class GeneratorContext;
+struct EcmaRuntimeCallInfo;
+
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
                                          uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
 
@@ -258,7 +261,11 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(GetObjectLiteralFromCache)          \
     V(GetStringFromCache)                 \
     V(OptLdSuperByValue)                  \
-    V(OptStSuperByValue)
+    V(OptStSuperByValue)                  \
+    V(BigIntEqual)                        \
+    V(StringEqual)                        \
+    V(LdPatchVar)                         \
+    V(StPatchVar)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -315,6 +322,8 @@ public:
                                         JSTaggedType key, int32_t num);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
+
+    static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
 private:
     static void PrintHeapReginInfo(uintptr_t argGlue);
 
@@ -442,7 +451,7 @@ private:
     static inline JSTaggedValue RuntimeStGlobalVar(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
                                                    const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &value);
-    static inline JSTaggedValue RuntimeDynamicImport(JSThread *thread, JSTaggedValue specifier);
+    static inline JSTaggedValue RuntimeDynamicImport(JSThread *thread, const JSHandle<JSTaggedValue> &specifier, const JSHandle<JSTaggedValue> &func);
     static inline JSTaggedValue RuntimeToNumeric(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                              const JSHandle<JSTaggedValue> &right);
@@ -569,6 +578,12 @@ private:
     static inline JSTaggedType *GetActualArgv(JSThread *thread);
     static inline OptimizedJSFunctionFrame *GetOptimizedJSFunctionFrame(JSThread *thread);
 
+    static JSTaggedValue NewObject(EcmaRuntimeCallInfo *info);
+    static void SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContext> context);
+
+    static inline JSTaggedValue RuntimeLdPatchVar(JSThread *thread, uint32_t index);
+    static inline JSTaggedValue RuntimeStPatchVar(JSThread *thread, uint32_t index,
+                                                  const JSHandle<JSTaggedValue> &value);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

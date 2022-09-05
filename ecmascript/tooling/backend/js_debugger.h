@@ -98,12 +98,12 @@ public:
     bool SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> condFuncRef) override;
     bool RemoveBreakpoint(const JSPtLocation &location) override;
     void BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset) override;
-    void LoadModule(std::string_view filename) override
+    void LoadModule(std::string_view filename, std::string_view entryPoint) override
     {
         if (hooks_ == nullptr) {
             return;
         }
-        hooks_->LoadModule(filename);
+        hooks_->LoadModule(filename, entryPoint);
     }
     void VmStart() override
     {

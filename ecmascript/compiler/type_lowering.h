@@ -127,11 +127,32 @@ private:
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
     template<OpCode::Op Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
-    GateRef DoubleBuildTaggedWithNoGC(GateRef gate);
+    GateRef DoubleToTaggedDoublePtr(GateRef gate);
     GateRef ChangeInt32ToFloat64(GateRef gate);
+    GateRef GeneralMod(GateRef left, GateRef right, GateRef glue);
+    GateRef Int32Mod(GateRef left, GateRef right);
+    GateRef DoubleMod(GateRef left, GateRef right);
+    GateRef IntToTaggedNGc(GateRef x);
+    GateRef DoubleIsINF(GateRef x);
+    GateRef Less(GateRef left, GateRef right);
+    GateRef LessEq(GateRef left, GateRef right);
+    GateRef FastEqual(GateRef left, GateRef right);
+    GateRef FastDiv(GateRef left, GateRef right);
 
     void LowerTypeNewObjRange(GateRef gate, GateRef glue);
     void LowerTypeAdd2Dyn(GateRef gate, GateRef glue);
+    void LowerTypeSub2Dyn(GateRef gate);
+    void LowerTypeMul2Dyn(GateRef gate);
+    void LowerTypeMod2Dyn(GateRef gate, GateRef glue);
+    void LowerTypeLessDyn(GateRef gate);
+    void LowerTypeLessEqDyn(GateRef gate);
+    void LowerTypeGreaterDyn(GateRef gate);
+    void LowerTypeGreaterEqDyn(GateRef gate);
+    void LowerTypeDiv2Dyn(GateRef gate);
+    void LowerTypeEqDyn(GateRef gate);
+    void LowerTypeNotEqDyn(GateRef gate);
+    void LowerToNumeric(GateRef gate);
+    void LowerTypeIncDyn(GateRef gate);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

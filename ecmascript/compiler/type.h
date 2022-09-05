@@ -127,7 +127,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::ANY));
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::ANY));
     }
 
     bool IsNumberType() const
@@ -135,7 +135,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NUMBER));
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NUMBER));
     }
 
     bool IsStringType() const
@@ -143,7 +143,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::STRING));
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::STRING));
     }
 
     bool IsNullType() const
@@ -151,7 +151,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NULL_TYPE));
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NULL_TYPE));
     }
 
     bool IsUndefinedType() const
@@ -159,7 +159,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::UNDEFINED));
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::UNDEFINED));
     }
 
     bool IsGCRelated() const

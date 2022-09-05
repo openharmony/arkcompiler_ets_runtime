@@ -55,7 +55,7 @@ using JSTaggedType = uint64_t;
 
 //  Nan-boxing pointer is used and the first four bytes are used as tag:
 //    Object:             [0x0000] [48 bit direct pointer]
-//    WeakRef:            [0x0000] [47 bits direct pointer] | 1 bit 1
+//    WeakRef:            [0x0000] [47 bits direct pointer] | 1
 //                   /    [0x0001] [48 bit any value]
 //    TaggedDouble:       ......
 //                   \    [0xFFFE] [48 bit any value]
@@ -490,6 +490,7 @@ public:
     bool IsString() const;
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;
+    bool IsConstantPool() const;
     bool IsLinkedNode() const;
     bool IsRBTreeNode() const;
     bool IsNativePointer() const;
@@ -498,6 +499,7 @@ public:
     bool IsSymbol() const;
     bool IsJSObject() const;
     bool IsJSGlobalObject() const;
+    bool IsGlobalPatch() const;
     bool IsJSError() const;
     bool IsArray(JSThread *thread) const;
     bool IsJSArray() const;
@@ -547,6 +549,7 @@ public:
     bool IsJSMapIterator() const;
     bool IsJSArrayIterator() const;
     bool IsIterator() const;
+    bool IsAsyncIterator() const;
     bool IsGeneratorFunction() const;
     bool IsAsyncGeneratorFunction() const;
     bool IsGeneratorObject() const;

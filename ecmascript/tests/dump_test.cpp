@@ -431,15 +431,19 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::METHOD: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 4U);
+#ifdef PANDA_TARGET_64
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 6U);
+#else
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 5U);
+#endif
                 break;
             }
             case JSType::JS_FUNCTION_BASE: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 2U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 1U);
                 break;
             }
             case JSType::JS_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 7U);
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 6U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc)
                 break;
@@ -761,6 +765,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(globalObject)
                 break;
             }
+            case JSType::GLOBAL_PATCH: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, GlobalPatch::SIZE, 0U);
+                JSHandle<JSTaggedValue> globalPatch = globalEnv->GetGlobalPatch();
+                DUMP_FOR_HANDLE(globalPatch)
+                break;
+            }
             case JSType::JS_PROXY: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSProxy::SIZE, 3U);
                 JSHandle<JSTaggedValue> emptyObj(thread, NewJSObject(thread, factory, globalEnv).GetTaggedValue());
@@ -786,6 +796,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::LEXICAL_ENV: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray)
+                break;
+            }
+            case JSType::CONSTANT_POOL: {
+                JSHandle<ConstantPool> constantPool = factory->NewConstantPool(4);
+                DUMP_FOR_HANDLE(constantPool)
                 break;
             }
             case JSType::TAGGED_DICTIONARY: {
@@ -928,11 +943,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::CLASS_INFO_EXTRACTOR: {
-#ifdef PANDA_TARGET_64
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 10U);
-#else
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 9U);
-#endif
                 JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(
                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
                 DUMP_FOR_HANDLE(classInfoExtractor)
@@ -1202,7 +1213,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SOURCE_TEXT_MODULE_RECORD: {
-                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 11U);
+                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 12U);
                 JSHandle<SourceTextModule> moduleSourceRecord = factory->NewSourceTextModule();
                 DUMP_FOR_HANDLE(moduleSourceRecord);
                 break;
@@ -1262,6 +1273,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_ITERATOR:
+            case JSType::JS_ASYNCITERATOR:
             case JSType::FREE_OBJECT_WITH_ONE_FIELD:
             case JSType::FREE_OBJECT_WITH_NONE_FIELD:
             case JSType::FREE_OBJECT_WITH_TWO_FIELD:

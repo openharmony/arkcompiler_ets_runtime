@@ -69,6 +69,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
+#include "ecmascript/regexp/regexp_parser.h"
 
 #include "ohos/init_data.h"
 #include "utils/pandargs.h"
@@ -76,7 +77,6 @@
 #include "os/mutex.h"
 
 namespace panda {
-using ecmascript::CString;
 using ecmascript::ECMAObject;
 using ecmascript::EcmaString;
 using ecmascript::ErrorType;
@@ -136,6 +136,7 @@ using ecmascript::GeneratorContext;
 using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
+using ecmascript::RegExpParser;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -313,6 +314,11 @@ void JSNApi::preFork(EcmaVM *vm)
 void JSNApi::postFork(EcmaVM *vm)
 {
     vm->postFork();
+}
+
+void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
+{
+    hostVm->WorkersetInfo(workerVm->GetJSThread()->GetThreadId(), workerVm);
 }
 
 Local<ObjectRef> JSNApi::GetUncaughtException(const EcmaVM *vm)
@@ -526,9 +532,15 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
 
 Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)
 {
+    std::string entry = file;
+#if ECMASCRIPT_ENABLE_MERGE_ABC
+    if (!vm->IsBundle()) {
+        entry = ecmascript::JSPandaFile::ParseOhmUrl(file.c_str());
+    }
+#endif
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
-    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostResolveImportedModule(file.c_str());
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry.c_str());
 
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
@@ -1066,9 +1078,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
-    JSHandle<JSNativePointer> extraInfo =
-        factory->NewJSNativePointer(reinterpret_cast<void *>(nativeFunc), deleter, data);
-    current->SetFunctionExtraInfo(thread, extraInfo.GetTaggedValue());
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
     current->SetCallNative(callNative);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
@@ -1090,9 +1100,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     current->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
                                      accessor.GetTaggedValue());
 
-    JSHandle<JSNativePointer> extraInfo =
-        factory->NewJSNativePointer(reinterpret_cast<void *>(nativeFunc), deleter, data);
-    current->SetFunctionExtraInfo(thread, extraInfo.GetTaggedValue());
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
 
     JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, factory, current);
     clsPrototype.GetTaggedValue().GetTaggedObject()->GetClass()->SetClassPrototype(true);
@@ -1215,8 +1223,15 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     ecmascript::tooling::JSPtExtractor *debugExtractor =
                                         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
+    if (!jsPandaFile->IsBundle()) {
+        JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
+        JSTaggedValue recordName =
+            ecmascript::SourceTextModule::Cast(function->GetModule().GetTaggedObject())->GetEcmaModuleRecordName();
+        entry = ConvertToString(recordName);
+    }
     const std::string &allSourceCode = debugExtractor->GetSourceCode(panda_file::File::EntityId(
-        jsPandaFile->GetMainMethodIndex()));
+        jsPandaFile->GetMainMethodIndex(entry)));
     std::string sourceCode = StringHelper::GetSpecifiedLine(allSourceCode, lineNumber);
     uint32_t codeLen = sourceCode.length();
     if (codeLen == 0 || sourceCode == "ANDA") {
@@ -1594,6 +1609,88 @@ Local<StringRef> RegExpRef::GetOriginalSource(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(sourceHandle);
 }
 
+std::string RegExpRef::GetOriginalFlags()
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue regExpFlags = regExp->GetOriginalFlags();
+    uint32_t regExpFlagsInt = static_cast<uint32_t>(regExpFlags.GetInt());
+    std::string strFlags = "";
+    if (regExpFlagsInt & RegExpParser::FLAG_GLOBAL) {
+        strFlags += "g";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_IGNORECASE) {
+        strFlags += "i";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_MULTILINE) {
+        strFlags += "m";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_DOTALL) {
+        strFlags += "s";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_UTF16) {
+        strFlags += "u";
+    }
+    if (regExpFlagsInt & RegExpParser::FLAG_STICKY) {
+        strFlags += "y";
+    }
+    std::sort(strFlags.begin(), strFlags.end());
+    return strFlags;
+}
+
+Local<JSValueRef> RegExpRef::IsGlobal(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_GLOBAL;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsIgnoreCase(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_IGNORECASE;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsMultiline(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_MULTILINE;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsDotAll(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_DOTALL;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsUtf16(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_UTF16;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
+Local<JSValueRef> RegExpRef::IsStick(const EcmaVM *vm)
+{
+    JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    JSTaggedValue flags = regExp->GetOriginalFlags();
+    bool result = flags.GetInt() & RegExpParser::FLAG_STICKY;
+    Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
+    return jsValue;
+}
+
 Local<DateRef> DateRef::New(const EcmaVM *vm, double time)
 {
     JSThread *thread = vm->GetJSThread();
@@ -1808,11 +1905,11 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
     }
     [[maybe_unused]] LocalScope scope(thread->GetEcmaVM());
     JSHandle<JSFunction> function(constructor);
-    JSHandle<JSTaggedValue> extraInfoValue(thread, function->GetFunctionExtraInfo());
-    if (!extraInfoValue->IsJSNativePointer()) {
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (!extraInfoValue.IsJSNativePointer()) {
         return JSTaggedValue::False();
     }
-    JSHandle<JSNativePointer> extraInfo(extraInfoValue);
+    JSHandle<JSNativePointer> extraInfo(thread, extraInfoValue);
     // callBack
     FunctionCallback nativeFunc = reinterpret_cast<FunctionCallback>(extraInfo->GetExternalPointer());
 
@@ -2332,13 +2429,34 @@ bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::
 {
     ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->LoadPatch(thread, patchFileName.c_str(), baseFileName.c_str());
+    return patchManager->LoadPatch(thread, patchFileName, baseFileName);
+}
+
+bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                       const std::string &baseFileName)
+{
+    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    JSThread *thread = vm->GetJSThread();
+    return patchManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
 }
 
 bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
 {
     ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->UnLoadPatch(thread, patchFileName.c_str());
+    return patchManager->UnLoadPatch(thread, patchFileName);
+}
+
+bool JSNApi::IsBundle([[maybe_unused]]EcmaVM *vm)
+{
+#if ECMASCRIPT_ENABLE_MERGE_ABC
+    return vm->IsBundle();
+#endif
+    return true;
+}
+
+void JSNApi::SetBundle(EcmaVM *vm, bool value)
+{
+    vm->SetBundle(value);
 }
 }  // namespace panda

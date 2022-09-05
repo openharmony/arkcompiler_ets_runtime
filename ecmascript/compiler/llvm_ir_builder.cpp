@@ -1412,9 +1412,11 @@ void LLVMIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    /* pointer                          int
-      vector{i8 * x 2}          int
-    */
+    /*
+     *  If the first operand is pointer, special treatment is needed
+     *  1) add, pointer, int
+     *  2) add, vector{i8* x 2}, int
+     */
     LLVMTypeRef returnType = ConvertLLVMTypeFromGate(gate);
 
     auto machineType = acc_.GetMachineType(gate);
@@ -1859,9 +1861,8 @@ void LLVMIRBuilder::HandleBitCast(GateRef gate)
 void LLVMIRBuilder::VisitBitCast(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    [[maybe_unused]] auto gateValCode = acc_.GetMachineType(gate);
-    [[maybe_unused]] auto e1ValCode = acc_.GetMachineType(e1);
-    ASSERT(GetBitWidthFromMachineType(gateValCode) == GetBitWidthFromMachineType(e1ValCode));
+    ASSERT(GetBitWidthFromMachineType(acc_.GetMachineType(gate)) ==
+           GetBitWidthFromMachineType(acc_.GetMachineType(e1)));
     auto returnType = ConvertLLVMTypeFromGate(gate);
     LLVMValueRef result = LLVMBuildBitCast(builder_, e1Value, returnType, "");
     gate2LValue_[gate] = result;

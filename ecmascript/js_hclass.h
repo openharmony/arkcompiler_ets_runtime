@@ -103,6 +103,7 @@ class ProtoChangeDetails;
         JS_FINALIZATION_REGISTRY, /* //////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_DATE,     /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ITERATOR, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNCITERATOR, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FORIN_ITERATOR,       /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_MAP_ITERATOR,         /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SET_ITERATOR,         /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -175,6 +176,7 @@ class ProtoChangeDetails;
         JS_CJS_MODULE, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_EXPORTS, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_REQUIRE, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        GLOBAL_PATCH,   /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_GLOBAL_OBJECT, /* JS_OBJECT_LAST/////////////////////////////////////////////////////////////////-PADDING */\
         JS_PROXY, /* ECMA_OBJECT_LAST ////////////////////////////////////////////////////////////////////////////// */\
                                                                                                                        \
@@ -184,6 +186,7 @@ class ProtoChangeDetails;
         TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LEXICAL_ENV,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_DICTIONARY, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        CONSTANT_POOL, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LINKED_NODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         RB_TREENODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         FREE_OBJECT_WITH_ONE_FIELD, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -461,7 +464,20 @@ public:
     inline bool IsTaggedArray() const
     {
         JSType jsType = GetObjectType();
-        return jsType == JSType::TAGGED_ARRAY || jsType == JSType::TAGGED_DICTIONARY || jsType == JSType::LEXICAL_ENV;
+        switch (jsType) {
+            case JSType::TAGGED_ARRAY:
+            case JSType::TAGGED_DICTIONARY:
+            case JSType::LEXICAL_ENV:
+            case JSType::CONSTANT_POOL:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    inline bool IsConstantPool() const
+    {
+        return GetObjectType() == JSType::CONSTANT_POOL;
     }
 
     inline bool IsDictionary() const
@@ -891,6 +907,11 @@ public:
         return jsType >= JSType::JS_ITERATOR_FIRST && jsType <= JSType::JS_ITERATOR_LAST;
     }
 
+    inline bool IsAsyncIterator() const
+    {
+        return GetObjectType() == JSType::JS_ASYNCITERATOR;
+    }
+
     inline bool IsForinIterator() const
     {
         return GetObjectType() == JSType::JS_FORIN_ITERATOR;
@@ -1034,6 +1055,11 @@ public:
     inline bool IsJSGlobalObject() const
     {
         return GetObjectType() == JSType::JS_GLOBAL_OBJECT;
+    }
+
+    inline bool IsGlobalPatch() const
+    {
+        return GetObjectType() == JSType::GLOBAL_PATCH;
     }
 
     inline bool IsClassPrototype() const
