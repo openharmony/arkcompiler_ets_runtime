@@ -351,7 +351,7 @@ public:
 class StringRemoteObject final : public RemoteObject {
 public:
     StringRemoteObject(const EcmaVM *ecmaVm, Local<StringRef> tagged);
-    virtual ~StringRemoteObject() = default;
+    ~StringRemoteObject() override = default;
 };
 
 class SymbolRemoteObject final : public RemoteObject {
