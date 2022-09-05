@@ -131,7 +131,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 
 void InterpreterStubBuilder::DebugPrintInstruction()
 {
-#if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
+#if ECMASCRIPT_ENABLE_INTERPRETER_LOG
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));
     UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(DebugPrintInstruction), { pc });
@@ -305,7 +305,7 @@ DECLARE_ASM_HANDLER(HandleTypeofImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     varAcc = FastTypeOf(glue, acc);
-    DISPATCH(TYPEOF_IMM16);
+    DISPATCH_WITH_ACC(TYPEOF_IMM16);
 }
 
 DECLARE_ASM_HANDLER(HandlePoplexenv)
@@ -4521,7 +4521,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDynamicimportPrefV8)
     GateRef specifier = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { specifier, currentFunc });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DYNAMICIMPORT));
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_DYNAMICIMPORT_PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateasyncgeneratorobjV8)
@@ -5946,7 +5946,6 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_1(pc);
     GateRef length = ReadInst16_3(pc);
-    GateRef v0 = ReadInst8_5(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc });
@@ -5957,7 +5956,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
         GateRef hclass = LoadHClass(*result);
         SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedInt(length),
             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+        GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
         SetLexicalEnvToFunction(glue, *result, lexEnv);
         GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
@@ -5970,9 +5969,8 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef methodId = ReadInst16_1(pc);
-    GateRef length = ReadInst16_3(pc);
-    GateRef v0 = ReadInst8_5(pc);
+    GateRef methodId = ReadInst16_2(pc);
+    GateRef length = ReadInst16_4(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc });
@@ -5983,7 +5981,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
         GateRef hclass = LoadHClass(*result);
         SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedInt(length),
             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef lexEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
+        GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
         SetLexicalEnvToFunction(glue, *result, lexEnv);
         GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
         SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));

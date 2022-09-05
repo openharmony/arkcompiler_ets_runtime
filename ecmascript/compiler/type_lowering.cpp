@@ -49,40 +49,40 @@ void TypeLowering::Lower(GateRef gate)
         case EcmaBytecode::ADD2:
             LowerTypeAdd2Dyn(gate, glue);
             break;
-        case SUB2DYN_PREF_V8:
+        case EcmaBytecode::SUB2:
             LowerTypeSub2Dyn(gate);
             break;
-        case MUL2DYN_PREF_V8:
+        case EcmaBytecode::MUL2:
             LowerTypeMul2Dyn(gate);
             break;
-        case MOD2DYN_PREF_V8:
+        case EcmaBytecode::MOD2:
             LowerTypeMod2Dyn(gate, glue);
             break;
-        case LESSDYN_PREF_V8:
+        case EcmaBytecode::LESS:
             LowerTypeLessDyn(gate);
             break;
-        case LESSEQDYN_PREF_V8:
+        case EcmaBytecode::LESSEQ:
             LowerTypeLessEqDyn(gate);
             break;
-        case GREATERDYN_PREF_V8:
+        case EcmaBytecode::GREATER:
             LowerTypeGreaterDyn(gate);
             break;
-        case GREATEREQDYN_PREF_V8:
+        case EcmaBytecode::GREATEREQ:
             LowerTypeGreaterEqDyn(gate);
             break;
-        case DIV2DYN_PREF_V8:
+        case EcmaBytecode::DIV2:
             LowerTypeDiv2Dyn(gate);
             break;
-        case EQDYN_PREF_V8:
+        case EcmaBytecode::EQ:
             LowerTypeEqDyn(gate);
             break;
-        case NOTEQDYN_PREF_V8:
+        case EcmaBytecode::NOTEQ:
             LowerTypeNotEqDyn(gate);
             break;
-        case TONUMERIC_PREF_V8:
+        case EcmaBytecode::TONUMERIC:
             LowerToNumeric(gate);
             break;
-        case INCDYN_PREF_V8:
+        case EcmaBytecode::INC:
             LowerTypeIncDyn(gate);
             break;
         default:break;
