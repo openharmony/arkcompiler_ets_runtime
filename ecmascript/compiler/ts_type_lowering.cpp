@@ -36,23 +36,23 @@ void TSTypeLowering::RunTSTypeLowering()
 void TSTypeLowering::Lower(GateRef gate)
 {
     auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaOpcode op = static_cast<EcmaOpcode>(*pc);
+    EcmaBytecode op = static_cast<EcmaBytecode>(*pc);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case ADD2DYN_PREF_V8:
+        case EcmaBytecode::ADD2:
             // lower JS_ADD
             break;
-        case SUB2DYN_PREF_V8:
+        case EcmaBytecode::SUB2:
             // lower JS_Sub
             break;
-        case MUL2DYN_PREF_V8:
+        case EcmaBytecode::MUL2:
             // lower JS_Mul
             break;
-        case LESSDYN_PREF_V8:
+        case EcmaBytecode::LESS:
             // lower JS_LESS
             break;
-        case LESSEQDYN_PREF_V8:
+        case EcmaBytecode::LESSEQ:
             // lower JS_LESSEQ
             break;
         default:

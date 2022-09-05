@@ -1847,7 +1847,7 @@ inline GateRef StubBuilder::IsNativeMethod(GateRef method)
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int32(MethodLiteral::IsNativeBit::START_BIT)),
+            Int64LSR(callfield, Int64(MethodLiteral::IsNativeBit::START_BIT)),
             Int64((1LU << MethodLiteral::IsNativeBit::SIZE) - 1)),
         Int64(0));
 }
@@ -1858,7 +1858,7 @@ inline GateRef StubBuilder::HasAotCode(GateRef method)
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int32(MethodLiteral::IsAotCodeBit::START_BIT)),
+            Int64LSR(callfield, Int64(MethodLiteral::IsAotCodeBit::START_BIT)),
             Int64((1LU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
         Int64(0));
 }
@@ -1868,7 +1868,7 @@ inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)
     GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return TruncInt64ToInt32(Int64And(
-        Int64LSR(callfield, Int32(MethodLiteral::NumArgsBits::START_BIT)),
+        Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
         Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1)));
 }
 
@@ -1920,15 +1920,17 @@ inline GateRef StubBuilder::HasPendingException(GateRef glue)
 inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
                                              const std::initializer_list<GateRef>& args)
 {
-    GateRef target = PtrMul(ChangeInt32ToIntPtr(ZExtInt8ToInt32(builtinsId)), IntPtrSize());
+    GateRef target = PtrMul(ChangeInt32ToIntPtr(builtinsId), IntPtrSize());
     return env_->GetBuilder()->CallBuiltin(glue, target, args);
 }
 
 inline GateRef StubBuilder::GetBuiltinId(GateRef method)
 {
-    // 7: builtinsIdOffset
-    GateRef builtinsIdOffset = PtrAdd(IntPtr(Method::LITERAL_INFO_OFFSET), IntPtr(7));
-    return Load(VariableType::INT8(), method, builtinsIdOffset);
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef extraLiteralInfo = Load(VariableType::INT64(), method, extraLiteralInfoOffset);
+    return TruncInt64ToInt32(Int64And(
+        Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
+        Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1)));
 }
 
 inline GateRef StubBuilder::ComputeSizeUtf8(GateRef length)
