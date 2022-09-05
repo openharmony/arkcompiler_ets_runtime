@@ -5945,7 +5945,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_1(pc);
-    GateRef length = ReadInst16_3(pc);
+    GateRef length = ReadInst8_3(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc });
@@ -5954,7 +5954,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     Bind(&notException);
     {
         GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedInt(length),
+        SetPropertyInlinedProps(glue, *result, hclass, Int8ToTaggedInt(length),
             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
         GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
         SetLexicalEnvToFunction(glue, *result, lexEnv);
@@ -5970,7 +5970,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_2(pc);
-    GateRef length = ReadInst16_4(pc);
+    GateRef length = ReadInst8_4(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(constpool, ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc });
@@ -5979,7 +5979,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     Bind(&notException);
     {
         GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedInt(length),
+        SetPropertyInlinedProps(glue, *result, hclass, Int8ToTaggedInt(length),
             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
         GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
         SetLexicalEnvToFunction(glue, *result, lexEnv);

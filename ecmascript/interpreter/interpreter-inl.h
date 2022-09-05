@@ -4661,7 +4661,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEFINEMETHOD_IMM8_ID16_IMM8) {
         uint16_t methodId = READ_INST_16_1();
-        uint16_t length = READ_INST_16_3();
+        uint16_t length = READ_INST_8_3();
         LOG_INST() << "intrinsics::definemethod length: " << length;
         SAVE_ACC();
         auto constpool = GetConstantPool(sp);
@@ -4688,7 +4688,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEFINEMETHOD_IMM16_ID16_IMM8) {
         uint16_t methodId = READ_INST_16_2();
-        uint16_t length = READ_INST_16_4();
+        uint16_t length = READ_INST_8_4();
         LOG_INST() << "intrinsics::definemethod length: " << length;
         SAVE_ACC();
         auto constpool = GetConstantPool(sp);
