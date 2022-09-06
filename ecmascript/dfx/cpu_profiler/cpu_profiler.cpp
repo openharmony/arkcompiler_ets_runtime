@@ -242,9 +242,7 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
     const CMap<Method *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->SetGcState(vm_->GetAssociatedJSThread()->GetGcState());
     if (!generator_->GetGcState()) {
-        int methodCount = 0;
-        int methodInfoCount = 0;
-        for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame(), ++methodCount) {
+        for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
             if (!frameHandler.IsInterpretedFrame()) {
                 continue;
             }
@@ -254,33 +252,37 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
             }
 
             if (stackInfo.count(method) == 0) {
-                ParseMethodInfo(method, frameHandler, &methodInfoCount);
+                ParseMethodInfo(method, frameHandler);
             }
-            generator_->PushFrameStack(method, methodCount);
+            generator_->PushFrameStack(method);
         }
     }
 }
 
-void CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler, int *index)
+void CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler)
 {
     struct FrameInfoTemp codeEntry;
     codeEntry.method = method;
-    JSThread *thread = vm_->GetAssociatedJSThread();
     if (method != nullptr && method->IsNativeWithCallField()) {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
             return;
         }
-        GetNativeStack(thread, frameHandler, codeEntry.functionName, sizeof(codeEntry.functionName));
+        GetNativeStack(frameHandler, codeEntry.functionName, sizeof(codeEntry.functionName));
     } else {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {
             return;
         }
-        const std::string &functionName = method->ParseFunctionName();
-        const char *tempVariable = nullptr;
-        if (functionName.empty()) {
+        const char *tempVariable = method->GetMethodName();
+        uint8_t length = strlen(tempVariable);
+        if (length != 0 && tempVariable[0] == '#') {
+            uint8_t index = length - 1;
+            while (tempVariable[index] != '#') {
+                index--;
+            }
+            tempVariable += (index + 1);
+        }
+        if (strlen(tempVariable) == 0) {
             tempVariable = "anonymous";
-        } else {
-            tempVariable = functionName.c_str();
         }
         if (!CheckAndCopy(codeEntry.functionName, sizeof(codeEntry.functionName), tempVariable)) {
             return;
@@ -319,28 +321,37 @@ void CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler, in
             codeEntry.columnNumber = columnNumber;
         }
     }
-    generator_->PushStackInfo(codeEntry, *index);
-    *index = *index + 1;
+    generator_->PushStackInfo(codeEntry);
 }
 
-void CpuProfiler::GetNativeStack(JSThread *thread, FrameHandler &frameHandler, char *functionName, size_t size)
+void CpuProfiler::GetNativeStack(FrameHandler &frameHandler, char *functionName, size_t size)
 {
     std::stringstream stream;
     JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
+    // napi method
     if (function->GetCallNative()) {
         JSNativePointer *extraInfo = JSNativePointer::Cast(function->GetFunctionExtraInfo().GetTaggedObject());
-        auto cb = thread->GetEcmaVM()->GetNativePtrGetter();
+        auto cb = vm_->GetNativePtrGetter();
         if (cb != nullptr  && extraInfo != nullptr) {
             auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
-            stream << "napi(" << addr << ")";
-            CheckAndCopy(functionName, size, stream.str().c_str());
+            stream << addr;
+            CheckAndCopy(functionName, size, "napi(");
+            const uint8_t napiBeginLength = 5; // 5:the length of "napi("
+            CheckAndCopy(functionName + napiBeginLength, size - napiBeginLength, stream.str().c_str());
+            uint8_t srcLength = stream.str().size();
+            CheckAndCopy(functionName + napiBeginLength + srcLength, size - napiBeginLength - srcLength, ")");
             return;
         }
     }
+    // builtin method
     auto method = frameHandler.CheckAndGetMethod();
     auto addr = method->GetNativePointer();
-    stream << "other(" << addr << ")";
-    CheckAndCopy(functionName, size, stream.str().c_str());
+    stream << addr;
+    CheckAndCopy(functionName, size, "builtin(");
+    const uint8_t builtinBeginLength = 8; // 8:the length of "builtin("
+    CheckAndCopy(functionName + builtinBeginLength, size - builtinBeginLength, stream.str().c_str());
+    uint8_t srcLength = stream.str().size();
+    CheckAndCopy(functionName + builtinBeginLength + srcLength, size - builtinBeginLength - srcLength, ")");
 }
 
 void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
