@@ -368,6 +368,14 @@ public:
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
+    // middle ir: Number operations
+    inline GateRef NumberAdd(GateRef x, GateRef y);
+    inline GateRef NumberSub(GateRef x, GateRef y);
+    inline GateRef NumberMul(GateRef x, GateRef y);
+    inline GateRef NumberLess(GateRef x, GateRef y);
+    inline GateRef NumberLessthanOrEq(GateRef x, GateRef y);
+    inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
+
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
     inline GateRef IsJsType(GateRef object, JSType type);

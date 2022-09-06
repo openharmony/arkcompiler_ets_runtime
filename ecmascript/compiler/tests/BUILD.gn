@@ -211,6 +211,7 @@ host_unittest_action("CircuitOptimizerTest") {
     # test file
     "circuit_optimizer_tests.cpp",
     "lowering_relate_gate_test.cpp",
+    "../type_lowering.cpp",
   ]
 
   configs = [

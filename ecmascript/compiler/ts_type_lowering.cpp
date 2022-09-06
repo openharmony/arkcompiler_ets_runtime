@@ -55,6 +55,9 @@ void TSTypeLowering::Lower(GateRef gate)
         case LESSEQDYN_PREF_V8:
             // lower JS_LESSEQ
             break;
+        case TONUMERIC_PREF_V8:
+            // lower ToNumberic
+            break;
         default:
             break;
     }
