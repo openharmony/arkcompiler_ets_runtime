@@ -342,6 +342,13 @@ config("ecma_test_config") {
     "$js_root:ark_jsruntime_common_config",
   ]
 
+  if (enable_leak_check) {
+    defines = [
+      "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
+      "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
+    ]
+  }
+
   ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
 }
 
@@ -723,6 +730,16 @@ source_set("libark_jsruntime_test_set") {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
+  }
+
+  if (enable_leak_check) {
+    if (is_linux && (current_cpu == "x86" || current_cpu == "x64")) {
+      sources += [ "ecmascript/dfx/native_dfx/linux/backtrace.cpp" ]
+    }
+    defines = [
+      "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
+      "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
+    ]
   }
 
   public_configs = [
