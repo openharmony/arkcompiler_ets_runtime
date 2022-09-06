@@ -34,7 +34,7 @@ public:
 
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
-                                   JSHandle<JSTaggedValue> constpool);
+                                   JSHandle<JSTaggedValue> constpool, const CString &entryPoint);
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                                     JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
     static JSHandle<JSFunction> DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
