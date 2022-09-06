@@ -6216,31 +6216,208 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     // TODO: Implement code of 16bits ic slot bytecode
     HANDLE_OPCODE(CLOSEITERATOR_IMM16_V8) {
-        LOG_FULL(FATAL) << "not implement";
+        uint16_t v0 = READ_INST_8_2();
+        LOG_INST() << "intrinsics::closeiterator"
+                   << " v" << v0;
+        SAVE_PC();
+        JSTaggedValue iter = GET_VREG_VALUE(v0);
+        JSTaggedValue res = SlowRuntimeStub::CloseIterator(thread, iter);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
         DISPATCH(CLOSEITERATOR_IMM16_V8);
     }
     HANDLE_OPCODE(STOWNBYVALUE_IMM16_V8_V8) {
-        LOG_FULL(FATAL) << "not implement";
+        uint32_t v0 = READ_INST_8_2();
+        uint32_t v1 = READ_INST_8_3();
+        LOG_INST() << "intrinsics::stownbyvalue"
+                   << " v" << v0 << " v" << v1;
+
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
+        if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+            SAVE_ACC();
+            JSTaggedValue propKey = GET_VREG_VALUE(v1);
+            JSTaggedValue value = GET_ACC();
+            // fast path
+            JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<true>(thread, receiver, propKey, value);
+
+            // SetPropertyByValue maybe gc need update the value
+            RESTORE_ACC();
+            propKey = GET_VREG_VALUE(v1);
+            value = GET_ACC();
+            if (!res.IsHole()) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STOWNBYVALUE_IMM16_V8_V8);
+            }
+        }
+
+        // slow path
+        SAVE_ACC();
+        receiver = GET_VREG_VALUE(v0);      // Maybe moved by GC
+        auto propKey = GET_VREG_VALUE(v1);  // Maybe moved by GC
+        auto value = GET_ACC();             // Maybe moved by GC
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::StOwnByValue(thread, receiver, propKey, value);
+        RESTORE_ACC();
+        INTERPRETER_RETURN_IF_ABRUPT(res);
         DISPATCH(STOWNBYVALUE_IMM16_V8_V8);
     }
     HANDLE_OPCODE(STSUPERBYVALUE_IMM16_V8_V8) {
-        LOG_FULL(FATAL) << "not implement";
+        uint32_t v0 = READ_INST_8_2();
+        uint32_t v1 = READ_INST_8_3();
+
+        LOG_INST() << "intrinsics::stsuperbyvalue"
+                   << " v" << v0 << " v" << v1;
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
+        JSTaggedValue propKey = GET_VREG_VALUE(v1);
+        JSTaggedValue value = GET_ACC();
+
+        // slow path
+        SAVE_ACC();
+        SAVE_PC();
+        JSTaggedValue thisFunc = GetThisFunction(sp);
+        JSTaggedValue res = SlowRuntimeStub::StSuperByValue(thread, receiver, propKey, value, thisFunc);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
         DISPATCH(STSUPERBYVALUE_IMM16_V8_V8);
     }
     HANDLE_OPCODE(TRYSTGLOBALBYNAME_IMM16_ID16) {
-        LOG_FULL(FATAL) << "not implement";
+        uint16_t stringId = READ_INST_16_2();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        LOG_INST() << "intrinsics::trystglobalbyname"
+                   << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
+
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        if (!profileTypeInfo.IsUndefined()) {
+            uint16_t slotId = READ_INST_16_0();
+            JSTaggedValue value = GET_ACC();
+            SAVE_ACC();
+            JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
+                                                                   ProfileTypeInfo::Cast(
+                                                                       profileTypeInfo.GetTaggedObject()),
+                                                                   globalObj, propKey, value, slotId);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
+        }
+#endif
+
+        auto recordResult = SlowRuntimeStub::LdGlobalRecord(thread, propKey);
+        SAVE_PC();
+        // 1. find from global record
+        if (!recordResult.IsUndefined()) {
+            JSTaggedValue value = GET_ACC();
+            SAVE_ACC();
+            JSTaggedValue res = SlowRuntimeStub::TryUpdateGlobalRecord(thread, propKey, value);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+        } else {
+            // 2. find from global object
+            auto globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, propKey);
+            if (globalResult.IsHole()) {
+                auto result = SlowRuntimeStub::ThrowReferenceError(thread, propKey, " is not defined");
+                INTERPRETER_RETURN_IF_ABRUPT(result);
+            }
+            JSTaggedValue value = GET_ACC();
+            SAVE_ACC();
+            JSTaggedValue res = SlowRuntimeStub::StGlobalVar(thread, propKey, value);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+        }
         DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
     }
     HANDLE_OPCODE(STSUPERBYNAME_IMM16_ID16_V8) {
-        LOG_FULL(FATAL) << "not implement";
+        uint16_t stringId = READ_INST_16_2();
+        uint32_t v0 = READ_INST_8_4();
+        auto constpool = GetConstantPool(sp);
+
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        JSTaggedValue value = GET_ACC();
+
+        LOG_INST() << "intrinsics::stsuperbyname"
+                   << "v" << v0 << " stringId:" << stringId << ", "
+                   << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData()
+                   << ", value:" << value.GetRawData();
+
+        // slow path
+        SAVE_ACC();
+        SAVE_PC();
+        JSTaggedValue thisFunc = GetThisFunction(sp);
+        JSTaggedValue res = SlowRuntimeStub::StSuperByValue(thread, obj, propKey, value, thisFunc);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
         DISPATCH(STSUPERBYNAME_IMM16_ID16_V8);
     }
     HANDLE_OPCODE(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8) {
-        LOG_FULL(FATAL) << "not implement";
+        uint32_t v0 = READ_INST_8_2();
+        uint32_t v1 = READ_INST_8_3();
+        LOG_INST() << "intrinsics::stownbyvaluewithnameset"
+                   << " v" << v0 << " v" << v1;
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
+        if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+            SAVE_ACC();
+            JSTaggedValue propKey = GET_VREG_VALUE(v1);
+            JSTaggedValue value = GET_ACC();
+            // fast path
+            JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<true>(thread, receiver, propKey, value);
+
+            // SetPropertyByValue maybe gc need update the value
+            RESTORE_ACC();
+            propKey = GET_VREG_VALUE(v1);
+            value = GET_ACC();
+            if (!res.IsHole()) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                JSFunction::SetFunctionNameNoPrefix(thread, JSFunction::Cast(value.GetTaggedObject()), propKey);
+                RESTORE_ACC();
+                DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
+            }
+        }
+
+        // slow path
+        SAVE_ACC();
+        SAVE_PC();
+        receiver = GET_VREG_VALUE(v0);      // Maybe moved by GC
+        auto propKey = GET_VREG_VALUE(v1);  // Maybe moved by GC
+        auto value = GET_ACC();             // Maybe moved by GC
+        JSTaggedValue res = SlowRuntimeStub::StOwnByValueWithNameSet(thread, receiver, propKey, value);
+        RESTORE_ACC();
+        INTERPRETER_RETURN_IF_ABRUPT(res);
         DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
     }
     HANDLE_OPCODE(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8) {
-        LOG_FULL(FATAL) << "not implement";
+        uint16_t stringId = READ_INST_16_2();
+        uint32_t v0 = READ_INST_8_4();
+        auto constpool = GetConstantPool(sp);
+        LOG_INST() << "intrinsics::stownbynamewithnameset "
+                   << "v" << v0 << " stringId:" << stringId;
+
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
+        if (receiver.IsJSObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+            JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+            JSTaggedValue value = GET_ACC();
+            // fast path
+            SAVE_ACC();
+            JSTaggedValue res = FastRuntimeStub::SetPropertyByName<true>(thread, receiver, propKey, value);
+            if (!res.IsHole()) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                JSFunction::SetFunctionNameNoPrefix(thread, JSFunction::Cast(value.GetTaggedObject()), propKey);
+                RESTORE_ACC();
+                DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
+            }
+            RESTORE_ACC();
+        }
+
+        SAVE_ACC();
+        SAVE_PC();
+        receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
+        auto propKey = GET_STR_FROM_CACHE(stringId);  // Maybe moved by GC
+        auto value = GET_ACC();                                  // Maybe moved by GC
+        JSTaggedValue res = SlowRuntimeStub::StOwnByNameWithNameSet(thread, receiver, propKey, value);
+        RESTORE_ACC();
+        INTERPRETER_RETURN_IF_ABRUPT(res);
         DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
     }
     HANDLE_OPCODE(JSTRICTEQZ_IMM8) {

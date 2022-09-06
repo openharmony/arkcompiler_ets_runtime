@@ -3394,6 +3394,9 @@ void InterpreterAssembly::HandleTypeofImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    LOG_INST() << "intrinsics::typeof";
+    JSTaggedValue res = FastRuntimeStub::FastTypeOf(thread, GET_ACC());
+    SET_ACC(res);
     DISPATCH(TYPEOF_IMM16);
 }
 
@@ -3401,6 +3404,12 @@ void InterpreterAssembly::HandleCreateemptyarrayImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    LOG_INST() << "intrinsics::createemptyarray";
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSTaggedValue res = SlowRuntimeStub::CreateEmptyArray(thread, factory, globalEnv);
+    SET_ACC(res);
     DISPATCH(CREATEEMPTYARRAY_IMM16);
 }
 
@@ -3408,6 +3417,13 @@ void InterpreterAssembly::HandleGetiteratorImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    LOG_INST() << "intrinsics::getiterator";
+    JSTaggedValue obj = GET_ACC();
+    // slow path
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
     DISPATCH(GETITERATOR_IMM16);
 }
 
@@ -3415,13 +3431,28 @@ void InterpreterAssembly::HandleGettemplateobjectImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    DISPATCH(GETTEMPLATEOBJECT_IMM16);
+    LOG_INST() << "intrinsics::getiterator";
+    JSTaggedValue obj = GET_ACC();
+    // slow path
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(GETITERATOR_IMM16);
 }
 
 void InterpreterAssembly::HandleCloseiteratorImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::closeiterator"
+               << " v" << v0;
+    SAVE_PC();
+    JSTaggedValue iter = GET_VREG_VALUE(v0);
+    JSTaggedValue res = SlowRuntimeStub::CloseIterator(thread, iter);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
     DISPATCH(CLOSEITERATOR_IMM16_V8);
 }
 
@@ -3429,6 +3460,16 @@ void InterpreterAssembly::HandleSetobjectwithprotoImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::setobjectwithproto"
+               << " v" << v0;
+    JSTaggedValue proto = GET_VREG_VALUE(v0);
+    JSTaggedValue obj = GET_ACC();
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::SetObjectWithProto(thread, proto, obj);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
     DISPATCH(SETOBJECTWITHPROTO_IMM16_V8);
 }
 
@@ -3436,6 +3477,66 @@ void InterpreterAssembly::HandleStobjbyvalueImm16V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_2();
+    uint32_t v1 = READ_INST_8_3();
+
+    LOG_INST() << "intrinsics::stobjbyvalue"
+               << " v" << v0 << " v" << v1;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+#if ECMSCRIPT_ENABLE_IC
+    auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+    if (!profileTypeInfo.IsUndefined()) {
+        uint16_t slotId = READ_INST_16_0();
+        auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+        JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+        JSTaggedValue propKey = GET_VREG_VALUE(v1);
+        JSTaggedValue value = GET_ACC();
+        JSTaggedValue res = JSTaggedValue::Hole();
+        SAVE_ACC();
+
+        if (LIKELY(firstValue.IsHeapObject())) {
+            JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+            res = ICRuntimeStub::TryStoreICByValue(thread, receiver, propKey, firstValue, secondValue, value);
+        }
+        // IC miss and not enter the megamorphic state, store as polymorphic
+        if (res.IsHole() && !firstValue.IsHole()) {
+            res = ICRuntimeStub::StoreICByValue(thread,
+                                                profileTypeArray,
+                                                receiver, propKey, value, slotId);
+        }
+
+        if (LIKELY(!res.IsHole())) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(STOBJBYVALUE_IMM16_V8_V8);
+        }
+    }
+#endif
+    if (receiver.IsHeapObject()) {
+        SAVE_ACC();
+        JSTaggedValue propKey = GET_VREG_VALUE(v1);
+        JSTaggedValue value = GET_ACC();
+        // fast path
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue(thread, receiver, propKey, value);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(STOBJBYVALUE_IMM16_V8_V8);
+        }
+        RESTORE_ACC();
+    }
+    {
+        // slow path
+        SAVE_ACC();
+        SAVE_PC();
+        receiver = GET_VREG_VALUE(v0);  // Maybe moved by GC
+        JSTaggedValue propKey = GET_VREG_VALUE(v1);   // Maybe moved by GC
+        JSTaggedValue value = GET_ACC();              // Maybe moved by GC
+        JSTaggedValue res = SlowRuntimeStub::StObjByValue(thread, receiver, propKey, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+    }
     DISPATCH(STOBJBYVALUE_IMM16_V8_V8);
 }
 
@@ -3443,6 +3544,39 @@ void InterpreterAssembly::HandleStownbyvalueImm16V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_2();
+    uint32_t v1 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::stownbyvalue"
+               << " v" << v0 << " v" << v1;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+        SAVE_ACC();
+        JSTaggedValue propKey = GET_VREG_VALUE(v1);
+        JSTaggedValue value = GET_ACC();
+        // fast path
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<true>(thread, receiver, propKey, value);
+
+        // SetPropertyByValue maybe gc need update the value
+        RESTORE_ACC();
+        propKey = GET_VREG_VALUE(v1);
+        value = GET_ACC();
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(STOWNBYVALUE_IMM16_V8_V8);
+        }
+    }
+
+    // slow path
+    SAVE_ACC();
+    receiver = GET_VREG_VALUE(v0);      // Maybe moved by GC
+    auto propKey = GET_VREG_VALUE(v1);  // Maybe moved by GC
+    auto value = GET_ACC();             // Maybe moved by GC
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StOwnByValue(thread, receiver, propKey, value);
+    RESTORE_ACC();
+    INTERPRETER_RETURN_IF_ABRUPT(res);
     DISPATCH(STOWNBYVALUE_IMM16_V8_V8);
 }
 
@@ -3450,6 +3584,32 @@ void InterpreterAssembly::HandleStobjbyindexImm16V8Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint8_t v0 = READ_INST_8_2();
+    uint16_t index = READ_INST_16_3();
+    LOG_INST() << "intrinsics::stobjbyindex"
+               << " v" << v0 << " imm" << index;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    if (receiver.IsHeapObject()) {
+        SAVE_ACC();
+        JSTaggedValue value = GET_ACC();
+        // fast path
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByIndex(thread, receiver, index, value);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(STOBJBYINDEX_IMM16_V8_IMM16);
+        }
+        RESTORE_ACC();
+    }
+    // slow path
+    SAVE_ACC();
+    SAVE_PC();
+    receiver = GET_VREG_VALUE(v0);    // Maybe moved by GC
+    JSTaggedValue value = GET_ACC();  // Maybe moved by GC
+    JSTaggedValue res = SlowRuntimeStub::StObjByIndex(thread, receiver, index, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
     DISPATCH(STOBJBYINDEX_IMM16_V8_IMM16);
 }
 
@@ -3457,6 +3617,32 @@ void InterpreterAssembly::HandleStownbyindexImm16V8Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint8_t v0 = READ_INST_8_2();
+    uint16_t index = READ_INST_16_3();
+    LOG_INST() << "intrinsics::stownbyindex"
+               << " v" << v0 << " imm" << index;
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    // fast path
+    if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+        SAVE_ACC();
+        JSTaggedValue value = GET_ACC();
+        // fast path
+        JSTaggedValue res =
+            FastRuntimeStub::SetPropertyByIndex<true>(thread, receiver, index, value);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(STOWNBYINDEX_IMM16_V8_IMM16);
+        }
+        RESTORE_ACC();
+    }
+    SAVE_ACC();
+    receiver = GET_VREG_VALUE(v0);  // Maybe moved by GC
+    auto value = GET_ACC();         // Maybe moved by GC
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StOwnByIndex(thread, receiver, index, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
     DISPATCH(STOWNBYINDEX_IMM16_V8_IMM16);
 }
 
@@ -3464,232 +3650,1328 @@ void InterpreterAssembly::HandleThrowIfsupernotcorrectcallPrefImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint8_t imm = READ_INST_8_1();
+    JSTaggedValue thisValue = GET_ACC();
+    LOG_INST() << "intrinsic::throwifsupernotcorrectcall"
+               << " imm:" << imm;
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::ThrowIfSuperNotCorrectCall(thread, imm, thisValue);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    DISPATCH(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8);
 }
+
 void InterpreterAssembly::HandleThrowNotexistsPrefNone(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    LOG_INST() << "throwthrownotexists";
+
+    SAVE_PC();
+    SlowRuntimeStub::ThrowThrowNotExists(thread);
+    INTERPRETER_GOTO_EXCEPTION_HANDLER();
 }
+
 void InterpreterAssembly::HandleThrowPrefNone(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    LOG_INST() << "intrinsics::throw";
+    SAVE_PC();
+    SlowRuntimeStub::Throw(thread, GET_ACC());
+    INTERPRETER_GOTO_EXCEPTION_HANDLER();
 }
+
 void InterpreterAssembly::HandleWideLdexternalmodulevarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_1();
+
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue key = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::ldmodulevar "
+               << "string_id:" << stringId << ", "
+               << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdModuleVar(thread, key, false);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleWideLdlocalmodulevarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_1();
+
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue key = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::ldmodulevar "
+               << "string_id:" << stringId << ", "
+               << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdModuleVar(thread, key, true);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(WIDE_LDLOCALMODULEVAR_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleWideStmodulevarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_1();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue key = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::stmodulevar "
+               << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+
+    JSTaggedValue value = GET_ACC();
+
+    SAVE_ACC();
+    SlowRuntimeStub::StModuleVar(thread, key, value);
+    RESTORE_ACC();
+    DISPATCH(WIDE_STMODULEVAR_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleWideGetmodulenamespacePrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_1();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    auto localName = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::getmodulenamespace "
+               << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(localName.GetTaggedObject()));
+
+    JSTaggedValue moduleNamespace = SlowRuntimeStub::GetModuleNamespace(thread, localName);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleNamespace);
+    SET_ACC(moduleNamespace);
+    DISPATCH(WIDE_GETMODULENAMESPACE_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleWideLdlexvarPrefImm16Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t level = READ_INST_16_1();
+    uint16_t slot = READ_INST_16_3();
+
+    LOG_INST() << "intrinsics::ldlexvar"
+               << " level:" << level << " slot:" << slot;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue currentLexenv = state->env;
+    JSTaggedValue env(currentLexenv);
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    SET_ACC(LexicalEnv::Cast(env.GetTaggedObject())->GetProperties(slot));
+    DISPATCH(WIDE_LDLEXVAR_PREF_IMM16_IMM16);
 }
+
 void InterpreterAssembly::HandleWideCopyrestargsPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t restIdx = READ_INST_16_1();
+    LOG_INST() << "intrinsics::copyrestargs"
+               << " index: " << restIdx;
+
+    uint32_t startIdx = 0;
+    uint32_t restNumArgs = GetNumArgs(sp, restIdx, startIdx);
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CopyRestArgs(thread, sp, restNumArgs, startIdx);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(WIDE_COPYRESTARGS_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleWideStownbyindexPrefV8Imm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint8_t v0 = READ_INST_8_1();
+    uint32_t index = READ_INST_32_2();
+    LOG_INST() << "intrinsics::stownbyindex"
+               << " v" << v0 << " imm" << index;
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    // fast path
+    if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+        SAVE_ACC();
+        JSTaggedValue value = GET_ACC();
+        // fast path
+        JSTaggedValue res =
+            FastRuntimeStub::SetPropertyByIndex<true>(thread, receiver, index, value);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(WIDE_STOWNBYINDEX_PREF_V8_IMM32);
+        }
+        RESTORE_ACC();
+    }
+    SAVE_ACC();
+    receiver = GET_VREG_VALUE(v0);  // Maybe moved by GC
+    auto value = GET_ACC();         // Maybe moved by GC
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StOwnByIndex(thread, receiver, index, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(WIDE_STOWNBYINDEX_PREF_V8_IMM32);
 }
+
 void InterpreterAssembly::HandleWideStobjbyindexPrefV8Imm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint8_t v0 = READ_INST_8_1();
+    uint32_t index = READ_INST_32_2();
+    LOG_INST() << "intrinsics::stobjbyindex"
+               << " v" << v0 << " imm" << index;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    if (receiver.IsHeapObject()) {
+        SAVE_ACC();
+        JSTaggedValue value = GET_ACC();
+        // fast path
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByIndex(thread, receiver, index, value);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(WIDE_STOBJBYINDEX_PREF_V8_IMM32);
+        }
+        RESTORE_ACC();
+    }
+    // slow path
+    SAVE_ACC();
+    SAVE_PC();
+    receiver = GET_VREG_VALUE(v0);    // Maybe moved by GC
+    JSTaggedValue value = GET_ACC();  // Maybe moved by GC
+    JSTaggedValue res = SlowRuntimeStub::StObjByIndex(thread, receiver, index, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(WIDE_STOBJBYINDEX_PREF_V8_IMM32);
 }
+
 void InterpreterAssembly::HandleWideLdobjbyindexPrefImm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t idx = READ_INST_32_1();
+    LOG_INST() << "intrinsics::ldobjbyindex"
+               << " imm" << idx;
+
+    JSTaggedValue receiver = GET_ACC();
+    // fast path
+    if (LIKELY(receiver.IsHeapObject())) {
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByIndex(thread, receiver, idx);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(WIDE_LDOBJBYINDEX_PREF_IMM32);
+        }
+    }
+    // not meet fast condition or fast path return hole, walk slow path
+    // slow stub not need receiver
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByIndex(thread, receiver, idx, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(WIDE_LDOBJBYINDEX_PREF_IMM32);
 }
+
+bool InterpreterAssembly::AssemblyIsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method)
+{
+    if (method->IsNativeWithCallField()) {
+        return false;
+    }
+
+    if (ctor->IsBase()) {
+        return method->OnlyHaveThisWithCallField();
+    }
+
+    if (ctor->IsDerivedConstructor()) {
+        return method->OnlyHaveNewTagetAndThisWithCallField();
+    }
+
+    return false;
+}
+
 void InterpreterAssembly::HandleWideSupercallarrowrangePrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
+    uint16_t range = READ_INST_16_1();
+    uint16_t v0 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::supercall"
+               << " range: " << range << " v" << v0;
+
+    JSTaggedValue thisFunc = GET_ACC();
+    JSTaggedValue newTarget = GetNewTarget(sp);
+
+    SAVE_PC();
+    JSTaggedValue superCtor = SlowRuntimeStub::GetSuperConstructor(thread, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(superCtor);
+
+    if (superCtor.IsJSFunction() && superCtor.IsConstructor() && !newTarget.IsUndefined()) {
+        JSFunction *superCtorFunc = JSFunction::Cast(superCtor.GetTaggedObject());
+        methodHandle.Update(superCtorFunc->GetMethod());
+        if (superCtorFunc->IsBuiltinConstructor()) {
+            ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
+            size_t frameSize =
+                InterpretedFrame::NumOfMembers() + range + NUM_MANDATORY_JSFUNC_ARGS + 2; // 2:thread & numArgs
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            // copy args
+            uint32_t index = 0;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp);
+            newSp[index++] = ToUintPtr(thread);
+            newSp[index++] = range + NUM_MANDATORY_JSFUNC_ARGS;
+            // func
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = superCtor.GetRawData();
+            // newTarget
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = newTarget.GetRawData();
+            // this
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            for (size_t i = 0; i < range; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(v0 + i);
+            }
+
+            InterpretedBuiltinFrame *state = GET_BUILTIN_FRAME(newSp);
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_BUILTIN_FRAME;
+            state->pc = nullptr;
+            state->function = superCtor;
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime SuperCall ";
+            JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
+                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+            thread->SetCurrentSPFrame(sp);
+
+            if (UNLIKELY(thread->HasPendingException())) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            LOG_INST() << "Exit: Runtime SuperCall ";
+            SET_ACC(retValue);
+            DISPATCH(WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8);
+        }
+
+        if (AssemblyIsFastNewFrameEnter(superCtorFunc, methodHandle)) {
+            SAVE_PC();
+            uint32_t numVregs = methodHandle->GetNumVregsWithCallField();
+            uint32_t numDeclaredArgs = superCtorFunc->IsBase() ?
+                methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
+                methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
+            // +1 for hidden this, explicit this may be overwritten after bc optimizer
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+
+            uint32_t index = 0;
+            // initialize vregs value
+            for (size_t i = 0; i < numVregs; ++i) {
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // this
+            JSTaggedValue thisObj;
+            if (superCtorFunc->IsBase()) {
+                thisObj = FastRuntimeStub::NewThisObject(thread, superCtor, newTarget, state);
+                INTERPRETER_RETURN_IF_ABRUPT(thisObj);
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+            } else {
+                ASSERT(superCtorFunc->IsDerivedConstructor());
+                newSp[index++] = newTarget.GetRawData();
+                thisObj = JSTaggedValue::Undefined();
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+
+                state->function = superCtor;
+                state->constpool = methodHandle->GetConstantPool();
+                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
+                state->env = superCtorFunc->GetLexicalEnv();
+            }
+
+            // the second condition ensure not push extra args
+            for (size_t i = 0; i < range && index < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(v0 + i);
+            }
+
+            // set undefined to the extra prats of declare
+            for (size_t i = index; i < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // hidden this object
+            newSp[index] = thisObj.GetRawData();
+
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->pc = pc = methodHandle->GetBytecodeArray();
+            sp = newSp;
+            state->acc = JSTaggedValue::Hole();
+
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime SuperCall " << std::hex << reinterpret_cast<uintptr_t>(sp)
+                                    << " " << std::hex << reinterpret_cast<uintptr_t>(pc);
+            DISPATCH_OFFSET(0);
+        }
+    }
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::SuperCall(thread, thisFunc, newTarget, v0, range);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleWideSupercallthisrangePrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
+    uint16_t range = READ_INST_16_1();
+    uint16_t v0 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::supercall"
+               << " range: " << range << " v" << v0;
+
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue newTarget = GetNewTarget(sp);
+
+    SAVE_PC();
+    JSTaggedValue superCtor = SlowRuntimeStub::GetSuperConstructor(thread, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(superCtor);
+
+    if (superCtor.IsJSFunction() && superCtor.IsConstructor() && !newTarget.IsUndefined()) {
+        JSFunction *superCtorFunc = JSFunction::Cast(superCtor.GetTaggedObject());
+        methodHandle.Update(superCtorFunc->GetMethod());
+        if (superCtorFunc->IsBuiltinConstructor()) {
+            ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
+            size_t frameSize =
+                InterpretedFrame::NumOfMembers() + range + NUM_MANDATORY_JSFUNC_ARGS + 2; // 2:thread & numArgs
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            // copy args
+            uint32_t index = 0;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp);
+            newSp[index++] = ToUintPtr(thread);
+            newSp[index++] = range + NUM_MANDATORY_JSFUNC_ARGS;
+            // func
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = superCtor.GetRawData();
+            // newTarget
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = newTarget.GetRawData();
+            // this
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            for (size_t i = 0; i < range; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(v0 + i);
+            }
+
+            InterpretedBuiltinFrame *state = GET_BUILTIN_FRAME(newSp);
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_BUILTIN_FRAME;
+            state->pc = nullptr;
+            state->function = superCtor;
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime SuperCall ";
+            JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
+                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+            thread->SetCurrentSPFrame(sp);
+
+            if (UNLIKELY(thread->HasPendingException())) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            LOG_INST() << "Exit: Runtime SuperCall ";
+            SET_ACC(retValue);
+            DISPATCH(WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8);
+        }
+
+        if (AssemblyIsFastNewFrameEnter(superCtorFunc, methodHandle)) {
+            SAVE_PC();
+            uint32_t numVregs = methodHandle->GetNumVregsWithCallField();
+            uint32_t numDeclaredArgs = superCtorFunc->IsBase() ?
+                methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
+                methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
+            // +1 for hidden this, explicit this may be overwritten after bc optimizer
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(newSp) - 1;
+
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+
+            uint32_t index = 0;
+            // initialize vregs value
+            for (size_t i = 0; i < numVregs; ++i) {
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // this
+            JSTaggedValue thisObj;
+            if (superCtorFunc->IsBase()) {
+                thisObj = FastRuntimeStub::NewThisObject(thread, superCtor, newTarget, state);
+                INTERPRETER_RETURN_IF_ABRUPT(thisObj);
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+            } else {
+                ASSERT(superCtorFunc->IsDerivedConstructor());
+                newSp[index++] = newTarget.GetRawData();
+                thisObj = JSTaggedValue::Undefined();
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+
+                state->function = superCtor;
+                state->constpool = methodHandle->GetConstantPool();
+                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
+                state->env = superCtorFunc->GetLexicalEnv();
+            }
+
+            // the second condition ensure not push extra args
+            for (size_t i = 0; i < range && index < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(v0 + i);
+            }
+
+            // set undefined to the extra prats of declare
+            for (size_t i = index; i < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // hidden this object
+            newSp[index] = thisObj.GetRawData();
+
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->pc = pc = methodHandle->GetBytecodeArray();
+            sp = newSp;
+            state->acc = JSTaggedValue::Hole();
+
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime SuperCall " << std::hex << reinterpret_cast<uintptr_t>(sp)
+                                    << " " << std::hex << reinterpret_cast<uintptr_t>(pc);
+            DISPATCH_OFFSET(0);
+        }
+    }
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::SuperCall(thread, thisFunc, newTarget, v0, range);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleWideCallthisrangePrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(WIDE_CALLTHISRANGE_PREF_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleWideCallrangePrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(WIDE_CALLRANGE_PREF_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleWideNewlexenvwithnamePrefImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t numVars = READ_INST_16_1();
+    uint16_t scopeId = READ_INST_16_3();
+    LOG_INST() << "intrinsics::newlexenvwithname"
+               << " numVars " << numVars << " scopeId " << scopeId;
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::NewLexicalEnvWithName(thread, numVars, scopeId);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+
+    SET_ACC(res);
+    (reinterpret_cast<InterpretedFrame *>(sp) - 1)->env = res;
+    DISPATCH(WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleWideNewlexenvPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t numVars = READ_INST_16_1();
+    LOG_INST() << "intrinsics::newlexenv"
+               << " imm " << numVars;
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSTaggedValue res = FastRuntimeStub::NewLexicalEnv(thread, factory, numVars);
+    if (res.IsHole()) {
+        SAVE_PC();
+        res = SlowRuntimeStub::NewLexicalEnv(thread, numVars);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+    }
+    SET_ACC(res);
+    (reinterpret_cast<InterpretedFrame *>(sp) - 1)->env = res;
+    DISPATCH(WIDE_NEWLEXENV_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleWideNewobjrangePrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
+    uint16_t numArgs = READ_INST_16_1();
+    uint16_t firstArgRegIdx = READ_INST_8_3();
+    LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
+    JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
+
+    if (ctor.IsJSFunction() && ctor.IsConstructor()) {
+        JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
+        methodHandle.Update(ctorFunc->GetMethod());
+        if (ctorFunc->IsBuiltinConstructor()) {
+            ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 3;  // 3: this & numArgs & thread
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            // copy args
+            uint32_t index = 0;
+            // numArgs
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
+            newSp[index++] = ToUintPtr(thread);
+            newSp[index++] = numArgs + 1; // +1 for this
+            // func
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = GET_VREG(firstArgRegIdx);
+            // newTarget
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = GET_VREG(firstArgRegIdx + 1);
+            // this
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            for (size_t i = 2; i < numArgs; ++i) {  // 2: func and newTarget
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(firstArgRegIdx + i);
+            }
+
+            InterpretedBuiltinFrame *state = GET_BUILTIN_FRAME(newSp);
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_BUILTIN_FRAME;
+            state->pc = nullptr;
+            state->function = ctor;
+            thread->SetCurrentSPFrame(newSp);
+
+            LOG_INST() << "Entry: Runtime New.";
+            SAVE_PC();
+            JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
+                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+            thread->SetCurrentSPFrame(sp);
+            if (UNLIKELY(thread->HasPendingException())) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            LOG_INST() << "Exit: Runtime New.";
+            SET_ACC(retValue);
+            DISPATCH(WIDE_NEWOBJRANGE_PREF_IMM16_V8);
+        }
+
+        if (AssemblyIsFastNewFrameEnter(ctorFunc, methodHandle)) {
+            SAVE_PC();
+            uint32_t numVregs = methodHandle->GetNumVregsWithCallField();
+            uint32_t numDeclaredArgs = ctorFunc->IsBase() ?
+                                       methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
+                                       methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
+            // +1 for hidden this, explicit this may be overwritten after bc optimizer
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(newSp) - 1;
+
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+
+            uint32_t index = 0;
+            // initialize vregs value
+            for (size_t i = 0; i < numVregs; ++i) {
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // this
+            JSTaggedValue thisObj;
+            if (ctorFunc->IsBase()) {
+                JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+                thisObj = FastRuntimeStub::NewThisObject(thread, ctor, newTarget, state);
+                INTERPRETER_RETURN_IF_ABRUPT(thisObj);
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+            } else {
+                ASSERT(ctorFunc->IsDerivedConstructor());
+                JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+                newSp[index++] = newTarget.GetRawData();
+                thisObj = JSTaggedValue::Undefined();
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+
+                state->function = ctor;
+                state->constpool = methodHandle->GetConstantPool();
+                state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
+                state->env = ctorFunc->GetLexicalEnv();
+            }
+
+            // the second condition ensure not push extra args
+            for (size_t i = 2; i < numArgs && index < numVregs + numDeclaredArgs; ++i) {  // 2: func and newTarget
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(firstArgRegIdx + i);
+            }
+
+            // set undefined to the extra prats of declare
+            for (size_t i = index; i < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // hidden this object
+            newSp[index] = thisObj.GetRawData();
+
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->pc = pc = methodHandle->GetBytecodeArray();
+            sp = newSp;
+            state->acc = JSTaggedValue::Hole();
+
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime New " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
+                                    << std::hex << reinterpret_cast<uintptr_t>(pc);
+            DISPATCH_OFFSET(0);
+        }
+    }
+
+    // bound function, proxy, other call types, enter slow path
+    constexpr uint16_t firstArgOffset = 2;
+    JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+    // Exclude func and newTarget
+    uint16_t firstArgIdx = firstArgRegIdx + firstArgOffset;
+    uint16_t length = numArgs - firstArgOffset;
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, newTarget, firstArgIdx, length);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(WIDE_NEWOBJRANGE_PREF_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t numKeys = READ_INST_16_1();
+    uint16_t v0 = READ_INST_8_3();
+    uint16_t firstArgRegIdx = READ_INST_8_4();
+    LOG_INST() << "intrinsics::createobjectwithexcludedkeys " << numKeys << " v" << firstArgRegIdx;
+
+    JSTaggedValue obj = GET_VREG_VALUE(v0);
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CreateObjectWithExcludedKeys(thread, numKeys, obj, firstArgRegIdx);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCreateobjecthavingmethodPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t imm = READ_INST_16_1();
+    LOG_INST() << "intrinsics::createobjecthavingmethod"
+               << " imm:" << imm;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSObject *result = JSObject::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+                    ->GetObjectFromCache(imm).GetTaggedObject());
+    JSTaggedValue env = GET_ACC();
+
+    SAVE_PC();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, env);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleDeprecatedLdhomeobjectPrefNone(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    LOG_INST() << "intrinsics::ldhomeobject";
+
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue homeObject = JSFunction::Cast(thisFunc.GetTaggedObject())->GetHomeObject();
+
+    SET_ACC(homeObject);
+    DISPATCH(DEPRECATED_LDHOMEOBJECT_PREF_NONE);
 }
+
 void InterpreterAssembly::HandleDeprecatedStclasstoglobalrecordPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_32_1();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::stclasstoglobalrecord"
+               << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
+
+    JSTaggedValue value = GET_ACC();
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, false);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32);
 }
+
 void InterpreterAssembly::HandleDeprecatedStlettoglobalrecordPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_32_1();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::stlettoglobalrecord"
+               << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
+
+    JSTaggedValue value = GET_ACC();
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, false);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32);
 }
+
 void InterpreterAssembly::HandleDeprecatedStconsttoglobalrecordPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_32_1();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::stconsttoglobalrecord"
+               << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
+
+    JSTaggedValue value = GET_ACC();
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, true);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32);
 }
+
 void InterpreterAssembly::HandleDeprecatedLdmodulevarPrefId32Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_1();
+    uint8_t innerFlag = READ_INST_8_5();
+
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue key = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::ldmodulevar "
+               << "string_id:" << stringId << ", "
+               << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdModuleVar(thread, key, innerFlag != 0);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8);
 }
 void InterpreterAssembly::HandleDeprecatedLdsuperbynamePrefId32V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t stringId = READ_INST_32_1();
+    uint32_t v0 = READ_INST_8_5();
+    JSTaggedValue obj = GET_VREG_VALUE(v0);
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::ldsuperbyname"
+               << "v" << v0 << " stringId:" << stringId << ", "
+               << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData();
+
+    SAVE_PC();
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, obj, propKey, thisFunc);
+
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_LDSUPERBYNAME_PREF_ID32_V8);
 }
 void InterpreterAssembly::HandleDeprecatedLdobjbynamePrefId32V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_5();
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+
+    uint16_t stringId = READ_INST_32_1();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::ldobjbyname "
+               << "v" << v0 << " stringId:" << stringId << ", "
+               << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << receiver.GetRawData();
+
+    if (LIKELY(receiver.IsHeapObject())) {
+        // fast path
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByName(thread, receiver, propKey);
+        if (!res.IsHole()) {
+            ASSERT(!res.IsAccessor());
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(DEPRECATED_LDOBJBYNAME_PREF_ID32_V8);
+        }
+    }
+    // not meet fast condition or fast path return hole, walk slow path
+    // slow stub not need receiver
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByName(thread, receiver, propKey, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_LDOBJBYNAME_PREF_ID32_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedStmodulevarPrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_32_1();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue key = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::stmodulevar "
+               << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+
+    JSTaggedValue value = GET_ACC();
+
+    SAVE_ACC();
+    SlowRuntimeStub::StModuleVar(thread, key, value);
+    RESTORE_ACC();
+    DISPATCH(DEPRECATED_STMODULEVAR_PREF_ID32);
 }
+
 void InterpreterAssembly::HandleDeprecatedGetmodulenamespacePrefId32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_32_1();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    auto localName = ConstantPool::Cast(constantPool.GetTaggedObject())->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::getmodulenamespace "
+               << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(localName.GetTaggedObject()));
+
+    JSTaggedValue moduleNamespace = SlowRuntimeStub::GetModuleNamespace(thread, localName);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleNamespace);
+    SET_ACC(moduleNamespace);
+    DISPATCH(DEPRECATED_GETMODULENAMESPACE_PREF_ID32);
 }
+
 void InterpreterAssembly::HandleDeprecatedStlexvarPrefImm16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t level = READ_INST_16_1();
+    uint16_t slot = READ_INST_16_3();
+    uint16_t v0 = READ_INST_8_5();
+    LOG_INST() << "intrinsics::stlexvar"
+               << " level:" << level << " slot:" << slot << " v" << v0;
+
+    JSTaggedValue value = GET_VREG_VALUE(v0);
+    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    JSTaggedValue env = state->env;
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    LexicalEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, value);
+
+    DISPATCH(DEPRECATED_STLEXVAR_PREF_IMM16_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedStlexvarPrefImm8Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t level = READ_INST_8_1();
+    uint16_t slot = READ_INST_8_2();
+    uint16_t v0 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::stlexvar"
+               << " level:" << level << " slot:" << slot << " v" << v0;
+
+    JSTaggedValue value = GET_VREG_VALUE(v0);
+    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    JSTaggedValue env = state->env;
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    LexicalEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, value);
+
+    DISPATCH(DEPRECATED_STLEXVAR_PREF_IMM8_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedStlexvarPrefImm4Imm4V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t level = READ_INST_4_2();
+    uint16_t slot = READ_INST_4_3();
+    uint16_t v0 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::stlexvar"
+               << " level:" << level << " slot:" << slot << " v" << v0;
+
+    JSTaggedValue value = GET_VREG_VALUE(v0);
+    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    JSTaggedValue env = state->env;
+    for (uint32_t i = 0; i < level; i++) {
+        JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+        ASSERT(!taggedParentEnv.IsUndefined());
+        env = taggedParentEnv;
+    }
+    LexicalEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, value);
+
+    DISPATCH(DEPRECATED_STLEXVAR_PREF_IMM4_IMM4_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedAsyncfunctionrejectPrefV8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
+    uint16_t v2 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::asyncfunctionreject"
+               << " v" << v0 << " v" << v1 << " v" << v2;
+
+    JSTaggedValue asyncFuncObj = GET_VREG_VALUE(v0);
+    JSTaggedValue value = GET_VREG_VALUE(v2);
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::AsyncFunctionResolveOrReject(thread, asyncFuncObj, value, false);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_ASYNCFUNCTIONREJECT_PREF_V8_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedAsyncfunctionresolvePrefV8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
+    uint16_t v2 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::asyncfunctionresolve"
+               << " v" << v0 << " v" << v1 << " v" << v2;
+
+    JSTaggedValue asyncFuncObj = GET_VREG_VALUE(v0);
+    JSTaggedValue value = GET_VREG_VALUE(v2);
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::AsyncFunctionResolveOrReject(thread, asyncFuncObj, value, true);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_ASYNCFUNCTIONRESOLVE_PREF_V8_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedLdobjbyindexPrefV8Imm32(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    uint32_t idx = READ_INST_32_2();
+    LOG_INST() << "intrinsics::ldobjbyindex"
+               << " v" << v0 << " imm" << idx;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    // fast path
+    if (LIKELY(receiver.IsHeapObject())) {
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByIndex(thread, receiver, idx);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32);
+        }
+    }
+    // not meet fast condition or fast path return hole, walk slow path
+    // slow stub not need receiver
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByIndex(thread, receiver, idx, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32);
 }
+
 void InterpreterAssembly::HandleDeprecatedLdsuperbyvaluePrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_1();
+    uint32_t v1 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::Ldsuperbyvalue"
+               << " v" << v0 << " v" << v1;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    JSTaggedValue propKey = GET_VREG_VALUE(v1);
+
+    // slow path
+    SAVE_PC();
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, receiver, propKey, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_LDSUPERBYVALUE_PREF_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedLdobjbyvaluePrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_1();
+    uint32_t v1 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::Ldobjbyvalue"
+               << " v" << v0 << " v" << v1;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    JSTaggedValue propKey = GET_VREG_VALUE(v1);
+
+    // fast path
+    if (LIKELY(receiver.IsHeapObject())) {
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
+        if (!res.IsHole()) {
+            ASSERT(!res.IsAccessor());
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(DEPRECATED_LDOBJBYVALUE_PREF_V8_V8);
+        }
+    }
+    // slow path
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_LDOBJBYVALUE_PREF_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedSetobjectwithprotoPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::setobjectwithproto"
+               << " v" << v0 << " v" << v1;
+    JSTaggedValue proto = GET_VREG_VALUE(v0);
+    JSTaggedValue obj = GET_VREG_VALUE(v1);
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::SetObjectWithProto(thread, proto, obj);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(DEPRECATED_SETOBJECTWITHPROTO_PREF_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCopydatapropertiesPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    LOG_INST() << "intrinsic::copydataproperties"
+               << " v" << v0 << " v" << v1;
+    JSTaggedValue dst = GET_VREG_VALUE(v0);
+    JSTaggedValue src = GET_VREG_VALUE(v1);
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CopyDataProperties(thread, dst, src);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_COPYDATAPROPERTIES_PREF_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedAsyncfunctionawaituncaughtPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::asyncfunctionawaituncaught"
+               << " v" << v0 << " v" << v1;
+    JSTaggedValue asyncFuncObj = GET_VREG_VALUE(v0);
+    JSTaggedValue value = GET_VREG_VALUE(v1);
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::AsyncFunctionAwaitUncaught(thread, asyncFuncObj, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_ASYNCFUNCTIONAWAITUNCAUGHT_PREF_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedSuspendgeneratorPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::suspendgenerator"
+               << " v" << v0 << " v" << v1;
+    JSTaggedValue genObj = GET_VREG_VALUE(v0);
+    JSTaggedValue value = GET_VREG_VALUE(v1);
+    // suspend will record bytecode offset
+    SAVE_PC();
+    SAVE_ACC();
+    JSTaggedValue res = SlowRuntimeStub::SuspendGenerator(thread, genObj, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+
+    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    [[maybe_unused]] auto fistPC = method->GetBytecodeArray();
+    UPDATE_HOTNESS_COUNTER(-(pc - fistPC));
+    LOG_INST() << "Exit: SuspendGenerator " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
+                            << std::hex << reinterpret_cast<uintptr_t>(state->pc);
+    sp = state->base.prev;
+    ASSERT(sp != nullptr);
+    InterpretedFrame *prevState = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    pc = prevState->pc;
+    // entry frame
+    if (FrameHandler::IsEntryFrame(pc)) {
+        state->acc = acc;
+        return;
+    }
+
+    thread->SetCurrentSPFrame(sp);
+
+    size_t jumpSize = GetJumpSizeAfterCall(pc);
+    DISPATCH_OFFSET(jumpSize);
 }
+
 void InterpreterAssembly::HandleDeprecatedDelobjpropPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::delobjprop"
+               << " v0" << v0 << " v1" << v1;
+
+    JSTaggedValue obj = GET_VREG_VALUE(v0);
+    JSTaggedValue prop = GET_VREG_VALUE(v1);
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::DelObjProp(thread, obj, prop);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+
+    DISPATCH(DEPRECATED_DELOBJPROP_PREF_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedGettemplateobjectPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsic::gettemplateobject"
+               << " v" << v0;
+
+    JSTaggedValue literal = GET_VREG_VALUE(v0);
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::GetTemplateObject(thread, literal);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_GETTEMPLATEOBJECT_PREF_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedGetresumemodePrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    LOG_INST() << "intrinsics::getresumemode";
+    uint16_t vs = READ_INST_8_1();
+    JSTaggedValue objVal = GET_VREG_VALUE(vs);
+
+    if (objVal.IsAsyncGeneratorObject()) {
+        JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+    } else {
+        JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
+    }
+    DISPATCH(DEPRECATED_GETRESUMEMODE_PREF_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedResumegeneratorPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    LOG_INST() << "intrinsics::resumegenerator";
+    uint16_t vs = READ_INST_8_1();
+    JSTaggedValue objVal = GET_VREG_VALUE(vs);
+
+    if (objVal.IsAsyncGeneratorObject()) {
+        JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(obj->GetResumeResult());
+    } else {
+        JSGeneratorObject *obj = JSGeneratorObject::Cast(objVal.GetTaggedObject());
+        SET_ACC(obj->GetResumeResult());
+    }
+    DISPATCH(DEPRECATED_RESUMEGENERATOR_PREF_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -3699,14 +4981,19 @@ void InterpreterAssembly::HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm1
     uint16_t v0 = READ_INST_8_7();
     uint16_t v1 = READ_INST_8_8();
     LOG_INST() << "intrinsics::defineclasswithbuffer"
-                << " method id:" << methodId << " lexenv: v" << v0 << " parent: v" << v1;
+               << " method id:" << methodId << " lexenv: v" << v0 << " parent: v" << v1;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSFunction *classTemplate = JSFunction::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(methodId).GetTaggedObject());
+    ASSERT(classTemplate != nullptr);
 
     JSTaggedValue lexenv = GET_VREG_VALUE(v0);
     JSTaggedValue proto = GET_VREG_VALUE(v1);
 
+    JSTaggedValue res;
     SAVE_PC();
-    JSTaggedValue res =
-        SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, constpool, methodId, methodId + 1);
+    res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
     ASSERT(res.IsClassConstructor());
@@ -3715,7 +5002,7 @@ void InterpreterAssembly::HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm1
     lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
     cls->SetLexicalEnv(thread, lexenv);
 
-    JSFunction *currentFunc = JSFunction::Cast((GET_ASM_FRAME(sp)->function).GetTaggedObject());
+    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
     cls->SetModule(thread, currentFunc->GetModule());
 
     SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
@@ -3723,97 +5010,306 @@ void InterpreterAssembly::HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm1
     SET_ACC(res);
     DISPATCH(DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCallspreadPrefV8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    uint16_t v2 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::callspread"
+                << " v" << v0 << " v" << v1 << " v" << v2;
+    JSTaggedValue func = GET_VREG_VALUE(v0);
+    JSTaggedValue obj = GET_VREG_VALUE(v1);
+    JSTaggedValue array = GET_VREG_VALUE(v2);
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CallSpread(thread, func, obj, array);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+
+    DISPATCH(DEPRECATED_CALLSPREAD_PREF_V8_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCallargs3PrefV8V8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCallargs2PrefV8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(DEPRECATED_CALLARGS2_PREF_V8_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCallarg1PrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(DEPRECATED_CALLARG1_PREF_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCallarg0PrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(DEPRECATED_CALLARG0_PREF_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedDecPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::dec"
+               << " v" << v0;
+
+    JSTaggedValue value = GET_VREG_VALUE(v0);
+    // number, fast path
+    if (value.IsInt()) {
+        int32_t a0 = value.GetInt();
+        if (UNLIKELY(a0 == INT32_MIN)) {
+            auto ret = static_cast<double>(a0) - 1.0;
+            SET_ACC(JSTaggedValue(ret));
+        } else {
+            SET_ACC(JSTaggedValue(a0 - 1));
+        }
+    } else if (value.IsDouble()) {
+        SET_ACC(JSTaggedValue(value.GetDouble() - 1.0));
+    } else {
+        // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::Dec(thread, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+    }
+    DISPATCH(DEPRECATED_DEC_PREF_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedIncPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+
+    LOG_INST() << "intrinsics::inc"
+               << " v" << v0;
+
+    JSTaggedValue value = GET_VREG_VALUE(v0);
+    // number fast path
+    if (value.IsInt()) {
+        int32_t a0 = value.GetInt();
+        if (UNLIKELY(a0 == INT32_MAX)) {
+            auto ret = static_cast<double>(a0) + 1.0;
+            SET_ACC(JSTaggedValue(ret));
+        } else {
+            SET_ACC(JSTaggedValue(a0 + 1));
+        }
+    } else if (value.IsDouble()) {
+        SET_ACC(JSTaggedValue(value.GetDouble() + 1.0));
+    } else {
+        // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::Inc(thread, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+    }
+    DISPATCH(DEPRECATED_INC_PREF_V8);
 }
 
 void InterpreterAssembly::HandleDeprecatedNotPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+
+    LOG_INST() << "intrinsics::not"
+               << " v" << v0;
+    JSTaggedValue value = GET_VREG_VALUE(v0);
+    int32_t number;
+    // number, fast path
+    if (value.IsInt()) {
+        number = static_cast<int32_t>(value.GetInt());
+        SET_ACC(JSTaggedValue(~number));  // NOLINT(hicpp-signed-bitwise);
+    } else if (value.IsDouble()) {
+        number = base::NumberHelper::DoubleToInt(value.GetDouble(), base::INT32_BITS);
+        SET_ACC(JSTaggedValue(~number));  // NOLINT(hicpp-signed-bitwise);
+    } else {
+        // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::Not(thread, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+    }
+    DISPATCH(DEPRECATED_NOT_PREF_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedNegPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::neg"
+               << " v" << v0;
+    JSTaggedValue value = GET_VREG_VALUE(v0);
+    // fast path
+    if (value.IsInt()) {
+        if (value.GetInt() == 0) {
+            SET_ACC(JSTaggedValue(-0.0));
+        } else {
+            SET_ACC(JSTaggedValue(-value.GetInt()));
+        }
+    } else if (value.IsDouble()) {
+        SET_ACC(JSTaggedValue(-value.GetDouble()));
+    } else {  // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::Neg(thread, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+    }
+    DISPATCH(DEPRECATED_NEG_PREF_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedTonumericPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::tonumeric"
+               << " v" << v0;
+    JSTaggedValue value = GET_VREG_VALUE(v0);
+    if (value.IsNumber() || value.IsBigInt()) {
+        // fast path
+        SET_ACC(value);
+    } else {
+        // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::ToNumeric(thread, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+    }
+    DISPATCH(DEPRECATED_TONUMERIC_PREF_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCallthisrangePrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedTonumberPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+
+    LOG_INST() << "intrinsics::tonumber"
+               << " v" << v0;
+    JSTaggedValue value = GET_VREG_VALUE(v0);
+    if (value.IsNumber()) {
+        // fast path
+        SET_ACC(value);
+    } else {
+        // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::ToNumber(thread, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+    }
+    DISPATCH(DEPRECATED_TONUMBER_PREF_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCreateobjectwithbufferPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t imm = READ_INST_16_1();
+    LOG_INST() << "intrinsics::createobjectwithbuffer"
+               << " imm:" << imm;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSObject *result = JSObject::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(imm).GetTaggedObject());
+
+    SAVE_PC();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleDeprecatedCreatearraywithbufferPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t imm = READ_INST_16_1();
+    LOG_INST() << "intrinsics::createarraywithbuffer"
+               << " imm:" << imm;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSArray *result = JSArray::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(imm).GetTaggedObject());
+    SAVE_PC();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSTaggedValue res = SlowRuntimeStub::CreateArrayWithBuffer(thread, factory, result);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleDeprecatedGetiteratornextPrefV8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
+    LOG_INST() << "intrinsic::getiteratornext"
+               << " v" << v0 << " v" << v1;
+    JSTaggedValue obj = GET_VREG_VALUE(v0);
+    JSTaggedValue method = GET_VREG_VALUE(v1);
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::GetIteratorNext(thread, obj, method);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(DEPRECATED_GETITERATORNEXT_PREF_V8_V8);
 }
+
 void InterpreterAssembly::HandleDeprecatedPoplexenvPrefNone(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    JSTaggedValue currentLexenv = state->env;
+    JSTaggedValue parentLexenv = LexicalEnv::Cast(currentLexenv.GetTaggedObject())->GetParentEnv();
+    (reinterpret_cast<InterpretedFrame *>(sp) - 1)->env = parentLexenv;
+    DISPATCH(DEPRECATED_POPLEXENV_PREF_NONE);
 }
+
 void InterpreterAssembly::HandleDeprecatedLdlexenvPrefNone(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    LOG_INST() << "intrinsics::ldlexenv ";
+    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    JSTaggedValue currentLexenv = state->env;
+    SET_ACC(currentLexenv);
+    DISPATCH(DEPRECATED_LDLEXENV_PREF_NONE);
 }
+
 void InterpreterAssembly::HandleWide(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
 }
+
 void InterpreterAssembly::HandleDeprecated(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -3823,283 +5319,1117 @@ void InterpreterAssembly::HandleJnstricteqV8Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNSTRICTEQ_V8_IMM16);
 }
+
 void InterpreterAssembly::HandleJnstricteqV8Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNSTRICTEQ_V8_IMM8);
 }
+
 void InterpreterAssembly::HandleJstricteqV8Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JSTRICTEQ_V8_IMM16);
 }
+
 void InterpreterAssembly::HandleJstricteqV8Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JSTRICTEQ_V8_IMM8);
 }
+
 void InterpreterAssembly::HandleJneV8Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNE_V8_IMM16);
 }
+
 void InterpreterAssembly::HandleJneV8Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNE_V8_IMM8);
 }
+
 void InterpreterAssembly::HandleJeqV8Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JEQ_V8_IMM16);
 }
+
 void InterpreterAssembly::HandleJeqV8Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNE_V8_IMM8);
 }
+
 void InterpreterAssembly::HandleJnstrictequndefinedImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNSTRICTEQUNDEFINED_IMM16);
 }
+
 void InterpreterAssembly::HandleJnstrictequndefinedImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNSTRICTEQUNDEFINED_IMM8);
 }
+
 void InterpreterAssembly::HandleJstrictequndefinedImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JSTRICTEQUNDEFINED_IMM16);
 }
+
 void InterpreterAssembly::HandleJstrictequndefinedImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JSTRICTEQUNDEFINED_IMM8);
 }
+
 void InterpreterAssembly::HandleJneundefinedImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNEUNDEFINED_IMM16);
 }
+
 void InterpreterAssembly::HandleJneundefinedImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNEUNDEFINED_IMM8);
 }
+
 void InterpreterAssembly::HandleJequndefinedImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JEQUNDEFINED_IMM16);
 }
+
 void InterpreterAssembly::HandleJequndefinedImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JEQUNDEFINED_IMM8);
 }
+
 void InterpreterAssembly::HandleJnstricteqnullImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNSTRICTEQNULL_IMM16);
 }
+
 void InterpreterAssembly::HandleJnstricteqnullImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNSTRICTEQNULL_IMM8);
 }
+
 void InterpreterAssembly::HandleCallarg1Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLARG1_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleJstricteqnullImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JSTRICTEQNULL_IMM16);
 }
+
 void InterpreterAssembly::HandleJstricteqnullImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JSTRICTEQNULL_IMM8);
 }
+
 void InterpreterAssembly::HandleJnenullImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNENULL_IMM16);
 }
+
 void InterpreterAssembly::HandleJnenullImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNENULL_IMM8);
 }
+
 void InterpreterAssembly::HandleStownbynamewithnamesetImm16Id16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_2();
+    uint32_t v0 = READ_INST_8_4();
+    LOG_INST() << "intrinsics::stownbynamewithnameset "
+               << "v" << v0 << " stringId:" << stringId;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    if (receiver.IsJSObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+        JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+            ->GetObjectFromCache(stringId);
+        JSTaggedValue value = GET_ACC();
+        // fast path
+        SAVE_ACC();
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<true>(thread, receiver, propKey, value);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            JSFunction::SetFunctionNameNoPrefix(thread, JSFunction::Cast(value.GetTaggedObject()), propKey);
+            RESTORE_ACC();
+            DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
+        }
+        RESTORE_ACC();
+    }
+
+    SAVE_ACC();
+    SAVE_PC();
+    receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
+    auto propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);  // Maybe moved by GC
+    auto value = GET_ACC();                                  // Maybe moved by GC
+    JSTaggedValue res = SlowRuntimeStub::StOwnByNameWithNameSet(thread, receiver, propKey, value);
+    RESTORE_ACC();
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
 }
+
 void InterpreterAssembly::HandleStownbyvaluewithnamesetImm16V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_2();
+    uint32_t v1 = READ_INST_8_3();
+    LOG_INST() << "intrinsics::stownbyvaluewithnameset"
+               << " v" << v0 << " v" << v1;
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+        SAVE_ACC();
+        JSTaggedValue propKey = GET_VREG_VALUE(v1);
+        JSTaggedValue value = GET_ACC();
+        // fast path
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<true>(thread, receiver, propKey, value);
+
+        // SetPropertyByValue maybe gc need update the value
+        RESTORE_ACC();
+        propKey = GET_VREG_VALUE(v1);
+        value = GET_ACC();
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            JSFunction::SetFunctionNameNoPrefix(thread, JSFunction::Cast(value.GetTaggedObject()), propKey);
+            RESTORE_ACC();
+            DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
+        }
+    }
+
+    // slow path
+    SAVE_ACC();
+    SAVE_PC();
+    receiver = GET_VREG_VALUE(v0);      // Maybe moved by GC
+    auto propKey = GET_VREG_VALUE(v1);  // Maybe moved by GC
+    auto value = GET_ACC();             // Maybe moved by GC
+    JSTaggedValue res = SlowRuntimeStub::StOwnByValueWithNameSet(thread, receiver, propKey, value);
+    RESTORE_ACC();
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
 }
+
 void InterpreterAssembly::HandleJeqnullImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JEQNULL_IMM16);
 }
+
 void InterpreterAssembly::HandleJeqnullImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JEQNULL_IMM8);
 }
 
 void InterpreterAssembly::HandleJnstricteqzImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNSTRICTEQZ_IMM16);
 }
+
 void InterpreterAssembly::HandleJnstricteqzImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JNSTRICTEQZ_IMM8);
 }
+
 void InterpreterAssembly::HandleSttoglobalrecordImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_2();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::stlettoglobalrecord"
+               << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
+
+    JSTaggedValue value = GET_ACC();
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, false);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(STTOGLOBALRECORD_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleStconsttoglobalrecordImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_2();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::stconsttoglobalrecord"
+               << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
+
+    JSTaggedValue value = GET_ACC();
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StGlobalRecord(thread, propKey, value, true);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(STCONSTTOGLOBALRECORD_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleLdlocalmodulevarImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_8_0();
+
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue key = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::ldmodulevar "
+               << "string_id:" << stringId << ", "
+               << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdModuleVar(thread, key, true);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(LDLOCALMODULEVAR_IMM8);
 }
+
 void InterpreterAssembly::HandleStsuperbynameImm16Id16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_2();
+    uint32_t v0 = READ_INST_8_4();
+
+    JSTaggedValue obj = GET_VREG_VALUE(v0);
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+    JSTaggedValue value = GET_ACC();
+
+    LOG_INST() << "intrinsics::stsuperbyname"
+               << "v" << v0 << " stringId:" << stringId << ", "
+               << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData()
+               << ", value:" << value.GetRawData();
+
+    // slow path
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::StSuperByValue(thread, obj, propKey, value, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(STSUPERBYNAME_IMM16_ID16_V8);
 }
+
 void InterpreterAssembly::HandleLdsuperbynameImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_2();
+    JSTaggedValue obj = GET_ACC();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::ldsuperbyname stringId:" << stringId << ", "
+               << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData();
+
+    SAVE_PC();
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, obj, propKey, thisFunc);
+
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDSUPERBYNAME_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleLdsuperbynameImm8Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_1();
+    JSTaggedValue obj = GET_ACC();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::ldsuperbyname stringId:" << stringId << ", "
+               << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData();
+
+    SAVE_PC();
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, obj, propKey, thisFunc);
+
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDSUPERBYNAME_IMM8_ID16);
 }
+
 void InterpreterAssembly::HandleStownbynameImm16Id16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_2();
+    uint32_t v0 = READ_INST_8_4();
+    LOG_INST() << "intrinsics::stownbyname "
+               << "v" << v0 << " stringId:" << stringId;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    if (receiver.IsJSObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+        JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+        JSTaggedValue value = GET_ACC();
+        // fast path
+        SAVE_ACC();
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<true>(thread, receiver, propKey, value);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(STOWNBYNAME_IMM16_ID16_V8);
+        }
+        RESTORE_ACC();
+    }
+
+    SAVE_ACC();
+    receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
+    auto propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);  // Maybe moved by GC
+    auto value = GET_ACC();                                  // Maybe moved by GC
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StOwnByName(thread, receiver, propKey, value);
+    RESTORE_ACC();
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    DISPATCH(STOWNBYNAME_IMM16_ID16_V8);
 }
+
 void InterpreterAssembly::HandleStobjbynameImm16Id16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_4();
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    JSTaggedValue value = GET_ACC();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+#if ECMSCRIPT_ENABLE_IC
+    auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+    if (!profileTypeInfo.IsUndefined()) {
+        uint16_t slotId = READ_INST_16_0();
+        auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+        JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+        JSTaggedValue res = JSTaggedValue::Hole();
+        SAVE_ACC();
+
+        if (LIKELY(firstValue.IsHeapObject())) {
+            JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+            res = ICRuntimeStub::TryStoreICByName(thread, receiver, firstValue, secondValue, value);
+        }
+        if (LIKELY(!res.IsHole())) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(STOBJBYNAME_IMM8_ID16_V8);
+        } else if (!firstValue.IsHole()) { // IC miss and not enter the megamorphic state, store as polymorphic
+            uint16_t stringId = READ_INST_16_1();
+            JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+                ->GetObjectFromCache(stringId);
+            res = ICRuntimeStub::StoreICByName(thread,
+                                               profileTypeArray,
+                                               receiver, propKey, value, slotId);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(STOBJBYNAME_IMM16_ID16_V8);
+        }
+    }
+#endif
+    uint16_t stringId = READ_INST_16_2();
+    LOG_INST() << "intrinsics::stobjbyname "
+               << "v" << v0 << " stringId:" << stringId;
+    if (receiver.IsHeapObject()) {
+        JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+            ->GetObjectFromCache(stringId);
+        value = GET_ACC();
+        // fast path
+        SAVE_ACC();
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByName(thread, receiver, propKey, value);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            RESTORE_ACC();
+            DISPATCH(STOBJBYNAME_IMM16_ID16_V8);
+        }
+        RESTORE_ACC();
+    }
+    // slow path
+    SAVE_ACC();
+    SAVE_PC();
+    receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
+    auto propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);  // Maybe moved by GC
+    value = GET_ACC();                                  // Maybe moved by GC
+    JSTaggedValue res = SlowRuntimeStub::StObjByName(thread, receiver, propKey, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(STOBJBYNAME_IMM16_ID16_V8);
 }
+
 void InterpreterAssembly::HandleLdobjbynameImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    JSTaggedValue receiver = GET_ACC();
+
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+#if ECMASCRIPT_ENABLE_IC
+    profileTypeInfo = state->profileTypeInfo;
+    if (!profileTypeInfo.IsUndefined()) {
+        uint16_t slotId = READ_INST_16_0();
+        auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+        JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+        JSTaggedValue res = JSTaggedValue::Hole();
+
+        if (LIKELY(firstValue.IsHeapObject())) {
+            JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+            res = ICRuntimeStub::TryLoadICByName(thread, receiver, firstValue, secondValue);
+        }
+        if (LIKELY(!res.IsHole())) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYNAME_IMM16_ID16);
+        } else if (!firstValue.IsHole()) { // IC miss and not enter the megamorphic state, store as polymorphic
+            uint16_t stringId = READ_INST_16_2();
+            JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+                ->GetObjectFromCache(stringId);
+            res = ICRuntimeStub::LoadICByName(thread,
+                                              profileTypeArray,
+                                              receiver, propKey, slotId);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYNAME_IMM16_ID16);
+        }
+    }
+#endif
+    uint16_t stringId = READ_INST_16_2();
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::ldobjbyname stringId:" << stringId << ", "
+               << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << receiver.GetRawData();
+
+    if (LIKELY(receiver.IsHeapObject())) {
+        // fast path
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByName(thread, receiver, propKey);
+        if (!res.IsHole()) {
+            ASSERT(!res.IsAccessor());
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYNAME_IMM16_ID16);
+        }
+    }
+    // not meet fast condition or fast path return hole, walk slow path
+    // slow stub not need receiver
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByName(thread, receiver, propKey, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDOBJBYNAME_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleLdobjbynameImm8Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    JSTaggedValue receiver = GET_ACC();
+
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+#if ECMASCRIPT_ENABLE_IC
+    profileTypeInfo = state->profileTypeInfo;
+    if (!profileTypeInfo.IsUndefined()) {
+        uint16_t slotId = READ_INST_8_0();
+        auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+        JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+        JSTaggedValue res = JSTaggedValue::Hole();
+
+        if (LIKELY(firstValue.IsHeapObject())) {
+            JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+            res = ICRuntimeStub::TryLoadICByName(thread, receiver, firstValue, secondValue);
+        }
+        if (LIKELY(!res.IsHole())) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYNAME_IMM8_ID16);
+        } else if (!firstValue.IsHole()) { // IC miss and not enter the megamorphic state, store as polymorphic
+            uint16_t stringId = READ_INST_16_1();
+            JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+                ->GetObjectFromCache(stringId);
+            res = ICRuntimeStub::LoadICByName(thread,
+                                              profileTypeArray,
+                                              receiver, propKey, slotId);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYNAME_IMM8_ID16);
+        }
+    }
+#endif
+    uint16_t stringId = READ_INST_16_1();
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::ldobjbyname stringId:" << stringId << ", "
+               << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << receiver.GetRawData();
+
+    if (LIKELY(receiver.IsHeapObject())) {
+        // fast path
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByName(thread, receiver, propKey);
+        if (!res.IsHole()) {
+            ASSERT(!res.IsAccessor());
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYNAME_IMM8_ID16);
+        }
+    }
+    // not meet fast condition or fast path return hole, walk slow path
+    // slow stub not need receiver
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByName(thread, receiver, propKey, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDOBJBYNAME_IMM8_ID16);
 }
+
 void InterpreterAssembly::HandleTrystglobalbynameImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_2();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue propKey = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::trystglobalbyname"
+               << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
+
+#if ECMSCRIPT_ENABLE_IC
+    auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+    if (!profileTypeInfo.IsUndefined()) {
+        uint16_t slotId = READ_INST_16_0();
+        JSTaggedValue value = GET_ACC();
+        SAVE_ACC();
+        JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
+                                                               ProfileTypeInfo::Cast(
+                                                                   profileTypeInfo.GetTaggedObject()),
+                                                               globalObj, propKey, value, slotId);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+        DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
+    }
+#endif
+
+    auto recordResult = SlowRuntimeStub::LdGlobalRecord(thread, propKey);
+    SAVE_PC();
+    // 1. find from global record
+    if (!recordResult.IsUndefined()) {
+        JSTaggedValue value = GET_ACC();
+        SAVE_ACC();
+        JSTaggedValue res = SlowRuntimeStub::TryUpdateGlobalRecord(thread, propKey, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+    } else {
+        // 2. find from global object
+        EcmaVM *ecmaVm = thread->GetEcmaVM();
+        JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
+        JSTaggedValue globalObj = globalEnv->GetGlobalObject();
+        auto globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, propKey);
+        if (globalResult.IsHole()) {
+            auto result = SlowRuntimeStub::ThrowReferenceError(thread, propKey, " is not defined");
+            INTERPRETER_RETURN_IF_ABRUPT(result);
+        }
+        JSTaggedValue value = GET_ACC();
+        SAVE_ACC();
+        JSTaggedValue res = SlowRuntimeStub::StGlobalVar(thread, propKey, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+    }
+    DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleTryldglobalbynameImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_2();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    auto prop = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::tryldglobalbyname "
+               << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(prop.GetTaggedObject()));
+
+#if ECMSCRIPT_ENABLE_IC
+    auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+    if (!profileTypeInfo.IsUndefined()) {
+        uint16_t slotId = READ_INST_16_0();
+        JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
+                                                              ProfileTypeInfo::Cast(
+                                                                  profileTypeInfo.GetTaggedObject()),
+                                                              globalObj, prop, slotId);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);
+    }
+#endif
+
+    // order: 1. global record 2. global object
+    JSTaggedValue result = SlowRuntimeStub::LdGlobalRecord(thread, prop);
+    if (!result.IsUndefined()) {
+        SET_ACC(PropertyBox::Cast(result.GetTaggedObject())->GetValue());
+    } else {
+        EcmaVM *ecmaVm = thread->GetEcmaVM();
+        JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
+        JSTaggedValue globalObj = globalEnv->GetGlobalObject();
+        JSTaggedValue globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, prop);
+        if (!globalResult.IsHole()) {
+            SET_ACC(globalResult);
+        } else {
+            // slow path
+            SAVE_PC();
+            JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj, prop);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+        }
+    }
+
+    DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleStmodulevarImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_8_0();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    auto key = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::stmodulevar "
+               << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+
+    JSTaggedValue value = GET_ACC();
+
+    SAVE_ACC();
+    SlowRuntimeStub::StModuleVar(thread, key, value);
+    RESTORE_ACC();
+    DISPATCH(STMODULEVAR_IMM8);
 }
+
 void InterpreterAssembly::HandleGetmodulenamespaceImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_8_0();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    auto localName = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+
+    LOG_INST() << "intrinsics::getmodulenamespace "
+               << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(localName.GetTaggedObject()));
+
+    JSTaggedValue moduleNamespace = SlowRuntimeStub::GetModuleNamespace(thread, localName);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleNamespace);
+    SET_ACC(moduleNamespace);
+    DISPATCH(GETMODULENAMESPACE_IMM8);
 }
+
 void InterpreterAssembly::HandleLdobjbyindexImm16Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t idx = READ_INST_32_1();
+    LOG_INST() << "intrinsics::ldobjbyindex"
+               << " imm" << idx;
+
+    JSTaggedValue receiver = GET_ACC();
+    // fast path
+    if (LIKELY(receiver.IsHeapObject())) {
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByIndex(thread, receiver, idx);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYINDEX_IMM16_IMM16);
+        }
+    }
+    // not meet fast condition or fast path return hole, walk slow path
+    // slow stub not need receiver
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByIndex(thread, receiver, idx, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDOBJBYINDEX_IMM16_IMM16);
 }
+
 void InterpreterAssembly::HandleLdobjbyindexImm8Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t idx = READ_INST_16_1();
+    LOG_INST() << "intrinsics::ldobjbyindex"
+               << " imm" << idx;
+
+    JSTaggedValue receiver = GET_ACC();
+    // fast path
+    if (LIKELY(receiver.IsHeapObject())) {
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByIndex(thread, receiver, idx);
+        if (!res.IsHole()) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYINDEX_IMM8_IMM16);
+        }
+    }
+    // not meet fast condition or fast path return hole, walk slow path
+    // slow stub not need receiver
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByIndex(thread, receiver, idx, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDOBJBYINDEX_IMM8_IMM16);
 }
+
 void InterpreterAssembly::HandleStsuperbyvalueImm16V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_2();
+    uint32_t v1 = READ_INST_8_3();
+
+    LOG_INST() << "intrinsics::stsuperbyvalue"
+               << " v" << v0 << " v" << v1;
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    JSTaggedValue propKey = GET_VREG_VALUE(v1);
+    JSTaggedValue value = GET_ACC();
+
+    // slow path
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::StSuperByValue(thread, receiver, propKey, value, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(STSUPERBYVALUE_IMM16_V8_V8);
 }
+
 void InterpreterAssembly::HandleLdsuperbyvalueImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::Ldsuperbyvalue"
+               << " v" << v0;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    JSTaggedValue propKey = GET_ACC();
+
+    // slow path
+    SAVE_PC();
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, receiver, propKey, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDSUPERBYVALUE_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleLdsuperbyvalueImm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::Ldsuperbyvalue"
+               << " v" << v0;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    JSTaggedValue propKey = GET_ACC();
+
+    // slow path
+    SAVE_PC();
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, receiver, propKey, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDSUPERBYVALUE_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleLdobjbyvalueImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::Ldobjbyvalue"
+               << " v" << v0;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    JSTaggedValue propKey = GET_ACC();
+
+#if ECMSCRIPT_ENABLE_IC
+    auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+    if (!profileTypeInfo.IsUndefined()) {
+        uint16_t slotId = READ_INST_16_0();
+        auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+        JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+        JSTaggedValue res = JSTaggedValue::Hole();
+
+        if (LIKELY(firstValue.IsHeapObject())) {
+            JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+            res = ICRuntimeStub::TryLoadICByValue(thread, receiver, propKey, firstValue, secondValue);
+        }
+        // IC miss and not enter the megamorphic state, store as polymorphic
+        if (res.IsHole() && !firstValue.IsHole()) {
+            res = ICRuntimeStub::LoadICByValue(thread,
+                                               profileTypeArray,
+                                               receiver, propKey, slotId);
+        }
+
+        if (LIKELY(!res.IsHole())) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYVALUE_IMM16_V8);
+        }
+    }
+#endif
+    // fast path
+    if (LIKELY(receiver.IsHeapObject())) {
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
+        if (!res.IsHole()) {
+            ASSERT(!res.IsAccessor());
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYVALUE_IMM16_V8);
+        }
+    }
+    // slow path
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDOBJBYVALUE_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleLdobjbyvalueImm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint32_t v0 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::Ldobjbyvalue"
+               << " v" << v0;
+
+    JSTaggedValue receiver = GET_VREG_VALUE(v0);
+    JSTaggedValue propKey = GET_ACC();
+
+#if ECMSCRIPT_ENABLE_IC
+    auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+    if (!profileTypeInfo.IsUndefined()) {
+        uint16_t slotId = READ_INST_8_0();
+        auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+        JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+        JSTaggedValue res = JSTaggedValue::Hole();
+
+        if (LIKELY(firstValue.IsHeapObject())) {
+            JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+            res = ICRuntimeStub::TryLoadICByValue(thread, receiver, propKey, firstValue, secondValue);
+        }
+        // IC miss and not enter the megamorphic state, store as polymorphic
+        if (res.IsHole() && !firstValue.IsHole()) {
+            res = ICRuntimeStub::LoadICByValue(thread,
+                                               profileTypeArray,
+                                               receiver, propKey, slotId);
+        }
+
+        if (LIKELY(!res.IsHole())) {
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYVALUE_IMM8_V8);
+        }
+    }
+#endif
+    // fast path
+    if (LIKELY(receiver.IsHeapObject())) {
+        JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
+        if (!res.IsHole()) {
+            ASSERT(!res.IsAccessor());
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+            DISPATCH(LDOBJBYVALUE_IMM8_V8);
+        }
+    }
+    // slow path
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(LDOBJBYVALUE_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleJstricteqzImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JSTRICTEQZ_IMM16);
 }
+
 void InterpreterAssembly::HandleJstricteqzImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(JSTRICTEQZ_IMM8);
 }
+
 void InterpreterAssembly::HandleDefineclasswithbufferImm16Id16Id16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t methodId = READ_INST_16_2();
+    uint16_t length = READ_INST_16(8);
+    uint16_t v0 = READ_INST_8_8();
+    LOG_INST() << "intrinsics::defineclasswithbuffer"
+               << " method id:" << methodId << " lexenv: v" << v0;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSFunction *classTemplate = JSFunction::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(methodId).GetTaggedObject());
+    ASSERT(classTemplate != nullptr);
+
+    JSTaggedValue lexenv = GET_VREG_VALUE(v0);
+    JSTaggedValue proto = GET_ACC();
+
+    JSTaggedValue res;
+    SAVE_PC();
+    res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
+
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    ASSERT(res.IsClassConstructor());
+    JSFunction *cls = JSFunction::Cast(res.GetTaggedObject());
+
+    lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
+    cls->SetLexicalEnv(thread, lexenv);
+
+    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    cls->SetModule(thread, currentFunc->GetModule());
+
+    SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
+
+    SET_ACC(res);
+    DISPATCH(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleDefineclasswithbufferImm8Id16Id16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t methodId = READ_INST_16_1();
+    uint16_t length = READ_INST_16_5();
+    uint16_t v0 = READ_INST_8_7();
+    LOG_INST() << "intrinsics::defineclasswithbuffer"
+               << " method id:" << methodId << " lexenv: v" << v0;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSFunction *classTemplate = JSFunction::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(methodId).GetTaggedObject());
+    ASSERT(classTemplate != nullptr);
+
+    JSTaggedValue lexenv = GET_VREG_VALUE(v0);
+    JSTaggedValue proto = GET_ACC();
+
+    JSTaggedValue res;
+    SAVE_PC();
+    res = SlowRuntimeStub::CloneClassFromTemplate(thread, JSTaggedValue(classTemplate), proto, lexenv);
+
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    ASSERT(res.IsClassConstructor());
+    JSFunction *cls = JSFunction::Cast(res.GetTaggedObject());
+
+    lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
+    cls->SetLexicalEnv(thread, lexenv);
+
+    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    cls->SetModule(thread, currentFunc->GetModule());
+
+    SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
+
+    SET_ACC(res);
+    DISPATCH(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleStpatchvarImm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(STPATCHVAR_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleLdpatchvarImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(LDPATCHVAR_IMM8);
 }
+
 void InterpreterAssembly::HandleWideLdPatchVarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -4129,67 +6459,128 @@ void InterpreterAssembly::HandleWideStPatchVarPrefImm16(
     RESTORE_ACC();
     DISPATCH(WIDE_STPATCHVAR_PREF_IMM16);
 }
+
 void InterpreterAssembly::HandleStthisbyvalueImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(STTHISBYVALUE_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleStthisbyvalueImm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(STTHISBYVALUE_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleLdthisbyvalueImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(LDTHISBYVALUE_IMM16);
 }
+
 void InterpreterAssembly::HandleLdthisbyvalueImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(LDTHISBYVALUE_IMM8);
 }
+
 void InterpreterAssembly::HandleStthisbynameImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(STTHISBYNAME_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleStthisbynameImm8Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(STTHISBYNAME_IMM8_ID16);
 }
+
 void InterpreterAssembly::HandleLdthisbynameImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(LDTHISBYNAME_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleLdthisbynameImm8Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(LDTHISBYNAME_IMM8_ID16);
 }
+
 void InterpreterAssembly::HandleLdexternalmodulevarImm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_8_0();
+
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue key = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+    LOG_INST() << "intrinsics::ldmodulevar "
+               << "string_id:" << stringId << ", "
+               << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdModuleVar(thread, key, false);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(LDEXTERNALMODULEVAR_IMM8);
 }
+
 void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t methodId = READ_INST_16_2();
+    uint16_t length = READ_INST_8_4();
+    LOG_INST() << "intrinsics::definemethod length: " << length;
+    SAVE_ACC();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    Method *method = Method::Cast(ConstantPool::GetMethodFromCache(thread, constantPool, methodId).GetTaggedObject());
+    ASSERT(method != nullptr);
+    RESTORE_ACC();
+
+    SAVE_PC();
+    JSTaggedValue homeObject = GET_ACC();
+    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
+
+    result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    JSTaggedValue taggedCurEnv = state->env;
+    result->SetLexicalEnv(thread, taggedCurEnv);
+
+    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    result->SetModule(thread, currentFunc->GetModule());
+    SET_ACC(JSTaggedValue(result));
+
+    DISPATCH(DEFINEMETHOD_IMM16_ID16_IMM8);
 }
+
 void InterpreterAssembly::HandleDeprecatedCallrangePrefImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(DEPRECATED_CALLRANGE_PREF_IMM16_V8);
 }
 
 void InterpreterAssembly::HandleCallrangeImm8Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLRANGE_IMM8_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleDynamicimport(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -4202,6 +6593,7 @@ void InterpreterAssembly::HandleDynamicimport(
     SET_ACC(res);
     DISPATCH(DYNAMICIMPORT);
 }
+
 void InterpreterAssembly::HandleDeprecatedDynamicimportPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -4216,130 +6608,902 @@ void InterpreterAssembly::HandleDeprecatedDynamicimportPrefV8(
     SET_ACC(res);
     DISPATCH(DYNAMICIMPORT);
 }
+
 void InterpreterAssembly::HandleCallargs3Imm8V8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLARGS3_IMM8_V8_V8_V8);
 }
+
 void InterpreterAssembly::HandleCallargs2Imm8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLARGS2_IMM8_V8_V8);
 }
+
 void InterpreterAssembly::HandleApplyImm8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_0();
+    uint16_t v1 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::callspread"
+                << " v" << v0 << " v" << v1;
+    JSTaggedValue func = GET_ACC();
+    JSTaggedValue obj = GET_VREG_VALUE(v0);
+    JSTaggedValue array = GET_VREG_VALUE(v1);
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CallSpread(thread, func, obj, array);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+
+    DISPATCH(APPLY_IMM8_V8_V8);
 }
+
 void InterpreterAssembly::HandleCallarg0Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLARG0_IMM8);
 }
+
 void InterpreterAssembly::HandleDefinemethodImm8Id16Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t methodId = READ_INST_16_1();
+    uint16_t length = READ_INST_8_3();
+    LOG_INST() << "intrinsics::definemethod length: " << length;
+    SAVE_ACC();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    Method *method = Method::Cast(ConstantPool::GetMethodFromCache(thread, constantPool, methodId).GetTaggedObject());
+    ASSERT(method != nullptr);
+    RESTORE_ACC();
+
+    SAVE_PC();
+    JSTaggedValue homeObject = GET_ACC();
+    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
+
+    result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    JSTaggedValue taggedCurEnv = state->env;
+    result->SetLexicalEnv(thread, taggedCurEnv);
+
+    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    result->SetModule(thread, currentFunc->GetModule());
+    SET_ACC(JSTaggedValue(result));
+
+    DISPATCH(DEFINEMETHOD_IMM8_ID16_IMM8);
 }
+
 void InterpreterAssembly::HandleDefinefuncImm16Id16Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t methodId = READ_INST_16_2();
+    uint16_t length = READ_INST_8_4();
+    LOG_INST() << "intrinsics::definefunc length: " << length;
+
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    Method *method = Method::Cast(ConstantPool::GetMethodFromCache(thread, constantPool, methodId).GetTaggedObject());
+    ASSERT(method != nullptr);
+
+    auto res = SlowRuntimeStub::DefineFunc(thread, method);
+    JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
+
+    jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    JSTaggedValue envHandle = state->env;
+    jsFunc->SetLexicalEnv(thread, envHandle);
+
+    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    jsFunc->SetModule(thread, currentFunc->GetModule());
+    SET_ACC(JSTaggedValue(jsFunc));
+
+    DISPATCH(DEFINEFUNC_IMM16_ID16_IMM8);
 }
+
 void InterpreterAssembly::HandleDefinefuncImm8Id16Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t methodId = READ_INST_16_1();
+    uint16_t length = READ_INST_8_3();
+    LOG_INST() << "intrinsics::definefunc length: " << length;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    Method *method = Method::Cast(ConstantPool::GetMethodFromCache(thread, constantPool, methodId).GetTaggedObject());
+    ASSERT(method != nullptr);
+
+    auto res = SlowRuntimeStub::DefineFunc(thread, method);
+    JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
+
+    jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    JSTaggedValue envHandle = state->env;
+    jsFunc->SetLexicalEnv(thread, envHandle);
+
+    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    jsFunc->SetModule(thread, currentFunc->GetModule());
+    jsFunc->SetHomeObject(thread, currentFunc->GetHomeObject());
+    SET_ACC(JSTaggedValue(jsFunc));
+
+    DISPATCH(DEFINEFUNC_IMM8_ID16_IMM8);
 }
+
 void InterpreterAssembly::HandleSupercallarrowrangeImm8Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t range = READ_INST_8_1();
+    uint16_t v0 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::supercall"
+               << " range: " << range << " v" << v0;
+
+    JSTaggedValue thisFunc = GET_ACC();
+    JSTaggedValue newTarget = GetNewTarget(sp);
+
+    SAVE_PC();
+    JSTaggedValue superCtor = SlowRuntimeStub::GetSuperConstructor(thread, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(superCtor);
+    JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
+
+    if (superCtor.IsJSFunction() && superCtor.IsConstructor() && !newTarget.IsUndefined()) {
+        JSFunction *superCtorFunc = JSFunction::Cast(superCtor.GetTaggedObject());
+        methodHandle.Update(superCtorFunc->GetMethod());
+        if (superCtorFunc->IsBuiltinConstructor()) {
+            ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
+            size_t frameSize =
+                InterpretedFrame::NumOfMembers() + range + NUM_MANDATORY_JSFUNC_ARGS + 2; // 2:thread & numArgs
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            // copy args
+            uint32_t index = 0;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp);
+            newSp[index++] = ToUintPtr(thread);
+            newSp[index++] = range + NUM_MANDATORY_JSFUNC_ARGS;
+            // func
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = superCtor.GetRawData();
+            // newTarget
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = newTarget.GetRawData();
+            // this
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            for (size_t i = 0; i < range; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(v0 + i);
+            }
+
+            InterpretedBuiltinFrame *state = GET_BUILTIN_FRAME(newSp);
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_BUILTIN_FRAME;
+            state->pc = nullptr;
+            state->function = superCtor;
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime SuperCall ";
+            JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
+                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+            thread->SetCurrentSPFrame(sp);
+
+            if (UNLIKELY(thread->HasPendingException())) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            LOG_INST() << "Exit: Runtime SuperCall ";
+            SET_ACC(retValue);
+            DISPATCH(SUPERCALLARROWRANGE_IMM8_IMM8_V8);
+        }
+
+        if (AssemblyIsFastNewFrameEnter(superCtorFunc, methodHandle)) {
+            SAVE_PC();
+            uint32_t numVregs = methodHandle->GetNumVregsWithCallField();
+            uint32_t numDeclaredArgs = superCtorFunc->IsBase() ?
+                methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
+                methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
+            // +1 for hidden this, explicit this may be overwritten after bc optimizer
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(newSp) - 1;
+
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+
+            uint32_t index = 0;
+            // initialize vregs value
+            for (size_t i = 0; i < numVregs; ++i) {
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // this
+            JSTaggedValue thisObj;
+            if (superCtorFunc->IsBase()) {
+                thisObj = FastRuntimeStub::NewThisObject(thread, superCtor, newTarget, state);
+                INTERPRETER_RETURN_IF_ABRUPT(thisObj);
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+            } else {
+                ASSERT(superCtorFunc->IsDerivedConstructor());
+                newSp[index++] = newTarget.GetRawData();
+                thisObj = JSTaggedValue::Undefined();
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+
+                state->function = superCtor;
+                state->constpool = methodHandle->GetConstantPool();
+                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
+                state->env = superCtorFunc->GetLexicalEnv();
+            }
+
+            // the second condition ensure not push extra args
+            for (size_t i = 0; i < range && index < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(v0 + i);
+            }
+
+            // set undefined to the extra prats of declare
+            for (size_t i = index; i < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // hidden this object
+            newSp[index] = thisObj.GetRawData();
+
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->pc = pc = methodHandle->GetBytecodeArray();
+            sp = newSp;
+            state->acc = JSTaggedValue::Hole();
+
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime SuperCall " << std::hex << reinterpret_cast<uintptr_t>(sp)
+                                    << " " << std::hex << reinterpret_cast<uintptr_t>(pc);
+            DISPATCH_OFFSET(0);
+        }
+    }
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::SuperCall(thread, thisFunc, newTarget, v0, range);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(SUPERCALLARROWRANGE_IMM8_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleSupercallthisrangeImm8Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t range = READ_INST_8_1();
+    uint16_t v0 = READ_INST_8_2();
+    LOG_INST() << "intrinsics::supercall"
+               << " range: " << range << " v" << v0;
+
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue newTarget = GetNewTarget(sp);
+
+    SAVE_PC();
+    JSTaggedValue superCtor = SlowRuntimeStub::GetSuperConstructor(thread, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(superCtor);
+
+    JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
+    if (superCtor.IsJSFunction() && superCtor.IsConstructor() && !newTarget.IsUndefined()) {
+        JSFunction *superCtorFunc = JSFunction::Cast(superCtor.GetTaggedObject());
+        methodHandle.Update(superCtorFunc->GetMethod());
+        if (superCtorFunc->IsBuiltinConstructor()) {
+            ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
+            size_t frameSize =
+                InterpretedFrame::NumOfMembers() + range + NUM_MANDATORY_JSFUNC_ARGS + 2; // 2:thread & numArgs
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            // copy args
+            uint32_t index = 0;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp);
+            newSp[index++] = ToUintPtr(thread);
+            newSp[index++] = range + NUM_MANDATORY_JSFUNC_ARGS;
+            // func
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = superCtor.GetRawData();
+            // newTarget
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = newTarget.GetRawData();
+            // this
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            for (size_t i = 0; i < range; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(v0 + i);
+            }
+
+            InterpretedBuiltinFrame *state = GET_BUILTIN_FRAME(newSp);
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_BUILTIN_FRAME;
+            state->pc = nullptr;
+            state->function = superCtor;
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime SuperCall ";
+            JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
+                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+            thread->SetCurrentSPFrame(sp);
+
+            if (UNLIKELY(thread->HasPendingException())) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            LOG_INST() << "Exit: Runtime SuperCall ";
+            SET_ACC(retValue);
+            DISPATCH(SUPERCALLTHISRANGE_IMM8_IMM8_V8);
+        }
+
+        if (AssemblyIsFastNewFrameEnter(superCtorFunc, methodHandle)) {
+            SAVE_PC();
+            uint32_t numVregs = methodHandle->GetNumVregsWithCallField();
+            uint32_t numDeclaredArgs = superCtorFunc->IsBase() ?
+                methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
+                methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
+            // +1 for hidden this, explicit this may be overwritten after bc optimizer
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(newSp) - 1;
+
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+
+            uint32_t index = 0;
+            // initialize vregs value
+            for (size_t i = 0; i < numVregs; ++i) {
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // this
+            JSTaggedValue thisObj;
+            if (superCtorFunc->IsBase()) {
+                thisObj = FastRuntimeStub::NewThisObject(thread, superCtor, newTarget, state);
+                INTERPRETER_RETURN_IF_ABRUPT(thisObj);
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+            } else {
+                ASSERT(superCtorFunc->IsDerivedConstructor());
+                newSp[index++] = newTarget.GetRawData();
+                thisObj = JSTaggedValue::Undefined();
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+
+                state->function = superCtor;
+                state->constpool = methodHandle->GetConstantPool();
+                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
+                state->env = superCtorFunc->GetLexicalEnv();
+            }
+
+            // the second condition ensure not push extra args
+            for (size_t i = 0; i < range && index < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(v0 + i);
+            }
+
+            // set undefined to the extra prats of declare
+            for (size_t i = index; i < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // hidden this object
+            newSp[index] = thisObj.GetRawData();
+
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->pc = pc = methodHandle->GetBytecodeArray();
+            sp = newSp;
+            state->acc = JSTaggedValue::Hole();
+
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime SuperCall " << std::hex << reinterpret_cast<uintptr_t>(sp)
+                                    << " " << std::hex << reinterpret_cast<uintptr_t>(pc);
+            DISPATCH_OFFSET(0);
+        }
+    }
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::SuperCall(thread, thisFunc, newTarget, v0, range);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(SUPERCALLTHISRANGE_IMM8_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleCallthisrangeImm8Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLTHISRANGE_IMM8_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleCallthis3Imm8V8V8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLTHIS3_IMM8_V8_V8_V8_V8);
 }
+
 void InterpreterAssembly::HandleCallthis2Imm8V8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLTHIS2_IMM8_V8_V8_V8);
 }
+
 void InterpreterAssembly::HandleNewlexenvwithnameImm8Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t numVars = READ_INST_8_0();
+    uint16_t scopeId = READ_INST_16_1();
+    LOG_INST() << "intrinsics::newlexenvwithname"
+               << " numVars " << numVars << " scopeId " << scopeId;
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::NewLexicalEnvWithName(thread, numVars, scopeId);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+
+    SET_ACC(res);
+    (reinterpret_cast<InterpretedFrame *>(sp) - 1)->env = res;
+    DISPATCH(NEWLEXENVWITHNAME_IMM8_ID16);
 }
+
 void InterpreterAssembly::HandleNewobjrangeImm16Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t numArgs = READ_INST_8_2();
+    uint16_t firstArgRegIdx = READ_INST_8_3();
+    LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
+    JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
+
+    JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
+    if (ctor.IsJSFunction() && ctor.IsConstructor()) {
+        JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
+        methodHandle.Update(ctorFunc->GetMethod());
+        if (ctorFunc->IsBuiltinConstructor()) {
+            ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 3;  // 3: this & numArgs & thread
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            // copy args
+            uint32_t index = 0;
+            // numArgs
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
+            newSp[index++] = ToUintPtr(thread);
+            newSp[index++] = numArgs + 1; // +1 for this
+            // func
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = GET_VREG(firstArgRegIdx);
+            // newTarget
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = GET_VREG(firstArgRegIdx + 1);
+            // this
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            for (size_t i = 2; i < numArgs; ++i) {  // 2: func and newTarget
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(firstArgRegIdx + i);
+            }
+
+            InterpretedBuiltinFrame *state = GET_BUILTIN_FRAME(newSp);
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_BUILTIN_FRAME;
+            state->pc = nullptr;
+            state->function = ctor;
+            thread->SetCurrentSPFrame(newSp);
+
+            LOG_INST() << "Entry: Runtime New.";
+            SAVE_PC();
+            JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
+                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+            thread->SetCurrentSPFrame(sp);
+            if (UNLIKELY(thread->HasPendingException())) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            LOG_INST() << "Exit: Runtime New.";
+            SET_ACC(retValue);
+            DISPATCH(NEWOBJRANGE_IMM16_IMM8_V8);
+        }
+
+        if (AssemblyIsFastNewFrameEnter(ctorFunc, methodHandle)) {
+            SAVE_PC();
+            uint32_t numVregs = methodHandle->GetNumVregsWithCallField();
+            uint32_t numDeclaredArgs = ctorFunc->IsBase() ?
+                                       methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
+                                       methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
+            // +1 for hidden this, explicit this may be overwritten after bc optimizer
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(newSp) - 1;
+
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+
+            uint32_t index = 0;
+            // initialize vregs value
+            for (size_t i = 0; i < numVregs; ++i) {
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // this
+            JSTaggedValue thisObj;
+            if (ctorFunc->IsBase()) {
+                JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+                thisObj = FastRuntimeStub::NewThisObject(thread, ctor, newTarget, state);
+                INTERPRETER_RETURN_IF_ABRUPT(thisObj);
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+            } else {
+                ASSERT(ctorFunc->IsDerivedConstructor());
+                JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+                newSp[index++] = newTarget.GetRawData();
+                thisObj = JSTaggedValue::Undefined();
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+
+                state->function = ctor;
+                state->constpool = methodHandle->GetConstantPool();
+                state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
+                state->env = ctorFunc->GetLexicalEnv();
+            }
+
+            // the second condition ensure not push extra args
+            for (size_t i = 2; i < numArgs && index < numVregs + numDeclaredArgs; ++i) {  // 2: func and newTarget
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(firstArgRegIdx + i);
+            }
+
+            // set undefined to the extra prats of declare
+            for (size_t i = index; i < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // hidden this object
+            newSp[index] = thisObj.GetRawData();
+
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->pc = pc = methodHandle->GetBytecodeArray();
+            sp = newSp;
+            state->acc = JSTaggedValue::Hole();
+
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime New " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
+                                    << std::hex << reinterpret_cast<uintptr_t>(pc);
+            DISPATCH_OFFSET(0);
+        }
+    }
+
+    // bound function, proxy, other call types, enter slow path
+    constexpr uint16_t firstArgOffset = 2;
+    JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+    // Exclude func and newTarget
+    uint16_t firstArgIdx = firstArgRegIdx + firstArgOffset;
+    uint16_t length = numArgs - firstArgOffset;
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, newTarget, firstArgIdx, length);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(NEWOBJRANGE_IMM16_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleNewobjrangeImm8Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t numArgs = READ_INST_8_1();
+    uint16_t firstArgRegIdx = READ_INST_8_2();
+    LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
+    JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
+
+    JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
+    if (ctor.IsJSFunction() && ctor.IsConstructor()) {
+        JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
+        methodHandle.Update(ctorFunc->GetMethod());
+        if (ctorFunc->IsBuiltinConstructor()) {
+            ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 3;  // 3: this & numArgs & thread
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            // copy args
+            uint32_t index = 0;
+            // numArgs
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
+            newSp[index++] = ToUintPtr(thread);
+            newSp[index++] = numArgs + 1; // +1 for this
+            // func
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = GET_VREG(firstArgRegIdx);
+            // newTarget
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = GET_VREG(firstArgRegIdx + 1);
+            // this
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            for (size_t i = 2; i < numArgs; ++i) {  // 2: func and newTarget
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(firstArgRegIdx + i);
+            }
+
+            InterpretedBuiltinFrame *state = GET_BUILTIN_FRAME(newSp);
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_BUILTIN_FRAME;
+            state->pc = nullptr;
+            state->function = ctor;
+            thread->SetCurrentSPFrame(newSp);
+
+            LOG_INST() << "Entry: Runtime New.";
+            SAVE_PC();
+            JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
+                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+            thread->SetCurrentSPFrame(sp);
+            if (UNLIKELY(thread->HasPendingException())) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+            LOG_INST() << "Exit: Runtime New.";
+            SET_ACC(retValue);
+            DISPATCH(NEWOBJRANGE_IMM8_IMM8_V8);
+        }
+
+        if (AssemblyIsFastNewFrameEnter(ctorFunc, methodHandle)) {
+            SAVE_PC();
+            uint32_t numVregs = methodHandle->GetNumVregsWithCallField();
+            uint32_t numDeclaredArgs = ctorFunc->IsBase() ?
+                                       methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
+                                       methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
+            // +1 for hidden this, explicit this may be overwritten after bc optimizer
+            size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            JSTaggedType *newSp = sp - frameSize;
+            InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(newSp) - 1;
+
+            if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {
+                INTERPRETER_GOTO_EXCEPTION_HANDLER();
+            }
+
+            uint32_t index = 0;
+            // initialize vregs value
+            for (size_t i = 0; i < numVregs; ++i) {
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // this
+            JSTaggedValue thisObj;
+            if (ctorFunc->IsBase()) {
+                JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+                thisObj = FastRuntimeStub::NewThisObject(thread, ctor, newTarget, state);
+                INTERPRETER_RETURN_IF_ABRUPT(thisObj);
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+            } else {
+                ASSERT(ctorFunc->IsDerivedConstructor());
+                JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+                newSp[index++] = newTarget.GetRawData();
+                thisObj = JSTaggedValue::Undefined();
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = thisObj.GetRawData();
+
+                state->function = ctor;
+                state->constpool = methodHandle->GetConstantPool();
+                state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
+                state->env = ctorFunc->GetLexicalEnv();
+            }
+
+            // the second condition ensure not push extra args
+            for (size_t i = 2; i < numArgs && index < numVregs + numDeclaredArgs; ++i) {  // 2: func and newTarget
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = GET_VREG(firstArgRegIdx + i);
+            }
+
+            // set undefined to the extra prats of declare
+            for (size_t i = index; i < numVregs + numDeclaredArgs; ++i) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
+            }
+
+            // hidden this object
+            newSp[index] = thisObj.GetRawData();
+
+            state->base.prev = sp;
+            state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->pc = pc = methodHandle->GetBytecodeArray();
+            sp = newSp;
+            state->acc = JSTaggedValue::Hole();
+
+            thread->SetCurrentSPFrame(newSp);
+            LOG_INST() << "Entry: Runtime New " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
+                                    << std::hex << reinterpret_cast<uintptr_t>(pc);
+            DISPATCH_OFFSET(0);
+        }
+    }
+
+    // bound function, proxy, other call types, enter slow path
+    constexpr uint16_t firstArgOffset = 2;
+    JSTaggedValue newTarget = GET_VREG_VALUE(firstArgRegIdx + 1);
+    // Exclude func and newTarget
+    uint16_t firstArgIdx = firstArgRegIdx + firstArgOffset;
+    uint16_t length = numArgs - firstArgOffset;
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, newTarget, firstArgIdx, length);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(NEWOBJRANGE_IMM8_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleNewobjapplyImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t v0 = READ_INST_8_2();
+    LOG_INST() << "intrinsic::newobjspeard"
+               << " v" << v0;
+    JSTaggedValue func = GET_VREG_VALUE(v0);
+    JSTaggedValue array = GET_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::NewObjApply(thread, func, array);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(NEWOBJAPPLY_IMM16_V8);
 }
+
 void InterpreterAssembly::HandleCreateregexpwithliteralImm16Id16Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t stringId = READ_INST_16_2();
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSTaggedValue pattern = ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(stringId);
+    uint8_t flags = READ_INST_8_4();
+    LOG_INST() << "intrinsics::createregexpwithliteral "
+               << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(pattern.GetTaggedObject()))
+               << ", flags:" << flags;
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CreateRegExpWithLiteral(thread, pattern, flags);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8);
 }
+
 void InterpreterAssembly::HandleCreateobjectwithbufferImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t imm = READ_INST_16_2();
+    LOG_INST() << "intrinsics::createobjectwithbuffer"
+               << " imm:" << imm;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSObject *result = JSObject::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(imm).GetTaggedObject());
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(CREATEOBJECTWITHBUFFER_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleCreateobjectwithbufferImm8Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t imm = READ_INST_16_1();
+    LOG_INST() << "intrinsics::createobjectwithbuffer"
+               << " imm:" << imm;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSObject *result = JSObject::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(imm).GetTaggedObject());
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(CREATEOBJECTWITHBUFFER_IMM8_ID16);
 }
+
 void InterpreterAssembly::HandleLdnewtarget(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(LDNEWTARGET);
 }
+
 void InterpreterAssembly::HandleLdthis(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(LDTHIS);
 }
+
 void InterpreterAssembly::HandleCreatearraywithbufferImm8Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t imm = READ_INST_16_1();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    LOG_INST() << "intrinsics::createarraywithbuffer"
+               << " imm:" << imm;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSArray *result = JSArray::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(imm).GetTaggedObject());
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CreateArrayWithBuffer(thread, factory, result);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(CREATEARRAYWITHBUFFER_IMM8_ID16);
 }
+
 void InterpreterAssembly::HandleCreatearraywithbufferImm16Id16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    uint16_t imm = READ_INST_16_2();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    LOG_INST() << "intrinsics::createarraywithbuffer"
+               << " imm:" << imm;
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    JSTaggedValue constantPool = state->constpool;
+    JSArray *result = JSArray::Cast(ConstantPool::Cast(constantPool.GetTaggedObject())
+        ->GetObjectFromCache(imm).GetTaggedObject());
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::CreateArrayWithBuffer(thread, factory, result);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(CREATEARRAYWITHBUFFER_IMM16_ID16);
 }
+
 void InterpreterAssembly::HandleCallthis0Imm8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLTHIS0_IMM8_V8);
 }
+
 void InterpreterAssembly::HandleCallthis1Imm8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
+    DISPATCH(CALLTHIS1_IMM8_V8_V8);
 }
 
 void InterpreterAssembly::HandleNop(
