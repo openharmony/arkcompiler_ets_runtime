@@ -111,9 +111,9 @@ void TypeLowering::LowerTypeConvert(GateRef gate)
 {
     GateAccessor acc(circuit_);
     auto mergeType = acc.GetBitField(gate);
-    auto temp = mergeType >> 32;
+    auto temp = mergeType >> CircuitBuilder::FROM_TYPE_SHIFT;
     auto typeLeft = GateType(static_cast<uint32_t>(temp));
-    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << 32)));
+    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << CircuitBuilder::FROM_TYPE_SHIFT)));
     if (typeRight.IsNumberType()) {
         GateRef value = acc_.GetValueIn(gate, 0);
         if (typeLeft.IsPrimitiveType() && !typeLeft.IsStringType()) {
@@ -182,9 +182,9 @@ void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 void TypeLowering::LowerTypeAdd(GateRef gate)
 {
     auto mergeType = acc_.GetBitField(gate);
-    auto temp = mergeType >> 32;
+    auto temp = mergeType >> CircuitBuilder::FROM_TYPE_SHIFT;
     auto typeLeft = GateType(static_cast<uint32_t>(temp));
-    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << 32)));
+    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << CircuitBuilder::FROM_TYPE_SHIFT)));
     if (typeLeft.IsNumberType() && typeRight.IsNumberType()) {
         // lower number add
         return;
