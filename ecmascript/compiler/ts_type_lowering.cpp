@@ -40,19 +40,19 @@ void TSTypeLowering::Lower(GateRef gate)
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case EcmaBytecode::ADD2:
+        case ADD2DYN_PREF_V8:
             // lower JS_ADD
             break;
-        case EcmaBytecode::SUB2:
+        case SUB2DYN_PREF_V8:
             // lower JS_Sub
             break;
-        case EcmaBytecode::MUL2:
+        case MUL2DYN_PREF_V8:
             // lower JS_Mul
             break;
-        case EcmaBytecode::LESS:
+        case LESSDYN_PREF_V8:
             // lower JS_LESS
             break;
-        case EcmaBytecode::LESSEQ:
+        case LESSEQDYN_PREF_V8:
             // lower JS_LESSEQ
             break;
         default:

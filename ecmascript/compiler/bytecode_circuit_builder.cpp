@@ -36,113 +36,101 @@ void BytecodeCircuitBuilder::BytecodeToCircuit()
 
 void BytecodeCircuitBuilder::CollectBytecodeBlockInfo(uint8_t *pc, std::vector<CfgInfo> &bytecodeBlockInfos)
 {
-    // TODO
-    (void)pc;
-    (void)bytecodeBlockInfos;
-    /*
     auto opcode = static_cast<EcmaBytecode>(*pc);
     switch (opcode) {
         case EcmaBytecode::JMP_IMM8: {
             int8_t offset = static_cast<int8_t>(READ_INST_8_0());
-            constexpr size_t defaultOffset = BytecodeInstruction::Size(EcmaBytecode::JMP_IMM8);
             std::vector<uint8_t *> temp;
             temp.emplace_back(pc + offset);
             // current basic block end
             bytecodeBlockInfos.emplace_back(pc, SplitKind::END, temp);
-            bytecodeBlockInfos.emplace_back(pc + defaultOffset, SplitKind::START,
-                                            std::vector<uint8_t *>(1, pc + defaultOffset));
+            bytecodeBlockInfos.emplace_back(pc + BytecodeOffset::TWO, SplitKind::START,
+                                            std::vector<uint8_t *>(1, pc + BytecodeOffset::TWO));
             // jump basic block start
             bytecodeBlockInfos.emplace_back(pc + offset, SplitKind::START, std::vector<uint8_t *>(1, pc + offset));
-            break;
         }
+            break;
         case EcmaBytecode::JMP_IMM16: {
             int16_t offset = static_cast<int16_t>(READ_INST_16_0());
-            constexpr size_t defaultOffset = BytecodeInstruction::Size(EcmaBytecode::JMP_IMM16);
             std::vector<uint8_t *> temp;
             temp.emplace_back(pc + offset);
             bytecodeBlockInfos.emplace_back(pc, SplitKind::END, temp);
-            bytecodeBlockInfos.emplace_back(pc + defaultOffset, SplitKind::START,
-                                            std::vector<uint8_t *>(1, pc + defaultOffset));
+            bytecodeBlockInfos.emplace_back(pc + BytecodeOffset::THREE, SplitKind::START,
+                                            std::vector<uint8_t *>(1, pc + BytecodeOffset::THREE));
             bytecodeBlockInfos.emplace_back(pc + offset, SplitKind::START,
                                             std::vector<uint8_t *>(1, pc + offset));
-            break;
         }
+            break;
         case EcmaBytecode::JMP_IMM32: {
             int32_t offset = static_cast<int32_t>(READ_INST_32_0());
-            constexpr size_t defaultOffset = BytecodeInstruction::Size(EcmaBytecode::JMP_IMM32);
             std::vector<uint8_t *> temp;
             temp.emplace_back(pc + offset);
             bytecodeBlockInfos.emplace_back(pc, SplitKind::END, temp);
-            bytecodeBlockInfos.emplace_back(pc + defaultOffset, SplitKind::START,
-                                            std::vector<uint8_t *>(1, pc + defaultOffset));
+            bytecodeBlockInfos.emplace_back(pc + BytecodeOffset::FIVE, SplitKind::START,
+                                            std::vector<uint8_t *>(1, pc + BytecodeOffset::FIVE));
             bytecodeBlockInfos.emplace_back(pc + offset, SplitKind::START, std::vector<uint8_t *>(1, pc + offset));
-            break;
         }
+            break;
         case EcmaBytecode::JEQZ_IMM8: {
-            constexpr size_t defaultOffset = BytecodeInstruction::Size(EcmaBytecode::JEQZ_IMM8);
             std::vector<uint8_t *> temp;
-            temp.emplace_back(pc + defaultOffset);   // first successor
+            temp.emplace_back(pc + BytecodeOffset::TWO);   // first successor
             int8_t offset = static_cast<int8_t>(READ_INST_8_0());
             temp.emplace_back(pc + offset);  // second successor
             // condition branch current basic block end
             bytecodeBlockInfos.emplace_back(pc, SplitKind::END, temp);
             // first branch basic block start
-            bytecodeBlockInfos.emplace_back(pc + defaultOffset, SplitKind::START,
-                                            std::vector<uint8_t *>(1, pc + defaultOffset));
+            bytecodeBlockInfos.emplace_back(pc + BytecodeOffset::TWO, SplitKind::START,
+                                            std::vector<uint8_t *>(1, pc + BytecodeOffset::TWO));
             // second branch basic block start
             bytecodeBlockInfos.emplace_back(pc + offset, SplitKind::START, std::vector<uint8_t *>(1, pc + offset));
-            break;
         }
+            break;
         case EcmaBytecode::JEQZ_IMM16: {
-            constexpr size_t defaultOffset = BytecodeInstruction::Size(EcmaBytecode::JEQZ_IMM16);
             std::vector<uint8_t *> temp;
-            temp.emplace_back(pc + defaultOffset);   // first successor
+            temp.emplace_back(pc + BytecodeOffset::THREE);   // first successor
             int16_t offset = static_cast<int16_t>(READ_INST_16_0());
             temp.emplace_back(pc + offset);  // second successor
             bytecodeBlockInfos.emplace_back(pc, SplitKind::END, temp); // end
-            bytecodeBlockInfos.emplace_back(pc + defaultOffset, SplitKind::START,
-                                            std::vector<uint8_t *>(1, pc + defaultOffset));
+            bytecodeBlockInfos.emplace_back(pc + BytecodeOffset::THREE, SplitKind::START,
+                                            std::vector<uint8_t *>(1, pc + BytecodeOffset::THREE));
             bytecodeBlockInfos.emplace_back(pc + offset, SplitKind::START, std::vector<uint8_t *>(1, pc + offset));
-            break;
         }
+            break;
         case EcmaBytecode::JNEZ_IMM8: {
-            constexpr size_t defaultOffset = BytecodeInstruction::Size(EcmaBytecode::JNEZ_IMM8);
             std::vector<uint8_t *> temp;
-            temp.emplace_back(pc + defaultOffset); // first successor
+            temp.emplace_back(pc + BytecodeOffset::TWO); // first successor
             int8_t offset = static_cast<int8_t>(READ_INST_8_0());
             temp.emplace_back(pc + offset); // second successor
             bytecodeBlockInfos.emplace_back(pc, SplitKind::END, temp);
-            bytecodeBlockInfos.emplace_back(pc + defaultOffset, SplitKind::START,
-                                            std::vector<uint8_t *>(1, pc + defaultOffset));
+            bytecodeBlockInfos.emplace_back(pc + BytecodeOffset::TWO, SplitKind::START,
+                                            std::vector<uint8_t *>(1, pc + BytecodeOffset::TWO));
             bytecodeBlockInfos.emplace_back(pc + offset, SplitKind::START, std::vector<uint8_t *>(1, pc + offset));
-            break;
         }
+            break;
         case EcmaBytecode::JNEZ_IMM16: {
-            constexpr size_t defaultOffset = BytecodeInstruction::Size(EcmaBytecode::JNEZ_IMM16);
             std::vector<uint8_t *> temp;
-            temp.emplace_back(pc + defaultOffset); // first successor
+            temp.emplace_back(pc + BytecodeOffset::THREE); // first successor
             int16_t offset = static_cast<int16_t>(READ_INST_16_0());
             temp.emplace_back(pc + offset); // second successor
             bytecodeBlockInfos.emplace_back(pc, SplitKind::END, temp);
-            bytecodeBlockInfos.emplace_back(pc + defaultOffset, SplitKind::START,
-                                            std::vector<uint8_t *>(1, pc + defaultOffset));
+            bytecodeBlockInfos.emplace_back(pc + BytecodeOffset::THREE, SplitKind::START,
+                                            std::vector<uint8_t *>(1, pc + BytecodeOffset::THREE));
             bytecodeBlockInfos.emplace_back(pc + offset, SplitKind::START, std::vector<uint8_t *>(1, pc + offset));
-            break;
         }
-        case EcmaBytecode::RETURN:
-        case EcmaBytecode::RETURNUNDEFINED:
-        case EcmaBytecode::THROW:
-        case EcmaBytecode::THROWCONSTASSIGNMENT_V8:
-        case EcmaBytecode::THROWTHROWNOTEXISTS:
-        case EcmaBytecode::THROWPATTERNNONCOERCIBLE:
-        case EcmaBytecode::THROWDELETESUPERPROPERTY: {
+            break;
+        case EcmaBytecode::RETURN_DYN:
+        case EcmaBytecode::RETURNUNDEFINED_PREF:
+        case EcmaBytecode::THROWDYN_PREF:
+        case EcmaBytecode::THROWCONSTASSIGNMENT_PREF_V8:
+        case EcmaBytecode::THROWTHROWNOTEXISTS_PREF:
+        case EcmaBytecode::THROWPATTERNNONCOERCIBLE_PREF:
+        case EcmaBytecode::THROWDELETESUPERPROPERTY_PREF: {
             bytecodeBlockInfos.emplace_back(pc, SplitKind::END, std::vector<uint8_t *>(1, pc));
             break;
         }
         default:
             break;
     }
-    */
 }
 
 void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>,
@@ -201,12 +189,16 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(std::map<std::pair<uint8_t
                 if (iter == succs.cend()) {
                     auto opcode = static_cast<EcmaBytecode>(*(bytecodeBlockInfos_[i].pc));
                     switch (opcode) {
-                        case EcmaBytecode::JMP:
-                        case EcmaBytecode::JEQZ:
-                        case EcmaBytecode::JNEZ:
-                        case EcmaBytecode::RETURN:
-                        case EcmaBytecode::RETURNUNDEFINED:
-                        case EcmaBytecode::THROW: {
+                        case EcmaBytecode::JMP_IMM8:
+                        case EcmaBytecode::JMP_IMM16:
+                        case EcmaBytecode::JMP_IMM32:
+                        case EcmaBytecode::JEQZ_IMM8:
+                        case EcmaBytecode::JEQZ_IMM16:
+                        case EcmaBytecode::JNEZ_IMM8:
+                        case EcmaBytecode::JNEZ_IMM16:
+                        case EcmaBytecode::RETURN_DYN:
+                        case EcmaBytecode::RETURNUNDEFINED_PREF:
+                        case EcmaBytecode::THROWDYN_PREF: {
                             break;
                         }
                         default: {
@@ -267,7 +259,7 @@ void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo()
     // Supplementary end block info
     for (auto iter = endBlockPc.cbegin(); iter != endBlockPc.cend(); iter += 2) { // 2: index
         bytecodeBlockInfos_.emplace_back(*iter, SplitKind::END,
-                                         std::vector<uint8_t *>(1, *(iter + 1)));
+                                                          std::vector<uint8_t *>(1, *(iter + 1)));
     }
     // Supplementary start block info
     for (auto iter = startBlockPc.cbegin(); iter != startBlockPc.cend(); iter++) {
@@ -582,345 +574,530 @@ void BytecodeCircuitBuilder::RemoveDeadRegions(const std::map<size_t, size_t> &b
 BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
 {
     BytecodeInfo info;
-    BytecodeInstruction inst(pc);
-    auto opcode = inst.GetOpcode();
-    // TODO EcmaBytecode
-    info.opcode = static_cast<EcmaBytecode>(opcode);
-    info.offset = BytecodeInstruction::Size(opcode);
-    info.accIn = inst.HasFlag(BytecodeInstruction::Flags::ACC_READ);
-    info.accOut = inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE);
-    // TODO
-    /*
+    auto opcode = static_cast<EcmaBytecode>(*pc);
+    info.opcode = opcode;
     switch (opcode) {
         case EcmaBytecode::MOV_V4_V4: {
             uint16_t vdst = READ_INST_4_0();
             uint16_t vsrc = READ_INST_4_1();
             info.vregOut.emplace_back(vdst);
+            info.offset = BytecodeOffset::TWO;
             info.inputs.emplace_back(VirtualRegister(vsrc));
             break;
         }
-        case EcmaBytecode::MOV_V8_V8: {
+        case EcmaBytecode::MOV_DYN_V8_V8: {
             uint16_t vdst = READ_INST_8_0();
             uint16_t vsrc = READ_INST_8_1();
             info.vregOut.emplace_back(vdst);
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(vsrc));
             break;
         }
-        case EcmaBytecode::MOV_V16_V16: {
+        case EcmaBytecode::MOV_DYN_V16_V16: {
             uint16_t vdst = READ_INST_16_0();
             uint16_t vsrc = READ_INST_16_2();
             info.vregOut.emplace_back(vdst);
+            info.offset = BytecodeOffset::FIVE;
             info.inputs.emplace_back(VirtualRegister(vsrc));
             break;
         }
-        case EcmaBytecode::LDA_STR_ID16: {
-            uint16_t imm = READ_INST_16_0();
+        case EcmaBytecode::LDA_STR_ID32: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
+            uint64_t imm = READ_INST_32_0();
             info.inputs.emplace_back(StringId(imm));
             break;
         }
         case EcmaBytecode::JMP_IMM8: {
+            info.offset = BytecodeOffset::TWO;
             break;
         }
         case EcmaBytecode::JMP_IMM16: {
+            info.offset = BytecodeOffset::THREE;
             break;
         }
         case EcmaBytecode::JMP_IMM32: {
+            info.offset = BytecodeOffset::FIVE;
             break;
         }
         case EcmaBytecode::JEQZ_IMM8: {
+            info.accIn = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
         case EcmaBytecode::JEQZ_IMM16: {
+            info.accIn = true;
+            info.offset = BytecodeOffset::THREE;
             break;
         }
         case EcmaBytecode::JNEZ_IMM8: {
+            info.accIn = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
         case EcmaBytecode::JNEZ_IMM16: {
+            info.accIn = true;
+            info.offset = BytecodeOffset::THREE;
             break;
         }
-        case EcmaBytecode::LDA_V8: {
+        case EcmaBytecode::LDA_DYN_V8: {
             uint16_t vsrc = READ_INST_8_0();
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             info.inputs.emplace_back(VirtualRegister(vsrc));
             break;
         }
-        case EcmaBytecode::STA_V8: {
+        case EcmaBytecode::STA_DYN_V8: {
             uint16_t vdst = READ_INST_8_0();
             info.vregOut.emplace_back(vdst);
+            info.accIn = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDAI_IMM32: {
+        case EcmaBytecode::LDAI_DYN_IMM32: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
             info.inputs.emplace_back(Immediate(READ_INST_32_0()));
             break;
         }
-        case EcmaBytecode::FLDAI_IMM64: {
+        case EcmaBytecode::FLDAI_DYN_IMM64: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::NINE;
             info.inputs.emplace_back(Immediate(READ_INST_64_0()));
             break;
         }
-        case EcmaBytecode::CALLARG0_IMM8_V8: {
+        case EcmaBytecode::CALLARG0DYN_PREF_V8: {
             uint32_t funcReg = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(funcReg));
             break;
         }
-        case EcmaBytecode::CALLARG1_IMM8_V8_V8: {
+        case EcmaBytecode::CALLARG1DYN_PREF_V8_V8: {
             uint32_t funcReg = READ_INST_8_1();
             uint32_t reg = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(funcReg));
             info.inputs.emplace_back(VirtualRegister(reg));
             break;
         }
-        case EcmaBytecode::CALLARGS2_IMM8_V8_V8_V8: {
+        case EcmaBytecode::CALLARGS2DYN_PREF_V8_V8_V8: {
             uint32_t funcReg = READ_INST_8_1();
             uint32_t reg0 = READ_INST_8_2();
             uint32_t reg1 = READ_INST_8_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
             info.inputs.emplace_back(VirtualRegister(funcReg));
             info.inputs.emplace_back(VirtualRegister(reg0));
             info.inputs.emplace_back(VirtualRegister(reg1));
             break;
         }
-        case EcmaBytecode::CALLARGS3_IMM8_V8_V8_V8_V8: {
+        case EcmaBytecode::CALLARGS3DYN_PREF_V8_V8_V8_V8: {
             uint32_t funcReg = READ_INST_8_1();
             uint32_t reg0 = READ_INST_8_2();
             uint32_t reg1 = READ_INST_8_3();
             uint32_t reg2 = READ_INST_8_4();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(VirtualRegister(funcReg));
             info.inputs.emplace_back(VirtualRegister(reg0));
             info.inputs.emplace_back(VirtualRegister(reg1));
             info.inputs.emplace_back(VirtualRegister(reg2));
             break;
         }
-        case EcmaBytecode::CALLTHISRANGE_IMM8_IMM16_V8: {
+        case EcmaBytecode::CALLITHISRANGEDYN_PREF_IMM16_V8: {
             uint32_t funcReg = READ_INST_8_3();
             uint32_t actualNumArgs = READ_INST_16_1();
             info.inputs.emplace_back(VirtualRegister(funcReg));
             for (size_t i = 1; i <= actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(funcReg + i));
             }
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
             break;
         }
-        case EcmaBytecode::CALLSPREAD_IMM8_V8_V8_V8: {
+        case EcmaBytecode::CALLSPREADDYN_PREF_V8_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v1 = READ_INST_8_2();
             uint16_t v2 = READ_INST_8_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             info.inputs.emplace_back(VirtualRegister(v2));
             break;
         }
-        case EcmaBytecode::CALLRANGE_IMM8_IMM16_V8: {
+        case EcmaBytecode::CALLIRANGEDYN_PREF_IMM16_V8: {
             uint32_t funcReg = READ_INST_8_3();
             uint32_t actualNumArgs = READ_INST_16_1();
             info.inputs.emplace_back(VirtualRegister(funcReg));
             for (size_t i = 1; i <= actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(funcReg + i));
             }
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
             break;
         }
-        case EcmaBytecode::RETURN: {
+        case EcmaBytecode::RETURN_DYN: {
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::ONE;
             break;
         }
-        case EcmaBytecode::RETURNUNDEFINED: {
+        case EcmaBytecode::RETURNUNDEFINED_PREF: {
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDNAN: {
+        case EcmaBytecode::LDNAN_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDINFINITY: {
+        case EcmaBytecode::LDINFINITY_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDUNDEFINED: {
+        case EcmaBytecode::LDGLOBALTHIS_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDNULL: {
+        case EcmaBytecode::LDUNDEFINED_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDSYMBOL: {
+        case EcmaBytecode::LDNULL_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDGLOBAL: {
+        case EcmaBytecode::LDSYMBOL_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDTRUE: {
+        case EcmaBytecode::LDGLOBAL_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDFALSE: {
+        case EcmaBytecode::LDTRUE_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDLEXENV: {
+        case EcmaBytecode::LDFALSE_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::GETUNMAPPEDARGS: {
+        case EcmaBytecode::LDLEXENVDYN_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::ASYNCFUNCTIONENTER: {
+        case EcmaBytecode::GETUNMAPPEDARGS_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::TONUMBER_IMM8: {
+        case EcmaBytecode::ASYNCFUNCTIONENTER_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::NEG_IMM8: {
-            break;
-        }
-        case EcmaBytecode::NOT_IMM8: {
-            break;
-        }
-        case EcmaBytecode::INC_IMM8: {
-            break;
-        }
-        case EcmaBytecode::DEC_IMM8: {
-            break;
-        }
-        case EcmaBytecode::THROW: {
-            break;
-        }
-        case EcmaBytecode::TYPEOF_IMM8: {
-            break;
-        }
-        case EcmaBytecode::GETPROPITERATOR: {
-            break;
-        }
-        case EcmaBytecode::RESUMEGENERATOR: {
-            break;
-        }
-        case EcmaBytecode::GETRESUMEMODE: {
-            break;
-        }
-        case EcmaBytecode::GETITERATOR_IMM8: {
-            break;
-        }
-        case EcmaBytecode::THROWCONSTASSIGNMENT_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::THROWTHROWNOTEXISTS: {
-            break;
-        }
-        case EcmaBytecode::THROWPATTERNNONCOERCIBLE: {
-            break;
-        }
-        case EcmaBytecode::THROW_IFNOTOBJECT_PREF_V8: {
+        case EcmaBytecode::TONUMBER_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::ITERNEXT_IMM8_V8: {
+        case EcmaBytecode::NEGDYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::CLOSEITERATOR_IMM8_V8: {
+        case EcmaBytecode::NOTDYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::ADD2_IMM8_V8: {
+        case EcmaBytecode::INCDYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::SUB2_IMM8_V8: {
+        case EcmaBytecode::DECDYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::MUL2_IMM8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
+        case EcmaBytecode::THROWDYN_PREF: {
+            info.accIn = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::DIV2_IMM8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
+        case EcmaBytecode::TYPEOFDYN_PREF: {
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::MOD2_IMM8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
+        case EcmaBytecode::GETPROPITERATOR_PREF: {
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::EQ_IMM8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::NOTEQ_IMM8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::LESS_IMM8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::LESSEQ_IMM8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::GREATER_IMM8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::GREATEREQ_IMM8_V8: {
+        case EcmaBytecode::RESUMEGENERATOR_PREF_V8: {
             uint16_t vs = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(vs));
             break;
         }
-        case EcmaBytecode::SHL2_IMM8_V8: {
+        case EcmaBytecode::GETRESUMEMODE_PREF_V8: {
+            uint16_t vs = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(vs));
+            break;
+        }
+        case EcmaBytecode::GETITERATOR_PREF: {
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
+            break;
+        }
+        case EcmaBytecode::THROWCONSTASSIGNMENT_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::SHR2_IMM8_V8: {
+        case EcmaBytecode::THROWTHROWNOTEXISTS_PREF: {
+            info.offset = BytecodeOffset::TWO;
+            break;
+        }
+        case EcmaBytecode::THROWPATTERNNONCOERCIBLE_PREF: {
+            info.offset = BytecodeOffset::TWO;
+            break;
+        }
+        case EcmaBytecode::THROWIFNOTOBJECT_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::ASHR2_IMM8_V8: {
+        case EcmaBytecode::ITERNEXT_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::AND2_IMM8_V8: {
+        case EcmaBytecode::CLOSEITERATOR_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::OR2_IMM8_V8: {
+        case EcmaBytecode::ADD2DYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::XOR2_IMM8_V8: {
+        case EcmaBytecode::SUB2DYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::DELOBJPROP_V8: {
-            uint16_t v0 = READ_INST_8_0();
+        case EcmaBytecode::MUL2DYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::DEFINEFUNC_IMM8_ID16_IMM16_V8: {
+        case EcmaBytecode::DIV2DYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::MOD2DYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::EQDYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::NOTEQDYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::LESSDYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::LESSEQDYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::GREATERDYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::GREATEREQDYN_PREF_V8: {
+            uint16_t vs = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(vs));
+            break;
+        }
+        case EcmaBytecode::SHL2DYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::SHR2DYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::ASHR2DYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::AND2DYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::OR2DYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::XOR2DYN_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::DELOBJPROP_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v1));
+            break;
+        }
+        case EcmaBytecode::DEFINEFUNCDYN_PREF_ID16_IMM16_V8: {
             uint16_t v0 = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(MethodId(READ_INST_16_1()));
             info.inputs.emplace_back(Immediate(READ_INST_16_3()));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::DEFINEMETHOD_IMM8_ID16_IMM16_V8: {
+        case EcmaBytecode::DEFINENCFUNCDYN_PREF_ID16_IMM16_V8: {
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_16_3();
             uint16_t v0 = READ_INST_8_5();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(MethodId(methodId));
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::NEWOBJRANGE_IMM8_IMM16_V8: {
+        case EcmaBytecode::DEFINEMETHOD_PREF_ID16_IMM16_V8: {
+            uint16_t methodId = READ_INST_16_1();
+            uint16_t length = READ_INST_16_3();
+            uint16_t v0 = READ_INST_8_5();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(MethodId(methodId));
+            info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::NEWOBJDYNRANGE_PREF_IMM16_V8: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
             uint16_t range = READ_INST_16_1();
             uint16_t firstArgRegIdx = READ_INST_8_3();
             for (uint16_t i = 0; i < range; ++i) {
@@ -928,418 +1105,584 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             }
             break;
         }
-        case EcmaBytecode::EXP_IMM8_V8: {
+        case EcmaBytecode::EXPDYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::ISIN_IMM8_V8: {
+        case EcmaBytecode::ISINDYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::INSTANCEOF_IMM8_V8: {
+        case EcmaBytecode::INSTANCEOFDYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::STRICTNOTEQ_IMM8_V8: {
+        case EcmaBytecode::STRICTNOTEQDYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::STRICTEQ_IMM8_V8: {
+        case EcmaBytecode::STRICTEQDYN_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::LDLEXVAR_IMM16_IMM16: {
-            uint16_t level = READ_INST_16_0();
-            uint16_t slot = READ_INST_16_2();
-            info.inputs.emplace_back(Immediate(level));
-            info.inputs.emplace_back(Immediate(slot));
-            break;
-        }
-        case EcmaBytecode::LDLEXVAR_IMM8_IMM8: {
-            uint16_t level = READ_INST_8_0();
-            uint16_t slot = READ_INST_8_1();
-            info.inputs.emplace_back(Immediate(level));
-            info.inputs.emplace_back(Immediate(slot));
-            break;
-        }
-        case EcmaBytecode::LDLEXVAR_IMM4_IMM4: {
-            uint16_t level = READ_INST_4_0();
-            uint16_t slot = READ_INST_4_1();
-            info.inputs.emplace_back(Immediate(level));
-            info.inputs.emplace_back(Immediate(slot));
-            break;
-        }
-        case EcmaBytecode::WIDE_STLEXVAR_PREF_IMM16_IMM16: {
+        case EcmaBytecode::LDLEXVARDYN_PREF_IMM16_IMM16: {
             uint16_t level = READ_INST_16_1();
             uint16_t slot = READ_INST_16_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
             break;
         }
-        case EcmaBytecode::STLEXVAR_IMM8_IMM8: {
-            uint16_t level = READ_INST_8_0();
-            uint16_t slot = READ_INST_8_1();
+        case EcmaBytecode::LDLEXVARDYN_PREF_IMM8_IMM8: {
+            uint16_t level = READ_INST_8_1();
+            uint16_t slot = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
             break;
         }
-        case EcmaBytecode::STLEXVAR_IMM4_IMM4: {
-            uint16_t level = READ_INST_4_0();
-            uint16_t slot = READ_INST_4_1();
+        case EcmaBytecode::LDLEXVARDYN_PREF_IMM4_IMM4: {
+            uint16_t level = READ_INST_4_2();
+            uint16_t slot = READ_INST_4_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
             break;
         }
-        case EcmaBytecode::NEWLEXENV_IMM8: {
-            uint8_t numVars = READ_INST_8_0();
-            info.inputs.emplace_back(Immediate(numVars));
+        case EcmaBytecode::STLEXVARDYN_PREF_IMM16_IMM16_V8: {
+            uint16_t level = READ_INST_16_1();
+            uint16_t slot = READ_INST_16_3();
+            uint16_t v0 = READ_INST_8_5();
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(Immediate(level));
+            info.inputs.emplace_back(Immediate(slot));
+            info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::WIDE_NEWLEXENV_PREF_IMM16: {
+        case EcmaBytecode::STLEXVARDYN_PREF_IMM8_IMM8_V8: {
+            uint16_t level = READ_INST_8_1();
+            uint16_t slot = READ_INST_8_2();
+            uint16_t v0 = READ_INST_8_3();
+            info.offset = BytecodeOffset::FIVE;
+            info.inputs.emplace_back(Immediate(level));
+            info.inputs.emplace_back(Immediate(slot));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::STLEXVARDYN_PREF_IMM4_IMM4_V8: {
+            uint16_t level = READ_INST_4_2();
+            uint16_t slot = READ_INST_4_3();
+            uint16_t v0 = READ_INST_8_2();
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(Immediate(level));
+            info.inputs.emplace_back(Immediate(slot));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::NEWLEXENVDYN_PREF_IMM16: {
             uint16_t numVars = READ_INST_16_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(Immediate(numVars));
             break;
         }
-        case EcmaBytecode::NEWLEXENVWITHNAME_IMM16_IMM16: {
-            uint16_t numVars = READ_INST_16_0();
-            uint16_t scopeId = READ_INST_16_2();
+        case EcmaBytecode::NEWLEXENVWITHNAMEDYN_PREF_IMM16_IMM16: {
+            uint16_t numVars = READ_INST_16_1();
+            uint16_t scopeId = READ_INST_16_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(Immediate(numVars));
             info.inputs.emplace_back(Immediate(scopeId));
             break;
         }
-        case EcmaBytecode::POPLEXENV: {
+        case EcmaBytecode::POPLEXENVDYN_PREF: {
+            info.accOut = false;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::CREATEITERRESULTOBJ_V8_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            uint16_t v1 = READ_INST_8_1();
+        case EcmaBytecode::CREATEITERRESULTOBJ_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::SUSPENDGENERATOR_V8_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            uint16_t v1 = READ_INST_8_1();
+        case EcmaBytecode::SUSPENDGENERATOR_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             uint32_t offset = pc - method_->GetBytecodeArray();
             info.inputs.emplace_back(Immediate(offset)); // Save the pc offset when suspend
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::ASYNCFUNCTIONAWAITUNCAUGHT_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::ASYNCFUNCTIONRESOLVE_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::ASYNCFUNCTIONREJECT_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::NEWOBJAPPLY_IMM8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8: {
+        case EcmaBytecode::ASYNCFUNCTIONAWAITUNCAUGHT_PREF_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v1 = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::STOWNBYNAME_IMM8_ID16_V8: {
-            uint16_t stringId = READ_INST_16_1();
-            uint32_t v0 = READ_INST_8_3();
-            info.inputs.emplace_back(StringId(stringId));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::CREATEEMPTYARRAY_IMM8: {
-            break;
-        }
-        case EcmaBytecode::CREATEEMPTYOBJECT: {
-            break;
-        }
-        case EcmaBytecode::CREATEOBJECTWITHBUFFER_IMM8_IMM16: {
-            uint16_t imm = READ_INST_16_1();
-            info.inputs.emplace_back(Immediate(imm));
-            break;
-        }
-        case EcmaBytecode::SETOBJECTWITHPROTO_IMM8_V8: {
+        case EcmaBytecode::ASYNCFUNCTIONRESOLVE_PREF_V8_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
+            uint16_t v2 = READ_INST_8_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v2));
+            break;
+        }
+        case EcmaBytecode::ASYNCFUNCTIONREJECT_PREF_V8_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v2 = READ_INST_8_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v2));
+            break;
+        }
+        case EcmaBytecode::NEWOBJSPREADDYN_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v1));
+            break;
+        }
+        case EcmaBytecode::THROWUNDEFINEDIFHOLE_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v1));
+            break;
+        }
+        case EcmaBytecode::STOWNBYNAME_PREF_ID32_V8: {
+            uint32_t stringId = READ_INST_32_1();
+            uint32_t v0 = READ_INST_8_5();
+            info.accIn = true;
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(StringId(stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::CREATEARRAYWITHBUFFER_IMM8_IMM16: {
+        case EcmaBytecode::CREATEEMPTYARRAY_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
+            break;
+        }
+        case EcmaBytecode::CREATEEMPTYOBJECT_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
+            break;
+        }
+        case EcmaBytecode::CREATEOBJECTWITHBUFFER_PREF_IMM16: {
             uint16_t imm = READ_INST_16_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(Immediate(imm));
             break;
         }
-        case EcmaBytecode::GETMODULENAMESPACE_ID16: {
-            uint16_t stringId = READ_INST_16_0();
+        case EcmaBytecode::SETOBJECTWITHPROTO_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v1));
+            break;
+        }
+        case EcmaBytecode::CREATEARRAYWITHBUFFER_PREF_IMM16: {
+            uint16_t imm = READ_INST_16_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(Immediate(imm));
+            break;
+        }
+        case EcmaBytecode::GETMODULENAMESPACE_PREF_ID32: {
+            uint32_t stringId = READ_INST_32_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(StringId(stringId));
             break;
         }
-        case EcmaBytecode::STMODULEVAR_ID16: {
-            uint16_t stringId = READ_INST_16_0();
+        case EcmaBytecode::STMODULEVAR_PREF_ID32: {
+            uint32_t stringId = READ_INST_32_1();
+            info.accIn = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(StringId(stringId));
             break;
         }
-        case EcmaBytecode::LDMODULEVAR_ID16_IMM8: {
-            uint16_t stringId = READ_INST_16_0();
-            uint8_t innerFlag = READ_INST_8_2();
+        case EcmaBytecode::COPYMODULE_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::LDMODULEVAR_PREF_ID32_IMM8: {
+            uint32_t stringId = READ_INST_32_1();
+            uint8_t innerFlag = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(StringId(stringId));
             info.inputs.emplace_back(Immediate(innerFlag));
             break;
         }
-        case EcmaBytecode::CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8: {
-            uint16_t stringId = READ_INST_16_1();
-            uint8_t flags = READ_INST_8_3();
+        case EcmaBytecode::CREATEREGEXPWITHLITERAL_PREF_ID32_IMM8: {
+            uint32_t stringId = READ_INST_32_1();
+            uint8_t flags = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(StringId(stringId));
             info.inputs.emplace_back(Immediate(flags));
             break;
         }
-        case EcmaBytecode::GETTEMPLATEOBJECT_IMM8: {
-            break;
-        }
-        case EcmaBytecode::GETNEXTPROPNAME_V8: {
-            uint16_t v0 = READ_INST_8_0();
+        case EcmaBytecode::GETTEMPLATEOBJECT_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::COPYDATAPROPERTIES_V8: {
-            uint16_t v0 = READ_INST_8_0();
+        case EcmaBytecode::GETNEXTPROPNAME_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::STOWNBYINDEX_IMM8_V8_IMM16: {
-            uint32_t v0 = READ_INST_8_1();
-            uint16_t index = READ_INST_16_2();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(Immediate(index));
-            break;
-        }
-        case EcmaBytecode::STOWNBYVALUE_IMM8_V8_V8: {
-            uint32_t v0 = READ_INST_8_1();
-            uint32_t v1 = READ_INST_8_2();
+        case EcmaBytecode::COPYDATAPROPERTIES_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8: {
-            uint8_t numKeys = READ_INST_8_0();
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t firstArgRegIdx = READ_INST_8_2();
-            info.inputs.emplace_back(Immediate(numKeys));
+        case EcmaBytecode::STOWNBYINDEX_PREF_V8_IMM32: {
+            uint32_t v0 = READ_INST_8_1();
+            uint32_t index = READ_INST_32_2();
+            info.accIn = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(Immediate(firstArgRegIdx));
+            info.inputs.emplace_back(Immediate(index));
             break;
         }
-        case EcmaBytecode::WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8: {
+        case EcmaBytecode::STOWNBYVALUE_PREF_V8_V8: {
+            uint32_t v0 = READ_INST_8_1();
+            uint32_t v1 = READ_INST_8_2();
+            info.accIn = true;
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v1));
+            break;
+        }
+        case EcmaBytecode::CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8: {
             uint16_t numKeys = READ_INST_16_1();
             uint16_t v0 = READ_INST_8_3();
             uint16_t firstArgRegIdx = READ_INST_8_4();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(Immediate(numKeys));
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(Immediate(firstArgRegIdx));
             break;
         }
-        case EcmaBytecode::LDHOLE: {
+        case EcmaBytecode::DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8: {
+            uint16_t methodId = READ_INST_16_1();
+            uint16_t length = READ_INST_16_3();
+            uint16_t v0 = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(MethodId(methodId));
+            info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::COPYRESTARGS_IMM8: {
-            uint16_t restIdx = READ_INST_8_0();
+        case EcmaBytecode::DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8: {
+            uint16_t methodId = READ_INST_16_1();
+            uint16_t length = READ_INST_16_3();
+            uint16_t v0 = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(MethodId(methodId));
+            info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::DEFINEASYNCFUNC_PREF_ID16_IMM16_V8: {
+            uint16_t methodId = READ_INST_16_1();
+            uint16_t length = READ_INST_16_3();
+            uint16_t v0 = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(MethodId(methodId));
+            info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::LDHOLE_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
+            break;
+        }
+        case EcmaBytecode::COPYRESTARGS_PREF_IMM16: {
+            uint16_t restIdx = READ_INST_16_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(Immediate(restIdx));
             break;
         }
-        case EcmaBytecode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            uint16_t v1 = READ_INST_8_1();
-            uint16_t v2 = READ_INST_8_2();
-            uint16_t v3 = READ_INST_8_3();
+        case EcmaBytecode::DEFINEGETTERSETTERBYVALUE_PREF_V8_V8_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            uint16_t v2 = READ_INST_8_3();
+            uint16_t v3 = READ_INST_8_4();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             info.inputs.emplace_back(VirtualRegister(v2));
             info.inputs.emplace_back(VirtualRegister(v3));
             break;
         }
-        case EcmaBytecode::LDOBJBYINDEX_IMM8_IMM16: {
-            uint16_t idx = READ_INST_16_1();
-            info.inputs.emplace_back(Immediate(idx));
-            break;
-        }
-        case EcmaBytecode::LDOBJBYINDEX_IMM16_IMM16: {
-            uint16_t idx = READ_INST_16_2();
-            info.inputs.emplace_back(Immediate(idx));
-            break;
-        }
-        case EcmaBytecode::WIDE_LDOBJBYINDEX_PREF_IMM32: {
-            uint32_t idx = READ_INST_32_1();
-            info.inputs.emplace_back(Immediate(idx));
-            break;
-        }
-        case EcmaBytecode::DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32: {
+        case EcmaBytecode::LDOBJBYINDEX_PREF_V8_IMM32: {
             uint16_t v0 = READ_INST_8_1();
             uint32_t idx = READ_INST_32_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(Immediate(idx));
             break;
         }
-        case EcmaBytecode::STOBJBYINDEX_IMM8_V8_IMM16: {
+        case EcmaBytecode::STOBJBYINDEX_PREF_V8_IMM32: {
             uint16_t v0 = READ_INST_8_1();
-            uint32_t index = READ_INST_16_2();
+            uint32_t index = READ_INST_32_2();
+            info.accIn = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(Immediate(index));
             break;
         }
-        case EcmaBytecode::LDOBJBYVALUE_IMM8_V8_V8: {
+        case EcmaBytecode::LDOBJBYVALUE_PREF_V8_V8: {
             uint32_t v0 = READ_INST_8_1();
             uint32_t v1 = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::STOBJBYVALUE_IMM8_V8_V8: {
+        case EcmaBytecode::STOBJBYVALUE_PREF_V8_V8: {
             uint32_t v0 = READ_INST_8_1();
             uint32_t v1 = READ_INST_8_2();
+            info.accIn = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::LDSUPERBYVALUE_IMM8_V8_V8: {
+        case EcmaBytecode::LDSUPERBYVALUE_PREF_V8_V8: {
             uint32_t v0 = READ_INST_8_1();
             uint32_t v1 = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::STSUPERBYVALUE_IMM8_V8_V8: {
+        case EcmaBytecode::STSUPERBYVALUE_PREF_V8_V8: {
             uint32_t v0 = READ_INST_8_1();
             uint32_t v1 = READ_INST_8_2();
+            info.accIn = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::TRYLDGLOBALBYNAME_IMM8_ID16: {
-            info.inputs.emplace_back(StringId(READ_INST_16_1()));
+        case EcmaBytecode::TRYLDGLOBALBYNAME_PREF_ID32: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::SIX;
+            info.inputs.emplace_back(StringId(READ_INST_32_1()));
             break;
         }
-        case EcmaBytecode::TRYSTGLOBALBYNAME_IMM8_ID16: {
-            info.inputs.emplace_back(StringId(READ_INST_16_1()));
+        case EcmaBytecode::TRYSTGLOBALBYNAME_PREF_ID32: {
+            info.accIn = true;
+            info.offset = BytecodeOffset::SIX;
+            info.inputs.emplace_back(StringId(READ_INST_32_1()));
             break;
         }
-        case EcmaBytecode::STCONSTTOGLOBALRECORD_ID16: {
-            info.inputs.emplace_back(StringId(READ_INST_16_0()));
+        case EcmaBytecode::STCONSTTOGLOBALRECORD_PREF_ID32: {
+            info.accIn = true;
+            info.offset = BytecodeOffset::SIX;
+            info.inputs.emplace_back(StringId(READ_INST_32_1()));
             break;
         }
-        case EcmaBytecode::STLETTOGLOBALRECORD_ID16: {
-            info.inputs.emplace_back(StringId(READ_INST_16_0()));
+        case EcmaBytecode::STLETTOGLOBALRECORD_PREF_ID32: {
+            info.accIn = true;
+            info.offset = BytecodeOffset::SIX;
+            info.inputs.emplace_back(StringId(READ_INST_32_1()));
             break;
         }
-        case EcmaBytecode::STCLASSTOGLOBALRECORD_ID16: {
-            info.inputs.emplace_back(StringId(READ_INST_16_0()));
+        case EcmaBytecode::STCLASSTOGLOBALRECORD_PREF_ID32: {
+            info.accIn = true;
+            info.offset = BytecodeOffset::SIX;
+            info.inputs.emplace_back(StringId(READ_INST_32_1()));
             break;
         }
-        case EcmaBytecode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8: {
+        case EcmaBytecode::STOWNBYVALUEWITHNAMESET_PREF_V8_V8: {
             uint32_t v0 = READ_INST_8_1();
             uint32_t v1 = READ_INST_8_2();
+            info.accIn = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8: {
-            uint16_t stringId = READ_INST_16_1();
-            uint32_t v0 = READ_INST_8_3();
+        case EcmaBytecode::STOWNBYNAMEWITHNAMESET_PREF_ID32_V8: {
+            uint32_t stringId = READ_INST_32_1();
+            uint32_t v0 = READ_INST_8_5();
+            info.accIn = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(StringId(stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::LDGLOBALVAR_IMM16_ID16: {
-            uint16_t stringId = READ_INST_16_2();
+        case EcmaBytecode::LDGLOBALVAR_PREF_ID32: {
+            uint32_t stringId = READ_INST_32_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(StringId(stringId));
             break;
         }
-        case EcmaBytecode::LDOBJBYNAME_IMM8_ID16: {
-            uint16_t stringId = READ_INST_16_1();
-            info.inputs.emplace_back(StringId(stringId));
-            break;
-        }
-        case EcmaBytecode::STOBJBYNAME_IMM8_ID16_V8: {
-            uint16_t stringId = READ_INST_16_1();
-            uint32_t v0 = READ_INST_8_3();
-            info.inputs.emplace_back(StringId(stringId));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::LDSUPERBYNAME_IMM8_ID16_V8: {
-            uint16_t stringId = READ_INST_16_1();
-            uint32_t v0 = READ_INST_8_3();
+        case EcmaBytecode::LDOBJBYNAME_PREF_ID32_V8: {
+            uint32_t stringId = READ_INST_32_1();
+            uint32_t v0 = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(StringId(stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::STSUPERBYNAME_IMM8_ID16_V8: {
-            uint16_t stringId = READ_INST_16_1();
-            uint32_t v0 = READ_INST_8_3();
+        case EcmaBytecode::STOBJBYNAME_PREF_ID32_V8: {
+            uint32_t stringId = READ_INST_32_1();
+            uint32_t v0 = READ_INST_8_5();
+            info.accIn = true;
+            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(StringId(stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::STGLOBALVAR_IMM16_ID16: {
-            uint16_t stringId = READ_INST_16_2();
+        case EcmaBytecode::LDSUPERBYNAME_PREF_ID32_V8: {
+            uint32_t stringId = READ_INST_32_1();
+            uint32_t v0 = READ_INST_8_5();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(StringId(stringId));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::STSUPERBYNAME_PREF_ID32_V8: {
+            uint32_t stringId = READ_INST_32_1();
+            uint32_t v0 = READ_INST_8_5();
+            info.accIn = true;
+            info.offset = BytecodeOffset::SEVEN;
+            info.inputs.emplace_back(StringId(stringId));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::STGLOBALVAR_PREF_ID32: {
+            uint32_t stringId = READ_INST_32_1();
+            info.accIn = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(StringId(stringId));
             break;
         }
-        case EcmaBytecode::CREATEGENERATOROBJ_V8: {
-            uint16_t v0 = READ_INST_8_0();
+        case EcmaBytecode::CREATEGENERATOROBJ_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::CREATEASYNCGENERATOROBJ_V8: {
-            uint16_t v0 = READ_INST_8_0();
+        case EcmaBytecode::CREATEASYNCGENERATOROBJ_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::ASYNCGENERATORRESOLVE_V8_V8_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            uint16_t v1 = READ_INST_8_1();
-            uint16_t v2 = READ_INST_8_2();
+        case EcmaBytecode::ASYNCGENERATORRESOLVE_PREF_V8_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            uint16_t v2 = READ_INST_8_3();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             info.inputs.emplace_back(VirtualRegister(v2));
             break;
         }
-        case EcmaBytecode::STARRAYSPREAD_V8_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            uint16_t v1 = READ_INST_8_1();
+        case EcmaBytecode::STARRAYSPREAD_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::GETITERATORNEXT_V8_V8: {
-            uint16_t v0 = READ_INST_8_0();
-            uint16_t v1 = READ_INST_8_1();
+        case EcmaBytecode::GETITERATORNEXT_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::DEFINECLASSWITHBUFFER_IMM8_ID16_IMM16_IMM16_V8_V8: {
+        case EcmaBytecode::DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8: {
             uint16_t methodId = READ_INST_16_1();
             uint16_t imm = READ_INST_16_3();
             uint16_t length = READ_INST_16_5();
             uint16_t v0 = READ_INST_8_7();
             uint16_t v1 = READ_INST_8_8();
+            info.accOut = true;
+            info.offset = BytecodeOffset::TEN;
             info.inputs.emplace_back(MethodId(methodId));
             info.inputs.emplace_back(Immediate(imm));
             info.inputs.emplace_back(Immediate(length));
@@ -1347,69 +1690,99 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaBytecode::LDFUNCTION: {
+        case EcmaBytecode::LDFUNCTION_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::LDBIGINT_ID16: {
-            uint16_t stringId = READ_INST_16_0();
+        case EcmaBytecode::LDBIGINT_PREF_ID32: {
+            uint32_t stringId = READ_INST_32_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(StringId(stringId));
             break;
         }
-        case EcmaBytecode::TONUMERIC_IMM8: {
-            break;
-        }
-        case EcmaBytecode::DYNAMICIMPORT: {
-            break;
-        }
-        case EcmaBytecode::SUPERCALL_IMM8_IMM16_V8: {
-            uint16_t range = READ_INST_16_1();
-            uint16_t v0 = READ_INST_8_3();
-            for (size_t i = 0; i < range; i++) {
-                info.inputs.emplace_back(VirtualRegister(v0 + i));
-            }
-            break;
-        }
-        case EcmaBytecode::SUPERCALLSPREAD_IMM8_V8: {
+        case EcmaBytecode::TONUMERIC_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::CREATEOBJECTHAVINGMETHOD_IMM8_IMM16: {
+        case EcmaBytecode::DYNAMICIMPORT_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::SUPERCALL_PREF_IMM16_V8: {
+            uint16_t range = READ_INST_16_1();
+            uint16_t v0 = READ_INST_8_3();
+            info.accIn = true;
+            for (size_t i = 0; i < range; i++) {
+                info.inputs.emplace_back(VirtualRegister(v0 + i));
+            }
+            info.accOut = true;
+            info.offset = BytecodeOffset::FIVE;
+            break;
+        }
+        case EcmaBytecode::SUPERCALLSPREAD_PREF_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::THREE;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaBytecode::CREATEOBJECTHAVINGMETHOD_PREF_IMM16: {
             uint16_t imm = READ_INST_16_1();
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(Immediate(imm));
             break;
         }
-        case EcmaBytecode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16: {
+        case EcmaBytecode::THROWIFSUPERNOTCORRECTCALL_PREF_IMM16: {
             uint16_t imm = READ_INST_16_1();
+            info.accIn = true;
+            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(Immediate(imm));
             break;
         }
-        case EcmaBytecode::LDHOMEOBJECT: {
+        case EcmaBytecode::LDHOMEOBJECT_PREF: {
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::THROWDELETESUPERPROPERTY: {
+        case EcmaBytecode::THROWDELETESUPERPROPERTY_PREF: {
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::DEBUGGER: {
+        case EcmaBytecode::DEBUGGER_PREF: {
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::ISTRUE: {
+        case EcmaBytecode::ISTRUE_PREF: {
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::ISFALSE: {
+        case EcmaBytecode::ISFALSE_PREF: {
+            info.accIn = true;
+            info.accOut = true;
+            info.offset = BytecodeOffset::TWO;
             break;
         }
-        case EcmaBytecode::NOP: {
-            break;
-        }
-        case EcmaOpcode::LDPATCHVAR_PREF_IMM16: {
+        case EcmaBytecode::LDPATCHVAR_PREF_IMM16: {
             uint32_t index = READ_INST_16_1();
             info.accOut = true;
             info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(Immediate(index));
             break;
         }
-        case EcmaOpcode::STPATCHVAR_PREF_IMM16: {
+        case EcmaBytecode::STPATCHVAR_PREF_IMM16: {
             uint32_t index = READ_INST_16_1();
             info.accIn = true;
             info.offset = BytecodeOffset::FOUR;
@@ -1422,7 +1795,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
     }
-    */
     return info;
 }
 
@@ -1435,7 +1807,7 @@ void BytecodeCircuitBuilder::InsertPhi()
         }
         EnumerateBlock(bb, [this, &defsitesInfo, &bb]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
-            if (bytecodeInfo.IsBc(EcmaBytecode::RESUMEGENERATOR)) {
+            if (bytecodeInfo.IsBc(EcmaBytecode::RESUMEGENERATOR_PREF_V8)) {
                 auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     bytecodeInfo.vregOut.emplace_back(i);
@@ -1492,7 +1864,7 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size
         std::set<size_t> vregs;
         EnumerateBlock(bb, [this, &vregs]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
-            if (bytecodeInfo.IsBc(EcmaBytecode::RESUMEGENERATOR)) {
+            if (bytecodeInfo.IsBc(EcmaBytecode::RESUMEGENERATOR_PREF_V8)) {
                 auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     vregs.insert(i);
@@ -1751,56 +2123,56 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
     auto opcode = static_cast<EcmaBytecode>(info.opcode);
     GateRef gate = 0;
     switch (opcode) {
-        case EcmaBytecode::LDNAN:
+        case EcmaBytecode::LDNAN_PREF:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                     base::NumberHelper::GetNaN(),
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
-        case EcmaBytecode::LDINFINITY:
+        case EcmaBytecode::LDINFINITY_PREF:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                     base::NumberHelper::GetPositiveInfinity(),
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
-        case EcmaBytecode::LDUNDEFINED:
+        case EcmaBytecode::LDUNDEFINED_PREF:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64, JSTaggedValue::VALUE_UNDEFINED,
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
-        case EcmaBytecode::LDNULL:
+        case EcmaBytecode::LDNULL_PREF:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64, JSTaggedValue::VALUE_NULL,
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
-        case EcmaBytecode::LDTRUE:
+        case EcmaBytecode::LDTRUE_PREF:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64, JSTaggedValue::VALUE_TRUE,
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
-        case EcmaBytecode::LDFALSE:
+        case EcmaBytecode::LDFALSE_PREF:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64, JSTaggedValue::VALUE_FALSE,
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
-        case EcmaBytecode::LDHOLE:
+        case EcmaBytecode::LDHOLE_PREF:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64, JSTaggedValue::VALUE_HOLE,
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedNPointer());
             break;
-        case EcmaBytecode::LDAI:
+        case EcmaBytecode::LDAI_DYN_IMM32:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                     std::get<Immediate>(info.inputs[0]).ToJSTaggedValueInt(),
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
-        case EcmaBytecode::FLDAI:
+        case EcmaBytecode::FLDAI_DYN_IMM64:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                     std::get<Immediate>(info.inputs.at(0)).ToJSTaggedValueDouble(),
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                     GateType::TaggedValue());
             break;
-        case EcmaBytecode::LDFUNCTION:
+        case EcmaBytecode::LDFUNCTION_PREF:
             gate = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
             break;
         default:
@@ -1933,14 +2305,14 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, const uint8_t *pc, Ga
 {
     ASSERT(bb.succs.empty());
     auto bytecodeInfo = GetBytecodeInfo(pc);
-    if (static_cast<EcmaBytecode>(bytecodeInfo.opcode) == EcmaBytecode::RETURN) {
-        // handle return bytecode
+    if (static_cast<EcmaBytecode>(bytecodeInfo.opcode) == EcmaBytecode::RETURN_DYN) {
+        // handle return.dyn bytecode
         auto gate = circuit_.NewGate(OpCode(OpCode::RETURN), 0,
                                      { state, depend, Circuit::NullGate(),
                                      Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST)) },
                                      GateType::AnyType());
         jsgateToBytecode_[gate] = {bb.id, pc};
-    } else if (static_cast<EcmaBytecode>(bytecodeInfo.opcode) == EcmaBytecode::RETURNUNDEFINED) {
+    } else if (static_cast<EcmaBytecode>(bytecodeInfo.opcode) == EcmaBytecode::RETURNUNDEFINED_PREF) {
         // handle returnundefined bytecode
         auto constant = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                          JSTaggedValue::VALUE_UNDEFINED,
@@ -1977,10 +2349,10 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb, const uint8_t *pc, 
         // handle conditional jump and unconditional jump bytecodes
         NewJump(bb, pc, state, depend);
     } else if (bytecodeInfo.IsReturn()) {
-        // handle return and returnundefined bytecodes
+        // handle return.dyn and returnundefined bytecodes
         NewReturn(bb, pc, state, depend);
     } else if (bytecodeInfo.IsMov()) {
-        // handle mov lda sta bytecodes
+        // handle mov.dyn lda.dyn sta.dyn bytecodes
         if (pc == bb.end) {
             auto &bbNext = graph_[bb.id + 1];
             auto isLoopBack = bbNext.loopbackBlocks.count(bb.id);
@@ -2108,7 +2480,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
                 break;
             }
         }
-        if (static_cast<EcmaBytecode>(curInfo.opcode) != EcmaBytecode::RESUMEGENERATOR) {
+        if (static_cast<EcmaBytecode>(curInfo.opcode) != EcmaBytecode::RESUMEGENERATOR_PREF_V8) {
             continue;
         }
         // New RESTORE_REGISTER HIR, used to restore the register content when processing resume instruction.
@@ -2121,11 +2493,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
         auto saveRegGate = RenameVariable(bbId, *pcIter - 1, tmpReg, tmpAcc);
         auto nextPcIter = pcIter;
         nextPcIter++;
-        // TODO: delete after first level inst enabled
-        while (static_cast<EcmaBytecode>(GetBytecodeInfo(*nextPcIter).opcode) == EcmaBytecode::NOP) {
-            nextPcIter++;
-        }
-        ASSERT(static_cast<EcmaBytecode>(GetBytecodeInfo(*nextPcIter).opcode) == EcmaBytecode::SUSPENDGENERATOR);
+        ASSERT(GetBytecodeInfo(*nextPcIter).opcode == EcmaBytecode::SUSPENDGENERATOR_PREF_V8_V8);
         GateRef suspendGate = byteCodeToJSGate_.at(*nextPcIter);
         auto dependGate = gateAcc_.GetDep(suspendGate);
         auto newDependGate = circuit_.NewGate(OpCode(OpCode::SAVE_REGISTER), tmpReg, {dependGate, saveRegGate},

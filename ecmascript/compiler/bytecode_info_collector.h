@@ -61,9 +61,11 @@ private:
 
     // need to remove in the future
     static void FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst);
+    static void FixOpcode(uint8_t *pc);
 
     // need to remove in the future
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
+    static void UpdateEcmaBytecodeICOffset(MethodLiteral *method, uint8_t *pc);
 
     // need to remove in the future
     static void FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder = 0);

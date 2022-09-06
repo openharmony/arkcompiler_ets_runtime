@@ -140,20 +140,20 @@ private:
     GateRef FastEqual(GateRef left, GateRef right);
     GateRef FastDiv(GateRef left, GateRef right);
 
-    void LowerTypeNewObjRange(GateRef gate, GateRef glue);
-    void LowerTypeAdd2Dyn(GateRef gate, GateRef glue);
-    void LowerTypeSub2Dyn(GateRef gate);
-    void LowerTypeMul2Dyn(GateRef gate);
-    void LowerTypeMod2Dyn(GateRef gate, GateRef glue);
-    void LowerTypeLessDyn(GateRef gate);
-    void LowerTypeLessEqDyn(GateRef gate);
-    void LowerTypeGreaterDyn(GateRef gate);
-    void LowerTypeGreaterEqDyn(GateRef gate);
-    void LowerTypeDiv2Dyn(GateRef gate);
-    void LowerTypeEqDyn(GateRef gate);
-    void LowerTypeNotEqDyn(GateRef gate);
+    void LowerTypeNewObjDynRange(GateRef gate, GateRef glue);
+    void LowerTypeAdd2(GateRef gate, GateRef glue);
+    void LowerTypeSub2(GateRef gate);
+    void LowerTypeMul2(GateRef gate);
+    void LowerTypeMod2(GateRef gate, GateRef glue);
+    void LowerTypeLess(GateRef gate);
+    void LowerTypeLessEq(GateRef gate);
+    void LowerTypeGreater(GateRef gate);
+    void LowerTypeGreaterEq(GateRef gate);
+    void LowerTypeDiv2(GateRef gate);
+    void LowerTypeEq(GateRef gate);
+    void LowerTypeNotEq(GateRef gate);
     void LowerToNumeric(GateRef gate);
-    void LowerTypeIncDyn(GateRef gate);
+    void LowerTypeInc(GateRef gate);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
