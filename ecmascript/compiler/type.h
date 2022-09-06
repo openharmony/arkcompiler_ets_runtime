@@ -162,6 +162,28 @@ public:
         return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::UNDEFINED));
     }
 
+    bool IsBooleanType() const
+    {
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BOOLEAN));
+    }
+
+    bool IsBigIntType() const
+    {
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BIG_INT));
+    }
+
+    bool IsPrimitiveType() const
+    {
+        return IsNumberType() || IsStringType() || IsNullType()
+               || IsUndefinedType() || IsBooleanType() || IsBigIntType();
+    }
+
     bool IsGCRelated() const
     {
         return (type_ & (~GateType::GC_MASK)) == 0;

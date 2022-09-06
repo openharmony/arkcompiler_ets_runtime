@@ -116,7 +116,9 @@ private:
     void LowerType(GateRef gate);
     void LowerTypeCheck(GateRef gate);
     void LowerTypedBinaryOp(GateRef gate);
+    void LowerTypeConvert(GateRef gate);
     void LowerTypeAdd(GateRef gate);
+    void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
 
     void GenerateSuccessMerge(std::vector<GateRef> &successControl);
     void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);

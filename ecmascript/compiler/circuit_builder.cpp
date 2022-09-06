@@ -159,7 +159,7 @@ GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, 
     auto bin = Int8(static_cast<int8_t>(binOp));
     inList.emplace_back(bin);
     // merge two expected types of valueIns
-    uint64_t mergeType = (static_cast<uint64_t>(typeLeft.GetType()) << 32) |
+    uint64_t mergeType = (static_cast<uint64_t>(typeLeft.GetType()) << FROM_TYPE_SHIFT) |
                           static_cast<uint64_t>(typeRight.GetType());
     return GetCircuit()->NewGate(OpCode(OpCode::TYPED_BINARY_OP), type, mergeType, inList, GateType::AnyType());
 }
@@ -167,7 +167,8 @@ GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, 
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
                                     const std::vector<GateRef>& inList) {
     // merge types of valueIns before and after convertion
-    uint64_t mergeType = (static_cast<uint64_t>(typeFrom.GetType()) << 32) | static_cast<uint64_t>(typeTo.GetType());
+    uint64_t mergeType = (static_cast<uint64_t>(typeFrom.GetType()) << FROM_TYPE_SHIFT) |
+                          static_cast<uint64_t>(typeTo.GetType());
     return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CONVERT), type, mergeType, inList, GateType::AnyType());
 }
 
