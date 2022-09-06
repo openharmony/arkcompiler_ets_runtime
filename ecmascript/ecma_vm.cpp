@@ -405,7 +405,7 @@ bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                               const JSPandaFile *jsPandaFile)
 {
-    fileLoader_->UpdateJSMethods(jsPandaFile);
+    fileLoader_->UpdateJSMethods(mainFunc, jsPandaFile);
     std::vector<JSTaggedType> args(7, JSTaggedValue::Undefined().GetRawData()); // 7: number of para
     args[0] = mainFunc.GetTaggedValue().GetRawData();
     args[2] = thisArg.GetTaggedValue().GetRawData();  // 2: parameter of this
@@ -413,6 +413,7 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
     JSTaggedValue env = mainFunc->GetLexicalEnv();
     Method *method = mainFunc->GetCallTarget();
     args[6] = env.GetRawData(); // 6: last arg is env.
+    ASSERT(method->GetCodeEntry() != 0);
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             reinterpret_cast<uintptr_t>(thread_->GetCurrentSPFrame()),
                                                             static_cast<uint32_t>(args.size()) - 1,

@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import("//arkcompiler/ets_frontend/es2panda/es2abc_config.gni")
+import("//arkcompiler/ets_frontend/ts2panda/ts2abc_config.gni")
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//build/ohos.gni")
 import("//build/test.gni")
@@ -270,7 +271,7 @@ template("host_aot_js_test_action") {
   _test_aot_log_level = "info"
   _test_expect_path_ = "./expect_output.txt"
 
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  ts2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     src_js = rebase_path(_test_ts_path_)
@@ -388,7 +389,7 @@ template("host_aot_test_action") {
   _test_aot_log_level = "info"
   _test_expect_path_ = "./expect_output.txt"
 
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  ts2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     src_js = rebase_path(_test_ts_path_)
@@ -501,7 +502,7 @@ template("host_typeinfer_test_action") {
   _test_ts_path_ = "./${_target_name_}.ts"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
 
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  ts2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     src_js = rebase_path(_test_ts_path_)
@@ -524,7 +525,7 @@ template("host_typeinfer_test_action") {
       "//arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d.ts"
   _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
 
-  es2abc_gen_abc("gen_builtins_d_abc") {
+  ts2abc_gen_abc("gen_builtins_d_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
 
     # extra_dependencies = _deps_
