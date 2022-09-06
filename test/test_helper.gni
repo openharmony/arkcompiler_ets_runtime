@@ -222,9 +222,9 @@ template("host_moduletest_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    # 153: all bytecodes
+    # 214: all bytecodes
     _asm_run_options_ =
-        " --asm-interpreter=true --asm-opcode-disable-range=0,153"
+        " --asm-interpreter=true --asm-opcode-disable-range=0,214"
     if (defined(invoker.is_set_maxNonmovableSpaceCapacity) &&
         invoker.is_set_maxNonmovableSpaceCapacity) {
       _asm_run_options_ += " --maxNonmovableSpaceCapacity=524288"  # 0.5M

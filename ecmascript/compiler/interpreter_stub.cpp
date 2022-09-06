@@ -4582,9 +4582,8 @@ DECLARE_ASM_HANDLER(HandleSupercallarrowrangeImm8Imm8V8)
     // TODO same as HandleSupercallthisrangeImm8Imm8V8
     GateRef range = ReadInst8_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_2(pc));
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
-        { currentFunc, Int16ToTaggedInt(v0), Int8ToTaggedInt(range) });
+        { acc, Int16ToTaggedInt(v0), Int8ToTaggedInt(range) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(SUPERCALLARROWRANGE_IMM8_IMM8_V8));
 }
 
@@ -4603,9 +4602,8 @@ DECLARE_ASM_HANDLER(HandleWideSupercallarrowrangePrefImm16V8)
     // TODO same as HandleSupercallthisrangeImm8Imm8V8
     GateRef range = ReadInst16_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_3(pc));
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
-        { currentFunc, Int16ToTaggedInt(v0), Int16ToTaggedInt(range) });
+        { acc, Int16ToTaggedInt(v0), Int16ToTaggedInt(range) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8));
 }
 
