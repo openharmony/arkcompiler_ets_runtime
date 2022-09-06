@@ -1198,6 +1198,7 @@ public:
     static bool IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName);
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
+    static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
 
 private:
     static int vmCount_;

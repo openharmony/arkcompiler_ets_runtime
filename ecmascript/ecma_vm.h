@@ -427,6 +427,16 @@ public:
     HeapProfilerInterface *GetOrNewHeapProfile();
 #endif
 
+    void SetAssetPath(const CString &assetPath)
+    {
+        assetPath_ = assetPath;
+    }
+
+    CString GetAssetPath() const
+    {
+        return assetPath_;
+    }
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
@@ -536,6 +546,7 @@ private:
 #if !WIN_OR_MAC_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
+    CString assetPath_;
 
     // Registered Callbacks
     PromiseRejectCallback promiseRejectCallback_ {nullptr};

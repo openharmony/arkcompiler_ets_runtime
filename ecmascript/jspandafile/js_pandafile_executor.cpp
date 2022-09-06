@@ -29,7 +29,15 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 #if ECMASCRIPT_ENABLE_MERGE_ABC
     if (!thread->GetEcmaVM()->IsBundle()) {
         entry = JSPandaFile::ParseOhmUrl(filename.c_str());
+#if !WIN_OR_MAC_PLATFORM
         name = JSPandaFile::MERGE_ABC_PATH;
+#elif defined(PANDA_TARGET_WINDOWS)
+    CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
+    name = assetPath + "\\modules.abc";
+#else
+    CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
+    name = assetPath + "/modules.abc";
+#endif
     }
 #endif
     const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str());
