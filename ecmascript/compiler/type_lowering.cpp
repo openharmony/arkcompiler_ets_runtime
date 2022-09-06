@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/compiler/emca_bytecode.h"
+
 #include "ecmascript/compiler/type_lowering.h"
 
 namespace panda::ecmascript::kungfu {
@@ -43,47 +43,47 @@ void TypeLowering::Lower(GateRef gate)
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case EcmaBytecode::NEWOBJRANGE:
-            LowerTypeNewObjRange(gate, glue);
+        case NEWOBJDYNRANGE_PREF_IMM16_V8:
+            LowerTypeNewObjDynRange(gate, glue);
             break;
-        case EcmaBytecode::ADD2:
-            LowerTypeAdd2Dyn(gate, glue);
+        case ADD2DYN_PREF_V8:
+            LowerTypeAdd2(gate, glue);
             break;
-        case EcmaBytecode::SUB2:
-            LowerTypeSub2Dyn(gate);
+        case SUB2DYN_PREF_V8:
+            LowerTypeSub2(gate);
             break;
-        case EcmaBytecode::MUL2:
-            LowerTypeMul2Dyn(gate);
+        case MUL2DYN_PREF_V8:
+            LowerTypeMul2(gate);
             break;
-        case EcmaBytecode::MOD2:
-            LowerTypeMod2Dyn(gate, glue);
+        case MOD2DYN_PREF_V8:
+            LowerTypeMod2(gate, glue);
             break;
-        case EcmaBytecode::LESS:
-            LowerTypeLessDyn(gate);
+        case LESSDYN_PREF_V8:
+            LowerTypeLess(gate);
             break;
-        case EcmaBytecode::LESSEQ:
-            LowerTypeLessEqDyn(gate);
+        case LESSEQDYN_PREF_V8:
+            LowerTypeLessEq(gate);
             break;
-        case EcmaBytecode::GREATER:
-            LowerTypeGreaterDyn(gate);
+        case GREATERDYN_PREF_V8:
+            LowerTypeGreater(gate);
             break;
-        case EcmaBytecode::GREATEREQ:
-            LowerTypeGreaterEqDyn(gate);
+        case GREATEREQDYN_PREF_V8:
+            LowerTypeGreaterEq(gate);
             break;
-        case EcmaBytecode::DIV2:
-            LowerTypeDiv2Dyn(gate);
+        case DIV2DYN_PREF_V8:
+            LowerTypeDiv2(gate);
             break;
-        case EcmaBytecode::EQ:
-            LowerTypeEqDyn(gate);
+        case EQDYN_PREF_V8:
+            LowerTypeEq(gate);
             break;
-        case EcmaBytecode::NOTEQ:
-            LowerTypeNotEqDyn(gate);
+        case NOTEQDYN_PREF_V8:
+            LowerTypeNotEq(gate);
             break;
-        case EcmaBytecode::TONUMERIC:
+        case TONUMERIC_PREF_V8:
             LowerToNumeric(gate);
             break;
-        case EcmaBytecode::INC:
-            LowerTypeIncDyn(gate);
+        case INCDYN_PREF_V8:
+            LowerTypeInc(gate);
             break;
         default:break;
     }
@@ -942,8 +942,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
     return ret;
 }
 
-
-void TypeLowering::LowerTypeNewObjRange(GateRef gate, GateRef glue)
+void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
 {
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
@@ -973,7 +972,7 @@ void TypeLowering::LowerTypeNewObjRange(GateRef gate, GateRef glue)
     ReplaceHirToCall(gate, newGate);
 }
 
-void TypeLowering::LowerTypeAdd2Dyn(GateRef gate, [[maybe_unused]]GateRef glue)
+void TypeLowering::LowerTypeAdd2(GateRef gate, [[maybe_unused]]GateRef glue)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1009,7 +1008,7 @@ void TypeLowering::LowerTypeAdd2Dyn(GateRef gate, [[maybe_unused]]GateRef glue)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeSub2Dyn([[maybe_unused]]GateRef gate)
+void TypeLowering::LowerTypeSub2([[maybe_unused]]GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1042,7 +1041,7 @@ void TypeLowering::LowerTypeSub2Dyn([[maybe_unused]]GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeMul2Dyn(GateRef gate)
+void TypeLowering::LowerTypeMul2(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1075,7 +1074,7 @@ void TypeLowering::LowerTypeMul2Dyn(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeMod2Dyn(GateRef gate, GateRef glue)
+void TypeLowering::LowerTypeMod2(GateRef gate, GateRef glue)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1108,7 +1107,7 @@ void TypeLowering::LowerTypeMod2Dyn(GateRef gate, GateRef glue)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeLessDyn(GateRef gate)
+void TypeLowering::LowerTypeLess(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1141,7 +1140,7 @@ void TypeLowering::LowerTypeLessDyn(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeLessEqDyn(GateRef gate)
+void TypeLowering::LowerTypeLessEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1174,7 +1173,7 @@ void TypeLowering::LowerTypeLessEqDyn(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeGreaterDyn(GateRef gate)
+void TypeLowering::LowerTypeGreater(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1207,7 +1206,7 @@ void TypeLowering::LowerTypeGreaterDyn(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeGreaterEqDyn(GateRef gate)
+void TypeLowering::LowerTypeGreaterEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1240,7 +1239,7 @@ void TypeLowering::LowerTypeGreaterEqDyn(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeEqDyn(GateRef gate)
+void TypeLowering::LowerTypeEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -1268,7 +1267,7 @@ void TypeLowering::LowerTypeEqDyn(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeNotEqDyn(GateRef gate)
+void TypeLowering::LowerTypeNotEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -1313,7 +1312,7 @@ void TypeLowering::LowerTypeNotEqDyn(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeDiv2Dyn(GateRef gate)
+void TypeLowering::LowerTypeDiv2(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1410,7 +1409,7 @@ void TypeLowering::LowerToNumeric(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeIncDyn(GateRef gate)
+void TypeLowering::LowerTypeInc(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
