@@ -30,8 +30,8 @@ class LayoutInfo : private TaggedArray {
 public:
     static constexpr int MIN_PROPERTIES_LENGTH = JSObject::MIN_PROPERTIES_LENGTH;
     static constexpr int MAX_PROPERTIES_LENGTH = PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES;
-    static constexpr int NUMBER_OF_PROPERTIES_INDEX = 0;
-    static constexpr int ELEMENTS_START_INDEX = 1;
+    static constexpr uint32_t ELEMENTS_INDEX_LOG2 = 1;
+    static constexpr uint32_t ATTR_INDEX_OFFSET = 1;
 
     inline static LayoutInfo *Cast(TaggedObject *obj)
     {
@@ -61,13 +61,12 @@ public:
 
     inline Properties *GetProperties() const
     {
-        return reinterpret_cast<Properties *>(reinterpret_cast<uintptr_t>(this) + TaggedArray::DATA_OFFSET +
-                                              ELEMENTS_START_INDEX * JSTaggedValue::TaggedTypeSize());
+        return reinterpret_cast<Properties *>(reinterpret_cast<uintptr_t>(this) + TaggedArray::DATA_OFFSET);
     }
 
     static inline uint32_t ComputeArrayLength(uint32_t properties_number)
     {
-        return (properties_number << 1U) + ELEMENTS_START_INDEX;
+        return (properties_number << ELEMENTS_INDEX_LOG2);
     }
 
     static inline uint32_t ComputeGrowCapacity(uint32_t old_capacity)

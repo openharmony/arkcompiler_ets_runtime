@@ -42,6 +42,14 @@ CString *HeapSnapshot::GetString(const CString &as)
     return stringTable_.GetString(as);
 }
 
+CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
+{
+    CString arrayName = as;
+    arrayName.append(ToCString(array->GetLength()));
+    arrayName.append("]");
+    return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
+}
+
 Node *Node::NewNode(const EcmaVM *vm, size_t id, size_t index, CString *name, NodeType type, size_t size,
                     TaggedObject *entry, bool isLive)
 {
@@ -197,40 +205,16 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
     auto *hCls = entry->GetClass();
     JSType type = hCls->GetObjectType();
     switch (type) {
-        case JSType::TAGGED_ARRAY: {
-            CString arrayName;
-            TaggedArray *array = TaggedArray::Cast(entry);
-            arrayName = "TaggedArray[";
-            arrayName.append(ToCString(array->GetLength()));
-            arrayName.append("]");
-            return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
-        }
-        case JSType::LEXICAL_ENV: {
-            CString arrayName;
-            TaggedArray *array = TaggedArray::Cast(entry);
-            arrayName = "LexicalEnv[";
-            arrayName.append(ToCString(array->GetLength()));
-            arrayName.append("]");
-            return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
-        }
-        case JSType::CONSTANT_POOL: {
-            CString arrayName;
-            ConstantPool *constantPool = ConstantPool::Cast(entry);
-            arrayName = "ConstantPool[";
-            arrayName.append(ToCString(constantPool->GetCacheLength()));
-            arrayName.append("]");
-            return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
-        }
+        case JSType::TAGGED_ARRAY:
+            return GetArrayString(TaggedArray::Cast(entry), "TaggedArray[");
+        case JSType::LEXICAL_ENV:
+            return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
+        case JSType::CONSTANT_POOL:
+            return GetArrayString(TaggedArray::Cast(entry), "ConstantPool[");
+        case JSType::TAGGED_DICTIONARY:
+            return GetArrayString(TaggedArray::Cast(entry), "TaggedDict[");
         case JSType::HCLASS:
             return GetString("HiddenClass");
-        case JSType::TAGGED_DICTIONARY: {
-            CString dictName;
-            TaggedArray *dict = TaggedArray::Cast(entry);
-            dictName = "TaggedDict[";
-            dictName.append(ToCString(dict->GetLength()));
-            dictName.append("]");
-            return GetString(dictName);
-        }
         case JSType::STRING:
             return GetString("BaseString");
         case JSType::JS_OBJECT: {
@@ -240,9 +224,9 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::FREE_OBJECT_WITH_ONE_FIELD:
         case JSType::FREE_OBJECT_WITH_NONE_FIELD:
         case JSType::FREE_OBJECT_WITH_TWO_FIELD:
-        case JSType::JS_NATIVE_POINTER: {
-            break;
-        }
+            return GetString("FreeObject");
+        case JSType::JS_NATIVE_POINTER:
+            return GetString("JSNativePointer");
         case JSType::JS_FUNCTION_BASE:
             return GetString("JSFunctionBase");
         case JSType::JS_FUNCTION:
@@ -545,7 +529,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
     } else {
         return GetString("Hidden Object");
     }
-    return GetString("UnKnownType");
+    return GetString(CString("UnKnownType").append(std::to_string(static_cast<int>(type))));
 }
 
 NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)

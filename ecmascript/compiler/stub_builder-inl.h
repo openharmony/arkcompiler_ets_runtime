@@ -1427,8 +1427,8 @@ inline GateRef StubBuilder::IsAccessorInternal(GateRef value)
 
 inline GateRef StubBuilder::GetPropAttrFromLayoutInfo(GateRef layout, GateRef entry)
 {
-    GateRef index = Int32Add(Int32Add(Int32(LayoutInfo::ELEMENTS_START_INDEX),
-        Int32LSL(entry, Int32(1))), Int32(1));
+    GateRef index = Int32Add(Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)),
+        Int32(LayoutInfo::ATTR_INDEX_OFFSET));
     return GetValueFromTaggedArray(VariableType::INT64(), layout, index);
 }
 
@@ -1440,17 +1440,13 @@ inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)
 
 inline GateRef StubBuilder::GetKeyFromLayoutInfo(GateRef layout, GateRef entry)
 {
-    GateRef index = Int32Add(
-        Int32(LayoutInfo::ELEMENTS_START_INDEX),
-        Int32LSL(entry, Int32(1)));
+    GateRef index = Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2));
     return GetValueFromTaggedArray(VariableType::JS_ANY(), layout, index);
 }
 
 inline GateRef StubBuilder::GetPropertiesAddrFromLayoutInfo(GateRef layout)
 {
-    GateRef eleStartIdx = PtrMul(IntPtr(LayoutInfo::ELEMENTS_START_INDEX),
-        IntPtr(JSTaggedValue::TaggedTypeSize()));
-    return PtrAdd(layout, PtrAdd(IntPtr(TaggedArray::DATA_OFFSET), eleStartIdx));
+    return PtrAdd(layout, IntPtr(TaggedArray::DATA_OFFSET));
 }
 
 inline GateRef StubBuilder::TaggedCastToInt64(GateRef x)
