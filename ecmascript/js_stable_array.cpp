@@ -282,12 +282,13 @@ JSTaggedValue JSStableArray::HandleFindIndexOfStable(JSThread *thread, JSHandle<
     JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(false);
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     while (k < len) {
-        JSTaggedValue kValue = array->Get(k);
+        kValue.Update(array->Get(k));
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        info->SetCallArg(kValue, JSTaggedValue(k), thisObjVal.GetTaggedValue());
+        info->SetCallArg(kValue.GetTaggedValue(), JSTaggedValue(k), thisObjVal.GetTaggedValue());
         callResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, callResult);
         if (callResult.ToBoolean()) {
@@ -318,14 +319,15 @@ JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSOb
     double len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(true);
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     while (k < len) {
-        JSTaggedValue kValue = array->Get(k);
-        if (!kValue.IsHole()) {
+        kValue.Update(array->Get(k));
+        if (!kValue.GetTaggedValue().IsHole()) {
             key.Update(JSTaggedValue(k));
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(kValue, key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             callResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (array->GetLength() < len) {
@@ -363,14 +365,15 @@ JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JS
     JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
     double len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     while (k < len) {
-        JSTaggedValue kValue = array->Get(k);
-        if (!kValue.IsHole()) {
+        kValue.Update(array->Get(k));
+        if (!kValue.GetTaggedValue().IsHole()) {
             key.Update(JSTaggedValue(k));
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(kValue, key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             JSTaggedValue funcResult = JSFunction::Call(info);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult);
             if (array->GetLength() < len) {
@@ -434,14 +437,15 @@ JSTaggedValue JSStableArray::Filter(JSHandle<JSObject> newArrayHandle, JSHandle<
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     double len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
     JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     while (k < len) {
-        JSTaggedValue kValue = array->Get(k);
-        if (!kValue.IsHole()) {
+        kValue.Update(array->Get(k));
+        if (!kValue.GetTaggedValue().IsHole()) {
             key.Update(JSTaggedValue(k));
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(kValue, key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             JSTaggedValue callResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (array->GetLength() < len) {
@@ -450,8 +454,7 @@ JSTaggedValue JSStableArray::Filter(JSHandle<JSObject> newArrayHandle, JSHandle<
             bool boolResult = callResult.ToBoolean();
             if (boolResult) {
                 toIndexHandle.Update(JSTaggedValue(toIndex));
-                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle,
-                                                    toIndexHandle, JSHandle<JSTaggedValue>(thread, kValue));
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toIndexHandle, kValue);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 toIndex++;
             }
@@ -474,16 +477,17 @@ JSTaggedValue JSStableArray::Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSO
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSMutableHandle<JSTaggedValue> mapResultHandle(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
     while (k < len) {
-        JSTaggedValue kValue = array->Get(k);
-        if (!kValue.IsHole()) {
+        kValue.Update(array->Get(k));
+        if (!kValue.GetTaggedValue().IsHole()) {
             key.Update(JSTaggedValue(k));
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(kValue, key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             JSTaggedValue mapResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             mapResultHandle.Update(mapResult);
