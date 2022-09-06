@@ -230,7 +230,8 @@ namespace panda::ecmascript {
     V(GetSuperConstructor)          \
     V(DynamicImport)                \
     V(LdPatchVar)                   \
-    V(StPatchVar)
+    V(StPatchVar)                   \
+    V(AsyncGeneratorReject)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define BUILTINS_API_LIST(V)                   \

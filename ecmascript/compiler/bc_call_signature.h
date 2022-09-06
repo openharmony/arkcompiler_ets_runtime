@@ -166,6 +166,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleDynamicImportPrefV8)                         \
     T(HandleLdPatchVarPrefImm16)                         \
     T(HandleStPatchVarPrefImm16)                         \
+    T(HandleAsyncGeneratorRejectPrefV8V8)                \
     T(HandleMovDynV8V8)                                  \
     T(HandleMovDynV16V16)                                \
     T(HandleLdaStrId32)                                  \

@@ -169,6 +169,8 @@ public:
 
     static JSTaggedValue AsyncGeneratorResolve(JSThread *thread, JSTaggedValue asyncFuncObj,
                                                const JSTaggedValue value, JSTaggedValue flag);
+    static JSTaggedValue AsyncGeneratorReject(JSThread *thread, JSTaggedValue asyncFuncObj,
+                                              const JSTaggedValue value);
     static JSTaggedValue CreateAsyncGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
     static JSTaggedValue DefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func);
     static JSTaggedValue LdPatchVar(JSThread *thread, uint32_t index);

@@ -1117,6 +1117,18 @@ JSTaggedValue SlowRuntimeStub::AsyncGeneratorResolve(JSThread *thread, JSTaggedV
     return RuntimeStubs::RuntimeAsyncGeneratorResolve(thread, genObjHandle, valueHandle, flag);
 }
 
+JSTaggedValue SlowRuntimeStub::AsyncGeneratorReject(JSThread *thread, JSTaggedValue asyncFuncObj,
+                                                    const JSTaggedValue value)
+{
+    INTERPRETER_TRACE(thread, AsyncGeneratorReject);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSAsyncGeneratorObject> asyncFuncObjHandle(thread, asyncFuncObj);
+    JSHandle<JSTaggedValue> valueHandle(thread, value);
+
+    return JSAsyncGeneratorObject::AsyncGeneratorReject(thread, asyncFuncObjHandle, valueHandle);
+}
+
 JSTaggedValue SlowRuntimeStub::DefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func)
 {
     INTERPRETER_TRACE(thread, DefineAsyncGeneratorFunc);

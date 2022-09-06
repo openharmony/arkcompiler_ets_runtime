@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2021 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -205,6 +206,7 @@ enum EcmaOpcode {
     DYNAMICIMPORT_PREF_V8,
     LDPATCHVAR_PREF_IMM16,
     STPATCHVAR_PREF_IMM16,
+    ASYNCGENERATORREJECT_PREF_V8_V8,
     MOV_DYN_V8_V8,
     MOV_DYN_V16_V16,
     LDA_STR_ID32,
