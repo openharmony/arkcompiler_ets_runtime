@@ -103,7 +103,13 @@ bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &file
     };
     if (MatchScripts(scriptFunc, fileName, ScriptMatchType::FILE_NAME)) {
         LOG_DEBUGGER(WARN) << "NotifyScriptParsed: already loaded: " << fileName;
+#if ECMASCRIPT_ENABLE_MERGE_ABC
+        if (vm_->IsBundle()) {
+            return false;
+        }
+#else
         return false;
+#endif
     }
 
     // Notify script parsed event
