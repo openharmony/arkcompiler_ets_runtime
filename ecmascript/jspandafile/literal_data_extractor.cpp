@@ -31,7 +31,8 @@ using LiteralValue = panda_file::LiteralDataAccessor::LiteralValue;
 void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                               JSMutableHandle<TaggedArray> elements,
                                               JSMutableHandle<TaggedArray> properties,
-                                              JSHandle<JSTaggedValue> constpool)
+                                              JSHandle<JSTaggedValue> constpool,
+                                              const CString &entryPoint)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
@@ -49,7 +50,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
     uint32_t methodId;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        index, [elements, properties, &epos, &ppos, factory, thread, jsPandaFile, pf, &methodId, &kind, &constpool]
+        index, [elements, properties, &epos, &ppos, factory, thread, jsPandaFile, pf,
+        &methodId, &kind, &constpool, &entryPoint]
         (const LiteralValue &value, const LiteralTag &tag) {
         JSTaggedValue jt = JSTaggedValue::Null();
         bool flag = false;
@@ -94,7 +96,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
 
                 JSHandle<Method> method = factory->NewMethod(methodLiteral);
                 method->SetConstantPool(thread, constpool.GetTaggedValue());
-                JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
+                JSHandle<JSFunction> jsFunc =
+                    DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entryPoint);
                 jt = jsFunc.GetTaggedValue();
                 break;
             }
@@ -249,12 +252,14 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
     }
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
-    if (jsPandaFile->IsModule()) {
+    CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+    CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
+    if (!entryPoint.empty()) {
+        moduleName = entryPoint;
+        entry = entryPoint;
+    }
+    if (jsPandaFile->IsModule(entry)) {
         EcmaVM *vm = thread->GetEcmaVM();
-        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-        if (!entryPoint.empty()) {
-            moduleName = entryPoint;
-        }
         JSHandle<SourceTextModule> module = vm->GetModuleManager()->HostGetImportedModule(moduleName);
         jsFunc->SetModule(thread, module.GetTaggedValue());
     }
