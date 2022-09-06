@@ -49,6 +49,7 @@ public:
     static uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static JSTaggedType *GetAsmInterpreterFramePointer(AsmInterpretedFrame *state);
 
+    static bool AssemblyIsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
 #define DEF_HANDLER(name)                                                    \
     static void name(JSThread *thread, const uint8_t *pc, JSTaggedType *sp,  \
                      JSTaggedValue constpool, JSTaggedValue profileTypeInfo, \
