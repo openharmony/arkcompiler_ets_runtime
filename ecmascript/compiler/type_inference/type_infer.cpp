@@ -546,7 +546,7 @@ void TypeInfer::TypeCheck(GateRef gate) const
             log += "[TypeAssertion] but expected type: " + expectedTypeStr + "\n";
 
             LOG_COMPILER(ERROR) << "[TypeAssertion] [" << sourceFileName << ":" << functionName << "] begin:";
-            LOG_COMPILER(FATAL) << log << " compiler: [TypeAssertion] end";
+            LOG_COMPILER(FATAL) << log << " [TypeAssertion] end";
         }
     }
 }

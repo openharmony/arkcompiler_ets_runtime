@@ -153,8 +153,6 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
 
 bool EcmaVM::Initialize()
 {
-    LOG_ECMA(INFO) << "EcmaVM Initialize";
-    LOG_ECMA(INFO) << "Asm interpreter enabled : " << (options_.GetEnableAsmInterpreter() ? "true" : "false");
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
@@ -277,7 +275,6 @@ void EcmaVM::SetRuntimeStatEnable(bool flag)
 
 EcmaVM::~EcmaVM()
 {
-    LOG_ECMA(INFO) << "Destruct ecma_vm, vm address is: " << this;
     initialized_ = false;
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy();
@@ -771,10 +768,13 @@ void EcmaVM::LoadStubFile()
 
 void EcmaVM::LoadAOTFiles()
 {
-    std::string file = options_.GetAOTOutputFile() + ".an";
-    LOG_ECMA(INFO) << "Try to load aot file" << file.c_str();
-    fileLoader_->LoadAOTFile(file);
-    fileLoader_->LoadSnapshotFile();
+    std::string anFile = options_.GetAOTOutputFile() + ".an";
+    LOG_ECMA(INFO) << "Try to load an file" << anFile.c_str();
+    fileLoader_->LoadAOTFile(anFile);
+
+    std::string etsoFile = options_.GetAOTOutputFile() + ".etso";
+    LOG_ECMA(INFO) << "Try to load etso file" << etsoFile.c_str();
+    fileLoader_->LoadSnapshotFile(etsoFile);
 }
 
 #if !WIN_OR_MAC_PLATFORM

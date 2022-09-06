@@ -71,7 +71,7 @@ int Main(const int argc, const char **argv)
     }
 
     bool ret = true;
-    // ark_aot_compiler running need disable asm interpreter
+    // ark_aot_compiler running need disable asm interpreter to disable the loading of AOT files.
     runtimeOptions.SetEnableAsmInterpreter(false);
     EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
@@ -101,7 +101,7 @@ int Main(const int argc, const char **argv)
     vm->GetTSManager()->SetConstantPoolInfo(generator.GetConstantPoolInfos(pandaFileNames));
     PassManager passManager(vm, entry, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize);
     for (const auto &fileName : pandaFileNames) {
-        LOG_COMPILER(INFO) << "AOT start to execute ark file: " << fileName;
+        LOG_COMPILER(INFO) << "AOT compile: " << fileName;
         if (passManager.Compile(fileName, generator) == false) {
             ret = false;
             continue;
@@ -109,7 +109,7 @@ int Main(const int argc, const char **argv)
     }
     generator.SaveAOTFile(outputFileName + ".an");
     generator.SaveSnapshotFile();
-
+    LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");
     JSNApi::DestroyJSVM(vm);
     paParser.DisableTail();
     return ret ? 0 : -1;
@@ -119,6 +119,5 @@ int Main(const int argc, const char **argv)
 int main(const int argc, const char **argv)
 {
     auto result = panda::ecmascript::kungfu::Main(argc, argv);
-    LOG_COMPILER(INFO) << (result == 0 ? "ts aot compile success" : "ts aot compile failed");
     return result;
 }
