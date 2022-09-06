@@ -202,6 +202,10 @@ public:
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
     // low level interface
+    GateRef TypeCheck(GateType type, GateRef gate);
+    GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
+                                std::vector<GateRef> inList);
+    GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef Arguments(size_t index);
     GateRef Merge(GateRef *in, size_t controlCount);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -307,6 +311,7 @@ public:
     inline GateRef TaggedCastToIntPtr(GateRef x);
     inline GateRef TaggedCastToDouble(GateRef x);
     inline GateRef ChangeTaggedPointerToInt64(GateRef x);
+    inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     // bit operation
     inline GateRef IsSpecial(GateRef x, JSTaggedType type);
@@ -337,6 +342,7 @@ public:
     inline GateRef DoubleToTaggedDoublePtr(GateRef x);
     inline GateRef DoubleToTaggedDouble(GateRef x);
     inline GateRef DoubleToTagged(GateRef x);
+    inline GateRef DoubleIsNAN(GateRef x);
     inline GateRef TaggedTrue();
     inline GateRef TaggedFalse();
     inline GateRef SExtInt8ToInt64(GateRef x);
@@ -345,7 +351,6 @@ public:
     inline GateRef ChangeUInt32ToFloat64(GateRef x);
     inline GateRef ChangeInt32ToFloat64(GateRef x);
     // Pointer/Arithmetic/Logic Operations
-    inline GateRef PointerSub(GateRef x, GateRef y);
     inline GateRef IntPtrDiv(GateRef x, GateRef y);
     inline GateRef IntPtrOr(GateRef x, GateRef y);
     inline GateRef IntPtrLSL(GateRef x, GateRef y);
@@ -379,11 +384,16 @@ public:
     inline GateRef IsCallableFromBitField(GateRef bitfield);
     inline GateRef LogicAnd(GateRef x, GateRef y);
     inline GateRef LogicOr(GateRef x, GateRef y);
+    inline GateRef BothAreString(GateRef x, GateRef y);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetFunctionBitFieldFromJSFunction(GateRef function);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
     GateRef FunctionIsResolved(GateRef function);
+    GateRef GetLengthFromString(GateRef value);
+    GateRef GetHashcodeFromString(GateRef glue, GateRef value);
+    GateRef IsUtf16String(GateRef string);
+    GateRef TaggedIsBigInt(GateRef obj);
     void SetResolvedToFunction(GateRef glue, GateRef function, GateRef value);
     void SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);

@@ -184,7 +184,6 @@ public:
                     }
                     SafeCloseFile();
                     return loop == fieldNum - 1;
-                    break;
                 }
                 i++;  // Search the Next Line
             }

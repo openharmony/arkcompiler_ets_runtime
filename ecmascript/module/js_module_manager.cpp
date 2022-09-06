@@ -161,6 +161,45 @@ bool ModuleManager::IsImportedModuleLoaded(JSTaggedValue referencing)
     return (entry != -1);
 }
 
+JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModuleWithMerge(const CString &moduleFileName,
+                                                                             const CString &recodeName)
+{
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = vm_->GetFactory();
+    auto globalConstants = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> recodeNameHandle =
+        JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recodeName));
+    int entry =
+        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(recodeNameHandle.GetTaggedValue());
+    if (entry != -1) {
+        return JSHandle<SourceTextModule>(
+            thread, NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
+    }
+
+    // moduleFile must exist
+    const JSPandaFile *jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recodeName.c_str());
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(ERROR) << "open jsPandaFile " << moduleFileName << " error";
+        UNREACHABLE();
+    }
+    JSHandle<JSTaggedValue> moduleRecord = globalConstants->GetHandledUndefined();
+    if (jsPandaFile->IsCjs(recodeName)) {
+        moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
+    } else if (jsPandaFile->IsModule(recodeName)) {
+        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recodeName, moduleFileName);
+    } else {
+        LOG_ECMA(ERROR) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
+        UNREACHABLE();
+    }
+    JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recodeNameHandle);
+    JSHandle<NameDictionary> dict(thread, resolvedModules_);
+    resolvedModules_ =
+        NameDictionary::Put(thread, dict, recodeNameHandle, moduleRecord, PropertyAttributes::Default())
+        .GetTaggedValue();
+    return JSHandle<SourceTextModule>::Cast(moduleRecord);
+}
+
 JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CString &referencingModule)
 {
     JSThread *thread = vm_->GetJSThread();
@@ -194,7 +233,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CStrin
     if (jsPandaFile->IsCjs()) {
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
     } else if (jsPandaFile->IsModule()) {
-        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName);
+        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
     } else {
         LOG_ECMA(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
         UNREACHABLE();
@@ -234,7 +273,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const void *
     if (jsPandaFile->IsCjs()) {
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
     } else if (jsPandaFile->IsModule()) {
-        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName);
+        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
     } else {
         LOG_ECMA(ERROR) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
         UNREACHABLE();
@@ -339,7 +378,8 @@ void ModuleManager::AddResolveImportedModule(const JSPandaFile *jsPandaFile, con
 {
     JSThread *thread = vm_->GetJSThread();
     ObjectFactory *factory = vm_->GetFactory();
-    JSHandle<JSTaggedValue> moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, referencingModule);
+    JSHandle<JSTaggedValue> moduleRecord =
+        ModuleDataExtractor::ParseModule(thread, jsPandaFile, referencingModule, referencingModule);
     JSHandle<JSTaggedValue> referencingHandle(factory->NewFromUtf8(referencingModule));
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
     resolvedModules_ =

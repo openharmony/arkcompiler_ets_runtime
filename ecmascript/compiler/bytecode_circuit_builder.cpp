@@ -1784,6 +1784,20 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.offset = BytecodeOffset::TWO;
             break;
         }
+        case EcmaOpcode::LDPATCHVAR_PREF_IMM16: {
+            uint32_t index = READ_INST_16_1();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
+        case EcmaOpcode::STPATCHVAR_PREF_IMM16: {
+            uint32_t index = READ_INST_16_1();
+            info.accIn = true;
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
         default: {
             LOG_COMPILER(ERROR) << "Error bytecode: " << opcode << ", pls check bytecode offset.";
             UNREACHABLE();

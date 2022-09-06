@@ -621,6 +621,14 @@ groups:
         acc: out:top
         prefix: ecma
         format: [pref_op_v_8]
+      - sig: ecma.ldpatchvar imm
+        acc: out:top
+        prefix: ecma
+        format: [pref_op_imm_16]
+      - sig: ecma.stpatchvar imm
+        acc: in:top
+        prefix: ecma
+        format: [pref_op_imm_16]
       - sig: ecma.asyncgeneratorreject v1:in:top, v2:in:top
         acc: out:top
         prefix: ecma

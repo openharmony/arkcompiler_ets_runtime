@@ -18,11 +18,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 // TypeLowering Process
@@ -117,6 +113,11 @@ private:
     }
 
     void Lower(GateRef gate);
+    void LowerType(GateRef gate);
+    void LowerTypeCheck(GateRef gate);
+    void LowerTypedBinaryOp(GateRef gate);
+    void LowerTypeAdd(GateRef gate);
+
     void GenerateSuccessMerge(std::vector<GateRef> &successControl);
     void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
@@ -129,9 +130,30 @@ private:
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
     GateRef ChangeInt32ToFloat64(GateRef gate);
+    GateRef GeneralMod(GateRef left, GateRef right, GateRef glue);
+    GateRef Int32Mod(GateRef left, GateRef right);
+    GateRef DoubleMod(GateRef left, GateRef right);
+    GateRef IntToTaggedNGc(GateRef x);
+    GateRef DoubleIsINF(GateRef x);
+    GateRef Less(GateRef left, GateRef right);
+    GateRef LessEq(GateRef left, GateRef right);
+    GateRef FastEqual(GateRef left, GateRef right);
+    GateRef FastDiv(GateRef left, GateRef right);
 
     void LowerTypeNewObjDynRange(GateRef gate, GateRef glue);
     void LowerTypeAdd2Dyn(GateRef gate, GateRef glue);
+    void LowerTypeSub2Dyn(GateRef gate);
+    void LowerTypeMul2Dyn(GateRef gate);
+    void LowerTypeMod2Dyn(GateRef gate, GateRef glue);
+    void LowerTypeLessDyn(GateRef gate);
+    void LowerTypeLessEqDyn(GateRef gate);
+    void LowerTypeGreaterDyn(GateRef gate);
+    void LowerTypeGreaterEqDyn(GateRef gate);
+    void LowerTypeDiv2Dyn(GateRef gate);
+    void LowerTypeEqDyn(GateRef gate);
+    void LowerTypeNotEqDyn(GateRef gate);
+    void LowerToNumeric(GateRef gate);
+    void LowerTypeIncDyn(GateRef gate);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

@@ -59,14 +59,14 @@ bool JSPtHooks::SingleStep(const JSPtLocation &location)
     return false;
 }
 
-void JSPtHooks::LoadModule(std::string_view pandaFileName)
+void JSPtHooks::LoadModule(std::string_view pandaFileName, std::string_view entryPoint)
 {
     LOG_DEBUGGER(VERBOSE) << "JSPtHooks: LoadModule: " << pandaFileName;
 
     [[maybe_unused]] LocalScope scope(debugger_->vm_);
 
     static uint32_t scriptId = 0;
-    if (debugger_->NotifyScriptParsed(scriptId++, pandaFileName.data())) {
+    if (debugger_->NotifyScriptParsed(scriptId++, pandaFileName.data(), entryPoint)) {
         firstTime_ = true;
     }
 }
@@ -78,5 +78,14 @@ void JSPtHooks::PendingJobEntry()
     [[maybe_unused]] LocalScope scope(debugger_->vm_);
 
     debugger_->NotifyPendingJobEntry();
+}
+
+void JSPtHooks::NativeCalling(const void *nativeAddress)
+{
+    LOG_DEBUGGER(INFO) << "JSPtHooks: NativeCalling, addr = " << nativeAddress;
+
+    [[maybe_unused]] LocalScope scope(debugger_->vm_);
+
+    debugger_->NotifyNativeCalling(nativeAddress);
 }
 }  // namespace panda::ecmascript::tooling

@@ -3575,7 +3575,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << " v" << v0;
         JSTaggedValue specifier = GET_VREG_VALUE(v0);
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+        JSTaggedValue thisFunc = GetThisFunction(sp);
+        JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(BytecodeInstruction::Format::PREF_V8);
@@ -3836,6 +3837,28 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         thread->ClearException();
         thread->SetCurrentSPFrame(sp);
         DISPATCH_OFFSET(0);
+    }
+    HANDLE_OPCODE(HANDLE_LDPATCHVAR_PREF_IMM16) {
+        uint16_t index = READ_INST_16_1();
+        LOG_INST() << "intrinsics::ldpatchvar" << " imm: " << index;
+
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::LdPatchVar(thread, index);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(BytecodeInstruction::Format::PREF_IMM16);
+    }
+    HANDLE_OPCODE(HANDLE_STPATCHVAR_PREF_IMM16) {
+        uint16_t index = READ_INST_16_1();
+        LOG_INST() << "intrinsics::stpatchvar" << " imm: " << index;
+        JSTaggedValue value = GET_ACC();
+
+        SAVE_ACC();
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::StPatchVar(thread, index, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
+        DISPATCH(BytecodeInstruction::Format::PREF_IMM16);
     }
     HANDLE_OPCODE(HANDLE_OVERFLOW) {
         LOG_INTERPRETER(FATAL) << "opcode overflow";
@@ -4213,6 +4236,8 @@ std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
         {MOV_V4_V4, "MOV"},
         {JNEZ_IMM8, "JNEZ"},
         {JNEZ_IMM16, "JNEZ"},
+        {LDPATCHVAR_PREF_IMM16, "LDPATCHVAR"},
+        {STPATCHVAR_PREF_IMM16, "STPATCHVAR"},
         {LAST_OPCODE, "LAST_OPCODE"},
     };
     if (strMap.count(opcode) > 0) {

@@ -139,6 +139,9 @@ public:
             case JSType::JS_GLOBAL_OBJECT:
                 JSGlobalObject::Cast(object)->VisitRangeSlot(visitor);
                 break;
+            case JSType::GLOBAL_PATCH:
+                GlobalPatch::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::JS_FUNCTION_BASE: {
                 auto jsFunctionBase = JSFunctionBase::Cast(object);
                 jsFunctionBase->VisitRangeSlot(visitor);
@@ -331,6 +334,9 @@ public:
             case JSType::TEMPLATE_MAP:
             case JSType::LEXICAL_ENV:
                 TaggedArray::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::CONSTANT_POOL:
+                ConstantPool::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::GLOBAL_ENV:
                 GlobalEnv::Cast(object)->VisitRangeSlot(visitor);

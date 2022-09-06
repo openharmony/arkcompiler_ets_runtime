@@ -49,7 +49,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/js_patch_manager.h"
+#include "ecmascript/jspandafile/quick_fix_loader.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -210,7 +210,7 @@ bool EcmaVM::Initialize()
     debuggerManager_->Initialize(this);
     tsManager_ = new TSManager(this);
     tsManager_->Initialize();
-    patchManager_ = new JSPatchManager();
+    quickFixLoader_ = new QuickFixLoader();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_PLATFORM) {
         snapshotEnv_->Initialize();
@@ -338,9 +338,9 @@ EcmaVM::~EcmaVM()
         tsManager_ = nullptr;
     }
 
-    if (patchManager_ != nullptr) {
-        delete patchManager_;
-        patchManager_ = nullptr;
+    if (quickFixLoader_ != nullptr) {
+        delete quickFixLoader_;
+        quickFixLoader_ = nullptr;
     }
 
     if (snapshotEnv_ != nullptr) {
@@ -421,13 +421,13 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
     return JSTaggedValue(res);
 }
 
-Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile)
+Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     JSTaggedValue result;
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<Program> program;
     if (jsPandaFile != frameworkPandaFile_) {
-        program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile);
+        program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
     } else {
         program = JSHandle<Program>(thread_, frameworkProgram_);
         frameworkProgram_ = JSTaggedValue::Hole();
@@ -437,13 +437,17 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         return Unexpected(false);
     }
     // for debugger
-    debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc());
+    debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
     JSHandle<JSFunction> func = JSHandle<JSFunction>(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
-    if (jsPandaFile->IsModule()) {
+    if (jsPandaFile->IsModule(entryPoint.data())) {
         global = JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
-        JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(jsPandaFile->GetJSPandaFileDesc());
+        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+        if (!jsPandaFile->IsBundle()) {
+            moduleName = entryPoint.data();
+        }
+        JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
         func->SetModule(thread_, module);
     }
 
@@ -451,7 +455,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         thread_->SetPrintBCOffset(true);
         result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile);
     } else {
-        if (jsPandaFile->IsCjs()) {
+        if (jsPandaFile->IsCjs(entryPoint.data())) {
             CJSExecution(func, global, jsPandaFile);
         } else {
             JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
@@ -602,6 +606,19 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             ++iter;
         }
     }
+
+    auto iterator = cachedConstpools_.begin();
+    while (iterator != cachedConstpools_.end()) {
+        auto object = iterator->second.GetHeapObject();
+        auto fwd = visitor(object);
+        if (fwd == nullptr) {
+            auto constantPool = ConstantPool::Cast(object);
+            JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
+            iterator = cachedConstpools_.erase(iterator);
+        } else {
+            ++iterator;
+        }
+    }
 }
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
@@ -631,6 +648,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             TaggedObject *obj = object.GetTaggedObject();
             auto fwd = visitor(obj);
             if (fwd == nullptr) {
+                auto constantPool = ConstantPool::Cast(obj);
+                JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
                 iter = cachedConstpools_.erase(iter);
                 continue;
             } else if (fwd != obj) {

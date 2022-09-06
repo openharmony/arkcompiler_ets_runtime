@@ -98,6 +98,12 @@ public:
     {
         return static_cast<int>(value_);
     }
+
+    // RO data section needs 16 bytes alignment
+    bool InRodataSection() const
+    {
+        return ElfSecName::RODATA <= value_ && value_ <= ElfSecName::RODATA_CST8;
+    }
 private:
     ElfSecName value_ {ElfSecName::NONE};
     static constexpr size_t AOTSecFeatureTable_[static_cast<size_t>(ElfSecName::SIZE)] = {

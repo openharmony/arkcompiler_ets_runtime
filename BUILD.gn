@@ -91,7 +91,7 @@ if (defined(ark_standalone_build)) {
     deps += [ "//arkcompiler/ets_runtime/test/perform:perform" ]
   }
 
-  group("ark_js_host_unittest") {
+  group("ark_unittest") {
     testonly = true
     deps = []
     if (host_os != "mac") {
@@ -116,6 +116,15 @@ if (defined(ark_standalone_build)) {
           "//arkcompiler/ets_runtime/ecmascript/compiler/tests:host_unittest",
         ]
       }
+    }
+  }
+
+  group("ark_js_host_unittest") {
+    testonly = true
+    deps = []
+    if (host_os != "mac") {
+      # js unittest
+      deps += [ ":ark_unittest" ]
 
       # js bytecode test
       deps += [ "//arkcompiler/ets_runtime/test/moduletest:ark_js_moduletest" ]
@@ -268,7 +277,14 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  defines += [ "NDEBUG" ]
+  if (is_debug) {
+    cflags_cc += [
+      "-O0",
+      "-ggdb3",
+    ]
+  } else {
+    defines += [ "NDEBUG" ]
+  }
 
   if (run_with_asan) {
     defines += [ "RUN_WITH_ASAN" ]
@@ -450,7 +466,7 @@ ecma_source = [
   "ecmascript/jspandafile/scope_info_extractor.cpp",
   "ecmascript/jspandafile/method_literal.cpp",
   "ecmascript/jspandafile/program_object.cpp",
-  "ecmascript/jspandafile/js_patch_manager.cpp",
+  "ecmascript/jspandafile/quick_fix_loader.cpp",
   "ecmascript/js_api/js_api_arraylist.cpp",
   "ecmascript/js_api/js_api_arraylist_iterator.cpp",
   "ecmascript/js_api/js_api_deque.cpp",

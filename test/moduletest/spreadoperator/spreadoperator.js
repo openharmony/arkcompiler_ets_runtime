@@ -81,11 +81,33 @@ print(...uint8);
 Uint8Array.prototype[Symbol.iterator] = iterFunc;
 print(...uint8);
 
-let fruits = ['Apple', 'Banana']
-print(...fruits)
+let arr8 = ['foo'];
+let warn1 = print.bind(print);
+function show1(message, ...args) {
+    return warn1(message, ...args);
+}
+show1(...arr8);
+
+let arr9 = ['foo'];
+let warn2 = print.bind(print);
+function show2(message, ...args) {
+    warn2(message, ...args);
+}
+const handler = {
+    apply: function (target, thisArg, argumentsList) {
+        return target(...argumentsList);;
+    }
+};
+let proxy = new Proxy(show2, handler);
+proxy(...arr9);
+
+let fruits1 = ['Apple']
+let fruits2 = ['Apple', 'Banana']
+print(...fruits2)
 Array.prototype[Symbol.iterator] = function* () {
     yield 1;
     yield 2;
     yield 3;
 }
-print(...fruits)
+print(...fruits1)
+print(...fruits2)

@@ -36,11 +36,13 @@ public:
     ~DebuggerImpl();
 
     // event
-    bool NotifyScriptParsed(ScriptId scriptId, const std::string &fileName);
+    bool NotifyScriptParsed(ScriptId scriptId, const std::string &fileName,
+                            std::string_view entryPoint = "func_main_0");
     bool NotifySingleStep(const JSPtLocation &location);
     void NotifyPaused(std::optional<JSPtLocation> location, PauseReason reason);
     void NotifyPendingJobEntry();
     void NotifyHandleProtocolCommand();
+    void NotifyNativeCalling(const void *nativeAddress);
 
     DispatchResponse Enable(const EnableParams &params, UniqueDebuggerId *id);
     DispatchResponse Disable();
@@ -60,6 +62,7 @@ public:
     DispatchResponse StepOut();
     DispatchResponse StepOver(const StepOverParams &params);
     DispatchResponse SetBlackboxPatterns();
+    DispatchResponse SetMixedDebugEnabled(const SetMixedDebugParams &params);
 
     /**
      * @brief: match first script and callback
@@ -117,6 +120,7 @@ public:
         void StepInto(const DispatchRequest &request);
         void StepOut(const DispatchRequest &request);
         void StepOver(const DispatchRequest &request);
+        void SetMixedDebugEnabled(const DispatchRequest &request);
         void SetBlackboxPatterns(const DispatchRequest &request);
 
     private:
@@ -158,6 +162,7 @@ private:
         void BreakpointResolved(const EcmaVM *vm);
         void Paused(const EcmaVM *vm, const tooling::Paused &paused);
         void Resumed(const EcmaVM *vm);
+        void NativeCalling(const EcmaVM *vm, const tooling::NativeCalling &nativeCalling);
         void ScriptFailedToParse(const EcmaVM *vm);
         void ScriptParsed(const EcmaVM *vm, const PtScript &script);
         void WaitForDebugger(const EcmaVM *vm);

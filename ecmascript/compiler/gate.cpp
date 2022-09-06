@@ -192,6 +192,13 @@ Properties OpCode::GetProperties() const
             return {FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT};
         case SAVE_REGISTER:
             return {NOVALUE, NO_STATE, ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        // ts type lowering relate IR
+        case TYPE_CHECK:
+            return {I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case TYPED_BINARY_OP:
+            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE, I8), NO_ROOT};
+        case TYPE_CONVERT:
+            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
         default:
             LOG_COMPILER(ERROR) << "Please complete OpCode properties (OpCode=" << op_ << ")";
             UNREACHABLE();
@@ -305,6 +312,9 @@ std::string OpCode::Str() const
         {BITCAST, "BITCAST"},
         {RESTORE_REGISTER, "RESTORE_REGISTER"},
         {SAVE_REGISTER, "SAVE_REGISTER"},
+        {TYPE_CHECK, "TYPE_CHECK"},
+        {TYPED_BINARY_OP, "TYPED_BINARY_OP"},
+        {TYPE_CONVERT, "TYPE_CONVERT"},
     };
     if (strMap.count(op_) > 0) {
         return strMap.at(op_);
@@ -434,7 +444,7 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckStateInput() const
     return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckValueInput() const
+std::optional<std::pair<std::string, size_t>> Gate::CheckValueInput(bool isArch64) const
 {
     size_t valueStart = GetStateCount() + GetDependCount();
     size_t valueEnd = valueStart + GetInValueCount();
@@ -446,6 +456,9 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckValueInput() const
         }
         if (actualIn == MachineType::FLEX) {
             actualIn = GetInGateConst(idx)->GetMachineType();
+        }
+        if (actualIn == MachineType::ARCH) {
+            actualIn = isArch64 ? MachineType::I64 : MachineType::I32;
         }
 
         if ((expectedIn != actualIn) && (expectedIn != ANYVALUE)) {
@@ -610,7 +623,7 @@ std::optional<std::pair<std::string, size_t>> Gate::SpecialCheck() const
     return std::nullopt;
 }
 
-bool Gate::Verify() const
+bool Gate::Verify(bool isArch64) const
 {
     std::string errorString;
     size_t highlightIdx = -1;
@@ -630,7 +643,7 @@ bool Gate::Verify() const
         }
     }
     if (!failed) {
-        auto ret = CheckValueInput();
+        auto ret = CheckValueInput(isArch64);
         if (ret.has_value()) {
             failed = true;
             std::tie(errorString, highlightIdx) = ret.value();
@@ -1197,7 +1210,8 @@ bool OpCode::IsGeneralState() const
     return ((op_ == OpCode::IF_TRUE) || (op_ == OpCode::IF_FALSE) || (op_ == OpCode::JS_BYTECODE) ||
             (op_ == OpCode::IF_SUCCESS) || (op_ == OpCode::IF_EXCEPTION) || (op_ == OpCode::SWITCH_CASE) ||
             (op_ == OpCode::DEFAULT_CASE) || (op_ == OpCode::MERGE) || (op_ == OpCode::LOOP_BEGIN) ||
-            (op_ == OpCode::ORDINARY_BLOCK) || (op_ == OpCode::STATE_ENTRY));
+            (op_ == OpCode::ORDINARY_BLOCK) || (op_ == OpCode::STATE_ENTRY) ||
+            (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT));
 }
 
 bool OpCode::IsTerminalState() const

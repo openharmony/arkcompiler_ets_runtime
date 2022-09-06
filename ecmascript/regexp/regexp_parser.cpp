@@ -784,7 +784,11 @@ bool RegExpParser::ParseGroupSpecifier(const uint8_t **pp, CString &name)
     char buffer[CACHE_SIZE] = {0};
     char *q = buffer;
     while (true) {
-        c = *p;
+        if (p <= end_) {
+            c = *p;
+        } else {
+            c = KEY_EOF;
+        }
         if (c == '\\') {
             p++;
             if (*p != 'u') {
@@ -795,10 +799,12 @@ bool RegExpParser::ParseGroupSpecifier(const uint8_t **pp, CString &name)
             }
         } else if (c == '>') {
             break;
-        } else if (c > CACHE_SIZE) {
+        } else if (c > CACHE_SIZE && c != KEY_EOF) {
             c = static_cast<uint32_t>(base::StringHelper::UnicodeFromUtf8(p, UTF8_CHAR_LEN_MAX, &p));
-        } else {
+        } else if (c != KEY_EOF) {
             p++;
+        } else {
+            return false;
         }
         if (q == buffer) {
             if (!IsIdentFirst(c)) {

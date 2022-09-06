@@ -77,7 +77,7 @@ class CjsModuleCache;
 class SlowRuntimeStub;
 class RequireManager;
 struct CJSInfo;
-class JSPatchManager;
+class QuickFixLoader;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -395,6 +395,33 @@ public:
         exceptionBCList_.clear();
     }
 
+    void WorkersetInfo(uint32_t tid, EcmaVM *workerVm)
+    {
+        WorkerList_.emplace(tid, workerVm);
+    }
+
+    EcmaVM *GetWorkerVm(uint32_t tid) const
+    {
+        EcmaVM *workerVm = nullptr;
+        if (!WorkerList_.empty()) {
+            auto iter = WorkerList_.find(tid);
+            if (iter != WorkerList_.end()) {
+                workerVm = iter->second;
+            }
+        }
+        return workerVm;
+    }
+    
+    bool IsBundle() const
+    {
+        return isBundle_;
+    }
+
+    void SetBundle(bool value)
+    {
+        isBundle_ = value;
+    }
+
 #if !WIN_OR_MAC_PLATFORM
     void DeleteHeapProfile();
     HeapProfilerInterface *GetOrNewHeapProfile();
@@ -420,9 +447,9 @@ public:
     // For Internal Native MethodLiteral.
     JSTaggedValue GetMethodByIndex(MethodIndex idx);
 
-    JSPatchManager *GetPatchManager() const
+    QuickFixLoader *GetQuickFixLoader() const
     {
-        return patchManager_;
+        return quickFixLoader_;
     }
 protected:
 
@@ -445,7 +472,7 @@ private:
 
     void SetMicroJobQueue(job::MicroJobQueue *queue);
 
-    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile);
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                           const JSPandaFile *jsPandaFile);
@@ -472,7 +499,6 @@ private:
     bool globalConstInitialized_ {false};
     GCStats *gcStats_ {nullptr};
     bool isUncaughtExceptionRegistered_ {false};
-
     // VM memory management.
     EcmaStringTable *stringTable_ {nullptr};
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
@@ -505,7 +531,8 @@ private:
 
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
-
+    // merge abc
+    bool isBundle_ {true}; // isBundle means app compile mode is JSBundle
 #if !WIN_OR_MAC_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
@@ -537,7 +564,7 @@ private:
     CVector<JSTaggedValue> internalNativeMethods_;
 
     // For repair patch.
-    JSPatchManager *patchManager_;
+    QuickFixLoader *quickFixLoader_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;
@@ -545,6 +572,7 @@ private:
     friend class ValueSerializer;
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
+    CMap<uint32_t, EcmaVM *> WorkerList_;
 };
 }  // namespace ecmascript
 }  // namespace panda

@@ -32,6 +32,19 @@ public:
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
 };
+
+class GlobalPatch : public JSObject {
+public:
+    static GlobalPatch *Cast(TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsECMAObject());
+        return static_cast<GlobalPatch *>(object);
+    }
+
+    static constexpr size_t SIZE = JSObject::SIZE;
+
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
+};
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JSGLOBALOBJECT_H

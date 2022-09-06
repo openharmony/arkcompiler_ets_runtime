@@ -56,26 +56,26 @@ def _run_cmd(cmd):
     return sout.rstrip().decode('utf-8'), serr, res.returncode
 
 def _check_sha256(check_url, local_file):
-    check_sha256_cmd = 'curl -s -k ' + check_url + '.sha256'
-    local_sha256_cmd = 'sha256sum ' + local_file + "|cut -d ' ' -f1"
+    check_sha256_cmd = ''.join(['curl -s -k ', check_url, '.sha256'])
+    local_sha256_cmd = ''.join(['sha256sum ', local_file, "|cut -d ' ' -f1"])
     check_sha256, err, returncode = _run_cmd(check_sha256_cmd)
     local_sha256, err, returncode = _run_cmd(local_sha256_cmd)
     return check_sha256 == local_sha256
 
 def _check_sha256_by_mark(args, check_url, code_dir, unzip_dir, unzip_filename):
-    check_sha256_cmd = 'curl -s -k ' + check_url + '.sha256'
+    check_sha256_cmd = ''.join(['curl -s -k ', check_url, '.sha256'])
     check_sha256, err, returncode = _run_cmd(check_sha256_cmd)
     mark_file_dir = os.path.join(code_dir, unzip_dir)
-    mark_file_name = check_sha256 + '.' + unzip_filename + '.mark'
+    mark_file_name = ''.join([check_sha256, '.', unzip_filename, '.mark'])
     mark_file_path = os.path.join(mark_file_dir, mark_file_name)
     args.mark_file_path = mark_file_path
     return os.path.exists(mark_file_path)
 
 def _config_parse(config, tool_repo):
     unzip_dir = config.get('unzip_dir')
-    huaweicloud_url = tool_repo + config.get('file_path')
+    huaweicloud_url = ''.join([tool_repo, config.get('file_path')])
     unzip_filename = config.get('unzip_filename')
-    md5_huaweicloud_url_cmd = 'echo ' + huaweicloud_url + "|md5sum|cut -d ' ' -f1"
+    md5_huaweicloud_url_cmd = ''.join(['echo ', huaweicloud_url, "|md5sum|cut -d ' ' -f1"])
     md5_huaweicloud_url, err, returncode = _run_cmd(md5_huaweicloud_url_cmd)
     bin_file = os.path.basename(huaweicloud_url)
     return unzip_dir, huaweicloud_url, unzip_filename, md5_huaweicloud_url, bin_file
@@ -124,7 +124,8 @@ def _hwcloud_download(args, config, bin_dir, code_dir):
         with ThreadPoolExecutor(max_workers=cnt) as pool:
             tasks = dict()
             for config_info in config:
-                unzip_dir, huaweicloud_url, unzip_filename, md5_huaweicloud_url, bin_file = _config_parse(config_info, args.tool_repo)
+                unzip_dir, huaweicloud_url, unzip_filename, md5_huaweicloud_url, bin_file = _config_parse(config_info,
+                    args.tool_repo)
                 abs_unzip_dir = os.path.join(code_dir, unzip_dir)
                 if not os.path.exists(abs_unzip_dir):
                     os.makedirs(abs_unzip_dir)
@@ -133,20 +134,22 @@ def _hwcloud_download(args, config, bin_dir, code_dir):
                     if os.path.basename(abs_unzip_dir) == 'nodejs':
                         _npm_install(args, code_dir, unzip_dir, unzip_filename)
                 else:
-                    _run_cmd('rm -rf ' + code_dir + '/' + unzip_dir + '/*.' + unzip_filename + '.mark')
-                    _run_cmd('rm -rf ' + code_dir + '/' + unzip_dir + '/' + unzip_filename)
-                    local_file = os.path.join(bin_dir, md5_huaweicloud_url + '.' + bin_file)
+                    _run_cmd(''.join(['rm -rf ', code_dir, '/', unzip_dir, '/*.', unzip_filename, '.mark']))
+                    _run_cmd(''.join(['rm -rf ', code_dir, '/', unzip_dir, '/', unzip_filename]))
+                    local_file = os.path.join(bin_dir, ''.join([md5_huaweicloud_url, '.', bin_file]))
                     if os.path.exists(local_file):
                         if _check_sha256(huaweicloud_url, local_file):
                             progress.console.log('{}, Sha256 check download OK.'.format(local_file), style='green')
-                            task = pool.submit(_uncompress, args, local_file, code_dir, unzip_dir, unzip_filename, args.mark_file_path)
+                            task = pool.submit(_uncompress, args, local_file, code_dir, unzip_dir, unzip_filename,
+                                args.mark_file_path)
                             tasks[task] = os.path.basename(huaweicloud_url)
                         else:
                             os.remove(local_file)
                     else:
                         filename = huaweicloud_url.split("/")[-1]
                         task_id = progress.add_task("download", filename=filename, start=False)
-                        task = pool.submit(_copy_url, args, task_id, huaweicloud_url, local_file, code_dir, unzip_dir, unzip_filename, args.mark_file_path)
+                        task = pool.submit(_copy_url, args, task_id, huaweicloud_url, local_file, code_dir, unzip_dir,
+                            unzip_filename, args.mark_file_path)
                         tasks[task] = os.path.basename(huaweicloud_url)
             for task in as_completed(tasks):
                 progress.console.log('{}, download and decompress completed'.format(tasks.get(task)), style='green')
@@ -191,14 +194,14 @@ def _node_modules_copy(config, code_dir):
 
 def _file_handle(config, code_dir):
     for config_info in config:
-        src_dir = code_dir + config_info.get('src')
-        dest_dir = code_dir + config_info.get('dest')
+        src_dir = ''.join([code_dir, config_info.get('src')])
+        dest_dir = ''.join([code_dir, config_info.get('dest')])
         tmp_dir = config_info.get('tmp')
         symlink_src = config_info.get('symlink_src')
         symlink_dest = config_info.get('symlink_dest')
         if os.path.exists(src_dir):
             if tmp_dir:
-                tmp_dir = code_dir + tmp_dir
+                tmp_dir = ''.join([code_dir, tmp_dir])
                 shutil.move(src_dir, tmp_dir)
                 cmd = 'mv {}/*.mark {}'.format(dest_dir, tmp_dir)
                 _run_cmd(cmd)
@@ -209,7 +212,7 @@ def _file_handle(config, code_dir):
                 if os.path.exists(dest_dir):
                     shutil.rmtree(dest_dir)
                 shutil.move(src_dir, dest_dir)
-                os.symlink(dest_dir + symlink_src, dest_dir + symlink_dest)
+                os.symlink(''.join([dest_dir, symlink_src]), ''.join([dest_dir, symlink_dest]))
             else:
                 _run_cmd('chmod 755 {} -R'.format(dest_dir))
 
@@ -218,7 +221,8 @@ def main():
     parser.add_argument('--skip-ssl', action='store_true', help='skip ssl authentication')
     parser.add_argument('--unsafe-perm', action='store_true', help='add "--unsafe-perm" for npm install')
     parser.add_argument('--tool-repo', default='https://repo.huaweicloud.com', help='prebuilt file download source')
-    parser.add_argument('--npm-registry', default='https://repo.huaweicloud.com/repository/npm/', help='npm download source')
+    parser.add_argument('--npm-registry', default='https://repo.huaweicloud.com/repository/npm/',
+                        help='npm download source')
     parser.add_argument('--host-cpu', help='host cpu', required=True)
     parser.add_argument('--host-platform', help='host platform', required=True)
     args = parser.parse_args()

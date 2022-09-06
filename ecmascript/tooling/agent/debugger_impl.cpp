@@ -31,6 +31,7 @@ using namespace std::placeholders;
 using ObjectType = RemoteObject::TypeName;
 using ObjectSubType = RemoteObject::SubTypeName;
 using ObjectClassName = RemoteObject::ClassName;
+using StepperType = JSPtExtractor::SingleStepper::Type;
 
 #ifdef DEBUGGER_TEST
 const std::string DATA_APP_PATH = "/";
@@ -56,7 +57,7 @@ DebuggerImpl::~DebuggerImpl()
     DebuggerApi::DestroyJSDebugger(jsDebugger_);
 }
 
-bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &fileName)
+bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &fileName, std::string_view entryPoint)
 {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     if (fileName.substr(0, DATA_APP_PATH.length()) != DATA_APP_PATH) {
@@ -85,7 +86,7 @@ bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &file
         return false;
     }
 
-    auto mainMethodIndex = panda_file::File::EntityId(jsPandaFile->GetMainMethodIndex());
+    auto mainMethodIndex = panda_file::File::EntityId(jsPandaFile->GetMainMethodIndex(entryPoint.data()));
     const std::string &source = extractor->GetSourceCode(mainMethodIndex);
     const std::string &url = extractor->GetSourceFile(mainMethodIndex);
     const uint32_t MIN_SOURCE_CODE_LENGTH = 5;  // maybe return 'ANDA' when source code is empty
@@ -236,9 +237,22 @@ void DebuggerImpl::NotifyPaused(std::optional<JSPtLocation> location, PauseReaso
     }
     frontend_.Paused(vm_, paused);
 
-    // Waiting for Debugger
     frontend_.WaitForDebugger(vm_);
     DebuggerApi::SetException(vm_, exception);
+}
+
+void DebuggerImpl::NotifyNativeCalling(const void *nativeAddress)
+{
+    // native calling only after step into should be reported
+    if (singleStepper_ != nullptr &&
+        singleStepper_->GetStepperType() == StepperType::STEP_INTO) {
+        tooling::NativeCalling nativeCalling;
+        nativeCalling.SetNativeAddress(nativeAddress);
+        frontend_.NativeCalling(vm_, nativeCalling);
+        frontend_.WaitForDebugger(vm_);
+        singleStepper_.reset();
+        pauseOnNextByteCode_ = true;
+    }
 }
 
 void DebuggerImpl::NotifyPendingJobEntry()
@@ -271,7 +285,8 @@ void DebuggerImpl::DispatcherImpl::Dispatch(const DispatchRequest &request)
         { "setPauseOnExceptions", &DebuggerImpl::DispatcherImpl::SetPauseOnExceptions },
         { "stepInto", &DebuggerImpl::DispatcherImpl::StepInto },
         { "stepOut", &DebuggerImpl::DispatcherImpl::StepOut },
-        { "stepOver", &DebuggerImpl::DispatcherImpl::StepOver }
+        { "stepOver", &DebuggerImpl::DispatcherImpl::StepOver },
+        { "setMixedDebugEnabled", &DebuggerImpl::DispatcherImpl::SetMixedDebugEnabled }
     };
 
     const std::string &method = request.GetMethod();
@@ -438,6 +453,13 @@ void DebuggerImpl::DispatcherImpl::StepOver(const DispatchRequest &request)
     SendResponse(request, response);
 }
 
+void DebuggerImpl::DispatcherImpl::SetMixedDebugEnabled(const DispatchRequest &request)
+{
+    std::unique_ptr<SetMixedDebugParams> params = SetMixedDebugParams::Create(request.GetParams());
+    DispatchResponse response = debugger_->SetMixedDebugEnabled(*params);
+    SendResponse(request, response);
+}
+
 void DebuggerImpl::DispatcherImpl::SetBlackboxPatterns(const DispatchRequest &request)
 {
     DispatchResponse response = debugger_->SetBlackboxPatterns();
@@ -466,6 +488,15 @@ void DebuggerImpl::Frontend::Paused(const EcmaVM *vm, const tooling::Paused &pau
     }
 
     channel_->SendNotification(paused);
+}
+
+void DebuggerImpl::Frontend::NativeCalling(const EcmaVM *vm, const tooling::NativeCalling &nativeCalling)
+{
+    if (!AllowNotify(vm)) {
+        return;
+    }
+
+    channel_->SendNotification(nativeCalling);
 }
 
 void DebuggerImpl::Frontend::Resumed(const EcmaVM *vm)
@@ -775,6 +806,12 @@ DispatchResponse DebuggerImpl::StepOver([[maybe_unused]] const StepOverParams &p
 DispatchResponse DebuggerImpl::SetBlackboxPatterns()
 {
     return DispatchResponse::Fail("SetBlackboxPatterns not support now");
+}
+
+DispatchResponse DebuggerImpl::SetMixedDebugEnabled([[maybe_unused]] const SetMixedDebugParams &params)
+{
+    vm_->GetJsDebuggerManager()->SetMixedDebugEnabled(params.GetEnabled());
+    return DispatchResponse::Ok();
 }
 
 void DebuggerImpl::CleanUpOnPaused()

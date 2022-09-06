@@ -229,6 +229,8 @@ namespace panda::ecmascript {
     V(DefineAsyncGeneratorFuncWithMethodId) \
     V(GetSuperConstructor)          \
     V(DynamicImport)                \
+    V(LdPatchVar)                   \
+    V(StPatchVar)                   \
     V(AsyncGeneratorReject)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

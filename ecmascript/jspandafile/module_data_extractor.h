@@ -35,7 +35,7 @@ public:
                                    panda_file::File::EntityId moduleId,
                                    JSHandle<SourceTextModule> &moduleRecord);
     static JSHandle<JSTaggedValue> ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                               const CString &descriptor);
+                                               const CString &descriptor, const CString &moduleFilename);
     static JSHandle<JSTaggedValue> ParseCjsModule(JSThread *thread, const CString &descriptor);
 };
 }  // namespace panda::ecmascript

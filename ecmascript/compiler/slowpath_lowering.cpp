@@ -483,7 +483,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerToNumeric(gate, glue);
             break;
         case DYNAMICIMPORT_PREF_V8:
-            LowerDynamicImport(gate, glue);
+            LowerDynamicImport(gate, glue, jsFunc);
             break;
         case LDMODULEVAR_PREF_ID32_IMM8:
             LowerLdModuleVar(gate, glue, jsFunc);
@@ -1466,21 +1466,193 @@ void SlowPathLowering::LowerInstanceofDyn(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerFastStrictNotEqual(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStrictNotEqDynPrefV8)));
-    const int id = RTSTUB_ID(FastStrictNotEqual);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate, true);
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> failControl;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    Label strictEqual(&builder_);
+    Label notStrictEqual(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(FastStrictEqual(glue, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)), &strictEqual,
+        &notStrictEqual);
+    builder_.Bind(&strictEqual);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notStrictEqual);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    successControl.emplace_back(builder_.GetState());
+    successControl.emplace_back(builder_.GetDepend());
+    failControl.emplace_back(Circuit::NullGate());
+    failControl.emplace_back(Circuit::NullGate());
+    ReplaceHirToSubCfg(gate, *result, successControl, failControl, true);
 }
 
 void SlowPathLowering::LowerFastStrictEqual(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleStrictEqDynPrefV8)));
-    const int id = RTSTUB_ID(FastStrictEqual);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate, true);
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> failControl;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    Label strictEqual(&builder_);
+    Label notStrictEqual(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(FastStrictEqual(glue, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)), &strictEqual,
+        &notStrictEqual);
+    builder_.Bind(&strictEqual);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notStrictEqual);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    successControl.emplace_back(builder_.GetState());
+    successControl.emplace_back(builder_.GetDepend());
+    failControl.emplace_back(Circuit::NullGate());
+    failControl.emplace_back(Circuit::NullGate());
+    ReplaceHirToSubCfg(gate, *result, successControl, failControl, true);
+}
+
+GateRef SlowPathLowering::FastStrictEqual(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+
+    DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.False());
+    Label leftIsNumber(&builder_);
+    Label leftNotNumber(&builder_);
+    Label sameVariableCheck(&builder_);
+    Label stringEqCheck(&builder_);
+    Label stringCompare(&builder_);
+    Label bigIntEqualCheck(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsNumber(left), &leftIsNumber, &leftNotNumber);
+    builder_.Bind(&leftIsNumber);
+    {
+        Label rightIsNumber(&builder_);
+        builder_.Branch(builder_.TaggedIsNumber(right), &rightIsNumber, &exit);
+        builder_.Bind(&rightIsNumber);
+        {
+            DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
+            DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
+            Label leftIsInt(&builder_);
+            Label leftNotInt(&builder_);
+            Label getRight(&builder_);
+            Label strictNumberEqualCheck(&builder_);
+            builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftNotInt);
+            builder_.Bind(&leftIsInt);
+            {
+                doubleLeft = builder_.ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+                builder_.Jump(&getRight);
+            }
+            builder_.Bind(&leftNotInt);
+            {
+                doubleLeft = builder_.TaggedCastToDouble(left);
+                builder_.Jump(&getRight);
+            }
+            builder_.Bind(&getRight);
+            {
+                Label rightIsInt(&builder_);
+                Label rightNotInt(&builder_);
+                builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightNotInt);
+                builder_.Bind(&rightIsInt);
+                {
+                    doubleRight = builder_.ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+                    builder_.Jump(&strictNumberEqualCheck);
+                }
+                builder_.Bind(&rightNotInt);
+                {
+                    doubleRight = builder_.TaggedCastToDouble(right);
+                    builder_.Jump(&strictNumberEqualCheck);
+                }
+            }
+            builder_.Bind(&strictNumberEqualCheck);
+            {
+                Label leftNotNan(&builder_);
+                Label numberCheck(&builder_);
+                builder_.Branch(builder_.DoubleIsNAN(*doubleLeft), &exit, &leftNotNan);
+                builder_.Bind(&leftNotNan);
+                {
+                    Label rightNotNan(&builder_);
+                    builder_.Branch(builder_.DoubleIsNAN(*doubleRight), &exit, &rightNotNan);
+                    builder_.Bind(&rightNotNan);
+                    {
+                        result = builder_.Equal(*doubleLeft, *doubleRight);
+                        builder_.Jump(&exit);
+                    }
+                }
+            }
+        }
+    }
+    builder_.Bind(&leftNotNumber);
+    builder_.Branch(builder_.TaggedIsNumber(right), &exit, &sameVariableCheck);
+    builder_.Bind(&sameVariableCheck);
+    {
+        Label strictEq(&builder_);
+        builder_.Branch(builder_.Equal(left, right), &strictEq, &stringEqCheck);
+        builder_.Bind(&strictEq);
+        {
+            result = builder_.True();
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&stringEqCheck);
+    builder_.Branch(builder_.BothAreString(left, right), &stringCompare, &bigIntEqualCheck);
+    builder_.Bind(&stringCompare);
+    {
+        Label lengthCompare(&builder_);
+        Label hashcodeCompare(&builder_);
+        Label contentsCompare(&builder_);
+        builder_.Branch(builder_.Equal(builder_.ZExtInt1ToInt32(builder_.IsUtf16String(left)),
+            builder_.ZExtInt1ToInt32(builder_.IsUtf16String(right))), &lengthCompare, &exit);
+        builder_.Bind(&lengthCompare);
+        builder_.Branch(builder_.Equal(builder_.GetLengthFromString(left), builder_.GetLengthFromString(right)),
+            &hashcodeCompare, &exit);
+        builder_.Bind(&hashcodeCompare);
+        builder_.Branch(
+            builder_.Equal(builder_.GetHashcodeFromString(glue, left), builder_.GetHashcodeFromString(glue, right)),
+            &contentsCompare, &exit);
+        builder_.Bind(&contentsCompare);
+        {
+            GateRef stringEqual = LowerCallRuntime(glue, RTSTUB_ID(StringEqual), { left, right }, true);
+            result = builder_.Equal(stringEqual, builder_.TaggedTrue());
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&bigIntEqualCheck);
+    {
+        Label leftIsBigInt(&builder_);
+        Label leftIsNotBigInt(&builder_);
+        builder_.Branch(builder_.TaggedIsBigInt(left), &leftIsBigInt, &exit);
+        builder_.Bind(&leftIsBigInt);
+        {
+            Label rightIsBigInt(&builder_);
+            builder_.Branch(builder_.TaggedIsBigInt(right), &rightIsBigInt, &exit);
+            builder_.Bind(&rightIsBigInt);
+            {
+                GateRef bigIntEqual = LowerCallRuntime(glue, RTSTUB_ID(BigIntEqual), { left, right }, true);
+                result = builder_.Equal(bigIntEqual, builder_.TaggedTrue());
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 void SlowPathLowering::LowerCreateEmptyArray(GateRef gate, GateRef glue)
@@ -1607,13 +1779,13 @@ void SlowPathLowering::LowerToNumeric(GateRef gate, GateRef glue)
     ReplaceHirToCall(gate, newGate);
 }
 
-void SlowPathLowering::LowerDynamicImport(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerDynamicImport(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDynamicImportPrefV8)));
     const int id = RTSTUB_ID(DynamicImport);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0)});
+    GateRef newGate = LowerCallRuntime(glue, id, {acc_.GetValueIn(gate, 0), jsFunc});
     ReplaceHirToCall(gate, newGate);
 }
 
@@ -2901,7 +3073,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8)));
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
-    GateRef methodId = acc_.GetValueIn(gate, 0);
+    GateRef methodId = builder_.SExtInt16ToInt64(acc_.GetValueIn(gate, 0));
     GateRef length = acc_.GetValueIn(gate, 2);
 
     GateRef lexicalEnv = acc_.GetValueIn(gate, 3);
@@ -3221,7 +3393,7 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
     GateRef resumeModeBits = builder_.Int32And(bitfieldlsr,
                                                builder_.Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
     auto resumeMode = builder_.SExtInt32ToInt64(resumeModeBits);
-    GateRef result = builder_.ToTaggedInt(resumeMode);
+    GateRef result = builder_.ToTaggedIntPtr(resumeMode);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());

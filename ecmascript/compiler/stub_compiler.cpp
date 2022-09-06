@@ -35,8 +35,8 @@
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
 public:
-    explicit StubPassData(Stub *stub, LLVMModule *module)
-        : PassData(nullptr), module_(module), stub_(stub) {}
+    explicit StubPassData(Stub *stub, LLVMModule *module, const CompilerLog *log, bool enableMethodLog)
+        : PassData(nullptr, log, enableMethodLog), module_(module), stub_(stub) {}
     ~StubPassData() = default;
 
     const CompilationConfig *GetCompilationConfig() const
@@ -66,7 +66,7 @@ private:
 
 class StubBuildCircuitPass {
 public:
-    bool Run(StubPassData *data, [[maybe_unused]] bool enableLog)
+    bool Run(StubPassData *data)
     {
         auto stub = data->GetStub();
         LOG_COMPILER(INFO) << "Stub Name: " << stub->GetMethodName();
@@ -81,8 +81,10 @@ public:
     {
         llvmImpl_ = std::make_unique<LLVMIRGeneratorImpl>(module, enableLog);
     }
-    bool Run(StubPassData *data, bool enableLog, size_t index)
+
+    bool Run(StubPassData *data, size_t index)
     {
+        bool enableLog =  data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         auto stubModule = data->GetStubModule();
         CreateCodeGen(stubModule, enableLog);
         CodeGenerator codegen(llvmImpl_);
@@ -98,10 +100,11 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
     auto callSigns = module->GetCSigns();
     const CompilerLog *log = GetLog();
     auto logList = GetLogList();
+    auto cconfig = module->GetCompilationConfig();
 
-    bool enableLog = !log->NoneMethod();
+    bool enableMethodLog = !log->NoneMethod();
     for (size_t i = 0; i < callSigns.size(); i++) {
-        Circuit circuit;
+        Circuit circuit(cconfig->Is64Bit());
         Stub stub(callSigns[i], &circuit);
         ASSERT(callSigns[i]->HasConstructor());
         StubBuilder* stubBuilder = static_cast<StubBuilder*>(
@@ -109,11 +112,11 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
         stub.SetStubBuilder(stubBuilder);
 
         if (log->CertainMethod()) {
-            enableLog = logList->IncludesMethod(stub.GetMethodName());
+            enableMethodLog = logList->IncludesMethod(stub.GetMethodName());
         }
 
-        StubPassData data(&stub, module);
-        PassRunner<StubPassData> pipeline(&data, enableLog && log->OutputCIR());
+        StubPassData data(&stub, module, log, enableMethodLog);
+        PassRunner<StubPassData> pipeline(&data);
         pipeline.RunPass<StubBuildCircuitPass>();
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<SchedulingPass>();

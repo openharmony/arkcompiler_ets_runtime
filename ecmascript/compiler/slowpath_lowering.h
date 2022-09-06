@@ -220,7 +220,7 @@ private:
     void LowerSetObjectWithProto(GateRef gate, GateRef glue);
     void LowerLdBigInt(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerToNumeric(GateRef gate, GateRef glue);
-    void LowerDynamicImport(GateRef gate, GateRef glue);
+    void LowerDynamicImport(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIteratorNext(GateRef gate, GateRef glue);
@@ -283,6 +283,7 @@ private:
     void LowerAsyncGeneratorReject(GateRef gate, GateRef glue);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
     void DebugPrintBC(GateRef gate, GateRef glue, GateRef index);
+    GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

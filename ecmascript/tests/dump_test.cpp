@@ -439,7 +439,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 7U);
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 6U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc)
                 break;
@@ -761,6 +761,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(globalObject)
                 break;
             }
+            case JSType::GLOBAL_PATCH: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, GlobalPatch::SIZE, 0U);
+                JSHandle<JSTaggedValue> globalPatch = globalEnv->GetGlobalPatch();
+                DUMP_FOR_HANDLE(globalPatch)
+                break;
+            }
             case JSType::JS_PROXY: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSProxy::SIZE, 3U);
                 JSHandle<JSTaggedValue> emptyObj(thread, NewJSObject(thread, factory, globalEnv).GetTaggedValue());
@@ -786,6 +792,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::LEXICAL_ENV: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray)
+                break;
+            }
+            case JSType::CONSTANT_POOL: {
+                JSHandle<ConstantPool> constantPool = factory->NewConstantPool(4);
+                DUMP_FOR_HANDLE(constantPool)
                 break;
             }
             case JSType::TAGGED_DICTIONARY: {
@@ -1198,7 +1209,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SOURCE_TEXT_MODULE_RECORD: {
-                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 11U);
+                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 12U);
                 JSHandle<SourceTextModule> moduleSourceRecord = factory->NewSourceTextModule();
                 DUMP_FOR_HANDLE(moduleSourceRecord);
                 break;

@@ -3460,7 +3460,8 @@ void InterpreterAssembly::HandleDynamicImportPrefV8(
     LOG_INST() << "intrinsics::dynamicimport"
                 << " v" << v0;
     JSTaggedValue specifier = GET_VREG_VALUE(v0);
-    JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier);
+    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
     DISPATCH(BytecodeInstruction::Format::PREF_V8);
@@ -3588,6 +3589,36 @@ void InterpreterAssembly::HandleIsFalsePref(
         SET_ACC(JSTaggedValue::False());
     }
     DISPATCH(BytecodeInstruction::Format::PREF_NONE);
+}
+
+void InterpreterAssembly::HandleLdPatchVarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint32_t index = READ_INST_16_1();
+    LOG_INST() << "intrinsics::ldpatchvar" << " imm: " << index;
+
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::LdPatchVar(thread, index);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(BytecodeInstruction::Format::PREF_IMM16);
+}
+
+void InterpreterAssembly::HandleStPatchVarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint32_t index = READ_INST_16_1();
+    LOG_INST() << "intrinsics::stpatchvar" << " imm: " << index;
+    JSTaggedValue value = GET_ACC();
+
+    SAVE_ACC();
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::StPatchVar(thread, index, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    RESTORE_ACC();
+    DISPATCH(BytecodeInstruction::Format::PREF_IMM16);
 }
 
 void InterpreterAssembly::ExceptionHandler(

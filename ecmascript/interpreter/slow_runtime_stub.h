@@ -146,7 +146,7 @@ public:
                                    uint16_t length);
     static JSTaggedValue SuperCallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                          JSTaggedValue array);
-    static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier);
+    static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue func);
     static JSTaggedValue DefineMethod(JSThread *thread, JSFunction *func, JSTaggedValue homeObject);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
@@ -173,6 +173,9 @@ public:
                                               const JSTaggedValue value);
     static JSTaggedValue CreateAsyncGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
     static JSTaggedValue DefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func);
+    static JSTaggedValue LdPatchVar(JSThread *thread, uint32_t index);
+    static JSTaggedValue StPatchVar(JSThread *thread, uint32_t index, JSTaggedValue value);
+
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);
     static JSTaggedValue GetCallSpreadArgs(JSThread *thread, JSTaggedValue array);

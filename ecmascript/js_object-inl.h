@@ -63,6 +63,11 @@ inline bool JSObject::IsJSGlobalObject() const
     return GetJSHClass()->IsJSGlobalObject();
 }
 
+inline bool JSObject::IsGlobalPatch() const
+{
+    return GetJSHClass()->IsGlobalPatch();
+}
+
 inline bool JSObject::IsConstructor() const
 {
     return GetJSHClass()->IsConstructor();
@@ -371,6 +376,19 @@ inline uint32_t JSObject::SetValuesOrEntries(JSThread *thread, const JSHandle<Ta
     JSHandle<JSArray> entry = JSArray::CreateArrayFromList(thread, keyValue);
     prop->Set(thread, index++, entry.GetTaggedValue());
     return index;
+}
+
+inline std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> JSObject::GetOwnEnumerableNamesInFastMode(
+    JSThread *thread, const JSHandle<JSObject> &obj, uint32_t *copyLengthOfKeys, uint32_t *copyLengthOfElements)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t numOfKeys = obj->GetNumberOfKeys();
+    uint32_t numOfElements = obj->GetNumberOfElements();
+    JSHandle<TaggedArray> elementArray = numOfElements > 0 ? JSObject::GetEnumElementKeys(
+        thread, obj, 0, numOfElements, copyLengthOfElements) : factory->EmptyArray();
+    JSHandle<TaggedArray> keyArray = numOfKeys > 0 ? JSObject::GetAllEnumKeys(
+        thread, obj, 0, numOfKeys, copyLengthOfKeys) : factory->EmptyArray();
+    return std::make_pair(keyArray, elementArray);
 }
 }  //  namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSOBJECT_INL_H

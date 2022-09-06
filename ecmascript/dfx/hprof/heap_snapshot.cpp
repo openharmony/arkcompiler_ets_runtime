@@ -29,6 +29,7 @@
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array.h"
@@ -212,6 +213,14 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             arrayName.append("]");
             return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
         }
+        case JSType::CONSTANT_POOL: {
+            CString arrayName;
+            ConstantPool *constantPool = ConstantPool::Cast(entry);
+            arrayName = "ConstantPool[";
+            arrayName.append(ToCString(constantPool->GetCacheLength()));
+            arrayName.append("]");
+            return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
+        }
         case JSType::HCLASS:
             return GetString("HiddenClass");
         case JSType::TAGGED_DICTIONARY: {
@@ -379,6 +388,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Realm");
         case JSType::JS_GLOBAL_OBJECT:
             return GetString("GlobalObject");
+        case JSType::GLOBAL_PATCH:
+            return GetString("GlobalPatch");
         case JSType::JS_INTL:
             return GetString("JSIntl");
         case JSType::JS_LOCALE:

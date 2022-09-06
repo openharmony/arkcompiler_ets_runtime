@@ -36,7 +36,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/js_patch_manager.h"
+#include "ecmascript/jspandafile/quick_fix_loader.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
@@ -279,6 +279,16 @@ bool JSNApi::StopDebugger(EcmaVM *vm)
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
 }
+
+bool JSNApi::IsMixedDebugEnabled(const EcmaVM *vm)
+{
+    return vm->GetJsDebuggerManager()->IsMixedDebugEnabled();
+}
+
+void JSNApi::NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress)
+{
+    vm->GetJsDebuggerManager()->GetNotificationManager()->NativeCallingEvent(nativeAddress);
+}
 #endif
 
 bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry)
@@ -314,6 +324,11 @@ void JSNApi::preFork(EcmaVM *vm)
 void JSNApi::postFork(EcmaVM *vm)
 {
     vm->postFork();
+}
+
+void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
+{
+    hostVm->WorkersetInfo(workerVm->GetJSThread()->GetThreadId(), workerVm);
 }
 
 Local<ObjectRef> JSNApi::GetUncaughtException(const EcmaVM *vm)
@@ -527,9 +542,15 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
 
 Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)
 {
+    std::string entry = file;
+#if ECMASCRIPT_ENABLE_MERGE_ABC
+    if (!vm->IsBundle()) {
+        entry = ecmascript::JSPandaFile::ParseOhmUrl(file.c_str());
+    }
+#endif
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
-    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostResolveImportedModule(file.c_str());
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry.c_str());
 
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
@@ -1067,9 +1088,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
-    JSHandle<JSNativePointer> extraInfo =
-        factory->NewJSNativePointer(reinterpret_cast<void *>(nativeFunc), deleter, data);
-    current->SetFunctionExtraInfo(thread, extraInfo.GetTaggedValue());
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
     current->SetCallNative(callNative);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
@@ -1091,9 +1110,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     current->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
                                      accessor.GetTaggedValue());
 
-    JSHandle<JSNativePointer> extraInfo =
-        factory->NewJSNativePointer(reinterpret_cast<void *>(nativeFunc), deleter, data);
-    current->SetFunctionExtraInfo(thread, extraInfo.GetTaggedValue());
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
 
     JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, factory, current);
     clsPrototype.GetTaggedValue().GetTaggedObject()->GetClass()->SetClassPrototype(true);
@@ -1216,8 +1233,15 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     ecmascript::tooling::JSPtExtractor *debugExtractor =
                                         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
+    if (!jsPandaFile->IsBundle()) {
+        JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
+        JSTaggedValue recordName =
+            ecmascript::SourceTextModule::Cast(function->GetModule().GetTaggedObject())->GetEcmaModuleRecordName();
+        entry = ConvertToString(recordName);
+    }
     const std::string &allSourceCode = debugExtractor->GetSourceCode(panda_file::File::EntityId(
-        jsPandaFile->GetMainMethodIndex()));
+        jsPandaFile->GetMainMethodIndex(entry)));
     std::string sourceCode = StringHelper::GetSpecifiedLine(allSourceCode, lineNumber);
     uint32_t codeLen = sourceCode.length();
     if (codeLen == 0 || sourceCode == "ANDA") {
@@ -1891,11 +1915,11 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
     }
     [[maybe_unused]] LocalScope scope(thread->GetEcmaVM());
     JSHandle<JSFunction> function(constructor);
-    JSHandle<JSTaggedValue> extraInfoValue(thread, function->GetFunctionExtraInfo());
-    if (!extraInfoValue->IsJSNativePointer()) {
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (!extraInfoValue.IsJSNativePointer()) {
         return JSTaggedValue::False();
     }
-    JSHandle<JSNativePointer> extraInfo(extraInfoValue);
+    JSHandle<JSNativePointer> extraInfo(thread, extraInfoValue);
     // callBack
     FunctionCallback nativeFunc = reinterpret_cast<FunctionCallback>(extraInfo->GetExternalPointer());
 
@@ -2413,23 +2437,47 @@ EcmaVM *JsiRuntimeCallInfo::GetVM() const
 // ---------------------------------------Hot Patch----------------------------------------------------
 bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName)
 {
-    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->LoadPatch(thread, patchFileName, baseFileName);
+    return quickFixLoader->LoadPatch(thread, patchFileName, baseFileName);
 }
 
 bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                        const std::string &baseFileName)
 {
-    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
+    return quickFixLoader->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
 }
 
 bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
 {
-    ecmascript::JSPatchManager *patchManager = vm->GetPatchManager();
+    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
     JSThread *thread = vm->GetJSThread();
-    return patchManager->UnLoadPatch(thread, patchFileName);
+    return quickFixLoader->UnLoadPatch(thread, patchFileName);
+}
+
+/*
+ * check whether the exception is caused by quickfix methods.
+ */
+bool JSNApi::IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName)
+{
+    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> exceptionInfo = JSNApiHelper::ToJSHandle(exception);
+    return quickFixLoader->IsQuickFixCausedException(thread, exceptionInfo, patchFileName);
+}
+
+bool JSNApi::IsBundle([[maybe_unused]]EcmaVM *vm)
+{
+#if ECMASCRIPT_ENABLE_MERGE_ABC
+    return vm->IsBundle();
+#endif
+    return true;
+}
+
+void JSNApi::SetBundle(EcmaVM *vm, bool value)
+{
+    vm->SetBundle(value);
 }
 }  // namespace panda

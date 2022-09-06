@@ -1,4 +1,4 @@
-#!/usr/bin/env
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -32,15 +32,19 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('name', metavar='file|path', type=str, help='test case name: file or path')
     parser.add_argument('--all', action='store_true', help='run all test cases on path')
-    parser.add_argument('--product', metavar='name', help='product name, default is hispark_taurus on x64, rk3568 on arm64')
+    parser.add_argument('--product', metavar='name',
+        help='product name, default is hispark_taurus on x64, rk3568 on arm64')
     parser.add_argument('--type', metavar='opt', help='run test type opt: js, ts, [jt]s, default is [jt]s')
-    parser.add_argument('--tool', metavar='opt', help='run tool supported opt: aot, int(c interpreter tool), asmint(asm interpreter tool)')
-    parser.add_argument('--step', metavar='opt', help='run step supported opt: abc, aot, aotd, run, rund, asmint, asmintd, int, intd')
+    parser.add_argument('--tool', metavar='opt',
+        help='run tool supported opt: aot, int(c interpreter tool), asmint(asm interpreter tool)')
+    parser.add_argument('--step', metavar='opt',
+        help='run step supported opt: abc, aot, aotd, run, rund, asmint, asmintd, int, intd')
     parser.add_argument('--debug', action='store_true', help='run on debug mode')
     parser.add_argument('--arm64', action='store_true', help='run on arm64 platform')
     parser.add_argument('--aot-args', metavar='args', help='pass to aot compiler args')
     parser.add_argument('--jsvm-args', metavar='args', help='pass to jsvm args')
-    parser.add_argument('--timeout', metavar='n', default=DEFAULT_TIMEOUT, type=int, help=f'specify seconds of test timeout, default is {DEFAULT_TIMEOUT}')
+    parser.add_argument('--timeout', metavar='n', default=DEFAULT_TIMEOUT, type=int,
+        help=f'specify seconds of test timeout, default is {DEFAULT_TIMEOUT}')
     parser.add_argument('--env', action='store_true', help='print LD_LIBRARY_PATH')
     arguments = parser.parse_args()
     return arguments
@@ -190,7 +194,7 @@ class ArkTest():
                     abc = import_file[0][1:].replace(".js", ".abc")
                     abc = os.path.abspath(f'{js_dir}/{abc}')
                     if module_abc_file.find(abc) < 0:
-                        module_abc_file += f':{abc}'
+                        module_abc_file = ''.join([module_abc_file, f':{abc}'])
         infile.close()
         os.system(f'mkdir -p {out_case_dir}')
         cmd_map = {

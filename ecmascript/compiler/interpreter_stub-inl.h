@@ -368,7 +368,7 @@ GateRef InterpreterStubBuilder::CheckStackOverflow(GateRef glue, GateRef sp)
 
 GateRef InterpreterStubBuilder::PushArg(GateRef glue, GateRef sp, GateRef value)
 {
-    GateRef newSp = PointerSub(sp, IntPtr(sizeof(JSTaggedType)));
+    GateRef newSp = PtrSub(sp, IntPtr(sizeof(JSTaggedType)));
     // 0 : skip 0 byte of bytecode
     Store(VariableType::INT64(), glue, newSp, IntPtr(0), value);
     return newSp;
