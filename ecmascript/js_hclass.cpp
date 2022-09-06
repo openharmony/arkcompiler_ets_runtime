@@ -197,7 +197,7 @@ JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHa
             layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
         } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) { // need to Grow
             layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, LayoutInfo::ComputeGrowCapacity(offset)));
+                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
         }
         newJsHClass->SetLayout(thread, layoutInfoHandle);
         layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attr);
@@ -235,7 +235,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
             layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
         } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
             layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, LayoutInfo::ComputeGrowCapacity(offset)));
+                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
         }
         newJsHClass->SetLayout(thread, layoutInfoHandle);
         layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attr);

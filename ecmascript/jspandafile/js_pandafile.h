@@ -31,6 +31,7 @@ public:
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
         int moduleRecordIdx {-1};
+        CUnorderedMap<uint32_t, uint64_t> constpoolMap;
     };
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
@@ -100,12 +101,18 @@ public:
         return 0;
     }
 
-    const CUnorderedMap<uint32_t, uint64_t> &GetConstpoolMap() const
+    const CUnorderedMap<uint32_t, uint64_t> &GetConstpoolMap(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
-        return constpoolMap_;
+        auto info = jsRecordInfo_.find(recordName);
+        if (info != jsRecordInfo_.end()) {
+            return info->second.constpoolMap;
+        }
+        LOG_FULL(FATAL) << "find entryPoint fail " << recordName;
+        UNREACHABLE();
     }
 
-    uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset);
+    uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset,
+                                                const CString &entryPoint = ENTRY_FUNCTION_NAME);
 
     void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
     {
@@ -179,6 +186,10 @@ public:
         }
         return false;
     }
+    const CUnorderedMap<CString, JSRecordInfo> &GetJSRecordInfo() const
+    {
+        return jsRecordInfo_;
+    }
     void checkIsBundle();
 
     CString FindrecordName(const CString &record) const;
@@ -192,11 +203,10 @@ private:
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
 
-    uint32_t constpoolIndex_ {0}; // Index 0 is JSPandaFile NativePointer.
-    CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
+    uint32_t constpoolIndex_ {0};
+    CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     uint32_t numMethods_ {0};
     MethodLiteral *methodLiterals_ {nullptr};
-    CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     const panda_file::File *pf_ {nullptr};
     CString desc_;
     bool hasTSTypes_ {false};

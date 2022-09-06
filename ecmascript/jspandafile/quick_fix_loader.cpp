@@ -50,6 +50,11 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileNam
     if (patchFile_ == nullptr) {
         return false;
     }
+
+    if (patchFile_->IsModule()) {
+        const CString &moduleName = patchFile_->GetJSPandaFileDesc();
+        vm->GetModuleManager()->HostResolveImportedModule(moduleName);
+    }
     JSHandle<Program> patchProgram =
         PandaFileTranslator::GenerateProgram(vm, patchFile_, JSPandaFile::ENTRY_FUNCTION_NAME);
     JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_, 0);
@@ -87,6 +92,11 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileNam
         thread, ConvertToString(patchFileName), JSPandaFile::PATCH_ENTRY_FUNCTION, patchBuffer, patchSize);
     if (patchFile_ == nullptr) {
         return false;
+    }
+
+    if (patchFile_->IsModule()) {
+        const CString &moduleName = patchFile_->GetJSPandaFileDesc();
+        vm->GetModuleManager()->HostResolveImportedModule(patchBuffer, patchSize, moduleName);
     }
     JSHandle<Program> patchProgram =
         PandaFileTranslator::GenerateProgram(vm, patchFile_, JSPandaFile::ENTRY_FUNCTION_NAME);
@@ -176,7 +186,7 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
 
 bool QuickFixLoader::UnLoadPatch(JSThread *thread, const std::string &patchFileName)
 {
-    if (ConvertToString(patchFileName) != patchFile_->GetJSPandaFileDesc()) {
+    if (patchFile_ == nullptr || ConvertToString(patchFileName) != patchFile_->GetJSPandaFileDesc()) {
         return false;
     }
 

@@ -325,7 +325,7 @@ private:
 class ECMAObject : public TaggedObject {
 public:
     static constexpr int HASH_INDEX = 0;
-    static constexpr int FUNCTION_EXTRAL_INDEX = 1;
+    static constexpr int FUNCTION_EXTRA_INDEX = 1;
     static constexpr int RESOLVED_MAX_SIZE = 2;
 
     CAST_CHECK(ECMAObject, IsECMAObject);
@@ -339,6 +339,8 @@ public:
 
     void SetHash(int32_t hash);
     int32_t GetHash() const;
+    bool HasHash() const;
+
     void InitializeHash()
     {
         Barriers::SetPrimitive<JSTaggedType>(this, ECMAObject::HASH_OFFSET, JSTaggedValue(0).GetRawData());

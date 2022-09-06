@@ -328,7 +328,7 @@ DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
             newHClassHandle->SetLayout(thread, layoutInfoHandle);
         } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
             layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, LayoutInfo::ComputeGrowCapacity(offset)));
+                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
             newHClassHandle->SetLayout(thread, layoutInfoHandle);
         }
         layoutInfoHandle->AddKey(thread, offset, keyHandle.GetTaggedValue(), attrValue);
