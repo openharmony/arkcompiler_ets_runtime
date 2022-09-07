@@ -1656,6 +1656,15 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v2));
             break;
         }
+        case EcmaBytecode::ASYNCGENERATORREJECT_PREF_V8_V8: {
+            uint16_t v0 = READ_INST_8_1();
+            uint16_t v1 = READ_INST_8_2();
+            info.accOut = true;
+            info.offset = BytecodeOffset::FOUR;
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v1));
+            break;
+        }
         case EcmaBytecode::STARRAYSPREAD_PREF_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v1 = READ_INST_8_2();

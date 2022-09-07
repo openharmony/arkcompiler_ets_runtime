@@ -574,6 +574,14 @@ DEF_RUNTIME_STUBS(AsyncGeneratorResolve)
     return RuntimeAsyncGeneratorResolve(thread, asyncGenerator, value, flag).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(AsyncGeneratorReject)
+{
+    RUNTIME_STUBS_HEADER(AsyncGeneratorReject);
+    JSHandle<JSTaggedValue> asyncGenerator = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    return RuntimeAsyncGeneratorReject(thread, asyncGenerator, value).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CopyDataProperties)
 {
     RUNTIME_STUBS_HEADER(CopyDataProperties);

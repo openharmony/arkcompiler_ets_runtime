@@ -2483,4 +2483,10 @@ void JSNApi::SetBundle(EcmaVM *vm, bool value)
 {
     vm->SetBundle(value);
 }
+
+void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
+{
+    ecmascript::CString path = assetPath.c_str();
+    vm->SetAssetPath(path);
+}
 }  // namespace panda

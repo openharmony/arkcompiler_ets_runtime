@@ -1219,6 +1219,8 @@ public:
                 return Format::PREF_IMM16;
             case Opcode::ECMA_STPATCHVAR_PREF_IMM16:
                 return Format::PREF_IMM16;
+            case Opcode::ASYNCGENERATORREJECT_PREF_V8_V8:
+                return Format::PREF_V8_V8;
             default:
                 break;
         }
@@ -2033,6 +2035,8 @@ public:
                 return (Flags::ACC_WRITE & flag) == flag;
             case Opcode::ECMA_STPATCHVAR_PREF_IMM16:
                 return (Flags::ACC_READ & flag) == flag;
+            case Opcode::ASYNCGENERATORREJECT_PREF_V8_V8:
+                return (Flags::ACC_WRITE & flag) == flag;
             default:
                 return false;
         }
