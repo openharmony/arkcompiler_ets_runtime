@@ -38,7 +38,7 @@
 #endif
 
 namespace panda::ecmascript::kungfu {
-#define DECLARE_ASM_HANDLER(name)                                                         \
+#define DECLARE_ASM_HANDLER_BASE(name, needPrint)                                         \
 void name##StubBuilder::GenerateCircuit()                                                 \
 {                                                                                         \
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));      \
@@ -51,12 +51,15 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef acc = TaggedArgument(static_cast<size_t>(InterpreterHandlerInputs::ACC));     \
     GateRef hotnessCounter = Int32Argument(                                               \
         static_cast<size_t>(InterpreterHandlerInputs::HOTNESS_COUNTER));                  \
-    DebugPrintInstruction();                                                              \
+    DebugPrintInstruction<needPrint>();                                                   \
     GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);   \
 }                                                                                         \
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,         \
                                      GateRef constpool, GateRef profileTypeInfo,          \
                                      GateRef acc, GateRef hotnessCounter)
+
+#define DECLARE_ASM_HANDLER(name) DECLARE_ASM_HANDLER_BASE(name, true)
+#define DECLARE_ASM_HANDLER_NOPRINT(name) DECLARE_ASM_HANDLER_BASE(name, false)
 
 // TYPE:{OFFSET, ACC_VARACC, JUMP, SSD}
 #define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
@@ -129,9 +132,13 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     CheckPendingException(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,  \
 		          res, offset)
 
+template <bool needPrint>
 void InterpreterStubBuilder::DebugPrintInstruction()
 {
 #if ECMASCRIPT_ENABLE_INTERPRETER_LOG
+    if (!needPrint) {
+        return;
+    }
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));
     UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(DebugPrintInstruction), { pc });
@@ -6226,7 +6233,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjecthavingmethodPrefImm16)
 ASM_UNUSED_BC_STUB_LIST(DECLARE_UNUSED_ASM_HANDLE)
 #undef DECLARE_UNUSED_ASM_HANDLE
 
-DECLARE_ASM_HANDLER(HandleThrow)
+DECLARE_ASM_HANDLER_NOPRINT(HandleThrow)
 {
     GateRef opcode = ZExtInt8ToPtr(ReadInst8_0(pc));
     auto index = IntPtr(kungfu::BytecodeStubCSigns::ID_Throw_Start);
@@ -6234,7 +6241,7 @@ DECLARE_ASM_HANDLER(HandleThrow)
     DispatchWithId(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, jumpIndex);
 }
 
-DECLARE_ASM_HANDLER(HandleWide)
+DECLARE_ASM_HANDLER_NOPRINT(HandleWide)
 {
     GateRef opcode = ZExtInt8ToPtr(ReadInst8_0(pc));
     auto index = IntPtr(kungfu::BytecodeStubCSigns::ID_Wide_Start);
@@ -6242,7 +6249,7 @@ DECLARE_ASM_HANDLER(HandleWide)
     DispatchWithId(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, jumpIndex);
 }
 
-DECLARE_ASM_HANDLER(HandleDeprecated)
+DECLARE_ASM_HANDLER_NOPRINT(HandleDeprecated)
 {
     GateRef opcode = ZExtInt8ToPtr(ReadInst8_0(pc));
     auto index = IntPtr(kungfu::BytecodeStubCSigns::ID_Deprecated_Start);
@@ -6251,7 +6258,7 @@ DECLARE_ASM_HANDLER(HandleDeprecated)
 }
 
 // interpreter helper handler
-DECLARE_ASM_HANDLER(ExceptionHandler)
+DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);

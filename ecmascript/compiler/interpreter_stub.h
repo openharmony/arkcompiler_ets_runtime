@@ -127,6 +127,7 @@ public:
     GateRef GetMethodFromConstPool(GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef constpool, GateRef index);
     GateRef GetObjectLiteralFromConstPool(GateRef constpool, GateRef index);
+    template <bool needPrint>
     void DebugPrintInstruction();
 private:
     template<typename... Args>
