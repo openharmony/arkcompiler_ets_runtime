@@ -190,7 +190,7 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaBytecode::DEFINEGETTERSETTERBYVALUE_PREF_V8_V8_V8_V8:
             return InferDefineGetterSetterByValue(gate);
         case EcmaBytecode::NEWOBJDYNRANGE_PREF_IMM16_V8:
-        case EcmaBytecode::NEWOBJSPREADDYN_PREF_V8_V8:
+        case EcmaBytecode::NEWOBJAPPLY_PREF_V8_V8:
             return InferNewObject(gate);
         case EcmaBytecode::SUPERCALL_PREF_IMM16_V8:
         case EcmaBytecode::SUPERCALLSPREAD_PREF_V8:
