@@ -3280,7 +3280,7 @@ void InterpreterAssembly::HandleCreateAsyncGeneratorObjPrefV8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
-    LOG_INST() << "intrinsics::"
+    LOG_INST() << "intrinsics::createasyncgeneratorobj"
                << " v" << v0;
     JSTaggedValue genFunc = GET_VREG_VALUE(v0);
     JSTaggedValue res = SlowRuntimeStub::CreateAsyncGeneratorObj(thread, genFunc);
@@ -3296,7 +3296,7 @@ void InterpreterAssembly::HandleAsyncGeneratorResolvePrefV8V8V8(
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
     uint16_t v2 = READ_INST_8_3();
-    LOG_INST() << "intrinsics::LowerAsyncGeneratorResolve"
+    LOG_INST() << "intrinsics::asyncgeneratorresolve"
                << " v" << v0;
     JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
     JSTaggedValue value = GET_VREG_VALUE(v1);
@@ -3313,7 +3313,7 @@ void InterpreterAssembly::HandleAsyncGeneratorRejectPrefV8V8(
 {
     uint16_t v0 = READ_INST_8_1();
     uint16_t v1 = READ_INST_8_2();
-    LOG_INST() << "intrinsics::LowerAsyncGeneratorReject"
+    LOG_INST() << "intrinsics::asyncgeneratorreject"
                << " v" << v0;
     JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
     JSTaggedValue value = GET_VREG_VALUE(v1);
