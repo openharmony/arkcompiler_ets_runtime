@@ -116,7 +116,7 @@ void BytecodeInfoCollector::CollectMethodPcs(JSPandaFile *jsPandaFile, const uin
         auto nextInst = bcIns.GetNext();
         if (!isNewVersion) {
             TranslateBCIns(jsPandaFile, bcIns, method);
-            FixOpcode(pc);
+            FixOpcode(bcIns);
             UpdateEcmaBytecodeICOffset(const_cast<MethodLiteral *>(method), pc);
         }
         bcIns = nextInst;
@@ -151,10 +151,10 @@ do {                                                                     \
     }                                                                    \
 } while (false)
 
-void BytecodeInfoCollector::FixOpcode(uint8_t *pc)
+void BytecodeInfoCollector::FixOpcode(const OldBytecodeInst &inst)
 {
-    auto opcode = static_cast<OldBytecodeInst::Opcode>(*pc);
-
+    auto opcode = inst.GetOpcode();
+    auto pc = const_cast<uint8_t *>(inst.GetAddress());
     switch (opcode) {
         case OldBytecodeInst::Opcode::MOV_V4_V4:
             *pc = static_cast<uint8_t>(EcmaBytecode::MOV_V4_V4);
@@ -204,7 +204,19 @@ void BytecodeInfoCollector::FixOpcode(uint8_t *pc)
         case OldBytecodeInst::Opcode::RETURN_DYN:
             *pc = static_cast<uint8_t>(EcmaBytecode::RETURN_DYN);
             break;
-        default:
+        case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
+            U_FALLTHROUGH;
+        case OldBytecodeInst::Opcode::ECMA_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
+            U_FALLTHROUGH;
+        case OldBytecodeInst::Opcode::ECMA_DEFINENCFUNCDYN_PREF_ID16_IMM16_V8:
+            U_FALLTHROUGH;
+        case OldBytecodeInst::Opcode::ECMA_DEFINEFUNCDYN_PREF_ID16_IMM16_V8:
+            U_FALLTHROUGH;
+        case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
+            *pc = static_cast<uint8_t>(EcmaBytecode::DEFINEFUNCDYN_PREF_ID16_IMM16_V8);
+            *(pc + 1) = 0xFF;
+            break;
+        default: {
             if (*pc != static_cast<uint8_t>(OldBytecodeInst::Opcode::ECMA_LDNAN_PREF_NONE)) {
                 LOG_FULL(FATAL) << "Is not an Ecma Opcode opcode: " << static_cast<uint16_t>(opcode);
                 UNREACHABLE();
@@ -212,6 +224,7 @@ void BytecodeInfoCollector::FixOpcode(uint8_t *pc)
             *pc = *(pc + 1);
             *(pc + 1) = 0xFF;
             break;
+        }
     }
 }
 

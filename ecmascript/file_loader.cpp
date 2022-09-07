@@ -325,7 +325,7 @@ bool FileLoader::hasLoaded(const JSPandaFile *jsPandaFile)
     return hashToEntryMap_.find(fileHash) != hashToEntryMap_.end();
 }
 
-void FileLoader::UpdateJSMethods(const JSPandaFile *jsPandaFile)
+void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile)
 {
     // get main func method
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex();
@@ -335,6 +335,8 @@ void FileLoader::UpdateJSMethods(const JSPandaFile *jsPandaFile)
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
     mainMethod->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
+    Method *method = mainFunc->GetCallTarget();
+    method->SetCodeEntryAndMarkAOT(reinterpret_cast<uintptr_t>(mainEntry));
 }
 
 void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method)

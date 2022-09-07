@@ -365,7 +365,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case GETITERATOR_PREF:
             LowerGetIterator(gate, glue);
             break;
-        case NEWOBJSPREADDYN_PREF_V8_V8:
+        case NEWOBJAPPLY_PREF_V8_V8:
             LowerNewObjApply(gate, glue);
             break;
         case THROWDYN_PREF:
@@ -433,9 +433,6 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case DELOBJPROP_PREF_V8_V8:
             LowerDelObjProp(gate, glue);
-            break;
-        case DEFINENCFUNCDYN_PREF_ID16_IMM16_V8:
-            LowerDefineFunc(gate, glue, jsFunc);
             break;
         case DEFINEMETHOD_PREF_ID16_IMM16_V8:
             LowerDefineMethod(gate, glue, jsFunc);
@@ -537,15 +534,6 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case STOWNBYNAME_PREF_ID32_V8:
             LowerStOwnByName(gate, glue, jsFunc);
-            break;
-        case DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
-            LowerDefineFunc(gate, glue, jsFunc);
-            break;
-        case DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
-            LowerDefineFunc(gate, glue, jsFunc);
-            break;
-        case DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
-            LowerDefineFunc(gate, glue, jsFunc);
             break;
         case NEWLEXENVDYN_PREF_IMM16:
             LowerNewLexicalEnv(gate, glue);
@@ -1022,10 +1010,10 @@ void SlowPathLowering::LowerNewObjApply(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue);
     const int id = RTSTUB_ID(NewObjApply);
-    // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef newGate = LowerCallRuntime(glue, id,
-        {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2)});
+        {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
     ReplaceHirToCall(gate, newGate);
 }
 
@@ -2805,7 +2793,7 @@ void SlowPathLowering::LowerAsyncGeneratorResolve(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerAsyncGeneratorReject(GateRef gate, GateRef glue)
 {
-    DebugPrintBC(gate, glue, builder_.Int32(GET_MESSAGE_STRING_ID(HandleAsyncGeneratorRejectPrefV8V8)));
+    DebugPrintBC(gate, glue);
     int id = RTSTUB_ID(AsyncGeneratorReject);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -2930,6 +2918,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef methodId = builder_.SExtInt16ToInt64(acc_.GetValueIn(gate, 0));
+    GateRef literalId = acc_.GetValueIn(gate, 1);
     GateRef length = acc_.GetValueIn(gate, 2);
 
     GateRef lexicalEnv = acc_.GetValueIn(gate, 3);
@@ -2938,7 +2927,8 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
 
     Label isException(&builder_);
     Label isNotException(&builder_);
-    auto args = { proto, lexicalEnv, constpool, builder_.ToTaggedInt(methodId) };
+    auto args = { proto, lexicalEnv, constpool,
+        builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId) };
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer), args, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &isException, &isNotException);

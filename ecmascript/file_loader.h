@@ -419,7 +419,7 @@ public:
         return aotPackInfos_;
     }
 
-    void UpdateJSMethods(const JSPandaFile *jsPandaFile);
+    void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile);
     bool hasLoaded(const JSPandaFile *jsPandaFile);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);

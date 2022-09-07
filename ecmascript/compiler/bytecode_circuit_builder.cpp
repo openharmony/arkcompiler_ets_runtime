@@ -259,7 +259,7 @@ void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo()
     // Supplementary end block info
     for (auto iter = endBlockPc.cbegin(); iter != endBlockPc.cend(); iter += 2) { // 2: index
         bytecodeBlockInfos_.emplace_back(*iter, SplitKind::END,
-                                                          std::vector<uint8_t *>(1, *(iter + 1)));
+                                         std::vector<uint8_t *>(1, *(iter + 1)));
     }
     // Supplementary start block info
     for (auto iter = startBlockPc.cbegin(); iter != startBlockPc.cend(); iter++) {
@@ -1071,18 +1071,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaBytecode::DEFINENCFUNCDYN_PREF_ID16_IMM16_V8: {
-            uint16_t methodId = READ_INST_16_1();
-            uint16_t length = READ_INST_16_3();
-            uint16_t v0 = READ_INST_8_5();
-            info.accIn = true;
-            info.accOut = true;
-            info.offset = BytecodeOffset::SEVEN;
-            info.inputs.emplace_back(MethodId(methodId));
-            info.inputs.emplace_back(Immediate(length));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
         case EcmaBytecode::DEFINEMETHOD_PREF_ID16_IMM16_V8: {
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_16_3();
@@ -1271,14 +1259,12 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v2));
             break;
         }
-        case EcmaBytecode::NEWOBJSPREADDYN_PREF_V8_V8: {
+        case EcmaBytecode::NEWOBJAPPLY_PREF_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
             info.accIn = true;
             info.accOut = true;
             info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
         case EcmaBytecode::THROWUNDEFINEDIFHOLE_PREF_V8_V8: {
@@ -1418,39 +1404,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(Immediate(numKeys));
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(Immediate(firstArgRegIdx));
-            break;
-        }
-        case EcmaBytecode::DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8: {
-            uint16_t methodId = READ_INST_16_1();
-            uint16_t length = READ_INST_16_3();
-            uint16_t v0 = READ_INST_8_5();
-            info.accOut = true;
-            info.offset = BytecodeOffset::SEVEN;
-            info.inputs.emplace_back(MethodId(methodId));
-            info.inputs.emplace_back(Immediate(length));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8: {
-            uint16_t methodId = READ_INST_16_1();
-            uint16_t length = READ_INST_16_3();
-            uint16_t v0 = READ_INST_8_5();
-            info.accOut = true;
-            info.offset = BytecodeOffset::SEVEN;
-            info.inputs.emplace_back(MethodId(methodId));
-            info.inputs.emplace_back(Immediate(length));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaBytecode::DEFINEASYNCFUNC_PREF_ID16_IMM16_V8: {
-            uint16_t methodId = READ_INST_16_1();
-            uint16_t length = READ_INST_16_3();
-            uint16_t v0 = READ_INST_8_5();
-            info.accOut = true;
-            info.offset = BytecodeOffset::SEVEN;
-            info.inputs.emplace_back(MethodId(methodId));
-            info.inputs.emplace_back(Immediate(length));
-            info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaBytecode::LDHOLE_PREF: {

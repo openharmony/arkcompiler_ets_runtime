@@ -61,7 +61,7 @@ private:
 
     // need to remove in the future
     static void FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst);
-    static void FixOpcode(uint8_t *pc);
+    static void FixOpcode(const OldBytecodeInst &inst);
 
     // need to remove in the future
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);

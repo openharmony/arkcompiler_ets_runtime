@@ -230,7 +230,7 @@ JSTaggedValue RuntimeStubs::RuntimeDelObjProp(JSThread *thread, const JSHandle<J
 }
 
 JSTaggedValue RuntimeStubs::RuntimeNewObjApply(JSThread *thread, const JSHandle<JSTaggedValue> &func,
-                                                   const JSHandle<JSTaggedValue> &array)
+                                               const JSHandle<JSTaggedValue> &array)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!array->IsJSArray()) {

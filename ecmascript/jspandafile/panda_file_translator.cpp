@@ -226,7 +226,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
-    JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex + ConstantPool::RESERVED_POOL_LENGTH);
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex);
 
     EcmaHandleScope handleScope(thread);
     constpool->SetJSPandaFile(jsPandaFile);
