@@ -22,11 +22,12 @@
 #include "ecmascript/napi/include/jsnapi.h"
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define RETURN_VALUE_IF_ABRUPT(thread, value) \
-    do {                                      \
-        if (thread->HasPendingException()) {  \
-            return value;                     \
-        }                                     \
+#define RETURN_VALUE_IF_ABRUPT(thread, value)                 \
+    do {                                                      \
+        if (thread->HasPendingException()) {                  \
+            LOG_FULL(ERROR) << "occur exception need return"; \
+            return value;                                     \
+        }                                                     \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
