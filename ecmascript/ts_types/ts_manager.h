@@ -164,6 +164,8 @@ public:
 
     GlobalTSTypeRef PUBLIC_API CreateClassInstanceType(GlobalTSTypeRef gt);
 
+    GlobalTSTypeRef PUBLIC_API GetClassType(GlobalTSTypeRef classInstanceGT) const;
+
     GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, const uint64_t key) const;
 
     uint32_t PUBLIC_API GetUnionTypeLength(GlobalTSTypeRef gt) const;
@@ -172,9 +174,11 @@ public:
 
     GlobalTSTypeRef PUBLIC_API GetOrCreateUnionType(CVector<GlobalTSTypeRef> unionTypeVec);
 
-    int PUBLIC_API GetFunctionTypLength(GlobalTSTypeRef gt) const;
+    uint32_t PUBLIC_API GetFunctionTypeLength(GlobalTSTypeRef gt) const;
 
     GlobalTSTypeRef PUBLIC_API GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const;
+
+    GlobalTSTypeRef PUBLIC_API GetFuncThisGT(GlobalTSTypeRef gt) const;
 
     inline GlobalTSTypeRef PUBLIC_API GetFuncReturnValueTypeGT(kungfu::GateType gateType) const
     {
