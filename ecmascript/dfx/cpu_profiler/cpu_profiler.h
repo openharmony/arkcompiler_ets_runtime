@@ -51,27 +51,25 @@ private:
 
 class CpuProfiler {
 public:
-    static CpuProfiler *GetInstance();
-    void ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler, int *index);
-    void GetNativeStack(JSThread *thread, FrameHandler &frameHandler, char *functionName, size_t size);
+    void ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler);
+    void GetNativeStack(FrameHandler &frameHandler, char *functionName, size_t size);
     void GetFrameStack(FrameHandler &frameHandler);
     void IsNeedAndGetStack(JSThread *thread);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
 
-    void StartCpuProfilerForInfo(const EcmaVM *vm);
+    void StartCpuProfilerForInfo();
     std::unique_ptr<struct ProfileInfo> StopCpuProfilerForInfo();
-    void StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName);
+    void StartCpuProfilerForFile(const std::string &fileName);
     void StopCpuProfilerForFile();
     void SetCpuSamplingInterval(int interval);
     std::string GetProfileName() const;
+    explicit CpuProfiler(const EcmaVM *vm);
     virtual ~CpuProfiler();
 
+    static CMap<pthread_t, const EcmaVM *> profilerMap_;
 private:
-    static std::atomic<CpuProfiler*> singleton_;
     static os::memory::Mutex synchronizationMutex_;
-    static CpuProfiler *pThis_;
 
-    explicit CpuProfiler();
     bool IsAddrAtStub(void *context);
     bool CheckFrameType(JSThread *thread, JSTaggedType *sp);
     void SetProfileStart(uint64_t nowTimeStamp);
@@ -85,7 +83,7 @@ private:
     std::string fileName_ = "";
     SamplesRecord *generator_ = nullptr;
     pthread_t tid_ = 0;
-    EcmaVM *vm_ = nullptr;
+    const EcmaVM *vm_ = nullptr;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_CPU_PROFILE_H
