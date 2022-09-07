@@ -32,7 +32,6 @@ ModuleDataAccessor::ModuleDataAccessor(const panda_file::File &pandaFile, panda_
     }
 
     entryDataSp_ = moduleSp;
-    numExportEntries_ = 0;
 }
 
 void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
@@ -114,13 +113,14 @@ void ModuleDataAccessor::EnumerateLocalExportEntry(JSThread *thread, JSHandle<So
         localExportEntries->Set(thread, idx, localExportEntry);
     }
     entryDataSp_ = sp;
-    numExportEntries_ += localExportNum;
-
+    if (localExportNum <= SourceTextModule::DEFAULT_ARRAY_CAPACITY) {
+        moduleRecord->SetModes(ModuleModes::ARRAYMODE);
+    }
+    if (localExportNum == SINGLE_MODE_SIZE) {
+        moduleRecord->SetLocalExportEntries(thread, localExportEntry);
+        return;
+    }
     if (localExportNum) {
-        if (localExportNum == SINGLE_MODE_SIZE) {
-            moduleRecord->SetLocalExportEntries(thread, localExportEntry);
-            return;
-        }
         moduleRecord->SetLocalExportEntries(thread, localExportEntries);
     }
 }
@@ -156,13 +156,11 @@ void ModuleDataAccessor::EnumerateIndirectExportEntry(JSThread *thread, const JS
         indirectExportEntries->Set(thread, idx, indirectExportEntry);
     }
     entryDataSp_ = sp;
-    numExportEntries_ += indirectExportNum;
-
+    if (indirectExportNum == SINGLE_MODE_SIZE) {
+        moduleRecord->SetIndirectExportEntries(thread, indirectExportEntry);
+        return;
+    }
     if (indirectExportNum) {
-        if (indirectExportNum == SINGLE_MODE_SIZE) {
-            moduleRecord->SetIndirectExportEntries(thread, indirectExportEntry);
-            return;
-        }
         moduleRecord->SetIndirectExportEntries(thread, indirectExportEntries);
     }
 }
@@ -189,13 +187,12 @@ void ModuleDataAccessor::EnumerateStarExportEntry(JSThread *thread, const JSHand
         starExportEntries->Set(thread, idx, starExportEntry.GetTaggedValue());
     }
     entryDataSp_ = sp;
-    numExportEntries_ += starExportNum;
 
+    if (starExportNum == SINGLE_MODE_SIZE) {
+        moduleRecord->SetStarExportEntries(thread, starExportEntry);
+        return;
+    }
     if (starExportNum) {
-        if (starExportNum == SINGLE_MODE_SIZE) {
-            moduleRecord->SetStarExportEntries(thread, starExportEntry);
-            return;
-        }
         moduleRecord->SetStarExportEntries(thread, starExportEntries);
     }
 }
