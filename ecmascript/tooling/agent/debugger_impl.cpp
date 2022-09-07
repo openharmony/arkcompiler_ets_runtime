@@ -101,15 +101,9 @@ bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &file
         frontend_.ScriptParsed(vm_, *script);
         return true;
     };
-    if (MatchScripts(scriptFunc, fileName, ScriptMatchType::FILE_NAME)) {
+    if (MatchScripts(scriptFunc, fileName, ScriptMatchType::URL)) {
         LOG_DEBUGGER(WARN) << "NotifyScriptParsed: already loaded: " << fileName;
-#if ECMASCRIPT_ENABLE_MERGE_ABC
-        if (vm_->IsBundle()) {
-            return false;
-        }
-#else
         return false;
-#endif
     }
 
     // Notify script parsed event
@@ -591,7 +585,7 @@ DispatchResponse DebuggerImpl::EvaluateOnCallFrame(const EvaluateOnCallFramePara
     }
 
     auto funcRef = DebuggerApi::GenerateFuncFromBuffer(vm_, dest.data(), dest.size(),
-        JSPandaFile::ENTRY_MAIN_FUNCTION);
+        JSPandaFile::ENTRY_FUNCTION_NAME);
     auto res = DebuggerApi::EvaluateViaFuncCall(const_cast<EcmaVM *>(vm_), funcRef,
         callFrameHandlers_[callFrameId]);
     if (vm_->GetJSThread()->HasPendingException()) {
