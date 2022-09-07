@@ -27,7 +27,7 @@
 
 namespace panda::ecmascript {
 const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
-const int MAX_NODE_COUNT = 2000; // 2000:the maximum size of the array
+const int MAX_NODE_COUNT = 10000; // 10000:the maximum size of the array
 struct FrameInfo {
     std::string codeType = "";
     std::string functionName = "";
@@ -104,8 +104,8 @@ public:
     int SemDestroy(int index);
     const CMap<Method *, struct FrameInfo> &GetStackInfo() const;
     void InsertStackInfo(Method *method, struct FrameInfo &codeEntry);
-    void PushFrameStack(Method *method, int count);
-    void PushStackInfo(const FrameInfoTemp &frameInfoTemp, int index);
+    void PushFrameStack(Method *method);
+    void PushStackInfo(const FrameInfoTemp &frameInfoTemp);
     std::ofstream fileHandle_;
 private:
     void WriteAddNodes();

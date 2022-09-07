@@ -24,27 +24,27 @@
 namespace panda::ecmascript {
 inline int LayoutInfo::GetPropertiesCapacity() const
 {
-    return static_cast<int>((GetLength() - ELEMENTS_START_INDEX) >> 1U);
+    return static_cast<int>((GetLength()) >> ELEMENTS_INDEX_LOG2);
 }
 
 inline int LayoutInfo::NumberOfElements() const
 {
-    return TaggedArray::Get(NUMBER_OF_PROPERTIES_INDEX).GetInt();
+    return GetExtraLength();
 }
 
-inline void LayoutInfo::SetNumberOfElements(const JSThread *thread, int properties)
+inline void LayoutInfo::SetNumberOfElements([[maybe_unused]] const JSThread *thread, int properties)
 {
-    return TaggedArray::Set(thread, NUMBER_OF_PROPERTIES_INDEX, JSTaggedValue(properties));
+    SetExtraLength(properties);
 }
 
 inline uint32_t LayoutInfo::GetKeyIndex(int index) const
 {
-    return ELEMENTS_START_INDEX + (static_cast<uint32_t>(index) << 1U);
+    return static_cast<uint32_t>(index) << ELEMENTS_INDEX_LOG2;
 }
 
 inline uint32_t LayoutInfo::GetAttrIndex(int index) const
 {
-    return ELEMENTS_START_INDEX + (static_cast<uint32_t>(index) << 1U) + 1;
+    return (static_cast<uint32_t>(index) << ELEMENTS_INDEX_LOG2) + ATTR_INDEX_OFFSET;
 }
 
 inline void LayoutInfo::SetPropertyInit(const JSThread *thread, int index, const JSTaggedValue &key,
@@ -52,7 +52,7 @@ inline void LayoutInfo::SetPropertyInit(const JSThread *thread, int index, const
 {
     uint32_t fixed_idx = GetKeyIndex(index);
     TaggedArray::Set(thread, fixed_idx, key);
-    TaggedArray::Set(thread, fixed_idx + 1, attr.GetNormalTagged());
+    TaggedArray::Set(thread, fixed_idx + ATTR_INDEX_OFFSET, attr.GetNormalTagged());
 }
 
 inline void LayoutInfo::SetNormalAttr(const JSThread *thread, int index, const PropertyAttributes &attr)

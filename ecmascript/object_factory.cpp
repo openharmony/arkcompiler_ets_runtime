@@ -393,8 +393,7 @@ JSHandle<TaggedArray> ObjectFactory::CloneProperties(const JSHandle<TaggedArray>
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
     auto header = heap_->AllocateYoungOrHugeObject(klass, size);
     JSHandle<TaggedArray> newArray(thread_, header);
-    newArray->SetLength(newLength);
-    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength);
+    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
     for (uint32_t i = 0; i < newLength; i++) {
         JSTaggedValue value = old->Get(i);
         newArray->Set(thread_, i, value);
@@ -457,8 +456,7 @@ JSHandle<TaggedArray> ObjectFactory::CloneProperties(const JSHandle<TaggedArray>
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
     auto header = heap_->AllocateYoungOrHugeObject(klass, size);
     JSHandle<TaggedArray> newArray(thread_, header);
-    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength);
-    newArray->SetLength(newLength);
+    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
     for (uint32_t i = 0; i < newLength; i++) {
         JSTaggedValue value = old->Get(i);
@@ -1990,6 +1988,7 @@ JSHandle<TaggedArray> ObjectFactory::NewEmptyArray()
         JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), TaggedArray::SIZE);
     JSHandle<TaggedArray> array(thread_, header);
     array->SetLength(0);
+    array->SetExtraLength(0);
     return array;
 }
 
@@ -2109,6 +2108,7 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     TaggedObject *header = AllocObjectWithSpaceType(size, arrayClass, type);
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->SetLength(length);
+    newArray->SetExtraLength(old->GetExtraLength());
 
     uint32_t oldLength = old->GetLength();
     for (uint32_t i = 0; i < oldLength; i++) {
@@ -2139,8 +2139,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyPartArray(const JSHandle<TaggedArray> &
     auto header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
     JSHandle<TaggedArray> newArray(thread_, header);
-    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength);
-    newArray->SetLength(newLength);
+    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
     for (uint32_t i = 0; i < newLength; i++) {
         JSTaggedValue value = old->Get(i + start);
@@ -2167,8 +2166,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
     TaggedObject *header = AllocObjectWithSpaceType(size, arrayClass, type);
     JSHandle<TaggedArray> newArray(thread_, header);
-    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength);
-    newArray->SetLength(newLength);
+    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
     for (uint32_t i = 0; i < newLength; i++) {
         JSTaggedValue value = old->Get(i);
@@ -2178,9 +2176,11 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     return newArray;
 }
 
-JSHandle<LayoutInfo> ObjectFactory::CreateLayoutInfo(int properties, MemSpaceType type, JSTaggedValue initVal)
+JSHandle<LayoutInfo> ObjectFactory::CreateLayoutInfo(int properties, MemSpaceType type,
+    GrowMode mode, JSTaggedValue initVal)
 {
-    uint32_t arrayLength = LayoutInfo::ComputeArrayLength(LayoutInfo::ComputeGrowCapacity(properties));
+    int growLength = mode == GrowMode::GROW ? LayoutInfo::ComputeGrowCapacity(properties) : properties;
+    uint32_t arrayLength = LayoutInfo::ComputeArrayLength(growLength);
     JSHandle<LayoutInfo> layoutInfoHandle = JSHandle<LayoutInfo>::Cast(NewTaggedArray(arrayLength, initVal, type));
     layoutInfoHandle->SetNumberOfElements(thread_, 0);
     return layoutInfoHandle;
@@ -2189,7 +2189,7 @@ JSHandle<LayoutInfo> ObjectFactory::CreateLayoutInfo(int properties, MemSpaceTyp
 JSHandle<LayoutInfo> ObjectFactory::ExtendLayoutInfo(const JSHandle<LayoutInfo> &old, int properties,
                                                      JSTaggedValue initVal)
 {
-    ASSERT(properties > old->NumberOfElements());
+    ASSERT(properties >= old->NumberOfElements());
     uint32_t arrayLength = LayoutInfo::ComputeArrayLength(LayoutInfo::ComputeGrowCapacity(properties));
     return JSHandle<LayoutInfo>(ExtendArray(JSHandle<TaggedArray>(old), arrayLength, initVal));
 }
@@ -3321,13 +3321,12 @@ JSHandle<TaggedArray> ObjectFactory::CopyDeque(const JSHandle<TaggedArray> &old,
     auto header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
     JSHandle<TaggedArray> newArray(thread_, header);
-    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength);
+    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
     uint32_t curIndex = first;
     // newIndex use in new TaggedArray, 0 : New TaggedArray index
     uint32_t newIndex = 0;
     uint32_t oldCapacity = old->GetLength();
-    newArray->SetLength(newLength);
     while (curIndex != last) {
         JSTaggedValue value = old->Get(curIndex);
         newArray->Set(thread_, newIndex, value);
@@ -3360,8 +3359,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyQueue(const JSHandle<TaggedArray> &old,
     auto header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
     JSHandle<TaggedArray> newArray(thread_, header);
-    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength);
-    newArray->SetLength(newLength);
+    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
     uint32_t curIndex = front;
     // newIndex use in new TaggedArray, 0 : New TaggedArray index

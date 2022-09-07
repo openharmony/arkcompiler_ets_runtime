@@ -325,6 +325,17 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncGeneratorResolve(JSThread *thread, JSHan
     return JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, asyncGeneratorObjHandle, valueHandle, done);
 }
 
+JSTaggedValue RuntimeStubs::RuntimeAsyncGeneratorReject(JSThread *thread, JSHandle<JSTaggedValue> asyncFuncObj,
+                                                        JSHandle<JSTaggedValue> value)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSAsyncGeneratorObject> asyncGeneratorObjHandle(asyncFuncObj);
+    JSHandle<JSTaggedValue> valueHandle(value);
+
+    return JSAsyncGeneratorObject::AsyncGeneratorReject(thread, asyncGeneratorObjHandle, valueHandle);
+}
+
 JSTaggedValue RuntimeStubs::RuntimeCopyDataProperties(JSThread *thread, const JSHandle<JSTaggedValue> &dst,
                                                       const JSHandle<JSTaggedValue> &src)
 {

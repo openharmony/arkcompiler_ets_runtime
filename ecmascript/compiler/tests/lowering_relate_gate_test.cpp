@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
+#include "ecmascript/compiler/type_lowering.h"
 #include "ecmascript/tests/test_helper.h"
 
 namespace panda::test {
@@ -28,6 +29,12 @@ using ecmascript::kungfu::MachineType;
 using ecmascript::kungfu::CircuitBuilder;
 using ecmascript::kungfu::Verifier;
 using ecmascript::kungfu::TypedBinOp;
+using ecmascript::kungfu::Label;
+using ecmascript::kungfu::Variable;
+using ecmascript::kungfu::VariableType;
+using ecmascript::kungfu::Environment;
+using ecmascript::kungfu::TypeLowering;
+using ecmascript::kungfu::CompilationConfig;
 
 HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
 {
@@ -69,6 +76,38 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
     auto convert = builder.TypeConvert(MachineType::I64, GateType::NJSValue(), GateType::NumberType(),
                                        {entry, depend, arg0});
     builder.Return(convert, convert, convert);
+    EXPECT_TRUE(Verifier::Run(&circuit));
+}
+
+HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
+{
+    // construct a circuit
+    Circuit circuit;
+    CircuitBuilder builder(&circuit);
+    Environment env(2, &builder);
+    builder.SetEnvironment(&env);
+    Label isNumber(&builder);
+    Label notNumber(&builder);
+    Label exit(&builder);
+    VariableType arg1Type(MachineType::I64, GateType::BooleanType());
+    CompilationConfig config("x86_64-unknown-linux-gnu", false);
+    TypeLowering typeLoweing(nullptr, &circuit, &config, nullptr, false);
+
+    auto arg0 = builder.Arguments(0);
+    auto arg1 = builder.Arguments(1);
+
+    DEFVAlUE(result, (&builder), VariableType::JS_ANY(), builder.Int32ToTaggedPtr(builder.Int32(1)));
+    builder.Branch(builder.TypeCheck(GateType::NumberType(), arg0), &isNumber, &notNumber);
+    builder.Bind(&isNumber);
+    auto convert = builder.PrimitiveToNumber(arg1, arg1Type);
+    result = builder.NumberAdd(arg0, convert);
+    builder.Jump(&exit);
+    builder.Bind(&notNumber);
+    builder.Jump(&exit);
+    builder.Bind(&exit);
+    builder.Return(*result);
+    EXPECT_TRUE(Verifier::Run(&circuit));
+    typeLoweing.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
 } // namespace panda::test

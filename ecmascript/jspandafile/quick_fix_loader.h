@@ -27,12 +27,6 @@ public:
     QuickFixLoader() = default;
     ~QuickFixLoader();
 
-    void ClearReservedInfo()
-    {
-        reservedBaseMethodInfo_.clear();
-        reservedBaseClassInfo_.clear();
-    }
-
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                    const std::string &baseFileName);
@@ -51,6 +45,11 @@ private:
                             Method  *destMethod,
                             MethodLiteral *srcMethodLiteral,
                             JSTaggedValue srcConstpool);
+    void ClearReservedInfo()
+    {
+        reservedBaseMethodInfo_.clear();
+        reservedBaseClassInfo_.clear();
+    }
 
     const JSPandaFile *baseFile_ {nullptr};
     const JSPandaFile *patchFile_ {nullptr};

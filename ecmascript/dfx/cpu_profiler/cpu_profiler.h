@@ -51,8 +51,8 @@ private:
 
 class CpuProfiler {
 public:
-    void ParseMethodInfo(Method *method, FrameHandler &frameHandler, int *index);
-    void GetNativeStack(JSThread *thread, FrameHandler &frameHandler, char *functionName, size_t size);
+    void ParseMethodInfo(Method *method, FrameHandler &frameHandler);
+    void GetNativeStack(FrameHandler &frameHandler, char *functionName, size_t size);
     void GetFrameStack(FrameHandler &frameHandler);
     void IsNeedAndGetStack(JSThread *thread);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);

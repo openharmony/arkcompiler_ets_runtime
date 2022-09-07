@@ -99,9 +99,62 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::TYPED_BINARY_OP:
             LowerTypedBinaryOp(gate);
             break;
+        case OpCode::TYPE_CONVERT:
+            LowerTypeConvert(gate);
+            break;
         default:
             break;
     }
+}
+
+void TypeLowering::LowerTypeConvert(GateRef gate)
+{
+    GateAccessor acc(circuit_);
+    auto mergeType = acc.GetBitField(gate);
+    auto temp = mergeType >> CircuitBuilder::FROM_TYPE_SHIFT;
+    auto typeLeft = GateType(static_cast<uint32_t>(temp));
+    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << CircuitBuilder::FROM_TYPE_SHIFT)));
+    if (typeRight.IsNumberType()) {
+        GateRef value = acc_.GetValueIn(gate, 0);
+        if (typeLeft.IsPrimitiveType() && !typeLeft.IsStringType()) {
+            LowerPrimitiveToNumber(gate, value, typeLeft);
+        }
+        return;
+    }
+}
+
+void TypeLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType)
+{
+    std::map<GateRef, size_t> stateGateMap;
+    Label exit(&builder_);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    if (srcType.IsBooleanType()) {
+        Label isTrue(&builder_);
+        Label isFalse(&builder_);
+        builder_.Branch(builder_.TaggedIsTrue(src), &isTrue, &isFalse);
+        builder_.Bind(&isTrue);
+        result = IntToTaggedNGc(builder_.Int32(1));
+        builder_.Jump(&exit);
+        builder_.Bind(&isFalse);
+        result = IntToTaggedNGc(builder_.Int32(0));
+        builder_.Jump(&exit);
+    } else if (srcType.IsUndefinedType()) {
+        result = DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
+    } else if (srcType.IsBigIntType() || srcType.IsNumberType()) {
+        result = src;
+    } else if (srcType.IsNullType()) {
+        result = IntToTaggedNGc(builder_.Int32(0));
+    } else {
+        UNREACHABLE();
+    }
+
+    builder_.Bind(&exit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(dst, *result, successControl);
 }
 
 void TypeLowering::LowerTypeCheck(GateRef gate)
@@ -129,9 +182,9 @@ void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 void TypeLowering::LowerTypeAdd(GateRef gate)
 {
     auto mergeType = acc_.GetBitField(gate);
-    auto temp = mergeType >> 32;
+    auto temp = mergeType >> CircuitBuilder::FROM_TYPE_SHIFT;
     auto typeLeft = GateType(static_cast<uint32_t>(temp));
-    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << 32)));
+    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << CircuitBuilder::FROM_TYPE_SHIFT)));
     if (typeLeft.IsNumberType() && typeRight.IsNumberType()) {
         // lower number add
         return;

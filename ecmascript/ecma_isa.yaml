@@ -629,3 +629,7 @@ groups:
         acc: in:top
         prefix: ecma
         format: [pref_op_imm_16]
+      - sig: ecma.asyncgeneratorreject v1:in:top, v2:in:top
+        acc: out:top
+        prefix: ecma
+        format: [pref_op_v1_8_v2_8]

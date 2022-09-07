@@ -2462,6 +2462,9 @@ bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
  */
 bool JSNApi::IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName)
 {
+    if (exception.IsEmpty()) {
+        return false;
+    }
     ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> exceptionInfo = JSNApiHelper::ToJSHandle(exception);
@@ -2479,5 +2482,11 @@ bool JSNApi::IsBundle([[maybe_unused]]EcmaVM *vm)
 void JSNApi::SetBundle(EcmaVM *vm, bool value)
 {
     vm->SetBundle(value);
+}
+
+void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
+{
+    ecmascript::CString path = assetPath.c_str();
+    vm->SetAssetPath(path);
 }
 }  // namespace panda

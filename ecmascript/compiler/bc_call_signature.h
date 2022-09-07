@@ -22,7 +22,6 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
-    T(HandleOverflowD8)                                 \
     T(HandleOverflowD9)                                 \
     T(HandleOverflowDA)                                 \
     T(HandleOverflowDB)                                 \
@@ -276,6 +275,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleMovV4V4)                                    \
     T(HandleMovV8V8)                                    \
     T(HandleMovV16V16)                                  \
+    T(HandleAsyncgeneratorrejectV8V8)                   \
     T(HandleNop)                                        \
     ASM_UNUSED_BC_STUB_LIST(T)                          \
     T(HandleDeprecated)                                 \

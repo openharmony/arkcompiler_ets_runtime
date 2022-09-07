@@ -172,6 +172,7 @@ using base::ErrorType;
 using DeleteEntryPoint = void (*)(void *, void *);
 
 enum class RemoveSlots { YES, NO };
+enum class GrowMode { KEEP, GROW };
 
 constexpr uint8_t INVALID_BUILTINS_ID = 0xFF;
 
@@ -320,6 +321,7 @@ public:
                                           const JSHandle<JSObject> &obj);
 
     JSHandle<LayoutInfo> CreateLayoutInfo(int properties, MemSpaceType type = MemSpaceType::SEMI_SPACE,
+                                          GrowMode mode = GrowMode::GROW,
                                           JSTaggedValue initVal = JSTaggedValue::Hole());
 
     JSHandle<LayoutInfo> ExtendLayoutInfo(const JSHandle<LayoutInfo> &old, int properties,

@@ -328,7 +328,7 @@ DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
             newHClassHandle->SetLayout(thread, layoutInfoHandle);
         } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
             layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, LayoutInfo::ComputeGrowCapacity(offset)));
+                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
             newHClassHandle->SetLayout(thread, layoutInfoHandle);
         }
         layoutInfoHandle->AddKey(thread, offset, keyHandle.GetTaggedValue(), attrValue);
@@ -572,6 +572,14 @@ DEF_RUNTIME_STUBS(AsyncGeneratorResolve)
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the first parameter
     JSTaggedValue flag = GetArg(argv, argc, 2); // 2: means the second parameter
     return RuntimeAsyncGeneratorResolve(thread, asyncGenerator, value, flag).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(AsyncGeneratorReject)
+{
+    RUNTIME_STUBS_HEADER(AsyncGeneratorReject);
+    JSHandle<JSTaggedValue> asyncGenerator = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    return RuntimeAsyncGeneratorReject(thread, asyncGenerator, value).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CopyDataProperties)

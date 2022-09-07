@@ -368,6 +368,14 @@ public:
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
+    // middle ir: Number operations
+    inline GateRef NumberAdd(GateRef x, GateRef y);
+    inline GateRef NumberSub(GateRef x, GateRef y);
+    inline GateRef NumberMul(GateRef x, GateRef y);
+    inline GateRef NumberLess(GateRef x, GateRef y);
+    inline GateRef NumberLessthanOrEq(GateRef x, GateRef y);
+    inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
+
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
     inline GateRef IsJsType(GateRef object, JSType type);
@@ -438,6 +446,8 @@ public:
     inline GateRef GetDepend() const;
     inline void SetDepend(GateRef depend);
     inline void SetState(GateRef state);
+    // type bits shift
+    static const int FROM_TYPE_SHIFT = 32;
 
 private:
     Circuit *circuit_ {nullptr};
