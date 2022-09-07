@@ -2981,8 +2981,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(ASYNCGENERATORRESOLVE_V8_V8_V8);
     }
     HANDLE_OPCODE(ASYNCGENERATORREJECT_V8_V8) {
-        uint16_t v0 = READ_INST_8_1();
-        uint16_t v1 = READ_INST_8_2();
+        uint16_t v0 = READ_INST_8_0();
+        uint16_t v1 = READ_INST_8_1();
         LOG_INST() << "intrinsics::asyncgeneratorreject"
                    << " v" << v0 << " v" << v1;
 
