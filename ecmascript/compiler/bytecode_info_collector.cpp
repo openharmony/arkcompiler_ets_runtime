@@ -18,7 +18,7 @@
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/emca_bytecode.h"
+#include "ecmascript/compiler/ecma_bytecode_des.h"
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {

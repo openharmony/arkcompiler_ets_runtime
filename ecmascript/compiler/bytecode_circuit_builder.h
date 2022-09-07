@@ -25,7 +25,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/emca_bytecode.h"
+#include "ecmascript/compiler/ecma_bytecode_des.h"
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"

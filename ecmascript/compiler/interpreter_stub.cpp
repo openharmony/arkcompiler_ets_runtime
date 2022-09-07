@@ -4570,8 +4570,8 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
 DECLARE_ASM_HANDLER(HandleAsyncgeneratorrejectV8V8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
+    GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
+    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorReject),
                               { asyncGenerator, value });
     CHECK_EXCEPTION_VARACC(res, INT_PTR(ASYNCGENERATORREJECT_V8_V8));
@@ -4589,7 +4589,6 @@ DECLARE_ASM_HANDLER(HandleSupercallthisrangeImm8Imm8V8)
 
 DECLARE_ASM_HANDLER(HandleSupercallarrowrangeImm8Imm8V8)
 {
-    // TODO same as HandleSupercallthisrangeImm8Imm8V8
     GateRef range = ReadInst8_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_2(pc));
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
@@ -4609,7 +4608,6 @@ DECLARE_ASM_HANDLER(HandleWideSupercallthisrangePrefImm16V8)
 
 DECLARE_ASM_HANDLER(HandleWideSupercallarrowrangePrefImm16V8)
 {
-    // TODO same as HandleSupercallthisrangeImm8Imm8V8
     GateRef range = ReadInst16_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_3(pc));
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
@@ -4954,7 +4952,6 @@ DECLARE_ASM_HANDLER(HandleGetmodulenamespaceImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
-    // TODO GetmodulenamespaceImm8
     GateRef stringId = ReadInst8_0(pc);
     GateRef prop = GetStringFromConstPool(constpool, stringId);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
@@ -4966,7 +4963,6 @@ DECLARE_ASM_HANDLER(HandleWideGetmodulenamespacePrefImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
-    // TODO GetmodulenamespaceImm16
     GateRef stringId = ReadInst16_1(pc);
     GateRef prop = GetStringFromConstPool(constpool, stringId);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
@@ -4999,7 +4995,6 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdmodulevarPrefId32Imm8)
 
 DECLARE_ASM_HANDLER(HandleStmodulevarImm8)
 {
-    // TODO StmodulevarImm8
     GateRef stringId = ReadInst8_0(pc);
     GateRef prop = GetStringFromConstPool(constpool, stringId);
     GateRef value = acc;
@@ -5010,7 +5005,6 @@ DECLARE_ASM_HANDLER(HandleStmodulevarImm8)
 
 DECLARE_ASM_HANDLER(HandleWideStmodulevarPrefImm16)
 {
-    // TODO StmodulevarImm16
     GateRef stringId = ReadInst16_1(pc);
     GateRef prop = GetStringFromConstPool(constpool, stringId);
     GateRef value = acc;
@@ -6028,7 +6022,7 @@ DECLARE_ASM_HANDLER(HandleThrowPrefNone)
     CallRuntime(glue, RTSTUB_ID(Throw), { acc });
     DISPATCH_LAST();
 }
-// TODO: implement it
+
 DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
 {
     DISPATCH(NOP);

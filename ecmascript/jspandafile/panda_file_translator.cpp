@@ -1294,6 +1294,16 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             }
             break;
         }
+        case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORREJECT_PREF_V8_V8: {
+            newOpcode = EcmaOpcode::ASYNCGENERATORREJECT_V8_V8;
+            *pc = static_cast<uint8_t>(newOpcode);
+            auto newLen = BytecodeInstruction::Size(newOpcode);
+            if (memmove_s(pc + 1, newLen - 1, pc + 2, oldLen - 2) != EOK) {  // 2: skip second level inst and pref
+                LOG_FULL(FATAL) << "FixOpcode memmove_s fail";
+                UNREACHABLE();
+            }
+            break;
+        }
         case OldBytecodeInst::Opcode::ECMA_CREATEASYNCGENERATOROBJ_PREF_V8: {
             newOpcode = EcmaOpcode::CREATEASYNCGENERATOROBJ_V8;
             *pc = static_cast<uint8_t>(newOpcode);
