@@ -117,11 +117,12 @@ private:
     void LowerTypeCheck(GateRef gate);
     void LowerTypedBinaryOp(GateRef gate);
     void LowerTypeConvert(GateRef gate);
-    void LowerTypeAdd(GateRef gate);
-    void LowerTypeSub(GateRef gate);
-    void LowerTypeMul(GateRef gate);
-    void LowerTypeLess(GateRef gate);
-    void LowerTypeLessEq(GateRef gate);
+    void LowerTypedUnaryOp(GateRef gate);
+    void LowerTypedAdd(GateRef gate);
+    void LowerTypedSub(GateRef gate);
+    void LowerTypedMul(GateRef gate);
+    void LowerTypedLess(GateRef gate);
+    void LowerTypedLessEq(GateRef gate);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerNumberCheck(GateRef gate);
     void LowerNumberAdd(GateRef gate);

@@ -64,8 +64,29 @@ enum class TypedBinOp : BinaryOp {
     TYPED_ADD,
     TYPED_SUB,
     TYPED_MUL,
+    TYPED_DIV,
+    TYPED_MOD,
     TYPED_LESS,
     TYPED_LESSEQ,
+    TYPED_GREATER,
+    TYPED_GREATEREQ,
+    TYPED_EQ,
+    TYPED_NOTEQ,
+    TYPED_SHL,
+    TYPED_SHR,
+    TYPED_ASHR,
+    TYPED_AND,
+    TYPED_OR,
+    TYPED_XOR,
+    TYPED_EXP,
+};
+
+enum class TypedUnaryOp : uint8_t {
+    TYPED_TONUMBER,
+    TYPED_NEG,
+    TYPED_NOT,
+    TYPED_INC,
+    TYPED_DEC,
 };
 
 class OpCode {
@@ -174,6 +195,7 @@ public:
         TYPE_CHECK,
         TYPED_BINARY_OP,
         TYPE_CONVERT,
+        TYPED_UNARY_OP,
 
         COMMON_CIR_FIRST = NOP,
         COMMON_CIR_LAST = DEPEND_AND,

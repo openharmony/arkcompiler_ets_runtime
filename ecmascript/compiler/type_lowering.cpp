@@ -105,6 +105,9 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::TYPE_CONVERT:
             LowerTypeConvert(gate);
             break;
+        case OpCode::TYPED_UNARY_OP:
+            LowerTypedUnaryOp(gate);
+            break;
         default:
             break;
     }
@@ -176,19 +179,40 @@ void TypeLowering::LowerTypedBinaryOp(GateRef gate)
     auto op = static_cast<TypedBinOp>(acc_.GetBitField(opGate));
     switch (op) {
         case TypedBinOp::TYPED_ADD:
-            LowerTypeAdd(gate);
+            LowerTypedAdd(gate);
             break;
         case TypedBinOp::TYPED_SUB:
-            LowerTypeSub(gate);
+            LowerTypedSub(gate);
             break;
         case TypedBinOp::TYPED_MUL:
-            LowerTypeMul(gate);
+            LowerTypedMul(gate);
             break;
         case TypedBinOp::TYPED_LESS:
-            LowerTypeLess(gate);
+            LowerTypedLess(gate);
             break;
         case TypedBinOp::TYPED_LESSEQ:
-            LowerTypeLessEq(gate);
+            LowerTypedLessEq(gate);
+            break;
+        default:
+            break;
+    }
+}
+
+void TypeLowering::LowerTypedUnaryOp(GateRef gate)
+{
+    auto bitfield = acc_.GetBitField(gate);
+    auto temp = bitfield >>  CircuitBuilder::OPRAND_TYPE_BITS;
+    auto op = static_cast<TypedUnaryOp>(bitfield ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS));
+    switch (op) {
+        case TypedUnaryOp::TYPED_TONUMBER:
+            break;
+        case TypedUnaryOp::TYPED_NEG:
+            break;
+        case TypedUnaryOp::TYPED_NOT:
+            break;
+        case TypedUnaryOp::TYPED_INC:
+            break;
+        case TypedUnaryOp::TYPED_DEC:
             break;
         default:
             break;
@@ -209,7 +233,7 @@ GateType TypeLowering::GetRightType(GateRef gate)
     return GateType(static_cast<uint32_t>(operandTypes ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS)));
 }
 
-void TypeLowering::LowerTypeAdd(GateRef gate)
+void TypeLowering::LowerTypedAdd(GateRef gate)
 {
     auto leftType = GetLeftType(gate);
     auto rightType = GetRightType(gate);
@@ -219,7 +243,7 @@ void TypeLowering::LowerTypeAdd(GateRef gate)
     }
 }
 
-void TypeLowering::LowerTypeSub(GateRef gate)
+void TypeLowering::LowerTypedSub(GateRef gate)
 {
     auto leftType = GetLeftType(gate);
     auto rightType = GetRightType(gate);
@@ -229,7 +253,7 @@ void TypeLowering::LowerTypeSub(GateRef gate)
     }
 }
 
-void TypeLowering::LowerTypeMul(GateRef gate)
+void TypeLowering::LowerTypedMul(GateRef gate)
 {
     auto leftType = GetLeftType(gate);
     auto rightType = GetRightType(gate);
@@ -239,7 +263,7 @@ void TypeLowering::LowerTypeMul(GateRef gate)
     }
 }
 
-void TypeLowering::LowerTypeLess(GateRef gate)
+void TypeLowering::LowerTypedLess(GateRef gate)
 {
     auto leftType = GetLeftType(gate);
     auto rightType = GetRightType(gate);
@@ -249,7 +273,7 @@ void TypeLowering::LowerTypeLess(GateRef gate)
     }
 }
 
-void TypeLowering::LowerTypeLessEq(GateRef gate)
+void TypeLowering::LowerTypedLessEq(GateRef gate)
 {
     auto leftType = GetLeftType(gate);
     auto rightType = GetRightType(gate);
