@@ -78,10 +78,6 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
     mda.EnumerateLocalExportEntry(thread, moduleRecord);
     mda.EnumerateIndirectExportEntry(thread, requestModuleArray, moduleRecord);
     mda.EnumerateStarExportEntry(thread, requestModuleArray, moduleRecord);
-
-    if (mda.GetNumExportEntry() <= SourceTextModule::DEFAULT_ARRAY_CAPACITY) {
-        moduleRecord->SetModes(ModuleModes::ARRAYMODE);
-    }
 }
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, const CString &descriptor)
