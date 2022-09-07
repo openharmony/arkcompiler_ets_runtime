@@ -1443,7 +1443,7 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpreadDyn(JSThread *thread, const JSHandl
                                                  const JSHandle<JSTaggedValue> &obj,
                                                  const JSHandle<JSTaggedValue> &array)
 {
-    if ((!obj->IsUndefined() && !obj->IsECMAObject()) || !func->IsJSFunction() || !array->IsJSArray()) {
+    if ((!obj->IsUndefined() && !obj->IsECMAObject()) || !func->IsCallable() || !array->IsJSArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "cannot Callspread", JSTaggedValue::Exception());
     }
 
