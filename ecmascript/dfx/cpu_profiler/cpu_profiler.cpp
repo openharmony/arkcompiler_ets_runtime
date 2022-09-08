@@ -329,7 +329,7 @@ void CpuProfiler::GetNativeStack(FrameHandler &frameHandler, char *functionName,
     std::stringstream stream;
     JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
     // napi method
-    if (function->GetCallNative()) {
+    if (function->IsCallNative()) {
         JSNativePointer *extraInfo = JSNativePointer::Cast(function->GetFunctionExtraInfo().GetTaggedObject());
         auto cb = vm_->GetNativePtrGetter();
         if (cb != nullptr  && extraInfo != nullptr) {

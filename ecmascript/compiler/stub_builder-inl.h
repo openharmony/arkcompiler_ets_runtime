@@ -1015,12 +1015,13 @@ inline GateRef StubBuilder::IsConstructor(GateRef object)
 
 inline GateRef StubBuilder::IsBase(GateRef func)
 {
-    GateRef bitfieldOffset = IntPtr(JSFunction::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), func, bitfieldOffset);
+    GateRef method = GetMethodFromJSFunction(func);
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), method, extraLiteralInfoOffset);
     // decode
     return Int32LessThanOrEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSFunction::FunctionKindBits::START_BIT)),
-                 Int32((1LU << JSFunction::FunctionKindBits::SIZE) - 1)),
+        Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
+                 Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1)),
         Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
 }
 
@@ -1736,12 +1737,6 @@ inline void StubBuilder::SetPropertiesToLexicalEnv(GateRef glue, GateRef object,
 {
     GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, object, valueIndex, value);
-}
-
-inline GateRef StubBuilder::GetFunctionBitFieldFromJSFunction(GateRef object)
-{
-    GateRef offset = IntPtr(JSFunction::BIT_FIELD_OFFSET);
-    return Load(VariableType::INT32(), object, offset);
 }
 
 inline GateRef StubBuilder::GetHomeObjectFromJSFunction(GateRef object)

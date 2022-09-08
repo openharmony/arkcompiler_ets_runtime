@@ -65,6 +65,7 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
     using IsNativeBit = NumArgsBits::NextFlag;  // offset 60
     using IsAotCodeBit = IsNativeBit::NextFlag; // offset 61
     using IsFastBuiltinBit = IsAotCodeBit::NextFlag; // offset 62
+    using IsCallNativeBit = IsFastBuiltinBit::NextFlag; // offset 63
 
     uint64_t GetCallField() const
     {
@@ -85,37 +86,37 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
 
     bool HaveThisWithCallField() const
     {
-        return HaveThisBit::Decode(callField_);
+        return HaveThisWithCallField(callField_);
     }
 
     bool HaveNewTargetWithCallField() const
     {
-        return HaveNewTargetBit::Decode(callField_);
+        return HaveNewTargetWithCallField(callField_);
     }
 
     bool HaveExtraWithCallField() const
     {
-        return HaveExtraBit::Decode(callField_);
+        return HaveExtraWithCallField(callField_);
     }
 
     bool HaveFuncWithCallField() const
     {
-        return HaveFuncBit::Decode(callField_);
+        return HaveFuncWithCallField(callField_);
     }
 
     bool IsNativeWithCallField() const
     {
-        return IsNativeBit::Decode(callField_);
+        return IsNativeWithCallField(callField_);
     }
 
     bool IsAotWithCallField() const
     {
-        return IsAotCodeBit::Decode(callField_);
+        return IsAotWithCallField(callField_);
     }
 
     uint32_t GetNumArgsWithCallField() const
     {
-        return NumArgsBits::Decode(callField_);
+        return GetNumArgsWithCallField(callField_);
     }
 
     uint32_t GetNumArgs() const
@@ -194,6 +195,16 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
         return NumArgsBits::Decode(callField);
     }
 
+    static uint64_t SetCallNative(uint64_t callField, bool isCallNative)
+    {
+        return IsCallNativeBit::Update(callField, isCallNative);
+    }
+
+    static bool IsCallNative(uint64_t callField)
+    {
+        return IsCallNativeBit::Decode(callField);
+    }
+
     static constexpr size_t METHOD_ARGS_NUM_BITS = 16;
     static constexpr size_t METHOD_ARGS_METHODID_BITS = 32;
     static constexpr size_t METHOD_SLOT_SIZE_BITS = 16;
@@ -259,6 +270,11 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
     static uint64_t SetHotnessCounter(uint64_t literalInfo, int16_t counter)
     {
         return HotnessCounterBits::Update(literalInfo, counter);
+    }
+
+    static uint64_t SetFunctionKind(uint64_t extraLiteralInfo, FunctionKind kind)
+    {
+        return FunctionKindBits::Update(extraLiteralInfo, kind);
     }
 
     static FunctionKind GetFunctionKind(uint64_t extraLiteralInfo)

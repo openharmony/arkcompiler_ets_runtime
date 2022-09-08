@@ -139,7 +139,7 @@ using ErrorHelper = base::ErrorHelper;
 ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap)
     : thread_(thread), vm_(thread->GetEcmaVM()), heap_(heap) {}
 
-JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, uint8_t builtinId)
+JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, FunctionKind kind, uint8_t builtinId)
 {
     uint32_t numArgs = 2;  // function object and this
     auto method = NewMethod(nullptr);
@@ -150,6 +150,7 @@ JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, uin
         method->SetBuiltinId(builtinId);
     }
     method->SetNumArgsWithCallField(numArgs);
+    method->SetFunctionKind(kind);
     return method;
 }
 
@@ -464,7 +465,7 @@ JSHandle<TaggedArray> ObjectFactory::CloneProperties(const JSHandle<TaggedArray>
             newArray->Set(thread_, i, value);
         } else {
             JSHandle<JSFunction> valueHandle(thread_, value);
-            JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle, valueHandle->GetFunctionKind());
+            JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle);
             newFunc->SetLexicalEnv(thread_, env);
             newFunc->SetHomeObject(thread_, obj);
             newArray->Set(thread_, i, newFunc);
@@ -499,7 +500,7 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object, 
             cloneObject->SetPropertyInlinedProps(thread_, i, value);
         } else {
             JSHandle<JSFunction> valueHandle(thread_, value);
-            JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle, valueHandle->GetFunctionKind());
+            JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle);
             newFunc->SetLexicalEnv(thread_, env);
             newFunc->SetHomeObject(thread_, cloneObject);
             cloneObject->SetPropertyInlinedProps(thread_, i, newFunc.GetTaggedValue());
@@ -508,22 +509,15 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object, 
     return cloneObject;
 }
 
-JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> obj, FunctionKind kind)
+JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> func)
 {
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> jshclass(thread_, obj->GetJSHClass());
-    JSHandle<Method> method(thread_, obj->GetMethod());
-    JSHandle<JSFunction> cloneFunc = NewJSFunctionByHClass(method, jshclass, kind);
-    if (kind == FunctionKind::GENERATOR_FUNCTION) {
-        JSHandle<JSFunction> objFun(env->GetObjectFunction());
-        JSHandle<JSObject> initialGeneratorFuncPrototype = NewJSObjectByConstructor(objFun);
-        JSObject::SetPrototype(thread_, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
-        cloneFunc->SetProtoOrHClass(thread_, initialGeneratorFuncPrototype);
-    }
+    JSHandle<JSHClass> jshclass(thread_, func->GetJSHClass());
+    JSHandle<Method> method(thread_, func->GetMethod());
+    JSHandle<JSFunction> cloneFunc = NewJSFunctionByHClass(method, jshclass);
 
-    JSTaggedValue length = obj->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
+    JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
-    cloneFunc->SetModule(thread_, obj->GetModule());
+    cloneFunc->SetModule(thread_, func->GetModule());
     return cloneFunc;
 }
 
@@ -537,12 +531,11 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
         hclass = JSHClass::Clone(thread_, hclass);
     }
 
-    FunctionKind kind = ctor->GetFunctionKind();
-    ASSERT_PRINT(kind == FunctionKind::CLASS_CONSTRUCTOR || kind == FunctionKind::DERIVED_CONSTRUCTOR,
-                 "cloned function is not class");
-
     JSHandle<Method> method(thread_, ctor->GetMethod());
-    JSHandle<JSFunction> cloneCtor = NewJSFunctionByHClass(method, hclass, kind);
+    ASSERT_PRINT(method->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR ||
+                 method->GetFunctionKind() == FunctionKind::DERIVED_CONSTRUCTOR,
+                 "cloned function is not class");
+    JSHandle<JSFunction> cloneCtor = NewJSFunctionByHClass(method, hclass);
 
     for (uint32_t i = 0; i < hclass->GetInlinedProperties(); i++) {
         JSTaggedValue value = ctor->GetPropertyInlinedProps(i);
@@ -550,7 +543,7 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
             cloneCtor->SetPropertyInlinedProps(thread_, i, value);
         } else {
             JSHandle<JSFunction> valueHandle(thread_, value);
-            JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle, valueHandle->GetFunctionKind());
+            JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle);
             newFunc->SetLexicalEnv(thread_, lexenv);
             newFunc->SetHomeObject(thread_, cloneCtor);
             cloneCtor->SetPropertyInlinedProps(thread_, i, newFunc.GetTaggedValue());
@@ -1142,31 +1135,31 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         case JSType::JS_FUNCTION:
         case JSType::JS_GENERATOR_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             break;
         case JSType::JS_ASYNC_GENERATOR_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             break;
         case JSType::JS_PROXY_REVOC_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSProxyRevocFunction::Cast(*obj)->SetRevocableProxy(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_REACTIONS_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseReactionsFunction::Cast(*obj)->SetPromise(thread_, JSTaggedValue::Undefined());
             JSPromiseReactionsFunction::Cast(*obj)->SetAlreadyResolved(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseExecutorFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSAsyncGeneratorResNextRetProRstFtn::Cast(*obj)->SetAsyncGeneratorObject(thread_,
                                                                                      JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseAllResolveElementFunction::Cast(*obj)->SetIndex(thread_, JSTaggedValue::Undefined());
             JSPromiseAllResolveElementFunction::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
             JSPromiseAllResolveElementFunction::Cast(*obj)->SetCapabilities(thread_, JSTaggedValue::Undefined());
@@ -1174,7 +1167,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSPromiseAllResolveElementFunction::Cast(*obj)->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseAnyRejectElementFunction::Cast(*obj)->SetIndex(0);
             JSPromiseAnyRejectElementFunction::Cast(*obj)->SetErrors(thread_, JSTaggedValue::Undefined());
             JSPromiseAnyRejectElementFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
@@ -1182,7 +1175,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSPromiseAnyRejectElementFunction::Cast(*obj)->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseAllSettledElementFunction::Cast(*obj)->SetIndex(0);
             JSPromiseAllSettledElementFunction::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
             JSPromiseAllSettledElementFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
@@ -1190,16 +1183,16 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSPromiseAllSettledElementFunction::Cast(*obj)->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_FINALLY_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseFinallyFunction::Cast(*obj)->SetOnFinally(thread_, JSTaggedValue::Undefined());
             JSPromiseFinallyFunction::Cast(*obj)->SetConstructor(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseValueThunkOrThrowerFunction::Cast(*obj)->SetResult(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_INTL_BOUND_FUNCTION:
-            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj), FunctionKind::NORMAL_FUNCTION);
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSIntlBoundFunction::Cast(*obj)->SetNumberFormat(thread_, JSTaggedValue::Undefined());
             JSIntlBoundFunction::Cast(*obj)->SetDateTimeFormat(thread_, JSTaggedValue::Undefined());
             JSIntlBoundFunction::Cast(*obj)->SetCollator(thread_, JSTaggedValue::Undefined());
@@ -1329,13 +1322,14 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
                                                   FunctionKind kind, uint8_t builtinId)
 {
-    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, builtinId);
-    return NewJSFunction(env, target, kind);
+    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, kind, builtinId);
+    return NewJSFunction(env, target);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env,
-                                                  const JSHandle<Method> &method, FunctionKind kind)
+                                                  const JSHandle<Method> &method)
 {
+    FunctionKind kind = method->GetFunctionKind();
     JSHandle<JSHClass> hclass;
     if (kind == FunctionKind::BASE_CONSTRUCTOR) {
         hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
@@ -1345,7 +1339,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
         hclass = JSHandle<JSHClass>::Cast(env->GetNormalFunctionClass());
     }
 
-    return NewJSFunctionByHClass(method, hclass, kind);
+    return NewJSFunctionByHClass(method, hclass);
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
@@ -1413,7 +1407,7 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
                                                           const JSHandle<JSHClass> &clazz,
-                                                          FunctionKind kind, MemSpaceType type)
+                                                          MemSpaceType type)
 {
     JSHandle<JSFunction> function;
     switch (type) {
@@ -1431,15 +1425,15 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     }
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
-    JSFunction::InitializeJSFunction(thread_, function, kind);
+    JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
     return function;
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
-                                                            FunctionKind kind)
+                                                          FunctionKind kind)
 {
-    JSHandle<Method> method = NewMethodForNativeFunction(func);
+    JSHandle<Method> method = NewMethodForNativeFunction(func, kind);
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
@@ -1473,17 +1467,17 @@ JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral)
 
 JSHandle<JSFunction> ObjectFactory::NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc)
 {
-    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc);
+    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNativeErrorFunctionClass());
-    return NewJSFunctionByHClass(target, hclass, FunctionKind::BUILTIN_CONSTRUCTOR);
+    return NewJSFunctionByHClass(target, hclass);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
                                                                   const void *nativeFunc)
 {
-    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc);
+    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSpecificTypedArrayFunctionClass());
-    return NewJSFunctionByHClass(target, hclass, FunctionKind::BUILTIN_CONSTRUCTOR);
+    return NewJSFunctionByHClass(target, hclass);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t codeEntry)
@@ -1494,7 +1488,7 @@ JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t c
     method->SetNativeBit(false);
     method->SetNumArgsWithCallField(numArgs);
     method->SetCodeEntry(codeEntry);
-    JSHandle<JSFunction> jsfunc = NewJSFunction(env, method, FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSFunction> jsfunc = NewJSFunction(env, method);
     return jsfunc;
 }
 
@@ -1528,7 +1522,7 @@ JSHandle<JSIntlBoundFunction> ObjectFactory::NewJSIntlBoundFunction(MethodIndex 
     intlBoundFunc->SetDateTimeFormat(thread_, JSTaggedValue::Undefined());
     intlBoundFunc->SetCollator(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(intlBoundFunc);
-    JSFunction::InitializeJSFunction(thread_, function, FunctionKind::NORMAL_FUNCTION);
+    JSFunction::InitializeJSFunction(thread_, function);
     function->SetMethod(thread_, vm_->GetMethodByIndex(idx));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(functionLength));
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
@@ -1549,7 +1543,7 @@ JSHandle<JSProxyRevocFunction> ObjectFactory::NewJSProxyRevocFunction(const JSHa
     revocFunction->SetRevocableProxy(thread_, JSTaggedValue::Undefined());
     revocFunction->SetRevocableProxy(thread_, proxy);
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(revocFunction);
-    JSFunction::InitializeJSFunction(thread_, function, FunctionKind::NORMAL_FUNCTION);
+    JSFunction::InitializeJSFunction(thread_, function);
     function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROXY_INVALIDATE_PROXY_FUNCTION));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(0));
     JSHandle<JSTaggedValue> emptyString = globalConst->GetHandledEmptyString();
@@ -1570,17 +1564,6 @@ JSHandle<JSAsyncAwaitStatusFunction> ObjectFactory::NewJSAsyncAwaitStatusFunctio
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(awaitFunction));
     awaitFunction->SetMethod(thread_, vm_->GetMethodByIndex(idx));
     return awaitFunction;
-}
-
-JSHandle<JSFunction> ObjectFactory::NewJSGeneratorFunction(const JSHandle<Method> &method)
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
-    generatorFunc->SetMethod(thread_, method);
-    return generatorFunc;
 }
 
 JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTaggedValue> generatorFunction)
@@ -1609,16 +1592,6 @@ JSHandle<JSAsyncGeneratorObject> ObjectFactory::NewJSAsyncGeneratorObject(JSHand
     JSHandle<JSAsyncGeneratorObject> generatorObject =
         JSHandle<JSAsyncGeneratorObject>::Cast(NewJSObjectWithInit(hclass));
     return generatorObject;
-}
-
-JSHandle<JSAsyncFunction> ObjectFactory::NewAsyncFunction(const JSHandle<Method> &method)
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-    JSHandle<JSAsyncFunction> asyncFunction = JSHandle<JSAsyncFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(asyncFunction));
-    asyncFunction->SetMethod(thread_, method);
-    return asyncFunction;
 }
 
 JSHandle<JSAsyncFuncObject> ObjectFactory::NewJSAsyncFuncObject()
@@ -2564,7 +2537,7 @@ JSHandle<JSPromiseExecutorFunction> ObjectFactory::CreateJSPromiseExecutorFuncti
     executorFunction->SetCapability(thread_, JSTaggedValue::Hole());
     executorFunction->SetCapability(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(executorFunction);
-    JSFunction::InitializeJSFunction(thread_, function, FunctionKind::NORMAL_FUNCTION);
+    JSFunction::InitializeJSFunction(thread_, function);
     executorFunction->SetMethod(
         thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_EXECUTOR));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(FunctionLength::TWO));

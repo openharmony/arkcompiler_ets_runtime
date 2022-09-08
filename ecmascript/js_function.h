@@ -39,6 +39,24 @@ public:
                                 const JSHandle<JSTaggedValue> &name, const JSHandle<JSTaggedValue> &prefix);
     static JSHandle<JSTaggedValue> GetFunctionName(JSThread *thread, const JSHandle<JSFunctionBase> &func);
 
+    void SetCallNative(bool isCallNative)
+    {
+        JSTaggedValue method = GetMethod();
+        Method::Cast(method.GetTaggedObject())->SetCallNative(isCallNative);
+    }
+
+    bool IsCallNative() const
+    {
+        JSTaggedValue method = GetMethod();
+        return Method::ConstCast(method.GetTaggedObject())->IsCallNative();
+    }
+
+    FunctionKind GetFunctionKind() const
+    {
+        JSTaggedValue method = GetMethod();
+        return Method::ConstCast(method.GetTaggedObject())->GetFunctionKind();
+    }
+
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -204,17 +222,10 @@ public:
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, HOME_OBJECT_OFFSET)
     ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, PROFILE_TYPE_INFO_OFFSET)
     ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, ECMA_MODULE_OFFSET)
-    ACCESSORS(Module, ECMA_MODULE_OFFSET, BIT_FIELD_OFFSET)
-    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
+    ACCESSORS(Module, ECMA_MODULE_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    // define BitField
-    static constexpr uint32_t FUNCTION_KIND_BITS = 4;
-    static constexpr uint32_t CALL_NATIVE_BITS = 1;
-    FIRST_BIT_FIELD(BitField, FunctionKind, FunctionKind, FUNCTION_KIND_BITS)
-    NEXT_BIT_FIELD(BitField, CallNative, bool, CALL_NATIVE_BITS, FunctionKind)
-
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunctionBase, PROTO_OR_DYNCLASS_OFFSET, BIT_FIELD_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunctionBase, PROTO_OR_DYNCLASS_OFFSET, SIZE)
     DECL_DUMP()
 
 private:

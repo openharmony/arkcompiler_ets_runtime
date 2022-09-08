@@ -830,6 +830,7 @@ void EcmaVM::GenerateInternalNativeMethods()
         method->SetNativePointer(InternalMethodTable[i]);
         method->SetNativeBit(true);
         method->SetNumArgsWithCallField(numArgs);
+        method->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
         internalNativeMethods_.emplace_back(method.GetTaggedValue());
     }
 }

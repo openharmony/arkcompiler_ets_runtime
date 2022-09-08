@@ -151,6 +151,13 @@ public:
         return MethodLiteral::GetSlotSize(literalInfo);
     }
 
+    void SetFunctionKind(FunctionKind kind)
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        uint64_t newValue = MethodLiteral::SetFunctionKind(extraLiteralInfo, kind);
+        SetExtraLiteralInfo(newValue);
+    }
+
     FunctionKind GetFunctionKind() const
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
@@ -161,6 +168,19 @@ public:
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
         return MethodLiteral::GetBuiltinId(extraLiteralInfo);
+    }
+
+    void SetCallNative(bool isCallNative)
+    {
+        uint64_t callField = GetCallField();
+        uint64_t newValue = MethodLiteral::SetCallNative(callField, isCallNative);
+        SetCallField(newValue);
+    }
+
+    bool IsCallNative() const
+    {
+        uint64_t callField = GetCallField();
+        return MethodLiteral::IsCallNative(callField);
     }
 
     void SetBuiltinId(uint8_t id)

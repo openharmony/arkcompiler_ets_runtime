@@ -869,7 +869,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
        factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncPrototypeValue);
     // new with NewJSFunctionByHClass::function Class
     JSHandle<JSFunction> protoFunc =
-       factory->NewJSFunctionByHClass(ctor, funcFuncProtoIntanceClass, FunctionKind::BUILTIN_CONSTRUCTOR);
+       factory->NewJSFunctionByHClass(ctor, funcFuncProtoIntanceClass);
     EXPECT_TRUE(*protoFunc != nullptr);
     // add method in funcnction
     PropertyDescriptor desc1 = PropertyDescriptor(thread_, addMethod);
@@ -886,7 +886,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
        factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncNoProtoPrototypeValue);
     // new with NewJSFunctionByHClass::function Class
     JSHandle<JSFunction> noProtoFunc = factory->NewJSFunctionByHClass(ctor,
-        funcFuncNoProtoProtoIntanceClass, FunctionKind::BUILTIN_CONSTRUCTOR);
+        funcFuncNoProtoProtoIntanceClass);
     EXPECT_TRUE(*noProtoFunc != nullptr);
     // set property that has same key with fater type
     PropertyDescriptor desc2 = PropertyDescriptor(thread_, defaultString);
