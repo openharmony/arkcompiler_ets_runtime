@@ -18,6 +18,8 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/jspandafile/quick_fix_manager.h"
+#include "ecmascript/mem/c_string.h"
 #include "ecmascript/module/js_module_manager.h"
 
 namespace panda::ecmascript {
@@ -107,6 +109,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     // For Ark application startup
     EcmaVM *vm = thread->GetEcmaVM();
     Expected<JSTaggedValue, bool> result = vm->InvokeEcmaEntrypoint(jsPandaFile, entryPoint);
+    if (result) {
+        QuickFixManager *quickFixManager = vm->GetQuickFixManager();
+        quickFixManager->LoadPatchIfNeeded(thread, CstringConvertToStdString(jsPandaFile->GetJSPandaFileDesc()));
+    }
     return result;
 }
 }  // namespace panda::ecmascript

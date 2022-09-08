@@ -477,6 +477,7 @@ ecma_source = [
   "ecmascript/jspandafile/method_literal.cpp",
   "ecmascript/jspandafile/program_object.cpp",
   "ecmascript/jspandafile/quick_fix_loader.cpp",
+  "ecmascript/jspandafile/quick_fix_manager.cpp",
   "ecmascript/js_api/js_api_arraylist.cpp",
   "ecmascript/js_api/js_api_arraylist_iterator.cpp",
   "ecmascript/js_api/js_api_deque.cpp",

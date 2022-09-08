@@ -60,6 +60,7 @@ static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
 
 using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
+using QuickFixQueryCallBack = bool (*)(std::string, std::string &, void **, size_t);
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
@@ -1196,6 +1197,8 @@ public:
     static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
     // check whether the exception is caused by quickfix methods.
     static bool IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName);
+    // register quickfix query function.
+    static void RegisterQuickFixQueryFunc(EcmaVM *vm, QuickFixQueryCallBack callBack);
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
 

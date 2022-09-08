@@ -31,16 +31,12 @@ public:
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                    const std::string &baseFileName);
     bool UnLoadPatch(JSThread *thread, const std::string &patchFileName);
-    bool IsQuickFixCausedException(JSThread *thread,
-                                   const JSHandle<JSTaggedValue> &exceptionInfo,
-                                   const std::string &patchFileName);
 
 private:
     bool ReplaceMethod(JSThread *thread,
                        const JSHandle<ConstantPool> &baseConstpool,
                        const JSHandle<ConstantPool> &patchConstpool,
                        const JSHandle<Program> &patchProgram);
-    CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
     void ReplaceMethodInner(JSThread *thread,
                             Method  *destMethod,
                             MethodLiteral *srcMethodLiteral,
@@ -63,6 +59,8 @@ private:
     // key: class literal tagged array index, value: base methodLiteral.
     CUnorderedMap<uint32_t, CUnorderedMap<uint32_t, MethodLiteral *>> reservedBaseClassInfo_ {};
     bool hasLoadedPatch_ {false};
+
+    friend class QuickFixManager;
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_QUICK_FIX_LOADER_H
