@@ -101,18 +101,15 @@ void BytecodeInfoCollector::CollectMethodPcs(const uint32_t insSz, const uint8_t
     uint8_t *curPc = nullptr;
     uint8_t *prePc = nullptr;
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
+        TranslateBCIns(jsPandaFile, bcIns, method);
         auto pc = const_cast<uint8_t *>(bcIns.GetAddress());
         auto nextInst = bcIns.GetNext();
-        if (!isNewVersion) {
-            TranslateBCIns(bcIns, method);
-            FixOpcode(bcIns);
-            UpdateEcmaBytecodeICOffset(const_cast<MethodLiteral *>(method), pc);
-        }
+        FixOpcode(const_cast<MethodLiteral *>(method), bcIns);
         bcIns = nextInst;
-        auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
-        auto &byteCodeCurPrePc = bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc;
-        auto &pcToBCOffset = bytecodeInfo_.methodPcInfos.back().pcToBCOffset;
 
+        auto &bytecodeBlockInfos = methodPcInfos.back().bytecodeBlockInfos;
+        auto &byteCodeCurPrePc = methodPcInfos.back().byteCodeCurPrePc;
+        auto &pcToBCOffset = methodPcInfos.back().pcToBCOffset;
         if (offsetIndex == 1) {
             curPc = prePc = pc;
             bytecodeBlockInfos.emplace_back(curPc, SplitKind::START, std::vector<uint8_t *>(1, curPc));
