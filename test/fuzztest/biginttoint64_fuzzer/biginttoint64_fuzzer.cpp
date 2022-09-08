@@ -29,6 +29,9 @@ namespace OHOS {
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         int64_t input = 0;
         size_t maxByteLen = 8;
+        if (size <= 0) {
+            return;
+        }
         if (size > maxByteLen) {
             size = maxByteLen;
         }

@@ -511,11 +511,11 @@ GateRef StubBuilder::ComputePropertyCapacityInJSObj(GateRef oldLength)
     GateRef newL = Int32Add(oldLength, Int32(JSObject::PROPERTIES_GROW_SIZE));
     Label reachMax(env);
     Label notReachMax(env);
-    Branch(Int32GreaterThan(newL, Int32(PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)),
+    Branch(Int32GreaterThan(newL, Int32(JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS)),
         &reachMax, &notReachMax);
     {
         Bind(&reachMax);
-        result = Int32(PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES);
+        result = Int32(JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS);
         Jump(&exit);
         Bind(&notReachMax);
         result = newL;
@@ -973,8 +973,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
             Bind(&isNullPtr);
             {
                 UpdateLeaveFrameAndCallNGCRuntime(glue,
-                    RTSTUB_ID(InsertOldToNewRSet),
-                    { glue, objectRegion, slotAddr });
+                    RTSTUB_ID(InsertOldToNewRSet), { glue, obj, offset });
                 Jump(&notValidIndex);
             }
         }
@@ -990,8 +989,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
             Bind(&marking);
             UpdateLeaveFrameAndCallNGCRuntime(
                 glue,
-                RTSTUB_ID(MarkingBarrier),
-                { glue, slotAddr, objectRegion, TaggedCastToIntPtr(value), valueRegion });
+                RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
             Jump(&exit);
         }
     }

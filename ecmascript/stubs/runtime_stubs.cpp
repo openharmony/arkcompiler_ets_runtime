@@ -1932,14 +1932,20 @@ int32_t RuntimeStubs::DoubleToInt(double x)
     return base::NumberHelper::DoubleToInt(x, base::INT32_BITS);
 }
 
-void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, Region* region, uintptr_t addr)
+void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue,
+    uintptr_t object, size_t offset)
 {
-    return region->InsertOldToNewRSet(addr);
+    Region *region = Region::ObjectAddressToRange(object);
+    uintptr_t slotAddr = object + offset;
+    return region->InsertOldToNewRSet(slotAddr);
 }
 
-void RuntimeStubs::MarkingBarrier([[maybe_unused]]uintptr_t argGlue, uintptr_t slotAddr,
-                                  Region *objectRegion, TaggedObject *value, Region *valueRegion)
+void RuntimeStubs::MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
+    uintptr_t object, size_t offset, TaggedObject *value)
 {
+    uintptr_t slotAddr = object + offset;
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
     if (!valueRegion->IsMarking()) {
         return;
     }

@@ -26,6 +26,9 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }
         std::string dirPath(data, data + size);
         std::string requestPath(data, data + size);
         using CallbackType = std::function<std::string(std::string, std::string)>;
