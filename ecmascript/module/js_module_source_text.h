@@ -147,10 +147,6 @@ private:
                                                          CVector<std::pair<JSHandle<SourceTextModule>,
                                                          JSHandle<JSTaggedValue>>> &resolveSet);
     static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
-    static JSTaggedValue FindByImport(const JSTaggedValue &importEntriesTv, const JSTaggedValue &key,
-                                      const JSTaggedValue &dictionary);
-    static JSTaggedValue FindArrayByImport(const JSTaggedValue &importEntriesTv, const JSTaggedValue &key,
-                                           const JSTaggedValue &dictionary);
     static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
                                       const JSTaggedValue &dictionary);
     static JSTaggedValue FindArrayByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
@@ -161,13 +157,6 @@ private:
     static void StoreArrayByLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &localExportEntriesTv,
                                         const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &key,
                                         JSMutableHandle<JSTaggedValue> &dataDict, JSHandle<SourceTextModule> &module);
-    static void StoreByIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &indirectExportEntriesTv,
-                                      const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &key,
-                                      JSMutableHandle<NameDictionary> &dataDict);
-    static void StoreArrayByIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &indirectExportEntriesTv,
-                                           const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &key,
-                                           JSMutableHandle<JSTaggedValue> &dataDict,
-                                           JSHandle<SourceTextModule> &module);
 };
 
 class ResolvedBinding final : public Record {

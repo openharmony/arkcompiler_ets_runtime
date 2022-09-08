@@ -67,11 +67,6 @@ public:
         return moduleRequests_;
     }
 
-    uint32_t GetNumExportEntry() const
-    {
-        return numExportEntries_;
-    }
-
     using ModuleValue = std::variant<uint32_t, StringData>;
 
 private:
@@ -79,7 +74,6 @@ private:
     const panda_file::File &pandaFile_;
     panda_file::File::EntityId moduleDataId_;
     uint32_t numModuleRequests_;
-    uint32_t numExportEntries_;
     std::vector<uint32_t> moduleRequests_;
     Span<const uint8_t> entryDataSp_ {nullptr, nullptr};
 };
