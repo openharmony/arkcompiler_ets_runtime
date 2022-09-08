@@ -534,8 +534,8 @@ GateRef CircuitBuilder::NumberAdd(GateRef x, GateRef y)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto numberAdd = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_ADD,
-                                        GateType::NumberType(), GateType::NumberType(),
-                                        {currentControl, currentDepend, x, y});
+                                         GateType::NumberType(), GateType::NumberType(),
+                                         {currentControl, currentDepend, x, y});
     currentLabel->SetControl(numberAdd);
     currentLabel->SetDepend(numberAdd);
     return numberAdd;
@@ -586,8 +586,8 @@ GateRef CircuitBuilder::NumberLessthanOrEq(GateRef x, GateRef y)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto numberLessEq = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESSEQ,
-                                        GateType::NumberType(), GateType::NumberType(),
-                                        {currentControl, currentDepend, x, y});
+                                            GateType::NumberType(), GateType::NumberType(),
+                                            {currentControl, currentDepend, x, y});
     currentLabel->SetControl(numberLessEq);
     currentLabel->SetDepend(numberLessEq);
     return numberLessEq;
@@ -599,7 +599,7 @@ GateRef CircuitBuilder::PrimitiveToNumber(GateRef x, VariableType type)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto numberconvert = TypeConvert(MachineType::I64, type.GetGateType(), GateType::NumberType(),
-                                             {currentControl, currentDepend, x});
+                                     {currentControl, currentDepend, x});
     currentLabel->SetControl(numberconvert);
     currentLabel->SetDepend(numberconvert);
     return numberconvert;

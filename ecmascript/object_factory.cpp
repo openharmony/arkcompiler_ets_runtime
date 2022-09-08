@@ -2172,7 +2172,8 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
 JSHandle<LayoutInfo> ObjectFactory::CreateLayoutInfo(int properties, MemSpaceType type,
     GrowMode mode, JSTaggedValue initVal)
 {
-    int growLength = mode == GrowMode::GROW ? LayoutInfo::ComputeGrowCapacity(properties) : properties;
+    int growLength =
+        mode == GrowMode::GROW ? static_cast<int>(LayoutInfo::ComputeGrowCapacity(properties)) : properties;
     uint32_t arrayLength = LayoutInfo::ComputeArrayLength(growLength);
     JSHandle<LayoutInfo> layoutInfoHandle = JSHandle<LayoutInfo>::Cast(NewTaggedArray(arrayLength, initVal, type));
     layoutInfoHandle->SetNumberOfElements(thread_, 0);
