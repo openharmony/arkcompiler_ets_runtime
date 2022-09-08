@@ -274,6 +274,9 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::DEPRECATED_STLEXVAR_PREF_IMM8_IMM8_V8:
         case EcmaOpcode::DEPRECATED_STLEXVAR_PREF_IMM16_IMM16_V8:
             return InferStLexVarDyn(gate);
+        case EcmaOpcode::GETITERATOR_IMM8:
+        case EcmaOpcode::GETITERATOR_IMM16:
+            return InferGetIterator(gate);
         default:
             break;
     }
@@ -574,7 +577,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
             objType = GateType(builtinInstanceType);
         }
         // If this object has no gt type, we cannot get its internal property type
-        if (IsObjectOrClass(objType)) {
+        if (ShouldInferWithLdObjByName(objType)) {
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
             auto thread = tsManager_->GetEcmaVM()->GetJSThread();
             auto name = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index);
@@ -617,6 +620,13 @@ bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
         auto returnType = tsManager_->GetFuncReturnValueTypeGT(funcType);
         return UpdateType(gate, returnType);
     }
+
+    if (tsManager_->IsIteratorInstanceTypeKind(funcType)) {
+        GlobalTSTypeRef elementGT = tsManager_->GetIteratorInstanceElementGt(funcType);
+        GlobalTSTypeRef iteratorResultInstanceType = tsManager_->GetOrCreateTSIteratorInstanceType(
+            TSRuntimeType::ITERATOR_RESULT, elementGT);
+        return UpdateType(gate, iteratorResultInstanceType);
+    }
     return false;
 }
 
@@ -629,7 +639,7 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
         return UpdateType(gate, elementType);
     }
     // handle object
-    if (IsObjectOrClass(objType)) {
+    if (ShouldInferWithLdObjByValue(objType)) {
         auto valueGate = gateAccessor_.GetValueIn(gate, 1);
         if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
             auto value = gateAccessor_.GetBitField(valueGate);
@@ -663,6 +673,24 @@ bool TypeInfer::InferSuperCall(GateRef gate)
         return UpdateType(gate, classInstanceType);
     }
     return false;
+}
+
+bool TypeInfer::InferGetIterator(GateRef gate)
+{
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
+    GateType inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+
+    GlobalTSTypeRef elementGt = GlobalTSTypeRef::Default();
+    if (tsManager_->IsArrayTypeKind(inValueType)) {
+        elementGt = tsManager_->GetArrayParameterTypeGT(inValueType);
+    } else if (inValueType.IsStringType()) {
+        elementGt.SetType(GateType::StringType().Value());
+    } else {
+        return false;
+    }
+    GlobalTSTypeRef iteratorInstanceType = tsManager_->GetOrCreateTSIteratorInstanceType(
+        TSRuntimeType::ITERATOR, elementGt);
+    return UpdateType(gate, iteratorInstanceType);
 }
 
 bool TypeInfer::InferTryLdGlobalByName(GateRef gate)

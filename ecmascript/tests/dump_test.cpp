@@ -991,6 +991,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(arrayType)
                 break;
             }
+            case JSType::TS_ITERATOR_INSTANCE_TYPE: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSIteratorInstanceType::SIZE, 2U);
+                JSHandle<TSIteratorInstanceType> iteratorInstanceType = factory->NewTSIteratorInstanceType();
+                DUMP_FOR_HANDLE(iteratorInstanceType)
+                break;
+            }
             case JSType::JS_API_ARRAY_LIST: {
                 // 1 : 1 dump fileds number
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIArrayList::SIZE, 1U);

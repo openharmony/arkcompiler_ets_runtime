@@ -216,6 +216,21 @@ public:
 
     DECL_DUMP()
 };
+
+class TSIteratorInstanceType : public TSType {
+public:
+    CAST_CHECK(TSIteratorInstanceType, IsTSIteratorInstanceType);
+    static constexpr size_t KIND_GT_OFFSET = TSType::SIZE;
+
+    static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSIteratorInstanceType> instanceType,
+                                         JSHandle<EcmaString> propName);
+
+    ACCESSORS_ATTACHED_TYPEREF(KindGT, KIND_GT_OFFSET, ELEMENT_GT_OFFSET);
+    ACCESSORS_ATTACHED_TYPEREF(ElementGT, ELEMENT_GT_OFFSET, LAST_OFFSET);
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+
+    DECL_DUMP()
+};
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_TS_TYPES_TS_TYPE_H

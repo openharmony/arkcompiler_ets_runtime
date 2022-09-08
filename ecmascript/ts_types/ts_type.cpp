@@ -255,4 +255,35 @@ GlobalTSTypeRef TSFunctionType::GetParameterTypeGT(int index) const
     uint32_t parameterGTRawData = parameterType.GetInt();
     return GlobalTSTypeRef(parameterGTRawData);
 }
+
+GlobalTSTypeRef TSIteratorInstanceType::GetPropTypeGT(JSThread *thread,
+    JSHandle<TSIteratorInstanceType> iteratorInstanceType, JSHandle<EcmaString> propName)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    GlobalTSTypeRef kindGt = iteratorInstanceType->GetKindGT();
+    GlobalTSTypeRef elementGt = iteratorInstanceType->GetElementGT();
+
+    JSHandle<JSTaggedValue> tsType = tsManager->GetTSType(kindGt);
+    JSHandle<TSObjectType> objType(tsType);
+    GlobalTSTypeRef propGt = TSObjectType::GetPropTypeGT(objType, propName);
+    if (tsManager->IsTSIterator(kindGt)) {
+        GlobalTSTypeRef iteratorFunctionInstance =
+            tsManager->GetOrCreateTSIteratorInstanceType(static_cast<TSRuntimeType>(propGt.GetLocalId()), elementGt);
+        return iteratorFunctionInstance;
+    }
+
+    if (tsManager->IsTSIteratorResult(kindGt)) {
+        if (propGt.IsDefault()) {
+#ifndef NDEBUG
+            JSHandle<JSTaggedValue> valueString = thread->GlobalConstants()->GetHandledValueString();
+            ASSERT(EcmaStringAccessor::StringsAreEqual(*propName, EcmaString::Cast(
+                valueString.GetTaggedValue().GetTaggedObject())));
+#endif
+            propGt = elementGt;
+        }
+        return propGt;
+    }
+    return GlobalTSTypeRef::Default();
+}
 } // namespace panda::ecmascript

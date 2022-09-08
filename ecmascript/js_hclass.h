@@ -234,7 +234,8 @@ class ProtoChangeDetails;
         TS_CLASS_TYPE,    /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_CLASS_INSTANCE_TYPE,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_INTERFACE_TYPE,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TYPE_LAST = TS_INTERFACE_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        TS_ITERATOR_INSTANCE_TYPE,    /* //////////////////////////////////////////////////////////////////-PADDING */ \
+        TYPE_LAST = TS_ITERATOR_INSTANCE_TYPE, /* /////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         JS_FUNCTION_FIRST = JS_FUNCTION, /* ///////////////////////////////////////////////////////////////-PADDING */ \
         JS_FUNCTION_LAST = JS_ASYNC_AWAIT_STATUS_FUNCTION, /* //////////////////////////////////////////////-PADDING */\
@@ -261,7 +262,7 @@ class ProtoChangeDetails;
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_TYPE_LAST = TS_INTERFACE_TYPE /* ///////////////////////////////////////////////////////////////-PADDING */
+        TS_TYPE_LAST = TS_ITERATOR_INSTANCE_TYPE /* ///////////////////////////////////////////////////////-PADDING */
 
 
 enum class JSType : uint8_t {
@@ -1252,6 +1253,11 @@ public:
     inline bool IsTSArrayType() const
     {
         return GetObjectType() == JSType::TS_ARRAY_TYPE;
+    }
+
+    inline bool IsTSIteratorInstanceType() const
+    {
+        return GetObjectType() == JSType::TS_ITERATOR_INSTANCE_TYPE;
     }
 
     inline bool IsModuleRecord() const

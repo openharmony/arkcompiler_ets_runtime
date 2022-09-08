@@ -83,6 +83,7 @@ class JSThread;
     V(JSTaggedValue, TSImportTypeClass, TS_IMPORT_TYPE_CLASS_INDEX, ecma_roots_class)                                 \
     V(JSTaggedValue, TSFunctionTypeClass, TS_FUNCTION_TYPE_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, TSArrayTypeClass, TS_ARRAY_TYPE_CLASS_INDEX, ecma_roots_class)                                   \
+    V(JSTaggedValue, TSIteratorInstanceTypeClass, TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX, ecma_roots_class)            \
     V(JSTaggedValue, JSSetIteratorClass, JS_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, JSRegExpIteratorClass, JS_REGEXP_ITERATOR_CLASS_INDEX, ecma_roots_class)                         \
     V(JSTaggedValue, JSMapIteratorClass, JS_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
@@ -318,6 +319,7 @@ class JSThread;
     V(JSTaggedValue, NarrowString, NARROW_STRING_INDEX, narrow)                                                       \
     V(JSTaggedValue, AlwaysString, ALWAYS_STRING_INDEX, always)                                                       \
     V(JSTaggedValue, AutoString, AUTO_STRING_INDEX, auto)                                                             \
+    V(JSTaggedValue, ThrowString, THROW_STRING_INDEX, throw)                                                          \
     V(JSTaggedValue, UnitDisplayString, UNIT_DISPLAY_INDEX, unitDisplay)                                              \
     V(JSTaggedValue, NotationString, NOTATION_INDEX, notation)                                                        \
     V(JSTaggedValue, CompactDisplayString, COMPACT_DISPALY_INDEX, compactDisplay)                                     \

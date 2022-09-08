@@ -43,12 +43,13 @@ public:
     static constexpr int ELEMENTS_LENGTH = 3;
     static constexpr int NUMBER_OF_TABLES_INDEX = 0;
     static constexpr int INCREASE_CAPACITY_RATE = 2;
-    static constexpr int DEFAULT_NUMBER_OF_TABLES = 3;  // primitive table, builtins table and infer table
+    static constexpr int DEFAULT_NUMBER_OF_TABLES = 4; // primitive table, builtins table, infer table and runtime table
     // first +1 means reserve a table from pandafile, second +1 menas the NUMBER_OF_TABLES_INDEX
     static constexpr int DEFAULT_TABLE_CAPACITY =  (DEFAULT_NUMBER_OF_TABLES + 1) * ELEMENTS_LENGTH + 1;
     static constexpr int PRIMITIVE_TABLE_ID = 0;
     static constexpr int BUILTINS_TABLE_ID = 1;
     static constexpr int INFER_TABLE_ID = 2;
+    static constexpr int RUNTIME_TABLE_ID = 3;
     static constexpr int NOT_FOUND = -1;
 
     static TSModuleTable *Cast(TaggedObject *object)
@@ -86,6 +87,11 @@ public:
     static JSHandle<TSTypeTable> GenerateBuiltinsTypeTable(JSThread *thread);
 
 private:
+
+    static void AddRuntimeTypeTable(JSThread *thread);
+
+    static void FillLayoutTypes(JSThread *thread, JSHandle<TSObjLayoutInfo> &layOut,
+        std::vector<JSHandle<JSTaggedValue>> &prop, std::vector<GlobalTSTypeRef> &propType);
 
     static int GetAmiPathOffset(int entry)
     {
@@ -180,6 +186,16 @@ public:
     GlobalTSTypeRef PUBLIC_API GetOrCreateUnionType(CVector<GlobalTSTypeRef> unionTypeVec);
 
     uint32_t PUBLIC_API GetFunctionTypeLength(GlobalTSTypeRef gt) const;
+    
+    GlobalTSTypeRef PUBLIC_API GetOrCreateTSIteratorInstanceType(TSRuntimeType runtimeType, GlobalTSTypeRef elementGt);
+
+    GlobalTSTypeRef PUBLIC_API GetIteratorInstanceElementGt(GlobalTSTypeRef gt) const;
+
+    inline GlobalTSTypeRef PUBLIC_API GetIteratorInstanceElementGt(kungfu::GateType gateType) const
+    {
+        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetGTRef());
+        return GetIteratorInstanceElementGt(gt);
+    }
 
     GlobalTSTypeRef PUBLIC_API GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const;
 
@@ -200,6 +216,10 @@ public:
     }
 
     GlobalTSTypeRef PUBLIC_API GetArrayParameterTypeGT(GlobalTSTypeRef gt) const;
+
+    JSHandle<TSTypeTable> GetRuntimeTypeTable() const;
+
+    void SetRuntimeTypeTable(JSHandle<TSTypeTable> inferTable);
 
     bool PUBLIC_API AssertTypes() const
     {
@@ -287,16 +307,17 @@ public:
         return thread_;
     }
 
-#define IS_TSTYPEKIND_METHOD_LIST(V)              \
-    V(Primitive, TSTypeKind::PRIMITIVE)           \
-    V(Class, TSTypeKind::CLASS)                   \
-    V(ClassInstance, TSTypeKind::CLASS_INSTANCE)  \
-    V(Function, TSTypeKind::FUNCTION)             \
-    V(Union, TSTypeKind::UNION)                   \
-    V(Array, TSTypeKind::ARRAY)                   \
-    V(Object, TSTypeKind::OBJECT)                 \
-    V(ImportT, TSTypeKind::IMPORT)                \
-    V(Interface, TSTypeKind::INTERFACE_KIND)
+#define IS_TSTYPEKIND_METHOD_LIST(V)                    \
+    V(Primitive, TSTypeKind::PRIMITIVE)                 \
+    V(Class, TSTypeKind::CLASS)                         \
+    V(ClassInstance, TSTypeKind::CLASS_INSTANCE)        \
+    V(Function, TSTypeKind::FUNCTION)                   \
+    V(Union, TSTypeKind::UNION)                         \
+    V(Array, TSTypeKind::ARRAY)                         \
+    V(Object, TSTypeKind::OBJECT)                       \
+    V(ImportT, TSTypeKind::IMPORT)                      \
+    V(Interface, TSTypeKind::INTERFACE_KIND)            \
+    V(IteratorInstance, TSTypeKind::ITERATOR_INSTANCE)  \
 
 #define IS_TSTYPEKIND(NAME, TSTYPEKIND)                                                \
     bool inline PUBLIC_API Is##NAME##TypeKind(const kungfu::GateType &gateType) const  \
@@ -339,6 +360,20 @@ public:
         return literalOffsetGTMap_.at(key);
     }
 
+    bool IsTSIterator(GlobalTSTypeRef gt) const
+    {
+        uint32_t m = gt.GetModuleId();
+        uint32_t l = gt.GetLocalId();
+        return (m == TSModuleTable::RUNTIME_TABLE_ID) && (l == static_cast<int>(TSRuntimeType::ITERATOR));
+    }
+
+    bool IsTSIteratorResult(GlobalTSTypeRef gt) const
+    {
+        uint32_t m = gt.GetModuleId();
+        uint32_t l = gt.GetLocalId();
+        return (m == TSModuleTable::RUNTIME_TABLE_ID) && (l == static_cast<int>(TSRuntimeType::ITERATOR_RESULT));
+    }
+
 private:
     // constantpoolInfos
     static constexpr uint32_t CONSTANTPOOL_INFOS_ITEM_SIZE = 2;
@@ -352,13 +387,15 @@ private:
 
     int GetTypeIndexFromExportTable(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable) const;
 
-    GlobalTSTypeRef PUBLIC_API AddUnionToInferTable(JSHandle<TSUnionType> unionType);
+    GlobalTSTypeRef PUBLIC_API AddTSTypeToInferTable(JSHandle<TSType> type) const;
 
     GlobalTSTypeRef FindUnionInTypeTable(JSHandle<TSTypeTable> table, JSHandle<TSUnionType> unionType) const;
 
+    GlobalTSTypeRef FindIteratorInstanceInInferTable(GlobalTSTypeRef kindGt, GlobalTSTypeRef elementGt) const;
+
     JSHandle<TSTypeTable> GetInferTypeTable() const;
 
-    void SetInferTypeTable(JSHandle<TSTypeTable> inferTable);
+    void SetInferTypeTable(JSHandle<TSTypeTable> inferTable) const;
 
     TSTypeKind PUBLIC_API GetTypeKind(const GlobalTSTypeRef &gt) const;
 
