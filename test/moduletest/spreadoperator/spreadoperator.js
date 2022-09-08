@@ -51,3 +51,23 @@ print(arr6);
 var arr7 = [...map1.values()];
 print(arr7.length);
 print(arr7);
+
+let arr8 = ['foo'];
+let warn1 = print.bind(print);
+function show1(message, ...args) {
+    return warn1(message, ...args);
+}
+show1(...arr8);
+
+let arr9 = ['foo'];
+let warn2 = print.bind(print);
+function show2(message, ...args) {
+    return warn2(message, ...args);
+}
+const handler = {
+    apply: function (target, thisArg, argumentsList) {
+        return target(...argumentsList);
+    }
+};
+let proxy = new Proxy(show2, handler);
+proxy(...arr9);
