@@ -972,8 +972,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
             Bind(&isNullPtr);
             {
                 UpdateLeaveFrameAndCallNGCRuntime(glue,
-                    RTSTUB_ID(InsertOldToNewRSet),
-                    { glue, objectRegion, slotAddr });
+                    RTSTUB_ID(InsertOldToNewRSet), { glue, obj, offset });
                 Jump(&notValidIndex);
             }
         }
@@ -989,8 +988,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
             Bind(&marking);
             UpdateLeaveFrameAndCallNGCRuntime(
                 glue,
-                RTSTUB_ID(MarkingBarrier),
-                { glue, slotAddr, objectRegion, TaggedCastToIntPtr(value), valueRegion });
+                RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
             Jump(&exit);
         }
     }
