@@ -27,6 +27,9 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }
         std::string message(data, data+size);
         OnMessage(vm, std::move(message));
         JSNApi::DestroyJSVM(vm);

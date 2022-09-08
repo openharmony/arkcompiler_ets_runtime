@@ -28,6 +28,9 @@ namespace OHOS {
         option.SetGcType(RuntimeOption::GC_TYPE::GEN_GC);
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }
         Local<StringRef> entry = StringRef::NewFromUtf8(vm, PANDA_MAIN_FUNCTION);
         std::string a = entry->StringRef::ToString();
         JSNApi::Execute(vm, data, size, a);
