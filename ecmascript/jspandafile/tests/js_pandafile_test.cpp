@@ -76,6 +76,7 @@ HWTEST_F_L0(JSPandaFileTest, CreateJSPandaFile)
     const CString fileName = "test.pa";
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     EXPECT_TRUE(pf != nullptr);
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetJSPandaFileDesc)
@@ -87,6 +88,7 @@ HWTEST_F_L0(JSPandaFileTest, GetJSPandaFileDesc)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const CString expectFileName = pf->GetJSPandaFileDesc();
     EXPECT_STREQ(expectFileName.c_str(), "test.pa");
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetPandaFile)
@@ -98,6 +100,7 @@ HWTEST_F_L0(JSPandaFileTest, GetPandaFile)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     EXPECT_TRUE(file != nullptr);
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetMethodLiterals_GetNumMethods)
@@ -114,6 +117,7 @@ HWTEST_F_L0(JSPandaFileTest, GetMethodLiterals_GetNumMethods)
 
     uint32_t methodNum = pf->GetNumMethods();
     EXPECT_EQ(methodNum, 3U); // 3 : number of methods
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
@@ -148,6 +152,7 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[0]).c_str(), "foo1");
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[1]).c_str(), "foo2");
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[2]).c_str(), "foo3");
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstpoolMap)
@@ -199,6 +204,7 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
     EXPECT_EQ(gotIndex1, 0U);
     EXPECT_EQ(gotIndex2, 1U);
     EXPECT_EQ(gotIndex3, 2U);
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
@@ -233,6 +239,7 @@ HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
     pf->UpdateMainMethodIndex(methodId[1].GetOffset());
     mainMethodIndex = pf->GetMainMethodIndex();
     EXPECT_EQ(mainMethodIndex, methodId[1].GetOffset());
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetClasses)
@@ -254,6 +261,7 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
 
     Span<const uint32_t> classes = pf->GetClasses();
     EXPECT_EQ(classes.Data(), classesData.Data());
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, IsModule_IsCjs_HasTSTypes_GetTypeSummaryIndex)
@@ -267,6 +275,7 @@ HWTEST_F_L0(JSPandaFileTest, IsModule_IsCjs_HasTSTypes_GetTypeSummaryIndex)
     EXPECT_EQ(pf1->IsCjs(), false);
     EXPECT_EQ(pf1->HasTSTypes(), false);
     EXPECT_EQ(pf1->GetTypeSummaryIndex(), 0U);
+    JSPandaFileManager::RemoveJSPandaFile(pf1);
 }
 
 HWTEST_F_L0(JSPandaFileTest, SetLoadedAOTStatus_IsLoadedAOT)
@@ -282,6 +291,7 @@ HWTEST_F_L0(JSPandaFileTest, SetLoadedAOTStatus_IsLoadedAOT)
     pf->SetLoadedAOTStatus(true);
     isLoadedAOT = pf->IsLoadedAOT();
     EXPECT_EQ(isLoadedAOT, true);
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetFileUniqId)
@@ -294,5 +304,6 @@ HWTEST_F_L0(JSPandaFileTest, GetFileUniqId)
     EXPECT_EQ(pf->GetFileUniqId(), merge_hashes(panda_file::File::CalcFilenameHash(""),
         GetHash32(reinterpret_cast<const uint8_t *>(pf->GetPandaFile()->GetHeader()),
         sizeof(panda_file::File::Header))));
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 }  // namespace panda::test

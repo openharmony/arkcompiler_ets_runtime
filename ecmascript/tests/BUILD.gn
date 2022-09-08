@@ -35,6 +35,7 @@ host_unittest_action("EcmaVm_001_Test") {
     "gc_test.cpp",
     "global_dictionary_test.cpp",
     "glue_regs_test.cpp",
+    "handle_leak_test.cpp",
     "huge_object_test.cpp",
     "js_api_arraylist_iterator_test.cpp",
     "js_api_arraylist_test.cpp",

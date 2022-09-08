@@ -1124,6 +1124,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared)
     std::thread t1(&JSDeserializerTest::JSArrayBufferTest, jsDeserializerTest, data, jsArrayBuffer, 12, nullptr);
     t1.join();
     delete serializer;
+    delete[] msgBuffer;
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared2)
@@ -1182,6 +1183,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared3)
     t2.join();
     EXPECT_TRUE(strcmp((char *)Buffer, "bbbbbbworld") == 0) << "Serialize JSArrayBuffer fail";
     delete serializer;
+    delete serializer2;
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeJSRegExp)

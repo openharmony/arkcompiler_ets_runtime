@@ -80,6 +80,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, NewJSPandaFile)
     auto expectFileName = pf->GetJSPandaFileDesc();
     EXPECT_STREQ(expectFileName.c_str(), "__JSPandaFileManagerTest.pa");
     remove(fileName.c_str());
+    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFile)
@@ -99,6 +100,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFile)
     ojspf = pfManager->OpenJSPandaFile(filename);
     EXPECT_TRUE(ojspf != nullptr);
     EXPECT_STREQ(ojspf->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest.pa");
+    JSPandaFileManager::RemoveJSPandaFile(ojspf);
 
     remove(filename);
     ojspf = pfManager->OpenJSPandaFile(filename);

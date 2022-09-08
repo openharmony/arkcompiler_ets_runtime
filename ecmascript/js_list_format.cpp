@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/js_list_format.h"
 
 #include <cstring>
@@ -49,6 +49,7 @@ void JSListFormat::FreeIcuListFormatter(void *pointer, [[maybe_unused]] void* hi
     }
     auto icuListFormat = reinterpret_cast<icu::ListFormatter *>(pointer);
     icuListFormat->~ListFormatter();
+    delete icuListFormat;
 }
 
 void JSListFormat::SetIcuListFormatter(JSThread *thread, const JSHandle<JSListFormat> listFormat,
@@ -63,8 +64,7 @@ void JSListFormat::SetIcuListFormatter(JSThread *thread, const JSHandle<JSListFo
         native->ResetExternalPointer(icuListFormatter);
         return;
     }
-    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuListFormatter);
-    pointer->SetDeleter(callback);
+    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuListFormatter, callback);
     listFormat->SetIcuLF(thread, pointer.GetTaggedValue());
 }
 

@@ -114,7 +114,7 @@ if (defined(ark_standalone_build)) {
         "//arkcompiler/ets_runtime/ecmascript/tooling/test:host_unittest",
         "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:host_unittest",
       ]
-      if (is_standard_system) {
+      if (is_standard_system && !run_with_asan) {
         deps += [
           "//arkcompiler/ets_runtime/ecmascript/compiler/tests:host_unittest",
         ]
@@ -133,7 +133,7 @@ if (defined(ark_standalone_build)) {
       deps += [ "//arkcompiler/ets_runtime/test/moduletest:ark_js_moduletest" ]
 
       # ts aot test and asm test
-      if (is_standard_system) {
+      if (is_standard_system && !run_with_asan) {
         deps += [
           "//arkcompiler/ets_runtime/test/aottest:ark_aot_js_test",
           "//arkcompiler/ets_runtime/test/aottest:ark_aot_test",

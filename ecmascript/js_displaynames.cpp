@@ -57,7 +57,7 @@ void JSDisplayNames::FreeIcuLocaleDisplayNames(void *pointer, [[maybe_unused]] v
         return;
     }
     auto icuLocaleDisplayNames = reinterpret_cast<icu::LocaleDisplayNames *>(pointer);
-    icuLocaleDisplayNames->~LocaleDisplayNames();
+    delete icuLocaleDisplayNames;
 }
 
 
@@ -67,7 +67,7 @@ void JSDisplayNames::SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<J
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    
+
     ASSERT(iculocaledisplaynames != nullptr);
     JSTaggedValue data = displayNames->GetIcuLDN();
     if (data.IsJSNativePointer()) {
@@ -75,8 +75,7 @@ void JSDisplayNames::SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<J
         native->ResetExternalPointer(iculocaledisplaynames);
         return;
     }
-    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(iculocaledisplaynames);
-    pointer->SetDeleter(callback);
+    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(iculocaledisplaynames, callback);
     displayNames->SetIcuLDN(thread, pointer.GetTaggedValue());
 }
 
