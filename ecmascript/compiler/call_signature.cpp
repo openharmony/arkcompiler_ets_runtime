@@ -901,7 +901,7 @@ DEF_CALL_SIGNATURE(InsertOldToNewRSet)
     // 3 : 3 input parameters
     std::array<VariableType, 3> params = {
         VariableType::NATIVE_POINTER(),
-        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
         VariableType::NATIVE_POINTER(),
     };
     callSign->SetParameters(params.data());
@@ -957,16 +957,15 @@ DEF_CALL_SIGNATURE(DoubleToInt)
 
 DEF_CALL_SIGNATURE(MarkingBarrier)
 {
-    // 5 : 5 input parameters
-    CallSignature index("MarkingBarrier", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    // 4 : 4 input parameters
+    CallSignature index("MarkingBarrier", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = index;
-    // 5 : 5 input parameters
-    std::array<VariableType, 5> params = {
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
         VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
         VariableType::NATIVE_POINTER(),
-        VariableType::NATIVE_POINTER(),
-        VariableType::NATIVE_POINTER(),
-        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER()
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);
