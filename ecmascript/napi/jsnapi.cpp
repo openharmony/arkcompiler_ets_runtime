@@ -1100,10 +1100,10 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
     JSHandle<JSFunction> current =
-        factory->NewJSFunctionByDynClass(reinterpret_cast<void *>(Callback::RegisterCallback),
-        dynclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
+        factory->NewJSFunctionByHClass(reinterpret_cast<void *>(Callback::RegisterCallback),
+        hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
 
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();

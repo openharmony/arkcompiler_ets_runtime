@@ -108,7 +108,7 @@ public:
             return info->second.constpoolMap;
         }
         LOG_FULL(FATAL) << "find entryPoint fail " << recordName;
-        return CUnorderedMap<uint32_t, uint64_t>();
+        UNREACHABLE();
     }
 
     uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset,
@@ -122,7 +122,7 @@ public:
         }
     }
 
-    MethodLiteral* PUBLIC_API FindMethodLiteral(uint32_t offset) const;
+    PUBLIC_API MethodLiteral *FindMethodLiteral(uint32_t offset) const;
 
     int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
@@ -173,6 +173,11 @@ public:
         return static_cast<uint32_t>(GetPandaFile()->GetUniqId());
     }
 
+    bool IsNewVersion() const
+    {
+        return isNewVersion_;
+    }
+
     bool HasRecord(const CString &recordName) const
     {
         auto info = jsRecordInfo_.find(recordName);
@@ -186,11 +191,18 @@ public:
         return jsRecordInfo_;
     }
     void checkIsBundle();
+
     CString FindrecordName(const CString &record) const;
+
     static std::string ParseOhmUrl(std::string fileName);
+
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
+
+    static constexpr size_t VERSION_SIZE = 4;
+    static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
+
     uint32_t constpoolIndex_ {0};
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     uint32_t numMethods_ {0};
@@ -200,6 +212,7 @@ private:
     bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
     uint32_t typeSummaryIndex_ {0};
+    bool isNewVersion_ {true};
 
     // marge abc
     bool isBundle_ {true}; // isBundle means app compile mode is JSBundle

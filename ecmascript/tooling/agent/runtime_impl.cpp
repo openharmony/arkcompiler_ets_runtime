@@ -359,7 +359,7 @@ void RuntimeImpl::GetProtoOrProtoType(Local<JSValueRef> value, bool isOwn, bool 
     if (!isAccessorOnly && isOwn && !value->IsProxy()) {
         return;
     }
-    // Get Function ProtoOrDynClass
+    // Get Function ProtoOrHClass
     if (value->IsConstructor()) {
         Local<JSValueRef> prototype = Local<FunctionRef>(value)->GetFunctionPrototype(vm_);
         std::unique_ptr<RemoteObject> protoObj = RemoteObject::FromTagged(vm_, prototype);

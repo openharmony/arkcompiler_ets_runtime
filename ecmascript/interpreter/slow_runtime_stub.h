@@ -26,49 +26,49 @@ class JSArray;
 
 class SlowRuntimeStub {
 public:
-    static JSTaggedValue CallSpreadDyn(JSThread *thread, JSTaggedValue func, JSTaggedValue obj, JSTaggedValue array);
-    static JSTaggedValue NegDyn(JSThread *thread, JSTaggedValue value);
+    static JSTaggedValue CallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue obj, JSTaggedValue array);
+    static JSTaggedValue Neg(JSThread *thread, JSTaggedValue value);
     static JSTaggedValue AsyncFunctionEnter(JSThread *thread);
     static JSTaggedValue ToNumber(JSThread *thread, JSTaggedValue value);
     static JSTaggedValue ToNumeric(JSThread *thread, JSTaggedValue value);
-    static JSTaggedValue NotDyn(JSThread *thread, JSTaggedValue value);
-    static JSTaggedValue IncDyn(JSThread *thread, JSTaggedValue value);
-    static JSTaggedValue DecDyn(JSThread *thread, JSTaggedValue value);
-    static void ThrowDyn(JSThread *thread, JSTaggedValue value);
+    static JSTaggedValue Not(JSThread *thread, JSTaggedValue value);
+    static JSTaggedValue Inc(JSThread *thread, JSTaggedValue value);
+    static JSTaggedValue Dec(JSThread *thread, JSTaggedValue value);
+    static void Throw(JSThread *thread, JSTaggedValue value);
     static JSTaggedValue GetPropIterator(JSThread *thread, JSTaggedValue value);
     static void ThrowConstAssignment(JSThread *thread, JSTaggedValue value);
-    static JSTaggedValue Add2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue Sub2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue Mul2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue Div2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue Mod2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue EqDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue NotEqDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue LessDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue LessEqDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue GreaterDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue GreaterEqDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue Shl2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue Shr2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue Ashr2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue And2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue Or2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
-    static JSTaggedValue Xor2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Add2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Sub2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Mul2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Div2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Mod2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Eq(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue NotEq(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Less(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue LessEq(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Greater(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue GreaterEq(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Shl2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Shr2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Ashr2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue And2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Or2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
+    static JSTaggedValue Xor2(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
 
     static JSTaggedValue ToJSTaggedValueWithInt32(JSThread *thread, JSTaggedValue value);
     static JSTaggedValue ToJSTaggedValueWithUint32(JSThread *thread, JSTaggedValue value);
 
     static JSTaggedValue DelObjProp(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop);
-    static JSTaggedValue NewObjDynRange(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
+    static JSTaggedValue NewObjRange(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                         uint16_t firstArgIdx, uint16_t length);
     static JSTaggedValue CreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys, JSTaggedValue objVal,
                                                       uint16_t firstArgRegIdx);
-    static JSTaggedValue ExpDyn(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent);
-    static JSTaggedValue IsInDyn(JSThread *thread, JSTaggedValue prop, JSTaggedValue obj);
-    static JSTaggedValue InstanceofDyn(JSThread *thread, JSTaggedValue obj, JSTaggedValue target);
+    static JSTaggedValue Exp(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent);
+    static JSTaggedValue IsIn(JSThread *thread, JSTaggedValue prop, JSTaggedValue obj);
+    static JSTaggedValue Instanceof(JSThread *thread, JSTaggedValue obj, JSTaggedValue target);
 
-    static JSTaggedValue NewLexicalEnvDyn(JSThread *thread, uint16_t numVars);
-    static JSTaggedValue NewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId);
+    static JSTaggedValue NewLexicalEnv(JSThread *thread, uint16_t numVars);
+    static JSTaggedValue NewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId);
     static JSTaggedValue CreateIterResultObj(JSThread *thread, JSTaggedValue value, JSTaggedValue flag);
 
     static JSTaggedValue CreateGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
@@ -77,8 +77,7 @@ public:
     static JSTaggedValue AsyncFunctionResolveOrReject(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value,
                                                       bool is_resolve);
 
-    static JSTaggedValue NewObjSpreadDyn(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
-                                         JSTaggedValue array);
+    static JSTaggedValue NewObjApply(JSThread *thread, JSTaggedValue func, JSTaggedValue array);
     static void ThrowUndefinedIfHole(JSThread *thread, JSTaggedValue obj);
     static void ThrowIfNotObject(JSThread *thread);
     static void ThrowThrowNotExists(JSThread *thread);
@@ -136,10 +135,7 @@ public:
     static JSTaggedValue TryUpdateGlobalRecord(JSThread *thread, JSTaggedValue prop, JSTaggedValue value);
     static JSTaggedValue StArraySpread(JSThread *thread, JSTaggedValue dst, JSTaggedValue index, JSTaggedValue src);
 
-    static JSTaggedValue DefineGeneratorFunc(JSThread *thread, JSFunction *func);
-    static JSTaggedValue DefineAsyncFunc(JSThread *thread, JSFunction *func);
-    static JSTaggedValue DefineNCFuncDyn(JSThread *thread, JSFunction *func);
-    static JSTaggedValue DefinefuncDyn(JSThread *thread, JSFunction *func);
+    static JSTaggedValue DefineFunc(JSThread *thread, Method *method);
 
     static JSTaggedValue GetSuperConstructor(JSThread *thread, JSTaggedValue ctor);
     static JSTaggedValue SuperCall(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget, uint16_t firstVRegIdx,
@@ -147,7 +143,7 @@ public:
     static JSTaggedValue SuperCallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                          JSTaggedValue array);
     static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue func);
-    static JSTaggedValue DefineMethod(JSThread *thread, JSFunction *func, JSTaggedValue homeObject);
+    static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
                                         JSTaggedValue thisFunc);
@@ -160,7 +156,7 @@ public:
                                                 JSTaggedValue lexenv);
     static JSTaggedValue CreateClassWithBuffer(JSThread *thread, JSTaggedValue base,
                                                JSTaggedValue lexenv, JSTaggedValue constpool,
-                                               const uint16_t methodId);
+                                               uint16_t methodId, uint16_t literalId);
     static JSTaggedValue SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length);
     static JSTaggedValue GetModuleNamespace(JSThread *thread, JSTaggedValue localName);
     static JSTaggedValue LdBigInt(JSThread *thread, JSTaggedValue numberBigInt);
@@ -172,7 +168,7 @@ public:
     static JSTaggedValue AsyncGeneratorReject(JSThread *thread, JSTaggedValue asyncFuncObj,
                                               const JSTaggedValue value);
     static JSTaggedValue CreateAsyncGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
-    static JSTaggedValue DefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func);
+
     static JSTaggedValue LdPatchVar(JSThread *thread, uint32_t index);
     static JSTaggedValue StPatchVar(JSThread *thread, uint32_t index, JSTaggedValue value);
 

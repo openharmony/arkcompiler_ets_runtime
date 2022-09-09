@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/ecma_bytecode_des.h"
 #include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {
@@ -150,7 +151,7 @@ private:
     // environment must be initialized
     GateRef GetHomeObjectFromJSFunction(GateRef jsFunc);
     void Lower(GateRef gate);
-    void LowerAdd2Dyn(GateRef gate, GateRef glue);
+    void LowerAdd2(GateRef gate, GateRef glue);
     void LowerCreateIterResultObj(GateRef gate, GateRef glue);
     void SaveFrameToContext(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerSuspendGenerator(GateRef gate, GateRef glue, [[maybe_unused]]GateRef jsFunc);
@@ -163,15 +164,15 @@ private:
     void LowerTryLdGlobalByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIterator(GateRef gate, GateRef glue);
     void LowerToJSCall(GateRef gate, GateRef glue, const std::vector<GateRef> &args);
-    void LowerCallArg0Dyn(GateRef gate, GateRef glue);
-    void LowerCallArg1Dyn(GateRef gate, GateRef glue);
-    void LowerCallArgs2Dyn(GateRef gate, GateRef glue);
-    void LowerCallArgs3Dyn(GateRef gate, GateRef glue);
-    void LowerCallIThisRangeDyn(GateRef gate, GateRef glue);
-    void LowerCallSpreadDyn(GateRef gate, GateRef glue);
-    void LowerCallIRangeDyn(GateRef gate, GateRef glue);
-    void LowerNewObjSpreadDyn(GateRef gate, GateRef glue);
-    void LowerThrowDyn(GateRef gate, GateRef glue);
+    void LowerCallArg0(GateRef gate, GateRef glue);
+    void LowerCallArg1(GateRef gate, GateRef glue);
+    void LowerCallArgs2(GateRef gate, GateRef glue);
+    void LowerCallArgs3(GateRef gate, GateRef glue);
+    void LowerCallThisRange(GateRef gate, GateRef glue);
+    void LowerCallSpread(GateRef gate, GateRef glue);
+    void LowerCallRange(GateRef gate, GateRef glue);
+    void LowerNewObjApply(GateRef gate, GateRef glue);
+    void LowerThrow(GateRef gate, GateRef glue);
     void LowerThrowConstAssignment(GateRef gate, GateRef glue);
     void LowerThrowThrowNotExists(GateRef gate, GateRef glue);
     void LowerThrowPatternNonCoercible(GateRef gate, GateRef glue);
@@ -181,34 +182,34 @@ private:
     void LowerThrowDeleteSuperProperty(GateRef gate, GateRef glue);
     void LowerLdSymbol(GateRef gate, GateRef glue);
     void LowerLdGlobal(GateRef gate, GateRef glue);
-    void LowerSub2Dyn(GateRef gate, GateRef glue);
-    void LowerMul2Dyn(GateRef gate, GateRef glue);
-    void LowerDiv2Dyn(GateRef gate, GateRef glue);
-    void LowerMod2Dyn(GateRef gate, GateRef glue);
-    void LowerEqDyn(GateRef gate, GateRef glue);
-    void LowerNotEqDyn(GateRef gate, GateRef glue);
-    void LowerLessDyn(GateRef gate, GateRef glue);
-    void LowerLessEqDyn(GateRef gate, GateRef glue);
-    void LowerGreaterDyn(GateRef gate, GateRef glue);
-    void LowerGreaterEqDyn(GateRef gate, GateRef glue);
+    void LowerSub2(GateRef gate, GateRef glue);
+    void LowerMul2(GateRef gate, GateRef glue);
+    void LowerDiv2(GateRef gate, GateRef glue);
+    void LowerMod2(GateRef gate, GateRef glue);
+    void LowerEq(GateRef gate, GateRef glue);
+    void LowerNotEq(GateRef gate, GateRef glue);
+    void LowerLess(GateRef gate, GateRef glue);
+    void LowerLessEq(GateRef gate, GateRef glue);
+    void LowerGreater(GateRef gate, GateRef glue);
+    void LowerGreaterEq(GateRef gate, GateRef glue);
     void LowerGetPropIterator(GateRef gate, GateRef glue);
     void LowerIterNext(GateRef gate, GateRef glue);
     void LowerCloseIterator(GateRef gate, GateRef glue);
-    void LowerIncDyn(GateRef gate, GateRef glue);
-    void LowerDecDyn(GateRef gate, GateRef glue);
+    void LowerInc(GateRef gate, GateRef glue);
+    void LowerDec(GateRef gate, GateRef glue);
     void LowerToNumber(GateRef gate, GateRef glue);
-    void LowerNegDyn(GateRef gate, GateRef glue);
-    void LowerNotDyn(GateRef gate, GateRef glue);
-    void LowerShl2Dyn(GateRef gate, GateRef glue);
-    void LowerShr2Dyn(GateRef gate, GateRef glue);
-    void LowerAshr2Dyn(GateRef gate, GateRef glue);
-    void LowerAnd2Dyn(GateRef gate, GateRef glue);
-    void LowerOr2Dyn(GateRef gate, GateRef glue);
-    void LowerXor2Dyn(GateRef gate, GateRef glue);
+    void LowerNeg(GateRef gate, GateRef glue);
+    void LowerNot(GateRef gate, GateRef glue);
+    void LowerShl2(GateRef gate, GateRef glue);
+    void LowerShr2(GateRef gate, GateRef glue);
+    void LowerAshr2(GateRef gate, GateRef glue);
+    void LowerAnd2(GateRef gate, GateRef glue);
+    void LowerOr2(GateRef gate, GateRef glue);
+    void LowerXor2(GateRef gate, GateRef glue);
     void LowerDelObjProp(GateRef gate, GateRef glue);
-    void LowerExpDyn(GateRef gate, GateRef glue);
-    void LowerIsInDyn(GateRef gate, GateRef glue);
-    void LowerInstanceofDyn(GateRef gate, GateRef glue);
+    void LowerExp(GateRef gate, GateRef glue);
+    void LowerIsIn(GateRef gate, GateRef glue);
+    void LowerInstanceof(GateRef gate, GateRef glue);
     void LowerFastStrictNotEqual(GateRef gate, GateRef glue);
     void LowerFastStrictEqual(GateRef gate, GateRef glue);
     void LowerCreateEmptyArray(GateRef gate, GateRef glue);
@@ -227,7 +228,7 @@ private:
     void LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget);
     void LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef newTarget);
     void LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag);
-    void LowerNewObjDynRange(GateRef gate, GateRef glue);
+    void LowerNewObjRange(GateRef gate, GateRef glue);
     void LowerConditionJump(GateRef gate, bool isEqualJump);
     void LowerGetNextPropName(GateRef gate, GateRef glue);
     void LowerCopyDataProperties(GateRef gate, GateRef glue);
@@ -236,12 +237,9 @@ private:
     void LowerStOwnByValue(GateRef gate, GateRef glue);
     void LowerStOwnByIndex(GateRef gate, GateRef glue);
     void LowerStOwnByName(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerDefineFuncDyn(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerDefineGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerDefineAsyncGeneratorFunc(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerDefineAsyncFunc(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerNewLexicalEnvDyn(GateRef gate, GateRef glue);
-    void LowerNewLexicalEnvWithNameDyn(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerNewLexicalEnv(GateRef gate, GateRef glue);
+    void LowerNewLexicalEnvWithName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerPopLexicalEnv(GateRef gate, GateRef glue);
     void LowerLdSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
@@ -263,26 +261,25 @@ private:
     void LowerStObjByValue(GateRef gate, GateRef glue);
     void LowerCreateGeneratorObj(GateRef gate, GateRef glue);
     void LowerStArraySpread(GateRef gate, GateRef glue);
-    void LowerLdLexVarDyn(GateRef gate, GateRef glue);
-    void LowerStLexVarDyn(GateRef gate, GateRef glue);
+    void LowerLdLexVar(GateRef gate, GateRef glue);
+    void LowerStLexVar(GateRef gate, GateRef glue);
     void LowerCreateObjectHavingMethod(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdHomeObject(GateRef gate, GateRef jsFunc);
     void LowerDefineClassWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerAsyncFunctionEnter(GateRef gate, GateRef glue);
-    void LowerTypeOfDyn(GateRef gate, GateRef glue);
+    void LowerTypeof(GateRef gate, GateRef glue);
     void LowerResumeGenerator(GateRef gate);
     void LowerGetResumeMode(GateRef gate);
-    void LowerDefineNCFuncDyn(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetUnmappedArgs(GateRef gate, GateRef glue, GateRef actualArgc);
     void LowerCopyRestArgs(GateRef gate, GateRef glue, GateRef actualArgc);
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
-    int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
+    int32_t ComputeCallArgc(GateRef gate, EcmaBytecode op);
     void LowerCreateAsyncGeneratorObj(GateRef gate, GateRef glue);
     void LowerAsyncGeneratorResolve(GateRef gate, GateRef glue);
     void LowerAsyncGeneratorReject(GateRef gate, GateRef glue);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
-    void DebugPrintBC(GateRef gate, GateRef glue, GateRef index);
+    void DebugPrintBC(GateRef gate, GateRef glue);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
 
     BytecodeCircuitBuilder *bcBuilder_;

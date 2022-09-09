@@ -36,7 +36,7 @@ void TSTypeLowering::RunTSTypeLowering()
 void TSTypeLowering::Lower(GateRef gate)
 {
     auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaOpcode op = static_cast<EcmaOpcode>(*pc);
+    EcmaBytecode op = static_cast<EcmaBytecode>(*pc);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {

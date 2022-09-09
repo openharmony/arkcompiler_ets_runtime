@@ -28,8 +28,6 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/runtime_call_id.h"
 
-#include "libpandafile/bytecode_instruction-inl.h"
-
 namespace panda::ecmascript::aarch64 {
 using Label = panda::ecmascript::Label;
 #define __ assembler->
@@ -138,24 +136,12 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         __ Mov(Register(SP), tempRegister);
     }
 
-    auto jumpSize = kungfu::AssemblerModule::GetJumpSizeFromJSCallMode(mode);
-    if (mode == JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV) {
+    if (kungfu::AssemblerModule::IsCallNew(mode)) {
         Register thisRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         [[maybe_unused]] TempRegister1Scope scope(assembler);
         Register tempArgcRegister = __ TempRegister1();
         __ PushArgc(argcRegister, tempArgcRegister, currentSlotRegister);
         __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-        jumpSize = 0;
-    }
-
-    if (jumpSize >= 0) {
-        [[maybe_unused]] TempRegister1Scope scope(assembler);
-        Register temp = __ TempRegister1();
-        __ Mov(temp, Immediate(static_cast<int>(jumpSize)));
-        int64_t offset = static_cast<int64_t>(AsmInterpretedFrame::GetCallSizeOffset(false))
-            - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
-        ASSERT(offset < 0);
-        __ Stur(temp, MemoryOperand(Register(FP), offset));
     }
 
     Register declaredNumArgsRegister = __ AvailableRegister2();
@@ -384,15 +370,15 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
 // X23 - arg0                        // X23 - actualArgc
 // X24 - arg1                        // X24 - argv
 // X25 - arg2
-void AsmInterpreterCall::PushCallIThisRangeAndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallThisRangeAndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallIThisRangeAndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisRangeAndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_WITH_ARGV);
 }
 
-void AsmInterpreterCall::PushCallIRangeAndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallRangeAndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallIRangeAndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallRangeAndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_WITH_ARGV);
 }
 
@@ -414,19 +400,43 @@ void AsmInterpreterCall::PushCallArgs2AndDispatch(ExtendedAssembler *assembler)
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG2);
 }
 
-void AsmInterpreterCall::PushCallArgs1AndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallArg1AndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallArgs1AndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallArg1AndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG1);
 }
 
-void AsmInterpreterCall::PushCallArgs0AndDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallArg0AndDispatch(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallArgs0AndDispatch));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallArg0AndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0);
 }
 
-// uint64_t PushCallIRangeAndDispatchNative(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
+void AsmInterpreterCall::PushCallThisArg0AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg0AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG0);
+}
+
+void AsmInterpreterCall::PushCallThisArg1AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg1AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG1);
+}
+
+void AsmInterpreterCall::PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs2AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2);
+}
+
+void AsmInterpreterCall::PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs3AndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3);
+}
+
+// uint64_t PushCallRangeAndDispatchNative(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
 // c++ calling convention call js function
 // Input: X0 - glue
 //        X1 - nativeCode
@@ -434,9 +444,9 @@ void AsmInterpreterCall::PushCallArgs0AndDispatch(ExtendedAssembler *assembler)
 //        X3 - thisValue
 //        X4  - argc
 //        X5  - argV (...)
-void AsmInterpreterCall::PushCallIRangeAndDispatchNative(ExtendedAssembler *assembler)
+void AsmInterpreterCall::PushCallRangeAndDispatchNative(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(PushCallIRangeAndDispatchNative));
+    __ BindAssemblerStub(RTSTUB_ID(PushCallRangeAndDispatchNative));
     CallNativeWithArgv(assembler, false);
 }
 
@@ -641,11 +651,11 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     ASSERT(fpOffset < 0);
     ASSERT(spOffset < 0);
 
-    Label newObjectDynRangeReturn;
+    Label newObjectRangeReturn;
     Label dispatch;
     __ Ldur(fp, MemoryOperand(sp, fpOffset));  // store fp for temporary
     __ Cmp(jumpSizeRegister, Immediate(0));
-    __ B(Condition::EQ, &newObjectDynRangeReturn);
+    __ B(Condition::LE, &newObjectRangeReturn);
     __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
 
     __ Add(pc, pc, Operand(jumpSizeRegister, LSL, 0));
@@ -658,10 +668,9 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Br(bcStub);
     }
 
-    auto jumpSize = kungfu::AssemblerModule::GetJumpSizeFromJSCallMode(JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
     Label getHiddenThis;
     Label notUndefined;
-    __ Bind(&newObjectDynRangeReturn);
+    __ Bind(&newObjectRangeReturn);
     {
         __ Cmp(ret, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         __ B(Condition::NE, &notUndefined);
@@ -672,7 +681,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
         __ Mov(rsp, fp);  // resume rsp
         __ Ldur(ret, MemoryOperand(rsp, thisOffset));  // update acc
-        __ Add(pc, pc, Immediate(jumpSize));
+        __ Sub(pc, pc, jumpSizeRegister); // sub negative jmupSize
         __ Ldrb(opcode, MemoryOperand(pc, 0));
         __ Add(bcStub, glueRegister, Operand(opcode, UXTW, SHIFT_OF_FRAMESLOT));
         __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
@@ -695,7 +704,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ B(Condition::LO, &notEcmaObject);
         // acc is ecma object
         __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
-        __ Add(pc, pc, Immediate(jumpSize));
+        __ Sub(pc, pc, jumpSizeRegister); // sub negative jmupSize
         __ Ldrb(opcode, MemoryOperand(pc, 0));
         __ B(&dispatch);
 
@@ -705,15 +714,16 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
                 - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
             ASSERT(constructorOffset < 0);
             __ Ldur(temp, MemoryOperand(sp, constructorOffset));  // load constructor
-            __ Ldr(temp, MemoryOperand(temp, JSFunction::BIT_FIELD_OFFSET));
-            __ Lsr(temp.W(), temp.W(), JSFunction::FunctionKindBits::START_BIT);
+            __ Ldr(temp, MemoryOperand(temp, JSFunctionBase::METHOD_OFFSET));
+            __ Ldr(temp, MemoryOperand(temp, Method::EXTRA_LITERAL_INFO_OFFSET));
+            __ Lsr(temp.W(), temp.W(), MethodLiteral::FunctionKindBits::START_BIT);
             __ And(temp.W(), temp.W(),
-                LogicalImmediate::Create((1LU << JSFunction::FunctionKindBits::SIZE) - 1, RegWSize));
+                LogicalImmediate::Create((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, RegWSize));
             __ Cmp(temp.W(), Immediate(static_cast<int64_t>(FunctionKind::CLASS_CONSTRUCTOR)));
             __ B(Condition::LS, &getHiddenThis);  // constructor is base
             // exception branch
             {
-                __ Mov(opcode, kungfu::BytecodeStubCSigns::ID_NewObjectDynRangeThrowException);
+                __ Mov(opcode, kungfu::BytecodeStubCSigns::ID_NewObjectRangeThrowException);
                 __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
                 __ B(&dispatch);
             }
@@ -1111,7 +1121,6 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     // 32: get high 32bit
     __ Lsr(operatorRegister, operatorRegister, 32);
     __ Add(pcRegister, operatorRegister, pcRegister);
-    __ Add(pcRegister, pcRegister, Immediate(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8)));
     // 2 : pc and fp
     __ Stp(fpRegister, pcRegister, MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // jumpSizeAfterCall

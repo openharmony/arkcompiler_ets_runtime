@@ -36,6 +36,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor) 
 #else
     InitializeUnMergedPF();
 #endif
+    isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
 }
 
 void JSPandaFile::checkIsBundle()

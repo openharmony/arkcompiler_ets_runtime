@@ -514,7 +514,7 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     os << "\n";
 }
 
-static void DumpDynClass(TaggedObject *obj, std::ostream &os)
+static void DumpClass(TaggedObject *obj, std::ostream &os)
 {
     JSHClass *hclass = obj->GetClass();
     os << "JSHClass :" << std::setw(DUMP_TYPE_OFFSET) << " klass_(" << std::hex << hclass << ")\n";
@@ -560,7 +560,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
 
     switch (type) {
         case JSType::HCLASS:
-            return DumpDynClass(obj, os);
+            return DumpClass(obj, os);
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::TEMPLATE_MAP:
@@ -1344,26 +1344,14 @@ void ConstantPool::Dump(std::ostream &os) const
 
 void JSFunction::Dump(std::ostream &os) const
 {
-    os << " - ProtoOrDynClass: ";
-    GetProtoOrDynClass().Dump(os);
+    os << " - ProtoOrHClass: ";
+    GetProtoOrHClass().Dump(os);
     os << "\n";
     os << " - LexicalEnv: ";
     GetLexicalEnv().Dump(os);
     os << "\n";
     os << " - HomeObject: ";
     GetHomeObject().Dump(os);
-    os << "\n";
-
-    os << " - CodeEntry: " << std::hex << GetCodeEntry() << "\n";
-    os << "\n";
-
-    os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
-    os << "\n";
-    os << " - Strict: " << GetStrict();
-    os << "\n";
-    os << " - Resolved: " << GetResolved();
-    os << "\n";
-    os << " - ThisMode: " << static_cast<int>(GetThisMode());
     os << "\n";
     os << " - FunctionExtraInfo: ";
     GetFunctionExtraInfo().Dump(os);
@@ -3372,6 +3360,10 @@ void Method::Dump(std::ostream &os) const
     os << " - ConstantPool: ";
     GetConstantPool().Dump(os);
     os << "\n";
+    os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
+    os << "\n";
+    os << " - CodeEntry: " << std::hex << GetCodeEntry() << "\n";
+    os << "\n";
 }
 
 // ########################################################################################
@@ -3407,7 +3399,7 @@ static void DumpStringClass(const EcmaString *str,
     vec.push_back(std::make_pair("string", JSTaggedValue(str)));
 }
 
-static void DumpDynClass(TaggedObject *obj,
+static void DumpClass(TaggedObject *obj,
                          std::vector<std::pair<CString, JSTaggedValue>> &vec)
 {
     JSHClass *jshclass = obj->GetClass();
@@ -3423,7 +3415,7 @@ static void DumpObject(TaggedObject *obj,
 
     switch (type) {
         case JSType::HCLASS:
-            DumpDynClass(obj, vec);
+            DumpClass(obj, vec);
             return;
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
@@ -4064,13 +4056,11 @@ void JSHClass::DumpForSnapshot([[maybe_unused]] std::vector<std::pair<CString, J
 
 void JSFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ProtoOrDynClass"), GetProtoOrDynClass()));
+    vec.push_back(std::make_pair(CString("ProtoOrHClass"), GetProtoOrHClass()));
     vec.push_back(std::make_pair(CString("LexicalEnv"), GetLexicalEnv()));
     vec.push_back(std::make_pair(CString("HomeObject"), GetHomeObject()));
     vec.push_back(std::make_pair(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind()))));
-    vec.push_back(std::make_pair(CString("Strict"), JSTaggedValue(GetStrict())));
-    vec.push_back(std::make_pair(CString("Resolved"), JSTaggedValue(GetResolved())));
-    vec.push_back(std::make_pair(CString("ThisMode"), JSTaggedValue(static_cast<int>(GetThisMode()))));
+    vec.push_back(std::make_pair(CString("FunctionExtraInfo"), GetFunctionExtraInfo()));
     vec.push_back(std::make_pair(CString("ProfileTypeInfo"), GetProfileTypeInfo()));
     JSObject::DumpForSnapshot(vec);
 }

@@ -21,9 +21,10 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 
 #include "libpandabase/utils/bit_field.h"
-#include "libpandafile/bytecode_instruction-inl.h"
 #include "libpandafile/code_data_accessor-inl.h"
 #include "libpandafile/file-inl.h"
+
+#include "ecmascript/jspandafile/bytecode_inst/old_instruction.h"
 
 namespace panda::ecmascript {
 class JSThread;
@@ -48,8 +49,8 @@ public:
 private:
     static void TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t insSz, const uint8_t *insArr,
         const MethodLiteral *methodLiteral, const CString &methodName = "func_main_0");
-    static void FixInstructionId32(const BytecodeInstruction &inst, uint32_t index, uint32_t fixOrder = 0);
-    static void FixOpcode(uint8_t *pc);
+    static void FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder = 0);
+    static void FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst);
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
     static JSHandle<ConstantPool> ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint);
     static void ParseConstPoolWithMerge(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,

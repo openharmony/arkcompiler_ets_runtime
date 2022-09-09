@@ -39,12 +39,29 @@ public:
                                 const JSHandle<JSTaggedValue> &name, const JSHandle<JSTaggedValue> &prefix);
     static JSHandle<JSTaggedValue> GetFunctionName(JSThread *thread, const JSHandle<JSFunctionBase> &func);
 
+    void SetCallNative(bool isCallNative)
+    {
+        JSTaggedValue method = GetMethod();
+        Method::Cast(method.GetTaggedObject())->SetCallNative(isCallNative);
+    }
+
+    bool IsCallNative() const
+    {
+        JSTaggedValue method = GetMethod();
+        return Method::ConstCast(method.GetTaggedObject())->IsCallNative();
+    }
+
+    FunctionKind GetFunctionKind() const
+    {
+        JSTaggedValue method = GetMethod();
+        return Method::ConstCast(method.GetTaggedObject())->GetFunctionKind();
+    }
+
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
-    ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LAST_OFFSET)
+    ACCESSORS(Method, METHOD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, CODE_ENTRY_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, LAST_OFFSET)
     DECL_DUMP()
 };
 
@@ -61,7 +78,7 @@ public:
     CAST_CHECK(JSFunction, IsJSFunction);
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<GlobalEnv> &env, const JSHandle<JSFunction> &func,
-                                     FunctionKind kind = FunctionKind::NORMAL_FUNCTION, bool strict = true);
+                                     FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     // ecma6 7.3
     static bool OrdinaryHasInstance(JSThread *thread, const JSHandle<JSTaggedValue> &constructor,
                                     const JSHandle<JSTaggedValue> &obj);
@@ -99,17 +116,17 @@ public:
     inline JSTaggedValue GetFunctionPrototype() const
     {
         ASSERT(HasFunctionPrototype());
-        JSTaggedValue protoOrDyn = GetProtoOrDynClass();
-        if (protoOrDyn.IsJSHClass()) {
-            return JSHClass::Cast(protoOrDyn.GetTaggedObject())->GetPrototype();
+        JSTaggedValue protoOrHClass = GetProtoOrHClass();
+        if (protoOrHClass.IsJSHClass()) {
+            return JSHClass::Cast(protoOrHClass.GetTaggedObject())->GetPrototype();
         }
 
-        return protoOrDyn;
+        return protoOrHClass;
     }
 
     inline void SetFunctionPrototype(const JSThread *thread, JSTaggedValue proto)
     {
-        SetProtoOrDynClass(thread, proto);
+        SetProtoOrHClass(thread, proto);
         if (proto.IsJSHClass()) {
             proto = JSHClass::Cast(proto.GetTaggedObject())->GetPrototype();
         }
@@ -118,16 +135,16 @@ public:
         }
     }
 
-    inline bool HasInitialDynClass() const
+    inline bool HasInitialClass() const
     {
-        JSTaggedValue protoOrDyn = GetProtoOrDynClass();
-        return protoOrDyn.IsJSHClass();
+        JSTaggedValue protoOrHClass = GetProtoOrHClass();
+        return protoOrHClass.IsJSHClass();
     }
 
     inline bool HasFunctionPrototype() const
     {
-        JSTaggedValue protoOrDyn = GetProtoOrDynClass();
-        return !protoOrDyn.IsHole();
+        JSTaggedValue protoOrHClass = GetProtoOrHClass();
+        return !protoOrHClass.IsHole();
     }
 
     inline void SetFunctionLength(const JSThread *thread, JSTaggedValue length)
@@ -190,52 +207,30 @@ public:
         GetClass()->SetClassConstructor(flag);
     }
 
-    // add for AOT
-    inline void SetCodeEntryAndMarkAOT(const uintptr_t codeEntry)
-    {
-        Method *method = Method::Cast(GetMethod().GetTaggedObject());
-        method->SetAotCodeBit(true);
-        method->SetNativeBit(false);
-        SetCodeEntry(codeEntry);
-    }
-
     void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data);
 
     JSTaggedValue GetFunctionExtraInfo() const;
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
-                                     FunctionKind kind = FunctionKind::NORMAL_FUNCTION, bool strict = true);
+                                     FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     static JSHClass *GetOrCreateInitialJSHClass(JSThread *thread, const JSHandle<JSFunction> &fun);
     static JSHandle<JSHClass> GetInstanceJSHClass(JSThread *thread, JSHandle<JSFunction> constructor,
                                                   JSHandle<JSTaggedValue> newTarget);
 
     static constexpr size_t PROTO_OR_DYNCLASS_OFFSET = JSFunctionBase::SIZE;
-    ACCESSORS(ProtoOrDynClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
+    ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, HOME_OBJECT_OFFSET)
     ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, PROFILE_TYPE_INFO_OFFSET)
     ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, ECMA_MODULE_OFFSET)
-    ACCESSORS(Module, ECMA_MODULE_OFFSET, BIT_FIELD_OFFSET)
-    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
+    ACCESSORS(Module, ECMA_MODULE_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    // define BitField
-    static constexpr uint32_t FUNCTION_KIND_BITS = 4;
-    static constexpr uint32_t STRICT_BITS = 1;
-    static constexpr uint32_t RESOLVED_BITS = 1;
-    static constexpr uint32_t CALL_NATIVE_BITS = 1;
-    static constexpr uint32_t THIS_MODE_BITS = 2;
-    FIRST_BIT_FIELD(BitField, FunctionKind, FunctionKind, FUNCTION_KIND_BITS)
-    NEXT_BIT_FIELD(BitField, Strict, bool, STRICT_BITS, FunctionKind)
-    NEXT_BIT_FIELD(BitField, Resolved, bool, RESOLVED_BITS, Strict)
-    NEXT_BIT_FIELD(BitField, CallNative, bool, CALL_NATIVE_BITS, Resolved)
-    NEXT_BIT_FIELD(BitField, ThisMode, FunctionMode, THIS_MODE_BITS, CallNative)
-
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunctionBase, PROTO_OR_DYNCLASS_OFFSET, BIT_FIELD_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunctionBase, PROTO_OR_DYNCLASS_OFFSET, SIZE)
     DECL_DUMP()
 
 private:
     static JSHandle<JSHClass> GetOrCreateDerivedJSHClass(JSThread *thread, JSHandle<JSFunction> derived,
-                                                         JSHandle<JSHClass> ctorInitialDynClass);
+                                                         JSHandle<JSHClass> ctorInitialClass);
 };
 
 class JSGeneratorFunction : public JSFunction {

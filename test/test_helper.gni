@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//arkcompiler/ets_frontend/es2panda/es2abc_config.gni")
 import("//arkcompiler/ets_frontend/ts2panda/ts2abc_config.gni")
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//build/ohos.gni")
@@ -83,12 +84,12 @@ template("host_moduletest_action") {
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
   _test_expect_path_ = "./expect_output.txt"
 
-  ts2abc_gen_abc("gen_${_target_name_}_abc") {
+  es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     src_js = rebase_path(_test_js_path_)
     dst_file = rebase_path(_test_abc_path_)
-    extra_args = [ "--debug" ]
+    extra_args = []
     if (_is_module_) {
       extra_args += [ "--module" ]
     }
@@ -222,9 +223,9 @@ template("host_moduletest_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    # 153: all bytecodes
+    # 214: all bytecodes
     _asm_run_options_ =
-        " --asm-interpreter=true --asm-opcode-disable-range=0,153"
+        " --asm-interpreter=true --asm-opcode-disable-range=0,214"
     if (defined(invoker.is_set_maxNonmovableSpaceCapacity) &&
         invoker.is_set_maxNonmovableSpaceCapacity) {
       _asm_run_options_ += " --maxNonmovableSpaceCapacity=524288"  # 0.5M

@@ -98,7 +98,8 @@ public:
 private:
     std::ostringstream stream_;
 };
-#endif // ENABLE_HILOG
+#define LOG_ECMA(level) HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_##level) && panda::ecmascript::HiLog<LOG_##level>()
+#else // ENABLE_HILOG
 template<Level level>
 class StdLog {
 public:
@@ -158,6 +159,7 @@ static bool LOGGABLE_FATAL = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_FATAL);
 #define LOG_ECMA(level) panda::ecmascript::AndroidLog<(level)>()
 #else
 #define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog<(level)>()
+#endif
 #endif
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LOG_H

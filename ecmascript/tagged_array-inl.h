@@ -29,7 +29,7 @@ inline JSTaggedValue TaggedArray::Get(uint32_t idx) const
     //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    return JSTaggedValue(Barriers::GetDynValue<JSTaggedType>(GetData(), offset));
+    return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), offset));
 }
 
 inline JSTaggedValue TaggedArray::Get([[maybe_unused]] const JSThread *thread, uint32_t idx) const
@@ -57,9 +57,9 @@ inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSHandl
 
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
     if (value.GetTaggedValue().IsHeapObject()) {
-        Barriers::SetDynObject<true>(thread, GetData(), offset, value.GetTaggedValue().GetRawData());
+        Barriers::SetObject<true>(thread, GetData(), offset, value.GetTaggedValue().GetRawData());
     } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
-        Barriers::SetDynPrimitive<JSTaggedType>(GetData(), offset, value.GetTaggedValue().GetRawData());
+        Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetTaggedValue().GetRawData());
     }
 }
 
@@ -70,9 +70,9 @@ inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSTagge
 
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
     if (value.IsHeapObject()) {
-        Barriers::SetDynObject<true>(thread, GetData(), offset, value.GetRawData());
+        Barriers::SetObject<true>(thread, GetData(), offset, value.GetRawData());
     } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
-        Barriers::SetDynPrimitive<JSTaggedType>(GetData(), offset, value.GetRawData());
+        Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetRawData());
     }
 }
 
@@ -143,7 +143,7 @@ void TaggedArray::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t l
     SetExtraLength(extraLength);
     for (uint32_t i = 0; i < length; i++) {
         size_t offset = JSTaggedValue::TaggedTypeSize() * i;
-        Barriers::SetDynPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
+        Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
     }
 }
 

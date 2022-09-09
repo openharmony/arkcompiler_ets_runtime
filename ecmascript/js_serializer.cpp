@@ -514,7 +514,7 @@ bool JSSerializer::WriteJSRegExp(const JSHandle<JSTaggedValue> &value)
         bufferSize_ = oldSize;
         return false;
     }
-    // Write Accessor(ByteCodeBuffer) which is a pointer to a Dynbuffer
+    // Write Accessor(ByteCodeBuffer) which is a pointer to a dynamic buffer
     JSHandle<JSTaggedValue> bufferValue(thread_, regExp->GetByteCodeBuffer());
     JSHandle<JSNativePointer> np = JSHandle<JSNativePointer>::Cast(bufferValue);
     void *dynBuffer = np->GetExternalPointer();
@@ -644,7 +644,7 @@ bool JSSerializer::WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value)
             return false;
         }
     } else {
-        // Write Accessors(ArrayBufferData) which is a pointer to a DynBuffer
+        // Write Accessors(ArrayBufferData) which is a pointer to a Buffer
         JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
         void *buffer = np->GetExternalPointer();
         if (!WriteRawData(buffer, arrayLength)) {

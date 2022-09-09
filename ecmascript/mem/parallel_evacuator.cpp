@@ -134,7 +134,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region)
             LOG_FULL(FATAL) << "memcpy_s failed";
         }
 
-        Barriers::SetDynPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
+        Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
         VerifyHeapObject(reinterpret_cast<TaggedObject *>(address));
 #endif

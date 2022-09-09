@@ -19,7 +19,7 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/jspandafile/method_literal.h"
-#include "libpandafile/bytecode_instruction-inl.h"
+#include "ecmascript/jspandafile/bytecode_inst/old_instruction.h"
 
 namespace panda::ecmascript::kungfu {
 struct CfgInfo;
@@ -57,18 +57,21 @@ private:
     static void ProcessClasses(JSPandaFile *jsPandaFile, const CString &methodName,
                                std::vector<MethodPcInfo> &methodPcInfos);
 
+    static void AddNopInst(uint8_t *pc, int number);
+
     // need to remove in the future
-    static void FixOpcode(uint8_t *pc);
+    static void FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst);
+    static void FixOpcode(const OldBytecodeInst &inst);
 
     // need to remove in the future
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
+    static void UpdateEcmaBytecodeICOffset(MethodLiteral *method, uint8_t *pc);
 
     // need to remove in the future
-    static void FixInstructionId32(const BytecodeInstruction &inst, uint32_t index, uint32_t fixOrder = 0);
+    static void FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder = 0);
 
     // need to remove in the future
-    static void TranslateBCIns(JSPandaFile *jsPandaFile, const BytecodeInstruction &bcIns,
-                               const MethodLiteral *method);
+    static void TranslateBCIns(JSPandaFile *jsPandaFile, const OldBytecodeInst &bcIns, const MethodLiteral *method);
 
     static void CollectMethodPcs(JSPandaFile *jsPandaFile, const uint32_t insSz, const uint8_t *insArr,
                                  const MethodLiteral *method, std::vector<MethodPcInfo> &methodPcInfos);

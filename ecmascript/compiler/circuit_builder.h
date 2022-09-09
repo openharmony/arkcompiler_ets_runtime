@@ -394,7 +394,6 @@ public:
     inline GateRef LogicOr(GateRef x, GateRef y);
     inline GateRef BothAreString(GateRef x, GateRef y);
     GateRef GetGlobalObject(GateRef glue);
-    GateRef GetFunctionBitFieldFromJSFunction(GateRef function);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
     GateRef FunctionIsResolved(GateRef function);
@@ -402,10 +401,7 @@ public:
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
     GateRef IsUtf16String(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);
-    void SetResolvedToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetLexicalEnv(GateRef function);
     void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,

@@ -1155,7 +1155,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace4)
     JSHandle<EcmaString> expected = thread->GetEcmaVM()->GetFactory()->NewFromASCII(
         "The Quick Brown Fox Jumpsa The   Over The Lazy Dog Jumps Brown $1 Jumps1 $32 a Over The Lazy Dog");
 
-    // make dyn_runtime_call_info2
+    // make ecma_runtime_call_info2
     JSHandle<EcmaString> thisStr =
         thread->GetEcmaVM()->GetFactory()->NewFromASCII("The Quick Brown Fox Jumps Over The Lazy Dog");
     JSHandle<EcmaString> replaceStr =

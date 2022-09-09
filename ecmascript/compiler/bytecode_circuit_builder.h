@@ -23,9 +23,10 @@
 #include <variant>
 
 #include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/ecma_bytecode_des.h"
+#include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
@@ -267,13 +268,13 @@ struct BytecodeInfo {
 
     bool IsMov() const
     {
-        auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
+        auto ecmaOpcode = static_cast<EcmaBytecode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::MOV_V4_V4:
-            case EcmaOpcode::MOV_DYN_V8_V8:
-            case EcmaOpcode::MOV_DYN_V16_V16:
-            case EcmaOpcode::LDA_DYN_V8:
-            case EcmaOpcode::STA_DYN_V8:
+            case EcmaBytecode::MOV_V4_V4:
+            case EcmaBytecode::MOV_DYN_V8_V8:
+            case EcmaBytecode::MOV_DYN_V16_V16:
+            case EcmaBytecode::LDA_DYN_V8:
+            case EcmaBytecode::STA_DYN_V8:
                 return true;
             default:
                 return false;
@@ -282,15 +283,15 @@ struct BytecodeInfo {
 
     bool IsJump() const
     {
-        auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
+        auto ecmaOpcode = static_cast<EcmaBytecode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::JMP_IMM8:
-            case EcmaOpcode::JMP_IMM16:
-            case EcmaOpcode::JMP_IMM32:
-            case EcmaOpcode::JEQZ_IMM8:
-            case EcmaOpcode::JEQZ_IMM16:
-            case EcmaOpcode::JNEZ_IMM8:
-            case EcmaOpcode::JNEZ_IMM16:
+            case EcmaBytecode::JMP_IMM8:
+            case EcmaBytecode::JMP_IMM16:
+            case EcmaBytecode::JMP_IMM32:
+            case EcmaBytecode::JEQZ_IMM8:
+            case EcmaBytecode::JEQZ_IMM16:
+            case EcmaBytecode::JNEZ_IMM8:
+            case EcmaBytecode::JNEZ_IMM16:
                 return true;
             default:
                 return false;
@@ -299,12 +300,12 @@ struct BytecodeInfo {
 
     bool IsCondJump() const
     {
-        auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
+        auto ecmaOpcode = static_cast<EcmaBytecode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::JEQZ_IMM8:
-            case EcmaOpcode::JEQZ_IMM16:
-            case EcmaOpcode::JNEZ_IMM8:
-            case EcmaOpcode::JNEZ_IMM16:
+            case EcmaBytecode::JEQZ_IMM8:
+            case EcmaBytecode::JEQZ_IMM16:
+            case EcmaBytecode::JNEZ_IMM8:
+            case EcmaBytecode::JNEZ_IMM16:
                 return true;
             default:
                 return false;
@@ -313,10 +314,10 @@ struct BytecodeInfo {
 
     bool IsReturn() const
     {
-        auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
+        auto ecmaOpcode = static_cast<EcmaBytecode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::RETURN_DYN:
-            case EcmaOpcode::RETURNUNDEFINED_PREF:
+            case EcmaBytecode::RETURN_DYN:
+            case EcmaBytecode::RETURNUNDEFINED_PREF:
                 return true;
             default:
                 return false;
@@ -325,13 +326,13 @@ struct BytecodeInfo {
 
     bool IsThrow() const
     {
-        auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
+        auto ecmaOpcode = static_cast<EcmaBytecode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::THROWDYN_PREF:
-            case EcmaOpcode::THROWCONSTASSIGNMENT_PREF_V8:
-            case EcmaOpcode::THROWTHROWNOTEXISTS_PREF:
-            case EcmaOpcode::THROWPATTERNNONCOERCIBLE_PREF:
-            case EcmaOpcode::THROWDELETESUPERPROPERTY_PREF:
+            case EcmaBytecode::THROWDYN_PREF:
+            case EcmaBytecode::THROWCONSTASSIGNMENT_PREF_V8:
+            case EcmaBytecode::THROWTHROWNOTEXISTS_PREF:
+            case EcmaBytecode::THROWPATTERNNONCOERCIBLE_PREF:
+            case EcmaBytecode::THROWDELETESUPERPROPERTY_PREF:
                 return true;
             default:
                 return false;
@@ -340,10 +341,10 @@ struct BytecodeInfo {
 
     bool IsDiscarded() const
     {
-        auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
+        auto ecmaOpcode = static_cast<EcmaBytecode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::COPYMODULE_PREF_V8:
-            case EcmaOpcode::DEBUGGER_PREF:
+            case EcmaBytecode::COPYMODULE_PREF_V8:
+            case EcmaBytecode::DEBUGGER_PREF:
                 return true;
             default:
                 return false;
@@ -352,18 +353,18 @@ struct BytecodeInfo {
 
     bool IsSetConstant() const
     {
-        auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
+        auto ecmaOpcode = static_cast<EcmaBytecode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::LDNAN_PREF:
-            case EcmaOpcode::LDINFINITY_PREF:
-            case EcmaOpcode::LDUNDEFINED_PREF:
-            case EcmaOpcode::LDNULL_PREF:
-            case EcmaOpcode::LDTRUE_PREF:
-            case EcmaOpcode::LDFALSE_PREF:
-            case EcmaOpcode::LDHOLE_PREF:
-            case EcmaOpcode::LDAI_DYN_IMM32:
-            case EcmaOpcode::FLDAI_DYN_IMM64:
-            case EcmaOpcode::LDFUNCTION_PREF:
+            case EcmaBytecode::LDNAN_PREF:
+            case EcmaBytecode::LDINFINITY_PREF:
+            case EcmaBytecode::LDUNDEFINED_PREF:
+            case EcmaBytecode::LDNULL_PREF:
+            case EcmaBytecode::LDTRUE_PREF:
+            case EcmaBytecode::LDFALSE_PREF:
+            case EcmaBytecode::LDHOLE_PREF:
+            case EcmaBytecode::LDAI_DYN_IMM32:
+            case EcmaBytecode::FLDAI_DYN_IMM64:
+            case EcmaBytecode::LDFUNCTION_PREF:
                 return true;
             default:
                 return false;
@@ -377,14 +378,14 @@ struct BytecodeInfo {
 
     bool IsCall() const
     {
-        auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
+        auto ecmaOpcode = static_cast<EcmaBytecode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::CALLARG0DYN_PREF_V8:
-            case EcmaOpcode::CALLARG1DYN_PREF_V8_V8:
-            case EcmaOpcode::CALLARGS2DYN_PREF_V8_V8_V8:
-            case EcmaOpcode::CALLARGS3DYN_PREF_V8_V8_V8_V8:
-            case EcmaOpcode::CALLITHISRANGEDYN_PREF_IMM16_V8:
-            case EcmaOpcode::CALLIRANGEDYN_PREF_IMM16_V8:
+            case EcmaBytecode::CALLARG0DYN_PREF_V8:
+            case EcmaBytecode::CALLARG1DYN_PREF_V8_V8:
+            case EcmaBytecode::CALLARGS2DYN_PREF_V8_V8_V8:
+            case EcmaBytecode::CALLARGS3DYN_PREF_V8_V8_V8_V8:
+            case EcmaBytecode::CALLITHISRANGEDYN_PREF_IMM16_V8:
+            case EcmaBytecode::CALLIRANGEDYN_PREF_IMM16_V8:
                 return true;
             default:
                 return false;
@@ -413,17 +414,17 @@ struct BytecodeInfo {
 
     bool IsGeneratorRelative() const
     {
-        auto ecmaOpcode = static_cast<EcmaOpcode>(opcode);
+        auto ecmaOpcode = static_cast<EcmaBytecode>(opcode);
         switch (ecmaOpcode) {
-            case EcmaOpcode::SUSPENDGENERATOR_PREF_V8_V8:
-            case EcmaOpcode::RESUMEGENERATOR_PREF_V8:
+            case EcmaBytecode::SUSPENDGENERATOR_PREF_V8_V8:
+            case EcmaBytecode::RESUMEGENERATOR_PREF_V8:
                 return true;
             default:
                 return false;
         }
     }
 
-    bool IsBc(EcmaOpcode ecmaOpcode) const
+    bool IsBc(EcmaBytecode ecmaOpcode) const
     {
         return opcode == ecmaOpcode;
     }
@@ -482,13 +483,13 @@ public:
     [[nodiscard]] std::string GetBytecodeStr(kungfu::GateRef gate) const
     {
         auto pc = jsgateToBytecode_.at(gate).second;
-        return GetEcmaOpcodeStr(static_cast<EcmaOpcode>(*pc));
+        return GetEcmaBytecodeStr(static_cast<EcmaBytecode>(*pc));
     }
 
-    [[nodiscard]] EcmaOpcode GetByteCodeOpcode(kungfu::GateRef gate) const
+    [[nodiscard]] EcmaBytecode GetByteCodeOpcode(kungfu::GateRef gate) const
     {
         auto pc = jsgateToBytecode_.at(gate).second;
-        return static_cast<EcmaOpcode>(*pc);
+        return static_cast<EcmaBytecode>(*pc);
     }
 
     [[nodiscard]] const uint8_t* GetJSBytecode(GateRef gate) const

@@ -27,8 +27,6 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/runtime_call_id.h"
 
-#include "libpandafile/bytecode_instruction-inl.h"
-
 namespace panda::ecmascript::x64 {
 #define __ assembler->
 

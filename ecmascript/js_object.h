@@ -343,7 +343,7 @@ public:
 
     void InitializeHash()
     {
-        Barriers::SetDynPrimitive<JSTaggedType>(this, ECMAObject::HASH_OFFSET, JSTaggedValue(0).GetRawData());
+        Barriers::SetPrimitive<JSTaggedType>(this, ECMAObject::HASH_OFFSET, JSTaggedValue(0).GetRawData());
     }
 
     void* GetNativePointerField(int32_t index) const;

@@ -18,8 +18,6 @@
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/js_iterator.h"
 
-#include "libpandafile/bytecode_instruction-inl.h"
-
 namespace panda::ecmascript {
 JSHandle<JSObject> GeneratorHelper::Next(JSThread *thread, const JSHandle<GeneratorContext> &genContext,
                                          JSTaggedValue value)

@@ -26,7 +26,6 @@ namespace panda::ecmascript {
     V(RunInternal)                  \
     V(Ldnan)                        \
     V(Ldinfinity)                   \
-    V(Ldglobalthis)                 \
     V(Ldundefined)                  \
     V(Ldboolean)                    \
     V(Ldnumber)                     \
@@ -39,74 +38,71 @@ namespace panda::ecmascript {
     V(Ldfalse)                      \
     V(Tonumber)                     \
     V(Toboolean)                    \
-    V(Add2Dyn)                      \
-    V(Sub2Dyn)                      \
-    V(Mul2Dyn)                      \
-    V(Div2Dyn)                      \
-    V(Mod2Dyn)                      \
-    V(EqDyn)                        \
-    V(NotEqDyn)                     \
-    V(LessDyn)                      \
-    V(LessEqDyn)                    \
-    V(GreaterDyn)                   \
-    V(GreaterEqDyn)                 \
-    V(StrictNotEqDyn)               \
-    V(StrictEqDyn)                  \
-    V(Shl2Dyn)                      \
-    V(Shr2Dyn)                      \
-    V(Ashr2Dyn)                     \
-    V(And2Dyn)                      \
-    V(Or2Dyn)                       \
-    V(Xor2Dyn)                      \
-    V(NegDyn)                       \
-    V(NotDyn)                       \
-    V(IncDyn)                       \
-    V(DecDyn)                       \
-    V(ExpDyn)                       \
-    V(ThrowDyn)                     \
-    V(LdObjByIndexDyn)              \
-    V(StObjByIndexDyn)              \
-    V(LdObjByNameDyn)               \
-    V(StObjByNameDyn)               \
-    V(LdObjByValueDyn)              \
-    V(StObjByValueDyn)              \
-    V(StOwnByNameDyn)               \
-    V(StOwnByIdDyn)                 \
-    V(StOwnByValueDyn)              \
+    V(Add2)                      \
+    V(Sub2)                      \
+    V(Mul2)                      \
+    V(Div2)                      \
+    V(Mod2)                      \
+    V(Eq)                        \
+    V(NotEq)                     \
+    V(Less)                      \
+    V(LessEq)                    \
+    V(Greater)                   \
+    V(GreaterEq)                 \
+    V(StrictNotEq)               \
+    V(StrictEq)                  \
+    V(Shl2)                      \
+    V(Shr2)                      \
+    V(Ashr2)                     \
+    V(And2)                      \
+    V(Or2)                       \
+    V(Xor2)                      \
+    V(Neg)                       \
+    V(Not)                       \
+    V(Inc)                       \
+    V(Dec)                       \
+    V(Exp)                       \
+    V(Throw)                     \
+    V(LdObjByIndex)              \
+    V(StObjByIndex)              \
+    V(LdObjByName)               \
+    V(StObjByName)               \
+    V(LdObjByValue)              \
+    V(StObjByValue)              \
+    V(StOwnByName)               \
+    V(StOwnById)                 \
+    V(StOwnByValue)              \
     V(Trygetobjprop)                \
     V(Delobjprop)                   \
     V(Defineglobalvar)              \
     V(Definelocalvar)               \
     V(Definefuncexpr)               \
-    V(DefinefuncDyn)                \
-    V(DefineNCFuncDyn)              \
-    V(NewobjDynrange)               \
-    V(RefeqDyn)                     \
-    V(TypeofDyn)                    \
-    V(LdnewobjrangeDyn)             \
-    V(IsInDyn)                      \
-    V(InstanceofDyn)                \
-    V(NewobjspreadDyn)              \
-    V(CallArg0Dyn)                  \
-    V(CallArg1Dyn)                  \
-    V(CallArg2Dyn)                  \
-    V(CallArg3Dyn)                  \
-    V(CallThisRangeDyn)             \
-    V(CallRangeDyn)                 \
-    V(CallSpreadDyn)                \
-    V(NewlexenvDyn)                 \
-    V(NewlexenvwithNameDyn)         \
-    V(StlexvarDyn)                  \
-    V(LdlexvarDyn)                  \
-    V(LdlexenvDyn)                  \
+    V(DefineFunc)                \
+    V(NewobjRange)               \
+    V(Refeq)                     \
+    V(Typeof)                    \
+    V(Ldnewobjrange)             \
+    V(IsIn)                      \
+    V(Instanceof)                \
+    V(NewobjApply)              \
+    V(CallArg0)                  \
+    V(CallArg1)                  \
+    V(CallArg2)                  \
+    V(CallArg3)                  \
+    V(CallThisRange)             \
+    V(CallRange)                 \
+    V(CallSpread)                \
+    V(Newlexenv)                 \
+    V(NewlexenvwithName)         \
+    V(Stlexvar)                  \
+    V(Ldlexvar)                  \
+    V(Ldlexenv)                  \
     V(GetPropIterator)              \
     V(CreateIterResultObj)          \
-    V(DefineGeneratorFunc)          \
     V(SuspendGenerator)             \
     V(ResumeGenerator)              \
     V(GetResumeMode)                \
     V(CreateGeneratorObj)           \
-    V(DefineAsyncFunc)              \
     V(DefineGetterSetterByValue)    \
     V(AsyncFunctionEnter)           \
     V(AsyncFunctionAwaitUncaught)   \
@@ -161,7 +157,7 @@ namespace panda::ecmascript {
     V(FastGetPropertyByName)        \
     V(FastGetPropertyByValue)       \
     V(FastGetPropertyByIndex)       \
-    V(NewLexicalEnvDyn)             \
+    V(NewLexicalEnv)             \
     V(ExecuteNative)                \
     V(Execute)                      \
     V(AsmExecute)                   \
@@ -176,7 +172,6 @@ namespace panda::ecmascript {
     V(getmodulenamespace)           \
     V(StModuleVar)                  \
     V(LdModuleVar)                  \
-    V(CopyModule)                   \
     V(CreateRegExpWithLiteral)      \
     V(CreateArrayWithBuffer)        \
     V(GetNextPropName)              \
@@ -199,7 +194,6 @@ namespace panda::ecmascript {
     V(LdSuperByValue)               \
     V(StSuperByValue)               \
     V(ThrowDeleteSuperProperty)     \
-    V(GetIteratorNext)              \
     V(ModWithTSType)                \
     V(MulWithTSType)                \
     V(SubWithTSType)                \
@@ -215,18 +209,15 @@ namespace panda::ecmascript {
     V(EqualWithIC)                  \
     V(NotEqualWithIC)               \
     V(Compare)                      \
-    V(LessDynWithIC)                \
-    V(LessEqDynWithIC)              \
-    V(GreaterDynWithIC)             \
+    V(LessWithIC)                \
+    V(LessEqWithIC)              \
+    V(GreaterWithIC)             \
     V(SetPropertyByName)            \
-    V(GreaterEqDynWithIC)           \
+    V(GreaterEqWithIC)           \
     V(LdBigInt)                     \
     V(Tonumeric)                    \
     V(CreateAsyncGeneratorObj)      \
     V(AsyncGeneratorResolve)        \
-    V(DefineAsyncGeneratorFunc)     \
-    V(DefineGeneratorFuncWithMethodId) \
-    V(DefineAsyncGeneratorFuncWithMethodId) \
     V(GetSuperConstructor)          \
     V(DynamicImport)                \
     V(LdPatchVar)                   \
@@ -313,7 +304,7 @@ namespace panda::ecmascript {
     V(Global, IsFinite)                       \
     V(Global, IsNaN)                          \
     V(Global, PrintEntryPoint)                \
-    V(Global, NewobjDynrange)                 \
+    V(Global, NewobjRange)                 \
     V(Global, CallJsBoundFunction)            \
     V(Global, CallJsProxy)                    \
     V(Global, DecodeURI)                      \

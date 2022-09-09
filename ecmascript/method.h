@@ -145,23 +145,49 @@ public:
         return MethodLiteral::GetMethodId(literalInfo);
     }
 
-    uint8_t GetSlotSize() const
+    uint16_t GetSlotSize() const
     {
         uint64_t literalInfo = GetLiteralInfo();
         return MethodLiteral::GetSlotSize(literalInfo);
     }
 
+    void SetFunctionKind(FunctionKind kind)
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        uint64_t newValue = MethodLiteral::SetFunctionKind(extraLiteralInfo, kind);
+        SetExtraLiteralInfo(newValue);
+    }
+
+    FunctionKind GetFunctionKind() const
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        return MethodLiteral::GetFunctionKind(extraLiteralInfo);
+    }
+
     uint8_t GetBuiltinId() const
     {
-        uint64_t literalInfo = GetLiteralInfo();
-        return MethodLiteral::GetBuiltinId(literalInfo);
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        return MethodLiteral::GetBuiltinId(extraLiteralInfo);
+    }
+
+    void SetCallNative(bool isCallNative)
+    {
+        uint64_t callField = GetCallField();
+        uint64_t newValue = MethodLiteral::SetCallNative(callField, isCallNative);
+        SetCallField(newValue);
+    }
+
+    bool IsCallNative() const
+    {
+        uint64_t callField = GetCallField();
+        return MethodLiteral::IsCallNative(callField);
     }
 
     void SetBuiltinId(uint8_t id)
     {
-        uint64_t literalInfo = GetLiteralInfo();
-        uint64_t newValue = MethodLiteral::SetBuiltinId(literalInfo, id);
-        SetLiteralInfo(newValue);
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        uint64_t newValue = MethodLiteral::SetBuiltinId(extraLiteralInfo, id);
+        SetExtraLiteralInfo(newValue);
     }
 
     const void* GetNativePointer() const
@@ -179,6 +205,14 @@ public:
         return reinterpret_cast<const uint8_t *>(GetNativePointerOrBytecodeArray());
     }
 
+    // add for AOT
+    void SetCodeEntryAndMarkAOT(uintptr_t codeEntry)
+    {
+        SetAotCodeBit(true);
+        SetNativeBit(false);
+        SetCodeEntry(codeEntry);
+    }
+
     static constexpr size_t Size()
     {
         return sizeof(Method);
@@ -192,19 +226,20 @@ public:
     const char *PUBLIC_API GetMethodName() const;
     std::string PUBLIC_API ParseFunctionName() const;
 
-    static constexpr size_t CALL_FIELD_OFFSET = TaggedObjectSize();
-    ACCESSORS_PRIMITIVE_FIELD(CallField, uint64_t, CALL_FIELD_OFFSET, LITERAL_INFO_OFFSET)
-    // hotnessCounter, methodId and slotSize are encoded in literalInfo.
-    // hotness counter is encoded in a js method field, the first uint16_t in a uint64_t.
-    ACCESSORS_PRIMITIVE_FIELD(LiteralInfo, uint64_t, LITERAL_INFO_OFFSET, CONSTANT_POOL_OFFSET)
-    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
+    static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
+    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, CALL_FIELD_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CallField, uint64_t, CALL_FIELD_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     ACCESSORS_NATIVE_FIELD(
-        NativePointerOrBytecodeArray, void, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, LAST_OFFSET)
+        NativePointerOrBytecodeArray, void, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, CODE_ENTRY_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LITERAL_INFO_OFFSET)
+    // hotness counter is encoded in a js method field, the first uint16_t in a uint64_t.
+    ACCESSORS_PRIMITIVE_FIELD(LiteralInfo, uint64_t, LITERAL_INFO_OFFSET, EXTRA_LITERAL_INFO_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(ExtraLiteralInfo, uint64_t, EXTRA_LITERAL_INFO_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT(CONSTANT_POOL_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET);
-    DECL_VISIT_NATIVE_FIELD(NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, LAST_OFFSET);
+    DECL_VISIT_OBJECT(CONSTANT_POOL_OFFSET, CALL_FIELD_OFFSET);
+    DECL_VISIT_NATIVE_FIELD(NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, LITERAL_INFO_OFFSET);
 
     DECL_DUMP()
 };

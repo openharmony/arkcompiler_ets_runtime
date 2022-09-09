@@ -226,7 +226,7 @@ public:
     // object operation
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
-    void StoreHClass(GateRef glue, GateRef object, GateRef hclass);
+    void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
     GateRef GetObjectType(GateRef hClass);
     GateRef IsDictionaryMode(GateRef object);
@@ -267,9 +267,9 @@ public:
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
     GateRef GetHasChanged(GateRef object);
-    GateRef HclassIsPrototypeHandler(GateRef hclass);
-    GateRef HclassIsTransitionHandler(GateRef hclass);
-    GateRef HclassIsPropertyBox(GateRef hclass);
+    GateRef HclassIsPrototypeHandler(GateRef hClass);
+    GateRef HclassIsTransitionHandler(GateRef hClass);
+    GateRef HclassIsPropertyBox(GateRef hClass);
     GateRef PropAttrGetOffset(GateRef attr);
     // SetDictionaryOrder func in property_attribute.h
     GateRef SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value);
@@ -334,13 +334,13 @@ public:
     GateRef StringToElementIndex(GateRef string);
     GateRef TryToElementsIndex(GateRef key);
     GateRef ComputePropertyCapacityInJSObj(GateRef oldLength);
-    GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hclass, GateRef key, GateRef attr);
+    GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
     GateRef TaggedToRepresentation(GateRef value);
     GateRef LoadFromField(GateRef receiver, GateRef handlerInfo);
     GateRef LoadGlobal(GateRef cell);
     GateRef LoadElement(GateRef receiver, GateRef key);
     GateRef TryToElementsIndex(GateRef glue, GateRef key);
-    GateRef CheckPolyHClass(GateRef cachedValue, GateRef hclass);
+    GateRef CheckPolyHClass(GateRef cachedValue, GateRef hClass);
     GateRef LoadICWithHandler(GateRef glue, GateRef receiver, GateRef holder, GateRef handler);
     GateRef StoreICWithHandler(GateRef glue, GateRef receiver, GateRef holder,
                                  GateRef value, GateRef handler);
@@ -406,7 +406,6 @@ public:
     GateRef GetParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
     void SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
-    GateRef GetFunctionBitFieldFromJSFunction(GateRef object);
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
     inline GateRef GetBuiltinId(GateRef method);
@@ -450,13 +449,14 @@ public:
     GateRef GetHandlerFromJSProxy(GateRef proxy);
     GateRef GetTargetFromJSProxy(GateRef proxy);
     inline void SavePcIfNeeded(GateRef glue);
+    inline void SaveJumpSizeIfNeeded(GateRef glue, GateRef jumpSize);
     inline GateRef ComputeTaggedArraySize(GateRef length);
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
     inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor);
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
-    GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
+    GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                            JSCallMode mode, std::initializer_list<GateRef> args);
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);

@@ -69,8 +69,8 @@ DEF_RUNTIME_STUBS(DefineAotFunc)
     method->SetAotCodeBit(true);
     method->SetNativeBit(false);
     method->SetNumArgsWithCallField(numArgs.GetInt());
-    JSHandle<JSFunction> jsfunc = factory->NewJSFunction(env, method, FunctionKind::NORMAL_FUNCTION);
-    jsfunc->SetCodeEntry(reinterpret_cast<uintptr_t>(codeEntry));
+    method->SetCodeEntry(reinterpret_cast<uintptr_t>(codeEntry));
+    JSHandle<JSFunction> jsfunc = factory->NewJSFunction(env, method);
     return jsfunc.GetTaggedValue().GetRawData();
 }
 
@@ -106,10 +106,10 @@ DEF_RUNTIME_STUBS(DefineProxyFunc)
     CONVERT_ARG_HANDLE_CHECKED(JSTaggedValue, targetHandle, 0);
     // 1. handler has no "Call"
     JSFunction *function = env->GetObjectFunction().GetObject<JSFunction>();
-    JSHandle<JSTaggedValue> dynclass(thread, function);
+    JSHandle<JSTaggedValue> hclass(thread, function);
     ASSERT(targetHandle->IsECMAObject());
 
-    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass), dynclass));
+    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
     ASSERT(handlerHandle->IsECMAObject());
     ASSERT(targetHandle->IsECMAObject());
 
@@ -128,9 +128,9 @@ DEF_RUNTIME_STUBS(DefineProxyHandler)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSFunction* function = env->GetObjectFunction().GetObject<JSFunction>();
-    JSHandle<JSTaggedValue> dynclass(thread, function);
+    JSHandle<JSTaggedValue> hclass(thread, function);
 
-    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass), dynclass));
+    JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
     ASSERT(handlerHandle->IsECMAObject());
     // 1. handler has "Call"
     JSHandle<JSTaggedValue> funcKey = thread->GlobalConstants()->GetHandledApplyString();

@@ -39,7 +39,8 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileNam
     if (baseFile_ == nullptr) {
         return false;
     }
-    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_);
+    // TODO: Support all Constpool
+    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
     if (baseConstpoolValue.IsHole()) {
         return false;
     }
@@ -57,7 +58,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileNam
     }
     JSHandle<Program> patchProgram =
         PandaFileTranslator::GenerateProgram(vm, patchFile_, JSPandaFile::ENTRY_FUNCTION_NAME);
-    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_);
+    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_, 0);
     if (patchConstpoolValue.IsHole()) {
         return false;
     }
@@ -81,7 +82,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileNam
     if (baseFile_ == nullptr) {
         return false;
     }
-    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_);
+    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
     if (baseConstpoolValue.IsHole()) {
         return false;
     }
@@ -100,7 +101,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileNam
     }
     JSHandle<Program> patchProgram =
         PandaFileTranslator::GenerateProgram(vm, patchFile_, JSPandaFile::ENTRY_FUNCTION_NAME);
-    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_);
+    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_, 0);
     if (patchConstpoolValue.IsHole()) {
         return false;
     }
@@ -195,7 +196,7 @@ bool QuickFixLoader::UnLoadPatch(JSThread *thread, const std::string &patchFileN
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
-    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_);
+    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
     if (baseConstpoolValue.IsHole()) {
         return false;
     }

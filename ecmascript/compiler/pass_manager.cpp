@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/snapshot/mem/snapshot.h"

@@ -53,7 +53,7 @@ void BarAOTStubBuilder::GenerateCircuit()
     [[maybe_unused]] GateRef thisObj = TaggedArgument(5);
     GateRef a = TaggedArgument(6);
     GateRef b = TaggedArgument(7);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(Add2Dyn), {a, b});
+    GateRef result = CallRuntime(glue, RTSTUB_ID(Add2), {a, b});
     Return(result);
 }
 
@@ -93,8 +93,8 @@ void Bar1AOTStubBuilder::GenerateCircuit()
     GateRef a = TaggedArgument(6);
     GateRef b = TaggedArgument(7);
     GateRef c = TaggedArgument(8);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(Add2Dyn), {a, b});
-    GateRef result2 = CallRuntime(glue, RTSTUB_ID(Add2Dyn), {result, c});
+    GateRef result = CallRuntime(glue, RTSTUB_ID(Add2), {a, b});
+    GateRef result2 = CallRuntime(glue, RTSTUB_ID(Add2), {result, c});
     Return(result2);
 }
 

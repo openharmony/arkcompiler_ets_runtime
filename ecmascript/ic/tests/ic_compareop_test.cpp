@@ -85,15 +85,15 @@ HWTEST_F_L0(IcCompareOPTest, EqualWithIC)
     JSTaggedValue booleanObj = builtins::BuiltinsBoolean::BooleanConstructor(ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> booleanObjHandle(thread, booleanObj);
 
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::EqDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Eq(thread, arg1Handle.GetTaggedValue(),
                                                           arg2Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::EqDyn(thread, Str1.GetTaggedValue(), arg1Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::EqDyn(thread, Str1.GetTaggedValue(), arg3Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::EqDyn(thread, Str1.GetTaggedValue(), arg4Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::EqDyn(thread, booleanObjHandle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Eq(thread, Str1.GetTaggedValue(), arg1Handle.GetTaggedValue());
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Eq(thread, Str1.GetTaggedValue(), arg3Handle.GetTaggedValue());
+    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Eq(thread, Str1.GetTaggedValue(), arg4Handle.GetTaggedValue());
+    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::Eq(thread, booleanObjHandle.GetTaggedValue(),
                                                           arg4Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::EqDyn(thread, JSTaggedValue::Undefined(), JSTaggedValue::Null());
-    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::EqDyn(thread, JSTaggedValue::Undefined(), JSTaggedValue::True());
+    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::Eq(thread, JSTaggedValue::Undefined(), JSTaggedValue::Null());
+    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::Eq(thread, JSTaggedValue::Undefined(), JSTaggedValue::True());
 
     JSTaggedValue resInICPath1 = CompareOp::EqualWithIC(thread, arg1Handle.GetTaggedValue(),
                                                         arg2Handle.GetTaggedValue(), CompareOpType::NUMBER_NUMBER);
@@ -144,19 +144,19 @@ HWTEST_F_L0(IcCompareOPTest, NotEqualWithIC)
 
     JSTaggedValue booleanObj = builtins::BuiltinsBoolean::BooleanConstructor(ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> booleanObjHandle(thread, booleanObj);
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::NotEqDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::NotEq(thread, arg1Handle.GetTaggedValue(),
                                                              arg2Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::NotEqDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::NotEq(thread, Str1.GetTaggedValue(),
                                                              arg1Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::NotEqDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::NotEq(thread, Str1.GetTaggedValue(),
                                                              arg3Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::NotEqDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::NotEq(thread, Str1.GetTaggedValue(),
                                                              arg4Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::NotEqDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::NotEq(thread, arg1Handle.GetTaggedValue(),
                                                              booleanObjHandle.GetTaggedValue());
-    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::NotEqDyn(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::NotEq(thread, JSTaggedValue::Undefined(),
                                                              JSTaggedValue::Null());
-    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::NotEqDyn(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::NotEq(thread, JSTaggedValue::Undefined(),
                                                               JSTaggedValue::True());
 
     JSTaggedValue resInICPath1 = CompareOp::NotEqualWithIC(thread, arg1Handle.GetTaggedValue(),
@@ -186,7 +186,7 @@ HWTEST_F_L0(IcCompareOPTest, NotEqualWithIC)
 };
 
 
-HWTEST_F_L0(IcCompareOPTest, LessDynWithIC)
+HWTEST_F_L0(IcCompareOPTest, LessWithIC)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
 
@@ -212,35 +212,35 @@ HWTEST_F_L0(IcCompareOPTest, LessDynWithIC)
     JSTaggedValue booleanObj = builtins::BuiltinsBoolean::BooleanConstructor(ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> booleanObjHandle(thread, booleanObj);
 
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::LessDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Less(thread, arg1Handle.GetTaggedValue(),
                                                             arg2Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::LessDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Less(thread, Str1.GetTaggedValue(),
                                                             arg1Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::LessDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Less(thread, Str1.GetTaggedValue(),
                                                             arg3Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::LessDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Less(thread, Str1.GetTaggedValue(),
                                                             arg4Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::LessDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::Less(thread, arg1Handle.GetTaggedValue(),
                                                             booleanObjHandle.GetTaggedValue());
-    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::LessDyn(thread,
+    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::Less(thread,
         JSTaggedValue::Undefined(), JSTaggedValue::Null());
-    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::LessDyn(thread,
+    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::Less(thread,
         JSTaggedValue::Undefined(), JSTaggedValue::True());
 
-    JSTaggedValue resInICPath1 = CompareOp::LessDynWithIC(thread,  arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInICPath1 = CompareOp::LessWithIC(thread,  arg1Handle.GetTaggedValue(),
                                                           arg2Handle.GetTaggedValue(), CompareOpType::NUMBER_NUMBER);
-    JSTaggedValue resInICPath2 = CompareOp::LessDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath2 = CompareOp::LessWithIC(thread, Str1.GetTaggedValue(),
                                                            arg1Handle.GetTaggedValue(), CompareOpType::STRING_NUMBER);
-    JSTaggedValue resInICPath3 = CompareOp::LessDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath3 = CompareOp::LessWithIC(thread, Str1.GetTaggedValue(),
                                                           arg3Handle.GetTaggedValue(), CompareOpType::STRING_BOOLEAN);
-    JSTaggedValue resInICPath4 = CompareOp::LessDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath4 = CompareOp::LessWithIC(thread, Str1.GetTaggedValue(),
                                                           arg4Handle.GetTaggedValue(), CompareOpType::STRING_BOOLEAN);
-    JSTaggedValue resInICPath5 = CompareOp::LessDynWithIC(thread,  arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInICPath5 = CompareOp::LessWithIC(thread,  arg1Handle.GetTaggedValue(),
                                                           booleanObjHandle.GetTaggedValue(),
                                                           CompareOpType::NUMBER_OBJ);
-    JSTaggedValue resInICPath9 = CompareOp::LessDynWithIC(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInICPath9 = CompareOp::LessWithIC(thread, JSTaggedValue::Undefined(),
                                                           JSTaggedValue::Null(), CompareOpType::UNDEFINED_NULL);
-    JSTaggedValue resInICPath10 = CompareOp::LessDynWithIC(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInICPath10 = CompareOp::LessWithIC(thread, JSTaggedValue::Undefined(),
                                                            JSTaggedValue::True(), CompareOpType::OTHER);
 
     EXPECT_EQ(resInSlowPath1, resInICPath1);
@@ -253,7 +253,7 @@ HWTEST_F_L0(IcCompareOPTest, LessDynWithIC)
 };
 
 
-HWTEST_F_L0(IcCompareOPTest, LessEqDynWithIC)
+HWTEST_F_L0(IcCompareOPTest, LessEqWithIC)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
 
@@ -277,39 +277,39 @@ HWTEST_F_L0(IcCompareOPTest, LessEqDynWithIC)
 
     JSTaggedValue booleanObj = builtins::BuiltinsBoolean::BooleanConstructor(ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> booleanObjHandle(thread, booleanObj);
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::LessEqDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::LessEq(thread, arg1Handle.GetTaggedValue(),
                                                               arg2Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::LessEqDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::LessEq(thread, Str1.GetTaggedValue(),
                                                               arg1Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::LessEqDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::LessEq(thread, Str1.GetTaggedValue(),
                                                               arg3Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::LessEqDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::LessEq(thread, Str1.GetTaggedValue(),
                                                               arg4Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::LessEqDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::LessEq(thread, arg1Handle.GetTaggedValue(),
                                                               booleanObjHandle.GetTaggedValue());
-    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::LessEqDyn(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::LessEq(thread, JSTaggedValue::Undefined(),
                                                               JSTaggedValue::Null());
-    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::LessEqDyn(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::LessEq(thread, JSTaggedValue::Undefined(),
                                                                JSTaggedValue::True());
-    JSTaggedValue resInICPath1 = CompareOp::LessEqDynWithIC(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInICPath1 = CompareOp::LessEqWithIC(thread, arg1Handle.GetTaggedValue(),
                                                             arg2Handle.GetTaggedValue(),
                                                             CompareOpType::NUMBER_NUMBER);
-    JSTaggedValue resInICPath2 = CompareOp::LessEqDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath2 = CompareOp::LessEqWithIC(thread, Str1.GetTaggedValue(),
                                                             arg1Handle.GetTaggedValue(),
                                                             CompareOpType::STRING_NUMBER);
-    JSTaggedValue resInICPath3 = CompareOp::LessEqDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath3 = CompareOp::LessEqWithIC(thread, Str1.GetTaggedValue(),
                                                             arg3Handle.GetTaggedValue(),
                                                             CompareOpType::STRING_BOOLEAN);
-    JSTaggedValue resInICPath4 = CompareOp::LessEqDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath4 = CompareOp::LessEqWithIC(thread, Str1.GetTaggedValue(),
                                                             arg4Handle.GetTaggedValue(),
                                                             CompareOpType::STRING_BOOLEAN);
-    JSTaggedValue resInICPath5 = CompareOp::LessEqDynWithIC(thread,
+    JSTaggedValue resInICPath5 = CompareOp::LessEqWithIC(thread,
                                                             arg1Handle.GetTaggedValue(),
                                                             booleanObjHandle.GetTaggedValue(),
                                                             CompareOpType::NUMBER_OBJ);
-    JSTaggedValue resInICPath9 = CompareOp::LessEqDynWithIC(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInICPath9 = CompareOp::LessEqWithIC(thread, JSTaggedValue::Undefined(),
                                                             JSTaggedValue::Null(), CompareOpType::UNDEFINED_NULL);
-    JSTaggedValue resInICPath10 = CompareOp::LessEqDynWithIC(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInICPath10 = CompareOp::LessEqWithIC(thread, JSTaggedValue::Undefined(),
                                                             JSTaggedValue::True(), CompareOpType::OTHER);
 
     EXPECT_EQ(resInSlowPath1, resInICPath1);
@@ -322,7 +322,7 @@ HWTEST_F_L0(IcCompareOPTest, LessEqDynWithIC)
 };
 
 
-HWTEST_F_L0(IcCompareOPTest, GreaterDynWithIC)
+HWTEST_F_L0(IcCompareOPTest, GreaterWithIC)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
 
@@ -346,39 +346,39 @@ HWTEST_F_L0(IcCompareOPTest, GreaterDynWithIC)
 
     JSTaggedValue booleanObj = builtins::BuiltinsBoolean::BooleanConstructor(ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> booleanObjHandle(thread, booleanObj);
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::GreaterDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::Greater(thread, arg1Handle.GetTaggedValue(),
                                                                arg2Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::GreaterDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::Greater(thread, Str1.GetTaggedValue(),
                                                                arg1Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::GreaterDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::Greater(thread, Str1.GetTaggedValue(),
                                                                arg3Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::GreaterDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Greater(thread, Str1.GetTaggedValue(),
                                                                arg4Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::GreaterDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::Greater(thread, arg1Handle.GetTaggedValue(),
                                                                booleanObjHandle.GetTaggedValue());
-    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::GreaterDyn(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::Greater(thread, JSTaggedValue::Undefined(),
                                                                JSTaggedValue::Null());
-    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::GreaterDyn(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::Greater(thread, JSTaggedValue::Undefined(),
                                                                 JSTaggedValue::True());
 
-    JSTaggedValue resInICPath1 = CompareOp::GreaterDynWithIC(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInICPath1 = CompareOp::GreaterWithIC(thread, arg1Handle.GetTaggedValue(),
                                                              arg2Handle.GetTaggedValue(),
                                                              CompareOpType::NUMBER_NUMBER);
-    JSTaggedValue resInICPath2 = CompareOp::GreaterDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath2 = CompareOp::GreaterWithIC(thread, Str1.GetTaggedValue(),
                                                              arg1Handle.GetTaggedValue(),
                                                              CompareOpType::STRING_NUMBER);
-    JSTaggedValue resInICPath3 = CompareOp::GreaterDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath3 = CompareOp::GreaterWithIC(thread, Str1.GetTaggedValue(),
                                                              arg3Handle.GetTaggedValue(),
                                                              CompareOpType::STRING_BOOLEAN);
-    JSTaggedValue resInICPath4 = CompareOp::GreaterDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath4 = CompareOp::GreaterWithIC(thread, Str1.GetTaggedValue(),
                                                              arg4Handle.GetTaggedValue(),
                                                              CompareOpType::STRING_BOOLEAN);
-    JSTaggedValue resInICPath5 = CompareOp::GreaterDynWithIC(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInICPath5 = CompareOp::GreaterWithIC(thread, arg1Handle.GetTaggedValue(),
                                                              booleanObjHandle.GetTaggedValue(),
                                                              CompareOpType::NUMBER_OBJ);
-    JSTaggedValue resInICPath9 = CompareOp::GreaterDynWithIC(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInICPath9 = CompareOp::GreaterWithIC(thread, JSTaggedValue::Undefined(),
                                                              JSTaggedValue::Null(), CompareOpType::UNDEFINED_NULL);
-    JSTaggedValue resInICPath10 = CompareOp::GreaterDynWithIC(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInICPath10 = CompareOp::GreaterWithIC(thread, JSTaggedValue::Undefined(),
                                                               JSTaggedValue::True(), CompareOpType::OTHER);
 
     EXPECT_EQ(resInSlowPath1, resInICPath1);
@@ -391,7 +391,7 @@ HWTEST_F_L0(IcCompareOPTest, GreaterDynWithIC)
 };
 
 
-HWTEST_F_L0(IcCompareOPTest, GreaterEqDynWithIC)
+HWTEST_F_L0(IcCompareOPTest, GreaterEqWithIC)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
 
@@ -416,39 +416,39 @@ HWTEST_F_L0(IcCompareOPTest, GreaterEqDynWithIC)
 
     JSTaggedValue booleanObj = builtins::BuiltinsBoolean::BooleanConstructor(ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> booleanObjHandle(thread, booleanObj);
-    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::GreaterEqDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath1 = SlowRuntimeStub::GreaterEq(thread, arg1Handle.GetTaggedValue(),
                                                                  arg2Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::GreaterEqDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath2 = SlowRuntimeStub::GreaterEq(thread, Str1.GetTaggedValue(),
                                                                  arg1Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::GreaterEqDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath3 = SlowRuntimeStub::GreaterEq(thread, Str1.GetTaggedValue(),
                                                                  arg3Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::GreaterEqDyn(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInSlowPath4 = SlowRuntimeStub::GreaterEq(thread, Str1.GetTaggedValue(),
                                                                  arg4Handle.GetTaggedValue());
-    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::GreaterEqDyn(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInSlowPath5 = SlowRuntimeStub::GreaterEq(thread, arg1Handle.GetTaggedValue(),
                                                                  booleanObjHandle.GetTaggedValue());
-    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::GreaterEqDyn(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInSlowPath9 = SlowRuntimeStub::GreaterEq(thread, JSTaggedValue::Undefined(),
                                                                  JSTaggedValue::Null());
-    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::GreaterEqDyn(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInSlowPath10 = SlowRuntimeStub::GreaterEq(thread, JSTaggedValue::Undefined(),
                                                                   JSTaggedValue::True());
 
-    JSTaggedValue resInICPath1 = CompareOp::GreaterEqDynWithIC(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInICPath1 = CompareOp::GreaterEqWithIC(thread, arg1Handle.GetTaggedValue(),
                                                                arg2Handle.GetTaggedValue(),
                                                                CompareOpType::NUMBER_NUMBER);
-    JSTaggedValue resInICPath2 = CompareOp::GreaterEqDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath2 = CompareOp::GreaterEqWithIC(thread, Str1.GetTaggedValue(),
                                                                arg1Handle.GetTaggedValue(),
                                                                CompareOpType::STRING_NUMBER);
-    JSTaggedValue resInICPath3 = CompareOp::GreaterEqDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath3 = CompareOp::GreaterEqWithIC(thread, Str1.GetTaggedValue(),
                                                                arg3Handle.GetTaggedValue(),
                                                                CompareOpType::STRING_BOOLEAN);
-    JSTaggedValue resInICPath4 = CompareOp::GreaterEqDynWithIC(thread, Str1.GetTaggedValue(),
+    JSTaggedValue resInICPath4 = CompareOp::GreaterEqWithIC(thread, Str1.GetTaggedValue(),
                                                                arg4Handle.GetTaggedValue(),
                                                                CompareOpType::STRING_BOOLEAN);
-    JSTaggedValue resInICPath5 = CompareOp::GreaterEqDynWithIC(thread, arg1Handle.GetTaggedValue(),
+    JSTaggedValue resInICPath5 = CompareOp::GreaterEqWithIC(thread, arg1Handle.GetTaggedValue(),
                                                                booleanObjHandle.GetTaggedValue(),
                                                                CompareOpType::NUMBER_OBJ);
-    JSTaggedValue resInICPath9 = CompareOp::GreaterEqDynWithIC(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInICPath9 = CompareOp::GreaterEqWithIC(thread, JSTaggedValue::Undefined(),
                                                                JSTaggedValue::Null(), CompareOpType::UNDEFINED_NULL);
-    JSTaggedValue resInICPath10 = CompareOp::GreaterEqDynWithIC(thread, JSTaggedValue::Undefined(),
+    JSTaggedValue resInICPath10 = CompareOp::GreaterEqWithIC(thread, JSTaggedValue::Undefined(),
                                                                 JSTaggedValue::True(), CompareOpType::OTHER);
 
     EXPECT_EQ(resInSlowPath1, resInICPath1);

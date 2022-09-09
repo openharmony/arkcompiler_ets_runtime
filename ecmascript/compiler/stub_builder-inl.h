@@ -249,6 +249,17 @@ void StubBuilder::SavePcIfNeeded(GateRef glue)
     }
 }
 
+void StubBuilder::SaveJumpSizeIfNeeded(GateRef glue, GateRef jumpSize)
+{
+    if (env_->IsAsmInterp()) {
+        GateRef sp = Argument(static_cast<size_t>(InterpreterHandlerInputs::SP));
+        GateRef frame = PtrSub(sp,
+            IntPtr(AsmInterpretedFrame::GetSize(GetEnvironment()->IsArch32Bit())));
+        Store(VariableType::INT64(), glue, frame,
+            IntPtr(AsmInterpretedFrame::GetCallSizeOffset(GetEnvironment()->IsArch32Bit())), jumpSize);
+    }
+}
+
 // memory
 inline GateRef StubBuilder::Load(VariableType type, GateRef base, GateRef offset)
 {
@@ -911,9 +922,9 @@ inline GateRef StubBuilder::LoadHClass(GateRef object)
     return Load(VariableType::JS_POINTER(), object);
 }
 
-inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hclass)
+inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
 {
-    Store(VariableType::JS_POINTER(), glue, object, IntPtr(0), hclass);
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(0), hClass);
 }
 
 inline GateRef StubBuilder::GetObjectType(GateRef hClass)
@@ -1004,12 +1015,13 @@ inline GateRef StubBuilder::IsConstructor(GateRef object)
 
 inline GateRef StubBuilder::IsBase(GateRef func)
 {
-    GateRef bitfieldOffset = IntPtr(JSFunction::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), func, bitfieldOffset);
+    GateRef method = GetMethodFromJSFunction(func);
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), method, extraLiteralInfoOffset);
     // decode
     return Int32LessThanOrEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSFunction::FunctionKindBits::START_BIT)),
-                 Int32((1LU << JSFunction::FunctionKindBits::SIZE) - 1)),
+        Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
+                 Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1)),
         Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
 }
 
@@ -1096,21 +1108,21 @@ inline GateRef StubBuilder::GetHasChanged(GateRef object)
     return Int32NotEqual(Int32And(bitfield, mask), Int32(0));
 }
 
-inline GateRef StubBuilder::HclassIsPrototypeHandler(GateRef hclass)
+inline GateRef StubBuilder::HclassIsPrototypeHandler(GateRef hClass)
 {
-    return Int32Equal(GetObjectType(hclass),
+    return Int32Equal(GetObjectType(hClass),
         Int32(static_cast<int32_t>(JSType::PROTOTYPE_HANDLER)));
 }
 
-inline GateRef StubBuilder::HclassIsTransitionHandler(GateRef hclass)
+inline GateRef StubBuilder::HclassIsTransitionHandler(GateRef hClass)
 {
-    return Int32Equal(GetObjectType(hclass),
+    return Int32Equal(GetObjectType(hClass),
         Int32(static_cast<int32_t>(JSType::TRANSITION_HANDLER)));
 }
 
-inline GateRef StubBuilder::HclassIsPropertyBox(GateRef hclass)
+inline GateRef StubBuilder::HclassIsPropertyBox(GateRef hClass)
 {
-    return Int32Equal(GetObjectType(hclass),
+    return Int32Equal(GetObjectType(hClass),
         Int32(static_cast<int32_t>(JSType::PROPERTY_BOX)));
 }
 
@@ -1727,12 +1739,6 @@ inline void StubBuilder::SetPropertiesToLexicalEnv(GateRef glue, GateRef object,
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, object, valueIndex, value);
 }
 
-inline GateRef StubBuilder::GetFunctionBitFieldFromJSFunction(GateRef object)
-{
-    GateRef offset = IntPtr(JSFunction::BIT_FIELD_OFFSET);
-    return Load(VariableType::INT32(), object, offset);
-}
-
 inline GateRef StubBuilder::GetHomeObjectFromJSFunction(GateRef object)
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
@@ -1832,7 +1838,7 @@ inline GateRef StubBuilder::IsNativeMethod(GateRef method)
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int32(MethodLiteral::IsNativeBit::START_BIT)),
+            Int64LSR(callfield, Int64(MethodLiteral::IsNativeBit::START_BIT)),
             Int64((1LU << MethodLiteral::IsNativeBit::SIZE) - 1)),
         Int64(0));
 }
@@ -1843,7 +1849,7 @@ inline GateRef StubBuilder::HasAotCode(GateRef method)
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int32(MethodLiteral::IsAotCodeBit::START_BIT)),
+            Int64LSR(callfield, Int64(MethodLiteral::IsAotCodeBit::START_BIT)),
             Int64((1LU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
         Int64(0));
 }
@@ -1853,7 +1859,7 @@ inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)
     GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
     return TruncInt64ToInt32(Int64And(
-        Int64LSR(callfield, Int32(MethodLiteral::NumArgsBits::START_BIT)),
+        Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
         Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1)));
 }
 
@@ -1905,15 +1911,17 @@ inline GateRef StubBuilder::HasPendingException(GateRef glue)
 inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
                                              const std::initializer_list<GateRef>& args)
 {
-    GateRef target = PtrMul(ChangeInt32ToIntPtr(ZExtInt8ToInt32(builtinsId)), IntPtrSize());
+    GateRef target = PtrMul(ChangeInt32ToIntPtr(builtinsId), IntPtrSize());
     return env_->GetBuilder()->CallBuiltin(glue, target, args);
 }
 
 inline GateRef StubBuilder::GetBuiltinId(GateRef method)
 {
-    // 7: builtinsIdOffset
-    GateRef builtinsIdOffset = PtrAdd(IntPtr(Method::LITERAL_INFO_OFFSET), IntPtr(7));
-    return Load(VariableType::INT8(), method, builtinsIdOffset);
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef extraLiteralInfo = Load(VariableType::INT64(), method, extraLiteralInfoOffset);
+    return TruncInt64ToInt32(Int64And(
+        Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
+        Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1)));
 }
 
 inline GateRef StubBuilder::ComputeSizeUtf8(GateRef length)

@@ -50,7 +50,9 @@ public:
     inline GateRef ReadInst16_1(GateRef pc);
     inline GateRef ReadInst16_2(GateRef pc);
     inline GateRef ReadInst16_3(GateRef pc);
+    inline GateRef ReadInst16_4(GateRef pc);
     inline GateRef ReadInst16_5(GateRef pc);
+    inline GateRef ReadInst16_6(GateRef pc);
     inline GateRef ReadInstSigned8_0(GateRef pc);
     inline GateRef ReadInstSigned16_0(GateRef pc);
     inline GateRef ReadInstSigned32_0(GateRef pc);
@@ -73,6 +75,7 @@ public:
     inline GateRef GetConstpoolFromFunction(GateRef function);
     inline GateRef GetProfileTypeInfoFromFunction(GateRef function);
     inline GateRef GetModuleFromFunction(GateRef function);
+    inline GateRef GetHomeObjectFromFunction(GateRef function);
     inline GateRef GetResumeModeFromGeneratorObject(GateRef obj);
     inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetHotnessCounterFromMethod(GateRef method);
@@ -85,8 +88,6 @@ public:
     inline void SetFunctionToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void SetAccToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void SetEnvToFrame(GateRef glue, GateRef frame, GateRef value);
-    inline void SetConstantPoolToFunction(GateRef glue, GateRef function, GateRef value);
-    inline void SetResolvedToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     inline void SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
@@ -114,15 +115,20 @@ public:
     inline void Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                          GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, GateRef format);
     inline void DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                               GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, int index);
+                               GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, GateRef index);
     inline void DispatchLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                              GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
     inline void DispatchDebugger(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                  GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
     inline void DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
-    inline GateRef FunctionIsResolved(GateRef object);
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetStringFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetMethodFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetArrayLiteralFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetObjectLiteralFromConstPool(GateRef constpool, GateRef index);
+    template <bool needPrint>
+    void DebugPrintInstruction();
 private:
     template<typename... Args>
     void DispatchBase(GateRef target, GateRef glue, Args... args);

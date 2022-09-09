@@ -71,7 +71,7 @@ HWTEST_F_L0(JSFunctionTest, Create)
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
     JSHandle<JSFunction> funHandle = thread->GetEcmaVM()->GetFactory()->NewJSFunction(env);
     EXPECT_TRUE(*funHandle != nullptr);
-    EXPECT_EQ(funHandle->GetProtoOrDynClass(), JSTaggedValue::Hole());
+    EXPECT_EQ(funHandle->GetProtoOrHClass(), JSTaggedValue::Hole());
 
     JSHandle<LexicalEnv> lexicalEnv = thread->GetEcmaVM()->GetFactory()->NewLexicalEnv(0);
     funHandle->SetLexicalEnv(thread, lexicalEnv.GetTaggedValue());
@@ -134,9 +134,9 @@ HWTEST_F_L0(JSFunctionTest, Invoke)
 {
     EcmaVM *ecmaVM = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
-    JSHandle<JSTaggedValue> dynclass(thread, JSObjectCreate(thread));
+    JSHandle<JSTaggedValue> hclass(thread, JSObjectCreate(thread));
     JSHandle<JSTaggedValue> callee(
-        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(dynclass), dynclass));
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
     EXPECT_TRUE(*callee != nullptr);
 
     char keyArray[] = "invoked";

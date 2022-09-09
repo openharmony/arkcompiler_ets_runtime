@@ -46,19 +46,19 @@
 /* Note: We can't statically decide the element type is a primitive or heap object, especially for */
 /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GET_VALUE(addr, offset) Barriers::GetDynValue<JSTaggedType>((addr), (offset))
+#define GET_VALUE(addr, offset) Barriers::GetValue<JSTaggedType>((addr), (offset))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_VALUE_WITH_BARRIER(thread, addr, offset, value)                          \
     if ((value).IsHeapObject()) {                                                    \
-        Barriers::SetDynObject<true>(thread, addr, offset, (value).GetRawData());    \
+        Barriers::SetObject<true>(thread, addr, offset, (value).GetRawData());    \
     } else {                                                                         \
-        Barriers::SetDynPrimitive<JSTaggedType>(addr, offset, (value).GetRawData()); \
+        Barriers::SetPrimitive<JSTaggedType>(addr, offset, (value).GetRawData()); \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_VALUE_PRIMITIVE(addr, offset, value) \
-    Barriers::SetDynPrimitive<JSTaggedType>(this, offset, (value).GetRawData())
+    Barriers::SetPrimitive<JSTaggedType>(this, offset, (value).GetRawData())
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS(name, offset, endOffset)                                                                    \
@@ -67,31 +67,31 @@
     {                                                                                                         \
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
-        return JSTaggedValue(Barriers::GetDynValue<JSTaggedType>(this, offset));                              \
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(this, offset));                              \
     }                                                                                                         \
     template<typename T>                                                                                      \
     void Set##name(const JSThread *thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)               \
     {                                                                                                         \
         if (mode == WRITE_BARRIER) {                                                                          \
             if (value.GetTaggedValue().IsHeapObject()) {                                                      \
-                Barriers::SetDynObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());      \
+                Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());      \
             } else {                                                                                          \
-                Barriers::SetDynPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());   \
+                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());   \
             }                                                                                                 \
         } else {                                                                                              \
-            Barriers::SetDynPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());       \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());       \
         }                                                                                                     \
     }                                                                                                         \
     void Set##name(const JSThread *thread, JSTaggedValue value, BarrierMode mode = WRITE_BARRIER)             \
     {                                                                                                         \
         if (mode == WRITE_BARRIER) {                                                                          \
             if (value.IsHeapObject()) {                                                                       \
-                Barriers::SetDynObject<true>(thread, this, offset, value.GetRawData());                       \
+                Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                       \
             } else {                                                                                          \
-                Barriers::SetDynPrimitive<JSTaggedType>(this, offset, value.GetRawData());                    \
+                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                    \
             }                                                                                                 \
         } else {                                                                                              \
-            Barriers::SetDynPrimitive<JSTaggedType>(this, offset, value.GetRawData());                        \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                        \
         }                                                                                                     \
     }
 
@@ -105,11 +105,11 @@
     static constexpr size_t endOffset = (offset) + sizeof(sizeType);        \
     inline void Set##name(type value)                                       \
     {                                                                       \
-        Barriers::SetDynPrimitive<type>(this, offset, value);               \
+        Barriers::SetPrimitive<type>(this, offset, value);               \
     }                                                                       \
     inline type Get##name() const                                           \
     {                                                                       \
-        return Barriers::GetDynValue<type>(this, offset);                   \
+        return Barriers::GetValue<type>(this, offset);                   \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

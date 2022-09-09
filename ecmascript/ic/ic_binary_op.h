@@ -88,7 +88,7 @@ public:
             }
             // Some special cases, such as: object + undefined, object + boolean, etc.
             case BinaryType::GENERIC: {
-                JSTaggedValue res = SlowRuntimeStub::Add2Dyn(thread, left, right);
+                JSTaggedValue res = SlowRuntimeStub::Add2(thread, left, right);
                 return res;
             }
             default: {
@@ -185,7 +185,7 @@ public:
             }
             // Support special cases, such as: string like '2333', boolean, null
             case BinaryType::GENERIC: {
-                auto res = SlowRuntimeStub::Div2Dyn(thread, left, right);
+                auto res = SlowRuntimeStub::Div2(thread, left, right);
                 return res;
             }
             case BinaryType::NUMBER_GEN:

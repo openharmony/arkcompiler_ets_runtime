@@ -52,12 +52,6 @@ enum class FunctionKind : uint8_t {
 
     LAST_FUNCTION_KIND,
 };
-
-enum class FunctionMode : uint8_t {
-    LEXICAL,
-    STRICT,
-    GLOBAL,
-};
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JS_FUNCTION_KIND_H

@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/stub_builder-inl.h"
 
+#include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -100,7 +101,7 @@ void StubBuilder::LoopEnd(Label *loopHead)
 }
 
 // FindElementWithCache in ecmascript/layout_info-inl.h
-GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
+GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hclass,
     GateRef key, GateRef propsNum)
 {
     auto env = GetEnvironment();
@@ -155,7 +156,7 @@ GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, Gate
         Jump(&afterExceedCon);
     }
     Bind(&afterExceedCon);
-    result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(FindElementWithCache), { glue, hClass, key, propsNum });
+    result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(FindElementWithCache), { glue, hclass, key, propsNum });
     Jump(&exit);
     Bind(&exit);
     auto ret = *result;
@@ -436,7 +437,7 @@ GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef ele
     return ret;
 }
 
-GateRef StubBuilder::JSObjectGetProperty(VariableType returnType, GateRef obj, GateRef hClass, GateRef attr)
+GateRef StubBuilder::JSObjectGetProperty(VariableType returnType, GateRef obj, GateRef hclass, GateRef attr)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -450,7 +451,7 @@ GateRef StubBuilder::JSObjectGetProperty(VariableType returnType, GateRef obj, G
     {
         Bind(&inlinedProp);
         {
-            result = GetPropertyInlinedProps(obj, hClass, attrOffset, returnType);
+            result = GetPropertyInlinedProps(obj, hclass, attrOffset, returnType);
             Jump(&exit);
         }
         Bind(&notInlinedProp);
@@ -459,7 +460,7 @@ GateRef StubBuilder::JSObjectGetProperty(VariableType returnType, GateRef obj, G
             GateRef array =
                 Load(VariableType::INT64(), obj, IntPtr(JSObject::PROPERTIES_OFFSET));
             result = GetValueFromTaggedArray(returnType, array, Int32Sub(attrOffset,
-                GetInlinedPropertiesFromHClass(hClass)));
+                GetInlinedPropertiesFromHClass(hclass)));
             Jump(&exit);
         }
     }
@@ -469,7 +470,7 @@ GateRef StubBuilder::JSObjectGetProperty(VariableType returnType, GateRef obj, G
     return ret;
 }
 
-void StubBuilder::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef attr, GateRef value)
+void StubBuilder::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hclass, GateRef attr, GateRef value)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -482,7 +483,7 @@ void StubBuilder::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass,
     {
         Bind(&inlinedProp);
         {
-            SetPropertyInlinedProps(glue, obj, hClass, value, attrOffset);
+            SetPropertyInlinedProps(glue, obj, hclass, value, attrOffset);
             Jump(&exit);
         }
         Bind(&notInlinedProp);
@@ -491,7 +492,7 @@ void StubBuilder::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass,
             GateRef array = Load(VariableType::JS_POINTER(), obj,
                                  IntPtr(JSObject::PROPERTIES_OFFSET));
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, Int32Sub(attrOffset,
-                GetInlinedPropertiesFromHClass(hClass)), value);
+                GetInlinedPropertiesFromHClass(hclass)), value);
             Jump(&exit);
         }
     }
@@ -569,7 +570,7 @@ GateRef StubBuilder::CallGetterHelper(GateRef glue, GateRef receiver, GateRef ho
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, getter, Int32(0),
+            auto retValue = JSCallDispatch(glue, getter, Int32(0), 0,
                                            JSCallMode::CALL_GETTER, { receiver });
             Label noPendingException(env);
             Branch(HasPendingException(glue), &exit, &noPendingException);
@@ -617,7 +618,7 @@ GateRef StubBuilder::CallSetterHelper(GateRef glue, GateRef receiver, GateRef ac
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, setter, Int32(1),
+            auto retValue = JSCallDispatch(glue, setter, Int32(1), 0,
                                            JSCallMode::CALL_SETTER, { receiver, value });
             Label noPendingException(env);
             Branch(HasPendingException(glue), &exit, &noPendingException);
@@ -679,10 +680,10 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
     Label exit(env);
     GateRef hclass = LoadHClass(receiver);
     GateRef metaData = GetPropertyMetaDataFromAttr(attr);
-    GateRef newDyn = FindTransitions(glue, receiver, hclass, key, metaData);
+    GateRef newClass = FindTransitions(glue, receiver, hclass, key, metaData);
     Label findHClass(env);
     Label notFindHClass(env);
-    Branch(Int64Equal(newDyn, Int64(JSTaggedValue::VALUE_UNDEFINED)), &notFindHClass, &findHClass);
+    Branch(Int64Equal(newClass, Int64(JSTaggedValue::VALUE_UNDEFINED)), &notFindHClass, &findHClass);
     Bind(&findHClass);
     {
         Jump(&exit);
@@ -693,7 +694,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
         GateRef size = Int32Mul(GetInlinedPropsStartFromHClass(hclass),
                                 Int32(JSTaggedValue::TaggedTypeSize()));
         GateRef inlineProps = GetInlinedPropertiesFromHClass(hclass);
-        GateRef newJshclass = CallRuntime(glue, RTSTUB_ID(NewEcmaDynClass),
+        GateRef newJshclass = CallRuntime(glue, RTSTUB_ID(NewEcmaHClass),
             { IntToTaggedInt(size), IntToTaggedInt(type),
               IntToTaggedInt(inlineProps) });
         CopyAllHClass(glue, newJshclass, hclass);
@@ -736,11 +737,11 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Label setHasCtor(env);
     Label notSetHasCtor(env);
     Label afterCtorCon(env);
-    GateRef hClass = LoadHClass(receiver);
+    GateRef hclass = LoadHClass(receiver);
     Branch(SetHasConstructorCondition(glue, receiver, key), &setHasCtor, &notSetHasCtor);
     {
         Bind(&setHasCtor);
-        SetHasConstructorToHClass(glue, hClass, Int32(1));
+        SetHasConstructorToHClass(glue, hclass, Int32(1));
         Jump(&afterCtorCon);
         Bind(&notSetHasCtor);
         Jump(&afterCtorCon);
@@ -748,8 +749,8 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Bind(&afterCtorCon);
     // 0x111 : default attribute for property: writable, enumerable, configurable
     DEFVARIABLE(attr, VariableType::INT32(), propertyAttributes);
-    GateRef numberOfProps = GetNumberOfPropsFromHClass(hClass);
-    GateRef inlinedProperties = GetInlinedPropertiesFromHClass(hClass);
+    GateRef numberOfProps = GetNumberOfPropsFromHClass(hclass);
+    GateRef inlinedProperties = GetInlinedPropertiesFromHClass(hclass);
     Label hasUnusedInProps(env);
     Label noUnusedInProps(env);
     Label afterInPropsCon(env);
@@ -759,7 +760,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
         Jump(&afterInPropsCon);
         Bind(&hasUnusedInProps);
         {
-            SetPropertyInlinedProps(glue, receiver, hClass, value, numberOfProps);
+            SetPropertyInlinedProps(glue, receiver, hclass, value, numberOfProps);
             attr = SetOffsetFieldInPropAttr(*attr, numberOfProps);
             attr = SetIsInlinePropsFieldInPropAttr(*attr, Int32(1)); // 1: set inInlineProps true
             JSHClassAddProperty(glue, receiver, key, *attr);
@@ -2023,8 +2024,8 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        GateRef hClass = LoadHClass(*holder);
-        GateRef jsType = GetObjectType(hClass);
+        GateRef hclass = LoadHClass(*holder);
+        GateRef jsType = GetObjectType(hclass);
         Label isSIndexObj(env);
         Label notSIndexObj(env);
         Branch(IsSpecialIndexedObj(jsType), &isSIndexObj, &notSIndexObj);
@@ -2058,13 +2059,13 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         {
             Label isDicMode(env);
             Label notDicMode(env);
-            Branch(IsDictionaryModeByHClass(hClass), &isDicMode, &notDicMode);
+            Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
             Bind(&notDicMode);
             {
-                GateRef layOutInfo = GetLayoutFromHClass(hClass);
-                GateRef propsNum = GetNumberOfPropsFromHClass(hClass);
+                GateRef layOutInfo = GetLayoutFromHClass(hclass);
+                GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
                 // int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber)
-                GateRef entryA = FindElementWithCache(glue, layOutInfo, hClass, key, propsNum);
+                GateRef entryA = FindElementWithCache(glue, layOutInfo, hclass, key, propsNum);
                 Label hasEntry(env);
                 Label noEntry(env);
                 // if branch condition : entry != -1
@@ -2074,7 +2075,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     // PropertyAttributes attr(layoutInfo->GetAttr(entry))
                     GateRef propAttr = GetPropAttrFromLayoutInfo(layOutInfo, entryA);
                     GateRef attr = TaggedCastToInt32(propAttr);
-                    GateRef value = JSObjectGetProperty(VariableType::JS_ANY(), *holder, hClass, attr);
+                    GateRef value = JSObjectGetProperty(VariableType::JS_ANY(), *holder, hclass, attr);
                     Label isAccessor(env);
                     Label notAccessor(env);
                     Branch(IsAccessor(attr), &isAccessor, &notAccessor);
@@ -2404,8 +2405,8 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     }
     // auto *hclass = holder.GetTaggedObject()->GetClass()
     // JSType jsType = hclass->GetObjectType()
-    GateRef hClass = LoadHClass(*holder);
-    GateRef jsType = GetObjectType(hClass);
+    GateRef hclass = LoadHClass(*holder);
+    GateRef jsType = GetObjectType(hclass);
     Label isSIndexObj(env);
     Label notSIndexObj(env);
     // if branch condition : IsSpecialIndexedObj(jsType)
@@ -2454,15 +2455,15 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         Label isDicMode(env);
         Label notDicMode(env);
         // if branch condition : LIKELY(!hclass->IsDictionaryMode())
-        Branch(IsDictionaryModeByHClass(hClass), &isDicMode, &notDicMode);
+        Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
         Bind(&notDicMode);
         {
             // LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetAttributes().GetTaggedObject())
-            GateRef layOutInfo = GetLayoutFromHClass(hClass);
+            GateRef layOutInfo = GetLayoutFromHClass(hclass);
             // int propsNumber = hclass->NumberOfPropsFromHClass()
-            GateRef propsNum = GetNumberOfPropsFromHClass(hClass);
+            GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
             // int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber)
-            GateRef entry = FindElementWithCache(glue, layOutInfo, hClass, key, propsNum);
+            GateRef entry = FindElementWithCache(glue, layOutInfo, hclass, key, propsNum);
             Label hasEntry(env);
             // if branch condition : entry != -1
             if (useOwn) {
@@ -2481,7 +2482,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 Bind(&isAccessor);
                 {
                     // auto accessor = JSObject::Cast(holder)->GetProperty(hclass, attr)
-                    GateRef accessor = JSObjectGetProperty(VariableType::JS_ANY(), *holder, hClass, attr);
+                    GateRef accessor = JSObjectGetProperty(VariableType::JS_ANY(), *holder, hclass, attr);
                     Label shouldCall(env);
                     // ShouldCallSetter(receiver, *holder, accessor, attr)
                     Branch(ShouldCallSetter(receiver, *holder, accessor, attr), &shouldCall, &notAccessor);
@@ -2515,7 +2516,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         {
                             // JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value)
                             // return JSTaggedValue::Undefined()
-                            JSObjectSetProperty(glue, *holder, hClass, attr, value);
+                            JSObjectSetProperty(glue, *holder, hclass, attr, value);
                             result = Undefined(VariableType::INT64());
                             Jump(&exit);
                         }
@@ -3749,7 +3750,7 @@ GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut
     return ret;
 }
 
-GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs,
+GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                                     JSCallMode mode, std::initializer_list<GateRef> args)
 {
     auto env = GetEnvironment();
@@ -3766,7 +3767,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // save pc
     SavePcIfNeeded(glue);
     GateRef bitfield = 0;
-    if (mode != JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV) {
+    if (!AssemblerModule::IsCallNew(mode)) {
         Branch(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
         Bind(&funcIsHeapObject);
         GateRef hclass = LoadHClass(func);
@@ -3797,24 +3798,41 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         GateRef thisValue = Undefined();
         GateRef numArgs = Int32Add(actualNumArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
         switch (mode) {
+            case JSCallMode::CALL_THIS_ARG0:
+                thisValue = data[0];
+                [[fallthrough]];
             case JSCallMode::CALL_ARG0:
+            case JSCallMode::DEPRECATED_CALL_ARG0:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue });
                 break;
+            case JSCallMode::CALL_THIS_ARG1:
+                thisValue = data[1];
+                [[fallthrough]];
             case JSCallMode::CALL_ARG1:
+            case JSCallMode::DEPRECATED_CALL_ARG1:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
                 break;
+            case JSCallMode::CALL_THIS_ARG2:
+                thisValue = data[2];
+                [[fallthrough]];
             case JSCallMode::CALL_ARG2:
+            case JSCallMode::DEPRECATED_CALL_ARG2:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
                 break;
+            case JSCallMode::CALL_THIS_ARG3:
+                thisValue = data[3];
+                [[fallthrough]];
             case JSCallMode::CALL_ARG3:
+            case JSCallMode::DEPRECATED_CALL_ARG3:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func,
                       newTarget, thisValue, data[0], data[1], data[2] }); // 2: args2
                 break;
-            case JSCallMode::CALL_THIS_WITH_ARGV: {
+            case JSCallMode::CALL_THIS_WITH_ARGV:
+            case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV: {
                 thisValue = data[2]; // 2: this input
                 GateRef isFastBuiltinsMask =
                     Int64(static_cast<uint64_t>(1) << MethodLiteral::IsFastBuiltinBit::START_BIT);
@@ -3827,14 +3845,16 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     Jump(&exit);
                 }
                 Bind(&notFastBuiltins);
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallIRangeAndDispatchNative),
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),
                     { glue, nativeCode, func, thisValue, data[0], data[1] });
                 break;
             }
             case JSCallMode::CALL_WITH_ARGV:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallIRangeAndDispatchNative),
+            case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),
                     { glue, nativeCode, func, thisValue, data[0], data[1] });
                 break;
+            case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatchNative),
                     { glue, nativeCode, func, data[2], data[0], data[1] });
@@ -3856,7 +3876,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Bind(&methodNotNative);
     Label funcIsClassConstructor(env);
     Label funcNotClassConstructor(env);
-    if (mode != JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV) {
+    if (!AssemblerModule::IsCallNew(mode)) {
         Branch(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &funcNotClassConstructor);
         Bind(&funcIsClassConstructor);
         {
@@ -3881,35 +3901,54 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             GateRef lexEnv = env_->GetBuilder()->GetLexicalEnv(func);
             GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
             switch (mode) {
+                case JSCallMode::CALL_THIS_ARG0:
+                    thisValue = data[0];
+                    [[fallthrough]];
                 case JSCallMode::CALL_ARG0:
+                case JSCallMode::DEPRECATED_CALL_ARG0:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
                         { glue, lexEnv, realNumArgs, func, newTarget, thisValue});
                     Jump(&exit);
                     break;
+                case JSCallMode::CALL_THIS_ARG1:
+                    thisValue = data[1];
+                    [[fallthrough]];
                 case JSCallMode::CALL_ARG1:
+                case JSCallMode::DEPRECATED_CALL_ARG1:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
                         { glue, lexEnv, realNumArgs, func, newTarget, thisValue,  data[0] });
                     Jump(&exit);
                     break;
+                case JSCallMode::CALL_THIS_ARG2:
+                    thisValue = data[2];
+                    [[fallthrough]];
                 case JSCallMode::CALL_ARG2:
+                case JSCallMode::DEPRECATED_CALL_ARG2:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
                         { glue, lexEnv, realNumArgs, func, newTarget, thisValue,  data[0], data[1] });
                     Jump(&exit);
                     break;
+                case JSCallMode::CALL_THIS_ARG3:
+                    thisValue = data[3];
+                    [[fallthrough]];
                 case JSCallMode::CALL_ARG3:
+                case JSCallMode::DEPRECATED_CALL_ARG3:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
                         { glue, lexEnv, realNumArgs, func, newTarget, thisValue,
                           data[0], data[1], data[2] }); // 2: args2
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_WITH_ARGV:
+                case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
                     thisValue = data[2]; // 2: this input
                     [[fallthrough]];
                 case JSCallMode::CALL_WITH_ARGV:
+                case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
                         { glue, ZExtInt32ToInt64(actualNumArgs), func, newTarget, thisValue, data[1] });
                     Jump(&exit);
                     break;
+                case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
                 case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                     result = CallNGCRuntime(glue, RTSTUB_ID(ConstructorJSCallWithArgV),
                         { glue, ZExtInt32ToInt64(actualNumArgs), func, func, data[2], data[1]});
@@ -3931,37 +3970,67 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             }
         }
         Bind(&methodNotAot);
+        if (jumpSize != 0) {
+            SaveJumpSizeIfNeeded(glue, jumpSize);
+        }
         switch (mode) {
-            case JSCallMode::CALL_ARG0:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs0AndDispatch),
-                    { glue, sp, func, method, callField });
-                Return();
-                break;
-            case JSCallMode::CALL_ARG1:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs1AndDispatch),
+            case JSCallMode::CALL_THIS_ARG0:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg0AndDispatch),
                     { glue, sp, func, method, callField, data[0] });
                 Return();
                 break;
+            case JSCallMode::CALL_ARG0:
+            case JSCallMode::DEPRECATED_CALL_ARG0:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg0AndDispatch),
+                    { glue, sp, func, method, callField });
+                Return();
+                break;
+            case JSCallMode::CALL_THIS_ARG1:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg1AndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1] });
+                Return();
+                break;
+            case JSCallMode::CALL_ARG1:
+            case JSCallMode::DEPRECATED_CALL_ARG1:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg1AndDispatch),
+                    { glue, sp, func, method, callField, data[0] });
+                Return();
+                break;
+            case JSCallMode::CALL_THIS_ARG2:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs2AndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG2:
+            case JSCallMode::DEPRECATED_CALL_ARG2:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs2AndDispatch),
                     { glue, sp, func, method, callField, data[0], data[1] });
                 Return();
                 break;
+            case JSCallMode::CALL_THIS_ARG3:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs3AndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1], data[2], data[3] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG3:
+            case JSCallMode::DEPRECATED_CALL_ARG3:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs3AndDispatch),
                     { glue, sp, func, method, callField, data[0], data[1], data[2] }); // 2: args2
                 Return();
                 break;
             case JSCallMode::CALL_WITH_ARGV:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallIRangeAndDispatch),
+            case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatch),
                     { glue, sp, func, method, callField, data[0], data[1] });
                 Return();
                 break;
             case JSCallMode::CALL_THIS_WITH_ARGV:
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallIThisRangeAndDispatch),
+            case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisRangeAndDispatch),
                     { glue, sp, func, method, callField, data[0], data[1], data[2] });
                 Return();
                 break;
+            case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatch),
                     { glue, sp, func, method, callField, data[0], data[1], data[2] });

@@ -129,7 +129,7 @@ HWTEST_F_L0(WeakRefOldGCTest, ArrayKeep)
     EXPECT_EQ(value, array->Get(1));
 }
 
-HWTEST_F_L0(WeakRefOldGCTest, DynObjectUndefined)
+HWTEST_F_L0(WeakRefOldGCTest, ObjectUndefined)
 {
     JSHandle<JSObject> newObj1(thread, JSObjectTestCreate(thread));
     JSTaggedValue array(ArrayTestCreate(thread));
@@ -140,7 +140,7 @@ HWTEST_F_L0(WeakRefOldGCTest, DynObjectUndefined)
     EXPECT_EQ(newObj1->GetElements(), JSTaggedValue::Undefined());
 }
 
-HWTEST_F_L0(WeakRefOldGCTest, DynObjectKeep)
+HWTEST_F_L0(WeakRefOldGCTest, ObjectKeep)
 {
     JSHandle<JSObject> newObj1(thread, JSObjectTestCreate(thread));
     JSHandle<TaggedArray> array(thread, ArrayTestCreate(thread));

@@ -457,12 +457,6 @@ GateRef CircuitBuilder::GetGlobalObject(GateRef glue)
     return Load(VariableType::JS_ANY(), glue, offset);
 }
 
-GateRef CircuitBuilder::GetFunctionBitFieldFromJSFunction(GateRef function)
-{
-    GateRef offset = IntPtr(JSFunction::BIT_FIELD_OFFSET);
-    return Load(VariableType::INT32(), function, offset);
-}
-
 GateRef CircuitBuilder::GetMethodFromFunction(GateRef function)
 {
     GateRef offset = IntPtr(JSFunctionBase::METHOD_OFFSET);
@@ -473,34 +467,6 @@ GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
 {
     GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
     return Load(VariableType::JS_POINTER(), function, offset);
-}
-
-GateRef CircuitBuilder::FunctionIsResolved(GateRef function)
-{
-    Label subentry(env_);
-    SubCfgEntry(&subentry);
-    Label exit(env_);
-    Label isUndefined(env_);
-    Label notUndefined(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), True());
-    Branch(TaggedIsUndefined(function), &isUndefined, &notUndefined);
-    Bind(&isUndefined);
-    {
-        Jump(&exit);
-    }
-    Bind(&notUndefined);
-    {
-        GateRef bitfield = GetFunctionBitFieldFromJSFunction(function);
-        result = NotEqual(Int32And(Int32LSR(bitfield,
-                                            Int32(JSFunction::ResolvedBits::START_BIT)),
-                                   Int32((1LU << JSFunction::ResolvedBits::SIZE) - 1)),
-                          Int32(0));
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
 }
 
 GateRef CircuitBuilder::GetLengthFromString(GateRef value)
@@ -550,32 +516,10 @@ GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
     return ret;
 }
 
-void CircuitBuilder::SetResolvedToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef bitfield = GetFunctionBitFieldFromJSFunction(function);
-    GateRef mask = Int32(~(((1<<JSFunction::ResolvedBits::SIZE) - 1) << JSFunction::ResolvedBits::START_BIT));
-    GateRef result = Int32Or(Int32And(bitfield, mask),
-        Int32LSL(ZExtInt1ToInt32(value), Int32(JSFunction::ResolvedBits::START_BIT)));
-    Store(VariableType::INT32(), glue, function, IntPtr(JSFunction::BIT_FIELD_OFFSET), result);
-}
-
-void CircuitBuilder::SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef method = GetMethodFromFunction(function);
-    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
-    Store(VariableType::INT64(), glue, method, offset, value);
-}
-
 void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::LEXICAL_ENV_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value);
-}
-
-void CircuitBuilder::SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef offset = IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET);
-    Store(VariableType::INT64(), glue, function, offset, value);
 }
 
 GateRef CircuitBuilder::GetLexicalEnv(GateRef function)

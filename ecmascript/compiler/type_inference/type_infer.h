@@ -54,16 +54,16 @@ private:
     bool SetBooleanType(GateRef gate);
     bool InferLdUndefined(GateRef gate);
     bool InferLdNull(GateRef gate);
-    bool InferLdaiDyn(GateRef gate);
-    bool InferFLdaiDyn(GateRef gate);
+    bool InferLdai(GateRef gate);
+    bool InferFLdai(GateRef gate);
     bool InferLdSymbol(GateRef gate);
-    bool InferThrowDyn(GateRef gate);
-    bool InferTypeOfDyn(GateRef gate);
-    bool InferAdd2Dyn(GateRef gate);
+    bool InferThrow(GateRef gate);
+    bool InferTypeOf(GateRef gate);
+    bool InferAdd2(GateRef gate);
     bool InferLdObjByIndex(GateRef gate);
     bool InferLdGlobalVar(GateRef gate);
     bool InferReturnUndefined(GateRef gate);
-    bool InferReturnDyn(GateRef gate);
+    bool InferReturn(GateRef gate);
     bool InferLdObjByName(GateRef gate);
     bool InferNewObject(GateRef gate);
     bool SetStGlobalBcType(GateRef gate);
@@ -72,6 +72,7 @@ private:
     bool InferLdObjByValue(GateRef gate);
     bool InferGetNextPropName(GateRef gate);
     bool InferDefineGetterSetterByValue(GateRef gate);
+    bool InferNewObjApply(GateRef gate);
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
 
