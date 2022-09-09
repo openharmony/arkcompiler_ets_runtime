@@ -1177,7 +1177,8 @@ JSTaggedValue RuntimeStubs::RuntimeToNumeric(JSThread *thread, const JSHandle<JS
 }
 
 // specifier = "./test.js"
-JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandle<JSTaggedValue> &specifier, const JSHandle<JSTaggedValue> &func)
+JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandle<JSTaggedValue> &specifier,
+    const JSHandle<JSTaggedValue> &func)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();

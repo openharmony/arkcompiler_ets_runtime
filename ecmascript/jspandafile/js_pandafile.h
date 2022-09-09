@@ -192,7 +192,6 @@ private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
     uint32_t constpoolIndex_ {0};
-    // CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     uint32_t numMethods_ {0};
     MethodLiteral *methodLiterals_ {nullptr};

@@ -428,8 +428,8 @@ void PandaFileTranslator::ParseConstPoolWithMerge(EcmaVM *vm, const JSPandaFile 
 #endif
                 panda_file::File::EntityId id(it.first);
                 auto foundStr = pf->GetStringData(id);
-                auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length, foundStr.is_ascii,
-                                                                MemSpaceType::OLD_SPACE);
+                auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length,
+                                                                   foundStr.is_ascii, MemSpaceType::OLD_SPACE);
                 constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), JSTaggedValue(string));
             } else if (value.GetConstpoolType() == ConstPoolType::BASE_FUNCTION) {
                 MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
@@ -482,7 +482,7 @@ void PandaFileTranslator::ParseConstPoolWithMerge(EcmaVM *vm, const JSPandaFile 
 
                 JSHandle<JSFunction> jsFunc =
                     factory->NewJSFunctionByDynClass(method, asyncGeneratorDynclass,
-                                                    FunctionKind::ASYNC_GENERATOR_FUNCTION);
+                                                     FunctionKind::ASYNC_GENERATOR_FUNCTION);
                 constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), jsFunc.GetTaggedValue());
                 method->SetConstantPool(thread, constpool.GetTaggedValue());
             } else if (value.GetConstpoolType() == ConstPoolType::ASYNC_FUNCTION) {
@@ -808,12 +808,14 @@ void PandaFileTranslator::TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t i
                     break;
                 case BytecodeInstruction::Opcode::ECMA_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
                     methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsIndex()).GetOffset();
-                    index = jsPandaFile->GetOrInsertConstantPool(ConstPoolType::GENERATOR_FUNCTION, methodId, entryPoint);
+                    index = jsPandaFile->GetOrInsertConstantPool(ConstPoolType::GENERATOR_FUNCTION, methodId,
+                                                                 entryPoint);
                     FixInstructionId32(bcIns, index);
                     break;
                 case BytecodeInstruction::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
                     methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsIndex()).GetOffset();
-                    index = jsPandaFile->GetOrInsertConstantPool(ConstPoolType::ASYNC_GENERATOR_FUNCTION, methodId, entryPoint);
+                    index = jsPandaFile->GetOrInsertConstantPool(ConstPoolType::ASYNC_GENERATOR_FUNCTION, methodId,
+                                                                 entryPoint);
                     FixInstructionId32(bcIns, index);
                     break;
                 case BytecodeInstruction::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
