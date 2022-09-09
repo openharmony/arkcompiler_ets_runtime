@@ -1269,6 +1269,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CLOSEITERATOR_IMM16_V8: {
             uint16_t v0 = READ_INST_8_2();
             info.inputs.emplace_back(VirtualRegister(v0));
+            break;
         }
         case EcmaOpcode::NEWOBJAPPLY_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
@@ -1680,6 +1681,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             uint32_t v1 = READ_INST_8_3();
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
+            break;
         }
         case EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8: {
             uint16_t stringId = READ_INST_16_1();
@@ -2335,6 +2337,12 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
             break;
         case EcmaOpcode::LDFUNCTION:
             gate = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
+            break;
+        case EcmaOpcode::LDNEWTARGET:
+            gate = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
+            break;
+        case EcmaOpcode::LDTHIS:
+            gate = argAcc_.GetCommonArgGate(CommonArgIdx::THIS);
             break;
         default:
             UNREACHABLE();

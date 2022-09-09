@@ -398,10 +398,10 @@ void SlowPathLowering::Lower(GateRef gate)
         case LDGLOBALTHIS_PREF:
             LowerLdGlobal(gate, glue);
             break;
-        case LDSYMBOL_PREF:
+        case LDSYMBOL:
             LowerLdSymbol(gate, glue);
             break;
-        case LDGLOBAL_PREF:
+        case LDGLOBAL:
             LowerLdGlobal(gate, glue);
             break;
         case TONUMBER_PREF_V8:
@@ -541,7 +541,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case NEWLEXENVWITHNAMEDYN_PREF_IMM16_IMM16:
             LowerNewLexicalEnvWithName(gate, glue, jsFunc);
             break;
-        case POPLEXENVDYN_PREF:
+        case POPLEXENV:
             LowerPopLexicalEnv(gate, glue);
             break;
         case LDSUPERBYVALUE_PREF_V8_V8:
@@ -637,6 +637,8 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case COPYRESTARGS_PREF_IMM16:
             LowerCopyRestArgs(gate, glue, actualArgc);
+            break;
+        case DEBUGGER:
             break;
         default:
             break;
