@@ -2022,7 +2022,7 @@ void *ECMAObject::GetNativePointerField(int32_t index) const
 }
 
 void ECMAObject::SetNativePointerField(int32_t index, void *nativePointer,
-    const DeleteEntryPoint &callBack, void *data)
+    const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
@@ -2038,7 +2038,7 @@ void ECMAObject::SetNativePointerField(int32_t index, void *nativePointer,
                 array->Set(thread, index, JSTaggedValue::Hole());
             } else {
                 JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(
-                    nativePointer, callBack, data);
+                    nativePointer, callBack, data, false, nativeBindingsize);
                 array->Set(thread, index, pointer.GetTaggedValue());
             }
         }

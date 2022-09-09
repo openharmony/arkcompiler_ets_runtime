@@ -415,7 +415,8 @@ public:
     inline JSHandle<JSNativePointer> NewJSNativePointer(void *externalPointer,
                                                         const DeleteEntryPoint &callBack = nullptr,
                                                         void *data = nullptr,
-                                                        bool nonMovable = false);
+                                                        bool nonMovable = false,
+                                                        size_t nativeBindingsize = 0);
 
     JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> SetLayoutInObjHClass(const JSHandle<TaggedArray> &properties, size_t length,

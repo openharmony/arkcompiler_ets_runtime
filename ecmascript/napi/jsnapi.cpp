@@ -827,18 +827,20 @@ Local<StringRef> SymbolRef::GetDescription(const EcmaVM *vm)
 }
 
 // -------------------------------- NativePointerRef ------------------------------------
-Local<NativePointerRef> NativePointerRef::New(const EcmaVM *vm, void *nativePointer)
+Local<NativePointerRef> NativePointerRef::New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize)
 {
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer);
+    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, nullptr, nullptr,
+        false, nativeBindingsize);
     return JSNApiHelper::ToLocal<NativePointerRef>(JSHandle<JSTaggedValue>(obj));
 }
 
 Local<NativePointerRef> NativePointerRef::New(
-    const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack, void *data)
+    const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, callBack, data);
+    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, callBack, data,
+        false, nativeBindingsize);
     return JSNApiHelper::ToLocal<NativePointerRef>(JSHandle<JSTaggedValue>(obj));
 }
 
@@ -1074,27 +1076,27 @@ void *ObjectRef::GetNativePointerField(int32_t index)
 }
 
 void ObjectRef::SetNativePointerField(int32_t index, void *nativePointer,
-    NativePointerCallback callBack, void *data)
+    NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    object->SetNativePointerField(index, nativePointer, callBack, data);
+    object->SetNativePointerField(index, nativePointer, callBack, data, nativeBindingsize);
 }
 
 // ----------------------------------- FunctionRef --------------------------------------
 Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNative)
+    Deleter deleter, void *data, bool callNative, size_t nativeBindingsize)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
-    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
     current->SetCallNative(callNative);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNative)
+    Deleter deleter, void *data, bool callNative, size_t nativeBindingsize)
 {
     EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
@@ -1110,7 +1112,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     current->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
                                      accessor.GetTaggedValue());
 
-    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
 
     JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, factory, current);
     clsPrototype.GetTaggedValue().GetTaggedObject()->GetClass()->SetClassPrototype(true);

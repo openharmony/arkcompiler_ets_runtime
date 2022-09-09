@@ -536,9 +536,9 @@ public:
 using NativePointerCallback = void (*)(void* value, void* hint);
 class PUBLIC_API NativePointerRef : public JSValueRef {
 public:
-    static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer);
+    static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize = 0);
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack,
-                                       void *data);
+                                       void *data, size_t nativeBindingsize = 0);
     void *Value();
 };
 
@@ -694,16 +694,16 @@ public:
     void SetNativePointerField(int32_t index,
                                void *nativePointer = nullptr,
                                NativePointerCallback callBack = nullptr,
-                               void *data = nullptr);
+                               void *data = nullptr, size_t nativeBindingsize = 0);
 };
 
 using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 class PUBLIC_API FunctionRef : public ObjectRef {
 public:
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
-        void *data = nullptr, bool callNative = false);
+        void *data = nullptr, bool callNative = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
-        void *data, bool callNative = false);
+        void *data, bool callNative = false, size_t nativeBindingsize = 0);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);

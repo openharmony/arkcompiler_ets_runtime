@@ -207,7 +207,8 @@ public:
         GetClass()->SetClassConstructor(flag);
     }
 
-    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data);
+    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
+        void *data, size_t nativeBindingsize = 0);
 
     JSTaggedValue GetFunctionExtraInfo() const;
 
