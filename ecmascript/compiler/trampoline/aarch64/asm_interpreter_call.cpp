@@ -714,10 +714,11 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
                 - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
             ASSERT(constructorOffset < 0);
             __ Ldur(temp, MemoryOperand(sp, constructorOffset));  // load constructor
-            __ Ldr(temp, MemoryOperand(temp, JSFunction::BIT_FIELD_OFFSET));
-            __ Lsr(temp.W(), temp.W(), JSFunction::FunctionKindBits::START_BIT);
+            __ Ldr(temp, MemoryOperand(temp, JSFunctionBase::METHOD_OFFSET));
+            __ Ldr(temp, MemoryOperand(temp, Method::EXTRA_LITERAL_INFO_OFFSET));
+            __ Lsr(temp.W(), temp.W(), MethodLiteral::FunctionKindBits::START_BIT);
             __ And(temp.W(), temp.W(),
-                LogicalImmediate::Create((1LU << JSFunction::FunctionKindBits::SIZE) - 1, RegWSize));
+                LogicalImmediate::Create((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, RegWSize));
             __ Cmp(temp.W(), Immediate(static_cast<int64_t>(FunctionKind::CLASS_CONSTRUCTOR)));
             __ B(Condition::LS, &getHiddenThis);  // constructor is base
             // exception branch

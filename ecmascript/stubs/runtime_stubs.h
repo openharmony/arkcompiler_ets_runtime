@@ -313,10 +313,10 @@ public:
     static void DebugPrint(int fmtMessageId, ...);
     static void DebugPrintInstruction(uintptr_t pc);
     static void FatalPrint(int fmtMessageId, ...);
-    static void MarkingBarrier([[maybe_unused]]uintptr_t argGlue, uintptr_t slotAddr,
-        Region *objectRegion, TaggedObject *value, Region *valueRegion);
+    static void MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
+        uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
-    static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, Region* region, uintptr_t addr);
+    static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x);
     static JSTaggedType FloatMod(double x, double y);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,

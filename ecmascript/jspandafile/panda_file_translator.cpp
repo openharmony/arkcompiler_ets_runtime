@@ -210,8 +210,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
             JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
             JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-            JSHandle<JSFunction> mainFunc =
-                factory->NewJSFunctionByHClass(method, hclass, FunctionKind::BASE_CONSTRUCTOR);
+            JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
 
             program->SetMainFunction(thread, mainFunc.GetTaggedValue());
             method->SetConstantPool(thread, constpool);
@@ -309,14 +308,15 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
         } else if (value.GetConstpoolType() == ConstPoolType::CLASS_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
+            methodLiteral->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
 
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
             method->SetConstantPool(thread, constpool.GetTaggedValue());
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::METHOD) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
-            methodLiteral->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
             ASSERT(methodLiteral != nullptr);
+            methodLiteral->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntry(jsPandaFile, *method);
@@ -422,8 +422,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramWithMerge(EcmaVM *vm, cons
         } else {
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
             JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(vm->GetGlobalEnv()->GetFunctionClassWithProto());
-            JSHandle<JSFunction> mainFunc =
-                factory->NewJSFunctionByHClass(method, dynclass, FunctionKind::BASE_CONSTRUCTOR);
+            JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, dynclass);
 
             program->SetMainFunction(thread, mainFunc.GetTaggedValue());
             method->SetConstantPool(thread, constpool);
@@ -514,6 +513,7 @@ void PandaFileTranslator::ParseConstPoolWithMerge(EcmaVM *vm, const JSPandaFile 
             } else if (value.GetConstpoolType() == ConstPoolType::CLASS_FUNCTION) {
                 MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
                 ASSERT(methodLiteral != nullptr);
+                methodLiteral->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
 
                 JSHandle<Method> method = factory->NewMethod(methodLiteral);
                 method->SetConstantPool(thread, constpool.GetTaggedValue());

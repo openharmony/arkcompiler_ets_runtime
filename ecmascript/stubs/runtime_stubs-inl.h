@@ -776,18 +776,19 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
 
     JSHandle<JSTaggedValue> parentPrototype;
     // hole means parent is not present
+    Method *method = Method::Cast(JSHandle<JSFunction>::Cast(ctor)->GetMethod().GetTaggedObject());
     if (parent->IsHole()) {
-        JSHandle<JSFunction>::Cast(ctor)->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
+        method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
         parentPrototype = env->GetObjectFunctionPrototype();
         parent.Update(env->GetFunctionPrototype().GetTaggedValue());
     } else if (parent->IsNull()) {
-        JSHandle<JSFunction>::Cast(ctor)->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
+        method->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
         parentPrototype = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null());
         parent.Update(env->GetFunctionPrototype().GetTaggedValue());
     } else if (!parent->IsConstructor()) {
         return RuntimeThrowTypeError(thread, "parent class is not constructor");
     } else {
-        JSHandle<JSFunction>::Cast(ctor)->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
+        method->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
         parentPrototype = JSTaggedValue::GetProperty(thread, parent,
             globalConst->GetHandledPrototypeString()).GetValue();
         if (!parentPrototype->IsECMAObject() && !parentPrototype->IsNull()) {
@@ -1673,42 +1674,35 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
         case FunctionKind::NORMAL_FUNCTION:
         case FunctionKind::BASE_CONSTRUCTOR: {
             auto hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass, kind, MemSpaceType::OLD_SPACE);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass, MemSpaceType::OLD_SPACE);
             break;
         }
         case FunctionKind::ARROW_FUNCTION: {
             auto normalClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, normalClass, kind, MemSpaceType::OLD_SPACE);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, normalClass, MemSpaceType::OLD_SPACE);
             break;
         }
         case FunctionKind::GENERATOR_FUNCTION: {
             auto generatorClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, generatorClass, kind, MemSpaceType::OLD_SPACE);
-            // 26.3.4.3 prototype
-            // Whenever a GeneratorFunction instance is created another ordinary object is also created and
-            // is the initial value of the generator function's "prototype" property.
-            JSHandle<JSFunction> objFun(env->GetObjectFunction());
-            JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
-            JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
-            jsFunc->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, generatorClass, MemSpaceType::OLD_SPACE);
             break;
         }
         case FunctionKind::ASYNC_FUNCTION: {
             auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass, kind, MemSpaceType::OLD_SPACE);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass, MemSpaceType::OLD_SPACE);
             break;
         }
         case FunctionKind::ASYNC_GENERATOR_FUNCTION: {
             auto asyncGeneratorClass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
             jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncGeneratorClass,
-                                                    kind, MemSpaceType::OLD_SPACE);
+                                                    MemSpaceType::OLD_SPACE);
             break;
         }
         case FunctionKind::ASYNC_ARROW_FUNCTION: {
             // Add hclass for async arrow function
             auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
             jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass,
-                                                    kind, MemSpaceType::OLD_SPACE);
+                                                    MemSpaceType::OLD_SPACE);
             break;
         }
         default:
@@ -1809,7 +1803,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass, FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass);
     jsFunc->SetHomeObject(thread, homeObject);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     return jsFunc.GetTaggedValue();
@@ -1873,11 +1867,13 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, c
         !(obj.GetTaggedValue().IsClassPrototype() || obj.GetTaggedValue().IsClassConstructor());
     PropertyDescriptor desc(thread, true, enumerable, true);
     if (!getter->IsUndefined()) {
-        JSHandle<JSFunction>::Cast(getter)->SetFunctionKind(FunctionKind::GETTER_FUNCTION);
+        Method *method = Method::Cast(JSHandle<JSFunction>::Cast(getter)->GetMethod().GetTaggedObject());
+        method->SetFunctionKind(FunctionKind::GETTER_FUNCTION);
         desc.SetGetter(getter);
     }
     if (!setter->IsUndefined()) {
-        JSHandle<JSFunction>::Cast(setter)->SetFunctionKind(FunctionKind::SETTER_FUNCTION);
+        Method *method = Method::Cast(JSHandle<JSFunction>::Cast(setter)->GetMethod().GetTaggedObject());
+        method->SetFunctionKind(FunctionKind::SETTER_FUNCTION);
         desc.SetSetter(setter);
     }
     JSObject::DefineOwnProperty(thread, obj, propKey, desc);

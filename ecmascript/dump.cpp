@@ -1353,9 +1353,6 @@ void JSFunction::Dump(std::ostream &os) const
     os << " - HomeObject: ";
     GetHomeObject().Dump(os);
     os << "\n";
-
-    os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
-    os << "\n";
     os << " - FunctionExtraInfo: ";
     GetFunctionExtraInfo().Dump(os);
     os << "\n";
@@ -3362,6 +3359,8 @@ void Method::Dump(std::ostream &os) const
     os << "\n";
     os << " - ConstantPool: ";
     GetConstantPool().Dump(os);
+    os << "\n";
+    os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
     os << "\n";
     os << " - CodeEntry: " << std::hex << GetCodeEntry() << "\n";
     os << "\n";

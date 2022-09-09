@@ -997,9 +997,10 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         {
             // load constructor
             __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetFunctionOffset(false)), temp);
-            __ Movl(Operand(temp, JSFunction::BIT_FIELD_OFFSET), temp);
-            __ Shr(JSFunction::FunctionKindBits::START_BIT, temp);
-            __ Andl((1LU << JSFunction::FunctionKindBits::SIZE) - 1, temp);
+            __ Movq(Operand(temp, JSFunctionBase::METHOD_OFFSET), temp);
+            __ Movq(Operand(temp, Method::EXTRA_LITERAL_INFO_OFFSET), temp);
+            __ Shr(MethodLiteral::FunctionKindBits::START_BIT, temp);
+            __ Andl((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, temp);
             __ Cmpl(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR), temp);
             __ Jbe(&getHiddenThis);  // constructor is base
             // fall through

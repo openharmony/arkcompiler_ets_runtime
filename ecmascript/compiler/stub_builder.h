@@ -406,7 +406,6 @@ public:
     GateRef GetParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
     void SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
-    GateRef GetFunctionBitFieldFromJSFunction(GateRef object);
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
     inline GateRef GetBuiltinId(GateRef method);

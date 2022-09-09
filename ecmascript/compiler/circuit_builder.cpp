@@ -457,12 +457,6 @@ GateRef CircuitBuilder::GetGlobalObject(GateRef glue)
     return Load(VariableType::JS_ANY(), glue, offset);
 }
 
-GateRef CircuitBuilder::GetFunctionBitFieldFromJSFunction(GateRef function)
-{
-    GateRef offset = IntPtr(JSFunction::BIT_FIELD_OFFSET);
-    return Load(VariableType::INT32(), function, offset);
-}
-
 GateRef CircuitBuilder::GetMethodFromFunction(GateRef function)
 {
     GateRef offset = IntPtr(JSFunctionBase::METHOD_OFFSET);

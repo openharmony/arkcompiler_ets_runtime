@@ -39,8 +39,6 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetFunctionKind(kind);
-    func->SetCallNative(false);
 
     auto globalConst = thread->GlobalConstants();
     if (HasPrototype(kind)) {
@@ -50,13 +48,18 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
             func->SetPropertyInlinedProps(thread, PROTOTYPE_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
             accessor = globalConst->GetHandledFunctionNameAccessor();
             func->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             if (kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
-                JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-                ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
                 JSHandle<JSFunction> objFun(env->GetObjectFunction());
-                JSHandle<JSObject> initialGeneratorFuncPrototype =
-                    factory->NewJSObjectByConstructor(objFun);
+                JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
                 JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
+                func->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
+            }
+            if (kind == FunctionKind::GENERATOR_FUNCTION) {
+                JSHandle<JSFunction> objFun(env->GetObjectFunction());
+                JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
+                JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
                 func->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
             }
         } else if (!JSFunction::IsClassConstructor(kind)) {  // class ctor do nothing

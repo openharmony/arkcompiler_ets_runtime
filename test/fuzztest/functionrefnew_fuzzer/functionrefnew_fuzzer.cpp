@@ -32,6 +32,9 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }
         FunctionCallback nativeFunc = FuncRefNewCallbackForTest;
         Deleter deleter = nullptr;
         FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));

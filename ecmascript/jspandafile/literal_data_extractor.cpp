@@ -93,6 +93,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 uint16_t length = std::get<uint16_t>(value);
                 auto methodLiteral = jsPandaFile->FindMethodLiteral(methodId);
                 ASSERT(methodLiteral != nullptr);
+                methodLiteral->SetFunctionKind(kind);
 
                 JSHandle<Method> method = factory->NewMethod(methodLiteral);
                 method->SetConstantPool(thread, constpool.GetTaggedValue());
@@ -243,14 +244,8 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
     }
     JSHandle<JSFunction> jsFunc =
-        factory->NewJSFunctionByHClass(method, functionClass, kind, MemSpaceType::OLD_SPACE);
+        factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
 
-    if (kind == FunctionKind::GENERATOR_FUNCTION) {
-        JSHandle<JSFunction> objFun(env->GetObjectFunction());
-        JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
-        JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
-        jsFunc->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
-    }
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
     CString moduleName = jsPandaFile->GetJSPandaFileDesc();
     CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;

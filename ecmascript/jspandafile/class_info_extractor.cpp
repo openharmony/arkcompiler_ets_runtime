@@ -291,7 +291,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSH
 
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
     JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method,
-        constructorHClass, FunctionKind::CLASS_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
+        constructorHClass, MemSpaceType::OLD_SPACE);
 
     // non-static
     nonStaticProperties->Set(thread, 0, constructor);

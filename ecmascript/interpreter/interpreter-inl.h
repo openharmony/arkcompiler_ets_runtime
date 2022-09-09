@@ -67,7 +67,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
     HANDLE_##opcode:
 #endif
 
-#define FIRST_HANDLE_OPCODE(opcode) \
+#define NOPRINT_HANDLE_OPCODE(opcode) \
     HANDLE_##opcode:
 
 #define LOG_INST() false && LOG_INTERPRETER(DEBUG)
@@ -3617,7 +3617,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
         DISPATCH(ISFALSE);
     }
-    HANDLE_OPCODE(EXCEPTION) {
+    NOPRINT_HANDLE_OPCODE(EXCEPTION) {
         FrameHandler frameHandler(thread);
         uint32_t pcOffset = panda_file::INVALID_OFFSET;
         for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
@@ -3650,13 +3650,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::nop";
         DISPATCH(NOP);
     }
-    FIRST_HANDLE_OPCODE(THROW) {
+    NOPRINT_HANDLE_OPCODE(THROW) {
         DISPATCH_THROW();
     }
-    FIRST_HANDLE_OPCODE(WIDE) {
+    NOPRINT_HANDLE_OPCODE(WIDE) {
         DISPATCH_WIDE();
     }
-    FIRST_HANDLE_OPCODE(DEPRECATED) {
+    NOPRINT_HANDLE_OPCODE(DEPRECATED) {
         DISPATCH_DEPRECATED();
     }
     HANDLE_OPCODE(THROW_PREF_NONE) {

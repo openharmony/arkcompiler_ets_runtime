@@ -844,13 +844,13 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_ASHR2DYN_PREF_V8: {
-            newOpcode = EcmaOpcode::SHR2_IMM8_V8;  // TODO: old instruction was wrong
+            newOpcode = EcmaOpcode::SHR2_IMM8_V8;  // old instruction was wrong
             *pc = static_cast<uint8_t>(newOpcode);
             *(pc + 1) = 0x00;
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_SHR2DYN_PREF_V8: {
-            newOpcode = EcmaOpcode::ASHR2_IMM8_V8;  // TODO: old instruction was wrong
+            newOpcode = EcmaOpcode::ASHR2_IMM8_V8;  // old instruction was wrong
             *pc = static_cast<uint8_t>(newOpcode);
             *(pc + 1) = 0x00;
             break;

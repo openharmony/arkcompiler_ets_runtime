@@ -180,7 +180,8 @@ class ObjectFactory {
 public:
     ObjectFactory(JSThread *thread, Heap *heap);
     ~ObjectFactory() = default;
-    JSHandle<Method> NewMethodForNativeFunction(const void *func, uint8_t builtinId = INVALID_BUILTINS_ID);
+    JSHandle<Method> NewMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                                uint8_t builtinId = INVALID_BUILTINS_ID);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
@@ -205,8 +206,7 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        uint8_t builtinId = INVALID_BUILTINS_ID);
     // use for method
-    JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method,
-                                       FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 
     JSHandle<JSFunction> NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr);
 
@@ -228,9 +228,6 @@ public:
     JSHandle<JSProxyRevocFunction> NewJSProxyRevocFunction(const JSHandle<JSProxy> &proxy);
 
     JSHandle<JSAsyncAwaitStatusFunction> NewJSAsyncAwaitStatusFunction(MethodIndex idx);
-    JSHandle<JSFunction> NewJSGeneratorFunction(const JSHandle<Method> &method);
-
-    JSHandle<JSAsyncFunction> NewAsyncFunction(const JSHandle<Method> &method);
 
     JSHandle<JSGeneratorObject> NewJSGeneratorObject(JSHandle<JSTaggedValue> generatorFunction);
 
@@ -389,7 +386,7 @@ public:
                                           bool canShareHClass = true);
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object);
     JSHandle<JSArray> CloneArrayLiteral(JSHandle<JSArray> object);
-    JSHandle<JSFunction> CloneJSFuction(JSHandle<JSFunction> obj, FunctionKind kind);
+    JSHandle<JSFunction> CloneJSFuction(JSHandle<JSFunction> func);
     JSHandle<JSFunction> CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                         bool canShareHClass);
 
@@ -426,10 +423,9 @@ public:
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
-                                                 FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-                                                 MemSpaceType type = MemSpaceType::SEMI_SPACE);
+                                               MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
-                                                 FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+                                               FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral);
 
     // used for creating jsobject by constructor
