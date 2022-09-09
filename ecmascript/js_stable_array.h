@@ -28,7 +28,7 @@ public:
     static JSTaggedValue Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
-                                double start, double insertCount, double actualDeleteCount);
+                                uint32_t start, uint32_t insertCount, uint32_t actualDeleteCount);
     static JSTaggedValue Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
@@ -43,13 +43,13 @@ public:
     static JSTaggedValue IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
                                  JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len);
     static JSTaggedValue Filter(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
-                                 EcmaRuntimeCallInfo *argv, uint32_t &k, double &toIndex);
+                                 EcmaRuntimeCallInfo *argv, uint32_t &k, uint32_t &toIndex);
     static JSTaggedValue Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
                                  EcmaRuntimeCallInfo *argv, uint32_t &k, uint32_t len);
     static JSTaggedValue Reverse(JSThread *thread, JSHandle<JSObject> thisObjHandle,
-                                 JSHandle<JSTaggedValue> thisHandle, double &lower, uint32_t len);
+                                 JSHandle<JSTaggedValue> thisHandle, int64_t &lower, uint32_t len);
     static JSTaggedValue Concat(JSThread *thread, JSHandle<JSObject> newArrayHandle,
-                                JSHandle<JSObject> thisObjHandle, double &k, double &n);
+                                JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &n);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

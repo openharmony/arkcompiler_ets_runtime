@@ -114,7 +114,7 @@ int32_t ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue>
     return compareResult == ComparisonResult::GREAT ? 1 : 0;
 }
 
-double ArrayHelper::GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
+int64_t ArrayHelper::GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
 {
     if (thisHandle->IsJSArray()) {
         return JSArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
@@ -130,7 +130,7 @@ double ArrayHelper::GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &t
     return len.GetNumber();
 }
 
-double ArrayHelper::GetArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
+int64_t ArrayHelper::GetArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
 {
     if (thisHandle->IsJSArray()) {
         return JSArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
@@ -158,7 +158,7 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
     // 5. Let sourceIndex be +0!.
     FlattenArgs tempArgs;
     tempArgs.start = args.start;
-    double sourceIndex = 0.0;
+    int64_t sourceIndex = 0;
     JSMutableHandle<JSTaggedValue> p(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> targetIndexHandle(thread, JSTaggedValue::Undefined());
