@@ -27,7 +27,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     CString entry = entryPoint.data();
     CString name = filename;
 #if ECMASCRIPT_ENABLE_MERGE_ABC
-    if (!thread->GetEcmaVM()->IsBundle()) {
+    if (!thread->GetEcmaVM()->IsBundlePack()) {
         entry = JSPandaFile::ParseOhmUrl(filename.c_str());
 #if !WIN_OR_MAC_PLATFORM
         name = JSPandaFile::MERGE_ABC_PATH;
@@ -44,9 +44,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
-    if (jsPandaFile->IsBundle()) {
-        entry = JSPandaFile::ENTRY_FUNCTION_NAME;
-    }
     bool isModule = jsPandaFile->IsModule(entry.c_str());
     if (isModule) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
@@ -54,7 +51,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         ModuleManager *moduleManager = vm->GetModuleManager();
         moduleManager->SetExecuteMode(false);
         JSHandle<SourceTextModule> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
-        if (jsPandaFile->IsBundle()) {
+        if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(name);
         } else {
             moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry.c_str());
@@ -79,20 +76,14 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
-    CString entry;
-    if (jsPandaFile->IsBundle()) {
-        entry = JSPandaFile::ENTRY_FUNCTION_NAME;
-    } else {
-        entry = entryPoint.data();
-    }
-    bool isModule = jsPandaFile->IsModule(entry.data());
+    bool isModule = jsPandaFile->IsModule(entryPoint.data());
     if (isModule) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
         EcmaVM *vm = thread->GetEcmaVM();
         ModuleManager *moduleManager = vm->GetModuleManager();
         moduleManager->SetExecuteMode(true);
         JSHandle<SourceTextModule> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
-        if (jsPandaFile->IsBundle()) {
+        if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(buffer, size, filename);
         } else {
             moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(filename, entryPoint.data());
@@ -106,7 +97,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
         SourceTextModule::Evaluate(thread, moduleRecord, buffer, size);
         return JSTaggedValue::Undefined();
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str());
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint.data());
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, const JSPandaFile *jsPandaFile,

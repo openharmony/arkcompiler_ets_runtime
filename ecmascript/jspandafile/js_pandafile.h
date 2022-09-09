@@ -94,6 +94,9 @@ public:
 
     uint32_t GetMainMethodIndex(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
+        if (IsBundlePack()) {
+            return jsRecordInfo_.begin()->second.mainMethodIndex;
+        }
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
             return info->second.mainMethodIndex;
@@ -116,9 +119,13 @@ public:
 
     void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
     {
-        auto info = jsRecordInfo_.find(recordName);
-        if (info != jsRecordInfo_.end()) {
-            info->second.mainMethodIndex = mainMethodIndex;
+        if (IsBundlePack()) {
+            jsRecordInfo_.begin()->second.mainMethodIndex = mainMethodIndex;
+        } else {
+            auto info = jsRecordInfo_.find(recordName);
+            if (info != jsRecordInfo_.end()) {
+                info->second.mainMethodIndex = mainMethodIndex;
+            }
         }
     }
 
@@ -126,6 +133,9 @@ public:
 
     int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
+        if (IsBundlePack()) {
+            return jsRecordInfo_.begin()->second.moduleRecordIdx;
+        }
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
             return info->second.moduleRecordIdx;
@@ -143,9 +153,9 @@ public:
 
     bool IsCjs(const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
-    bool IsBundle() const
+    bool IsBundlePack() const
     {
-        return isBundle_;
+        return isBundlePack_;
     }
 
     bool HasTSTypes() const
@@ -186,11 +196,18 @@ public:
         }
         return false;
     }
+
     const CUnorderedMap<CString, JSRecordInfo> &GetJSRecordInfo() const
     {
         return jsRecordInfo_;
     }
-    void checkIsBundle();
+
+    static CString ParseEntryPoint(const CString &recordName)
+    {
+        return recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
+    }
+
+    void checkIsBundlePack();
 
     CString FindrecordName(const CString &record) const;
 
@@ -215,7 +232,7 @@ private:
     bool isNewVersion_ {true};
 
     // marge abc
-    bool isBundle_ {true}; // isBundle means app compile mode is JSBundle
+    bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
 };
 }  // namespace ecmascript

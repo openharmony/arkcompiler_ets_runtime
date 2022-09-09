@@ -446,7 +446,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     if (jsPandaFile->IsModule(entryPoint.data())) {
         global = JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
         CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-        if (!jsPandaFile->IsBundle()) {
+        if (!jsPandaFile->IsBundlePack()) {
             moduleName = entryPoint.data();
         }
         JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);

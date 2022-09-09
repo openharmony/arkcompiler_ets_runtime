@@ -412,14 +412,14 @@ public:
         return workerVm;
     }
     
-    bool IsBundle() const
+    bool IsBundlePack() const
     {
-        return isBundle_;
+        return isBundlePack_;
     }
 
-    void SetBundle(bool value)
+    void SetIsBundlePack(bool value)
     {
-        isBundle_ = value;
+        isBundlePack_ = value;
     }
 
 #if !WIN_OR_MAC_PLATFORM
@@ -542,7 +542,7 @@ private:
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
     // merge abc
-    bool isBundle_ {true}; // isBundle means app compile mode is JSBundle
+    bool isBundlePack_ {true}; // isBundle means app compile mode is JSBundle
 #if !WIN_OR_MAC_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
