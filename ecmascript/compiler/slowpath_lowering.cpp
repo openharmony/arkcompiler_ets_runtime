@@ -287,10 +287,10 @@ void SlowPathLowering::Lower(GateRef gate)
         case ASYNCFUNCTIONENTER_PREF:
             LowerAsyncFunctionEnter(gate, glue);
             break;
-        case INCDYN_PREF_V8:
+        case INC_IMM8:
             LowerInc(gate, glue);
             break;
-        case DECDYN_PREF_V8:
+        case DEC_IMM8:
             LowerDec(gate, glue);
             break;
         case GETPROPITERATOR_PREF:
@@ -308,37 +308,37 @@ void SlowPathLowering::Lower(GateRef gate)
         case CLOSEITERATOR_PREF_V8:
             LowerCloseIterator(gate, glue);
             break;
-        case ADD2DYN_PREF_V8:
+        case ADD2_IMM8_V8:
             LowerAdd2(gate, glue);
             break;
-        case SUB2DYN_PREF_V8:
+        case SUB2_IMM8_V8:
             LowerSub2(gate, glue);
             break;
-        case MUL2DYN_PREF_V8:
+        case MUL2_IMM8_V8:
             LowerMul2(gate, glue);
             break;
-        case DIV2DYN_PREF_V8:
+        case DIV2_IMM8_V8:
             LowerDiv2(gate, glue);
             break;
-        case MOD2DYN_PREF_V8:
+        case MOD2_IMM8_V8:
             LowerMod2(gate, glue);
             break;
-        case EQDYN_PREF_V8:
+        case EQ_IMM8_V8:
             LowerEq(gate, glue);
             break;
-        case NOTEQDYN_PREF_V8:
+        case NOTEQ_IMM8_V8:
             LowerNotEq(gate, glue);
             break;
-        case LESSDYN_PREF_V8:
+        case LESS_IMM8_V8:
             LowerLess(gate, glue);
             break;
-        case LESSEQDYN_PREF_V8:
+        case LESSEQ_IMM8_V8:
             LowerLessEq(gate, glue);
             break;
-        case GREATERDYN_PREF_V8:
+        case GREATER_IMM8_V8:
             LowerGreater(gate, glue);
             break;
-        case GREATEREQDYN_PREF_V8:
+        case GREATEREQ_IMM8_V8:
             LowerGreaterEq(gate, glue);
             break;
         case CREATEITERRESULTOBJ_PREF_V8_V8:
@@ -371,7 +371,8 @@ void SlowPathLowering::Lower(GateRef gate)
         case THROWDYN_PREF:
             LowerThrow(gate, glue);
             break;
-        case TYPEOFDYN_PREF:
+        case TYPEOF_IMM8:
+        case TYPEOF_IMM16:
             LowerTypeof(gate, glue);
             break;
         case THROWCONSTASSIGNMENT_PREF_V8:
@@ -404,52 +405,53 @@ void SlowPathLowering::Lower(GateRef gate)
         case LDGLOBAL:
             LowerLdGlobal(gate, glue);
             break;
-        case TONUMBER_PREF_V8:
+        case TONUMBER_IMM8:
             LowerToNumber(gate, glue);
             break;
-        case NEGDYN_PREF_V8:
+        case NEG_IMM8:
             LowerNeg(gate, glue);
             break;
-        case NOTDYN_PREF_V8:
+        case NOT_IMM8:
             LowerNot(gate, glue);
             break;
-        case SHL2DYN_PREF_V8:
+        case SHL2_IMM8_V8:
             LowerShl2(gate, glue);
             break;
-        case SHR2DYN_PREF_V8:
+        case SHR2_IMM8_V8:
             LowerShr2(gate, glue);
             break;
-        case ASHR2DYN_PREF_V8:
+        case ASHR2_IMM8_V8:
             LowerAshr2(gate, glue);
             break;
-        case AND2DYN_PREF_V8:
+        case AND2_IMM8_V8:
             LowerAnd2(gate, glue);
             break;
-        case OR2DYN_PREF_V8:
+        case OR2_IMM8_V8:
             LowerOr2(gate, glue);
             break;
-        case XOR2DYN_PREF_V8:
+        case XOR2_IMM8_V8:
             LowerXor2(gate, glue);
             break;
         case DELOBJPROP_PREF_V8_V8:
             LowerDelObjProp(gate, glue);
             break;
-        case DEFINEMETHOD_PREF_ID16_IMM16_V8:
+        case DEFINEMETHOD_IMM8_ID16_IMM8:
+        case DEFINEMETHOD_IMM16_ID16_IMM8:
             LowerDefineMethod(gate, glue, jsFunc);
             break;
-        case EXPDYN_PREF_V8:
+        case EXP_IMM8_V8:
             LowerExp(gate, glue);
             break;
-        case ISINDYN_PREF_V8:
+        case ISIN_IMM8_V8:
             LowerIsIn(gate, glue);
             break;
-        case INSTANCEOFDYN_PREF_V8:
+        case INSTANCEOF_IMM8_V8:
             LowerInstanceof(gate, glue);
             break;
-        case STRICTNOTEQDYN_PREF_V8:
+        case STRICTNOTEQ_IMM8_V8:
             LowerFastStrictNotEqual(gate, glue);
             break;
-        case STRICTEQDYN_PREF_V8:
+        case STRICTEQ_IMM8_V8:
             LowerFastStrictEqual(gate, glue);
             break;
         case CREATEEMPTYARRAY_PREF:
@@ -476,13 +478,17 @@ void SlowPathLowering::Lower(GateRef gate)
         case LDBIGINT_PREF_ID32:
             LowerLdBigInt(gate, glue, jsFunc);
             break;
-        case TONUMERIC_PREF_V8:
+        case TONUMERIC_IMM8:
             LowerToNumeric(gate, glue);
             break;
         case DYNAMICIMPORT_PREF_V8:
             LowerDynamicImport(gate, glue, jsFunc);
             break;
-        case LDMODULEVAR_PREF_ID32_IMM8:
+        case LDEXTERNALMODULEVAR_IMM8:
+        case WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+            LowerExternalModule(gate, glue, jsFunc);
+            break;
+        case DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8:
             LowerLdModuleVar(gate, glue, jsFunc);
             break;
         case GETMODULENAMESPACE_PREF_ID32:
@@ -505,13 +511,13 @@ void SlowPathLowering::Lower(GateRef gate)
         case SUPERCALL_PREF_IMM16_V8:
             LowerSuperCall(gate, glue, newTarget);
             break;
-        case SUPERCALLSPREAD_PREF_V8:
+        case APPLY_IMM8_V8_V8:
             LowerSuperCallSpread(gate, glue, newTarget);
             break;
-        case ISTRUE_PREF:
+        case ISTRUE:
             LowerIsTrueOrFalse(gate, glue, true);
             break;
-        case ISFALSE_PREF:
+        case ISFALSE:
             LowerIsTrueOrFalse(gate, glue, false);
             break;
         case GETNEXTPROPNAME_PREF_V8:
@@ -577,7 +583,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case STOBJBYNAME_PREF_ID32_V8:
             LowerStObjByName(gate, glue, jsFunc);
             break;
-        case DEFINEGETTERSETTERBYVALUE_PREF_V8_V8_V8_V8:
+        case DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
             LowerDefineGetterSetterByValue(gate, glue);
             break;
         case LDOBJBYINDEX_PREF_V8_IMM32:
@@ -632,13 +638,18 @@ void SlowPathLowering::Lower(GateRef gate)
         case DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8:
             LowerDefineClassWithBuffer(gate, glue, jsFunc);
             break;
-        case DEFINEFUNCDYN_PREF_ID16_IMM16_V8:
+        case DEFINEFUNC_IMM8_ID16_IMM8:
+        case DEFINEFUNC_IMM16_ID16_IMM8:
             LowerDefineFunc(gate, glue, jsFunc);
             break;
         case COPYRESTARGS_PREF_IMM16:
             LowerCopyRestArgs(gate, glue, actualArgc);
             break;
         case DEBUGGER:
+        case LDTHISBYNAME_IMM8_ID16:
+        case LDTHISBYNAME_IMM16_ID16:
+        case STTHISBYNAME_IMM8_ID16:
+        case STTHISBYNAME_IMM16_ID16:
             break;
         default:
             break;
@@ -981,7 +992,7 @@ void SlowPathLowering::LowerCallSpread(GateRef gate, GateRef glue)
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef newGate = LowerCallRuntime(glue, id,
-        {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2)});
+        {acc_.GetValueIn(gate, 2), acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
     ReplaceHirToCall(gate, newGate);
 }
 
@@ -1845,15 +1856,15 @@ void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFu
     ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
 }
 
-void SlowPathLowering::LowerGetModuleNamespaceByIndex(GateRef gate, GateRef glue, GateRef jsFunc)
+void SlowPathLowering::LowerExternalModule(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue);
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndexOnJSFunc), { index, jsFunc }, true);
+    GateRef key = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef inner = builder_.ToTaggedInt(builder_.Int64(0));
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdModuleVarOnJSFunc), {key, inner, jsFunc}, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
@@ -3044,7 +3055,6 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFun
     DebugPrintBC(gate, glue);
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef length = acc_.GetValueIn(gate, 1);
-    GateRef v0 = acc_.GetValueIn(gate, 2);
     DEFVAlUE(result, (&builder_),
         VariableType::JS_POINTER(), GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(methodId)));
     Label defaultLabel(&builder_);
@@ -3072,7 +3082,8 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFun
         GateRef hClass = builder_.LoadHClass(*result);
         builder_.SetPropertyInlinedProps(glue, *result, hClass, builder_.ToTaggedInt(length),
             builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        builder_.SetLexicalEnvToFunction(glue, *result, v0);
+        GateRef env = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
+        builder_.SetLexicalEnvToFunction(glue, *result, env);
         builder_.SetModuleToFunction(glue, *result, builder_.GetModuleFromFunction(jsFunc));
         builder_.Jump(&successExit);
     }
@@ -3331,8 +3342,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef length = acc_.GetValueIn(gate, 1);
-    GateRef env = acc_.GetValueIn(gate, 2);
-    GateRef homeObject = acc_.GetValueIn(gate, 3);
+    GateRef homeObject = acc_.GetValueIn(gate, 2);
     GateRef result;
     DEFVAlUE(method, (&builder_), VariableType::JS_POINTER(),
              GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(methodId)));
@@ -3354,6 +3364,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
         GateRef hclass = builder_.LoadHClass(*method);
         builder_.SetPropertyInlinedProps(glue, *method, hclass, builder_.ToTaggedInt(length),
             builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+        GateRef env = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
         builder_.SetLexicalEnvToFunction(glue, *method, env);
         builder_.SetModuleToFunction(glue, *method, builder_.GetModuleFromFunction(jsFunc));
         result = *method;

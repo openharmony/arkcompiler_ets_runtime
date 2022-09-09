@@ -226,7 +226,7 @@ private:
     void LowerLdLocalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdExternalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerGetModuleNamespaceByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerExternalModule(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIteratorNext(GateRef gate, GateRef glue);
     void LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget);
