@@ -577,9 +577,9 @@ void JSNApi::InitializeIcuData(const JSRuntimeOptions &options)
 {
     std::string icuPath = options.GetIcuDataPath();
     if (icuPath == "default") {
-        if (!WIN_OR_MAC_PLATFORM) {
-            SetHwIcuDirectory();
-        }
+#if !WIN_OR_MAC_PLATFORM && !defined(PANDA_TARGET_LINUX)
+        SetHwIcuDirectory();
+#endif
     } else {
         std::string absPath;
         if (ecmascript::FileLoader::GetAbsolutePath(icuPath, absPath)) {
