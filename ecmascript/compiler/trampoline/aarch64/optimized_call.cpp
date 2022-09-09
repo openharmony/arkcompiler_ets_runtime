@@ -712,10 +712,12 @@ void OptimizedCall::JSProxyCallInternal(ExtendedAssembler *assembler, Register s
     __ Ldr(Register(X1), MemoryOperand(sp, FRAME_SLOT_SIZE)); // 8: skip env
     __ Add(X3, sp, Immediate(FRAME_SLOT_SIZE * 2)); // 2: get argv
 
-    Register proxyCallInternalId(Register(X9).W());
+    Register proxyCallInternalId(X9);
+    Register baseAddress(X8);
     Register codeAddress(X10);
+    __ Mov(baseAddress, Immediate(JSThread::GlueData::GetCOStubEntriesOffset(false)));
     __ Mov(proxyCallInternalId, Immediate(CommonStubCSigns::JsProxyCallInternal));
-    __ Add(codeAddress, X0, Immediate(JSThread::GlueData::GetCOStubEntriesOffset(false)));
+    __ Add(codeAddress, X0, baseAddress);
     __ Ldr(codeAddress, MemoryOperand(codeAddress, proxyCallInternalId, UXTW, SHIFT_OF_FRAMESLOT));
     __ Br(codeAddress);
 }

@@ -319,12 +319,17 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
 {
     switch (mode) {
         case JSCallMode::CALL_GETTER:
+        case JSCallMode::CALL_THIS_ARG0:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
         case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG1:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
+        case JSCallMode::CALL_THIS_ARG2:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
+        case JSCallMode::CALL_THIS_ARG3:
+            return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG3);
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_ENTRY: {
             Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
