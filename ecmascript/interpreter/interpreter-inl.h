@@ -1540,18 +1540,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(GETPROPITERATOR);
     }
-    // TODO
-    // HANDLE_OPCODE(ITERNEXT_IMM8_V8) {
-    //     uint16_t v0 = READ_INST_8_1();
-    //     LOG_INST() << "intrinsics::iternext"
-    //                << " v" << v0;
-    //     SAVE_PC();
-    //     JSTaggedValue iter = GET_VREG_VALUE(v0);
-    //     JSTaggedValue res = SlowRuntimeStub::IterNext(thread, iter);
-    //     INTERPRETER_RETURN_IF_ABRUPT(res);
-    //     SET_ACC(res);
-    //     DISPATCH(ITERNEXT_IMM8_V8);
-    // }
     HANDLE_OPCODE(CLOSEITERATOR_IMM8_V8) {
         uint16_t v0 = READ_INST_8_1();
         LOG_INST() << "intrinsics::closeiterator"
@@ -6229,7 +6217,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(DEPRECATED_ASYNCFUNCTIONREJECT_PREF_V8_V8_V8);
     }
-    // TODO: Implement code of 16bits ic slot bytecode
     HANDLE_OPCODE(CLOSEITERATOR_IMM16_V8) {
         uint16_t v0 = READ_INST_8_2();
         LOG_INST() << "intrinsics::closeiterator"

@@ -39,6 +39,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileNam
     if (baseFile_ == nullptr) {
         return false;
     }
+    // TODO: Support all Constpool
     JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
     if (baseConstpoolValue.IsHole()) {
         return false;

@@ -1105,7 +1105,7 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
             }
-            // TODO: add a deprecated inst to translate
+            // TODO: add a deprecated inst to translate?
             *(pc + 4) = *(pc + 4) + 1;
             break;
         }

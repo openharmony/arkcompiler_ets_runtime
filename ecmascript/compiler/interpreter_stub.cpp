@@ -30,7 +30,6 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
 
-// TODO
 #ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
 #else

@@ -626,7 +626,6 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
     __ Add(expectedNumArgs, callField.W(), Immediate(NUM_MANDATORY_JSFUNC_ARGS));
     __ Cmp(arg2.W(), expectedNumArgs);
     __ Add(argV, sp, Immediate(argoffsetSlot * FRAME_SLOT_SIZE));  // skip env and numArgs
-    // TODO: Get from method
     __ Ldr(method, MemoryOperand(Register(X5), JSFunctionBase::METHOD_OFFSET)); // get method
     __ Ldr(codeAddress, MemoryOperand(method, Method::CODE_ENTRY_OFFSET)); // get codeAddress
     __ Ldr(env, MemoryOperand(sp, 0));
