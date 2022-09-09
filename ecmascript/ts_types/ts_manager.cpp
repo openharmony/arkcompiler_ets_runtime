@@ -369,7 +369,7 @@ void TSManager::SetInferTypeTable(JSHandle<TSTypeTable> inferTable)
     mTable->Set(thread_, inferTableOffset, inferTable);
 }
 
-int TSManager::GetFunctionTypLength(GlobalTSTypeRef gt) const
+uint32_t TSManager::GetFunctionTypeLength(GlobalTSTypeRef gt) const
 {
     ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
@@ -385,6 +385,15 @@ GlobalTSTypeRef TSManager::GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index)
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
     return functionType->GetParameterTypeGT(index);
+}
+
+GlobalTSTypeRef TSManager::GetFuncThisGT(GlobalTSTypeRef gt) const
+{
+    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetThisGT();
 }
 
 GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
@@ -415,6 +424,15 @@ GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
     classInstanceType->SetGT(instanceGT);
     ASSERT(GetTypeKind(instanceGT) == TSTypeKind::CLASS_INSTANCE);
     return instanceGT;
+}
+
+GlobalTSTypeRef TSManager::GetClassType(GlobalTSTypeRef classInstanceGT) const
+{
+    ASSERT(GetTypeKind(classInstanceGT) == TSTypeKind::CLASS_INSTANCE);
+    JSHandle<JSTaggedValue> tsType = GetTSType(classInstanceGT);
+    ASSERT(tsType->IsTSClassInstanceType());
+    JSHandle<TSClassInstanceType> instanceType(tsType);
+    return instanceType->GetClassGT();
 }
 
 GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const

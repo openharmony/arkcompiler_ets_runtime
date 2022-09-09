@@ -46,6 +46,7 @@ group("ark_typeinfer_test") {
     "mul2dyn:mul2dynAotTypeInferAction",
     "newobjdynrange:newobjdynrangeAotTypeInferAction",
     "parainfer:parainferAotTypeInferAction",
+    "parainfer_class:parainfer_classAotTypeInferAction",
     "phiwithloop:phiwithloopAotTypeInferAction",
     "stconsttoglobalrecord:stconsttoglobalrecordAotTypeInferAction",
     "stglobalvar:stglobalvarAotTypeInferAction",
