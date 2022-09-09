@@ -36,6 +36,8 @@ public:
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
     static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
+    static constexpr char PATCH_FUNCTION_NAME_0[] = "patch_main_0";
+    static constexpr char PATCH_FUNCTION_NAME_1[] = "patch_main_1";
 
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
     static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
@@ -201,7 +203,6 @@ public:
     {
         return jsRecordInfo_;
     }
-
     static CString ParseEntryPoint(const CString &recordName)
     {
         return recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
@@ -212,6 +213,8 @@ public:
     CString FindrecordName(const CString &record) const;
 
     static std::string ParseOhmUrl(std::string fileName);
+    // For local merge abc, get record name from file name.
+    static std::string PUBLIC_API ParseRecordName(const std::string &fileName);
 
 private:
     void InitializeUnMergedPF();

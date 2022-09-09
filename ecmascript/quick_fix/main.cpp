@@ -24,6 +24,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/log.cpp"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -68,12 +69,14 @@ int Main(const int argc, const char **argv)
 #endif
     panda::PandArg<std::string> entrypoint("entrypoint", "_GLOBAL::func_main_0",
                                            "full name of entrypoint function or method");
+    panda::PandArg<bool> mergeAbc("merge-abc", false, "abc file is merge abc. Default: false");
     panda::PandArgParser paParser;
 
     runtimeOptions.AddOptions(&paParser);
 
     paParser.Add(&help);
     paParser.Add(&options);
+    paParser.Add(&mergeAbc);
     paParser.PushBackTail(&files);
     paParser.PushBackTail(&entrypoint);
     paParser.EnableTail();
@@ -121,6 +124,10 @@ int Main(const int argc, const char **argv)
 
         JSNApi::EnableUserUncaughtErrorHandler(vm);
 
+        bool isMergeAbc = mergeAbc.GetValue();
+        if (isMergeAbc) {
+            entry = JSPandaFile::ParseRecordName(baseFileName);
+        }
         auto res = JSNApi::Execute(vm, baseFileName, entry);
         if (!res) {
             std::cerr << "Cannot execute panda file '" << baseFileName << "' with entry '" << entry << "'" << std::endl;
@@ -133,6 +140,9 @@ int Main(const int argc, const char **argv)
             return -1;
         }
 
+        if (isMergeAbc) {
+            entry = JSPandaFile::ParseRecordName(testLoadFileName);
+        }
         res = JSNApi::Execute(vm, testLoadFileName, entry);
         if (!res) {
             std::cerr << "Cannot execute panda file '" << testLoadFileName
@@ -154,6 +164,9 @@ int Main(const int argc, const char **argv)
             return -1;
         }
 
+        if (isMergeAbc) {
+            entry = JSPandaFile::ParseRecordName(testUnloadFileName);
+        }
         res = JSNApi::Execute(vm, testUnloadFileName, entry);
         if (!res) {
             std::cerr << "Cannot execute panda file '" << testUnloadFileName
