@@ -1466,7 +1466,6 @@ void TypeLowering::LowerTypeInc(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
-
     if (!valueType.IsTSType()) {
         return;
     }
