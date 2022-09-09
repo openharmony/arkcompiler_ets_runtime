@@ -15,7 +15,6 @@
 
 #include "ecmascript/js_thread.h"
 
-#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_param_configuration.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/properties_cache.h"
@@ -231,7 +230,7 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
 
 void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
 {
-    globalStorage_->IterateWeakUsageGlobal([visitor](EcmaGlobalStorage::Node *node) {
+    globalStorage_->IterateWeakUsageGlobal([this, visitor](EcmaGlobalStorage::Node *node) {
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
             auto object = value.GetTaggedObject();
@@ -239,7 +238,13 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
             if (fwd == nullptr) {
                 // undefind
                 node->SetObject(JSTaggedValue::Undefined().GetRawData());
-                reinterpret_cast<EcmaGlobalStorage::WeakNode *>(node)->CallWeakCallback();
+                auto weakNode = reinterpret_cast<EcmaGlobalStorage::WeakNode *>(node);
+                auto secondPassCallback = weakNode->GetSecondPassCallback();
+                if (secondPassCallback) {
+                    weakNodeSecondPassCallbacks_.push_back(std::make_pair(secondPassCallback,
+                                                                          weakNode->GetReference()));
+                }
+                weakNode->CallFirstPassCallback();
             } else if (fwd != object) {
                 // update
                 node->SetObject(JSTaggedValue(fwd).GetRawData());
