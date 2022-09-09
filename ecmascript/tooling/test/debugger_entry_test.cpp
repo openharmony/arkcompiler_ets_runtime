@@ -61,5 +61,5 @@ HWTEST_P_L0(DebuggerEntryTest, DebuggerSuite)
     ASSERT_TRUE(res);
 }
 
-INSTANTIATE_TEST_CASE_P(DebugAbcTest, DebuggerEntryTest, testing::ValuesIn(GetTestList()));
+INSTANTIATE_TEST_SUITE_P(DebugAbcTest, DebuggerEntryTest, testing::ValuesIn(GetTestList()));
 }  // namespace panda::ecmascript::tooling::test
