@@ -462,8 +462,8 @@ void PandaFileTranslator::ParseConstPoolWithMerge(EcmaVM *vm, const JSPandaFile 
 #endif
                 panda_file::File::EntityId id(it.first);
                 auto foundStr = pf->GetStringData(id);
-                auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length, foundStr.is_ascii,
-                                                                MemSpaceType::OLD_SPACE);
+                auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length,
+                                                                   foundStr.is_ascii, MemSpaceType::OLD_SPACE);
                 constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), JSTaggedValue(string));
             } else if (value.GetConstpoolType() == ConstPoolType::BASE_FUNCTION) {
                 MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
@@ -1874,12 +1874,14 @@ void PandaFileTranslator::TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t i
                     break;
                 case OldBytecodeInst::Opcode::ECMA_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
                     methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
-                    index = jsPandaFile->GetOrInsertConstantPool(ConstPoolType::GENERATOR_FUNCTION, methodId, entryPoint);
+                    index = jsPandaFile->GetOrInsertConstantPool(ConstPoolType::GENERATOR_FUNCTION, methodId,
+                                                                 entryPoint);
                     FixInstructionId32(bcIns, index);
                     break;
                 case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
                     methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
-                    index = jsPandaFile->GetOrInsertConstantPool(ConstPoolType::ASYNC_GENERATOR_FUNCTION, methodId, entryPoint);
+                    index = jsPandaFile->GetOrInsertConstantPool(ConstPoolType::ASYNC_GENERATOR_FUNCTION, methodId,
+                                                                 entryPoint);
                     FixInstructionId32(bcIns, index);
                     break;
                 case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:

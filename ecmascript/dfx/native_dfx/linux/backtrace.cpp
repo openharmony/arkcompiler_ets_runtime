@@ -36,8 +36,7 @@ void PrintBacktrace(uintptr_t value)
     }
 
     LOG_ECMA(INFO) << "=====================Backtrace(" << std::hex << value <<")========================";
-    for (int i = 0; i < FRAMES_LEN; ++i)
-    {
+    for (int i = 0; i < FRAMES_LEN; ++i) {
         if (stackList[i] == nullptr) {
             break;
         }
