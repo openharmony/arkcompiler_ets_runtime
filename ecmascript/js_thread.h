@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/dfx/vm_thread_control.h"
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/mem/visitor.h"
@@ -35,7 +36,6 @@ class EcmaHandleScope;
 class EcmaVM;
 class HeapRegionAllocator;
 class PropertiesCache;
-class EcmaGlobalStorage;
 
 enum class MarkStatus : uint8_t {
     READY_TO_MARK,
@@ -268,6 +268,11 @@ public:
     JSTaggedType *GetHandleScopeStorageEnd() const
     {
         return handleScopeStorageEnd_;
+    }
+
+    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> *GetWeakNodeSecondPassCallbacks()
+    {
+        return &weakNodeSecondPassCallbacks_;
     }
 
     void SetHandleScopeStorageEnd(JSTaggedType *value)
@@ -700,6 +705,7 @@ private:
     int32_t currentHandleStorageIndex_ {-1};
     int32_t handleScopeCount_ {0};
     EcmaHandleScope *lastHandleScope_ {nullptr};
+    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> weakNodeSecondPassCallbacks_ {};
 
     PropertiesCache *propertiesCache_ {nullptr};
     EcmaGlobalStorage *globalStorage_ {nullptr};
