@@ -31,11 +31,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
                                                          const CString &descriptor, const CString &moduleFilename)
 {
     int moduleIdx = -1;
-    if (jsPandaFile->IsBundle()) {
-        moduleIdx = jsPandaFile->GetModuleRecordIdx();
-    } else {
-        moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
-    }
+    moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
     ASSERT(moduleIdx != -1);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();

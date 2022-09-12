@@ -87,6 +87,7 @@ public:
         parser->Add(&logComponents_);
         parser->Add(&maxAotMethodSize_);
         parser->Add(&abcFilelist_);
+        parser->Add(&entryPoint_);
     }
 
     bool EnableArkTools() const
@@ -652,6 +653,21 @@ public:
         return abcFilelist_.WasSet();
     }
 
+    std::string GetEntryPoint() const
+    {
+        return entryPoint_.GetValue();
+    }
+
+    void SetEntryPoint(std::string value)
+    {
+        entryPoint_.SetValue(std::move(value));
+    }
+
+    bool WasSetEntryPoint() const
+    {
+        return entryPoint_.WasSet();
+    }
+
     void ParseAbcListFile(std::vector<std::string> &moduleList) const
     {
         std::ifstream moduleFile(abcFilelist_.GetValue());
@@ -777,8 +793,10 @@ private:
         "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
     PandArg<uint32_t> maxAotMethodSize_ {"maxAotMethodSize", 32_KB,
         R"(enable aot to skip too large method. Default size: 32 KB)"};
-    PandArg<std::string> abcFilelist_ {"abc-list-file",  R"(none)",
+    PandArg<std::string> abcFilelist_ {"abc-list-file", R"(none)",
         R"(abc's list file. )"};
+    PandArg<std::string> entryPoint_ {"entry-point", R"(_GLOBAL::func_main_0)",
+        R"(full name of entrypoint function or method. )"};
 };
 }  // namespace panda::ecmascript
 

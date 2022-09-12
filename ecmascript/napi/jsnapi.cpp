@@ -544,7 +544,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
 {
     std::string entry = file;
 #if ECMASCRIPT_ENABLE_MERGE_ABC
-    if (!vm->IsBundle()) {
+    if (!vm->IsBundlePack()) {
         entry = ecmascript::JSPandaFile::ParseOhmUrl(file.c_str());
     }
 #endif
@@ -1234,7 +1234,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     ecmascript::tooling::JSPtExtractor *debugExtractor =
                                         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
-    if (!jsPandaFile->IsBundle()) {
+    if (!jsPandaFile->IsBundlePack()) {
         JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
         JSTaggedValue recordName =
             ecmascript::SourceTextModule::Cast(function->GetModule().GetTaggedObject())->GetEcmaModuleRecordName();
@@ -2474,14 +2474,14 @@ bool JSNApi::IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, c
 bool JSNApi::IsBundle([[maybe_unused]]EcmaVM *vm)
 {
 #if ECMASCRIPT_ENABLE_MERGE_ABC
-    return vm->IsBundle();
+    return vm->IsBundlePack();
 #endif
     return true;
 }
 
 void JSNApi::SetBundle(EcmaVM *vm, bool value)
 {
-    vm->SetBundle(value);
+    vm->SetIsBundlePack(value);
 }
 
 void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
