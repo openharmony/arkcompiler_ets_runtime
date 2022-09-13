@@ -25,6 +25,9 @@ void TypeLowering::RunTypeLowering()
         if (op == OpCode::JS_BYTECODE) {
             Lower(gate);
         }
+        if (acc_.IsTypedGate(gate)) {
+            LowerType(gate);
+        }
     }
 
     if (IsLogEnabled()) {
@@ -47,22 +50,22 @@ void TypeLowering::Lower(GateRef gate)
             LowerTypeNewObjDynRange(gate, glue);
             break;
         case ADD2DYN_PREF_V8:
-            LowerTypeAdd2(gate, glue);
+            // LowerTypeAdd2(gate, glue);
             break;
         case SUB2DYN_PREF_V8:
-            LowerTypeSub2(gate);
+            // LowerTypeSub2(gate);
             break;
         case MUL2DYN_PREF_V8:
-            LowerTypeMul2(gate);
+            // LowerTypeMul2(gate);
             break;
         case MOD2DYN_PREF_V8:
             LowerTypeMod2(gate, glue);
             break;
         case LESSDYN_PREF_V8:
-            LowerTypeLess(gate);
+            // LowerTypeLess(gate);
             break;
         case LESSEQDYN_PREF_V8:
-            LowerTypeLessEq(gate);
+            // LowerTypeLessEq(gate);
             break;
         case GREATERDYN_PREF_V8:
             LowerTypeGreater(gate);
@@ -109,15 +112,14 @@ void TypeLowering::LowerType(GateRef gate)
 
 void TypeLowering::LowerTypeConvert(GateRef gate)
 {
+    Environment env(gate, circuit_, &builder_);
     GateAccessor acc(circuit_);
-    auto mergeType = acc.GetBitField(gate);
-    auto temp = mergeType >> CircuitBuilder::FROM_TYPE_SHIFT;
-    auto typeLeft = GateType(static_cast<uint32_t>(temp));
-    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << CircuitBuilder::FROM_TYPE_SHIFT)));
-    if (typeRight.IsNumberType()) {
+    auto leftType = GetLeftType(gate);
+    auto rightType = GetRightType(gate);
+    if (rightType.IsNumberType()) {
         GateRef value = acc_.GetValueIn(gate, 0);
-        if (typeLeft.IsPrimitiveType() && !typeLeft.IsStringType()) {
-            LowerPrimitiveToNumber(gate, value, typeLeft);
+        if (leftType.IsPrimitiveType() && !leftType.IsStringType()) {
+            LowerPrimitiveToNumber(gate, value, leftType);
         }
         return;
     }
@@ -125,7 +127,6 @@ void TypeLowering::LowerTypeConvert(GateRef gate)
 
 void TypeLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType)
 {
-    std::map<GateRef, size_t> stateGateMap;
     Label exit(&builder_);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     if (srcType.IsBooleanType()) {
@@ -147,48 +148,160 @@ void TypeLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType src
     } else {
         UNREACHABLE();
     }
-
     builder_.Bind(&exit);
-    for (auto [state, index] : stateGateMap) {
-        acc_.ReplaceIn(state, index, builder_.GetState());
-    }
-    std::vector<GateRef> successControl;
-    GenerateSuccessMerge(successControl);
-    ReplaceHirToFastPathCfg(dst, *result, successControl);
+    ReplaceGateToSubCfg(dst, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerTypeCheck(GateRef gate)
 {
     auto type = GateType(static_cast<uint32_t>(acc_.GetBitField(gate)));
     if (type.IsNumberType()) {
-        // lower number check
+        LowerNumberCheck(gate);
         return;
     }
 }
 
+void TypeLowering::LowerNumberCheck(GateRef gate)
+{
+    auto value = acc_.GetValueIn(gate, 0);
+    auto typeCheck = builder_.TaggedIsNumber(value);
+    acc_.UpdateAllUses(gate, typeCheck);
+    acc_.DeleteGate(gate);
+}
+
 void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 {
+    Environment env(gate, circuit_, &builder_);
     auto opGate = acc_.GetValueIn(gate, 2);
     auto op = static_cast<TypedBinOp>(acc_.GetBitField(opGate));
     switch (op) {
         case TypedBinOp::TYPED_ADD:
             LowerTypeAdd(gate);
             break;
+        case TypedBinOp::TYPED_SUB:
+            LowerTypeSub(gate);
+            break;
+        case TypedBinOp::TYPED_MUL:
+            LowerTypeMul(gate);
+            break;
+        case TypedBinOp::TYPED_LESS:
+            LowerTypeLess(gate);
+            break;
+        case TypedBinOp::TYPED_LESSEQ:
+            LowerTypeLessEq(gate);
+            break;
         default:
             break;
     }
 }
 
+GateType TypeLowering::GetLeftType(GateRef gate)
+{
+    auto operandTypes = acc_.GetBitField(gate);
+    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
+    return GateType(static_cast<uint32_t>(temp));
+}
+
+GateType TypeLowering::GetRightType(GateRef gate)
+{
+    auto operandTypes = acc_.GetBitField(gate);
+    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
+    return GateType(static_cast<uint32_t>(operandTypes ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS)));
+}
+
 void TypeLowering::LowerTypeAdd(GateRef gate)
 {
-    auto mergeType = acc_.GetBitField(gate);
-    auto temp = mergeType >> CircuitBuilder::FROM_TYPE_SHIFT;
-    auto typeLeft = GateType(static_cast<uint32_t>(temp));
-    auto typeRight = GateType(static_cast<uint32_t>(mergeType ^ (temp << CircuitBuilder::FROM_TYPE_SHIFT)));
-    if (typeLeft.IsNumberType() && typeRight.IsNumberType()) {
-        // lower number add
+    auto leftType = GetLeftType(gate);
+    auto rightType = GetRightType(gate);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        LowerNumberAdd(gate);
         return;
     }
+}
+
+void TypeLowering::LowerTypeSub(GateRef gate)
+{
+    auto leftType = GetLeftType(gate);
+    auto rightType = GetRightType(gate);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        LowerNumberSub(gate);
+        return;
+    }
+}
+
+void TypeLowering::LowerTypeMul(GateRef gate)
+{
+    auto leftType = GetLeftType(gate);
+    auto rightType = GetRightType(gate);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        LowerNumberMul(gate);
+        return;
+    }
+}
+
+void TypeLowering::LowerTypeLess(GateRef gate)
+{
+    auto leftType = GetLeftType(gate);
+    auto rightType = GetRightType(gate);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        LowerNumberLess(gate);
+        return;
+    }
+}
+
+void TypeLowering::LowerTypeLessEq(GateRef gate)
+{
+    auto leftType = GetLeftType(gate);
+    auto rightType = GetRightType(gate);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        LowerNumberLessEq(gate);
+        return;
+    }
+}
+
+void TypeLowering::LowerNumberAdd(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = FastAddOrSubOrMul2Number<OpCode::ADD>(left, right);
+    ReplaceGateToSubCfg(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberSub(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = FastAddOrSubOrMul2Number<OpCode::SUB>(left, right);
+    ReplaceGateToSubCfg(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberMul(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = FastAddOrSubOrMul2Number<OpCode::MUL>(left, right);
+    ReplaceGateToSubCfg(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberLess(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = Less2Number(left, right);
+    ReplaceGateToSubCfg(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberLessEq(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = LessEq2Number(left, right);
+    ReplaceGateToSubCfg(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap)
@@ -220,6 +333,23 @@ void TypeLowering::GenerateSuccessMerge(std::vector<GateRef> &successControl)
     GateRef dependSelect = builder_.GetDepend();
     successControl.emplace_back(stateMerge);
     successControl.emplace_back(dependSelect);
+}
+
+void TypeLowering::ReplaceGateToSubCfg(GateRef gate, GateRef state, GateRef depend, GateRef value)
+{
+    auto uses = acc_.Uses(gate);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        if (acc_.IsStateIn(useIt)) {
+            useIt = acc_.ReplaceIn(useIt, state);
+        } else if (acc_.IsDependIn(useIt)) {
+            useIt = acc_.ReplaceIn(useIt, depend);
+        } else if (acc_.IsValueIn(useIt)) {
+            useIt = acc_.ReplaceIn(useIt, value);
+        } else {
+            UNREACHABLE();
+        }
+    }
+    acc_.DeleteGate(gate);
 }
 
 void TypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl)
@@ -309,6 +439,105 @@ GateRef TypeLowering::LowerCallRuntime(GateRef glue, int index, const std::vecto
         GateRef result = builder_.Call(cs, glue, target, dependEntry_, args);
         return result;
     }
+}
+
+template<OpCode::Op Op>
+GateRef TypeLowering::FastAddOrSubOrMul2Number(GateRef left, GateRef right)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+    DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+
+    Label exit(&builder_);
+    Label doFloatOp(&builder_);
+    Label doIntOp(&builder_);
+    Label leftIsIntRightIsDouble(&builder_);
+    Label rightIsInt(&builder_);
+    Label rightIsDouble(&builder_);
+    {
+        Label leftIsInt(&builder_);
+        Label leftIsDouble(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+        builder_.Bind(&leftIsInt);
+        {
+            builder_.Branch(builder_.TaggedIsInt(right), &doIntOp, &leftIsIntRightIsDouble);
+            builder_.Bind(&leftIsIntRightIsDouble);
+            {
+                doubleLeft = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+                doubleRight = builder_.TaggedCastToDouble(right);
+                builder_.Jump(&doFloatOp);
+            }
+        }
+        builder_.Bind(&leftIsDouble);
+        {
+            builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+            builder_.Bind(&rightIsInt);
+            {
+                doubleLeft = builder_.TaggedCastToDouble(left);
+                doubleRight = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+                builder_.Jump(&doFloatOp);
+            }
+            builder_.Bind(&rightIsDouble);
+            {
+                doubleLeft = builder_.TaggedCastToDouble(left);
+                doubleRight = builder_.TaggedCastToDouble(right);
+                builder_.Jump(&doFloatOp);
+            }
+        }
+    }
+    builder_.Bind(&doIntOp);
+    {
+        Label overflow(&builder_);
+        Label notOverflow(&builder_);
+        // handle left is int and right is int
+        GateRef res = BinaryOp<Op, MachineType::I64>(builder_.TaggedCastToInt64(left),
+                                                     builder_.TaggedCastToInt64(right));
+        GateRef max = builder_.Int64(INT32_MAX);
+        GateRef min = builder_.Int64(INT32_MIN);
+        Label greaterZero(&builder_);
+        Label notGreaterZero(&builder_);
+        builder_.Branch(builder_.Int32GreaterThan(builder_.TaggedCastToInt32(left), builder_.Int32(0)),
+                        &greaterZero, &notGreaterZero);
+        builder_.Bind(&greaterZero);
+        {
+            builder_.Branch(builder_.Int64GreaterThan(res, max), &overflow, &notOverflow);
+        }
+        builder_.Bind(&notGreaterZero);
+        {
+            Label lessZero(&builder_);
+            builder_.Branch(builder_.Int32LessThan(builder_.TaggedCastToInt32(left), builder_.Int32(0)),
+                            &lessZero, &notOverflow);
+            builder_.Bind(&lessZero);
+            builder_.Branch(builder_.Int64LessThan(res, min), &overflow, &notOverflow);
+        }
+        builder_.Bind(&overflow);
+        {
+            GateRef newDoubleLeft = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+            GateRef newDoubleRight = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+            GateRef middleRet = BinaryOp<Op, MachineType::F64>(newDoubleLeft, newDoubleRight);
+            result = DoubleToTaggedDoublePtr(middleRet);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&notOverflow);
+        {
+            result = builder_.ToTaggedIntPtr(res);
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&doFloatOp);
+    {
+        // Other situations
+        auto res = BinaryOp<Op, MachineType::F64>(*doubleLeft, *doubleRight);
+        result = DoubleToTaggedDoublePtr(res);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 template<OpCode::Op Op>
@@ -410,6 +639,160 @@ GateRef TypeLowering::FastAddOrSubOrMul(GateRef left, GateRef right)
         // Other situations
         auto res = BinaryOp<Op, MachineType::F64>(*doubleLeft, *doubleRight);
         result = DoubleToTaggedDoublePtr(res);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef TypeLowering::Less2Number(GateRef left, GateRef right)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    Label leftIsInt(&builder_);
+    Label leftOrRightNotInt(&builder_);
+    Label leftLessRight(&builder_);
+    Label leftGreaterEqRight(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    builder_.Bind(&leftIsInt);
+    {
+        Label rightIsInt(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        builder_.Bind(&rightIsInt);
+        {
+            GateRef intLeft = builder_.TaggedCastToInt32(left);
+            GateRef intRight = builder_.TaggedCastToInt32(right);
+            builder_.Branch(builder_.Int32LessThan(intLeft, intRight), &leftLessRight, &leftGreaterEqRight);
+        }
+    }
+    builder_.Bind(&leftOrRightNotInt);
+    {
+        // fast path
+        DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
+        DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
+        Label leftIsInt1(&builder_);
+        Label leftNotInt1(&builder_);
+        Label exit1(&builder_);
+        Label exit2(&builder_);
+        Label rightIsInt1(&builder_);
+        Label rightNotInt1(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+        builder_.Bind(&leftIsInt1);
+        {
+            doubleLeft = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+            builder_.Jump(&exit1);
+        }
+        builder_.Bind(&leftNotInt1);
+        {
+            doubleLeft = builder_.TaggedCastToDouble(left);
+            builder_.Jump(&exit1);
+        }
+        builder_.Bind(&exit1);
+        builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+        builder_.Bind(&rightIsInt1);
+        {
+            doubleRight = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+            builder_.Jump(&exit2);
+        }
+        builder_.Bind(&rightNotInt1);
+        {
+            doubleRight = builder_.TaggedCastToDouble(right);
+            builder_.Jump(&exit2);
+        }
+        builder_.Bind(&exit2);
+        builder_.Branch(builder_.DoubleLessThan(*doubleLeft, *doubleRight), &leftLessRight,
+                        &leftGreaterEqRight);
+    }
+    builder_.Bind(&leftLessRight);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&leftGreaterEqRight);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef TypeLowering::LessEq2Number(GateRef left, GateRef right)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label leftIsInt(&builder_);
+    Label leftOrRightNotInt(&builder_);
+    Label leftLessEqRight(&builder_);
+    Label leftGreaterRight(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    builder_.Bind(&leftIsInt);
+    {
+        Label rightIsInt(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        builder_.Bind(&rightIsInt);
+        {
+            GateRef intLeft = builder_.TaggedCastToInt32(left);
+            GateRef intRight = builder_.TaggedCastToInt32(right);
+            builder_.Branch(builder_.Int32LessThanOrEqual(intLeft, intRight), &leftLessEqRight, &leftGreaterRight);
+        }
+    }
+    builder_.Bind(&leftOrRightNotInt);
+    {
+        // fast path
+        DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
+        DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
+        Label leftIsInt1(&builder_);
+        Label leftNotInt1(&builder_);
+        Label exit1(&builder_);
+        Label exit2(&builder_);
+        Label rightIsInt1(&builder_);
+        Label rightNotInt1(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+        builder_.Bind(&leftIsInt1);
+        {
+            doubleLeft = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+            builder_.Jump(&exit1);
+        }
+        builder_.Bind(&leftNotInt1);
+        {
+            doubleLeft = builder_.TaggedCastToDouble(left);
+            builder_.Jump(&exit1);
+        }
+        builder_.Bind(&exit1);
+        builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+        builder_.Bind(&rightIsInt1);
+        {
+            doubleRight = ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+            builder_.Jump(&exit2);
+        }
+        builder_.Bind(&rightNotInt1);
+        {
+            doubleRight = builder_.TaggedCastToDouble(right);
+            builder_.Jump(&exit2);
+        }
+        builder_.Bind(&exit2);
+        builder_.Branch(builder_.DoubleLessThanOrEqual(*doubleLeft, *doubleRight), &leftLessEqRight,
+                        &leftGreaterRight);
+    }
+    builder_.Bind(&leftLessEqRight);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&leftGreaterRight);
+    {
+        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1160,7 +1543,7 @@ void TypeLowering::LowerTypeMod2(GateRef gate, GateRef glue)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeLess(GateRef gate)
+void TypeLowering::LowerTypeLess2(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1193,7 +1576,7 @@ void TypeLowering::LowerTypeLess(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeLessEq(GateRef gate)
+void TypeLowering::LowerTypeLessEq2(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1296,7 +1679,6 @@ void TypeLowering::LowerTypeEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT(acc_.GetGateType(left).IsTSType() && acc_.GetGateType(right).IsTSType());
 
     std::map<GateRef, size_t> stateGateMap;
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
@@ -1324,7 +1706,6 @@ void TypeLowering::LowerTypeNotEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT(acc_.GetGateType(left).IsTSType() && acc_.GetGateType(right).IsTSType());
 
     std::map<GateRef, size_t> stateGateMap;
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
@@ -1371,7 +1752,6 @@ void TypeLowering::LowerTypeDiv2(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType rightType = acc_.GetGateType(right);
-    ASSERT(leftType.IsTSType() && rightType.IsTSType());
 
     if (!leftType.IsNumberType() || !rightType.IsNumberType()) {
         return;

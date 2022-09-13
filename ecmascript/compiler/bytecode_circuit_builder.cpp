@@ -2414,10 +2414,9 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
             pcIter += curInfo.offset;
         }
     }
-    std::reverse(instList.begin(), instList.end());
     GateType type = GateType::AnyType();
     auto tmpAcc = acc;
-    for (auto pcIter = instList.begin(); pcIter != instList.end(); pcIter++) { // upper bound
+    for (auto pcIter = instList.rbegin(); pcIter != instList.rend(); pcIter++) { // upper bound
         auto curInfo = GetBytecodeInfo(*pcIter);
         // original bc use acc as input && current bc use acc as output
         bool isTransByAcc = tmpAcc && curInfo.accOut;

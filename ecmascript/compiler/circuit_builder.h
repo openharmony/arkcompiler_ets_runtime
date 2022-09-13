@@ -446,7 +446,7 @@ public:
     inline void SetDepend(GateRef depend);
     inline void SetState(GateRef state);
     // type bits shift
-    static const int FROM_TYPE_SHIFT = 32;
+    static const int OPRAND_TYPE_BITS = 32;
 
 private:
     Circuit *circuit_ {nullptr};

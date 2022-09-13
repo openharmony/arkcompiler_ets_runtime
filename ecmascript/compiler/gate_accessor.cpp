@@ -207,6 +207,11 @@ bool GateAccessor::IsSchedulable(GateRef gate) const
     return GetOpCode(gate).IsSchedulable();
 }
 
+bool GateAccessor::IsTypedGate(GateRef gate) const
+{
+    return GetOpCode(gate).IsTypedGate();
+}
+
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -311,15 +316,11 @@ size_t GateAccessor::GetInValueCount(GateRef gate) const
     return circuit_->LoadGatePtr(gate)->GetInValueCount();
 }
 
-void GateAccessor::ReplaceAllDepends(GateRef gate, GateRef replaceDependIn)
+void GateAccessor::UpdateAllUses(GateRef oldIn, GateRef newIn)
 {
-    auto uses = Uses(gate);
-    for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
-        size_t dependStartIndex = circuit_->LoadGatePtr(*useIt)->GetStateCount();
-        size_t dependEndIndex = circuit_->LoadGatePtr(*useIt)->GetDependCount() + dependStartIndex;
-        if (useIt.GetIndex() >= dependStartIndex && useIt.GetIndex() < dependEndIndex) {
-            circuit_->ModifyIn(*useIt, useIt.GetIndex(), replaceDependIn);
-        }
+    auto uses = Uses(oldIn);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        useIt = ReplaceIn(useIt, newIn);
     }
 }
 
@@ -373,6 +374,14 @@ void GateAccessor::SetMachineType(GateRef gate, MachineType type)
 GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, GateType type) const
 {
     return circuit_->GetConstantGate(bitValue, bitfield, type);
+}
+
+bool GateAccessor::IsStateIn(const UseIterator &useIt) const
+{
+    size_t stateStartIndex = 0;
+    size_t stateEndIndex = stateStartIndex + GetStateCount(*useIt);
+    size_t index = useIt.GetIndex();
+    return (index >= stateStartIndex && index < stateEndIndex);
 }
 
 bool GateAccessor::IsDependIn(const UseIterator &useIt) const

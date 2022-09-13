@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
+#include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/compiler/type_inference/type_infer.h"
 #include "ecmascript/compiler/type_lowering.h"
 #include "ecmascript/compiler/verifier.h"
@@ -88,6 +89,19 @@ public:
             bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
             TypeInfer typeInfer(builder, data->GetCircuit(), tsManager, enableLog);
             typeInfer.TraverseCircuit();
+        }
+        return true;
+    }
+};
+
+class TSTypeLoweringPass {
+public:
+    bool Run(PassData *data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg, TSManager *tsManager)
+    {
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TSTypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog);
+        if (builder->HasTypes()) {
+            lowering.RunTSTypeLowering();
         }
         return true;
     }

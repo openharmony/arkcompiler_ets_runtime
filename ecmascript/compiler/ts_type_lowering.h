@@ -38,7 +38,19 @@ private:
         return enableLog_;
     }
     void Lower(GateRef gate);
-
+    void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
+    void GenerateSuccessMerge(std::vector<GateRef> &successControl);
+    void ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl);
+    void LowerTypeAdd2Dyn(GateRef gate);
+    void LowerTypeSub2Dyn(GateRef gate);
+    void LowerTypeMul2Dyn(GateRef gate);
+    void LowerTypeLess2Dyn(GateRef gate);
+    void LowerTypeLessEq2Dyn(GateRef gate);
+    void SpeculateNumberAdd(GateRef gate);
+    void SpeculateNumberSub(GateRef gate);
+    void SpeculateNumberMul(GateRef gate);
+    void SpeculateNumberLess(GateRef gate);
+    void SpeculateNumberLessEq(GateRef gate);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
