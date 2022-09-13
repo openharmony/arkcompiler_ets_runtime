@@ -237,7 +237,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
         UNREACHABLE();
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
-                                                           vm_->GetNativeAreaAllocator(), size);
+                                                           vm_->GetNativeAreaAllocator(), false, size);
     array->SetArrayBufferData(thread_, pointer);
 }
 
