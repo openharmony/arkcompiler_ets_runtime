@@ -68,6 +68,16 @@ public:
         return isDebugMode_;
     }
 
+    void SetMixedDebugEnabled(bool enabled)
+    {
+        isMixedDebugEnabled_ = enabled;
+    }
+
+    bool IsMixedDebugEnabled() const
+    {
+        return isMixedDebugEnabled_;
+    }
+
     void SetDebuggerHandler(ProtocolHandler *debuggerHandler)
     {
         debuggerHandler_ = debuggerHandler;
@@ -112,6 +122,7 @@ public:
 
 private:
     bool isDebugMode_ {false};
+    bool isMixedDebugEnabled_ { false };
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
     NotificationManager *notificationManager_ {nullptr};

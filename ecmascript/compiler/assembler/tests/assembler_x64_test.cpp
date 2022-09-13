@@ -236,7 +236,6 @@ HWTEST_F_L0(AssemblerX64Test, Emit1)
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0x00U);
 
-    // ba 05 00 00 00 movq    $JUMP_SIZE_PREF_IMM16_V8, %rdx
     __ Movq(0x5, rdx);
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0xBAU);

@@ -29,16 +29,17 @@ JSSharedMemoryManager::~JSSharedMemoryManager()
     }
 }
 
-void JSSharedMemoryManager::CreateOrLoad(void **pointer, size_t size)
+bool JSSharedMemoryManager::CreateOrLoad(void **pointer, size_t size)
 {
     if (*pointer != nullptr) {
         if (loadedJSSharedMemory_.find((uint64_t)*pointer) != loadedJSSharedMemory_.end()) {
             IncreaseRefSharedMemory(*pointer);
         }
-        return;
+        return false;
     }
     *pointer = AllocateBuffer(size);
     InsertSharedMemory(*pointer);
+    return true;
 }
 
 void JSSharedMemoryManager::InsertSharedMemory(const void *pointer)

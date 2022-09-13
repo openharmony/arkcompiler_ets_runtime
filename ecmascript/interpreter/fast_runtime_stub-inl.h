@@ -741,9 +741,9 @@ JSTaggedValue FastRuntimeStub::FastGetPropertyByIndex(JSThread *thread, JSTagged
     return result;
 }
 
-JSTaggedValue FastRuntimeStub::NewLexicalEnvDyn(JSThread *thread, ObjectFactory *factory, uint16_t numVars)
+JSTaggedValue FastRuntimeStub::NewLexicalEnv(JSThread *thread, ObjectFactory *factory, uint16_t numVars)
 {
-    INTERPRETER_TRACE(thread, NewLexicalEnvDyn);
+    INTERPRETER_TRACE(thread, NewLexicalEnv);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     LexicalEnv *newEnv = factory->InlineNewLexicalEnv(numVars);
     if (UNLIKELY(newEnv == nullptr)) {

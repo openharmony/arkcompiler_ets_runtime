@@ -77,7 +77,7 @@ class CjsModuleCache;
 class SlowRuntimeStub;
 class RequireManager;
 struct CJSInfo;
-class JSPatchManager;
+class QuickFixManager;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -376,9 +376,9 @@ public:
         return resolveBufferCallback_;
     }
 
-    void SetConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool);
+    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index, int32_t total = 0);
 
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile);
+    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
 
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {
@@ -395,20 +395,47 @@ public:
         exceptionBCList_.clear();
     }
 
-    bool IsBundle() const
+    void WorkersetInfo(uint32_t tid, EcmaVM *workerVm)
     {
-        return isBundle_;
+        WorkerList_.emplace(tid, workerVm);
     }
 
-    void SetBundle(bool value)
+    EcmaVM *GetWorkerVm(uint32_t tid) const
     {
-        isBundle_ = value;
+        EcmaVM *workerVm = nullptr;
+        if (!WorkerList_.empty()) {
+            auto iter = WorkerList_.find(tid);
+            if (iter != WorkerList_.end()) {
+                workerVm = iter->second;
+            }
+        }
+        return workerVm;
+    }
+    
+    bool IsBundlePack() const
+    {
+        return isBundlePack_;
+    }
+
+    void SetIsBundlePack(bool value)
+    {
+        isBundlePack_ = value;
     }
 
 #if !WIN_OR_MAC_PLATFORM
     void DeleteHeapProfile();
     HeapProfilerInterface *GetOrNewHeapProfile();
 #endif
+
+    void SetAssetPath(const CString &assetPath)
+    {
+        assetPath_ = assetPath;
+    }
+
+    CString GetAssetPath() const
+    {
+        return assetPath_;
+    }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
@@ -430,9 +457,9 @@ public:
     // For Internal Native MethodLiteral.
     JSTaggedValue GetMethodByIndex(MethodIndex idx);
 
-    JSPatchManager *GetPatchManager() const
+    QuickFixManager *GetQuickFixManager() const
     {
-        return patchManager_;
+        return quickFixManager_;
     }
 protected:
 
@@ -503,7 +530,7 @@ private:
     CString frameworkAbcFileName_;
     JSTaggedValue frameworkProgram_ {JSTaggedValue::Hole()};
     const JSPandaFile *frameworkPandaFile_ {nullptr};
-    CMap<const JSPandaFile *, JSTaggedValue> cachedConstpools_ {};
+    CMap<const JSPandaFile *, CVector<JSTaggedValue>> cachedConstpools_ {};
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
@@ -515,10 +542,11 @@ private:
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
     // merge abc
-    bool isBundle_ {true}; // isBundle means app compile mode is JSBundle
+    bool isBundlePack_ {true}; // isBundle means app compile mode is JSBundle
 #if !WIN_OR_MAC_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
+    CString assetPath_;
 
     // Registered Callbacks
     PromiseRejectCallback promiseRejectCallback_ {nullptr};
@@ -547,7 +575,7 @@ private:
     CVector<JSTaggedValue> internalNativeMethods_;
 
     // For repair patch.
-    JSPatchManager *patchManager_;
+    QuickFixManager *quickFixManager_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;
@@ -555,6 +583,7 @@ private:
     friend class ValueSerializer;
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
+    CMap<uint32_t, EcmaVM *> WorkerList_;
 };
 }  // namespace ecmascript
 }  // namespace panda

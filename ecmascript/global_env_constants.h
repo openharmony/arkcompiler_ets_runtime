@@ -37,6 +37,7 @@ class JSThread;
     V(JSTaggedValue, FreeObjectWithTwoFieldClass, FREE_OBJECT_WITH_TWO_FIELD_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, StringClass, STRING_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX, ecma_roots_class)                                                 \
+    V(JSTaggedValue, ConstantPoolClass, CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, DictionaryClass, DICTIONARY_CLASS_INDEX, ecma_roots_class)                                       \
     V(JSTaggedValue, BigIntClass, BIGINT_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, JSNativePointerClass, JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                           \
@@ -101,10 +102,10 @@ class JSThread;
     V(JSTaggedValue, JSAPITreeSetIteratorClass, JS_API_TREE_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, LinkedNode, LINKED_NODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, RBTreeNode, RB_TREENODE_CLASS_INDEX, ecma_roots_class)                                           \
-    V(JSTaggedValue, JSAPIIteratorFuncDynClass, JS_API_ITERATOR_FUNC_DYN_CLASS_INDEX, ecma_roots_class)               \
-    V(JSTaggedValue, JSAPIAsyncIteratorFuncDynClass, JS_API_ASYNCITERATOR_FUNC_DYN_CLASS_INDEX, ecma_roots_class)     \
+    V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)                     \
+    V(JSTaggedValue, JSAPIAsyncIteratorFuncHClass, JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
-    V(JSTaggedValue, ObjectDynClass, OBJECT_DYN_CLASS_INDEX, initial_object_dynclass)                                 \
+    V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, MethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)
 
@@ -444,9 +445,9 @@ public:
 
     const JSTaggedValue *EndSlot() const;
 
-    void Init(JSThread *thread, JSHClass *dynClassClass);
+    void Init(JSThread *thread, JSHClass *hClass);
 
-    void InitRootsClass(JSThread *thread, JSHClass *dynClassClass);
+    void InitRootsClass(JSThread *thread, JSHClass *hClass);
     void InitGlobalConstantSpecial(JSThread *thread);
 
     void InitGlobalConstant(JSThread *thread);

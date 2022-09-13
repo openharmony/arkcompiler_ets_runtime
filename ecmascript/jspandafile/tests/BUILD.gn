@@ -22,6 +22,7 @@ host_unittest_action("JSPandaFileTest") {
 
   sources = [
     # test file
+    "js_pandafile_manager_test.cpp",
     "js_pandafile_test.cpp",
   ]
 

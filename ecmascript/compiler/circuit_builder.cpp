@@ -148,6 +148,30 @@ GateRef CircuitBuilder::Arguments(size_t index)
                                  GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::TypeCheck(GateType type, GateRef gate) {
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CHECK), static_cast<uint64_t>(type.GetType()),
+                                 {gate}, GateType::NJSValue());
+}
+
+GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
+                                            std::vector<GateRef> inList) {
+    // get BinaryOpCode from a constant gate
+    auto bin = Int8(static_cast<int8_t>(binOp));
+    inList.emplace_back(bin);
+    // merge two expected types of valueIns
+    uint64_t operandTypes = (static_cast<uint64_t>(typeLeft.GetType()) << OPRAND_TYPE_BITS) |
+                          static_cast<uint64_t>(typeRight.GetType());
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_BINARY_OP), type, operandTypes, inList, GateType::AnyType());
+}
+
+GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
+                                    const std::vector<GateRef>& inList) {
+    // merge types of valueIns before and after convertion
+    uint64_t operandTypes = (static_cast<uint64_t>(typeFrom.GetType()) << OPRAND_TYPE_BITS) |
+                          static_cast<uint64_t>(typeTo.GetType());
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CONVERT), type, operandTypes, inList, GateType::AnyType());
+}
+
 GateRef CircuitBuilder::Int8(int8_t val)
 {
     return GetCircuit()->GetConstantGate(MachineType::I8, val, GateType::NJSValue());
@@ -418,16 +442,19 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::IsUtf16String(GateRef string)
+{
+    // compressedStringsEnabled fixed to true constant
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    return Int32Equal(
+        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32(EcmaString::STRING_UNCOMPRESSED));
+}
+
 GateRef CircuitBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(cmpCfg_->Is32Bit()));
     return Load(VariableType::JS_ANY(), glue, offset);
-}
-
-GateRef CircuitBuilder::GetFunctionBitFieldFromJSFunction(GateRef function)
-{
-    GateRef offset = IntPtr(JSFunction::BIT_FIELD_OFFSET);
-    return Load(VariableType::INT32(), function, offset);
 }
 
 GateRef CircuitBuilder::GetMethodFromFunction(GateRef function)
@@ -442,26 +469,45 @@ GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, offset);
 }
 
-GateRef CircuitBuilder::FunctionIsResolved(GateRef function)
+GateRef CircuitBuilder::GetLengthFromString(GateRef value)
+{
+    GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    return Int32LSR(len, Int32(2));  // 2 : 2 means len must be right shift 2 bits
+}
+
+GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
 {
     Label subentry(env_);
     SubCfgEntry(&subentry);
+    Label noRawHashcode(env_);
     Label exit(env_);
-    Label isUndefined(env_);
-    Label notUndefined(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), True());
-    Branch(TaggedIsUndefined(function), &isUndefined, &notUndefined);
-    Bind(&isUndefined);
+    DEFVAlUE(hashcode, env_, VariableType::INT32(), Int32(0));
+    hashcode = Load(VariableType::INT32(), value, IntPtr(EcmaString::HASHCODE_OFFSET));
+    Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
+    Bind(&noRawHashcode);
     {
+        hashcode = TaggedCastToInt32(CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }));
+        Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }
-    Bind(&notUndefined);
+    Bind(&exit);
+    auto ret = *hashcode;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    Label isHeapObject(env_);
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
     {
-        GateRef bitfield = GetFunctionBitFieldFromJSFunction(function);
-        result = NotEqual(Int32And(Int32LSR(bitfield,
-                                            Int32(JSFunction::ResolvedBits::START_BIT)),
-                                   Int32((1LU << JSFunction::ResolvedBits::SIZE) - 1)),
-                          Int32(0));
+        result = Int32Equal(GetObjectType(LoadHClass(obj)),
+                            Int32(static_cast<int32_t>(JSType::BIGINT)));
         Jump(&exit);
     }
     Bind(&exit);
@@ -470,32 +516,10 @@ GateRef CircuitBuilder::FunctionIsResolved(GateRef function)
     return ret;
 }
 
-void CircuitBuilder::SetResolvedToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef bitfield = GetFunctionBitFieldFromJSFunction(function);
-    GateRef mask = Int32(~(((1<<JSFunction::ResolvedBits::SIZE) - 1) << JSFunction::ResolvedBits::START_BIT));
-    GateRef result = Int32Or(Int32And(bitfield, mask),
-        Int32LSL(ZExtInt1ToInt32(value), Int32(JSFunction::ResolvedBits::START_BIT)));
-    Store(VariableType::INT32(), glue, function, IntPtr(JSFunction::BIT_FIELD_OFFSET), result);
-}
-
-void CircuitBuilder::SetConstPoolToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef method = GetMethodFromFunction(function);
-    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
-    Store(VariableType::INT64(), glue, method, offset, value);
-}
-
 void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::LEXICAL_ENV_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value);
-}
-
-void CircuitBuilder::SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef offset = IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET);
-    Store(VariableType::INT64(), glue, function, offset, value);
 }
 
 GateRef CircuitBuilder::GetLexicalEnv(GateRef function)

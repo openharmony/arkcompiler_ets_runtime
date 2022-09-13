@@ -48,7 +48,7 @@ JSTaggedValue BuiltinsArrayBuffer::ArrayBufferConstructor(EcmaRuntimeCallInfo *a
     JSHandle<JSTaggedValue> lengthHandle = GetCallArg(argv, 0);
     JSTaggedNumber lenNum = JSTaggedValue::ToIndex(thread, lengthHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double length = lenNum.GetNumber();
+    uint64_t length = lenNum.GetNumber();
     return AllocateArrayBuffer(thread, newTarget, length);
 }
 
@@ -215,7 +215,7 @@ JSTaggedValue BuiltinsArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
 
 // 24.1.1.1 AllocateArrayBuffer(constructor, byteLength)
 JSTaggedValue BuiltinsArrayBuffer::AllocateArrayBuffer(JSThread *thread, const JSHandle<JSTaggedValue> &newTarget,
-                                                       double byteLength)
+                                                       uint64_t byteLength)
 {
     BUILTINS_API_TRACE(thread, ArrayBuffer, AllocateArrayBuffer);
     /**
@@ -228,18 +228,16 @@ JSTaggedValue BuiltinsArrayBuffer::AllocateArrayBuffer(JSThread *thread, const J
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(arrBufFunc), newTarget);
     // 2. ReturnIfAbrupt
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 3. Assert: byteLength is a positive integer.
-    ASSERT(JSTaggedValue(byteLength).IsInteger());
-    ASSERT(byteLength >= 0);
     // 4. Let block be CreateByteDataBlock(byteLength).
     if (byteLength > INT_MAX) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Out of range", JSTaggedValue::Exception());
     }
+    uint32_t arrayByteLength = static_cast<uint32_t>(byteLength);
     JSHandle<JSArrayBuffer> arrayBuffer(obj);
     // 6. Set obj’s [[ArrayBufferData]] internal slot to block.
-    factory->NewJSArrayBufferData(arrayBuffer, byteLength);
+    factory->NewJSArrayBufferData(arrayBuffer, arrayByteLength);
     // 7. Set obj’s [[ArrayBufferByteLength]] internal slot to byteLength.
-    arrayBuffer->SetArrayBufferByteLength(static_cast<uint32_t>(byteLength));
+    arrayBuffer->SetArrayBufferByteLength(arrayByteLength);
     // 8. Return obj.
     return arrayBuffer.GetTaggedValue();
 }

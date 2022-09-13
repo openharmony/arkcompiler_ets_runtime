@@ -38,6 +38,7 @@ class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
 class STWYoungGC;
+class JSNativePointer;
 
 enum class MarkType : uint8_t {
     MARK_YOUNG,
@@ -216,7 +217,7 @@ public:
     // Non-movable
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size);
-    inline TaggedObject *AllocateDynClassClass(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
     // Huge
     inline TaggedObject *AllocateHugeObject(JSHClass *hclass, size_t size);
     inline TaggedObject *AllocateHugeObject(size_t size);
@@ -420,6 +421,23 @@ public:
 
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
 
+    void IncreaseNativeBindingSize(bool nonMovable, size_t size);
+    void IncreaseNativeBindingSize(JSNativePointer *object);
+    void ResetNativeBindingSize()
+    {
+        activeSemiSpace_->ResetNativeBindingSize();
+        nonNewSpaceNativeBindingSize_ = 0;
+    }
+
+    size_t GetNativeBindingSize() const
+    {
+        return activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
+    }
+
+    size_t GetNonNewSpaceNativeBindingSize() const
+    {
+        return nonNewSpaceNativeBindingSize_;
+    }
 private:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
@@ -535,6 +553,8 @@ private:
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
+    size_t nonNewSpaceNativeBindingSize_{0};
+    size_t globalSpaceNativeLimit_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
     bool clearTaskFinished_ {true};

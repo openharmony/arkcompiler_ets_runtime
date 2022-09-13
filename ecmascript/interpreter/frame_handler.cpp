@@ -21,7 +21,6 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
-#include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript {
 FrameHandler::FrameHandler(const JSThread *thread)

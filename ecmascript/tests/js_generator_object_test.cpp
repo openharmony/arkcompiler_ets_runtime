@@ -83,8 +83,8 @@ HWTEST_F_L0(JSGeneratorObjectTest, GeneratorValidate_003)
     auto factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
     JSHandle<JSHClass> genClass =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_GENERATOR_OBJECT, env->GetGeneratorFunctionPrototype());
-    TaggedObject *genObjectHeader = factory->NewDynObject(genClass);
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_GENERATOR_OBJECT, env->GetGeneratorFunctionPrototype());
+    TaggedObject *genObjectHeader = factory->NewObject(genClass);
     JSHandle<JSGeneratorObject> genObj(thread, JSGeneratorObject::Cast(genObjectHeader));
     JSGeneratorState state = JSGeneratorObject::GeneratorValidate(thread, JSHandle<JSTaggedValue>::Cast(genObj));
     EXPECT_EQ(state, JSGeneratorState::SUSPENDED_YIELD);

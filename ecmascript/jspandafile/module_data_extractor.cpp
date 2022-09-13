@@ -31,11 +31,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
                                                          const CString &descriptor, const CString &moduleFilename)
 {
     int moduleIdx = -1;
-    if (jsPandaFile->IsBundle()) {
-        moduleIdx = jsPandaFile->GetModuleRecordIdx();
-    } else {
-        moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
-    }
+    moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
     ASSERT(moduleIdx != -1);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
@@ -78,10 +74,6 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
     mda.EnumerateLocalExportEntry(thread, moduleRecord);
     mda.EnumerateIndirectExportEntry(thread, requestModuleArray, moduleRecord);
     mda.EnumerateStarExportEntry(thread, requestModuleArray, moduleRecord);
-
-    if (mda.GetNumExportEntry() <= SourceTextModule::DEFAULT_ARRAY_CAPACITY) {
-        moduleRecord->SetModes(ModuleModes::ARRAYMODE);
-    }
 }
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, const CString &descriptor)

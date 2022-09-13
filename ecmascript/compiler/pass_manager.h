@@ -40,7 +40,7 @@ private:
     std::string triple_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC
-    CompilerLog *log_ {nullptr};
+    const CompilerLog *log_ {nullptr};
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
 };

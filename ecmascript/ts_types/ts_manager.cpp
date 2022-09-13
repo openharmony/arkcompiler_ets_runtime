@@ -369,7 +369,7 @@ void TSManager::SetInferTypeTable(JSHandle<TSTypeTable> inferTable)
     mTable->Set(thread_, inferTableOffset, inferTable);
 }
 
-int TSManager::GetFunctionTypLength(GlobalTSTypeRef gt) const
+uint32_t TSManager::GetFunctionTypeLength(GlobalTSTypeRef gt) const
 {
     ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
@@ -385,6 +385,15 @@ GlobalTSTypeRef TSManager::GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index)
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
     return functionType->GetParameterTypeGT(index);
+}
+
+GlobalTSTypeRef TSManager::GetFuncThisGT(GlobalTSTypeRef gt) const
+{
+    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetThisGT();
 }
 
 GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
@@ -415,6 +424,15 @@ GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
     classInstanceType->SetGT(instanceGT);
     ASSERT(GetTypeKind(instanceGT) == TSTypeKind::CLASS_INSTANCE);
     return instanceGT;
+}
+
+GlobalTSTypeRef TSManager::GetClassType(GlobalTSTypeRef classInstanceGT) const
+{
+    ASSERT(GetTypeKind(classInstanceGT) == TSTypeKind::CLASS_INSTANCE);
+    JSHandle<JSTaggedValue> tsType = GetTSType(classInstanceGT);
+    ASSERT(tsType->IsTSClassInstanceType());
+    JSHandle<TSClassInstanceType> instanceType(tsType);
+    return instanceType->GetClassGT();
 }
 
 GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
@@ -515,6 +533,50 @@ std::string TSManager::GetPrimitiveStr(const GlobalTSTypeRef &gt) const
             return "bigint";
         default:
             UNREACHABLE();
+    }
+}
+
+void TSManager::SortConstantPoolInfos()
+{
+    JSHandle<TaggedArray> oldConstantPoolInfos = JSHandle<TaggedArray>(uintptr_t(&constantPoolInfo_));
+
+    uint32_t len = oldConstantPoolInfos->GetLength();
+    std::vector<std::pair<uint32_t, uint32_t>> indexTable;
+    uint32_t tableLen = len / CONSTANTPOOL_INFO_ITEM_SIZE;
+    indexTable.reserve(tableLen);
+
+    for (uint32_t i = 0; i < len; i += CONSTANTPOOL_INFO_ITEM_SIZE) {
+        EcmaString *key = EcmaString::Cast(oldConstantPoolInfos->Get(i).GetTaggedObject());
+        indexTable.emplace_back(std::make_pair(key->GetHashcode(), indexTable.size()));
+    }
+
+    std::sort(indexTable.begin(), indexTable.end(), [](std::pair<uint32_t, uint32_t> first,
+    std::pair<uint32_t, uint32_t> second) {
+        return first.first < second.first;
+    });
+
+    uint32_t nowIdx = 0;
+    uint32_t changeIdx = 0;
+    uint32_t tempIdx = 0;
+    JSThread* thread = vm_->GetJSThread();
+    for (uint32_t i = 0; i < tableLen; ++i) {
+        nowIdx = i;
+        JSTaggedValue tempKey = oldConstantPoolInfos->Get(nowIdx * CONSTANTPOOL_INFO_ITEM_SIZE);
+        JSTaggedValue tempValue = oldConstantPoolInfos->Get(nowIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1);
+
+        changeIdx = i;
+        while (nowIdx != indexTable[changeIdx].second) {
+            tempIdx = indexTable[changeIdx].second;
+            oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE,
+                                      oldConstantPoolInfos->Get(tempIdx * CONSTANTPOOL_INFO_ITEM_SIZE));
+            oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1,
+                                      oldConstantPoolInfos->Get(tempIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1));
+            indexTable[changeIdx].second = changeIdx;
+            changeIdx = tempIdx;
+        }
+        oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE, tempKey);
+        oldConstantPoolInfos->Set(thread, changeIdx * CONSTANTPOOL_INFO_ITEM_SIZE + 1, tempValue);
+        indexTable[changeIdx].second = changeIdx;
     }
 }
 

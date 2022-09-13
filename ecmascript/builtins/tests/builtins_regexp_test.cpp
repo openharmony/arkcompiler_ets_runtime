@@ -66,7 +66,7 @@ JSTaggedValue CreateBuiltinsRegExpObjByPatternAndFlags(JSThread *thread, const J
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> regexp(env->GetRegExpFunction());
     JSHandle<JSObject> globalObject(thread, env->GetGlobalObject());
-    // make dyn_runtime_call_info
+    // make ecma_runtime_call_info
     // 8 : test case
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*regexp), 8);
     ecmaRuntimeCallInfo->SetFunction(regexp.GetTaggedValue());

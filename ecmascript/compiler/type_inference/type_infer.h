@@ -29,6 +29,8 @@ namespace panda::ecmascript::tooling {
 namespace panda::ecmascript::kungfu {
 class TypeInfer {
 public:
+    using JSPtExtractor = tooling::JSPtExtractor;
+
     TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, TSManager *tsManager, bool enableLog)
         : builder_(builder), circuit_(circuit), gateAccessor_(circuit),
           tsManager_(tsManager), enableLog_(enableLog) {}
@@ -52,16 +54,16 @@ private:
     bool SetBooleanType(GateRef gate);
     bool InferLdUndefined(GateRef gate);
     bool InferLdNull(GateRef gate);
-    bool InferLdaiDyn(GateRef gate);
-    bool InferFLdaiDyn(GateRef gate);
+    bool InferLdai(GateRef gate);
+    bool InferFLdai(GateRef gate);
     bool InferLdSymbol(GateRef gate);
-    bool InferThrowDyn(GateRef gate);
-    bool InferTypeOfDyn(GateRef gate);
-    bool InferAdd2Dyn(GateRef gate);
+    bool InferThrow(GateRef gate);
+    bool InferTypeOf(GateRef gate);
+    bool InferAdd2(GateRef gate);
     bool InferLdObjByIndex(GateRef gate);
     bool InferLdGlobalVar(GateRef gate);
     bool InferReturnUndefined(GateRef gate);
-    bool InferReturnDyn(GateRef gate);
+    bool InferReturn(GateRef gate);
     bool InferLdObjByName(GateRef gate);
     bool InferNewObject(GateRef gate);
     bool SetStGlobalBcType(GateRef gate);
@@ -70,6 +72,7 @@ private:
     bool InferLdObjByValue(GateRef gate);
     bool InferGetNextPropName(GateRef gate);
     bool InferDefineGetterSetterByValue(GateRef gate);
+    bool InferNewObjApply(GateRef gate);
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
 
@@ -91,9 +94,16 @@ private:
         return flag;
     }
 
+    // tools used for debug type problems, will be enabled by each option:
+    // --compiler-log && --mlist-for-log
+    // --assert-types
+    // --print-any-types
+    void PrintAllGatesTypes() const;
     void Verify() const;
     void TypeCheck(GateRef gate) const;
-    void PrintType(GateRef gate) const;
+    void FilterAnyTypeGates() const;
+
+    std::string CollectGateTypeLogInfo(GateRef gate, JSPtExtractor *debugExtractor, const std::string &logPreFix) const;
 
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
@@ -102,28 +112,6 @@ private:
     bool enableLog_ {false};
     std::map<uint32_t, GateType> stringIdToGateType_;
     friend class TypeFilter;
-};
-
-class TypeFilter {
-public:
-    using JSPtExtractor = tooling::JSPtExtractor;
-
-    TypeFilter(TypeInfer *infer)
-        : infer_(infer), circuit_(infer->circuit_), gateAccessor_(infer->gateAccessor_), builder_(infer->builder_),
-          methodLiteral_(builder_->GetMethod()) {}
-    ~TypeFilter() = default;
-
-    void Run() const;
-
-private:
-    void PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, const std::string &sourceFileName,
-                          const std::string &functionName) const;
-
-    TypeInfer *infer_ {nullptr};
-    Circuit *circuit_ {nullptr};
-    GateAccessor gateAccessor_;
-    BytecodeCircuitBuilder *builder_ {nullptr};
-    const MethodLiteral *methodLiteral_ {nullptr};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H

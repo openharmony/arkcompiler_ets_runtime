@@ -60,6 +60,7 @@ static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
 
 using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
+using QuickFixQueryCallBack = bool (*)(std::string, std::string &, void **, size_t);
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
@@ -536,9 +537,9 @@ public:
 using NativePointerCallback = void (*)(void* value, void* hint);
 class PUBLIC_API NativePointerRef : public JSValueRef {
 public:
-    static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer);
+    static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize = 0);
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack,
-                                       void *data);
+                                       void *data, size_t nativeBindingsize = 0);
     void *Value();
 };
 
@@ -694,16 +695,16 @@ public:
     void SetNativePointerField(int32_t index,
                                void *nativePointer = nullptr,
                                NativePointerCallback callBack = nullptr,
-                               void *data = nullptr);
+                               void *data = nullptr, size_t nativeBindingsize = 0);
 };
 
 using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 class PUBLIC_API FunctionRef : public ObjectRef {
 public:
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
-        void *data = nullptr, bool callNative = false);
+        void *data = nullptr, bool callNative = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
-        void *data, bool callNative = false);
+        void *data, bool callNative = false, size_t nativeBindingsize = 0);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
@@ -1169,6 +1170,8 @@ public:
     static bool StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
     static bool StopDebugger(EcmaVM *vm);
+    static bool IsMixedDebugEnabled(const EcmaVM *vm);
+    static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
@@ -1186,12 +1189,20 @@ public:
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
+    static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+
     static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
     static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                           const std::string &baseFileName);
     static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
+    // check whether the exception is caused by quickfix methods.
+    static bool IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName);
+    // register quickfix query function.
+    static void RegisterQuickFixQueryFunc(EcmaVM *vm, QuickFixQueryCallBack callBack);
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
+    static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
+
 private:
     static int vmCount_;
     static bool initialize_;

@@ -421,7 +421,7 @@ public:
 
     void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile);
     bool hasLoaded(const JSPandaFile *jsPandaFile);
-    void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func);
+    void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);
     void LoadSnapshotFile();
     kungfu::ArkStackMapParser* GetStackMapParser() const;

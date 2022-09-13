@@ -55,7 +55,7 @@ protected:
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
         JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
-        JSHandle<JSHClass> dequeClass = factory->NewEcmaDynClass(JSAPIDeque::SIZE, JSType::JS_API_DEQUE, proto);
+        JSHandle<JSHClass> dequeClass = factory->NewEcmaHClass(JSAPIDeque::SIZE, JSType::JS_API_DEQUE, proto);
         JSHandle<JSAPIDeque> jsDeque = JSHandle<JSAPIDeque>::Cast(factory->NewJSObject(dequeClass));
         JSHandle<TaggedArray> newElements = factory->NewTaggedArray(JSAPIDeque::DEFAULT_CAPACITY_LENGTH);
         jsDeque->SetFirst(0);

@@ -2119,8 +2119,8 @@ JSTaggedValue BuiltinsString::ThisStringValue(JSThread *thread, JSTaggedValue va
         return value;
     }
     if (value.IsECMAObject()) {
-        auto jshClass = value.GetTaggedObject()->GetClass();
-        if (jshClass->GetObjectType() == JSType::JS_PRIMITIVE_REF) {
+        auto jshclass = value.GetTaggedObject()->GetClass();
+        if (jshclass->GetObjectType() == JSType::JS_PRIMITIVE_REF) {
             JSTaggedValue primitive = JSPrimitiveRef::Cast(value.GetTaggedObject())->GetValue();
             if (primitive.IsString()) {
                 return primitive;

@@ -267,14 +267,14 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeArrayList(JSThread *thread)
     // ArrayList.prototype
     JSHandle<JSObject> prototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> arrayListFuncPrototypeValue(prototype);
-    // ArrayList.prototype_or_dynclass
-    JSHandle<JSHClass> arrayListInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPIArrayList::SIZE, JSType::JS_API_ARRAY_LIST, arrayListFuncPrototypeValue);
+    // ArrayList.prototype_or_hclass
+    JSHandle<JSHClass> arrayListInstanceClass =
+        factory->NewEcmaHClass(JSAPIArrayList::SIZE, JSType::JS_API_ARRAY_LIST, arrayListFuncPrototypeValue);
     // ArrayList() = new Function()
     JSHandle<JSTaggedValue> arrayListFunction(NewContainerConstructor(
         thread, prototype, ContainersArrayList::ArrayListConstructor, "ArrayList", FuncLength::ZERO));
     JSHandle<JSFunction>::Cast(arrayListFunction)->SetFunctionPrototype(thread,
-                                                                        arrayListInstanceDynclass.GetTaggedValue());
+                                                                        arrayListInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -323,11 +323,11 @@ void ContainersPrivate::InitializeArrayListIterator(JSThread *thread, const JSHa
                                                     GlobalEnvConstants *globalConst)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // Iterator.dynclass
-    JSHandle<JSHClass> iteratorFuncDynclass =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
+    // Iterator.hclass
+    JSHandle<JSHClass> iteratorFuncHClass =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
     // ArrayListIterator.prototype
-    JSHandle<JSObject> arrayListIteratorPrototype(factory->NewJSObject(iteratorFuncDynclass));
+    JSHandle<JSObject> arrayListIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // Iterator.prototype.next()
     SetFrozenFunction(thread, arrayListIteratorPrototype, "next", JSAPIArrayListIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, arrayListIteratorPrototype, "ArrayList Iterator");
@@ -341,13 +341,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> funcPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> mapFuncPrototypeValue(funcPrototype);
-    JSHandle<JSHClass> lightWeightMapInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPILightWeightMap::SIZE, JSType::JS_API_LIGHT_WEIGHT_MAP, mapFuncPrototypeValue);
+    JSHandle<JSHClass> lightWeightMapInstanceClass =
+        factory->NewEcmaHClass(JSAPILightWeightMap::SIZE, JSType::JS_API_LIGHT_WEIGHT_MAP, mapFuncPrototypeValue);
     JSHandle<JSTaggedValue> lightWeightMapFunction(NewContainerConstructor(
         thread, funcPrototype, ContainersLightWeightMap::LightWeightMapConstructor, "LightWeightMap",
         FuncLength::ZERO));
     JSHandle<JSFunction>::Cast(lightWeightMapFunction)->
-                               SetFunctionPrototype(thread, lightWeightMapInstanceDynclass.GetTaggedValue());
+                               SetFunctionPrototype(thread, lightWeightMapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -395,9 +395,9 @@ void ContainersPrivate::InitializeLightWeightMapIterator(JSThread *thread)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorDynclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_ITERATOR,
+    JSHandle<JSHClass> iteratorClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR,
                                                                    env->GetIteratorPrototype());
-    JSHandle<JSObject> lightWeightMapIteratorPrototype(factory->NewJSObject(iteratorDynclass));
+    JSHandle<JSObject> lightWeightMapIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(thread, lightWeightMapIteratorPrototype, "next", JSAPILightWeightMapIterator::Next,
                       FuncLength::ONE);
     SetStringTagSymbol(thread, env, lightWeightMapIteratorPrototype, "LightWeightMap Iterator");
@@ -413,13 +413,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
     // LightWeightSet.prototype
     JSHandle<JSObject> funcPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> funcPrototypeValue(funcPrototype);
-    // LightWeightSet.prototype_or_dynclass
-    JSHandle<JSHClass> lightweightSetInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPILightWeightSet::SIZE, JSType::JS_API_LIGHT_WEIGHT_SET, funcPrototypeValue);
+    // LightWeightSet.prototype_or_hclass
+    JSHandle<JSHClass> lightweightSetInstanceClass =
+        factory->NewEcmaHClass(JSAPILightWeightSet::SIZE, JSType::JS_API_LIGHT_WEIGHT_SET, funcPrototypeValue);
     JSHandle<JSTaggedValue> lightweightSetFunction(
         NewContainerConstructor(thread, funcPrototype, ContainersLightWeightSet::LightWeightSetConstructor,
                                 "LightWeightSet", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(lightweightSetFunction)->SetFunctionPrototype(thread, lightweightSetInstanceDynclass.
+    JSHandle<JSFunction>::Cast(lightweightSetFunction)->SetFunctionPrototype(thread, lightweightSetInstanceClass.
                                                                              GetTaggedValue());
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -460,9 +460,9 @@ void ContainersPrivate::InitializeLightWeightSetIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    JSHandle<JSHClass> iteratorDynclass = JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncDynClass().
+    JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncHClass().
                                                              GetObject<JSHClass>());
-    JSHandle<JSObject> lightWeightSetIteratorPrototype(factory->NewJSObject(iteratorDynclass));
+    JSHandle<JSObject> lightWeightSetIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(
         thread, lightWeightSetIteratorPrototype, "next", JSAPILightWeightSetIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, lightWeightSetIteratorPrototype, "LightWeightSet Iterator");
@@ -477,13 +477,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeMap(JSThread *thread)
     // TreeMap.prototype
     JSHandle<JSObject> mapFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> mapFuncPrototypeValue(mapFuncPrototype);
-    // TreeMap.prototype_or_dynclass
-    JSHandle<JSHClass> mapInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPITreeMap::SIZE, JSType::JS_API_TREE_MAP, mapFuncPrototypeValue);
+    // TreeMap.prototype_or_hclass
+    JSHandle<JSHClass> mapInstanceClass =
+        factory->NewEcmaHClass(JSAPITreeMap::SIZE, JSType::JS_API_TREE_MAP, mapFuncPrototypeValue);
     // TreeMap() = new Function()
     JSHandle<JSTaggedValue> mapFunction(NewContainerConstructor(
         thread, mapFuncPrototype, ContainersTreeMap::TreeMapConstructor, "TreeMap", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(mapFunction)->SetFunctionPrototype(thread, mapInstanceDynclass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(mapFunction)->SetFunctionPrototype(thread, mapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -532,12 +532,12 @@ void ContainersPrivate::InitializeTreeMapIterator(JSThread *thread)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // Iterator.dynclass
-    JSHandle<JSHClass> iteratorDynclass =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
+    // Iterator.hclass
+    JSHandle<JSHClass> iteratorClass =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
 
     // TreeMapIterator.prototype
-    JSHandle<JSObject> mapIteratorPrototype(factory->NewJSObject(iteratorDynclass));
+    JSHandle<JSObject> mapIteratorPrototype(factory->NewJSObject(iteratorClass));
     // TreeIterator.prototype.next()
     SetFrozenFunction(thread, mapIteratorPrototype, "next", JSAPITreeMapIterator::Next, FuncLength::ZERO);
     SetStringTagSymbol(thread, env, mapIteratorPrototype, "TreeMap Iterator");
@@ -552,13 +552,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeSet(JSThread *thread)
     // TreeSet.prototype
     JSHandle<JSObject> setFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> setFuncPrototypeValue(setFuncPrototype);
-    // TreeSet.prototype_or_dynclass
-    JSHandle<JSHClass> setInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPITreeSet::SIZE, JSType::JS_API_TREE_SET, setFuncPrototypeValue);
+    // TreeSet.prototype_or_hclass
+    JSHandle<JSHClass> setInstanceClass =
+        factory->NewEcmaHClass(JSAPITreeSet::SIZE, JSType::JS_API_TREE_SET, setFuncPrototypeValue);
     // TreeSet() = new Function()
     JSHandle<JSTaggedValue> setFunction(NewContainerConstructor(
         thread, setFuncPrototype, ContainersTreeSet::TreeSetConstructor, "TreeSet", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(setFunction)->SetFunctionPrototype(thread, setInstanceDynclass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(setFunction)->SetFunctionPrototype(thread, setInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -604,12 +604,12 @@ void ContainersPrivate::InitializeTreeSetIterator(JSThread *thread)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // Iterator.dynclass
-    JSHandle<JSHClass> iteratorDynclass =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
+    // Iterator.hclass
+    JSHandle<JSHClass> iteratorClass =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
 
     // TreeSetIterator.prototype
-    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorDynclass));
+    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorClass));
     // TreeSetIterator.prototype.next()
     SetFrozenFunction(thread, setIteratorPrototype, "next", JSAPITreeSetIterator::Next, FuncLength::ZERO);
     SetStringTagSymbol(thread, env, setIteratorPrototype, "TreeSet Iterator");
@@ -624,14 +624,14 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
     // PlainArray.prototype
     JSHandle<JSObject> plainArrayFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> plainArrayFuncPrototypeValue(plainArrayFuncPrototype);
-    // PlainArray.prototype_or_dynclass
-    JSHandle<JSHClass> plainArrayInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPIPlainArray::SIZE, JSType::JS_API_PLAIN_ARRAY, plainArrayFuncPrototypeValue);
+    // PlainArray.prototype_or_hclass
+    JSHandle<JSHClass> plainArrayInstanceClass =
+        factory->NewEcmaHClass(JSAPIPlainArray::SIZE, JSType::JS_API_PLAIN_ARRAY, plainArrayFuncPrototypeValue);
     JSHandle<JSTaggedValue> plainArrayFunction(
         NewContainerConstructor(thread, plainArrayFuncPrototype, ContainersPlainArray::PlainArrayConstructor,
                                 "PlainArray", FuncLength::ZERO));
     JSHandle<JSFunction>::Cast(plainArrayFunction)->SetFunctionPrototype(thread,
-                                                                         plainArrayInstanceDynclass.GetTaggedValue());
+                                                                         plainArrayInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -681,10 +681,10 @@ void ContainersPrivate::InitializePlainArrayIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    JSHandle<JSHClass> iteratorDynclass = JSHandle<JSHClass>(thread, globalConst->
-                                                             GetHandledJSAPIIteratorFuncDynClass().
+    JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>(thread, globalConst->
+                                                             GetHandledJSAPIIteratorFuncHClass().
                                                              GetObject<JSHClass>());
-    JSHandle<JSObject> plainarrayIteratorPrototype(factory->NewJSObject(iteratorDynclass));
+    JSHandle<JSObject> plainarrayIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(thread, plainarrayIteratorPrototype, "next", JSAPIPlainArrayIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, plainarrayIteratorPrototype, "PlainArray Iterator");
     globalConst->SetConstant(ConstantIndex::PLAIN_ARRAY_ITERATOR_PROTOTYPE_INDEX,
@@ -698,13 +698,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
     // Stack.prototype
     JSHandle<JSObject> stackFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> stackFuncPrototypeValue(stackFuncPrototype);
-    // Stack.prototype_or_dynclass
-    JSHandle<JSHClass> stackInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPIStack::SIZE, JSType::JS_API_STACK, stackFuncPrototypeValue);
+    // Stack.prototype_or_hclass
+    JSHandle<JSHClass> stackInstanceClass =
+        factory->NewEcmaHClass(JSAPIStack::SIZE, JSType::JS_API_STACK, stackFuncPrototypeValue);
     // Stack() = new Function()
     JSHandle<JSTaggedValue> stackFunction(NewContainerConstructor(
         thread, stackFuncPrototype, ContainersStack::StackConstructor, "Stack", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(stackFunction)->SetFunctionPrototype(thread, stackInstanceDynclass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(stackFunction)->SetFunctionPrototype(thread, stackInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -740,10 +740,10 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
 void ContainersPrivate::InitializeStackIterator(JSThread *thread, GlobalEnvConstants *globalConst)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorFuncDynclass = JSHandle<JSHClass>(thread, globalConst->
-                        GetHandledJSAPIIteratorFuncDynClass().GetObject<JSHClass>());
+    JSHandle<JSHClass> iteratorFuncHClass = JSHandle<JSHClass>(thread, globalConst->
+                        GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
     // StackIterator.prototype
-    JSHandle<JSObject> stackIteratorPrototype(factory->NewJSObject(iteratorFuncDynclass));
+    JSHandle<JSObject> stackIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // Iterator.prototype.next()
     SetFrozenFunction(thread, stackIteratorPrototype, "next", JSAPIStackIterator::Next, FuncLength::ONE);
     globalConst->SetConstant(ConstantIndex::STACK_ITERATOR_PROTOTYPE_INDEX, stackIteratorPrototype.GetTaggedValue());
@@ -756,13 +756,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
     // Vector.prototype
     JSHandle<JSObject> prototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> vectorFuncPrototypeValue(prototype);
-    // Vector.prototype_or_dynclass
-    JSHandle<JSHClass> vectorInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPIVector::SIZE, JSType::JS_API_VECTOR, vectorFuncPrototypeValue);
+    // Vector.prototype_or_hclass
+    JSHandle<JSHClass> vectorInstanceClass =
+        factory->NewEcmaHClass(JSAPIVector::SIZE, JSType::JS_API_VECTOR, vectorFuncPrototypeValue);
     // Vector() = new Function()
     JSHandle<JSTaggedValue> vectorFunction(NewContainerConstructor(
         thread, prototype, ContainersVector::VectorConstructor, "Vector", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(vectorFunction)->SetFunctionPrototype(thread, vectorInstanceDynclass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(vectorFunction)->SetFunctionPrototype(thread, vectorInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -818,10 +818,10 @@ void ContainersPrivate::InitializeVectorIterator(JSThread *thread, const JSHandl
                                                  GlobalEnvConstants *globalConst)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorFuncDynclass = JSHandle<JSHClass>(thread, globalConst->
-                        GetHandledJSAPIIteratorFuncDynClass().GetObject<JSHClass>());
+    JSHandle<JSHClass> iteratorFuncHClass = JSHandle<JSHClass>(thread, globalConst->
+                        GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
     // VectorIterator.prototype
-    JSHandle<JSObject> vectorIteratorPrototype(factory->NewJSObject(iteratorFuncDynclass));
+    JSHandle<JSObject> vectorIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // Iterator.prototype.next()
     SetFrozenFunction(thread, vectorIteratorPrototype, "next", JSAPIVectorIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, vectorIteratorPrototype, "Vector Iterator");
@@ -835,13 +835,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)
     // Queue.prototype
     JSHandle<JSObject> queueFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> queueFuncPrototypeValue(queueFuncPrototype);
-    // Queue.prototype_or_dynclass
-    JSHandle<JSHClass> queueInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPIQueue::SIZE, JSType::JS_API_QUEUE, queueFuncPrototypeValue);
+    // Queue.prototype_or_hclass
+    JSHandle<JSHClass> queueInstanceClass =
+        factory->NewEcmaHClass(JSAPIQueue::SIZE, JSType::JS_API_QUEUE, queueFuncPrototypeValue);
     // Queue() = new Function()
     JSHandle<JSTaggedValue> queueFunction(NewContainerConstructor(
         thread, queueFuncPrototype, ContainersQueue::QueueConstructor, "Queue", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(queueFunction)->SetFunctionPrototype(thread, queueInstanceDynclass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(queueFunction)->SetFunctionPrototype(thread, queueInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -871,10 +871,10 @@ void ContainersPrivate::InitializeQueueIterator(JSThread *thread, const JSHandle
                                                 GlobalEnvConstants *globalConst)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorFuncDynclass =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
+    JSHandle<JSHClass> iteratorFuncHClass =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
     // QueueIterator.prototype
-    JSHandle<JSObject> queueIteratorPrototype(factory->NewJSObject(iteratorFuncDynclass));
+    JSHandle<JSObject> queueIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // Iterator.prototype.next()
     SetFrozenFunction(thread, queueIteratorPrototype, "next", JSAPIQueueIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, queueIteratorPrototype, "Queue Iterator");
@@ -888,13 +888,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeDeque(JSThread *thread)
     // Deque.prototype
     JSHandle<JSObject> dequeFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> dequeFuncPrototypeValue(dequeFuncPrototype);
-    // Deque.prototype_or_dynclass
-    JSHandle<JSHClass> dequeInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPIDeque::SIZE, JSType::JS_API_DEQUE, dequeFuncPrototypeValue);
+    // Deque.prototype_or_hclass
+    JSHandle<JSHClass> dequeInstanceClass =
+        factory->NewEcmaHClass(JSAPIDeque::SIZE, JSType::JS_API_DEQUE, dequeFuncPrototypeValue);
     // Deque() = new Function()
     JSHandle<JSTaggedValue> dequeFunction(NewContainerConstructor(
         thread, dequeFuncPrototype, ContainersDeque::DequeConstructor, "Deque", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(dequeFunction)->SetFunctionPrototype(thread, dequeInstanceDynclass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(dequeFunction)->SetFunctionPrototype(thread, dequeInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -928,9 +928,9 @@ void ContainersPrivate::InitializeDequeIterator(JSThread *thread, const JSHandle
                                                 GlobalEnvConstants *globalConst)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorFuncDynclass = JSHandle<JSHClass>(thread, globalConst->
-                        GetHandledJSAPIIteratorFuncDynClass().GetObject<JSHClass>());
-    JSHandle<JSObject> dequeIteratorPrototype(factory->NewJSObject(iteratorFuncDynclass));
+    JSHandle<JSHClass> iteratorFuncHClass = JSHandle<JSHClass>(thread, globalConst->
+                        GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
+    JSHandle<JSObject> dequeIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     SetFrozenFunction(thread, dequeIteratorPrototype, "next", JSAPIDequeIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, dequeIteratorPrototype, "Deque Iterator");
     globalConst->SetConstant(ConstantIndex::DEQUE_ITERATOR_PROTOTYPE_INDEX, dequeIteratorPrototype.GetTaggedValue());
@@ -942,11 +942,11 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeList(JSThread *thread)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> listFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> listFuncPrototypeValue(listFuncPrototype);
-    JSHandle<JSHClass> listInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPIList::SIZE, JSType::JS_API_LIST, listFuncPrototypeValue);
+    JSHandle<JSHClass> listInstanceClass =
+        factory->NewEcmaHClass(JSAPIList::SIZE, JSType::JS_API_LIST, listFuncPrototypeValue);
     JSHandle<JSTaggedValue> listFunction(NewContainerConstructor(
         thread, listFuncPrototype, ContainersList::ListConstructor, "List", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(listFunction)->SetFunctionPrototype(thread, listInstanceDynclass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(listFunction)->SetFunctionPrototype(thread, listInstanceClass.GetTaggedValue());
 
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(listFuncPrototype), constructorKey, listFunction);
@@ -991,12 +991,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLinkedList(JSThread *thread
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> linkedListFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> linkedListFuncPrototypeValue(linkedListFuncPrototype);
-    JSHandle<JSHClass> linkedListInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPILinkedList::SIZE, JSType::JS_API_LINKED_LIST, linkedListFuncPrototypeValue);
+    JSHandle<JSHClass> linkedListInstanceClass =
+        factory->NewEcmaHClass(JSAPILinkedList::SIZE, JSType::JS_API_LINKED_LIST, linkedListFuncPrototypeValue);
     JSHandle<JSTaggedValue> linkedListFunction(NewContainerConstructor(
         thread, linkedListFuncPrototype, ContainersLinkedList::LinkedListConstructor, "LinkedList", FuncLength::ZERO));
     JSHandle<JSFunction>::Cast(linkedListFunction)->SetFunctionPrototype(thread,
-                                                                         linkedListInstanceDynclass.GetTaggedValue());
+                                                                         linkedListInstanceClass.GetTaggedValue());
 
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(linkedListFuncPrototype), constructorKey, linkedListFunction);
@@ -1046,9 +1046,9 @@ void ContainersPrivate::InitializeLinkedListIterator(JSThread *thread, const JSH
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorDynclass =
-        JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncDynClass().GetObject<JSHClass>());
-    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorDynclass));
+    JSHandle<JSHClass> iteratorClass =
+        JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
+    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(thread, setIteratorPrototype, "next", JSAPILinkedListIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, setIteratorPrototype, "linkedlist Iterator");
     globalConst->SetConstant(ConstantIndex::LINKED_LIST_ITERATOR_PROTOTYPE_INDEX,
@@ -1059,9 +1059,9 @@ void ContainersPrivate::InitializeListIterator(JSThread *thread, const JSHandle<
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorDynclass =
-        JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncDynClass().GetObject<JSHClass>());
-    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorDynclass));
+    JSHandle<JSHClass> iteratorClass =
+        JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
+    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(thread, setIteratorPrototype, "next", JSAPIListIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, setIteratorPrototype, "list Iterator");
     globalConst->SetConstant(ConstantIndex::LIST_ITERATOR_PROTOTYPE_INDEX, setIteratorPrototype.GetTaggedValue());
@@ -1074,13 +1074,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
     // HashMap.prototype
     JSHandle<JSObject> hashMapFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> hashMapFuncPrototypeValue(hashMapFuncPrototype);
-    // HashMap.prototype_or_dynclass
-    JSHandle<JSHClass> hashMapInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPIHashMap::SIZE, JSType::JS_API_HASH_MAP, hashMapFuncPrototypeValue);
+    // HashMap.prototype_or_hclass
+    JSHandle<JSHClass> hashMapInstanceClass =
+        factory->NewEcmaHClass(JSAPIHashMap::SIZE, JSType::JS_API_HASH_MAP, hashMapFuncPrototypeValue);
 
     JSHandle<JSTaggedValue> hashMapFunction(NewContainerConstructor(
         thread, hashMapFuncPrototype, ContainersHashMap::HashMapConstructor, "HashMap", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(hashMapFunction)->SetFunctionPrototype(thread, hashMapInstanceDynclass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(hashMapFunction)->SetFunctionPrototype(thread, hashMapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -1135,10 +1135,10 @@ void ContainersPrivate::InitializeHashMapIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorFuncDynclass =
-        JSHandle<JSHClass>::Cast(globalConst->GetHandledJSAPIIteratorFuncDynClass());
+    JSHandle<JSHClass> iteratorFuncHClass =
+        JSHandle<JSHClass>::Cast(globalConst->GetHandledJSAPIIteratorFuncHClass());
     // HashMapIterator.prototype
-    JSHandle<JSObject> hashMapIteratorPrototype(factory->NewJSObject(iteratorFuncDynclass));
+    JSHandle<JSObject> hashMapIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // HashMapIterator.prototype.next()
     SetFrozenFunction(thread, hashMapIteratorPrototype, "next", JSAPIHashMapIterator::Next, FuncLength::ZERO);
     SetStringTagSymbol(thread, env, hashMapIteratorPrototype, "HashMap Iterator");
@@ -1154,13 +1154,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
     // HashSet.prototype
     JSHandle<JSObject> hashSetFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> hashSetFuncPrototypeValue(hashSetFuncPrototype);
-    // HashSet.prototype_or_dynclass
-    JSHandle<JSHClass> hashSetInstanceDynclass =
-        factory->NewEcmaDynClass(JSAPIHashSet::SIZE, JSType::JS_API_HASH_SET, hashSetFuncPrototypeValue);
+    // HashSet.prototype_or_hclass
+    JSHandle<JSHClass> hashSetInstanceClass =
+        factory->NewEcmaHClass(JSAPIHashSet::SIZE, JSType::JS_API_HASH_SET, hashSetFuncPrototypeValue);
 
     JSHandle<JSTaggedValue> hashSetFunction(NewContainerConstructor(
         thread, hashSetFuncPrototype, ContainersHashSet::HashSetConstructor, "HashSet", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(hashSetFunction)->SetFunctionPrototype(thread, hashSetInstanceDynclass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(hashSetFunction)->SetFunctionPrototype(thread, hashSetInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -1200,11 +1200,11 @@ void ContainersPrivate::InitializeHashSetIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorFuncDynclass =
-        JSHandle<JSHClass>::Cast(globalConst->GetHandledJSAPIIteratorFuncDynClass());
+    JSHandle<JSHClass> iteratorFuncHClass =
+        JSHandle<JSHClass>::Cast(globalConst->GetHandledJSAPIIteratorFuncHClass());
 
     // HashSetIterator.prototype
-    JSHandle<JSObject> hashSetIteratorPrototype(factory->NewJSObject(iteratorFuncDynclass));
+    JSHandle<JSObject> hashSetIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // HashSetIterator.prototype.next()
     SetFrozenFunction(thread, hashSetIteratorPrototype, "next", JSAPIHashSetIterator::Next, FuncLength::ZERO);
     SetStringTagSymbol(thread, env, hashSetIteratorPrototype, "HashSet Iterator");

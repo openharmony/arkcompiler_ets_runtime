@@ -89,11 +89,6 @@ GateRef CircuitBuilder::ChangeUInt32ToFloat64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::UNSIGNED_INT_TO_FLOAT), MachineType::F64, x);
 }
 
-GateRef CircuitBuilder::PointerSub(GateRef x, GateRef y)
-{
-    return BinaryArithmetic(OpCode(OpCode::SUB), MachineType::ARCH, x, y);
-}
-
 GateRef CircuitBuilder::Int8Equal(GateRef x, GateRef y)
 {
     return BinaryLogic(OpCode(OpCode::EQ), x, y);
@@ -171,6 +166,12 @@ GateRef CircuitBuilder::SExtInt8ToInt64(GateRef x)
 GateRef CircuitBuilder::Int64ToTaggedPtr(GateRef x)
 {
     return TaggedNumber(OpCode(OpCode::INT64_TO_TAGGED), x);
+}
+
+GateRef CircuitBuilder::Int32ToTaggedPtr(GateRef x)
+{
+    GateRef val = SExtInt32ToInt64(x);
+    return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
 }
 
 // bit operation
@@ -324,6 +325,12 @@ GateRef CircuitBuilder::DoubleToTaggedDouble(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
     return Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
+}
+
+GateRef CircuitBuilder::DoubleIsNAN(GateRef x)
+{
+    GateRef diff = Equal(x, x);
+    return Equal(SExtInt1ToInt32(diff), Int32(0));
 }
 
 GateRef CircuitBuilder::DoubleToTagged(GateRef x)
@@ -490,10 +497,112 @@ GateRef CircuitBuilder::IsCallableFromBitField(GateRef bitfield)
 
 GateRef CircuitBuilder::IsCallable(GateRef obj)
 {
-    GateRef hclass = LoadHClass(obj);
+    GateRef hClass = LoadHClass(obj);
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hclass, bitfieldOffset);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     return IsCallableFromBitField(bitfield);
+}
+
+GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label bothAreHeapObjet(env_);
+    Label bothAreStringType(env_);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    Branch(BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y)), &bothAreHeapObjet, &exit);
+    Bind(&bothAreHeapObjet);
+    {
+        Branch(TaggedObjectBothAreString(x, y), &bothAreStringType, &exit);
+        Bind(&bothAreStringType);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+// Number operator
+GateRef CircuitBuilder::NumberAdd(GateRef x, GateRef y)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberAdd = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_ADD,
+                                         GateType::NumberType(), GateType::NumberType(),
+                                         {currentControl, currentDepend, x, y});
+    currentLabel->SetControl(numberAdd);
+    currentLabel->SetDepend(numberAdd);
+    return numberAdd;
+}
+
+GateRef CircuitBuilder::NumberSub(GateRef x, GateRef y)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberSub = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_SUB,
+                                         GateType::NumberType(), GateType::NumberType(),
+                                         {currentControl, currentDepend, x, y});
+    currentLabel->SetControl(numberSub);
+    currentLabel->SetDepend(numberSub);
+    return numberSub;
+}
+
+GateRef CircuitBuilder::NumberMul(GateRef x, GateRef y)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberMul = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_MUL,
+                                         GateType::NumberType(), GateType::NumberType(),
+                                         {currentControl, currentDepend, x, y});
+    currentLabel->SetControl(numberMul);
+    currentLabel->SetDepend(numberMul);
+    return numberMul;
+}
+
+GateRef CircuitBuilder::NumberLess(GateRef x, GateRef y)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberLess = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESS,
+                                          GateType::NumberType(), GateType::NumberType(),
+                                          {currentControl, currentDepend, x, y});
+    currentLabel->SetControl(numberLess);
+    currentLabel->SetDepend(numberLess);
+    return numberLess;
+}
+
+GateRef CircuitBuilder::NumberLessthanOrEq(GateRef x, GateRef y)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberLessEq = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESSEQ,
+                                            GateType::NumberType(), GateType::NumberType(),
+                                            {currentControl, currentDepend, x, y});
+    currentLabel->SetControl(numberLessEq);
+    currentLabel->SetDepend(numberLessEq);
+    return numberLessEq;
+}
+
+GateRef CircuitBuilder::PrimitiveToNumber(GateRef x, VariableType type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberconvert = TypeConvert(MachineType::I64, type.GetGateType(), GateType::NumberType(),
+                                     {currentControl, currentDepend, x});
+    currentLabel->SetControl(numberconvert);
+    currentLabel->SetDepend(numberconvert);
+    return numberconvert;
 }
 
 GateRef CircuitBuilder::LogicAnd(GateRef x, GateRef y)

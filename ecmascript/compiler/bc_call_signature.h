@@ -21,184 +21,378 @@
 
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
+#define ASM_UNUSED_BC_STUB_LIST(T)                      \
+    T(HandleOverflowD9)                                 \
+    T(HandleOverflowDA)                                 \
+    T(HandleOverflowDB)                                 \
+    T(HandleOverflowDC)                                 \
+    T(HandleOverflowDD)                                 \
+    T(HandleOverflowDE)                                 \
+    T(HandleOverflowDF)                                 \
+    T(HandleOverflowE0)                                 \
+    T(HandleOverflowE1)                                 \
+    T(HandleOverflowE2)                                 \
+    T(HandleOverflowE3)                                 \
+    T(HandleOverflowE4)                                 \
+    T(HandleOverflowE5)                                 \
+    T(HandleOverflowE6)                                 \
+    T(HandleOverflowE7)                                 \
+    T(HandleOverflowE8)                                 \
+    T(HandleOverflowE9)                                 \
+    T(HandleOverflowEA)                                 \
+    T(HandleOverflowEB)                                 \
+    T(HandleOverflowEC)                                 \
+    T(HandleOverflowED)                                 \
+    T(HandleOverflowEE)                                 \
+    T(HandleOverflowEF)                                 \
+    T(HandleOverflowF0)                                 \
+    T(HandleOverflowF1)                                 \
+    T(HandleOverflowF2)                                 \
+    T(HandleOverflowF3)                                 \
+    T(HandleOverflowF4)                                 \
+    T(HandleOverflowF5)                                 \
+    T(HandleOverflowF6)                                 \
+    T(HandleOverflowF7)                                 \
+    T(HandleOverflowF8)                                 \
+    T(HandleOverflowF9)                                 \
+    T(HandleOverflowFA)                                 \
+    T(HandleOverflowFB)                                 \
+    T(HandleOverflowFC)
+
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
-#define ASM_INTERPRETER_BC_STUB_LIST(V, T, D)            \
-    T(HandleLdNanPref)                                   \
-    T(HandleLdInfinityPref)                              \
-    T(HandleLdGlobalThisPref)                            \
-    T(HandleLdUndefinedPref)                             \
-    T(HandleLdNullPref)                                  \
-    T(HandleLdSymbolPref)                                \
-    T(HandleLdGlobalPref)                                \
-    T(HandleLdTruePref)                                  \
-    T(HandleLdFalsePref)                                 \
-    D(HandleThrowDynPref)                                \
-    T(HandleTypeOfDynPref)                               \
-    T(HandleLdLexEnvDynPref)                             \
-    T(HandlePopLexEnvDynPref)                            \
-    T(HandleGetUnmappedArgsPref)                         \
-    T(HandleGetPropIteratorPref)                         \
-    T(HandleAsyncFunctionEnterPref)                      \
-    T(HandleLdHolePref)                                  \
-    D(HandleReturnUndefinedPref)                         \
-    T(HandleCreateEmptyObjectPref)                       \
-    T(HandleCreateEmptyArrayPref)                        \
-    T(HandleGetIteratorPref)                             \
-    D(HandleThrowThrowNotExistsPref)                     \
-    D(HandleThrowPatternNonCoerciblePref)                \
-    T(HandleLdHomeObjectPref)                            \
-    D(HandleThrowDeleteSuperPropertyPref)                \
-    T(HandleDebuggerPref)                                \
-    T(HandleAdd2DynPrefV8)                               \
-    T(HandleSub2DynPrefV8)                               \
-    T(HandleMul2DynPrefV8)                               \
-    T(HandleDiv2DynPrefV8)                               \
-    T(HandleMod2DynPrefV8)                               \
-    T(HandleEqDynPrefV8)                                 \
-    T(HandleNotEqDynPrefV8)                              \
-    T(HandleLessDynPrefV8)                               \
-    T(HandleLessEqDynPrefV8)                             \
-    T(HandleGreaterDynPrefV8)                            \
-    T(HandleGreaterEqDynPrefV8)                          \
-    T(HandleShl2DynPrefV8)                               \
-    T(HandleAshr2DynPrefV8)                              \
-    T(HandleShr2DynPrefV8)                               \
-    T(HandleAnd2DynPrefV8)                               \
-    T(HandleOr2DynPrefV8)                                \
-    T(HandleXOr2DynPrefV8)                               \
-    T(HandleToNumberPrefV8)                              \
-    T(HandleNegDynPrefV8)                                \
-    T(HandleNotDynPrefV8)                                \
-    T(HandleIncDynPrefV8)                                \
-    T(HandleDecDynPrefV8)                                \
-    T(HandleExpDynPrefV8)                                \
-    T(HandleIsInDynPrefV8)                               \
-    T(HandleInstanceOfDynPrefV8)                         \
-    T(HandleStrictNotEqDynPrefV8)                        \
-    T(HandleStrictEqDynPrefV8)                           \
-    D(HandleResumeGeneratorPrefV8)                       \
-    T(HandleGetResumeModePrefV8)                         \
-    D(HandleCreateGeneratorObjPrefV8)                    \
-    D(HandleThrowConstAssignmentPrefV8)                  \
-    T(HandleGetTemplateObjectPrefV8)                     \
-    T(HandleGetNextPropNamePrefV8)                       \
-    D(HandleCallArg0DynPrefV8)                           \
-    D(HandleThrowIfNotObjectPrefV8)                      \
-    T(HandleIterNextPrefV8)                              \
-    T(HandleCloseIteratorPrefV8)                         \
-    T(HandleCopyModulePrefV8)                            \
-    D(HandleSuperCallSpreadPrefV8)                       \
-    T(HandleDelObjPropPrefV8V8)                          \
-    D(HandleNewObjSpreadDynPrefV8V8)                     \
-    T(HandleCreateIterResultObjPrefV8V8)                 \
-    D(HandleSuspendGeneratorPrefV8V8)                    \
-    T(HandleAsyncFunctionAwaitUncaughtPrefV8V8)          \
-    D(HandleThrowUndefinedIfHolePrefV8V8)                \
-    D(HandleCallArg1DynPrefV8V8)                         \
-    T(HandleCopyDataPropertiesPrefV8V8)                  \
-    T(HandleStArraySpreadPrefV8V8)                       \
-    T(HandleGetIteratorNextPrefV8V8)                     \
-    T(HandleSetObjectWithProtoPrefV8V8)                  \
-    T(HandleLdObjByValuePrefV8V8)                        \
-    T(HandleStObjByValuePrefV8V8)                        \
-    T(HandleStOwnByValuePrefV8V8)                        \
-    T(HandleLdSuperByValuePrefV8V8)                      \
-    T(HandleStSuperByValuePrefV8V8)                      \
-    T(HandleLdObjByIndexPrefV8Imm32)                     \
-    T(HandleStObjByIndexPrefV8Imm32)                     \
-    T(HandleStOwnByIndexPrefV8Imm32)                     \
-    D(HandleCallSpreadDynPrefV8V8V8)                     \
-    T(HandleAsyncFunctionResolvePrefV8V8V8)              \
-    T(HandleAsyncFunctionRejectPrefV8V8V8)               \
-    D(HandleCallArgs2DynPrefV8V8V8)                      \
-    D(HandleCallArgs3DynPrefV8V8V8V8)                    \
-    T(HandleDefineGetterSetterByValuePrefV8V8V8V8)       \
-    D(HandleNewObjDynRangePrefImm16V8)                   \
-    D(HandleCallIRangeDynPrefImm16V8)                    \
-    D(HandleCallIThisRangeDynPrefImm16V8)                \
-    D(HandleSuperCallPrefImm16V8)                        \
-    T(HandleCreateObjectWithExcludedKeysPrefImm16V8V8)   \
-    T(HandleDefineFuncDynPrefId16Imm16V8)                \
-    T(HandleDefineNCFuncDynPrefId16Imm16V8)              \
-    T(HandleDefineGeneratorFuncPrefId16Imm16V8)          \
-    T(HandleDefineAsyncFuncPrefId16Imm16V8)              \
-    T(HandleDefineMethodPrefId16Imm16V8)                 \
-    T(HandleNewLexEnvDynPrefImm16)                       \
-    T(HandleCopyRestArgsPrefImm16)                       \
-    T(HandleCreateArrayWithBufferPrefImm16)              \
-    T(HandleCreateObjectHavingMethodPrefImm16)           \
-    D(HandleThrowIfSuperNotCorrectCallPrefImm16)         \
-    T(HandleCreateObjectWithBufferPrefImm16)             \
-    T(HandleLdLexVarDynPrefImm4Imm4)                     \
-    T(HandleLdLexVarDynPrefImm8Imm8)                     \
-    T(HandleLdLexVarDynPrefImm16Imm16)                   \
-    T(HandleStLexVarDynPrefImm4Imm4V8)                   \
-    T(HandleStLexVarDynPrefImm8Imm8V8)                   \
-    T(HandleStLexVarDynPrefImm16Imm16V8)                 \
-    T(HandleDefineClassWithBufferPrefId16Imm16Imm16V8V8) \
-    T(HandleGetModuleNamespacePrefId32)                  \
-    T(HandleStModuleVarPrefId32)                         \
-    T(HandleTryLdGlobalByNamePrefId32)                   \
-    T(HandleTryStGlobalByNamePrefId32)                   \
-    T(HandleLdGlobalVarPrefId32)                         \
-    T(HandleStGlobalVarPrefId32)                         \
-    T(HandleLdObjByNamePrefId32V8)                       \
-    T(HandleStObjByNamePrefId32V8)                       \
-    T(HandleStOwnByNamePrefId32V8)                       \
-    T(HandleLdSuperByNamePrefId32V8)                     \
-    T(HandleStSuperByNamePrefId32V8)                     \
-    T(HandleLdModuleVarPrefId32Imm8)                     \
-    T(HandleCreateRegExpWithLiteralPrefId32Imm8)         \
-    T(HandleIsTruePref)                                  \
-    T(HandleIsFalsePref)                                 \
-    T(HandleStConstToGlobalRecordPrefId32)               \
-    T(HandleStLetToGlobalRecordPrefId32)                 \
-    T(HandleStClassToGlobalRecordPrefId32)               \
-    T(HandleStOwnByValueWithNameSetPrefV8V8)             \
-    T(HandleStOwnByNameWithNameSetPrefId32V8)            \
-    T(HandleLdFunctionPref)                              \
-    T(HandleNewLexEnvWithNameDynPrefImm16Imm16)          \
-    T(HandleLdBigIntPrefId32)                            \
-    T(HandleToNumericPrefV8)                             \
-    T(HandleCreateAsyncGeneratorObjPrefV8)               \
-    T(HandleAsyncGeneratorResolvePrefV8V8V8)             \
-    T(HandleDefineAsyncGeneratorFuncPrefId16Imm16V8)     \
-    T(HandleDynamicImportPrefV8)                         \
-    T(HandleMovDynV8V8)                                  \
-    T(HandleMovDynV16V16)                                \
-    T(HandleLdaStrId32)                                  \
-    T(HandleLdaiDynImm32)                                \
-    T(HandleFldaiDynImm64)                               \
-    T(HandleJmpImm8)                                     \
-    T(HandleJmpImm16)                                    \
-    T(HandleJmpImm32)                                    \
-    T(HandleJeqzImm8)                                    \
-    T(HandleJeqzImm16)                                   \
-    T(HandleLdaDynV8)                                    \
-    T(HandleStaDynV8)                                    \
-    D(HandleReturnDyn)                                   \
-    T(HandleMovV4V4)                                     \
-    T(HandleJnezImm8)                                    \
-    T(HandleJnezImm16)                                   \
+#define ASM_INTERPRETER_BC_STUB_LIST(V, T, D)           \
+    T(HandleLdnan)                                      \
+    T(HandleLdinfinity)                                 \
+    T(HandleLdnewtarget)                                \
+    T(HandleLdundefined)                                \
+    T(HandleLdnull)                                     \
+    T(HandleLdsymbol)                                   \
+    T(HandleLdglobal)                                   \
+    T(HandleLdtrue)                                     \
+    T(HandleLdfalse)                                    \
+    T(HandleLdhole)                                     \
+    T(HandleLdthis)                                     \
+    T(HandlePoplexenv)                                  \
+    T(HandleGetunmappedargs)                            \
+    T(HandleAsyncfunctionenter)                         \
+    T(HandleCreateasyncgeneratorobjV8)                  \
+    T(HandleLdfunction)                                 \
+    T(HandleDebugger)                                   \
+    T(HandleGetpropiterator)                            \
+    T(HandleGetiteratorImm8)                            \
+    T(HandleGetiteratorImm16)                           \
+    T(HandleCloseiteratorImm8V8)                        \
+    T(HandleCloseiteratorImm16V8)                       \
+    T(HandleAsyncgeneratorresolveV8V8V8)                \
+    T(HandleCreateemptyobject)                          \
+    T(HandleCreateemptyarrayImm8)                       \
+    T(HandleCreateemptyarrayImm16)                      \
+    T(HandleCreategeneratorobjV8)                       \
+    T(HandleCreateiterresultobjV8V8)                    \
+    T(HandleCreateobjectwithexcludedkeysImm8V8V8)       \
+    D(HandleCallthis0Imm8V8)                            \
+    T(HandleCreatearraywithbufferImm8Id16)              \
+    T(HandleCreatearraywithbufferImm16Id16)             \
+    D(HandleCallthis1Imm8V8V8)                          \
+    D(HandleCallthis2Imm8V8V8V8)                        \
+    T(HandleCreateobjectwithbufferImm8Id16)             \
+    T(HandleCreateobjectwithbufferImm16Id16)            \
+    T(HandleCreateregexpwithliteralImm8Id16Imm8)        \
+    T(HandleCreateregexpwithliteralImm16Id16Imm8)       \
+    D(HandleNewobjapplyImm8V8)                          \
+    D(HandleNewobjapplyImm16V8)                         \
+    D(HandleNewobjrangeImm8Imm8V8)                      \
+    D(HandleNewobjrangeImm16Imm8V8)                     \
+    T(HandleNewlexenvImm8)                              \
+    T(HandleNewlexenvwithnameImm8Id16)                  \
+    T(HandleAdd2Imm8V8)                                 \
+    T(HandleSub2Imm8V8)                                 \
+    T(HandleMul2Imm8V8)                                 \
+    T(HandleDiv2Imm8V8)                                 \
+    T(HandleMod2Imm8V8)                                 \
+    T(HandleEqImm8V8)                                   \
+    T(HandleNoteqImm8V8)                                \
+    T(HandleLessImm8V8)                                 \
+    T(HandleLesseqImm8V8)                               \
+    T(HandleGreaterImm8V8)                              \
+    T(HandleGreatereqImm8V8)                            \
+    T(HandleShl2Imm8V8)                                 \
+    T(HandleShr2Imm8V8)                                 \
+    T(HandleAshr2Imm8V8)                                \
+    T(HandleAnd2Imm8V8)                                 \
+    T(HandleOr2Imm8V8)                                  \
+    T(HandleXor2Imm8V8)                                 \
+    T(HandleExpImm8V8)                                  \
+    T(HandleTypeofImm8)                                 \
+    T(HandleTypeofImm16)                                \
+    T(HandleTonumberImm8)                               \
+    T(HandleTonumericImm8)                              \
+    T(HandleNegImm8)                                    \
+    T(HandleNotImm8)                                    \
+    T(HandleIncImm8)                                    \
+    T(HandleDecImm8)                                    \
+    T(HandleIsinImm8V8)                                 \
+    T(HandleInstanceofImm8V8)                           \
+    T(HandleStrictnoteqImm8V8)                          \
+    T(HandleStricteqImm8V8)                             \
+    T(HandleIstrue)                                     \
+    T(HandleIsfalse)                                    \
+    D(HandleCallthis3Imm8V8V8V8V8)                      \
+    D(HandleCallthisrangeImm8Imm8V8)                    \
+    T(HandleSupercallthisrangeImm8Imm8V8)               \
+    T(HandleSupercallarrowrangeImm8Imm8V8)              \
+    T(HandleDefinefuncImm8Id16Imm8)                     \
+    T(HandleDefinefuncImm16Id16Imm8)                    \
+    T(HandleDefinemethodImm8Id16Imm8)                   \
+    T(HandleDefinemethodImm16Id16Imm8)                  \
+    D(HandleCallarg0Imm8)                               \
+    T(HandleSupercallspreadImm8V8)                      \
+    T(HandleApplyImm8V8V8)                              \
+    D(HandleCallargs2Imm8V8V8)                          \
+    D(HandleCallargs3Imm8V8V8V8)                        \
+    D(HandleCallrangeImm8Imm8V8)                        \
+    T(HandleLdexternalmodulevarImm8)                    \
+    T(HandleDynamicimport)                              \
+    T(HandleDefinegettersetterbyvalueV8V8V8V8)          \
+    T(HandleLdthisbynameImm8Id16)                       \
+    T(HandleLdthisbynameImm16Id16)                      \
+    T(HandleStthisbynameImm8Id16)                       \
+    T(HandleStthisbynameImm16Id16)                      \
+    T(HandleLdthisbyvalueImm8)                          \
+    T(HandleLdthisbyvalueImm16)                         \
+    T(HandleStthisbyvalueImm8V8)                        \
+    T(HandleStthisbyvalueImm16V8)                       \
+    T(HandleLdpatchvarImm8)                             \
+    T(HandleStpatchvarImm8V8)                           \
+    T(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)   \
+    T(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)  \
+    T(HandleResumegenerator)                            \
+    T(HandleGetresumemode)                              \
+    T(HandleGettemplateobjectImm8)                      \
+    T(HandleGettemplateobjectImm16)                     \
+    T(HandleGetnextpropnameV8)                          \
+    T(HandleJeqzImm8)                                   \
+    T(HandleJeqzImm16)                                  \
+    T(HandleSetobjectwithprotoImm8V8)                   \
+    T(HandleDelobjpropV8)                               \
+    T(HandleSuspendgeneratorV8)                         \
+    T(HandleAsyncfunctionawaituncaughtV8)               \
+    T(HandleCopydatapropertiesV8)                       \
+    T(HandleStarrayspreadV8V8)                          \
+    T(HandleSetobjectwithprotoImm16V8)                  \
+    T(HandleLdobjbyvalueImm8V8)                         \
+    T(HandleLdobjbyvalueImm16V8)                        \
+    T(HandleStobjbyvalueImm8V8V8)                       \
+    T(HandleStobjbyvalueImm16V8V8)                      \
+    T(HandleStownbyvalueImm8V8V8)                       \
+    T(HandleStownbyvalueImm16V8V8)                      \
+    T(HandleLdsuperbyvalueImm8V8)                       \
+    T(HandleLdsuperbyvalueImm16V8)                      \
+    T(HandleStsuperbyvalueImm8V8V8)                     \
+    T(HandleStsuperbyvalueImm16V8V8)                    \
+    T(HandleLdobjbyindexImm8Imm16)                      \
+    T(HandleLdobjbyindexImm16Imm16)                     \
+    T(HandleStobjbyindexImm8V8Imm16)                    \
+    T(HandleStobjbyindexImm16V8Imm16)                   \
+    T(HandleStownbyindexImm8V8Imm16)                    \
+    T(HandleStownbyindexImm16V8Imm16)                   \
+    T(HandleAsyncfunctionresolveV8)                     \
+    T(HandleAsyncfunctionrejectV8)                      \
+    T(HandleCopyrestargsImm8)                           \
+    T(HandleLdlexvarImm4Imm4)                           \
+    T(HandleStlexvarImm4Imm4)                           \
+    T(HandleGetmodulenamespaceImm8)                     \
+    T(HandleStmodulevarImm8)                            \
+    T(HandleTryldglobalbynameImm8Id16)                  \
+    T(HandleTryldglobalbynameImm16Id16)                 \
+    T(HandleTrystglobalbynameImm8Id16)                  \
+    T(HandleTrystglobalbynameImm16Id16)                 \
+    T(HandleLdglobalvarImm16Id16)                       \
+    T(HandleStglobalvarImm16Id16)                       \
+    T(HandleLdobjbynameImm8Id16)                        \
+    T(HandleLdobjbynameImm16Id16)                       \
+    T(HandleStobjbynameImm8Id16V8)                      \
+    T(HandleStobjbynameImm16Id16V8)                     \
+    T(HandleStownbynameImm8Id16V8)                      \
+    T(HandleStownbynameImm16Id16V8)                     \
+    T(HandleLdsuperbynameImm8Id16)                      \
+    T(HandleLdsuperbynameImm16Id16)                     \
+    T(HandleStsuperbynameImm8Id16V8)                    \
+    T(HandleStsuperbynameImm16Id16V8)                   \
+    T(HandleLdlocalmodulevarImm8)                       \
+    T(HandleStconsttoglobalrecordImm16Id16)             \
+    T(HandleSttoglobalrecordImm16Id16)                  \
+    T(HandleJeqzImm32)                                  \
+    T(HandleJnezImm8)                                   \
+    T(HandleJnezImm16)                                  \
+    T(HandleJnezImm32)                                  \
+    T(HandleStownbyvaluewithnamesetImm8V8V8)            \
+    T(HandleStownbyvaluewithnamesetImm16V8V8)           \
+    T(HandleStownbynamewithnamesetImm8Id16V8)           \
+    T(HandleStownbynamewithnamesetImm16Id16V8)          \
+    T(HandleLdbigintId16)                               \
+    T(HandleLdaStrId16)                                 \
+    T(HandleJmpImm8)                                    \
+    T(HandleJmpImm16)                                   \
+    T(HandleJmpImm32)                                   \
+    T(HandleJstricteqzImm8)                             \
+    T(HandleJstricteqzImm16)                            \
+    T(HandleJnstricteqzImm8)                            \
+    T(HandleJnstricteqzImm16)                           \
+    T(HandleJeqnullImm8)                                \
+    T(HandleJeqnullImm16)                               \
+    T(HandleLdaV8)                                      \
+    T(HandleStaV8)                                      \
+    T(HandleLdaiImm32)                                  \
+    T(HandleFldaiImm64)                                 \
+    D(HandleReturn)                                     \
+    D(HandleReturnundefined)                            \
+    T(HandleLdlexvarImm8Imm8)                           \
+    T(HandleJnenullImm8)                                \
+    T(HandleStlexvarImm8Imm8)                           \
+    T(HandleJnenullImm16)                               \
+    D(HandleCallarg1Imm8V8)                             \
+    T(HandleJstricteqnullImm8)                          \
+    T(HandleJstricteqnullImm16)                         \
+    T(HandleJnstricteqnullImm8)                         \
+    T(HandleJnstricteqnullImm16)                        \
+    T(HandleJequndefinedImm8)                           \
+    T(HandleJequndefinedImm16)                          \
+    T(HandleJneundefinedImm8)                           \
+    T(HandleJneundefinedImm16)                          \
+    T(HandleJstrictequndefinedImm8)                     \
+    T(HandleJstrictequndefinedImm16)                    \
+    T(HandleJnstrictequndefinedImm8)                    \
+    T(HandleJnstrictequndefinedImm16)                   \
+    T(HandleJeqV8Imm8)                                  \
+    T(HandleJeqV8Imm16)                                 \
+    T(HandleJneV8Imm8)                                  \
+    T(HandleJneV8Imm16)                                 \
+    T(HandleJstricteqV8Imm8)                            \
+    T(HandleJstricteqV8Imm16)                           \
+    T(HandleJnstricteqV8Imm8)                           \
+    T(HandleJnstricteqV8Imm16)                          \
+    T(HandleMovV4V4)                                    \
+    T(HandleMovV8V8)                                    \
+    T(HandleMovV16V16)                                  \
+    T(HandleAsyncgeneratorrejectV8V8)                   \
+    T(HandleNop)                                        \
+    ASM_UNUSED_BC_STUB_LIST(T)                          \
+    T(HandleDeprecated)                                 \
+    T(HandleWide)                                       \
+    T(HandleThrow)                                      \
     D(ExceptionHandler)
 
-#define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)           \
-    V(SingleStepDebugging)                               \
-    V(HandleOverflow)                                    \
-    V(BCDebuggerEntry)                                   \
-    V(BCDebuggerExceptionEntry)                          \
-    V(NewObjectDynRangeThrowException)                   \
-    V(ThrowStackOverflowException)                       \
-    V(InterpreterGetPropertyByName)                      \
+// V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
+#define ASM_INTERPRETER_DEPRECATED_STUB_LIST(V, T, D)                  \
+    T(HandleDeprecatedLdlexenvPrefNone)                                \
+    T(HandleDeprecatedPoplexenvPrefNone)                               \
+    T(HandleDeprecatedGetiteratornextPrefV8V8)                         \
+    T(HandleDeprecatedCreatearraywithbufferPrefImm16)                  \
+    T(HandleDeprecatedCreateobjectwithbufferPrefImm16)                 \
+    T(HandleDeprecatedTonumberPrefV8)                                  \
+    T(HandleDeprecatedTonumericPrefV8)                                 \
+    T(HandleDeprecatedNegPrefV8)                                       \
+    T(HandleDeprecatedNotPrefV8)                                       \
+    T(HandleDeprecatedIncPrefV8)                                       \
+    T(HandleDeprecatedDecPrefV8)                                       \
+    T(HandleDeprecatedCallarg0PrefV8)                                  \
+    T(HandleDeprecatedCallarg1PrefV8V8)                                \
+    T(HandleDeprecatedCallargs2PrefV8V8V8)                             \
+    T(HandleDeprecatedCallargs3PrefV8V8V8V8)                           \
+    T(HandleDeprecatedCallrangePrefImm16V8)                            \
+    T(HandleDeprecatedCallspreadPrefV8V8V8)                            \
+    T(HandleDeprecatedCallthisrangePrefImm16V8)                        \
+    T(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)     \
+    T(HandleDeprecatedResumegeneratorPrefV8)                           \
+    T(HandleDeprecatedGetresumemodePrefV8)                             \
+    T(HandleDeprecatedGettemplateobjectPrefV8)                         \
+    T(HandleDeprecatedDelobjpropPrefV8V8)                              \
+    T(HandleDeprecatedSuspendgeneratorPrefV8V8)                        \
+    T(HandleDeprecatedAsyncfunctionawaituncaughtPrefV8V8)              \
+    T(HandleDeprecatedCopydatapropertiesPrefV8V8)                      \
+    T(HandleDeprecatedSetobjectwithprotoPrefV8V8)                      \
+    T(HandleDeprecatedLdobjbyvaluePrefV8V8)                            \
+    T(HandleDeprecatedLdsuperbyvaluePrefV8V8)                          \
+    T(HandleDeprecatedLdobjbyindexPrefV8Imm32)                         \
+    T(HandleDeprecatedAsyncfunctionresolvePrefV8V8V8)                  \
+    T(HandleDeprecatedAsyncfunctionrejectPrefV8V8V8)                   \
+    T(HandleDeprecatedStlexvarPrefImm4Imm4V8)                          \
+    T(HandleDeprecatedStlexvarPrefImm8Imm8V8)                          \
+    T(HandleDeprecatedStlexvarPrefImm16Imm16V8)                        \
+    T(HandleDeprecatedGetmodulenamespacePrefId32)                      \
+    T(HandleDeprecatedStmodulevarPrefId32)                             \
+    T(HandleDeprecatedLdobjbynamePrefId32V8)                           \
+    T(HandleDeprecatedLdsuperbynamePrefId32V8)                         \
+    T(HandleDeprecatedLdmodulevarPrefId32Imm8)                         \
+    T(HandleDeprecatedStconsttoglobalrecordPrefId32)                   \
+    T(HandleDeprecatedStlettoglobalrecordPrefId32)                     \
+    T(HandleDeprecatedStclasstoglobalrecordPrefId32)                   \
+    T(HandleDeprecatedLdhomeobjectPrefNone)                            \
+    T(HandleDeprecatedCreateobjecthavingmethodPrefImm16)               \
+    T(HandleDeprecatedDynamicimportPrefV8)
 
-#define INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(V) \
-    ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)
+// V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
+#define ASM_INTERPRETER_WIDE_STUB_LIST(V, T, D)                        \
+    T(HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8)             \
+    D(HandleWideNewobjrangePrefImm16V8)                                \
+    T(HandleWideNewlexenvPrefImm16)                                    \
+    T(HandleWideNewlexenvwithnamePrefImm16Id16)                        \
+    D(HandleWideCallrangePrefImm16V8)                                  \
+    D(HandleWideCallthisrangePrefImm16V8)                              \
+    D(HandleWideSupercallthisrangePrefImm16V8)                         \
+    D(HandleWideSupercallarrowrangePrefImm16V8)                        \
+    T(HandleWideLdobjbyindexPrefImm32)                                 \
+    T(HandleWideStobjbyindexPrefV8Imm32)                               \
+    T(HandleWideStownbyindexPrefV8Imm32)                               \
+    T(HandleWideCopyrestargsPrefImm16)                                 \
+    T(HandleWideLdlexvarPrefImm16Imm16)                                \
+    T(HandleWideStlexvarPrefImm16Imm16)                                \
+    T(HandleWideGetmodulenamespacePrefImm16)                           \
+    T(HandleWideStmodulevarPrefImm16)                                  \
+    T(HandleWideLdlocalmodulevarPrefImm16)                             \
+    T(HandleWideLdexternalmodulevarPrefImm16)                          \
+    T(HandleWideLdPatchVarPrefImm16)                                   \
+    T(HandleWideStPatchVarPrefImm16)
 
-#define INTERPRETER_BC_STUB_LIST(V) \
-    ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, V, V)
+// V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
+#define ASM_INTERPRETER_THROW_STUB_LIST(V, T, D)                       \
+    D(HandleThrowPrefNone)                                             \
+    D(HandleThrowNotexistsPrefNone)                                    \
+    D(HandleThrowPatternnoncoerciblePrefNone)                          \
+    D(HandleThrowDeletesuperpropertyPrefNone)                          \
+    D(HandleThrowConstassignmentPrefV8)                                \
+    D(HandleThrowIfnotobjectPrefV8)                                    \
+    D(HandleThrowUndefinedifholePrefV8V8)                              \
+    D(HandleThrowIfsupernotcorrectcallPrefImm8)                        \
+    D(HandleThrowIfsupernotcorrectcallPrefImm16)
+
+#define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
+    V(SingleStepDebugging)                              \
+    V(BCDebuggerEntry)                                  \
+    V(BCDebuggerExceptionEntry)                         \
+    V(NewObjectRangeThrowException)                     \
+    V(ThrowStackOverflowException)
+
+#define INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(V)           \
+    ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)         \
+    ASM_INTERPRETER_DEPRECATED_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V) \
+    ASM_INTERPRETER_WIDE_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)       \
+    ASM_INTERPRETER_THROW_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)
+
+#define INTERPRETER_BC_STUB_LIST(V)                            \
+    ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, V, V)         \
+    ASM_INTERPRETER_DEPRECATED_STUB_LIST(IGNORE_BC_STUB, V, V) \
+    ASM_INTERPRETER_WIDE_STUB_LIST(IGNORE_BC_STUB, V, V)       \
+    ASM_INTERPRETER_THROW_STUB_LIST(IGNORE_BC_STUB, V, V)
 
 #define ASM_INTERPRETER_BC_STUB_ID_LIST(V) \
     ASM_INTERPRETER_BC_STUB_LIST(V, V, V)
+
+#define ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(V) \
+    ASM_INTERPRETER_WIDE_STUB_LIST(V, V, V)       \
+    ASM_INTERPRETER_THROW_STUB_LIST(V, V, V)      \
+    ASM_INTERPRETER_DEPRECATED_STUB_LIST(V, V, V)
 
 class BytecodeStubCSigns {
 public:
@@ -213,15 +407,34 @@ public:
         NUM_OF_VALID_STUBS
     };
 
-    enum ID {
+#define DEF_BC_STUB_ID(name) PREF_ID_##name,
+    enum WideID {
+        ASM_INTERPRETER_WIDE_STUB_LIST(DEF_BC_STUB_ID, DEF_BC_STUB_ID, DEF_BC_STUB_ID)
+        NUM_OF_WIDE_STUBS
+    };
+    enum ThrowID {
+        ASM_INTERPRETER_THROW_STUB_LIST(DEF_BC_STUB_ID, DEF_BC_STUB_ID, DEF_BC_STUB_ID)
+        NUM_OF_THROW_STUBS
+    };
+    enum DeprecatedID {
+        ASM_INTERPRETER_DEPRECATED_STUB_LIST(DEF_BC_STUB_ID, DEF_BC_STUB_ID, DEF_BC_STUB_ID)
+        NUM_OF_DEPRECATED_STUBS
+    };
+#undef DEF_BC_STUB_ID
+
 #define DEF_BC_STUB_ID(name) ID_##name,
+    enum ID {
         ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_BC_STUB_ID)
         NUM_OF_ALL_NORMAL_STUBS,
         lastOpcode = LAST_VALID_OPCODE, // last Opcode is max opcode size
+        ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_BC_STUB_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_BC_STUB_ID)
-#undef DEF_BC_STUB_ID
-        NUM_OF_STUBS
+        NUM_OF_STUBS,
+        ID_Wide_Start = lastOpcode + 1,
+        ID_Throw_Start = ID_Wide_Start + NUM_OF_WIDE_STUBS,
+        ID_Deprecated_Start = ID_Throw_Start + NUM_OF_THROW_STUBS,
     };
+#undef DEF_BC_STUB_ID
 
     static void Initialize();
 
@@ -269,6 +482,7 @@ enum class CallDispatchInputs : size_t {
     ARG0,
     ARG1,
     ARG2,
+    ARG3,
     NUM_OF_INPUTS,
 
     ARGC = ARG0,

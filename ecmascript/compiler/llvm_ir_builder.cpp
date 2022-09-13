@@ -1412,9 +1412,11 @@ void LLVMIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    /* pointer                          int
-      vector{i8 * x 2}          int
-    */
+    /*
+     *  If the first operand is pointer, special treatment is needed
+     *  1) add, pointer, int
+     *  2) add, vector{i8* x 2}, int
+     */
     LLVMTypeRef returnType = ConvertLLVMTypeFromGate(gate);
 
     auto machineType = acc_.GetMachineType(gate);

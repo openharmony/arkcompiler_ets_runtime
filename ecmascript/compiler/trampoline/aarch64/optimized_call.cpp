@@ -614,6 +614,7 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
     Register codeAddress(X3);
     Register argV(X4);
     Register env(X5);
+    Register method(X6);
     Label directCallCodeEntry;
     const int64_t argoffsetSlot = static_cast<int64_t>(CommonArgIdx::FUNC) - 1;
     __ Mov(Register(X5), jsfunc);
@@ -625,7 +626,8 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
     __ Add(expectedNumArgs, callField.W(), Immediate(NUM_MANDATORY_JSFUNC_ARGS));
     __ Cmp(arg2.W(), expectedNumArgs);
     __ Add(argV, sp, Immediate(argoffsetSlot * FRAME_SLOT_SIZE));  // skip env and numArgs
-    __ Ldr(codeAddress, MemoryOperand(Register(X5), JSFunctionBase::CODE_ENTRY_OFFSET));
+    __ Ldr(method, MemoryOperand(Register(X5), JSFunctionBase::METHOD_OFFSET)); // get method
+    __ Ldr(codeAddress, MemoryOperand(method, Method::CODE_ENTRY_OFFSET)); // get codeAddress
     __ Ldr(env, MemoryOperand(sp, 0));
     __ B(Condition::HS, &directCallCodeEntry);
     __ CallAssemblerStub(RTSTUB_ID(OptimizedCallOptimized), true);
@@ -710,10 +712,12 @@ void OptimizedCall::JSProxyCallInternal(ExtendedAssembler *assembler, Register s
     __ Ldr(Register(X1), MemoryOperand(sp, FRAME_SLOT_SIZE)); // 8: skip env
     __ Add(X3, sp, Immediate(FRAME_SLOT_SIZE * 2)); // 2: get argv
 
-    Register proxyCallInternalId(Register(X9).W());
+    Register proxyCallInternalId(X9);
+    Register baseAddress(X8);
     Register codeAddress(X10);
+    __ Mov(baseAddress, Immediate(JSThread::GlueData::GetCOStubEntriesOffset(false)));
     __ Mov(proxyCallInternalId, Immediate(CommonStubCSigns::JsProxyCallInternal));
-    __ Add(codeAddress, X0, Immediate(JSThread::GlueData::GetCOStubEntriesOffset(false)));
+    __ Add(codeAddress, X0, baseAddress);
     __ Ldr(codeAddress, MemoryOperand(codeAddress, proxyCallInternalId, UXTW, SHIFT_OF_FRAMESLOT));
     __ Br(codeAddress);
 }

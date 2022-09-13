@@ -62,16 +62,16 @@ public:
     static ComparisonResult Compare(JSThread *thread, JSTaggedValue left,
         JSTaggedValue right, CompareOpType operationType);
 
-    static JSTaggedValue LessDynWithIC(JSThread *thread, JSTaggedValue left,
+    static JSTaggedValue LessWithIC(JSThread *thread, JSTaggedValue left,
         JSTaggedValue right, CompareOpType operationType);
 
-    static JSTaggedValue LessEqDynWithIC(JSThread *thread, JSTaggedValue left,
+    static JSTaggedValue LessEqWithIC(JSThread *thread, JSTaggedValue left,
         JSTaggedValue right, CompareOpType operationType);
 
-    static JSTaggedValue GreaterDynWithIC(JSThread *thread, JSTaggedValue left,
+    static JSTaggedValue GreaterWithIC(JSThread *thread, JSTaggedValue left,
         JSTaggedValue right, CompareOpType operationType);
 
-    static JSTaggedValue GreaterEqDynWithIC(JSThread *thread, JSTaggedValue left,
+    static JSTaggedValue GreaterEqWithIC(JSThread *thread, JSTaggedValue left,
         JSTaggedValue right, CompareOpType operationType);
 };
 }   // namespace panda::ecmascript

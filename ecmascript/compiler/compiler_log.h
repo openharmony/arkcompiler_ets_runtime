@@ -34,6 +34,8 @@ public:
             logOpt.find("1") != std::string::npos;
         outputASM_ = logOpt.find("asm") != std::string::npos ||
             logOpt.find("2") != std::string::npos;
+        outputType_ = logOpt.find("type") != std::string::npos ||
+            logOpt.find("3") != std::string::npos;
         allMethod_ = logOpt.find("all") != std::string::npos;
         cerMethod_ = logOpt.find("all") == std::string::npos &&
             logOpt.find("cer") != std::string::npos;
@@ -73,6 +75,11 @@ public:
         return outputASM_;
     }
 
+    bool OutputType() const
+    {
+        return outputType_;
+    }
+
     bool IsEnableByteCodeTrace() const
     {
         return enableBCTrace_;
@@ -84,6 +91,7 @@ private:
     bool outputCIR_ {false};
     bool outputLLIR_ {false};
     bool outputASM_ {false};
+    bool outputType_ {false};
     bool enableBCTrace_ {false};
 };
 

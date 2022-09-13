@@ -104,21 +104,31 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
         pos = moduleRequestName.find('/', pos + 1);
         ASSERT(pos != CString::npos);
         entryPoint = moduleRequestName.substr(pos + 1);
-    } else if (moduleRequestName[0] == '.') {
-        pos = moduleRequestName.find_last_of(".js");
-        if (pos != CString::npos) {
-            moduleRequestName = moduleRequestName.substr(0, pos);
+    } else if ((pos = moduleRequestName.rfind(".js")) != CString::npos) {
+        moduleRequestName = moduleRequestName.substr(0, pos);
+        pos = moduleRequestName.find("./");
+        if (pos == 0) {
+            moduleRequestName = moduleRequestName.substr(2); // jump "./"
         }
-        pos = moduleRecordName.find_last_of('/');
-        ASSERT(pos != CString::npos);
-        entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName.substr(2); // 2 : jump './'
+        pos = moduleRecordName.rfind('/');
+        if (pos != CString::npos) {
+            entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
+        } else {
+            entryPoint = moduleRequestName;
+        }
         if (!jsPandaFile->HasRecord(entryPoint)) {
-            pos = baseFilename.find_last_of('/');
-            ASSERT(pos != CString::npos);
-            baseFilename = baseFilename.substr(0, pos + 1) + moduleRequestName.substr(2) + ".abc"; // 2 : jump './'
-            pos = moduleRequestName.find_last_of('/');
-            ASSERT(pos != CString::npos);
-            entryPoint = moduleRequestName.substr(pos + 1);
+            pos = baseFilename.rfind('/');
+            if (pos != CString::npos) {
+                baseFilename = baseFilename.substr(0, pos + 1) + moduleRequestName + ".abc";
+            } else {
+                baseFilename = moduleRequestName + ".abc";
+            }
+            pos = moduleRequestName.rfind('/');
+            if (pos != CString::npos) {
+                entryPoint = moduleRequestName.substr(pos + 1);
+            } else {
+                entryPoint = moduleRequestName;
+            }
         }
     } else {
         pos = moduleRecordName.find(JSPandaFile::NODE_MODULES);
@@ -545,7 +555,8 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
     // 2.If module.[[Status]] is "evaluated", then
     ModuleStatus status = module->GetStatus();
     if (status == ModuleStatus::EVALUATED) {
-        // a. If module.[[EvaluationError]] is undefined, return index.
+        SourceTextModule::ModuleExecution(thread, module, buffer, size);
+        // a. If module.[[EvaluationError]] is undefined, return index
         if (module->GetEvaluationError() == SourceTextModule::UNDEFINED_INDEX) {
             return index;
         }
@@ -769,14 +780,6 @@ JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, JSTaggedValue k
         return dict->GetValue(entry);
     }
 
-    JSTaggedValue importEntriesTv = GetImportEntries();
-    if (!importEntriesTv.IsUndefined()) {
-        JSTaggedValue resolution = FindByImport(importEntriesTv, key, dictionary);
-        if (!resolution.IsHole()) {
-            return resolution;
-        }
-    }
-
     JSTaggedValue exportEntriesTv = GetLocalExportEntries();
     if (!exportEntriesTv.IsUndefined()) {
         JSTaggedValue resolution = FindByExport(exportEntriesTv, key, dictionary);
@@ -796,14 +799,6 @@ JSTaggedValue SourceTextModule::GetModuleValueFromArray(const JSTaggedValue &sou
     int entry = FindEntryFromArray(dictionary, key);
     if (entry != -1) {
         return GetValueFromArray(dictionary, entry);
-    }
-
-    JSTaggedValue importEntriesTv = module->GetImportEntries();
-    if (!importEntriesTv.IsUndefined()) {
-        JSTaggedValue resolution = FindArrayByImport(importEntriesTv, key, dictionary);
-        if (!resolution.IsHole()) {
-            return resolution;
-        }
     }
 
     JSTaggedValue exportEntriesTv = module->GetLocalExportEntries();
@@ -834,10 +829,6 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTagge
         StoreByLocalExport(thread, localExportEntriesTv, value, key, dataDict);
     }
 
-    JSHandle<JSTaggedValue> indirectExportEntriesTv(thread, module->GetIndirectExportEntries());
-    if (!indirectExportEntriesTv->IsUndefined()) {
-        StoreByIndirectExport(thread, indirectExportEntriesTv, value, key, dataDict);
-    }
     module->SetNameDictionary(thread, dataDict);
 }
 
@@ -859,11 +850,6 @@ void SourceTextModule::StoreModuleValueFromArray(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> localExportEntriesTv(thread, module->GetLocalExportEntries());
     if (!localExportEntriesTv->IsUndefined()) {
         StoreArrayByLocalExport(thread, localExportEntriesTv, value, key, data, module);
-    }
-
-    JSHandle<JSTaggedValue> indirectExportEntriesTv(thread, module->GetIndirectExportEntries());
-    if (!indirectExportEntriesTv->IsUndefined()) {
-        StoreArrayByIndirectExport(thread, indirectExportEntriesTv, value, key, data, module);
     }
 }
 
@@ -1153,46 +1139,6 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
     }
 }
 
-JSTaggedValue SourceTextModule::FindByImport(const JSTaggedValue &importEntriesTv,
-                                             const JSTaggedValue &key, const JSTaggedValue &dictionary)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    TaggedArray *importEntries = TaggedArray::Cast(importEntriesTv.GetTaggedObject());
-    NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
-    size_t importEntriesLen = importEntries->GetLength();
-    for (size_t idx = 0; idx < importEntriesLen; idx++) {
-        ImportEntry *ee = ImportEntry::Cast(importEntries->Get(idx).GetTaggedObject());
-        if (!JSTaggedValue::SameValue(ee->GetLocalName(), key)) {
-            continue;
-        }
-        JSTaggedValue importName = ee->GetImportName();
-        int entry = dict->FindEntry(importName);
-        if (entry != -1) {
-            return dict->GetValue(entry);
-        }
-    }
-    return JSTaggedValue::Hole();
-}
-
-JSTaggedValue SourceTextModule::FindArrayByImport(const JSTaggedValue &importEntriesTv, const JSTaggedValue &key,
-                                                  const JSTaggedValue &dictionary)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    TaggedArray *importEntries = TaggedArray::Cast(importEntriesTv.GetTaggedObject());
-    size_t importEntriesLen = importEntries->GetLength();
-    for (size_t idx = 0; idx < importEntriesLen; idx++) {
-        ImportEntry *ee = ImportEntry::Cast(importEntries->Get(idx).GetTaggedObject());
-        if (!JSTaggedValue::SameValue(ee->GetLocalName(), key)) {
-            continue;
-        }
-        JSTaggedValue importName = ee->GetImportName();
-        int entry = FindEntryFromArray(dictionary, importName);
-        if (entry != -1) {
-            return GetValueFromArray(dictionary, entry);
-        }
-    }
-    return JSTaggedValue::Hole();
-}
 
 JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
                                              const JSTaggedValue &dictionary)
@@ -1312,69 +1258,6 @@ void SourceTextModule::StoreArrayByLocalExport(JSThread *thread,
         for (size_t idx = 0; idx < localExportEntriesLen; idx++) {
             ee.Update(localExportEntries->Get(idx));
             if (JSTaggedValue::SameValue(ee->GetLocalName(), key.GetTaggedValue())) {
-                exportName.Update(ee->GetExportName());
-                UpdateNameDictionary(thread, exportName, dataDict, module, value);
-                return;
-            }
-        }
-    }
-}
-
-void SourceTextModule::StoreByIndirectExport(JSThread *thread,
-                                             const JSHandle<JSTaggedValue> &indirectExportEntriesTv,
-                                             const JSHandle<JSTaggedValue> &value,
-                                             const JSHandle<JSTaggedValue> &key,
-                                             JSMutableHandle<NameDictionary> &dataDict)
-{
-    auto globalConstants = thread->GlobalConstants();
-    JSMutableHandle<IndirectExportEntry> ee(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> exportName(thread, globalConstants->GetUndefined());
-    if (indirectExportEntriesTv->IsIndirectExportEntry()) {
-        ee.Update(indirectExportEntriesTv);
-        if (JSTaggedValue::SameValue(ee->GetImportName(), key.GetTaggedValue())) {
-            exportName.Update(ee->GetExportName());
-            dataDict.Update(NameDictionary::Put(thread, dataDict, exportName, value,
-                                                PropertyAttributes::Default()));
-            return;
-        }
-    } else {
-        JSHandle<TaggedArray> indirectExportEntries(indirectExportEntriesTv);
-        size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
-        for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
-            ee.Update(indirectExportEntries->Get(idx));
-            if (JSTaggedValue::SameValue(ee->GetImportName(), key.GetTaggedValue())) {
-                exportName.Update(ee->GetExportName());
-                dataDict.Update(NameDictionary::Put(thread, dataDict, exportName, value,
-                                                    PropertyAttributes::Default()));
-                return;
-            }
-        }
-    }
-}
-
-void SourceTextModule::StoreArrayByIndirectExport(JSThread *thread,
-                                                  const JSHandle<JSTaggedValue> &indirectExportEntriesTv,
-                                                  const JSHandle<JSTaggedValue> &value,
-                                                  const JSHandle<JSTaggedValue> &key,
-                                                  JSMutableHandle<JSTaggedValue> &dataDict,
-                                                  JSHandle<SourceTextModule> &module)
-{
-    auto globalConstants = thread->GlobalConstants();
-    JSMutableHandle<IndirectExportEntry> ee(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> exportName(thread, globalConstants->GetUndefined());
-    if (indirectExportEntriesTv->IsIndirectExportEntry()) {
-        ee.Update(indirectExportEntriesTv);
-        if (JSTaggedValue::SameValue(ee->GetImportName(), key.GetTaggedValue())) {
-            exportName.Update(ee->GetExportName());
-            UpdateNameDictionary(thread, exportName, dataDict, module, value);
-            return;
-        }
-    } else {
-        JSHandle<TaggedArray> indirectExportEntries(indirectExportEntriesTv);
-        size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
-        for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
-            ee.Update(indirectExportEntries->Get(idx));
-            if (JSTaggedValue::SameValue(ee->GetImportName(), key.GetTaggedValue())) {
                 exportName.Update(ee->GetExportName());
                 UpdateNameDictionary(thread, exportName, dataDict, module, value);
                 return;

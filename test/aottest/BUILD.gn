@@ -32,6 +32,7 @@ group("ark_aot_test") {
     "add:addAotAction",
     "and:andAotAction",
     "aot_compatibility_test:aot_compatibility_test",
+    "aot_type_test:aot_type_test",
     "ashr:ashrAotAction",
     "bind:bindAotAction",
     "call_same_bytecode_func:call_same_bytecode_funcAotAction",
@@ -140,7 +141,6 @@ group("ark_aot_test") {
     #"dynamicimport:dynamicimportAotAction",
     "try_catch_finally:try_catch_finallyAotAction",
     "trystglobalbynameprefid32:trystglobalbynameprefid32AotAction",
-    "typeadd:typeaddAotAction",
     "typeof:typeofAotAction",
     "xor:xorAotAction",
   ]

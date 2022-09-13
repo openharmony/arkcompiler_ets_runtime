@@ -19,7 +19,6 @@
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/ic/profile_type_info.h"
-#include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -45,25 +44,25 @@
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 
 namespace panda::ecmascript {
-JSTaggedValue SlowRuntimeStub::CallSpreadDyn(JSThread *thread, JSTaggedValue func, JSTaggedValue obj,
+JSTaggedValue SlowRuntimeStub::CallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue obj,
                                              JSTaggedValue array)
 {
-    INTERPRETER_TRACE(thread, CallSpreadDyn);
+    INTERPRETER_TRACE(thread, CallSpread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> jsFunc(thread, func);
     JSHandle<JSTaggedValue> jsArray(thread, array);
     JSHandle<JSTaggedValue> taggedObj(thread, obj);
-    return RuntimeStubs::RuntimeCallSpreadDyn(thread, jsFunc, taggedObj, jsArray);
+    return RuntimeStubs::RuntimeCallSpread(thread, jsFunc, taggedObj, jsArray);
 }
 
-JSTaggedValue SlowRuntimeStub::NegDyn(JSThread *thread, JSTaggedValue value)
+JSTaggedValue SlowRuntimeStub::Neg(JSThread *thread, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, NegDyn);
+    INTERPRETER_TRACE(thread, Neg);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> inputTag(thread, value);
-    return RuntimeStubs::RuntimeNegDyn(thread, inputTag);
+    return RuntimeStubs::RuntimeNeg(thread, inputTag);
 }
 
 JSTaggedValue SlowRuntimeStub::AsyncFunctionEnter(JSThread *thread)
@@ -94,37 +93,37 @@ JSTaggedValue SlowRuntimeStub::ToNumeric(JSThread *thread, JSTaggedValue value)
     return RuntimeStubs::RuntimeToNumeric(thread, numeric);
 }
 
-JSTaggedValue SlowRuntimeStub::NotDyn(JSThread *thread, JSTaggedValue value)
+JSTaggedValue SlowRuntimeStub::Not(JSThread *thread, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, NotDyn);
+    INTERPRETER_TRACE(thread, Not);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> inputTag(thread, value);
-    return RuntimeStubs::RuntimeNotDyn(thread, inputTag);
+    return RuntimeStubs::RuntimeNot(thread, inputTag);
 }
 
-JSTaggedValue SlowRuntimeStub::IncDyn(JSThread *thread, JSTaggedValue value)
+JSTaggedValue SlowRuntimeStub::Inc(JSThread *thread, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, IncDyn);
+    INTERPRETER_TRACE(thread, Inc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> inputTag(thread, value);
-    return RuntimeStubs::RuntimeIncDyn(thread, inputTag);
+    return RuntimeStubs::RuntimeInc(thread, inputTag);
 }
 
-JSTaggedValue SlowRuntimeStub::DecDyn(JSThread *thread, JSTaggedValue value)
+JSTaggedValue SlowRuntimeStub::Dec(JSThread *thread, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, DecDyn);
+    INTERPRETER_TRACE(thread, Dec);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> inputTag(thread, value);
-    return RuntimeStubs::RuntimeDecDyn(thread, inputTag);
+    return RuntimeStubs::RuntimeDec(thread, inputTag);
 }
 
-void SlowRuntimeStub::ThrowDyn(JSThread *thread, JSTaggedValue value)
+void SlowRuntimeStub::Throw(JSThread *thread, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, ThrowDyn);
-    RuntimeStubs::RuntimeThrowDyn(thread, value);
+    INTERPRETER_TRACE(thread, Throw);
+    RuntimeStubs::RuntimeThrow(thread, value);
 }
 
 JSTaggedValue SlowRuntimeStub::GetPropIterator(JSThread *thread, JSTaggedValue value)
@@ -145,173 +144,173 @@ void SlowRuntimeStub::ThrowConstAssignment(JSThread *thread, JSTaggedValue value
     return RuntimeStubs::RuntimeThrowConstAssignment(thread, name);
 }
 
-JSTaggedValue SlowRuntimeStub::Add2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Add2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, Add2Dyn);
+    INTERPRETER_TRACE(thread, Add2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftValue(thread, left);
     JSHandle<JSTaggedValue> rightValue(thread, right);
-    return RuntimeStubs::RuntimeAdd2Dyn(thread, leftValue, rightValue);
+    return RuntimeStubs::RuntimeAdd2(thread, leftValue, rightValue);
 }
 
-JSTaggedValue SlowRuntimeStub::Sub2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Sub2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, Sub2Dyn);
+    INTERPRETER_TRACE(thread, Sub2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftTag(thread, left);
     JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeSub2Dyn(thread, leftTag, rightTag);
+    return RuntimeStubs::RuntimeSub2(thread, leftTag, rightTag);
 }
 
-JSTaggedValue SlowRuntimeStub::Mul2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Mul2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, Mul2Dyn);
+    INTERPRETER_TRACE(thread, Mul2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftTag(thread, left);
     JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeMul2Dyn(thread, leftTag, rightTag);
+    return RuntimeStubs::RuntimeMul2(thread, leftTag, rightTag);
 }
 
-JSTaggedValue SlowRuntimeStub::Div2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Div2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, Div2Dyn);
+    INTERPRETER_TRACE(thread, Div2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftTag(thread, left);
     JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeDiv2Dyn(thread, leftTag, rightTag);
+    return RuntimeStubs::RuntimeDiv2(thread, leftTag, rightTag);
 }
 
-JSTaggedValue SlowRuntimeStub::Mod2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Mod2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, Mod2Dyn);
+    INTERPRETER_TRACE(thread, Mod2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftTag(thread, left);
     JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeMod2Dyn(thread, leftTag, rightTag);
+    return RuntimeStubs::RuntimeMod2(thread, leftTag, rightTag);
 }
 
-JSTaggedValue SlowRuntimeStub::EqDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Eq(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, EqDyn);
+    INTERPRETER_TRACE(thread, Eq);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftValue(thread, left);
     JSHandle<JSTaggedValue> rightValue(thread, right);
-    return RuntimeStubs::RuntimeEqDyn(thread, leftValue, rightValue);
+    return RuntimeStubs::RuntimeEq(thread, leftValue, rightValue);
 }
 
-JSTaggedValue SlowRuntimeStub::NotEqDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::NotEq(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, NotEqDyn);
+    INTERPRETER_TRACE(thread, NotEq);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftValue(thread, left);
     JSHandle<JSTaggedValue> rightValue(thread, right);
-    return RuntimeStubs::RuntimeNotEqDyn(thread, leftValue, rightValue);
+    return RuntimeStubs::RuntimeNotEq(thread, leftValue, rightValue);
 }
 
-JSTaggedValue SlowRuntimeStub::LessDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Less(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, LessDyn);
+    INTERPRETER_TRACE(thread, Less);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftValue(thread, left);
     JSHandle<JSTaggedValue> rightValue(thread, right);
-    return RuntimeStubs::RuntimeLessDyn(thread, leftValue, rightValue);
+    return RuntimeStubs::RuntimeLess(thread, leftValue, rightValue);
 }
 
-JSTaggedValue SlowRuntimeStub::LessEqDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::LessEq(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, LessEqDyn);
+    INTERPRETER_TRACE(thread, LessEq);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftValue(thread, left);
     JSHandle<JSTaggedValue> rightValue(thread, right);
-    return RuntimeStubs::RuntimeLessEqDyn(thread, leftValue, rightValue);
+    return RuntimeStubs::RuntimeLessEq(thread, leftValue, rightValue);
 }
 
-JSTaggedValue SlowRuntimeStub::GreaterDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Greater(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, GreaterDyn);
+    INTERPRETER_TRACE(thread, Greater);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftValue(thread, left);
     JSHandle<JSTaggedValue> rightValue(thread, right);
-    return RuntimeStubs::RuntimeGreaterDyn(thread, leftValue, rightValue);
+    return RuntimeStubs::RuntimeGreater(thread, leftValue, rightValue);
 }
 
-JSTaggedValue SlowRuntimeStub::GreaterEqDyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::GreaterEq(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, GreaterEqDyn);
+    INTERPRETER_TRACE(thread, GreaterEq);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftValue(thread, left);
     JSHandle<JSTaggedValue> rightValue(thread, right);
-    return RuntimeStubs::RuntimeGreaterEqDyn(thread, leftValue, rightValue);
+    return RuntimeStubs::RuntimeGreaterEq(thread, leftValue, rightValue);
 }
 
-JSTaggedValue SlowRuntimeStub::Shl2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Shl2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, Shl2Dyn);
+    INTERPRETER_TRACE(thread, Shl2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftTag(thread, left);
     JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeShl2Dyn(thread, leftTag, rightTag);
+    return RuntimeStubs::RuntimeShl2(thread, leftTag, rightTag);
 }
 
-JSTaggedValue SlowRuntimeStub::Shr2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Shr2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, Shr2Dyn);
+    INTERPRETER_TRACE(thread, Shr2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftTag(thread, left);
     JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeShr2Dyn(thread, leftTag, rightTag);
+    return RuntimeStubs::RuntimeShr2(thread, leftTag, rightTag);
 }
 
-JSTaggedValue SlowRuntimeStub::Ashr2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Ashr2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, Ashr2Dyn);
+    INTERPRETER_TRACE(thread, Ashr2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftTag(thread, left);
     JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeAshr2Dyn(thread, leftTag, rightTag);
+    return RuntimeStubs::RuntimeAshr2(thread, leftTag, rightTag);
 }
 
-JSTaggedValue SlowRuntimeStub::And2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::And2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, And2Dyn);
+    INTERPRETER_TRACE(thread, And2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> leftTag(thread, left);
     JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeAnd2Dyn(thread, leftTag, rightTag);
+    return RuntimeStubs::RuntimeAnd2(thread, leftTag, rightTag);
 }
 
-JSTaggedValue SlowRuntimeStub::Or2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue SlowRuntimeStub::Or2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
-    INTERPRETER_TRACE(thread, Or2Dyn);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    JSHandle<JSTaggedValue> leftTag(thread, left);
-    JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeOr2Dyn(thread, leftTag, rightTag);
-}
-
-JSTaggedValue SlowRuntimeStub::Xor2Dyn(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
-{
-    INTERPRETER_TRACE(thread, Xor2Dyn);
+    INTERPRETER_TRACE(thread, Or2);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> leftTag(thread, left);
     JSHandle<JSTaggedValue> rightTag(thread, right);
-    return RuntimeStubs::RuntimeXor2Dyn(thread, leftTag, rightTag);
+    return RuntimeStubs::RuntimeOr2(thread, leftTag, rightTag);
+}
+
+JSTaggedValue SlowRuntimeStub::Xor2(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
+{
+    INTERPRETER_TRACE(thread, Xor2);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> leftTag(thread, left);
+    JSHandle<JSTaggedValue> rightTag(thread, right);
+    return RuntimeStubs::RuntimeXor2(thread, leftTag, rightTag);
 }
 
 JSTaggedValue SlowRuntimeStub::ToJSTaggedValueWithInt32(JSThread *thread, JSTaggedValue value)
@@ -340,15 +339,15 @@ JSTaggedValue SlowRuntimeStub::DelObjProp(JSThread *thread, JSTaggedValue obj, J
     return RuntimeStubs::RuntimeDelObjProp(thread, objHandle, propHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::NewObjDynRange(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
+JSTaggedValue SlowRuntimeStub::NewObjRange(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                               uint16_t firstArgIdx, uint16_t length)
 {
-    INTERPRETER_TRACE(thread, NewobjDynrange);
+    INTERPRETER_TRACE(thread, NewobjRange);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> funcHandle(thread, func);
     JSHandle<JSTaggedValue> newTargetHandle(thread, newTarget);
-    return RuntimeStubs::RuntimeNewObjDynRange(thread, funcHandle, newTargetHandle, firstArgIdx, length);
+    return RuntimeStubs::RuntimeNewObjRange(thread, funcHandle, newTargetHandle, firstArgIdx, length);
 }
 
 JSTaggedValue SlowRuntimeStub::CreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys, JSTaggedValue objVal,
@@ -361,48 +360,48 @@ JSTaggedValue SlowRuntimeStub::CreateObjectWithExcludedKeys(JSThread *thread, ui
     return RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(thread, numKeys, obj, firstArgRegIdx);
 }
 
-JSTaggedValue SlowRuntimeStub::ExpDyn(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent)
+JSTaggedValue SlowRuntimeStub::Exp(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent)
 {
-    INTERPRETER_TRACE(thread, ExpDyn);
+    INTERPRETER_TRACE(thread, Exp);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    return RuntimeStubs::RuntimeExpDyn(thread, base, exponent);
+    return RuntimeStubs::RuntimeExp(thread, base, exponent);
 }
 
-JSTaggedValue SlowRuntimeStub::IsInDyn(JSThread *thread, JSTaggedValue prop, JSTaggedValue obj)
+JSTaggedValue SlowRuntimeStub::IsIn(JSThread *thread, JSTaggedValue prop, JSTaggedValue obj)
 {
-    INTERPRETER_TRACE(thread, IsInDyn);
+    INTERPRETER_TRACE(thread, IsIn);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> propHandle(thread, prop);
     JSHandle<JSTaggedValue> objHandle(thread, obj);
-    return RuntimeStubs::RuntimeIsInDyn(thread, propHandle, objHandle);
+    return RuntimeStubs::RuntimeIsIn(thread, propHandle, objHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::InstanceofDyn(JSThread *thread, JSTaggedValue obj, JSTaggedValue target)
+JSTaggedValue SlowRuntimeStub::Instanceof(JSThread *thread, JSTaggedValue obj, JSTaggedValue target)
 {
-    INTERPRETER_TRACE(thread, InstanceofDyn);
+    INTERPRETER_TRACE(thread, Instanceof);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
     JSHandle<JSTaggedValue> targetHandle(thread, target);
-    return RuntimeStubs::RuntimeInstanceofDyn(thread, objHandle, targetHandle);
+    return RuntimeStubs::RuntimeInstanceof(thread, objHandle, targetHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::NewLexicalEnvDyn(JSThread *thread, uint16_t numVars)
+JSTaggedValue SlowRuntimeStub::NewLexicalEnv(JSThread *thread, uint16_t numVars)
 {
-    INTERPRETER_TRACE(thread, NewlexenvDyn);
+    INTERPRETER_TRACE(thread, Newlexenv);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    return RuntimeStubs::RuntimeNewLexicalEnvDyn(thread, numVars);
+    return RuntimeStubs::RuntimeNewLexicalEnv(thread, numVars);
 }
 
-JSTaggedValue SlowRuntimeStub::NewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId)
+JSTaggedValue SlowRuntimeStub::NewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId)
 {
-    INTERPRETER_TRACE(thread, NewlexenvwithNameDyn);
+    INTERPRETER_TRACE(thread, NewlexenvwithName);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    return RuntimeStubs::RuntimeNewLexicalEnvWithNameDyn(thread, numVars, scopeId);
+    return RuntimeStubs::RuntimeNewLexicalEnvWithName(thread, numVars, scopeId);
 }
 
 JSTaggedValue SlowRuntimeStub::CreateIterResultObj(JSThread *thread, JSTaggedValue value, JSTaggedValue flag)
@@ -464,16 +463,14 @@ JSTaggedValue SlowRuntimeStub::AsyncFunctionResolveOrReject(JSThread *thread, JS
     return RuntimeStubs::RuntimeAsyncFunctionResolveOrReject(thread, asyncFuncObjHandle, valueHandle, is_resolve);
 }
 
-JSTaggedValue SlowRuntimeStub::NewObjSpreadDyn(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
-                                               JSTaggedValue array)
+JSTaggedValue SlowRuntimeStub::NewObjApply(JSThread *thread, JSTaggedValue func, JSTaggedValue array)
 {
-    INTERPRETER_TRACE(thread, NewobjspreadDyn);
+    INTERPRETER_TRACE(thread, Newobjspread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> funcHandle(thread, func);
-    JSHandle<JSTaggedValue> newTargetHandle(thread, newTarget);
     JSHandle<JSTaggedValue> jsArray(thread, array);
-    return RuntimeStubs::RuntimeNewObjSpreadDyn(thread, funcHandle, newTargetHandle, jsArray);
+    return RuntimeStubs::RuntimeNewObjApply(thread, funcHandle, jsArray);
 }
 
 void SlowRuntimeStub::ThrowUndefinedIfHole(JSThread *thread, JSTaggedValue obj)
@@ -519,7 +516,7 @@ void SlowRuntimeStub::ThrowPatternNonCoercible(JSThread *thread)
 
 JSTaggedValue SlowRuntimeStub::StOwnByName(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, StOwnByNameDyn);
+    INTERPRETER_TRACE(thread, StOwnByName);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -531,7 +528,7 @@ JSTaggedValue SlowRuntimeStub::StOwnByName(JSThread *thread, JSTaggedValue obj, 
 JSTaggedValue SlowRuntimeStub::StOwnByNameWithNameSet(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop,
                                                       JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, StOwnByNameDyn);
+    INTERPRETER_TRACE(thread, StOwnByName);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -542,7 +539,7 @@ JSTaggedValue SlowRuntimeStub::StOwnByNameWithNameSet(JSThread *thread, JSTagged
 
 JSTaggedValue SlowRuntimeStub::StOwnByIndex(JSThread *thread, JSTaggedValue obj, uint32_t idx, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, StOwnByIdDyn);
+    INTERPRETER_TRACE(thread, StOwnById);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -553,7 +550,7 @@ JSTaggedValue SlowRuntimeStub::StOwnByIndex(JSThread *thread, JSTaggedValue obj,
 
 JSTaggedValue SlowRuntimeStub::StOwnByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, StOwnByValueDyn);
+    INTERPRETER_TRACE(thread, StOwnByValue);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -565,7 +562,7 @@ JSTaggedValue SlowRuntimeStub::StOwnByValue(JSThread *thread, JSTaggedValue obj,
 JSTaggedValue SlowRuntimeStub::StOwnByValueWithNameSet(JSThread *thread, JSTaggedValue obj, JSTaggedValue key,
                                                        JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, StOwnByValueDyn);
+    INTERPRETER_TRACE(thread, StOwnByValue);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -751,7 +748,7 @@ JSTaggedValue SlowRuntimeStub::DefineGetterSetterByValue(JSThread *thread, JSTag
 JSTaggedValue SlowRuntimeStub::LdObjByIndex(JSThread *thread, JSTaggedValue obj, uint32_t idx, bool callGetter,
                                             JSTaggedValue receiver)
 {
-    INTERPRETER_TRACE(thread, LdObjByIndexDyn);
+    INTERPRETER_TRACE(thread, LdObjByIndex);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -760,7 +757,7 @@ JSTaggedValue SlowRuntimeStub::LdObjByIndex(JSThread *thread, JSTaggedValue obj,
 
 JSTaggedValue SlowRuntimeStub::StObjByIndex(JSThread *thread, JSTaggedValue obj, uint32_t idx, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, StObjByIndexDyn);
+    INTERPRETER_TRACE(thread, StObjByIndex);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -771,14 +768,14 @@ JSTaggedValue SlowRuntimeStub::StObjByIndex(JSThread *thread, JSTaggedValue obj,
 JSTaggedValue SlowRuntimeStub::LdObjByName(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop, bool callGetter,
                                            JSTaggedValue receiver)
 {
-    INTERPRETER_TRACE(thread, LdObjByNameDyn);
+    INTERPRETER_TRACE(thread, LdObjByName);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return RuntimeStubs::RuntimeLdObjByName(thread, obj, prop, callGetter, receiver);
 }
 
 JSTaggedValue SlowRuntimeStub::StObjByName(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop, JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, StObjByNameDyn);
+    INTERPRETER_TRACE(thread, StObjByName);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -790,7 +787,7 @@ JSTaggedValue SlowRuntimeStub::StObjByName(JSThread *thread, JSTaggedValue obj, 
 JSTaggedValue SlowRuntimeStub::LdObjByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop, bool callGetter,
                                             JSTaggedValue receiver)
 {
-    INTERPRETER_TRACE(thread, LdObjByValueDyn);
+    INTERPRETER_TRACE(thread, LdObjByValue);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -801,7 +798,7 @@ JSTaggedValue SlowRuntimeStub::LdObjByValue(JSThread *thread, JSTaggedValue obj,
 JSTaggedValue SlowRuntimeStub::StObjByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop,
                                             JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, StObjByValueDyn);
+    INTERPRETER_TRACE(thread, StObjByValue);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
@@ -911,37 +908,12 @@ JSTaggedValue SlowRuntimeStub::StArraySpread(JSThread *thread, JSTaggedValue dst
     return RuntimeStubs::RuntimeStArraySpread(thread, dstHandle, index, srcHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::DefineGeneratorFunc(JSThread *thread, JSFunction *func)
+JSTaggedValue SlowRuntimeStub::DefineFunc(JSThread *thread, Method *method)
 {
-    INTERPRETER_TRACE(thread, DefineGeneratorFunc);
+    INTERPRETER_TRACE(thread, DefineFunc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
-
-    return RuntimeStubs::RuntimeDefineGeneratorFunc(thread, funcHandle);
-}
-
-JSTaggedValue SlowRuntimeStub::DefineAsyncFunc(JSThread *thread, JSFunction *func)
-{
-    INTERPRETER_TRACE(thread, DefineAsyncFunc);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
-    return RuntimeStubs::RuntimeDefineAsyncFunc(thread, funcHandle);
-}
-
-JSTaggedValue SlowRuntimeStub::DefineNCFuncDyn(JSThread *thread, JSFunction *func)
-{
-    INTERPRETER_TRACE(thread, DefineNCFuncDyn);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
-    return RuntimeStubs::RuntimeDefineNCFuncDyn(thread, funcHandle);
-}
-
-JSTaggedValue SlowRuntimeStub::DefinefuncDyn(JSThread *thread, JSFunction *func)
-{
-    INTERPRETER_TRACE(thread, DefinefuncDyn);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
-    return RuntimeStubs::RuntimeDefinefuncDyn(thread, funcHandle);
+    JSHandle<Method> methodHandle(thread, method);
+    return RuntimeStubs::RuntimeDefinefunc(thread, methodHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::GetSuperConstructor(JSThread *thread, JSTaggedValue ctor)
@@ -958,66 +930,20 @@ JSTaggedValue SlowRuntimeStub::SuperCall(JSThread *thread, JSTaggedValue func, J
 {
     INTERPRETER_TRACE(thread, SuperCall);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    FrameHandler frameHandler(thread);
 
     JSHandle<JSTaggedValue> funcHandle(thread, func);
     JSHandle<JSTaggedValue> newTargetHandle(thread, newTarget);
     return RuntimeStubs::RuntimeSuperCall(thread, funcHandle, newTargetHandle, firstVRegIdx, length);
 }
 
-// specifier = "./test.js"
-JSTaggedValue SlowRuntimeStub::DynamicImport(JSThread *thread, JSTaggedValue specifier)
+JSTaggedValue SlowRuntimeStub::DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue currentFunc)
 {
     INTERPRETER_TRACE(thread, DynamicImport);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
-    ObjectFactory *factory = ecmaVm->GetFactory();
 
-    // 5. Let specifierString be Completion(ToString(specifier))
-    JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
-
-    // get current filename
-    std::string filename;
-    JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    if (thread->IsAsmInterpreter()) {
-        AsmInterpretedFrame *state = (reinterpret_cast<AsmInterpretedFrame *>(sp) - 1);
-        Method *method = ECMAObject::Cast(state->function.GetTaggedObject())->GetCallTarget();
-        filename = method->GetJSPandaFile()->GetPandaFile()->GetFilename();
-    } else {
-        InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
-        Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
-        filename = method->GetJSPandaFile()->GetPandaFile()->GetFilename();
-    }
-
-    // parse dirPath from filename
-    CString fullName = CString(filename);
-    int foundPos = static_cast<int>(fullName.find_last_of("/\\"));
-    if (foundPos == -1) {
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Hole());
-    }
-    CString dirPathStr = fullName.substr(0, foundPos + 1);
-    JSHandle<EcmaString> dirPath = factory->NewFromUtf8(dirPathStr);
-
-    // 4. Let promiseCapability be !NewPromiseCapability(%Promise%).
-    JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
-    JSHandle<PromiseCapability> promiseCapability = JSPromise::NewPromiseCapability(thread, promiseFunc);
-
-    // 6. IfAbruptRejectPromise(specifierString, promiseCapability).
-    RETURN_REJECT_PROMISE_IF_ABRUPT(thread, specifierString, promiseCapability);
-    JSHandle<JSTaggedValue> currentModule(thread, thread->GetEcmaVM()->GetModuleManager()->GetCurrentModule());
-    JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
-
-    JSHandle<TaggedArray> argv = factory->NewTaggedArray(4); // 4: 4 means two args stored in array
-    argv->Set(thread, 0, promiseCapability->GetResolve());
-    argv->Set(thread, 1, promiseCapability->GetReject()); // 1 : first argument
-    argv->Set(thread, 2, dirPath); // 2: second argument
-    argv->Set(thread, 3, specifierString); // 3 : third argument
-
-    JSHandle<JSFunction> dynamicImportJob(env->GetDynamicImportJob());
-    job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, dynamicImportJob, argv); 
-
-    return promiseCapability->GetPromise();
+    JSHandle<JSTaggedValue> specifierHandle(thread, specifier);
+    JSHandle<JSTaggedValue> currentFuncHandle(thread, currentFunc);
+    return RuntimeStubs::RuntimeDynamicImport(thread, specifierHandle, currentFuncHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::SuperCallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
@@ -1032,13 +958,13 @@ JSTaggedValue SlowRuntimeStub::SuperCallSpread(JSThread *thread, JSTaggedValue f
     return RuntimeStubs::RuntimeSuperCallSpread(thread, funcHandle, newTargetHandle, jsArray);
 }
 
-JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, JSFunction *func, JSTaggedValue homeObject)
+JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject)
 {
     INTERPRETER_TRACE(thread, DefineMethod);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
+    JSHandle<Method> methodHandle(thread, method);
     JSHandle<JSTaggedValue> homeObjectHandle(thread, homeObject);
-    return RuntimeStubs::RuntimeDefineMethod(thread, funcHandle, homeObjectHandle);
+    return RuntimeStubs::RuntimeDefineMethod(thread, methodHandle, homeObjectHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key,
@@ -1116,14 +1042,15 @@ JSTaggedValue SlowRuntimeStub::CloneClassFromTemplate(JSThread *thread, JSTagged
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue SlowRuntimeStub::CreateClassWithBuffer(JSThread *thread, JSTaggedValue base,
                                                      JSTaggedValue lexenv, JSTaggedValue constpool,
-                                                     const uint16_t methodId)
+                                                     uint16_t methodId, uint16_t literalId)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> baseHandle(thread, base);
     JSHandle<JSTaggedValue> lexenvHandle(thread, lexenv);
     JSHandle<JSTaggedValue> constpoolHandle(thread, constpool);
-    return RuntimeStubs::RuntimeCreateClassWithBuffer(thread, baseHandle, lexenvHandle, constpoolHandle, methodId);
+    return RuntimeStubs::RuntimeCreateClassWithBuffer(thread, baseHandle, lexenvHandle, 
+                                                      constpoolHandle, methodId, literalId);
 }
 
 JSTaggedValue SlowRuntimeStub::SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base)
@@ -1164,12 +1091,32 @@ JSTaggedValue SlowRuntimeStub::AsyncGeneratorResolve(JSThread *thread, JSTaggedV
     return RuntimeStubs::RuntimeAsyncGeneratorResolve(thread, genObjHandle, valueHandle, flag);
 }
 
-JSTaggedValue SlowRuntimeStub::DefineAsyncGeneratorFunc(JSThread *thread, JSFunction *func)
+JSTaggedValue SlowRuntimeStub::AsyncGeneratorReject(JSThread *thread, JSTaggedValue asyncFuncObj,
+                                                    const JSTaggedValue value)
 {
-    INTERPRETER_TRACE(thread, DefineAsyncGeneratorFunc);
+    INTERPRETER_TRACE(thread, AsyncGeneratorReject);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSFunction> funcHandle(thread, func);
 
-    return RuntimeStubs::RuntimeDefineAsyncGeneratorFunc(thread, funcHandle);
+    JSHandle<JSAsyncGeneratorObject> asyncFuncObjHandle(thread, asyncFuncObj);
+    JSHandle<JSTaggedValue> valueHandle(thread, value);
+
+    return JSAsyncGeneratorObject::AsyncGeneratorReject(thread, asyncFuncObjHandle, valueHandle);
+}
+
+JSTaggedValue SlowRuntimeStub::LdPatchVar(JSThread *thread, uint32_t index)
+{
+    INTERPRETER_TRACE(thread, LdPatchVar);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    return RuntimeStubs::RuntimeLdPatchVar(thread, index);
+}
+
+JSTaggedValue SlowRuntimeStub::StPatchVar(JSThread *thread, uint32_t index, JSTaggedValue value)
+{
+    INTERPRETER_TRACE(thread, StPatchVar);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> valueHandle(thread, value);
+    return RuntimeStubs::RuntimeStPatchVar(thread, index, valueHandle);
 }
 }  // namespace panda::ecmascript

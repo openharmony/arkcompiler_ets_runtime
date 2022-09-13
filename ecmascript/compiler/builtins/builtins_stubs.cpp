@@ -24,7 +24,7 @@
 #include "ecmascript/compiler/variable_type.h"
 
 namespace panda::ecmascript::kungfu {
-#if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
+#if ECMASCRIPT_ENABLE_BUILTIN_LOG
 #define DECLARE_BUILTINS(name)                                                                      \
 void name##StubBuilder::GenerateCircuit()                                                           \
 {                                                                                                   \
@@ -56,7 +56,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, Ga
 #endif
 
 #define CALLSLOWPATH()                                                                              \
-    CallNGCRuntime(glue, RTSTUB_ID(PushCallIRangeAndDispatchNative),                                \
+    CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),                                \
                   { glue, nativeCode, func, thisValue, numArgs, argv })
 
 DECLARE_BUILTINS(CharCodeAt)
@@ -233,7 +233,7 @@ DECLARE_BUILTINS(Substring)
     DEFVARIABLE(end, VariableType::INT32(), Int32(0));
     DEFVARIABLE(from, VariableType::INT32(), Int32(0));
     DEFVARIABLE(to, VariableType::INT32(), Int32(0));
-    
+
     Label objNotUndefinedAndNull(env);
     Label isString(env);
     Label isSearchString(env);

@@ -93,8 +93,12 @@ JSHandle<Program> JSPandaFileManager::GenerateProgram(
     EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
-
-    JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
+    JSHandle<Program> program;
+    if (jsPandaFile->IsBundlePack()) {
+        program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
+    } else {
+        program = PandaFileTranslator::GenerateProgramWithMerge(vm, jsPandaFile, entryPoint);
+    }
     return program;
 }
 
@@ -219,9 +223,9 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
         newJsPandaFile->SetLoadedAOTStatus(true);
     }
 
-    CString methodName = entryPoint.data();
-    if (newJsPandaFile->IsBundle()) {
+    if (newJsPandaFile->IsBundlePack()) {
         // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
+        CString methodName = entryPoint.data();
         auto pos = entryPoint.find_last_of("::");
         if (pos != std::string_view::npos) {
             methodName = entryPoint.substr(pos + 1);
@@ -229,9 +233,10 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
             // default use func_main_0 as entryPoint
             methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
         }
+        PandaFileTranslator::TranslateClasses(newJsPandaFile, methodName);
+    } else {
+        PandaFileTranslator::TranslateClassesWithMerge(newJsPandaFile);
     }
-
-    PandaFileTranslator::TranslateClasses(newJsPandaFile, methodName);
     {
         os::memory::LockHolder lock(jsPandaFileLock_);
         const JSPandaFile *jsPandaFile = FindJSPandaFileUnlocked(desc);
@@ -290,14 +295,13 @@ void JSPandaFileManager::JSPandaFileAllocator::FreeBuffer(void *mem)
     free(mem);
 }
 
-void JSPandaFileManager::RemoveJSPandaFile(void *pointer, void *data)
+void JSPandaFileManager::RemoveJSPandaFile(void *pointer)
 {
-    if (pointer == nullptr || data == nullptr) {
+    if (pointer == nullptr) {
         return;
     }
     auto jsPandaFile = static_cast<JSPandaFile *>(pointer);
     // dec ref in filemanager
-    JSPandaFileManager *jsPandaFileManager = static_cast<JSPandaFileManager *>(data);
-    jsPandaFileManager->DecreaseRefJSPandaFile(jsPandaFile);
+    JSPandaFileManager::GetInstance()->DecreaseRefJSPandaFile(jsPandaFile);
 }
 }  // namespace panda::ecmascript

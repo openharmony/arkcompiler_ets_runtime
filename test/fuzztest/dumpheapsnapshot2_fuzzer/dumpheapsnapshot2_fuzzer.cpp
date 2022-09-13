@@ -32,6 +32,9 @@ namespace OHOS {
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         int input = 0;
+        if (size <= 0) {
+            return;
+        }
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
         }

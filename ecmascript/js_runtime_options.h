@@ -87,6 +87,7 @@ public:
         parser->Add(&logComponents_);
         parser->Add(&maxAotMethodSize_);
         parser->Add(&abcFilelist_);
+        parser->Add(&entryPoint_);
     }
 
     bool EnableArkTools() const
@@ -652,6 +653,21 @@ public:
         return abcFilelist_.WasSet();
     }
 
+    std::string GetEntryPoint() const
+    {
+        return entryPoint_.GetValue();
+    }
+
+    void SetEntryPoint(std::string value)
+    {
+        entryPoint_.SetValue(std::move(value));
+    }
+
+    bool WasSetEntryPoint() const
+    {
+        return entryPoint_.WasSet();
+    }
+
     void ParseAbcListFile(std::vector<std::string> &moduleList) const
     {
         std::ifstream moduleFile(abcFilelist_.GetValue());
@@ -720,9 +736,12 @@ private:
         "allcir or all0" : print cir info for all methods,
         "allllir or all1" : print llir info for all methods,
         "allasm or all2" : print asm log for all methods,
+        "alltype or all3" : print type log for all methods,
         "cerllircirasm or cer0112": print llIR file, CIR log and asm log for certain method defined in 'mlist-for-log',
         "cercir or cer0": print cir info for certain method illustrated in 'mlist-for-log',
+        "cerllir or cer1": print llir info for certain method illustrated in 'mlist-for-log',
         "cerasm or cer2": print asm log for certain method illustrated in 'mlist-for-log',
+        "certype or cer3": print type log for certain method illustrated in 'mlist-for-log',
         Default: "none")"};
     PandArg<std::string> methodsListForLog_ {"mlist-for-log",
         R"(none)",
@@ -774,8 +793,10 @@ private:
         "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
     PandArg<uint32_t> maxAotMethodSize_ {"maxAotMethodSize", 32_KB,
         R"(enable aot to skip too large method. Default size: 32 KB)"};
-    PandArg<std::string> abcFilelist_ {"abc-list-file",  R"(none)",
+    PandArg<std::string> abcFilelist_ {"abc-list-file", R"(none)",
         R"(abc's list file. )"};
+    PandArg<std::string> entryPoint_ {"entry-point", R"(_GLOBAL::func_main_0)",
+        R"(full name of entrypoint function or method. )"};
 };
 }  // namespace panda::ecmascript
 

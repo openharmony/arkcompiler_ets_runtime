@@ -84,7 +84,7 @@ public:
     void GenerateStubsX64(Chunk* chunk);
     void GenerateStubsAarch64(Chunk* chunk);
 
-    static int GetJumpSizeFromJSCallMode(JSCallMode mode);
+    static bool IsCallNew(JSCallMode mode);
     static int GetArgcFromJSCallMode(JSCallMode mode);
     static bool JSModeHaveThisArg(JSCallMode mode);
     static bool JSModeHaveNewTargetArg(JSCallMode mode);

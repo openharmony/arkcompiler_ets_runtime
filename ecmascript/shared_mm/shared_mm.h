@@ -31,7 +31,7 @@ public:
         static JSSharedMemoryManager jsSharedMemoryManager;
         return &jsSharedMemoryManager;
     }
-    void CreateOrLoad(void **pointer, size_t size);
+    bool CreateOrLoad(void **pointer, size_t size);
     static void RemoveSharedMemory(void *pointer, void *data);
 private:
     JSSharedMemoryManager() = default;

@@ -417,6 +417,28 @@ std::unique_ptr<StepOverParams> StepOverParams::Create(const PtJson &params)
     return paramsObject;
 }
 
+std::unique_ptr<SetMixedDebugParams> SetMixedDebugParams::Create(const PtJson &params)
+{
+    auto paramsObject = std::make_unique<SetMixedDebugParams>();
+    std::string error;
+    Result ret;
+
+    bool enabled = false;
+    ret = params.GetBool("enabled", &enabled);
+    if (ret == Result::SUCCESS) {
+        paramsObject->enabled_ = enabled;
+    } else if (ret == Result::TYPE_ERROR) {  // optional value
+        error += "Unknown 'enabled';";
+    }
+
+    if (!error.empty()) {
+        LOG_DEBUGGER(ERROR) << "SetMixedDebugParams::Create " << error;
+        return nullptr;
+    }
+
+    return paramsObject;
+}
+
 std::unique_ptr<GetPropertiesParams> GetPropertiesParams::Create(const PtJson &params)
 {
     auto paramsObject = std::make_unique<GetPropertiesParams>();

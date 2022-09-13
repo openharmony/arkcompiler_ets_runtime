@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_JSPANDAFILE_JS_PATCH_MANAGER_H
-#define ECMASCRIPT_JSPANDAFILE_JS_PATCH_MANAGER_H
+#ifndef ECMASCRIPT_JSPANDAFILE_QUICK_FIX_LOADER_H
+#define ECMASCRIPT_JSPANDAFILE_QUICK_FIX_LOADER_H
 
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_tagged_value.h"
@@ -22,13 +22,11 @@
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {
-class JSPatchManager {
+using EntityId = panda_file::File::EntityId;
+class QuickFixLoader {
 public:
-    JSPatchManager() = default;
-    ~JSPatchManager()
-    {
-        reservedBaseInfo_.clear();
-    }
+    QuickFixLoader() = default;
+    ~QuickFixLoader();
 
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
@@ -40,12 +38,33 @@ private:
                        const JSHandle<ConstantPool> &baseConstpool,
                        const JSHandle<ConstantPool> &patchConstpool,
                        const JSHandle<Program> &patchProgram);
+    void ReplaceMethodInner(JSThread *thread,
+                            Method *destMethod,
+                            MethodLiteral *srcMethodLiteral,
+                            JSTaggedValue srcConstpool);
+    CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
+
+    CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
+    void ClearReservedInfo()
+    {
+        reservedBaseMethodInfo_.clear();
+        reservedBaseClassInfo_.clear();
+    }
 
     const JSPandaFile *baseFile_ {nullptr};
     const JSPandaFile *patchFile_ {nullptr};
 
+    // For method unload patch.
     // key: base constpool index, value: base methodLiteral.
-    CUnorderedMap<uint32_t, MethodLiteral *> reservedBaseInfo_ {}; // for unload patch.
+    CUnorderedMap<uint32_t, MethodLiteral *> reservedBaseMethodInfo_ {};
+
+    // For class unload patch.
+    // key: base constpool index.
+    // key: class literal tagged array index, value: base methodLiteral.
+    CUnorderedMap<uint32_t, CUnorderedMap<uint32_t, MethodLiteral *>> reservedBaseClassInfo_ {};
+    bool hasLoadedPatch_ {false};
+
+    friend class QuickFixManager;
 };
 }  // namespace panda::ecmascript
-#endif // ECMASCRIPT_JSPANDAFILE_JS_PATCH_MANAGER_H
+#endif // ECMASCRIPT_JSPANDAFILE_QUICK_FIX_LOADER_H

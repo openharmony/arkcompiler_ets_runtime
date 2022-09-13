@@ -22,11 +22,14 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-    bool GetWordsArrayFuzzTest(const uint8_t* data, size_t size)
+    void GetWordsArrayFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }
         bool sign = true;
         const size_t uint64BytesNum = 8;
         if (size < uint64BytesNum) {
@@ -40,7 +43,7 @@ namespace OHOS {
             Local<BigIntRef> bigWords(bigWordsValue);
             bigWords->GetWordsArray(&sign, 1U, wordsArray);
             JSNApi::DestroyJSVM(vm);
-            return true;
+            return;
         }
 
         size_t wordsNum = size / uint64BytesNum;
@@ -69,7 +72,7 @@ namespace OHOS {
         Local<BigIntRef> bigWords(bigWordsValue);
         bigWords->GetWordsArray(&sign, wordsNum, wordsArray);
         JSNApi::DestroyJSVM(vm);
-        return true;
+        return;
     }
 }
 

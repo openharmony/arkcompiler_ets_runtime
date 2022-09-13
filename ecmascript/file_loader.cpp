@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -333,18 +334,19 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
     MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
-    mainFunc->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
+    mainMethod->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
+    Method *method = mainFunc->GetCallTarget();
+    method->SetCodeEntryAndMarkAOT(reinterpret_cast<uintptr_t>(mainEntry));
 }
 
-void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, const JSHandle<JSFunction> &func)
+void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method)
 {
-    Method *method = func->GetCallTarget();
     uint32_t methodId = method->GetMethodId().GetOffset();
     auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
     if (!codeEntry) {
         return;
     }
-    func->SetCodeEntryAndMarkAOT(codeEntry);
+    method->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
 void FileLoader::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj)
@@ -355,7 +357,7 @@ void FileLoader::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const
     for (size_t i = 0; i < elementsLen; i++) {
         valueHandle.Update(obj->Get(i));
         if (valueHandle->IsJSFunction()) {
-            SetAOTFuncEntry(jsPandaFile, JSHandle<JSFunction>(valueHandle));
+            SetAOTFuncEntry(jsPandaFile, JSHandle<JSFunction>(valueHandle)->GetCallTarget());
         }
     }
 }
@@ -370,12 +372,9 @@ void FileLoader::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
     const AsmInterParsedOption &asmInterOpt)
 {
     auto defaultBCStubDes = stubs[BytecodeStubCSigns::SingleStepDebugging];
-    auto defaultNonexistentBCStubDes = stubs[BytecodeStubCSigns::HandleOverflow];
     auto defaultBCDebuggerStubDes = stubs[BytecodeStubCSigns::BCDebuggerEntry];
     auto defaultBCDebuggerExceptionStubDes = stubs[BytecodeStubCSigns::BCDebuggerExceptionEntry];
     ASSERT(defaultBCStubDes.kind_ == CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);
-    thread->SetUnrealizedBCStubEntry(defaultBCStubDes.codeAddr_);
-    thread->SetNonExistedBCStubEntry(defaultNonexistentBCStubDes.codeAddr_);
     if (asmInterOpt.handleStart >= 0 && asmInterOpt.handleStart <= asmInterOpt.handleEnd) {
         for (int i = asmInterOpt.handleStart; i <= asmInterOpt.handleEnd; i++) {
             thread->SetBCStubEntry(static_cast<size_t>(i), defaultBCStubDes.codeAddr_);
@@ -385,8 +384,6 @@ void FileLoader::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
         INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(DISABLE_SINGLE_STEP_DEBUGGING)
 #undef DISABLE_SINGLE_STEP_DEBUGGING
     }
-    // bc debugger stub entries
-    thread->SetNonExistedBCDebugStubEntry(defaultNonexistentBCStubDes.codeAddr_);
     for (size_t i = 0; i < BCStubEntries::EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT; i++) {
         if (i == BytecodeStubCSigns::ID_ExceptionHandler) {
             thread->SetBCDebugStubEntry(i, defaultBCDebuggerExceptionStubDes.codeAddr_);
@@ -405,17 +402,19 @@ void FileLoader::InitializeStubEntries(const std::vector<AOTModulePackInfo::Func
             thread->SetFastStubEntry(des.indexInKind_, des.codeAddr_);
         } else if (des.IsBCStub()) {
             thread->SetBCStubEntry(des.indexInKind_, des.codeAddr_);
-#if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
-            std::cout << "bytecode: " << GetEcmaOpcodeStr(static_cast<EcmaOpcode>(des.indexInKind_))
-                << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
+#if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
+            auto start = MessageString::ASM_INTERPRETER_START;
+            std::string format = MessageString::GetMessageString(des.indexInKind_ + start);
+            LOG_ECMA(DEBUG) << "bytecode-" << des.indexInKind_ << " :" << format
+                << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         } else if (des.IsBuiltinsStub()) {
             thread->SetBuiltinStubEntry(des.indexInKind_, des.codeAddr_);
         } else {
             thread->RegisterRTInterface(des.indexInKind_, des.codeAddr_);
-#if ECMASCRIPT_ENABLE_ASM_INTERPRETER_LOG
-                std::cout << "runtime index: " << std::dec << des.indexInKind_
-                    << " addr: 0x" << std::hex << des.codeAddr_ << std::endl;
+#if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
+                LOG_ECMA(DEBUG) << "runtime index: " << std::dec << des.indexInKind_
+                    << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         }
     }

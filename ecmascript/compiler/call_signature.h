@@ -324,14 +324,18 @@ private:
     V(GeneratorReEnterAsmInterp)            \
     V(CallRuntimeWithArgv)                  \
     V(OptimizedCallOptimized)               \
-    V(PushCallArgs0AndDispatch)             \
+    V(PushCallArg0AndDispatch)              \
     V(PushCallArgsAndDispatchNative)        \
-    V(PushCallArgs1AndDispatch)             \
+    V(PushCallArg1AndDispatch)              \
     V(PushCallArgs2AndDispatch)             \
     V(PushCallArgs3AndDispatch)             \
-    V(PushCallIRangeAndDispatch)            \
-    V(PushCallIRangeAndDispatchNative)      \
-    V(PushCallIThisRangeAndDispatch)        \
+    V(PushCallRangeAndDispatch)             \
+    V(PushCallRangeAndDispatchNative)       \
+    V(PushCallThisRangeAndDispatch)         \
+    V(PushCallThisArg0AndDispatch)          \
+    V(PushCallThisArg1AndDispatch)          \
+    V(PushCallThisArgs2AndDispatch)         \
+    V(PushCallThisArgs3AndDispatch)         \
     V(PushCallNewAndDispatchNative)         \
     V(PushCallNewAndDispatch)               \
     V(CallGetter)                           \
@@ -345,18 +349,19 @@ private:
     V(StringsAreEquals)                     \
     V(BigIntEquals)                         \
     V(DebugPrint)                           \
+    V(DebugPrintInstruction)                \
     V(FatalPrint)                           \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
     V(FloatMod)                             \
     V(FindElementWithCache)                 \
     V(MarkingBarrier)                       \
-    V(CallArg0Dyn)                          \
-    V(CallArg1Dyn)                          \
-    V(CallArgs2Dyn)                         \
-    V(CallArgs3Dyn)                         \
-    V(CallIThisRangeDyn)                    \
-    V(CallIRangeDyn)                        \
+    V(CallArg0)                             \
+    V(CallArg1)                             \
+    V(CallArgs2)                            \
+    V(CallArgs3)                            \
+    V(CallThisRange)                        \
+    V(CallRange)                            \
     V(JSCall)                               \
     V(ConstructorJSCall)                    \
     V(JSFunctionEntry)                      \

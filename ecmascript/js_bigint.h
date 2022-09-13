@@ -93,6 +93,8 @@ public:
     static JSTaggedValue AsintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<BigInt> bigint);
     static JSTaggedNumber BigIntToNumber(JSHandle<BigInt> bigint);
     static ComparisonResult CompareWithNumber(JSHandle<BigInt> bigint, JSHandle<JSTaggedValue> number);
+    static JSHandle<BigInt> GetUint64MaxBigint(JSThread *thread);
+    static JSHandle<BigInt> GetInt64MaxBigint(JSThread *thread);
     static inline size_t ComputeSize(uint32_t length)
     {
         return DATA_OFFSET + sizeof(uint32_t) * length;
@@ -120,13 +122,13 @@ public:
     inline uint32_t GetDigit(uint32_t index) const
     {
         ASSERT(index < GetLength());
-        return Barriers::GetDynValue<uint32_t>(GetData(), sizeof(uint32_t) * index);
+        return Barriers::GetValue<uint32_t>(GetData(), sizeof(uint32_t) * index);
     }
 
     inline void SetDigit(uint32_t index, uint32_t digit)
     {
         ASSERT(index < GetLength());
-        Barriers::SetDynPrimitive<uint32_t>(GetData(), sizeof(uint32_t) * index, digit);
+        Barriers::SetPrimitive<uint32_t>(GetData(), sizeof(uint32_t) * index, digit);
     }
 
     static constexpr size_t LENGTH_OFFSET = TaggedObjectSize();

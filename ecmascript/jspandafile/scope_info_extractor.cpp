@@ -17,6 +17,7 @@
 
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
@@ -27,8 +28,21 @@ JSTaggedValue ScopeInfoExtractor::GenerateScopeInfo(JSThread *thread, uint16_t s
     Method *method = FrameHandler(thread).GetMethod();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     JSHandle<JSTaggedValue> constpool(thread, method->GetConstantPool());
-    JSHandle<TaggedArray> elementsLiteral =
-        LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, scopeId, constpool);
+
+    JSHandle<TaggedArray> elementsLiteral;
+    if (jsPandaFile->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedValue().GetTaggedObject());
+        panda_file::File::IndexHeader *indexHeader = taggedPool->GetIndexHeader();
+        auto pf = jsPandaFile->GetPandaFile();
+        Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
+        panda_file::File::EntityId id = indexs[scopeId];
+        elementsLiteral = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id, constpool);
+#endif
+    } else {
+        elementsLiteral = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, scopeId, constpool);
+    }
+
     ASSERT(elementsLiteral->GetLength() > 0);
     size_t length = elementsLiteral->GetLength();
 

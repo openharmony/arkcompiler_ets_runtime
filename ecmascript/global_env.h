@@ -171,7 +171,8 @@ class JSThread;
     V(JSTaggedValue, DetachSymbol, DETACH_SYMBOL_INDEX)                                             \
     V(JSTaggedValue, CjsModuleFunction, CJS_MODULE_FUNCTION_INDEX)                                  \
     V(JSTaggedValue, CjsExportsFunction, CJS_EXPORTS_FUNCTION_INDEX)                                \
-    V(JSTaggedValue, CjsRequireFunction, CJS_REQUIRE_FUNCTION_INDEX)
+    V(JSTaggedValue, CjsRequireFunction, CJS_REQUIRE_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, GlobalPatch, GLOBAL_PATCH)
 
 class GlobalEnv : public TaggedObject {
 public:
@@ -232,18 +233,18 @@ public:
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
         if (mode == WRITE_BARRIER && value.GetTaggedValue().IsHeapObject()) {                           \
-            Barriers::SetDynObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());    \
+            Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());    \
         } else {                                                                                        \
-            Barriers::SetDynPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData()); \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData()); \
         }                                                                                               \
     }                                                                                                   \
     inline void Set##name(const JSThread *thread, type value, BarrierMode mode = WRITE_BARRIER)         \
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
         if (mode == WRITE_BARRIER && value.IsHeapObject()) {                                            \
-            Barriers::SetDynObject<true>(thread, this, offset, value.GetRawData());                     \
+            Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                     \
         } else {                                                                                        \
-            Barriers::SetDynPrimitive<JSTaggedType>(this, offset, value.GetRawData());                  \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                  \
         }                                                                                               \
     }
     GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ACCESSORS)

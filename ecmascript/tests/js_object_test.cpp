@@ -508,9 +508,9 @@ HWTEST_F_L0(JSObjectTest, EnumerableOwnNames)
 
 HWTEST_F_L0(JSObjectTest, SetIntegrityLevelSealed)
 {
-    JSHandle<JSTaggedValue> dynclass1(thread, JSObjectTestCreate(thread));
+    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     JSHandle<JSObject> obj1 =
-        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass1), dynclass1);
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
     EXPECT_TRUE(*obj1 != nullptr);
     CString undefinedCStr = "x";
     JSHandle<JSTaggedValue> key1(thread->GetEcmaVM()->GetFactory()->NewFromASCII(&undefinedCStr[0]));
@@ -533,9 +533,9 @@ HWTEST_F_L0(JSObjectTest, SetIntegrityLevelSealed)
 
 HWTEST_F_L0(JSObjectTest, SetIntegrityLevelFrozen)
 {
-    JSHandle<JSTaggedValue> dynclass1(thread, JSObjectTestCreate(thread));
+    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     JSHandle<JSObject> obj1 =
-        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass1), dynclass1);
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
     EXPECT_TRUE(*obj1 != nullptr);
 
     CString undefinedCStr = "x";
@@ -558,9 +558,9 @@ HWTEST_F_L0(JSObjectTest, SetIntegrityLevelFrozen)
 
 HWTEST_F_L0(JSObjectTest, TestIntegrityLevelSealed)
 {
-    JSHandle<JSTaggedValue> dynclass1(thread, JSObjectTestCreate(thread));
+    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     JSHandle<JSObject> obj1 =
-        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass1), dynclass1);
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
     CString undefinedCStr = "level";
     JSHandle<JSTaggedValue> key1(thread->GetEcmaVM()->GetFactory()->NewFromASCII(&undefinedCStr[0]));
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1));
@@ -582,9 +582,9 @@ HWTEST_F_L0(JSObjectTest, TestIntegrityLevelSealed)
 
 HWTEST_F_L0(JSObjectTest, TestIntegrityLevelFrozen)
 {
-    JSHandle<JSTaggedValue> dynclass1(thread, JSObjectTestCreate(thread));
+    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     JSHandle<JSObject> obj1 =
-        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass1), dynclass1);
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
     CString undefinedCStr = "level";
     JSHandle<JSTaggedValue> key1(thread->GetEcmaVM()->GetFactory()->NewFromASCII(&undefinedCStr[0]));
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1));
@@ -606,9 +606,9 @@ HWTEST_F_L0(JSObjectTest, TestIntegrityLevelFrozen)
 
 HWTEST_F_L0(JSObjectTest, TestIntegrityLevelWithoutProperty)
 {
-    JSHandle<JSTaggedValue> dynclass1(thread, JSObjectTestCreate(thread));
+    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     JSHandle<JSTaggedValue> obj1(
-        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass1), dynclass1));
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1));
     JSHandle<JSObject>::Cast(obj1)->GetJSHClass()->SetExtensible(false);
     CString undefinedCStr = "level";
     JSHandle<JSTaggedValue> key1(thread->GetEcmaVM()->GetFactory()->NewFromASCII(&undefinedCStr[0]));
@@ -638,9 +638,9 @@ JSTaggedValue TestGetter(EcmaRuntimeCallInfo *argv)
 
 HWTEST_F_L0(JSObjectTest, Getter)
 {
-    JSHandle<JSTaggedValue> dynclass1(thread, JSObjectTestCreate(thread));
+    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass1), dynclass1);
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("x"));
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("y"));
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -676,9 +676,9 @@ JSTaggedValue TestSetter(EcmaRuntimeCallInfo *argv)
 
 HWTEST_F_L0(JSObjectTest, Setter)
 {
-    JSHandle<JSTaggedValue> dynclass1(thread, JSObjectTestCreate(thread));
+    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass1), dynclass1);
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("x"));
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("y"));
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -748,9 +748,9 @@ JSTaggedValue TestUndefinedSetter([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 
 HWTEST_F_L0(JSObjectTest, GetterIsUndefined)
 {
-    JSHandle<JSTaggedValue> dynclass1(thread, JSObjectTestCreate(thread));
+    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass1), dynclass1);
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("property"));
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> getter =
@@ -781,9 +781,9 @@ HWTEST_F_L0(JSObjectTest, GetterIsUndefined)
 
 HWTEST_F_L0(JSObjectTest, SetterIsUndefined)
 {
-    JSHandle<JSTaggedValue> dynclass1(thread, JSObjectTestCreate(thread));
+    JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(dynclass1), dynclass1);
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("property"));
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> getter =
@@ -934,10 +934,10 @@ HWTEST_F_L0(JSObjectTest, ElementFastToSlow)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), keyStr, key2);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key0, key0);
     EXPECT_TRUE(!TaggedArray::Cast(obj1->GetElements().GetTaggedObject())->IsDictionaryMode());
-    JSHandle<JSHClass> dynClass(thread, obj1->GetJSHClass());
+    JSHandle<JSHClass> hclass(thread, obj1->GetJSHClass());
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key1, key1);
     EXPECT_TRUE(!TaggedArray::Cast(obj1->GetElements().GetTaggedObject())->IsDictionaryMode());
-    EXPECT_EQ(obj1->GetJSHClass(), *dynClass);
+    EXPECT_EQ(obj1->GetJSHClass(), *hclass);
 
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key2000, key2000);
     EXPECT_TRUE(TaggedArray::Cast(obj1->GetElements().GetTaggedObject())->IsDictionaryMode());
@@ -948,10 +948,10 @@ HWTEST_F_L0(JSObjectTest, ElementFastToSlow)
     JSHandle<JSObject> obj2 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key0, key0);
     EXPECT_TRUE(!TaggedArray::Cast(obj2->GetElements().GetTaggedObject())->IsDictionaryMode());
-    JSHandle<JSHClass> dynClass2(thread, obj2->GetJSHClass());
+    JSHandle<JSHClass> hclass2(thread, obj2->GetJSHClass());
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key2, key2);
     EXPECT_TRUE(!TaggedArray::Cast(obj2->GetElements().GetTaggedObject())->IsDictionaryMode());
-    EXPECT_EQ(obj2->GetJSHClass(), *dynClass2);
+    EXPECT_EQ(obj2->GetJSHClass(), *hclass2);
     // test change attr
     JSHandle<JSObject> obj3 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj3), key0, key0);
@@ -1003,25 +1003,25 @@ HWTEST_F_L0(JSObjectTest, EnableProtoChangeMarker)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), obj1Key, obj1Value);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), obj2Key, obj2Value);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj3), obj3Key, obj3Value);
-    JSHandle<JSHClass> obj3Dynclass(thread, obj3->GetJSHClass());
-    JSHandle<JSTaggedValue> resultMarker = JSHClass::EnableProtoChangeMarker(thread, obj3Dynclass);
+    JSHandle<JSHClass> obj3Class(thread, obj3->GetJSHClass());
+    JSHandle<JSTaggedValue> resultMarker = JSHClass::EnableProtoChangeMarker(thread, obj3Class);
     EXPECT_TRUE(resultMarker->IsProtoChangeMarker());
     bool hasChanged = ProtoChangeMarker::Cast(resultMarker->GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(!hasChanged);
 
-    JSHandle<JSHClass> obj1Dynclass(thread, obj1->GetJSHClass());
-    JSHandle<JSHClass> obj2Dynclass(thread, obj2->GetJSHClass());
-    JSTaggedValue obj2Marker = obj2Dynclass->GetProtoChangeMarker();
+    JSHandle<JSHClass> obj1Class(thread, obj1->GetJSHClass());
+    JSHandle<JSHClass> obj2Class(thread, obj2->GetJSHClass());
+    JSTaggedValue obj2Marker = obj2Class->GetProtoChangeMarker();
     EXPECT_TRUE(obj2Marker.IsProtoChangeMarker());
     bool hasChanged2 = ProtoChangeMarker::Cast(obj2Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(!hasChanged2);
 
-    JSTaggedValue obj1Marker = obj1Dynclass->GetProtoChangeMarker();
+    JSTaggedValue obj1Marker = obj1Class->GetProtoChangeMarker();
     EXPECT_TRUE(!obj1Marker.IsProtoChangeMarker());
 
-    JSTaggedValue protoDetails2 = obj2Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails2.IsProtoChangeDetails());
-    JSTaggedValue protoDetails1 = obj1Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails1.IsProtoChangeDetails());
     JSTaggedValue listeners1 = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener();
     EXPECT_TRUE(listeners1 != JSTaggedValue::Undefined());
@@ -1029,7 +1029,7 @@ HWTEST_F_L0(JSObjectTest, EnableProtoChangeMarker)
     EXPECT_TRUE(listeners2 == JSTaggedValue::Undefined());
     uint32_t index = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetRegisterIndex();
     JSTaggedValue listenersResult = ChangeListener::Cast(listeners1.GetTaggedObject())->Get(index);
-    EXPECT_TRUE(listenersResult == obj2Dynclass.GetTaggedValue());
+    EXPECT_TRUE(listenersResult == obj2Class.GetTaggedValue());
 }
 
 HWTEST_F_L0(JSObjectTest, BuildRegisterTree)
@@ -1067,49 +1067,49 @@ HWTEST_F_L0(JSObjectTest, BuildRegisterTree)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj6), obj6Key, obj6Value);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj7), obj7Key, obj7Value);
 
-    JSHandle<JSHClass> obj1Dynclass(thread, obj1->GetJSHClass());
-    JSHandle<JSHClass> obj2Dynclass(thread, obj2->GetJSHClass());
-    JSHandle<JSHClass> obj3Dynclass(thread, obj3->GetJSHClass());
-    JSHandle<JSHClass> obj4Dynclass(thread, obj4->GetJSHClass());
-    JSHandle<JSHClass> obj5Dynclass(thread, obj5->GetJSHClass());
-    JSHandle<JSHClass> obj6Dynclass(thread, obj6->GetJSHClass());
-    JSHandle<JSHClass> obj7Dynclass(thread, obj7->GetJSHClass());
+    JSHandle<JSHClass> obj1Class(thread, obj1->GetJSHClass());
+    JSHandle<JSHClass> obj2Class(thread, obj2->GetJSHClass());
+    JSHandle<JSHClass> obj3Class(thread, obj3->GetJSHClass());
+    JSHandle<JSHClass> obj4Class(thread, obj4->GetJSHClass());
+    JSHandle<JSHClass> obj5Class(thread, obj5->GetJSHClass());
+    JSHandle<JSHClass> obj6Class(thread, obj6->GetJSHClass());
+    JSHandle<JSHClass> obj7Class(thread, obj7->GetJSHClass());
 
-    JSHandle<JSTaggedValue> result3Marker = JSHClass::EnableProtoChangeMarker(thread, obj3Dynclass);
-    JSHandle<JSTaggedValue> result5Marker = JSHClass::EnableProtoChangeMarker(thread, obj5Dynclass);
+    JSHandle<JSTaggedValue> result3Marker = JSHClass::EnableProtoChangeMarker(thread, obj3Class);
+    JSHandle<JSTaggedValue> result5Marker = JSHClass::EnableProtoChangeMarker(thread, obj5Class);
     EXPECT_TRUE(result3Marker->IsProtoChangeMarker());
     EXPECT_TRUE(!(ProtoChangeMarker::Cast(result3Marker->GetTaggedObject())->GetHasChanged()));
     EXPECT_TRUE(result5Marker->IsProtoChangeMarker());
     EXPECT_TRUE(!(ProtoChangeMarker::Cast(result5Marker->GetTaggedObject())->GetHasChanged()));
 
-    EXPECT_TRUE(obj4Dynclass->GetProtoChangeMarker().IsProtoChangeMarker());
-    EXPECT_TRUE(!obj6Dynclass->GetProtoChangeMarker().IsProtoChangeMarker());
+    EXPECT_TRUE(obj4Class->GetProtoChangeMarker().IsProtoChangeMarker());
+    EXPECT_TRUE(!obj6Class->GetProtoChangeMarker().IsProtoChangeMarker());
 
-    JSHandle<JSTaggedValue> result7Marker = JSHClass::EnableProtoChangeMarker(thread, obj7Dynclass);
+    JSHandle<JSTaggedValue> result7Marker = JSHClass::EnableProtoChangeMarker(thread, obj7Class);
     EXPECT_TRUE(result7Marker->IsProtoChangeMarker());
     EXPECT_TRUE(!(ProtoChangeMarker::Cast(result7Marker->GetTaggedObject())->GetHasChanged()));
 
-    JSTaggedValue protoDetails1 = obj1Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails1.IsProtoChangeDetails());
     JSTaggedValue listeners1Value = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener();
     EXPECT_TRUE(listeners1Value != JSTaggedValue(0));
     JSHandle<ChangeListener> listeners1(thread, listeners1Value.GetTaggedObject());
-    JSTaggedValue protoDetails2 = obj2Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails2.IsProtoChangeDetails());
     uint32_t index2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetRegisterIndex();
-    EXPECT_TRUE(listeners1->Get(index2) == obj2Dynclass.GetTaggedValue());
+    EXPECT_TRUE(listeners1->Get(index2) == obj2Class.GetTaggedValue());
 
     JSTaggedValue listeners2Value = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener();
     EXPECT_TRUE(listeners2Value != JSTaggedValue(0));
     JSHandle<ChangeListener> listeners2(thread, listeners2Value.GetTaggedObject());
-    JSTaggedValue protoDetails4 = obj4Dynclass->GetProtoChangeDetails();
-    JSTaggedValue protoDetails6 = obj6Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails4 = obj4Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails6 = obj6Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails4.IsProtoChangeDetails());
     EXPECT_TRUE(protoDetails6.IsProtoChangeDetails());
     uint32_t index4 = ProtoChangeDetails::Cast(protoDetails4.GetTaggedObject())->GetRegisterIndex();
-    EXPECT_TRUE(listeners2->Get(index4) == obj4Dynclass.GetTaggedValue());
+    EXPECT_TRUE(listeners2->Get(index4) == obj4Class.GetTaggedValue());
     uint32_t index6 = ProtoChangeDetails::Cast(protoDetails6.GetTaggedObject())->GetRegisterIndex();
-    EXPECT_TRUE(listeners2->Get(index6) == obj6Dynclass.GetTaggedValue());
+    EXPECT_TRUE(listeners2->Get(index6) == obj6Class.GetTaggedValue());
 
     EXPECT_TRUE(listeners1->GetEnd() == 1U);
     EXPECT_TRUE(listeners2->GetEnd() == 2U);
@@ -1150,21 +1150,21 @@ HWTEST_F_L0(JSObjectTest, NoticeThroughChain)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj6), obj6Key, obj6Value);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj7), obj7Key, obj7Value);
 
-    JSHandle<JSHClass> obj1Dynclass(thread, obj1->GetJSHClass());
-    JSHandle<JSHClass> obj2Dynclass(thread, obj2->GetJSHClass());
-    JSHandle<JSHClass> obj3Dynclass(thread, obj3->GetJSHClass());
-    JSHandle<JSHClass> obj4Dynclass(thread, obj4->GetJSHClass());
-    JSHandle<JSHClass> obj5Dynclass(thread, obj5->GetJSHClass());
-    JSHandle<JSHClass> obj6Dynclass(thread, obj6->GetJSHClass());
-    JSHandle<JSHClass> obj7Dynclass(thread, obj7->GetJSHClass());
+    JSHandle<JSHClass> obj1Class(thread, obj1->GetJSHClass());
+    JSHandle<JSHClass> obj2Class(thread, obj2->GetJSHClass());
+    JSHandle<JSHClass> obj3Class(thread, obj3->GetJSHClass());
+    JSHandle<JSHClass> obj4Class(thread, obj4->GetJSHClass());
+    JSHandle<JSHClass> obj5Class(thread, obj5->GetJSHClass());
+    JSHandle<JSHClass> obj6Class(thread, obj6->GetJSHClass());
+    JSHandle<JSHClass> obj7Class(thread, obj7->GetJSHClass());
 
-    JSHClass::EnableProtoChangeMarker(thread, obj3Dynclass);
-    JSHClass::EnableProtoChangeMarker(thread, obj7Dynclass);
-    JSHClass::EnableProtoChangeMarker(thread, obj5Dynclass);
+    JSHClass::EnableProtoChangeMarker(thread, obj3Class);
+    JSHClass::EnableProtoChangeMarker(thread, obj7Class);
+    JSHClass::EnableProtoChangeMarker(thread, obj5Class);
 
-    JSHClass::NoticeThroughChain(thread, obj2Dynclass);
-    JSHClass::UnregisterOnProtoChain(thread, obj2Dynclass);
-    JSTaggedValue protoDetails1 = obj1Dynclass->GetProtoChangeDetails();
+    JSHClass::NoticeThroughChain(thread, obj2Class);
+    JSHClass::UnregisterOnProtoChain(thread, obj2Class);
+    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails1.IsProtoChangeDetails());
     JSTaggedValue listeners1Value = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener();
     EXPECT_TRUE(listeners1Value != JSTaggedValue(0));
@@ -1172,19 +1172,19 @@ HWTEST_F_L0(JSObjectTest, NoticeThroughChain)
     uint32_t holeIndex = ChangeListener::CheckHole(listeners1);
     EXPECT_TRUE(holeIndex == 0U);
 
-    JSTaggedValue protoDetails2 = obj2Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails2.IsProtoChangeDetails());
     JSTaggedValue listeners2Value = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener();
     EXPECT_TRUE(listeners2Value != JSTaggedValue(0));
     uint32_t index2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetRegisterIndex();
     EXPECT_TRUE(listeners1->Get(index2) == JSTaggedValue::Hole());
 
-    JSTaggedValue obj6Marker = obj6Dynclass->GetProtoChangeMarker();
+    JSTaggedValue obj6Marker = obj6Class->GetProtoChangeMarker();
     EXPECT_TRUE(obj6Marker.IsProtoChangeMarker());
     bool hasChanged6 = ProtoChangeMarker::Cast(obj6Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(hasChanged6);
 
-    JSTaggedValue obj4Marker = obj4Dynclass->GetProtoChangeMarker();
+    JSTaggedValue obj4Marker = obj4Class->GetProtoChangeMarker();
     EXPECT_TRUE(obj4Marker.IsProtoChangeMarker());
     bool hasChanged4 = ProtoChangeMarker::Cast(obj4Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(hasChanged4);
@@ -1225,39 +1225,39 @@ HWTEST_F_L0(JSObjectTest, ChangeProtoAndNoticeTheChain)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj6), obj6Key, obj6Value);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj7), obj7Key, obj7Value);
 
-    JSHandle<JSHClass> obj5Dynclass(thread, obj5->GetJSHClass());
-    JSHandle<JSHClass> obj7Dynclass(thread, obj7->GetJSHClass());
+    JSHandle<JSHClass> obj5Class(thread, obj5->GetJSHClass());
+    JSHandle<JSHClass> obj7Class(thread, obj7->GetJSHClass());
 
-    JSHClass::EnableProtoChangeMarker(thread, obj7Dynclass);
-    JSHClass::EnableProtoChangeMarker(thread, obj5Dynclass);
+    JSHClass::EnableProtoChangeMarker(thread, obj7Class);
+    JSHClass::EnableProtoChangeMarker(thread, obj5Class);
 
     JSObject::SetPrototype(thread, obj2, JSHandle<JSTaggedValue>(obj3));
 
-    JSHandle<JSHClass> obj1Dynclass(thread, obj1->GetJSHClass());
-    JSHandle<JSHClass> obj2Dynclass(thread, obj2->GetJSHClass());
-    JSHandle<JSHClass> obj3Dynclass(thread, obj3->GetJSHClass());
-    JSHandle<JSHClass> obj4Dynclass(thread, obj4->GetJSHClass());
-    JSHandle<JSHClass> obj6Dynclass(thread, obj6->GetJSHClass());
+    JSHandle<JSHClass> obj1Class(thread, obj1->GetJSHClass());
+    JSHandle<JSHClass> obj2Class(thread, obj2->GetJSHClass());
+    JSHandle<JSHClass> obj3Class(thread, obj3->GetJSHClass());
+    JSHandle<JSHClass> obj4Class(thread, obj4->GetJSHClass());
+    JSHandle<JSHClass> obj6Class(thread, obj6->GetJSHClass());
 
-    JSTaggedValue obj6Marker = obj6Dynclass->GetProtoChangeMarker();
+    JSTaggedValue obj6Marker = obj6Class->GetProtoChangeMarker();
     EXPECT_TRUE(obj6Marker.IsProtoChangeMarker());
     bool hasChanged6 = ProtoChangeMarker::Cast(obj6Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(hasChanged6);
 
-    JSTaggedValue obj4Marker = obj4Dynclass->GetProtoChangeMarker();
+    JSTaggedValue obj4Marker = obj4Class->GetProtoChangeMarker();
     EXPECT_TRUE(obj4Marker.IsProtoChangeMarker());
     bool hasChanged4 = ProtoChangeMarker::Cast(obj4Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(hasChanged4);
 
-    JSTaggedValue protoDetails1 = obj1Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails1.IsProtoChangeDetails());
-    JSTaggedValue protoDetails2 = obj2Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails2.IsProtoChangeDetails());
-    JSTaggedValue protoDetails3 = obj3Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails3 = obj3Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails3.IsProtoChangeDetails());
-    JSTaggedValue protoDetails4 = obj4Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails4 = obj4Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails4.IsProtoChangeDetails());
-    JSTaggedValue protoDetails6 = obj6Dynclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetails6 = obj6Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails6.IsProtoChangeDetails());
 
     JSTaggedValue listeners1 = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener();
@@ -1277,10 +1277,10 @@ HWTEST_F_L0(JSObjectTest, ChangeProtoAndNoticeTheChain)
     JSTaggedValue result4 = ChangeListener::Cast(listeners2.GetTaggedObject())->Get(index4);
     JSTaggedValue result6 = ChangeListener::Cast(listeners2.GetTaggedObject())->Get(index6);
 
-    EXPECT_TRUE(result2 == obj2Dynclass.GetTaggedValue());
-    EXPECT_TRUE(result3 == obj3Dynclass.GetTaggedValue());
-    EXPECT_TRUE(result4 == obj4Dynclass.GetTaggedValue());
-    EXPECT_TRUE(result6 == obj6Dynclass.GetTaggedValue());
+    EXPECT_TRUE(result2 == obj2Class.GetTaggedValue());
+    EXPECT_TRUE(result3 == obj3Class.GetTaggedValue());
+    EXPECT_TRUE(result4 == obj4Class.GetTaggedValue());
+    EXPECT_TRUE(result6 == obj6Class.GetTaggedValue());
 }
 
 HWTEST_F_L0(JSObjectTest, NativePointerField)
@@ -1305,7 +1305,7 @@ static JSHandle<JSHClass> CreateTestHClass(JSThread *thread)
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> objectFuncPrototype = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> hclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, objectFuncPrototype);
+    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objectFuncPrototype);
     return hclass;
 }
 

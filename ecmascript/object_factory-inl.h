@@ -50,7 +50,8 @@ EcmaString *ObjectFactory::AllocOldSpaceStringObject(size_t size)
 JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointer,
                                                             const DeleteEntryPoint &callBack,
                                                             void *data,
-                                                            bool nonMovable)
+                                                            bool nonMovable,
+                                                            size_t nativeBindingsize)
 {
     NewObjectHook();
     TaggedObject *header;
@@ -64,7 +65,9 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     obj->SetExternalPointer(externalPointer);
     obj->SetDeleter(callBack);
     obj->SetData(data);
+    obj->SetBindingSize(nativeBindingsize);
 
+    heap_->IncreaseNativeBindingSize(nonMovable, nativeBindingsize);
     if (callBack != nullptr) {
         vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header));
     }

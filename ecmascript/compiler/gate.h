@@ -39,6 +39,7 @@ using TimeStamp = uint8_t;
 using SecondaryOp = uint8_t;
 using BitField = uint64_t;
 using OutIdx = uint32_t;
+using BinaryOp = uint8_t;
 class Gate;
 struct Properties;
 class BytecodeCircuitBuilder;
@@ -58,6 +59,14 @@ enum MachineType { // Bit width
 };
 
 std::string MachineTypeToStr(MachineType machineType);
+
+enum class TypedBinOp : BinaryOp {
+    TYPED_ADD,
+    TYPED_SUB,
+    TYPED_MUL,
+    TYPED_LESS,
+    TYPED_LESSEQ,
+};
 
 class OpCode {
 public:
@@ -162,6 +171,9 @@ public:
         BITCAST,
         RESTORE_REGISTER,
         SAVE_REGISTER,
+        TYPE_CHECK,
+        TYPED_BINARY_OP,
+        TYPE_CONVERT,
 
         COMMON_CIR_FIRST = NOP,
         COMMON_CIR_LAST = DEPEND_AND,
@@ -194,6 +206,7 @@ public:
     [[nodiscard]] bool IsSchedulable() const;
     [[nodiscard]] bool IsState() const;  // note: IsState(STATE_ENTRY) == false
     [[nodiscard]] bool IsGeneralState() const;
+    [[nodiscard]] bool IsTypedGate() const;
     [[nodiscard]] bool IsTerminalState() const;
     [[nodiscard]] bool IsCFGMerge() const;
     [[nodiscard]] bool IsControlCase() const;
@@ -358,7 +371,7 @@ public:
     void PrintByteCode(std::string bytecode) const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckNullInput() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckStateInput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckValueInput() const;
+    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckValueInput(bool isArch64) const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckDependInput() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckStateOutput() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckBranchOutput() const;
@@ -366,7 +379,7 @@ public:
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckSelector() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckRelay() const;
     [[nodiscard]] std::optional<std::pair<std::string, size_t>> SpecialCheck() const;
-    [[nodiscard]] bool Verify() const;
+    [[nodiscard]] bool Verify(bool isArch64) const;
     [[nodiscard]] MarkCode GetMark(TimeStamp stamp) const;
     void SetMark(MarkCode mark, TimeStamp stamp);
     [[nodiscard]] MachineType GetMachineType() const;

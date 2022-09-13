@@ -51,6 +51,8 @@ SamplesRecord::~SamplesRecord()
 void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
 {
     if (isLastSample_.load()) {
+        frameStackLength_ = 0;
+        frameInfoTempLength_ = 0;
         return;
     }
     FrameInfoTempToMap();
@@ -122,7 +124,9 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
 void SamplesRecord::WriteAddNodes()
 {
     sampleData_ += "{\"args\":{\"data\":{\"cpuProfile\":{\"nodes\":[";
-    for (auto it : profileInfo_->nodes) {
+    int count = profileInfo_->nodeCount;
+    for (int i = 0; i < count; i++) {
+        auto it = profileInfo_->nodes[i];
         sampleData_ += "{\"callFrame\":{\"codeType\":\"" + it.codeEntry.codeType + "\",";
         if (it.parentId == 0) {
             sampleData_ += "\"functionName\":\"(root)\",\"scriptId\":0},\"id\":1},";
@@ -298,13 +302,13 @@ void SamplesRecord::InsertStackInfo(Method *method, struct FrameInfo &codeEntry)
     stackInfoMap_.insert(std::make_pair(method, codeEntry));
 }
 
-void SamplesRecord::PushFrameStack(Method *method, int count)
+void SamplesRecord::PushFrameStack(Method *method)
 {
-    if (count >= MAX_ARRAY_COUNT) {
-        SetSampleFlag(false);
+    if (frameStackLength_ >= MAX_ARRAY_COUNT) {
+        SetSampleFlag(true);
+        return;
     }
-    frameStack_[count] = method;
-    frameStackLength_++;
+    frameStack_[frameStackLength_++] = method;
 }
 
 bool SamplesRecord::GetGcState() const
@@ -327,14 +331,13 @@ void SamplesRecord::SetIsStart(bool isStart)
     isStart_.store(isStart);
 }
 
-void SamplesRecord::PushStackInfo(const FrameInfoTemp &frameInfoTemp, int index)
+void SamplesRecord::PushStackInfo(const FrameInfoTemp &frameInfoTemp)
 {
-    if (index >= MAX_ARRAY_COUNT) {
-        SetSampleFlag(false);
+    if (frameInfoTempLength_ >= MAX_ARRAY_COUNT) {
+        SetSampleFlag(true);
         return;
     }
-    frameInfoTemps_[index] = frameInfoTemp;
-    frameInfoTempLength_++;
+    frameInfoTemps_[frameInfoTempLength_++] = frameInfoTemp;
 }
 
 void SamplesRecord::FrameInfoTempToMap()

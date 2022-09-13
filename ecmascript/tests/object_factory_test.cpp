@@ -114,7 +114,7 @@ HWTEST_F_L0(ObjectFactoryTest, NewJSFunction)
     // check feild
     EXPECT_EQ(newFun->GetProperties(), thread->GlobalConstants()->GetEmptyArray());
     EXPECT_EQ(newFun->GetElements(), thread->GlobalConstants()->GetEmptyArray());
-    EXPECT_EQ(newFun->GetProtoOrDynClass(), JSTaggedValue::Hole());
+    EXPECT_EQ(newFun->GetProtoOrHClass(), JSTaggedValue::Hole());
     EXPECT_EQ(newFun->GetHomeObject(), JSTaggedValue::Undefined());
     EXPECT_TRUE(JSTaggedValue(*newFun).IsJSFunction());
 

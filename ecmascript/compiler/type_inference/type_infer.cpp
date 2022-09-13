@@ -45,8 +45,7 @@ void TypeInfer::TraverseCircuit()
     }
 
     if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "TypeInfer:======================================================";
-        circuit_->PrintAllGates(*builder_);
+        PrintAllGatesTypes();
     }
 
     if (tsManager_->AssertTypes()) {
@@ -54,8 +53,7 @@ void TypeInfer::TraverseCircuit()
     }
 
     if (tsManager_->PrintAnyTypes()) {
-        TypeFilter filter(this);
-        filter.Run();
+        FilterAnyTypeGates();
     }
 }
 
@@ -103,101 +101,101 @@ bool TypeInfer::Infer(GateRef gate)
         return InferPhiGate(gate);
     }
     // infer ecma.* bytecode gates
-    EcmaOpcode op = builder_->GetByteCodeOpcode(gate);
+    EcmaBytecode op = builder_->GetByteCodeOpcode(gate);
     switch (op) {
-        case EcmaOpcode::LDNAN_PREF:
-        case EcmaOpcode::LDINFINITY_PREF:
-        case EcmaOpcode::SUB2DYN_PREF_V8:
-        case EcmaOpcode::MUL2DYN_PREF_V8:
-        case EcmaOpcode::DIV2DYN_PREF_V8:
-        case EcmaOpcode::MOD2DYN_PREF_V8:
-        case EcmaOpcode::SHL2DYN_PREF_V8:
-        case EcmaOpcode::ASHR2DYN_PREF_V8:
-        case EcmaOpcode::SHR2DYN_PREF_V8:
-        case EcmaOpcode::AND2DYN_PREF_V8:
-        case EcmaOpcode::OR2DYN_PREF_V8:
-        case EcmaOpcode::XOR2DYN_PREF_V8:
-        case EcmaOpcode::TONUMBER_PREF_V8:
-        case EcmaOpcode::TONUMERIC_PREF_V8:
-        case EcmaOpcode::NEGDYN_PREF_V8:
-        case EcmaOpcode::NOTDYN_PREF_V8:
-        case EcmaOpcode::INCDYN_PREF_V8:
-        case EcmaOpcode::DECDYN_PREF_V8:
-        case EcmaOpcode::EXPDYN_PREF_V8:
-        case EcmaOpcode::STARRAYSPREAD_PREF_V8_V8:
+        case EcmaBytecode::LDNAN_PREF:
+        case EcmaBytecode::LDINFINITY_PREF:
+        case EcmaBytecode::SUB2DYN_PREF_V8:
+        case EcmaBytecode::MUL2DYN_PREF_V8:
+        case EcmaBytecode::DIV2DYN_PREF_V8:
+        case EcmaBytecode::MOD2DYN_PREF_V8:
+        case EcmaBytecode::SHL2DYN_PREF_V8:
+        case EcmaBytecode::ASHR2DYN_PREF_V8:
+        case EcmaBytecode::SHR2DYN_PREF_V8:
+        case EcmaBytecode::AND2DYN_PREF_V8:
+        case EcmaBytecode::OR2DYN_PREF_V8:
+        case EcmaBytecode::XOR2DYN_PREF_V8:
+        case EcmaBytecode::TONUMBER_PREF_V8:
+        case EcmaBytecode::TONUMERIC_PREF_V8:
+        case EcmaBytecode::NEGDYN_PREF_V8:
+        case EcmaBytecode::NOTDYN_PREF_V8:
+        case EcmaBytecode::INCDYN_PREF_V8:
+        case EcmaBytecode::DECDYN_PREF_V8:
+        case EcmaBytecode::EXPDYN_PREF_V8:
+        case EcmaBytecode::STARRAYSPREAD_PREF_V8_V8:
             return SetNumberType(gate);
-        case EcmaOpcode::LDTRUE_PREF:
-        case EcmaOpcode::LDFALSE_PREF:
-        case EcmaOpcode::EQDYN_PREF_V8:
-        case EcmaOpcode::NOTEQDYN_PREF_V8:
-        case EcmaOpcode::LESSDYN_PREF_V8:
-        case EcmaOpcode::LESSEQDYN_PREF_V8:
-        case EcmaOpcode::GREATERDYN_PREF_V8:
-        case EcmaOpcode::GREATEREQDYN_PREF_V8:
-        case EcmaOpcode::ISINDYN_PREF_V8:
-        case EcmaOpcode::INSTANCEOFDYN_PREF_V8:
-        case EcmaOpcode::STRICTNOTEQDYN_PREF_V8:
-        case EcmaOpcode::STRICTEQDYN_PREF_V8:
-        case EcmaOpcode::ISTRUE_PREF:
-        case EcmaOpcode::ISFALSE_PREF:
-        case EcmaOpcode::SETOBJECTWITHPROTO_PREF_V8_V8:
-        case EcmaOpcode::DELOBJPROP_PREF_V8_V8:
+        case EcmaBytecode::LDTRUE_PREF:
+        case EcmaBytecode::LDFALSE_PREF:
+        case EcmaBytecode::EQDYN_PREF_V8:
+        case EcmaBytecode::NOTEQDYN_PREF_V8:
+        case EcmaBytecode::LESSDYN_PREF_V8:
+        case EcmaBytecode::LESSEQDYN_PREF_V8:
+        case EcmaBytecode::GREATERDYN_PREF_V8:
+        case EcmaBytecode::GREATEREQDYN_PREF_V8:
+        case EcmaBytecode::ISINDYN_PREF_V8:
+        case EcmaBytecode::INSTANCEOFDYN_PREF_V8:
+        case EcmaBytecode::STRICTNOTEQDYN_PREF_V8:
+        case EcmaBytecode::STRICTEQDYN_PREF_V8:
+        case EcmaBytecode::ISTRUE_PREF:
+        case EcmaBytecode::ISFALSE_PREF:
+        case EcmaBytecode::SETOBJECTWITHPROTO_PREF_V8_V8:
+        case EcmaBytecode::DELOBJPROP_PREF_V8_V8:
             return SetBooleanType(gate);
-        case EcmaOpcode::LDUNDEFINED_PREF:
+        case EcmaBytecode::LDUNDEFINED_PREF:
             return InferLdUndefined(gate);
-        case EcmaOpcode::LDNULL_PREF:
+        case EcmaBytecode::LDNULL_PREF:
             return InferLdNull(gate);
-        case EcmaOpcode::LDAI_DYN_IMM32:
-            return InferLdaiDyn(gate);
-        case EcmaOpcode::FLDAI_DYN_IMM64:
-            return InferFLdaiDyn(gate);
-        case EcmaOpcode::LDSYMBOL_PREF:
+        case EcmaBytecode::LDAI_DYN_IMM32:
+            return InferLdai(gate);
+        case EcmaBytecode::FLDAI_DYN_IMM64:
+            return InferFLdai(gate);
+        case EcmaBytecode::LDSYMBOL_PREF:
             return InferLdSymbol(gate);
-        case EcmaOpcode::THROWDYN_PREF:
-            return InferThrowDyn(gate);
-        case EcmaOpcode::TYPEOFDYN_PREF:
-            return InferTypeOfDyn(gate);
-        case EcmaOpcode::ADD2DYN_PREF_V8:
-            return InferAdd2Dyn(gate);
-        case EcmaOpcode::LDOBJBYINDEX_PREF_V8_IMM32:
+        case EcmaBytecode::THROWDYN_PREF:
+            return InferThrow(gate);
+        case EcmaBytecode::TYPEOFDYN_PREF:
+            return InferTypeOf(gate);
+        case EcmaBytecode::ADD2DYN_PREF_V8:
+            return InferAdd2(gate);
+        case EcmaBytecode::LDOBJBYINDEX_PREF_V8_IMM32:
             return InferLdObjByIndex(gate);
-        case EcmaOpcode::STGLOBALVAR_PREF_ID32:
-        case EcmaOpcode::STCONSTTOGLOBALRECORD_PREF_ID32:
-        case EcmaOpcode::TRYSTGLOBALBYNAME_PREF_ID32:
-        case EcmaOpcode::STLETTOGLOBALRECORD_PREF_ID32:
-        case EcmaOpcode::STCLASSTOGLOBALRECORD_PREF_ID32:
+        case EcmaBytecode::STGLOBALVAR_PREF_ID32:
+        case EcmaBytecode::STCONSTTOGLOBALRECORD_PREF_ID32:
+        case EcmaBytecode::TRYSTGLOBALBYNAME_PREF_ID32:
+        case EcmaBytecode::STLETTOGLOBALRECORD_PREF_ID32:
+        case EcmaBytecode::STCLASSTOGLOBALRECORD_PREF_ID32:
             return SetStGlobalBcType(gate);
-        case EcmaOpcode::LDGLOBALVAR_PREF_ID32:
+        case EcmaBytecode::LDGLOBALVAR_PREF_ID32:
             return InferLdGlobalVar(gate);
-        case EcmaOpcode::RETURNUNDEFINED_PREF:
+        case EcmaBytecode::RETURNUNDEFINED_PREF:
             return InferReturnUndefined(gate);
-        case EcmaOpcode::RETURN_DYN:
-            return InferReturnDyn(gate);
-        case EcmaOpcode::LDOBJBYNAME_PREF_ID32_V8:
+        case EcmaBytecode::RETURN_DYN:
+            return InferReturn(gate);
+        case EcmaBytecode::LDOBJBYNAME_PREF_ID32_V8:
             return InferLdObjByName(gate);
-        case EcmaOpcode::LDA_STR_ID32:
+        case EcmaBytecode::LDA_STR_ID32:
             return InferLdStr(gate);
-        case EcmaOpcode::CALLARG0DYN_PREF_V8:
-        case EcmaOpcode::CALLARG1DYN_PREF_V8_V8:
-        case EcmaOpcode::CALLARGS2DYN_PREF_V8_V8_V8:
-        case EcmaOpcode::CALLARGS3DYN_PREF_V8_V8_V8_V8:
-        case EcmaOpcode::CALLSPREADDYN_PREF_V8_V8_V8:
-        case EcmaOpcode::CALLIRANGEDYN_PREF_IMM16_V8:
-        case EcmaOpcode::CALLITHISRANGEDYN_PREF_IMM16_V8:
+        case EcmaBytecode::CALLARG0DYN_PREF_V8:
+        case EcmaBytecode::CALLARG1DYN_PREF_V8_V8:
+        case EcmaBytecode::CALLARGS2DYN_PREF_V8_V8_V8:
+        case EcmaBytecode::CALLARGS3DYN_PREF_V8_V8_V8_V8:
+        case EcmaBytecode::CALLSPREADDYN_PREF_V8_V8_V8:
+        case EcmaBytecode::CALLIRANGEDYN_PREF_IMM16_V8:
+        case EcmaBytecode::CALLITHISRANGEDYN_PREF_IMM16_V8:
             return InferCallFunction(gate);
-        case EcmaOpcode::LDOBJBYVALUE_PREF_V8_V8:
+        case EcmaBytecode::LDOBJBYVALUE_PREF_V8_V8:
             return InferLdObjByValue(gate);
-        case EcmaOpcode::GETNEXTPROPNAME_PREF_V8:
+        case EcmaBytecode::GETNEXTPROPNAME_PREF_V8:
             return InferGetNextPropName(gate);
-        case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_PREF_V8_V8_V8_V8:
+        case EcmaBytecode::DEFINEGETTERSETTERBYVALUE_PREF_V8_V8_V8_V8:
             return InferDefineGetterSetterByValue(gate);
-        case EcmaOpcode::NEWOBJDYNRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::NEWOBJSPREADDYN_PREF_V8_V8:
+        case EcmaBytecode::NEWOBJDYNRANGE_PREF_IMM16_V8:
+        case EcmaBytecode::NEWOBJAPPLY_PREF_V8_V8:
             return InferNewObject(gate);
-        case EcmaOpcode::SUPERCALL_PREF_IMM16_V8:
-        case EcmaOpcode::SUPERCALLSPREAD_PREF_V8:
+        case EcmaBytecode::SUPERCALL_PREF_IMM16_V8:
+        case EcmaBytecode::SUPERCALLSPREAD_PREF_V8:
             return InferSuperCall(gate);
-        case EcmaOpcode::TRYLDGLOBALBYNAME_PREF_ID32:
+        case EcmaBytecode::TRYLDGLOBALBYNAME_PREF_ID32:
             return InferTryLdGlobalByName(gate);
         default:
             break;
@@ -261,13 +259,13 @@ bool TypeInfer::InferLdNull(GateRef gate)
     return UpdateType(gate, nullType);
 }
 
-bool TypeInfer::InferLdaiDyn(GateRef gate)
+bool TypeInfer::InferLdai(GateRef gate)
 {
     auto numberType = GateType::NumberType();
     return UpdateType(gate, numberType);
 }
 
-bool TypeInfer::InferFLdaiDyn(GateRef gate)
+bool TypeInfer::InferFLdai(GateRef gate)
 {
     auto numberType = GateType::NumberType();
     return UpdateType(gate, numberType);
@@ -279,21 +277,21 @@ bool TypeInfer::InferLdSymbol(GateRef gate)
     return UpdateType(gate, symbolType);
 }
 
-bool TypeInfer::InferThrowDyn(GateRef gate)
+bool TypeInfer::InferThrow(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto gateType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, gateType);
 }
 
-bool TypeInfer::InferTypeOfDyn(GateRef gate)
+bool TypeInfer::InferTypeOf(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto gateType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, gateType);
 }
 
-bool TypeInfer::InferAdd2Dyn(GateRef gate)
+bool TypeInfer::InferAdd2(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
@@ -354,7 +352,7 @@ bool TypeInfer::InferReturnUndefined(GateRef gate)
     return UpdateType(gate, undefinedType);
 }
 
-bool TypeInfer::InferReturnDyn(GateRef gate)
+bool TypeInfer::InferReturn(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto gateType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
@@ -473,15 +471,38 @@ bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
     return false;
 }
 
+void TypeInfer::PrintAllGatesTypes() const
+{
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+
+    const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+    const MethodLiteral *methodLiteral = builder_->GetMethod();
+    EntityId methodId = builder_->GetMethod()->GetMethodId();
+    JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
+    const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+
+    std::string log;
+    for (const auto &gate : gateList) {
+        auto op = gateAccessor_.GetOpCode(gate);
+        const auto &gateToBytecode = builder_->GetGateToBytecode();
+        if ((op == OpCode::VALUE_SELECTOR) || (( op == OpCode::JS_BYTECODE || op == OpCode::CONSTANT ||
+                                                 op == OpCode::RETURN) &&
+                                                 gateToBytecode.find(gate) != gateToBytecode.end()))  {
+            log += CollectGateTypeLogInfo(gate, debugExtractor, "[TypePrinter] ");
+        }
+    }
+
+    LOG_COMPILER(INFO) << "[TypePrinter] [" << sourceFileName << ":" << functionName << "] begin:";
+    LOG_COMPILER(INFO) << log << "[TypePrinter] end";
+}
+
 void TypeInfer::Verify() const
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
     for (const auto &gate : gateList) {
-        auto type = gateAccessor_.GetGateType(gate);
-        if (ShouldInfer(gate) && type.IsTSType() && !type.IsAnyType()) {
-            PrintType(gate);
-        }
         auto op = gateAccessor_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
             TypeCheck(gate);
@@ -498,12 +519,12 @@ void TypeInfer::Verify() const
 void TypeInfer::TypeCheck(GateRef gate) const
 {
     auto info = builder_->GetByteCodeInfo(gate);
-    if (!info.IsBc(EcmaOpcode::CALLARGS2DYN_PREF_V8_V8_V8)) {
+    if (!info.IsBc(EcmaBytecode::CALLARGS2DYN_PREF_V8_V8_V8)) {
         return;
     }
     auto func = gateAccessor_.GetValueIn(gate, 0);
     auto funcInfo = builder_->GetByteCodeInfo(func);
-    if (!funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_PREF_ID32)) {
+    if (!funcInfo.IsBc(EcmaBytecode::TRYLDGLOBALBYNAME_PREF_ID32)) {
         return;
     }
     auto funcName = gateAccessor_.GetValueIn(func, 0);
@@ -514,62 +535,65 @@ void TypeInfer::TypeCheck(GateRef gate) const
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {
-            PrintType(valueGate);
-            std::string log("[TypeInfer][Error] ");
-            log += "gate id: "+ std::to_string(gateAccessor_.GetId(valueGate)) + ", ";
-            log += "expected type: " + expectedTypeStr;
-            LOG_COMPILER(FATAL) << log;
-            std::abort();
+            const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+            const MethodLiteral *methodLiteral = builder_->GetMethod();
+            EntityId methodId = builder_->GetMethod()->GetMethodId();
+            JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+            const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
+            const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+
+            std::string log = CollectGateTypeLogInfo(valueGate, debugExtractor, "[TypeAssertion] ");
+            log += "[TypeAssertion] but expected type: " + expectedTypeStr + "\n";
+
+            LOG_COMPILER(ERROR) << "[TypeAssertion] [" << sourceFileName << ":" << functionName << "] begin:";
+            LOG_COMPILER(FATAL) << log << " compiler: [TypeAssertion] end";
         }
     }
 }
 
-void TypeInfer::PrintType(GateRef gate) const
+void TypeInfer::FilterAnyTypeGates() const
 {
-    std::string log("[TypeInfer] ");
-    log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
-    auto op = gateAccessor_.GetOpCode(gate);
-    log += "opcode: " + op.Str() + ", ";
-    if (op != OpCode::VALUE_SELECTOR) {
-        log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
-    }
-    auto type = gateAccessor_.GetGateType(gate);
-    log += "type: " + tsManager_->GetTypeStr(type) + ", ";
-    auto typeRef = GlobalTSTypeRef(type.GetType());
-    log += "moduleId: " + std::to_string(typeRef.GetModuleId()) + ", ";
-    log += "localId: " + std::to_string(typeRef.GetLocalId());
-    LOG_COMPILER(INFO) << log;
-}
-
-void TypeFilter::Run() const
-{
-    LOG_COMPILER(INFO) << "================== filter any types outputs ==================";
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
-    EntityId methodId = methodLiteral_->GetMethodId();
+    const MethodLiteral *methodLiteral = builder_->GetMethod();
+    EntityId methodId = methodLiteral->GetMethodId();
 
-    JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    tooling::JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
-    const std::string functionName = methodLiteral_->ParseFunctionName(jsPandaFile, methodId);
+    const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
 
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
+    std::string log;
     for (const auto &gate : gateList) {
         GateType type = gateAccessor_.GetGateType(gate);
-        if (infer_->ShouldInfer(gate) && type.IsAnyType()) {
-            PrintAnyTypeGate(gate, debugExtractor, sourceFileName, functionName);
+        if (ShouldInfer(gate) && type.IsAnyType()) {
+            log += CollectGateTypeLogInfo(gate, debugExtractor, "[TypeFilter] ");
         }
     }
+
+    LOG_COMPILER(INFO) << "[TypeFilter] [" << sourceFileName << ":" << functionName << "] begin:";
+    LOG_COMPILER(INFO) << log << "[TypeFilter] end";
 }
 
-void TypeFilter::PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, const std::string &sourceFileName,
-                                  const std::string &functionName) const
+std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, JSPtExtractor *debugExtractor,
+                                              const std::string &logPreFix) const
 {
-    std::string log("[TypeFilter] ");
+    std::string log(logPreFix);
     log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
     OpCode op = gateAccessor_.GetOpCode(gate);
+    log += "op: " + op.Str() + ", ";
     if (op != OpCode::VALUE_SELECTOR) {
     // handle ByteCode gate: print gate id, bytecode and line number in source code.
         log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
+        GateType type = gateAccessor_.GetGateType(gate);
+        if (type.IsTSType()) {
+            log += "type: " + tsManager_->GetTypeStr(type) + ", ";
+            if (!tsManager_->IsPrimitiveTypeKind(type)) {
+                GlobalTSTypeRef gt = GlobalTSTypeRef(type.GetType());
+                log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
+                log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
+            }
+        }
 
         int32_t lineNumber = 0;
         auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
@@ -579,11 +603,12 @@ void TypeFilter::PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, c
 
         const auto &gateToBytecode = builder_->GetGateToBytecode();
         const uint8_t *pc = gateToBytecode.at(gate).second;
+        const MethodLiteral *methodLiteral = builder_->GetMethod();
 
-        uint32_t offset = pc - methodLiteral_->GetBytecodeArray();
-        debugExtractor->MatchLineWithOffset(callbackLineFunc, methodLiteral_->GetMethodId(), offset);
+        uint32_t offset = pc - methodLiteral->GetBytecodeArray();
+        debugExtractor->MatchLineWithOffset(callbackLineFunc, methodLiteral->GetMethodId(), offset);
 
-        log += "at " + functionName + " (" + sourceFileName +  ":" + std::to_string(lineNumber) + ")";
+        log += "at line: " + std::to_string(lineNumber);
     } else {
     // handle phi gate: print gate id and input gates id list.
         log += "phi gate, ins: ";
@@ -593,6 +618,7 @@ void TypeFilter::PrintAnyTypeGate(GateRef gate, JSPtExtractor *debugExtractor, c
         }
     }
 
-    LOG_COMPILER(INFO) << log;
+    log += "\n compiler: ";
+    return log;
 }
 }  // namespace panda::ecmascript

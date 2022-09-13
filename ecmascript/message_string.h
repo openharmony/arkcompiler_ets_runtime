@@ -31,8 +31,6 @@ namespace panda::ecmascript {
     V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                 \
     V(CanNotSetPropertyOnContainer, "Cannot set property on Container")           \
     V(NonCallable, "CallObj is NonCallable")                                      \
-    V(ASM_INTERPRETER_STUB_NAME, "ASM_INTERPRETER stub name: ")                   \
-    V(OPCODE_OVERFLOW, "opcode overflow!")                                        \
     V(INT32_VALUE, "value: %ld")
 
 class MessageString {
@@ -44,10 +42,12 @@ public:
 #undef DEF_MESSAGE_ID
 #define DEF_MESSAGE_ID(name) Message_##name,
         ASM_INTERPRETER_BC_STUB_LIST(DEF_MESSAGE_ID, DEF_MESSAGE_ID, DEF_MESSAGE_ID)
+        ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_MESSAGE_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_MESSAGE_ID)
         BUILTINS_STUB_LIST(DEF_MESSAGE_ID)
 #undef DEF_MESSAGE_ID
-        MAX_MESSAGE_COUNT
+        MAX_MESSAGE_COUNT,
+        ASM_INTERPRETER_START = Message_INT32_VALUE + 1,
     };
     static const std::string& GetMessageString(int id);
 };

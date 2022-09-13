@@ -176,12 +176,12 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
     uint32_t index1 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[0].GetOffset());
     uint32_t index2 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[1].GetOffset());
     uint32_t index3 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[2].GetOffset());
-    EXPECT_EQ(index1, 1U);
-    EXPECT_EQ(index2, 2U);
-    EXPECT_EQ(index3, 3U);
+    EXPECT_EQ(index1, 0U);
+    EXPECT_EQ(index2, 1U);
+    EXPECT_EQ(index3, 2U);
 
     uint32_t conPoolIndex = pf->GetConstpoolIndex();
-    EXPECT_EQ(conPoolIndex, 4U); // 4 : 3 + 1, Index of the next insertion position
+    EXPECT_EQ(conPoolIndex, 3U);
 
     CUnorderedMap<uint32_t, uint64_t> constpoolMap = pf->GetConstpoolMap();
     ConstPoolValue constPoolValue1(constpoolMap.at(methodId[0].GetOffset()));
@@ -196,9 +196,9 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
     EXPECT_EQ(type1, ConstPoolType::METHOD);
     EXPECT_EQ(type2, ConstPoolType::METHOD);
     EXPECT_EQ(type3, ConstPoolType::METHOD);
-    EXPECT_EQ(gotIndex1, 1U);
-    EXPECT_EQ(gotIndex2, 2U);
-    EXPECT_EQ(gotIndex3, 3U);
+    EXPECT_EQ(gotIndex1, 0U);
+    EXPECT_EQ(gotIndex2, 1U);
+    EXPECT_EQ(gotIndex3, 2U);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
@@ -246,7 +246,7 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId class_id = file->GetClassId(typeDesc);
     EXPECT_TRUE(class_id.IsValid());
- 
+
     const File::Header *header = file->GetHeader();
     Span fileData(file->GetBase(), header->file_size);
     Span class_idx_data = fileData.SubSpan(header->class_idx_off, header->num_classes * sizeof(uint32_t));
@@ -291,6 +291,8 @@ HWTEST_F_L0(JSPandaFileTest, GetFileUniqId)
     )";
     const CString fileName = "test.pa";
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
-    EXPECT_EQ(pf->GetFileUniqId(), 2886575167U); // merge_hashes(FILENAME_HASH, GetHash32(GetHeader(), headerSize))
+    EXPECT_EQ(pf->GetFileUniqId(), merge_hashes(panda_file::File::CalcFilenameHash(""),
+        GetHash32(reinterpret_cast<const uint8_t *>(pf->GetPandaFile()->GetHeader()),
+        sizeof(panda_file::File::Header))));
 }
 }  // namespace panda::test

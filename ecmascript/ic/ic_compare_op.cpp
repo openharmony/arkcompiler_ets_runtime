@@ -430,37 +430,37 @@ ComparisonResult CompareOp::Compare(JSThread *thread, JSTaggedValue left,
     return ret;
 }
 
-JSTaggedValue CompareOp::LessDynWithIC(JSThread *thread, JSTaggedValue left,
+JSTaggedValue CompareOp::LessWithIC(JSThread *thread, JSTaggedValue left,
     JSTaggedValue right, CompareOpType operationType)
 {
-    INTERPRETER_TRACE(thread, LessDynWithIC);
+    INTERPRETER_TRACE(thread, LessWithIC);
     bool ret = CompareOp::Compare(thread, left, right, operationType) == ComparisonResult::LESS;
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return (ret ? JSTaggedValue::True() : JSTaggedValue::False());
 }
 
-JSTaggedValue CompareOp::LessEqDynWithIC(JSThread *thread, JSTaggedValue left,
+JSTaggedValue CompareOp::LessEqWithIC(JSThread *thread, JSTaggedValue left,
     JSTaggedValue right, CompareOpType operationType)
 {
-    INTERPRETER_TRACE(thread, LessEqDynWithIC);
+    INTERPRETER_TRACE(thread, LessEqWithIC);
     bool ret = CompareOp::Compare(thread, left, right, operationType) <= ComparisonResult::EQUAL;
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return (ret ? JSTaggedValue::True() : JSTaggedValue::False());
 }
 
-JSTaggedValue CompareOp::GreaterDynWithIC(JSThread *thread, JSTaggedValue left,
+JSTaggedValue CompareOp::GreaterWithIC(JSThread *thread, JSTaggedValue left,
     JSTaggedValue right, CompareOpType operationType)
 {
-    INTERPRETER_TRACE(thread, GreaterDynWithIC);
+    INTERPRETER_TRACE(thread, GreaterWithIC);
     bool ret = CompareOp::Compare(thread, left, right, operationType) == ComparisonResult::GREAT;
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return (ret ? JSTaggedValue::True() : JSTaggedValue::False());
 }
 
-JSTaggedValue CompareOp::GreaterEqDynWithIC(JSThread *thread, JSTaggedValue left,
+JSTaggedValue CompareOp::GreaterEqWithIC(JSThread *thread, JSTaggedValue left,
     JSTaggedValue right, CompareOpType operationType)
 {
-    INTERPRETER_TRACE(thread, GreaterEqDynWithIC);
+    INTERPRETER_TRACE(thread, GreaterEqWithIC);
     ComparisonResult comparison = CompareOp::Compare(thread, left, right, operationType);
     bool ret = (comparison == ComparisonResult::GREAT) || (comparison == ComparisonResult::EQUAL);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

@@ -60,18 +60,18 @@ HWTEST_F_L0(AccessorDataTest, AccessorData_Cast)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
 
-    JSHandle<JSHClass> accDynclassHandle =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::ACCESSOR_DATA, nullHandle);
-    TaggedObject *accObject = factory->NewDynObject(accDynclassHandle);
+    JSHandle<JSHClass> accClassHandle =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::ACCESSOR_DATA, nullHandle);
+    TaggedObject *accObject = factory->NewObject(accClassHandle);
     AccessorData::Cast(accObject)->SetGetter(thread, JSTaggedValue::Undefined());
     AccessorData::Cast(accObject)->SetSetter(thread, JSTaggedValue::Undefined());
     EXPECT_TRUE(JSTaggedValue(accObject).IsAccessorData());
     AccessorData *acc = AccessorData::Cast(accObject);
     EXPECT_TRUE(JSTaggedValue(acc).IsAccessorData());
 
-    JSHandle<JSHClass> internalAccDynClassHandle =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
-    TaggedObject *internalAccObject = factory->NewDynObject(internalAccDynClassHandle);
+    JSHandle<JSHClass> internalAccClassHandle =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
+    TaggedObject *internalAccObject = factory->NewObject(internalAccClassHandle);
     EXPECT_TRUE(JSTaggedValue(internalAccObject).IsInternalAccessor());
     AccessorData *internalAcc = AccessorData::Cast(internalAccObject);
     EXPECT_TRUE(JSTaggedValue(internalAcc).IsInternalAccessor());
@@ -95,16 +95,16 @@ HWTEST_F_L0(AccessorDataTest, IsInternal)
     EXPECT_EQ(internalAccHancle->IsInternal(), true);
 
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
-    JSHandle<JSHClass> accDynclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::ACCESSOR_DATA, nullHandle);
-    TaggedObject *accObject = factory->NewDynObject(accDynclass);
+    JSHandle<JSHClass> accClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::ACCESSOR_DATA, nullHandle);
+    TaggedObject *accObject = factory->NewObject(accClass);
     AccessorData *acc = AccessorData::Cast(accObject);
     acc->SetGetter(thread, JSTaggedValue::Undefined());
     acc->SetSetter(thread, JSTaggedValue::Undefined());
     EXPECT_EQ(acc->IsInternal(), false);
 
-    JSHandle<JSHClass> internalAccDynClass =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
-    TaggedObject *internalAccObject = factory->NewDynObject(internalAccDynClass);
+    JSHandle<JSHClass> internalAccClass =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
+    TaggedObject *internalAccObject = factory->NewObject(internalAccClass);
     AccessorData *internalAcc = AccessorData::Cast(internalAccObject);
     EXPECT_EQ(internalAcc->IsInternal(), true);
 }
@@ -141,8 +141,8 @@ HWTEST_F_L0(AccessorDataTest, HasSetter)
 
     // 3.Create normal AccessorData object from dynamic class.
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
-    JSHandle<JSHClass> accDynclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::ACCESSOR_DATA, nullHandle);
-    TaggedObject *accObject = factory->NewDynObject(accDynclass);
+    JSHandle<JSHClass> accClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::ACCESSOR_DATA, nullHandle);
+    TaggedObject *accObject = factory->NewObject(accClass);
     AccessorData *acc = AccessorData::Cast(accObject);
     acc->SetGetter(thread, JSTaggedValue::Undefined());
     EXPECT_EQ(acc->HasSetter(), true);
@@ -152,9 +152,9 @@ HWTEST_F_L0(AccessorDataTest, HasSetter)
     EXPECT_EQ(acc->HasSetter(), true);
 
     // 4.Create internal AccessorData object from dynamic class.
-    JSHandle<JSHClass> internalAccDynClass =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
-    TaggedObject *internalAccObject = factory->NewDynObject(internalAccDynClass);
+    JSHandle<JSHClass> internalAccClass =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
+    TaggedObject *internalAccObject = factory->NewObject(internalAccClass);
     AccessorData *internalAcc = AccessorData::Cast(internalAccObject);
     EXPECT_EQ(internalAcc->HasSetter(), true);
     internalAcc->SetSetter(thread, JSTaggedValue::Undefined());
@@ -176,14 +176,15 @@ HWTEST_F_L0(AccessorDataTest, CallInternalSet)
 
     // Construct objects and specify specific prototypes.
     JSFunction *func1 = globalEnv->GetObjectFunction().GetObject<JSFunction>();
+    Method::Cast(func1->GetMethod().GetTaggedObject())->SetFunctionKind(FunctionKind::BASE_CONSTRUCTOR);
     JSHandle<JSFunction> funcTagVal1 =
-        factory->CloneJSFuction(JSHandle<JSFunction>(thread, func1), FunctionKind::BASE_CONSTRUCTOR);
+        factory->CloneJSFuction(JSHandle<JSFunction>(thread, func1));
 
     // Call the CallInternalGet method to inspect prototype.
     JSHandle<JSTaggedValue> nullPrototypeHandle(thread, JSTaggedValue::Null());
-    JSHandle<JSHClass> accDynclass1 =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullPrototypeHandle);
-    JSHandle<AccessorData> accObject1(thread, factory->NewDynObject(accDynclass1));
+    JSHandle<JSHClass> accClass1 =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullPrototypeHandle);
+    JSHandle<AccessorData> accObject1(thread, factory->NewObject(accClass1));
     accObject1->SetGetter(thread, JSTaggedValue::Undefined());
     accObject1->SetSetter(thread, JSTaggedValue::Undefined());
     JSHandle<JSNativePointer> prototypeGetterFuncNativePtrHandle =
@@ -217,9 +218,9 @@ HWTEST_F_L0(AccessorDataTest, CompletionRecord_Cast)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
 
-    JSHandle<JSHClass> comRecordDynclassHandle =
-        factory->NewEcmaDynClass(JSObject::SIZE, JSType::COMPLETION_RECORD, nullHandle);
-    TaggedObject *comRecordObject = factory->NewDynObject(comRecordDynclassHandle);
+    JSHandle<JSHClass> comRecordClassHandle =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::COMPLETION_RECORD, nullHandle);
+    TaggedObject *comRecordObject = factory->NewObject(comRecordClassHandle);
     EXPECT_TRUE(JSTaggedValue(comRecordObject).IsCompletionRecord());
     CompletionRecord *comRecord = CompletionRecord::Cast(comRecordObject);
     EXPECT_TRUE(JSTaggedValue(comRecord).IsCompletionRecord());

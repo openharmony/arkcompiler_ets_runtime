@@ -97,6 +97,8 @@ public:
 
     void PendingJobEntry() override {}
 
+    void NativeCalling(const void *nativeAddress) override {}
+
     void TerminateTest()
     {
         debugInterface_->UnregisterHooks();

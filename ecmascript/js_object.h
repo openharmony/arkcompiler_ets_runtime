@@ -324,6 +324,10 @@ private:
 
 class ECMAObject : public TaggedObject {
 public:
+    static constexpr int HASH_INDEX = 0;
+    static constexpr int FUNCTION_EXTRA_INDEX = 1;
+    static constexpr int RESOLVED_MAX_SIZE = 2;
+
     CAST_CHECK(ECMAObject, IsECMAObject);
 
     void SetCallable(bool flag);
@@ -335,14 +339,16 @@ public:
 
     void SetHash(int32_t hash);
     int32_t GetHash() const;
+    bool HasHash() const;
+
     void InitializeHash()
     {
-        Barriers::SetDynPrimitive<JSTaggedType>(this, ECMAObject::HASH_OFFSET, JSTaggedValue(0).GetRawData());
+        Barriers::SetPrimitive<JSTaggedType>(this, ECMAObject::HASH_OFFSET, JSTaggedValue(0).GetRawData());
     }
 
     void* GetNativePointerField(int32_t index) const;
     void SetNativePointerField(int32_t index, void *nativePointer,
-        const DeleteEntryPoint &callBack, void *data);
+        const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0);
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(int32_t count);
 
@@ -518,6 +524,7 @@ public:
 
     JSHClass *GetJSHClass() const;
     bool IsJSGlobalObject() const;
+    bool IsGlobalPatch() const;
     bool IsConstructor() const;
     bool IsECMAObject() const;
     bool IsJSError() const;

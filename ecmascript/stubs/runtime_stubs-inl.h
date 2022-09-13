@@ -25,6 +25,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
@@ -43,7 +44,7 @@
 namespace panda::ecmascript {
 static constexpr size_t FIXED_NUM_ARGS = 3;
 
-JSTaggedValue RuntimeStubs::RuntimeIncDyn(JSThread *thread, const JSHandle<JSTaggedValue> &value)
+JSTaggedValue RuntimeStubs::RuntimeInc(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSTaggedValue> inputVal = JSTaggedValue::ToNumeric(thread, value);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -55,7 +56,7 @@ JSTaggedValue RuntimeStubs::RuntimeIncDyn(JSThread *thread, const JSHandle<JSTag
     return JSTaggedValue(++number);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDecDyn(JSThread *thread, const JSHandle<JSTaggedValue> &value)
+JSTaggedValue RuntimeStubs::RuntimeDec(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSTaggedValue> inputVal = JSTaggedValue::ToNumeric(thread, value);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -67,7 +68,7 @@ JSTaggedValue RuntimeStubs::RuntimeDecDyn(JSThread *thread, const JSHandle<JSTag
     return JSTaggedValue(--number);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeExpDyn(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent)
+JSTaggedValue RuntimeStubs::RuntimeExp(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent)
 {
     JSHandle<JSTaggedValue> baseTag(thread, base);
     JSHandle<JSTaggedValue> exponentTag(thread, exponent);
@@ -102,7 +103,7 @@ JSTaggedValue RuntimeStubs::RuntimeExpDyn(JSThread *thread, JSTaggedValue base, 
     return JSTaggedValue(std::pow(doubleBase, doubleExponent));
 }
 
-JSTaggedValue RuntimeStubs::RuntimeIsInDyn(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
+JSTaggedValue RuntimeStubs::RuntimeIsIn(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
                                            const JSHandle<JSTaggedValue> &obj)
 {
     if (!obj->IsECMAObject()) {
@@ -115,7 +116,7 @@ JSTaggedValue RuntimeStubs::RuntimeIsInDyn(JSThread *thread, const JSHandle<JSTa
     return JSTaggedValue(ret);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeInstanceofDyn(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+JSTaggedValue RuntimeStubs::RuntimeInstanceof(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                  const JSHandle<JSTaggedValue> &target)
 {
     bool ret = JSObject::InstanceOf(thread, obj, target);
@@ -228,9 +229,8 @@ JSTaggedValue RuntimeStubs::RuntimeDelObjProp(JSThread *thread, const JSHandle<J
     return JSTaggedValue(ret);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewObjSpreadDyn(JSThread *thread, const JSHandle<JSTaggedValue> &func,
-                                                   const JSHandle<JSTaggedValue> &newTarget,
-                                                   const JSHandle<JSTaggedValue> &array)
+JSTaggedValue RuntimeStubs::RuntimeNewObjApply(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+                                               const JSHandle<JSTaggedValue> &array)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!array->IsJSArray()) {
@@ -245,7 +245,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjSpreadDyn(JSThread *thread, const JSHan
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, newTarget, length);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, length);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(length, argsArray);
     return NewObject(info);
@@ -319,10 +319,21 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncGeneratorResolve(JSThread *thread, JSHan
 
     JSHandle<JSAsyncGeneratorObject> asyncGeneratorObjHandle(asyncFuncObj);
     JSHandle<JSTaggedValue> valueHandle(value);
-    
+
     ASSERT(flag.IsBoolean());
     bool done = flag.IsTrue();
     return JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, asyncGeneratorObjHandle, valueHandle, done);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeAsyncGeneratorReject(JSThread *thread, JSHandle<JSTaggedValue> asyncFuncObj,
+                                                        JSHandle<JSTaggedValue> value)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSAsyncGeneratorObject> asyncGeneratorObjHandle(asyncFuncObj);
+    JSHandle<JSTaggedValue> valueHandle(value);
+
+    return JSAsyncGeneratorObject::AsyncGeneratorReject(thread, asyncGeneratorObjHandle, valueHandle);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCopyDataProperties(JSThread *thread, const JSHandle<JSTaggedValue> &dst,
@@ -615,7 +626,7 @@ JSTaggedValue RuntimeStubs::RuntimeStGlobalRecord(JSThread *thread, const JSHand
     return JSTaggedValue::True();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNegDyn(JSThread *thread, const JSHandle<JSTaggedValue> &value)
+JSTaggedValue RuntimeStubs::RuntimeNeg(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSTaggedValue> inputVal = JSTaggedValue::ToNumeric(thread, value);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -637,7 +648,7 @@ JSTaggedValue RuntimeStubs::RuntimeNegDyn(JSThread *thread, const JSHandle<JSTag
     UNREACHABLE();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNotDyn(JSThread *thread, const JSHandle<JSTaggedValue> &value)
+JSTaggedValue RuntimeStubs::RuntimeNot(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSTaggedValue> inputVal = JSTaggedValue::ToNumeric(thread, value);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -675,7 +686,6 @@ JSTaggedValue RuntimeStubs::RuntimeResolveClass(JSThread *thread, const JSHandle
         }
     }
 
-    ctor->SetResolved(true);
     return ctor.GetTaggedValue();
 }
 
@@ -706,7 +716,6 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     cloneClass->SetHomeObject(thread, cloneClassPrototype);
-    cloneClass->SetCodeEntry(ctor->GetCodeEntry());
 
     if (!canShareHClass) {
         RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cloneClass), base);
@@ -721,26 +730,20 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
                                                          const JSHandle<JSTaggedValue> &lexenv,
                                                          const JSHandle<JSTaggedValue> &constpool,
-                                                         const uint16_t methodId)
+                                                         uint16_t methodId, uint16_t literalId)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
-    JSHandle<JSTaggedValue> method(thread, constantPool->Get(methodId));
-    JSHandle<TaggedArray> literal(thread, constantPool->Get(methodId + 1));
+    auto methodObj = ConstantPool::GetClassMethodFromCache(thread, constantPool, methodId);
+    JSHandle<JSTaggedValue> method(thread, methodObj);
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId);
+    JSHandle<TaggedArray> literal(thread, literalObj);
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literal);
     JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, extractor, constpool, lexenv);
-
-    // JSPandaFile is in the first index of constpool.
-    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(
-        JSNativePointer::Cast(constantPool->Get(0).GetTaggedObject())->GetExternalPointer());
-    FileLoader *fileLoader = thread->GetEcmaVM()->GetFileLoader();
-    if (jsPandaFile->IsLoadedAOT()) {
-        fileLoader->SetAOTFuncEntry(jsPandaFile, cls);
-    }
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -773,18 +776,19 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
 
     JSHandle<JSTaggedValue> parentPrototype;
     // hole means parent is not present
+    Method *method = Method::Cast(JSHandle<JSFunction>::Cast(ctor)->GetMethod().GetTaggedObject());
     if (parent->IsHole()) {
-        JSHandle<JSFunction>::Cast(ctor)->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
+        method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
         parentPrototype = env->GetObjectFunctionPrototype();
         parent.Update(env->GetFunctionPrototype().GetTaggedValue());
     } else if (parent->IsNull()) {
-        JSHandle<JSFunction>::Cast(ctor)->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
+        method->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
         parentPrototype = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null());
         parent.Update(env->GetFunctionPrototype().GetTaggedValue());
     } else if (!parent->IsConstructor()) {
         return RuntimeThrowTypeError(thread, "parent class is not constructor");
     } else {
-        JSHandle<JSFunction>::Cast(ctor)->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
+        method->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
         parentPrototype = JSTaggedValue::GetProperty(thread, parent,
             globalConst->GetHandledPrototypeString()).GetValue();
         if (!parentPrototype->IsECMAObject() && !parentPrototype->IsNull()) {
@@ -821,17 +825,13 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
     if (icSlotSize == 0) {
         return JSTaggedValue::Undefined();
     }
-    bool overflow = icSlotSize == ProfileTypeInfo::INVALID_SLOT_INDEX;
-    if (overflow) {
-        icSlotSize++;
-    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     JSHandle<ProfileTypeInfo> profileTypeInfo = factory->NewProfileTypeInfo(icSlotSize);
-    if (overflow) {
+    // overflow 8bit
+    if (icSlotSize > ProfileTypeInfo::INVALID_SLOT_INDEX) {
         // set as mega
-        profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX - 1, JSTaggedValue::Hole());
         profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX, JSTaggedValue::Hole());
+        ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + 1);
     }
     func->SetProfileTypeInfo(thread, profileTypeInfo.GetTaggedValue());
     return profileTypeInfo.GetTaggedValue();
@@ -1031,7 +1031,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetIterator(JSThread *thread, const JSHandle<
     return EcmaInterpreter::Execute(info);
 }
 
-void RuntimeStubs::RuntimeThrowDyn(JSThread *thread, JSTaggedValue value)
+void RuntimeStubs::RuntimeThrow(JSThread *thread, JSTaggedValue value)
 {
     thread->SetException(value);
 }
@@ -1165,12 +1165,52 @@ JSTaggedValue RuntimeStubs::RuntimeToNumeric(JSThread *thread, const JSHandle<JS
     return JSTaggedValue::ToNumeric(thread, value).GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, JSTaggedValue specifier)
+// specifier = "./test.js"
+JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandle<JSTaggedValue> &specifier,
+    const JSHandle<JSTaggedValue> &func)
 {
-    return SlowRuntimeStub::DynamicImport(thread, specifier);
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    // 5. Let specifierString be Completion(ToString(specifier))
+    JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
+
+    // get current filename
+    Method *method = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetCallTarget();
+    std::string filename = method->GetJSPandaFile()->GetPandaFile()->GetFilename();
+
+    // parse dirPath from filename
+    CString fullName = CString(filename);
+    int foundPos = static_cast<int>(fullName.find_last_of("/\\"));
+    if (foundPos == -1) {
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Hole());
+    }
+    CString dirPathStr = fullName.substr(0, foundPos + 1);
+    JSHandle<EcmaString> dirPath = factory->NewFromUtf8(dirPathStr);
+
+    // 4. Let promiseCapability be !NewPromiseCapability(%Promise%).
+    JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
+    JSHandle<PromiseCapability> promiseCapability = JSPromise::NewPromiseCapability(thread, promiseFunc);
+
+    // 6. IfAbruptRejectPromise(specifierString, promiseCapability).
+    RETURN_REJECT_PROMISE_IF_ABRUPT(thread, specifierString, promiseCapability);
+    JSHandle<JSTaggedValue> currentModule(thread, thread->GetEcmaVM()->GetModuleManager()->GetCurrentModule());
+    JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
+
+    JSHandle<TaggedArray> argv = factory->NewTaggedArray(4); // 4: 4 means two args stored in array
+    argv->Set(thread, 0, promiseCapability->GetResolve());
+    argv->Set(thread, 1, promiseCapability->GetReject()); // 1 : first argument
+    argv->Set(thread, 2, dirPath); // 2: second argument
+    argv->Set(thread, 3, specifierString); // 3 : third argument
+
+    JSHandle<JSFunction> dynamicImportJob(env->GetDynamicImportJob());
+    job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, dynamicImportJob, argv);
+
+    return promiseCapability->GetPromise();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeEqDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                          const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Equal(thread, left, right);
@@ -1178,7 +1218,7 @@ JSTaggedValue RuntimeStubs::RuntimeEqDyn(JSThread *thread, const JSHandle<JSTagg
     return (ret ? JSTaggedValue::True() : JSTaggedValue::False());
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNotEqDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeNotEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                             const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Equal(thread, left, right);
@@ -1186,7 +1226,7 @@ JSTaggedValue RuntimeStubs::RuntimeNotEqDyn(JSThread *thread, const JSHandle<JST
     return (ret ? JSTaggedValue::False() : JSTaggedValue::True());
 }
 
-JSTaggedValue RuntimeStubs::RuntimeLessDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeLess(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Compare(thread, left, right) == ComparisonResult::LESS;
@@ -1194,7 +1234,7 @@ JSTaggedValue RuntimeStubs::RuntimeLessDyn(JSThread *thread, const JSHandle<JSTa
     return (ret ? JSTaggedValue::True() : JSTaggedValue::False());
 }
 
-JSTaggedValue RuntimeStubs::RuntimeLessEqDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeLessEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                              const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Compare(thread, left, right) <= ComparisonResult::EQUAL;
@@ -1202,7 +1242,7 @@ JSTaggedValue RuntimeStubs::RuntimeLessEqDyn(JSThread *thread, const JSHandle<JS
     return (ret ? JSTaggedValue::True() : JSTaggedValue::False());
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGreaterDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeGreater(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                               const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Compare(thread, left, right) == ComparisonResult::GREAT;
@@ -1210,7 +1250,7 @@ JSTaggedValue RuntimeStubs::RuntimeGreaterDyn(JSThread *thread, const JSHandle<J
     return (ret ? JSTaggedValue::True() : JSTaggedValue::False());
 }
 
-JSTaggedValue RuntimeStubs::RuntimeGreaterEqDyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeGreaterEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                                 const JSHandle<JSTaggedValue> &right)
 {
     ComparisonResult comparison = JSTaggedValue::Compare(thread, left, right);
@@ -1219,7 +1259,7 @@ JSTaggedValue RuntimeStubs::RuntimeGreaterEqDyn(JSThread *thread, const JSHandle
     return (ret ? JSTaggedValue::True() : JSTaggedValue::False());
 }
 
-JSTaggedValue RuntimeStubs::RuntimeAdd2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
     if (left->IsString() && right->IsString()) {
@@ -1259,7 +1299,7 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2Dyn(JSThread *thread, const JSHandle<JSTa
     return JSTaggedValue(doubleA0 + doubleA1);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeShl2Dyn(JSThread *thread,
+JSTaggedValue RuntimeStubs::RuntimeShl2(JSThread *thread,
                                            const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
@@ -1289,7 +1329,7 @@ JSTaggedValue RuntimeStubs::RuntimeShl2Dyn(JSThread *thread,
     return JSTaggedValue(ret);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeShr2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeShr2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
@@ -1315,7 +1355,7 @@ JSTaggedValue RuntimeStubs::RuntimeShr2Dyn(JSThread *thread, const JSHandle<JSTa
     return JSTaggedValue(ret);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeSub2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeSub2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
@@ -1335,7 +1375,7 @@ JSTaggedValue RuntimeStubs::RuntimeSub2Dyn(JSThread *thread, const JSHandle<JSTa
     return number0 - number1;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeMul2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeMul2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
@@ -1357,7 +1397,7 @@ JSTaggedValue RuntimeStubs::RuntimeMul2Dyn(JSThread *thread, const JSHandle<JSTa
     return number0 * number1;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDiv2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeDiv2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
@@ -1385,7 +1425,7 @@ JSTaggedValue RuntimeStubs::RuntimeDiv2Dyn(JSThread *thread, const JSHandle<JSTa
     return JSTaggedValue(dLeft / dRight);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeMod2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeMod2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
@@ -1414,7 +1454,7 @@ JSTaggedValue RuntimeStubs::RuntimeMod2Dyn(JSThread *thread, const JSHandle<JSTa
     return JSTaggedValue(std::fmod(dLeft, dRight));
 }
 
-JSTaggedValue RuntimeStubs::RuntimeAshr2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeAshr2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                             const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
@@ -1440,7 +1480,7 @@ JSTaggedValue RuntimeStubs::RuntimeAshr2Dyn(JSThread *thread, const JSHandle<JST
     return JSTaggedValue(ret);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeAnd2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeAnd2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
@@ -1466,7 +1506,7 @@ JSTaggedValue RuntimeStubs::RuntimeAnd2Dyn(JSThread *thread, const JSHandle<JSTa
     return JSTaggedValue(static_cast<int32_t>(ret));
 }
 
-JSTaggedValue RuntimeStubs::RuntimeOr2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeOr2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                           const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
@@ -1492,7 +1532,7 @@ JSTaggedValue RuntimeStubs::RuntimeOr2Dyn(JSThread *thread, const JSHandle<JSTag
     return JSTaggedValue(static_cast<int32_t>(ret));
 }
 
-JSTaggedValue RuntimeStubs::RuntimeXor2Dyn(JSThread *thread, const JSHandle<JSTaggedValue> &left,
+JSTaggedValue RuntimeStubs::RuntimeXor2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
                                            const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
@@ -1595,7 +1635,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithBuffer(JSThread *thread, Obje
     return objLiteral.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvDyn(JSThread *thread, uint16_t numVars)
+JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnv(JSThread *thread, uint16_t numVars)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> newEnv = factory->NewLexicalEnv(numVars);
@@ -1607,7 +1647,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvDyn(JSThread *thread, uint16_t n
     return newEnv.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewObjDynRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+JSTaggedValue RuntimeStubs::RuntimeNewObjRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
     const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx, uint16_t length)
 {
     JSHandle<JSTaggedValue> preArgs(thread, JSTaggedValue::Undefined());
@@ -1623,16 +1663,53 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjDynRange(JSThread *thread, const JSHand
     return tagged;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefinefuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
+JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<Method> &methodHandle)
 {
-    JSHandle<Method> method(thread, funcHandle->GetMethod());
-
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::BASE_CONSTRUCTOR);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
+    JSHandle<JSFunction> jsFunc;
+    FunctionKind kind = methodHandle->GetFunctionKind();
+    switch (kind)
+    {
+        case FunctionKind::NORMAL_FUNCTION:
+        case FunctionKind::BASE_CONSTRUCTOR: {
+            auto hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass, MemSpaceType::OLD_SPACE);
+            break;
+        }
+        case FunctionKind::ARROW_FUNCTION: {
+            auto normalClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, normalClass, MemSpaceType::OLD_SPACE);
+            break;
+        }
+        case FunctionKind::GENERATOR_FUNCTION: {
+            auto generatorClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, generatorClass, MemSpaceType::OLD_SPACE);
+            break;
+        }
+        case FunctionKind::ASYNC_FUNCTION: {
+            auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass, MemSpaceType::OLD_SPACE);
+            break;
+        }
+        case FunctionKind::ASYNC_GENERATOR_FUNCTION: {
+            auto asyncGeneratorClass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncGeneratorClass,
+                                                    MemSpaceType::OLD_SPACE);
+            break;
+        }
+        case FunctionKind::ASYNC_ARROW_FUNCTION: {
+            // Add hclass for async arrow function
+            auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass,
+                                                    MemSpaceType::OLD_SPACE);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     return jsFunc.GetTaggedValue();
 }
@@ -1719,91 +1796,21 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
     return restObj.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefineNCFuncDyn(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
-{
-    JSHandle<Method> method(thread, funcHandle->GetMethod());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::ARROW_FUNCTION);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
-    return jsFunc.GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::RuntimeDefineGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
-{
-    auto method = JSHandle<Method>(thread, funcHandle->GetMethod());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> jsFunc = factory->NewJSGeneratorFunction(method);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-
-    // 26.3.4.3 prototype
-    // Whenever a GeneratorFunction instance is created another ordinary object is also created and
-    // is the initial value of the generator function's "prototype" property.
-    JSHandle<JSFunction> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
-    JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
-    return jsFunc.GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::RuntimeDefineAsyncGeneratorFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
-{
-    auto method = JSHandle<Method>(thread, funcHandle->GetMethod());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> jsFunc = factory->NewJSAsyncGeneratorFunction(method);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-
-    // 26.3.4.3 prototype
-    // Whenever a GeneratorFunction instance is created another ordinary object is also created and
-    // is the initial value of the generator function's "prototype" property.
-    JSHandle<JSFunction> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
-    JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetProtoOrDynClass(thread, initialGeneratorFuncPrototype);
-
-    return jsFunc.GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::RuntimeDefineAsyncFunc(JSThread *thread, const JSHandle<JSFunction> &funcHandle)
-{
-    JSHandle<Method> method(thread, funcHandle->GetMethod());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::ASYNC_FUNCTION);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
-    return jsFunc.GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<JSFunction> &funcHandle,
+JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
                                                 const JSHandle<JSTaggedValue> &homeObject)
 {
     ASSERT(homeObject->IsECMAObject());
-    JSHandle<Method> method(thread, funcHandle->GetMethod());
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> dynclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByDynClass(method, dynclass, FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass);
     jsFunc->SetHomeObject(thread, homeObject);
     ASSERT_NO_ABRUPT_COMPLETION(thread);
-    jsFunc->SetCodeEntry(funcHandle->GetCodeEntry());
     return jsFunc.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeCallSpreadDyn(JSThread *thread,
+JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
                                                  const JSHandle<JSTaggedValue> &func,
                                                  const JSHandle<JSTaggedValue> &obj,
                                                  const JSHandle<JSTaggedValue> &array)
@@ -1861,11 +1868,13 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, c
         !(obj.GetTaggedValue().IsClassPrototype() || obj.GetTaggedValue().IsClassConstructor());
     PropertyDescriptor desc(thread, true, enumerable, true);
     if (!getter->IsUndefined()) {
-        JSHandle<JSFunction>::Cast(getter)->SetFunctionKind(FunctionKind::GETTER_FUNCTION);
+        Method *method = Method::Cast(JSHandle<JSFunction>::Cast(getter)->GetMethod().GetTaggedObject());
+        method->SetFunctionKind(FunctionKind::GETTER_FUNCTION);
         desc.SetGetter(getter);
     }
     if (!setter->IsUndefined()) {
-        JSHandle<JSFunction>::Cast(setter)->SetFunctionKind(FunctionKind::SETTER_FUNCTION);
+        Method *method = Method::Cast(JSHandle<JSFunction>::Cast(setter)->GetMethod().GetTaggedObject());
+        method->SetFunctionKind(FunctionKind::SETTER_FUNCTION);
         desc.SetSetter(setter);
     }
     JSObject::DefineOwnProperty(thread, obj, propKey, desc);
@@ -1964,7 +1973,7 @@ JSTaggedValue RuntimeStubs::RuntimeLdBigInt(JSThread *thread, const JSHandle<JST
     return JSTaggedValue::ToBigInt(thread, numberBigInt);
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId)
+JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> newEnv = factory->NewLexicalEnv(numVars);
@@ -2030,7 +2039,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
     return obj.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvDyn(JSThread *thread, uint16_t numVars,
+JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnv(JSThread *thread, uint16_t numVars,
                                                        JSHandle<JSTaggedValue> &currentLexEnv)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -2043,7 +2052,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvDyn(JSThread *thread, uint16_
     return taggedEnv;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvWithNameDyn(JSThread *thread, uint16_t numVars, uint16_t scopeId,
+JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId,
                                                                JSHandle<JSTaggedValue> &currentLexEnv,
                                                                JSHandle<JSTaggedValue> &func)
 {
@@ -2260,7 +2269,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     return obj.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeOptNewObjDynRange(JSThread *thread, uintptr_t argv, uint32_t argc)
+JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
     JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
     JSHandle<JSTaggedValue> newTgt = GetHArg<JSTaggedValue>(argv, argc, 1);
@@ -2298,7 +2307,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjWithIHClass(JSThread *thread, uintpt
         thread->GlobalConstants()->GetHandledPrototypeString()).GetValue();
     ihc->SetProto(thread, ctorPrototype);
 
-    ctor->SetProtoOrDynClass(thread, ihc);
+    ctor->SetProtoOrHClass(thread, ihc);
 
     const size_t numCtorAndNewTgt = 2;
     const size_t numCtorNewTgtAndIHCIndex = 3;
@@ -2353,7 +2362,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
         }
         scopeDebugInfo->scopeInfo.insert(std::make_pair(name, slot));
     }
-    
+
     auto freeObjFunc = NativeAreaAllocator::FreeObjectFunc<struct ScopeDebugInfo>;
     auto allocator = ecmaVm->GetNativeAreaAllocator();
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(buffer, freeObjFunc, allocator);
@@ -2379,6 +2388,24 @@ OptimizedJSFunctionFrame *RuntimeStubs::GetOptimizedJSFunctionFrame(JSThread *th
     it.Advance();
     ASSERT(it.GetFrameType()  == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
     return it.GetFrame<OptimizedJSFunctionFrame>();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeLdPatchVar(JSThread *thread, uint32_t index)
+{
+    JSHandle<JSTaggedValue> globalPatch = thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalPatch();
+
+    OperationResult res = JSTaggedValue::GetProperty(thread, globalPatch, index);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return res.GetValue().GetTaggedValue();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeStPatchVar(JSThread *thread, uint32_t index, const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<JSTaggedValue> globalPatch = thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalPatch();
+
+    JSTaggedValue::SetProperty(thread, globalPatch, index, value, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return JSTaggedValue::True();
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

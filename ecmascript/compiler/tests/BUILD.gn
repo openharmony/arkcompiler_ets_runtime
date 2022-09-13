@@ -209,7 +209,10 @@ host_unittest_action("CircuitOptimizerTest") {
 
   sources = [
     # test file
+    "../ts_type_lowering.cpp",
+    "../type_lowering.cpp",
     "circuit_optimizer_tests.cpp",
+    "lowering_relate_gate_test.cpp",
   ]
 
   configs = [

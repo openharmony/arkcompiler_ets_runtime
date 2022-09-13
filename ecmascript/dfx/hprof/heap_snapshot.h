@@ -409,6 +409,7 @@ public:
     }
 
     CString *GetString(const CString &as);
+    CString *GetArrayString(TaggedArray *array, const CString &as);
 
     bool IsInVmMode() const
     {

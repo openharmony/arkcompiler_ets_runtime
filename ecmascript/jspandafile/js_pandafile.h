@@ -31,17 +31,20 @@ public:
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
         int moduleRecordIdx {-1};
+        CUnorderedMap<uint32_t, uint64_t> constpoolMap;
     };
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
     static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
+    static constexpr char PATCH_FUNCTION_NAME_0[] = "patch_main_0";
+    static constexpr char PATCH_FUNCTION_NAME_1[] = "patch_main_1";
 
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
     static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char TYPE_FLAG[] = "typeFlag";
     static constexpr char TYPE_SUMMARY_INDEX[] = "typeSummaryIndex";
-    
+
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
     static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
@@ -93,6 +96,9 @@ public:
 
     uint32_t GetMainMethodIndex(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
+        if (IsBundlePack()) {
+            return jsRecordInfo_.begin()->second.mainMethodIndex;
+        }
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
             return info->second.mainMethodIndex;
@@ -100,25 +106,38 @@ public:
         return 0;
     }
 
-    const CUnorderedMap<uint32_t, uint64_t> &GetConstpoolMap() const
-    {
-        return constpoolMap_;
-    }
-
-    uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset);
-
-    void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
+    const CUnorderedMap<uint32_t, uint64_t> &GetConstpoolMap(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
-            info->second.mainMethodIndex = mainMethodIndex;
+            return info->second.constpoolMap;
+        }
+        LOG_FULL(FATAL) << "find entryPoint fail " << recordName;
+        UNREACHABLE();
+    }
+
+    uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset,
+                                                const CString &entryPoint = ENTRY_FUNCTION_NAME);
+
+    void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
+    {
+        if (IsBundlePack()) {
+            jsRecordInfo_.begin()->second.mainMethodIndex = mainMethodIndex;
+        } else {
+            auto info = jsRecordInfo_.find(recordName);
+            if (info != jsRecordInfo_.end()) {
+                info->second.mainMethodIndex = mainMethodIndex;
+            }
         }
     }
 
-    MethodLiteral* PUBLIC_API FindMethodLiteral(uint32_t offset) const;
+    PUBLIC_API MethodLiteral *FindMethodLiteral(uint32_t offset) const;
 
     int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
+        if (IsBundlePack()) {
+            return jsRecordInfo_.begin()->second.moduleRecordIdx;
+        }
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
             return info->second.moduleRecordIdx;
@@ -136,9 +155,9 @@ public:
 
     bool IsCjs(const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
-    bool IsBundle() const
+    bool IsBundlePack() const
     {
-        return isBundle_;
+        return isBundlePack_;
     }
 
     bool HasTSTypes() const
@@ -166,6 +185,11 @@ public:
         return static_cast<uint32_t>(GetPandaFile()->GetUniqId());
     }
 
+    bool IsNewVersion() const
+    {
+        return isNewVersion_;
+    }
+
     bool HasRecord(const CString &recordName) const
     {
         auto info = jsRecordInfo_.find(recordName);
@@ -174,25 +198,44 @@ public:
         }
         return false;
     }
-    void checkIsBundle();
+
+    const CUnorderedMap<CString, JSRecordInfo> &GetJSRecordInfo() const
+    {
+        return jsRecordInfo_;
+    }
+    static CString ParseEntryPoint(const CString &recordName)
+    {
+        return recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
+    }
+
+    void checkIsBundlePack();
+
     CString FindrecordName(const CString &record) const;
+
     static std::string ParseOhmUrl(std::string fileName);
+    // For local merge abc, get record name from file name.
+    static std::string PUBLIC_API ParseRecordName(const std::string &fileName);
+
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
-    uint32_t constpoolIndex_ {1}; // Index 0 is JSPandaFile NativePointer.
-    CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
+
+    static constexpr size_t VERSION_SIZE = 4;
+    static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
+
+    uint32_t constpoolIndex_ {0};
+    CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     uint32_t numMethods_ {0};
     MethodLiteral *methodLiterals_ {nullptr};
-    CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     const panda_file::File *pf_ {nullptr};
     CString desc_;
     bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
     uint32_t typeSummaryIndex_ {0};
+    bool isNewVersion_ {true};
 
     // marge abc
-    bool isBundle_ {true}; // isBundle means app compile mode is JSBundle
+    bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
 };
 }  // namespace ecmascript

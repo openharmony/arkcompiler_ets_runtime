@@ -129,7 +129,7 @@ void LinearSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
 
 SemiSpace::SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : LinearSpace(heap, MemSpaceType::SEMI_SPACE, initialCapacity, maximumCapacity),
-      minimumCapacity_(initialCapacity) {}
+      minimumCapacity_(initialCapacity), newSpaceNativeLimit_(initialCapacity) {}
 
 void SemiSpace::Initialize()
 {
@@ -203,27 +203,47 @@ void SemiSpace::SetOverShootSize(size_t size)
 
 bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC)
 {
-    static constexpr int growingFactor = 2;
-    if (allocatedSizeSinceGC <= initialCapacity_ * growObjectSurvivalRate / growingFactor) {
+    if (allocatedSizeSinceGC <= initialCapacity_ * GROW_OBJECT_SURVIVAL_RATE / GROWING_FACTOR) {
         return false;
     }
     double curObjectSurvivalRate = static_cast<double>(survivalObjectSize_) / allocatedSizeSinceGC;
-    if (curObjectSurvivalRate > growObjectSurvivalRate) {
+    if (curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
         if (initialCapacity_ >= maximumCapacity_) {
             return false;
         }
-        size_t newCapacity = initialCapacity_ * growingFactor;
+        size_t newCapacity = initialCapacity_ * GROWING_FACTOR;
         SetInitialCapacity(std::min(newCapacity, maximumCapacity_));
         return true;
-    } else if (curObjectSurvivalRate < shrinkObjectSurvivalRate) {
+    } else if (curObjectSurvivalRate < SHRINK_OBJECT_SURVIVAL_RATE) {
         if (initialCapacity_ <= minimumCapacity_) {
             return false;
         }
-        size_t newCapacity = initialCapacity_ / growingFactor;
+        size_t newCapacity = initialCapacity_ / GROWING_FACTOR;
         SetInitialCapacity(std::max(newCapacity, minimumCapacity_));
         return true;
     }
     return false;
+}
+
+void SemiSpace::AdjustNativeLimit(size_t previousNativeSize)
+{
+    if (newSpaceNativeBindingSize_ <= newSpaceNativeLimit_ * GROW_OBJECT_SURVIVAL_RATE / GROWING_FACTOR) {
+        return;
+    }
+    double curObjectSurvivalRate = static_cast<double>(previousNativeSize) / newSpaceNativeBindingSize_;
+    if (curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
+        if (newSpaceNativeLimit_ >= maximumCapacity_) {
+            return;
+        }
+        size_t newCapacity = newSpaceNativeLimit_ * GROWING_FACTOR;
+        newSpaceNativeLimit_ = std::min(newCapacity, maximumCapacity_);
+    } else if (curObjectSurvivalRate < SHRINK_OBJECT_SURVIVAL_RATE) {
+        if (newSpaceNativeLimit_ <= minimumCapacity_) {
+            return;
+        }
+        size_t newCapacity = newSpaceNativeLimit_ / GROWING_FACTOR;
+        newSpaceNativeLimit_ = std::max(newCapacity, minimumCapacity_);
+    }
 }
 
 size_t SemiSpace::GetAllocatedSizeSinceGC(uintptr_t top) const

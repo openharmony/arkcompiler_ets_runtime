@@ -72,7 +72,7 @@ public:
     static JSHandle<TaggedArray> SetCapacityInOldSpace(const JSThread *thread, const JSHandle<TaggedArray> &array,
                                                        uint32_t capa);
 
-    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length);
+    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length, uint32_t extraLength = 0);
 
     static inline bool ShouldTrim(uint32_t oldLength, uint32_t newLength)
     {
@@ -81,7 +81,8 @@ public:
     inline void Trim(JSThread *thread, uint32_t newLength);
 
     static constexpr size_t LENGTH_OFFSET = TaggedObjectSize();
-    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, EXTRACT_LENGTH_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(ExtraLength, uint32_t, EXTRACT_LENGTH_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
     static constexpr size_t DATA_OFFSET = SIZE;  // DATA_OFFSET equal to Empty Array size
 

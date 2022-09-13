@@ -64,7 +64,7 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
     // Assert: length is an integer Number ≥ 0.
     ASSERT_PRINT(length.IsInteger() && length.GetNumber() >= 0, "length must be positive integer");
     // 2. If length is −0, let length be +0.
-    double arrayLength = JSTaggedValue::ToInteger(thread, JSHandle<JSTaggedValue>(thread, length)).GetDouble();
+    double arrayLength = length.GetNumber();
     if (arrayLength > MAX_ARRAY_INDEX) {
         JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
         THROW_RANGE_ERROR_AND_RETURN(thread, "array length must less than 2^32 - 1", exception);
@@ -95,7 +95,7 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
     // Assert: length is an integer Number ≥ 0.
     ASSERT_PRINT(length.IsInteger() && length.GetNumber() >= 0, "length must be positive integer");
     // If length is −0, let length be +0.
-    double arrayLength = JSTaggedValue::ToInteger(thread, JSHandle<JSTaggedValue>(thread, length)).GetDouble();
+    int64_t arrayLength = length.GetNumber();
     if (arrayLength == -0) {
         arrayLength = +0;
     }
@@ -387,20 +387,20 @@ void JSArray::Sort(JSThread *thread, const JSHandle<JSObject> &obj, const JSHand
     }
 
     // 2. Let len be ToLength(Get(obj, "length")).
-    double len = base::ArrayHelper::GetArrayLength(thread, JSHandle<JSTaggedValue>(obj));
+    int64_t len = base::ArrayHelper::GetArrayLength(thread, JSHandle<JSTaggedValue>(obj));
     // 3. ReturnIfAbrupt(len).
     RETURN_IF_ABRUPT_COMPLETION(thread);
 
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
-    for (int i = 1; i < len; i++) {
-        int beginIndex = 0;
-        int endIndex = i;
+    for (int64_t i = 1; i < len; i++) {
+        int64_t beginIndex = 0;
+        int64_t endIndex = i;
         presentValue.Update(FastRuntimeStub::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), i));
         RETURN_IF_ABRUPT_COMPLETION(thread);
         while (beginIndex < endIndex) {
-            int middleIndex = (beginIndex + endIndex) / 2; // 2 : half
+            int64_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
             middleValue.Update(
                 FastRuntimeStub::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), middleIndex));
             RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -414,7 +414,7 @@ void JSArray::Sort(JSThread *thread, const JSHandle<JSObject> &obj, const JSHand
         }
 
         if (endIndex >= 0 && endIndex < i) {
-            for (int j = i; j > endIndex; j--) {
+            for (int64_t j = i; j > endIndex; j--) {
                 previousValue.Update(
                     FastRuntimeStub::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), j - 1));
                 RETURN_IF_ABRUPT_COMPLETION(thread);

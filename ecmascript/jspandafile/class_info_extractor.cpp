@@ -30,7 +30,10 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
 
     uint32_t literalBufferLength = literal->GetLength();
     // non static properties number is hidden in the last index of Literal buffer
-    uint32_t nonStaticNum = static_cast<uint32_t>(literal->Get(thread, literalBufferLength - 1).GetInt());
+    uint32_t nonStaticNum = 0;
+    if (literalBufferLength != 0) {
+        nonStaticNum = static_cast<uint32_t>(literal->Get(thread, literalBufferLength - 1).GetInt());
+    }
 
     // Reserve sufficient length to prevent frequent creation.
     JSHandle<TaggedArray> nonStaticKeys = factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
@@ -39,11 +42,10 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
 
     nonStaticKeys->Set(thread, CONSTRUCTOR_INDEX, globalConst->GetConstructorString());
 
-    JSHandle<TaggedArray> nonStaticElements = factory->EmptyArray();
-
     if (nonStaticNum) {
         ExtractContentsDetail nonStaticDetail {0, nonStaticNum * 2, NON_STATIC_RESERVED_LENGTH, nullptr};
 
+        JSHandle<TaggedArray> nonStaticElements = factory->EmptyArray();
         if (UNLIKELY(ExtractAndReturnWhetherWithElements(thread, literal, nonStaticDetail, nonStaticKeys,
                                                          nonStaticProperties, nonStaticElements))) {
             extractor->SetNonStaticWithElements(true);
@@ -54,7 +56,7 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     extractor->SetNonStaticKeys(thread, nonStaticKeys);
     extractor->SetNonStaticProperties(thread, nonStaticProperties);
 
-    uint32_t staticNum = (literalBufferLength - 1) / 2 - nonStaticNum;
+    uint32_t staticNum = literalBufferLength == 0 ? 0 : (literalBufferLength - 1) / 2 - nonStaticNum;
 
     // Reserve sufficient length to prevent frequent creation.
     JSHandle<TaggedArray> staticKeys = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
@@ -176,7 +178,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, J
     JSHandle<JSHClass> hclass;
     if (LIKELY(length <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length, MemSpaceType::OLD_SPACE);
+        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
         for (uint32_t index = 0; index < length; ++index) {
             key.Update(keys->Get(index));
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -192,13 +194,13 @@ JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, J
             layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
         }
 
-        hclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, length);
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, length);
         // Not need set proto here
         hclass->SetLayout(thread, layout);
         hclass->SetNumberOfProps(length);
     } else {
         // dictionary mode
-        hclass = factory->NewEcmaDynClass(JSObject::SIZE, JSType::JS_OBJECT, 0);  // without in-obj
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, 0);  // without in-obj
         hclass->SetIsDictionaryMode(true);
         hclass->SetNumberOfProps(0);
     }
@@ -217,7 +219,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
     JSHandle<JSHClass> hclass;
     if (LIKELY(length <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length, MemSpaceType::OLD_SPACE);
+        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
         for (uint32_t index = 0; index < length; ++index) {
             key.Update(keys->Get(index));
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -252,13 +254,13 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
             layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
         }
 
-        hclass = factory->NewEcmaDynClass(JSFunction::SIZE, JSType::JS_FUNCTION, length);
+        hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, length);
         // Not need set proto here
         hclass->SetLayout(thread, layout);
         hclass->SetNumberOfProps(length);
     } else {
         // dictionary mode
-        hclass = factory->NewEcmaDynClass(JSFunction::SIZE, JSType::JS_FUNCTION, 0);  // without in-obj
+        hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, 0);  // without in-obj
         hclass->SetIsDictionaryMode(true);
         hclass->SetNumberOfProps(0);
     }
@@ -288,8 +290,8 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSH
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
 
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
-    JSHandle<JSFunction> constructor = factory->NewJSFunctionByDynClass(method,
-        constructorHClass, FunctionKind::CLASS_CONSTRUCTOR, MemSpaceType::OLD_SPACE);
+    JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method,
+        constructorHClass, MemSpaceType::OLD_SPACE);
 
     // non-static
     nonStaticProperties->Set(thread, 0, constructor);
@@ -369,7 +371,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSH
                                          globalConst->GetHandledConstructorString(), ctorDesc);
 
     constructor->SetHomeObject(thread, prototype);
-    constructor->SetProtoOrDynClass(thread, prototype);
+    constructor->SetProtoOrHClass(thread, prototype);
 
     return constructor;
 }

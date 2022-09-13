@@ -32,10 +32,10 @@ public:
 
     virtual void BytecodePcChanged(JSThread *thread, JSHandle<Method> method,
                                    uint32_t bc_offset) = 0;
-
     virtual void VmStart() = 0;
     virtual void VmDeath() = 0;
     virtual void PendingJobEntry() = 0;
+    virtual void NativeCalling(const void *nativeAddress) = 0;
 };
 
 class NotificationManager {
@@ -66,6 +66,13 @@ public:
         if (UNLIKELY(listener_ != nullptr)) {
             JSHandle<Method> methodHandle(thread, method);
             listener_->BytecodePcChanged(thread, methodHandle, bcOffset);
+        }
+    }
+
+    void NativeCallingEvent(const void *nativeAddress) const
+    {
+        if (UNLIKELY(listener_ != nullptr)) {
+            listener_->NativeCalling(nativeAddress);
         }
     }
 

@@ -46,7 +46,7 @@ public:
 
     tooling::JSPtExtractor *GetJSPtExtractor(const JSPandaFile *jsPandaFile);
 
-    static void RemoveJSPandaFile(void *pointer, void *data);
+    static void RemoveJSPandaFile(void *pointer);
 
     // for debugger
     template<typename Callback>

@@ -87,23 +87,31 @@ public:
 
     static void AsmInterpreterEntry(ExtendedAssembler *assembler);
 
-    static void PushCallIThisRangeAndDispatch(ExtendedAssembler *assembler);
+    static void PushCallThisRangeAndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallIRangeAndDispatch(ExtendedAssembler *assembler);
+    static void PushCallRangeAndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallArgs3AndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallArgs2AndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallArgs1AndDispatch(ExtendedAssembler *assembler);
+    static void PushCallArg1AndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallArgs0AndDispatch(ExtendedAssembler *assembler);
+    static void PushCallArg0AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArg0AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArg1AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler);
+
+    static void PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallNewAndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallNewAndDispatchNative(ExtendedAssembler *assembler);
 
-    static void PushCallIRangeAndDispatchNative(ExtendedAssembler *assembler);
+    static void PushCallRangeAndDispatchNative(ExtendedAssembler *assembler);
 
     static void PushCallArgsAndDispatchNative(ExtendedAssembler *assembler);
 

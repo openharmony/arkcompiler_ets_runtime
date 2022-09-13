@@ -23,7 +23,11 @@
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 
+#ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
+#else
+#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
+#endif
 
 namespace panda::ecmascript::kungfu {
 void AssemblerModule::Run(const CompilationConfig *cfg, Chunk* chunk)
@@ -84,17 +88,27 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
 {
     switch (mode) {
         case JSCallMode::CALL_ARG0:
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
             return 0;
         case JSCallMode::CALL_ARG1:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
             return 1;
         case JSCallMode::CALL_ARG2:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
             return 2; // 2: arg2
         case JSCallMode::CALL_ARG3:
+        case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
             return 3; // 3: arg3
         case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
             return -1;
@@ -107,31 +121,37 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
     }
 }
 
-int AssemblerModule::GetJumpSizeFromJSCallMode(JSCallMode mode)
+bool AssemblerModule::IsCallNew(JSCallMode mode)
 {
     switch (mode) {
         case JSCallMode::CALL_ARG0:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8);
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
         case JSCallMode::CALL_ARG1:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8);
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
         case JSCallMode::CALL_ARG2:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8_V8);
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
         case JSCallMode::CALL_ARG3:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_V8_V8_V8_V8);
+        case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_WITH_ARGV:
-        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
-            return BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8);
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
-            return -1;
+            return false;
+        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+            return true;
         default:
             UNREACHABLE();
     }
-    return 0;
+    return false;
 }
 
 bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)
@@ -141,11 +161,21 @@ bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)
         case JSCallMode::CALL_ARG1:
         case JSCallMode::CALL_ARG2:
         case JSCallMode::CALL_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
         case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
             return false;
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_GETTER:
@@ -163,13 +193,23 @@ bool AssemblerModule::JSModeHaveNewTargetArg(JSCallMode mode)
         case JSCallMode::CALL_ARG1:
         case JSCallMode::CALL_ARG2:
         case JSCallMode::CALL_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
         case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG3:
             return false;
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_SUPER_CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
             return true;
@@ -185,9 +225,19 @@ bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
         case JSCallMode::CALL_ARG1:
         case JSCallMode::CALL_ARG2:
         case JSCallMode::CALL_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
         case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG3:
             return true;
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
