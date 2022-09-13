@@ -70,6 +70,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             PassRunner<PassData> pipeline(&data);
             pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
             pipeline.RunPass<TypeInferPass>(&builder, tsManager);
+            pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager);
             pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
             pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg);
             pipeline.RunPass<VerifierPass>();

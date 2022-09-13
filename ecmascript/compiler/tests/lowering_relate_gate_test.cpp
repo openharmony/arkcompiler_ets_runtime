@@ -34,6 +34,7 @@ using ecmascript::kungfu::Variable;
 using ecmascript::kungfu::VariableType;
 using ecmascript::kungfu::Environment;
 using ecmascript::kungfu::TypeLowering;
+using ecmascript::kungfu::TSTypeLowering;
 using ecmascript::kungfu::CompilationConfig;
 
 HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
@@ -46,6 +47,10 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     auto arg0 = builder.Arguments(0);
     auto check = builder.TypeCheck(GateType::NumberType(), arg0);
     builder.Return(entry, depend, check);
+    EXPECT_TRUE(Verifier::Run(&circuit));
+    CompilationConfig config("x86_64-unknown-linux-gnu", false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
+    typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
 
@@ -63,6 +68,30 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
                                             {entry, depend, arg0, arg1});
     builder.Return(nadd, nadd, nadd);
     EXPECT_TRUE(Verifier::Run(&circuit));
+    CompilationConfig config("x86_64-unknown-linux-gnu", false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
+    typeLowering.RunTypeLowering();
+    EXPECT_TRUE(Verifier::Run(&circuit));
+}
+
+HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
+{
+    // construct a circuit
+    Circuit circuit;
+    CircuitBuilder builder(&circuit);
+    auto entry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
+    auto depend = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    auto arg0 = builder.Arguments(0);
+    auto arg1 = builder.Arguments(1);
+    auto nless = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESS,
+                                            GateType::NumberType(), GateType::NumberType(),
+                                            {entry, depend, arg0, arg1});
+    builder.Return(nless, nless, nless);
+    EXPECT_TRUE(Verifier::Run(&circuit));
+    CompilationConfig config("x86_64-unknown-linux-gnu", false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
+    typeLowering.RunTypeLowering();
+    EXPECT_TRUE(Verifier::Run(&circuit));
 }
 
 HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
@@ -76,6 +105,10 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
     auto convert = builder.TypeConvert(MachineType::I64, GateType::NJSValue(), GateType::NumberType(),
                                        {entry, depend, arg0});
     builder.Return(convert, convert, convert);
+    EXPECT_TRUE(Verifier::Run(&circuit));
+    CompilationConfig config("x86_64-unknown-linux-gnu", false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
+    typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
 
@@ -91,7 +124,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     Label exit(&builder);
     VariableType arg1Type(MachineType::I64, GateType::BooleanType());
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLoweing(nullptr, &circuit, &config, nullptr, false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
 
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
@@ -107,7 +140,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     builder.Bind(&exit);
     builder.Return(*result);
     EXPECT_TRUE(Verifier::Run(&circuit));
-    typeLoweing.RunTypeLowering();
+    typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
 } // namespace panda::test

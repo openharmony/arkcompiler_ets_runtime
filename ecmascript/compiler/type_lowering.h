@@ -118,16 +118,28 @@ private:
     void LowerTypedBinaryOp(GateRef gate);
     void LowerTypeConvert(GateRef gate);
     void LowerTypeAdd(GateRef gate);
+    void LowerTypeSub(GateRef gate);
+    void LowerTypeMul(GateRef gate);
+    void LowerTypeLess(GateRef gate);
+    void LowerTypeLessEq(GateRef gate);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
-
+    void LowerNumberCheck(GateRef gate);
+    void LowerNumberAdd(GateRef gate);
+    void LowerNumberSub(GateRef gate);
+    void LowerNumberMul(GateRef gate);
+    void LowerNumberLess(GateRef gate);
+    void LowerNumberLessEq(GateRef gate);
     void GenerateSuccessMerge(std::vector<GateRef> &successControl);
     void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
+    void ReplaceGateToSubCfg(GateRef gate, GateRef state, GateRef depend, GateRef value);
     void ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl);
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
+    template<OpCode::Op Op>
+    GateRef FastAddOrSubOrMul2Number(GateRef left, GateRef right);
     template<OpCode::Op Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
@@ -139,6 +151,8 @@ private:
     GateRef DoubleIsINF(GateRef x);
     GateRef Less(GateRef left, GateRef right);
     GateRef LessEq(GateRef left, GateRef right);
+    GateRef Less2Number(GateRef left, GateRef right);
+    GateRef LessEq2Number(GateRef left, GateRef right);
     GateRef FastEqual(GateRef left, GateRef right);
     GateRef FastDiv(GateRef left, GateRef right);
 
@@ -147,8 +161,8 @@ private:
     void LowerTypeSub2(GateRef gate);
     void LowerTypeMul2(GateRef gate);
     void LowerTypeMod2(GateRef gate, GateRef glue);
-    void LowerTypeLess(GateRef gate);
-    void LowerTypeLessEq(GateRef gate);
+    void LowerTypeLess2(GateRef gate);
+    void LowerTypeLessEq2(GateRef gate);
     void LowerTypeGreater(GateRef gate);
     void LowerTypeGreaterEq(GateRef gate);
     void LowerTypeDiv2(GateRef gate);
@@ -156,6 +170,9 @@ private:
     void LowerTypeNotEq(GateRef gate);
     void LowerToNumeric(GateRef gate);
     void LowerTypeInc(GateRef gate);
+
+    GateType GetLeftType(GateRef gate);
+    GateType GetRightType(GateRef gate);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

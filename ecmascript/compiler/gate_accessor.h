@@ -323,7 +323,7 @@ public:
     size_t GetStateCount(GateRef gate) const;
     size_t GetDependCount(GateRef gate) const;
     size_t GetInValueCount(GateRef gate) const;
-    void ReplaceAllDepends(GateRef gate, GateRef replaceDependIn);
+    void UpdateAllUses(GateRef gate, GateRef replaceValueIn);
     void ReplaceIn(GateRef gate, size_t index, GateRef in);
     void ReplaceStateIn(GateRef gate, GateRef in, size_t index = 0);
     void ReplaceDependIn(GateRef gate, GateRef in, size_t index = 0);
@@ -339,6 +339,7 @@ public:
     bool IsLoopBack(GateRef gate) const;
     bool IsState(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
+    bool IsTypedGate(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;
     void SetMark(GateRef gate, MarkCode mark);
     bool IsFinished(GateRef gate) const;
@@ -346,6 +347,7 @@ public:
     bool IsNotMarked(GateRef gate) const;
     void SetFinished(GateRef gate);
     void SetVisited(GateRef gate);
+    bool IsStateIn(const UseIterator &useIt) const;
     bool IsDependIn(const UseIterator &useIt) const;
     bool IsValueIn(const UseIterator &useIt) const;
     bool IsExceptionState(const UseIterator &useIt) const;

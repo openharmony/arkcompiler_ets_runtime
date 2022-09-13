@@ -1214,6 +1214,11 @@ bool OpCode::IsGeneralState() const
             (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT));
 }
 
+bool OpCode::IsTypedGate() const
+{
+    return ((op_ == OpCode::TYPE_CHECK) || (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT));
+}
+
 bool OpCode::IsTerminalState() const
 {
     return ((op_ == OpCode::RETURN) || (op_ == OpCode::THROW) || (op_ == OpCode::RETURN_VOID));

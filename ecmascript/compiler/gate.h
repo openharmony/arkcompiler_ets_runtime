@@ -206,6 +206,7 @@ public:
     [[nodiscard]] bool IsSchedulable() const;
     [[nodiscard]] bool IsState() const;  // note: IsState(STATE_ENTRY) == false
     [[nodiscard]] bool IsGeneralState() const;
+    [[nodiscard]] bool IsTypedGate() const;
     [[nodiscard]] bool IsTerminalState() const;
     [[nodiscard]] bool IsCFGMerge() const;
     [[nodiscard]] bool IsControlCase() const;
