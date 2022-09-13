@@ -65,7 +65,7 @@ public:
                                           uint32_t srcByteOffset, JSHandle<JSTaggedValue> constructor);
     // 24.1.1.1 AllocateArrayBuffer(constructor, byteLength)
     static JSTaggedValue AllocateArrayBuffer(JSThread *thread, const JSHandle<JSTaggedValue> &newTarget,
-                                             double byteLength);
+                                             uint64_t byteLength);
     // es12 25.1.2.6 IsUnclampedIntegerElementType ( type )
     static bool IsUnclampedIntegerElementType(DataViewType type);
     // es12 25.1.2.7 IsBigIntElementType ( type )
