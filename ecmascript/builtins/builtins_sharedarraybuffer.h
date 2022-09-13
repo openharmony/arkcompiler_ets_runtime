@@ -38,7 +38,7 @@ public:
 private:
     // 25.2.1.1 AllocateSharedArrayBuffer ( constructor, byteLength )
     static JSTaggedValue AllocateSharedArrayBuffer(JSThread *thread, const JSHandle<JSTaggedValue> &newTarget,
-                                             double byteLength);
+                                             uint64_t byteLength);
 };
 }  // namespace panda::ecmascript::builtins
 

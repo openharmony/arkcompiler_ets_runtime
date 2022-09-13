@@ -23,8 +23,8 @@
 
 namespace panda::ecmascript::base {
 struct FlattenArgs {
-    double sourceLen = 0;
-    double start = 0;
+    int64_t sourceLen = 0;
+    int64_t start = 0;
     double depth = 0;
 };
 class ArrayHelper {
@@ -32,8 +32,8 @@ public:
     static bool IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static int32_t SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
                                const JSHandle<JSTaggedValue> &valueX, const JSHandle<JSTaggedValue> &valueY);
-    static double GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
-    static double GetArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+    static int64_t GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+    static int64_t GetArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue FlattenIntoArray(JSThread *thread, const JSHandle<JSObject> &newArrayHandle,
                                           const JSHandle<JSTaggedValue> &thisObjVal, const FlattenArgs &args,
                                           const JSHandle<JSTaggedValue> &mapperFunctionHandle,
