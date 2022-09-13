@@ -1882,7 +1882,7 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
 {
     argAcc_.NewCommonArg(CommonArgIdx::GLUE, MachineType::I64, GateType::NJSValue());
     argAcc_.NewCommonArg(CommonArgIdx::LEXENV, MachineType::I64, GateType::TaggedValue());
-    argAcc_.NewCommonArg(CommonArgIdx::ACTUAL_ARGC, MachineType::I32, GateType::NJSValue());
+    argAcc_.NewCommonArg(CommonArgIdx::ACTUAL_ARGC, MachineType::I64, GateType::NJSValue());
     auto funcIdx = static_cast<size_t>(CommonArgIdx::FUNC);
     const size_t actualNumArgs = argAcc_.GetActualNumArgs();
     // new actual argument gates
@@ -1958,8 +1958,8 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
     std::function<void(size_t)> dfs = [&](size_t bbId) -> void {
         visitState[bbId] = VisitState::PENDING;
         std::vector<BytecodeRegion *> merge;
-        merge.insert(merge.end(), this->graph_[bbId].succs.begin(), this->graph_[bbId].succs.end());
-        merge.insert(merge.end(), this->graph_[bbId].catchs.begin(), this->graph_[bbId].catchs.end());
+        merge.insert(merge.end(), graph_[bbId].succs.begin(), graph_[bbId].succs.end());
+        merge.insert(merge.end(), graph_[bbId].catchs.begin(), graph_[bbId].catchs.end());
         auto it = merge.crbegin();
         while (it != merge.crend()) {
             auto succBlock = *it;
@@ -1968,7 +1968,7 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
                 dfs(succBlock->id);
             } else {
                 if (visitState[succBlock->id] == VisitState::PENDING) {
-                    this->graph_[succBlock->id].loopbackBlocks.insert(bbId);
+                    graph_[succBlock->id].loopbackBlocks.insert(bbId);
                 }
             }
         }

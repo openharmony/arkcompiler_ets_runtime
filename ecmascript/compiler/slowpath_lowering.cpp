@@ -3279,7 +3279,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
 void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate, GateRef glue, GateRef actualArgc)
 {
     DebugPrintBC(gate, glue);
-    GateRef taggedArgc = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(actualArgc));
+    GateRef taggedArgc = builder_.ToTaggedInt(actualArgc);
     const int id = RTSTUB_ID(OptGetUnmapedArgs);
     GateRef newGate = LowerCallRuntime(glue, id, {taggedArgc});
     ReplaceHirToCall(gate, newGate);
@@ -3288,7 +3288,7 @@ void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate, GateRef glue, GateRef 
 void SlowPathLowering::LowerCopyRestArgs(GateRef gate, GateRef glue, GateRef actualArgc)
 {
     DebugPrintBC(gate, glue);
-    GateRef taggedArgc = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(actualArgc));
+    GateRef taggedArgc = builder_.ToTaggedInt(actualArgc);
     GateRef restIdx = acc_.GetValueIn(gate, 0);
     GateRef taggedRestIdx = builder_.ToTaggedInt(restIdx);
 

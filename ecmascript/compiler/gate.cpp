@@ -199,6 +199,8 @@ Properties OpCode::GetProperties() const
             return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE, I8), NO_ROOT};
         case TYPE_CONVERT:
             return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case TYPED_UNARY_OP:
+            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
         default:
             LOG_COMPILER(ERROR) << "Please complete OpCode properties (OpCode=" << op_ << ")";
             UNREACHABLE();
@@ -315,6 +317,7 @@ std::string OpCode::Str() const
         {TYPE_CHECK, "TYPE_CHECK"},
         {TYPED_BINARY_OP, "TYPED_BINARY_OP"},
         {TYPE_CONVERT, "TYPE_CONVERT"},
+        {TYPED_UNARY_OP, "TYPED_UNARY_OP"},
     };
     if (strMap.count(op_) > 0) {
         return strMap.at(op_);
@@ -1211,7 +1214,7 @@ bool OpCode::IsGeneralState() const
             (op_ == OpCode::IF_SUCCESS) || (op_ == OpCode::IF_EXCEPTION) || (op_ == OpCode::SWITCH_CASE) ||
             (op_ == OpCode::DEFAULT_CASE) || (op_ == OpCode::MERGE) || (op_ == OpCode::LOOP_BEGIN) ||
             (op_ == OpCode::ORDINARY_BLOCK) || (op_ == OpCode::STATE_ENTRY) ||
-            (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT));
+            (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT) || (op_ == OpCode::TYPED_UNARY_OP));
 }
 
 bool OpCode::IsTypedGate() const

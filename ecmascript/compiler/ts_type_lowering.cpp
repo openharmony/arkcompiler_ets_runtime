@@ -49,14 +49,65 @@ void TSTypeLowering::Lower(GateRef gate)
         case MUL2DYN_PREF_V8:
             LowerTypeMul2Dyn(gate);
             break;
+        case DIV2DYN_PREF_V8:
+            // lower JS_Div
+            break;
+        case MOD2DYN_PREF_V8:
+            // lower JS_Mod
+            break;
         case LESSDYN_PREF_V8:
             LowerTypeLess2Dyn(gate);
             break;
         case LESSEQDYN_PREF_V8:
             LowerTypeLessEq2Dyn(gate);
             break;
+        case GREATERDYN_PREF_V8:
+            // lower JS_GREATER
+            break;
+        case GREATEREQDYN_PREF_V8:
+            // lower JS_GREATEREQ
+            break;
+        case EQDYN_PREF_V8:
+            // lower JS_EQ
+            break;
+        case NOTEQDYN_PREF_V8:
+            // lower JS_NOTEQ
+            break;
+        case SHL2DYN_PREF_V8:
+            // lower JS_SHL
+            break;
+        case SHR2DYN_PREF_V8:
+            // lower JS_SHR
+            break;
+        case ASHR2DYN_PREF_V8:
+            // lower JS_ASHR
+            break;
+        case AND2DYN_PREF_V8:
+            // lower JS_AND
+            break;
+        case OR2DYN_PREF_V8:
+            // lower JS_OR
+            break;
+        case XOR2DYN_PREF_V8:
+            // lower JS_XOR
+            break;
+        case EXPDYN_PREF_V8:
+            // lower JS_EXP
+            break;
         case TONUMERIC_PREF_V8:
             // lower ToNumberic
+            break;
+        case NEGDYN_PREF_V8:
+            // lower JS_NEG
+            break;
+        case NOTDYN_PREF_V8:
+            // lower JS_NOT
+            break;
+        case INCDYN_PREF_V8:
+            // lower JS_INC
+            break;
+        case DECDYN_PREF_V8:
+            // lower JS_DEC
             break;
         default:
             break;
