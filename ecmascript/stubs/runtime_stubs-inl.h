@@ -2344,17 +2344,16 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
 JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
     JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
-    JSHandle<JSTaggedValue> newTgt = GetHArg<JSTaggedValue>(argv, argc, 1);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    const size_t numCtorAndNewTgt = 2;
+    const size_t firstArgOffset = 1;
     STACK_ASSERT_SCOPE(thread);
-    size_t arrLength = argc - numCtorAndNewTgt;
+    size_t arrLength = argc - firstArgOffset;
     JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(arrLength);
     for (size_t i = 0; i < arrLength; ++i) {
-        args->Set(thread, i, GetArg(argv, argc, i + numCtorAndNewTgt));
+        args->Set(thread, i, GetArg(argv, argc, i + firstArgOffset));
     }
 
-    JSTaggedValue object = RuntimeOptConstruct(thread, ctor, newTgt, undefined, args);
+    JSTaggedValue object = RuntimeOptConstruct(thread, ctor, ctor, undefined, args);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!object.IsUndefined() && !object.IsECMAObject() && !JSHandle<JSFunction>(ctor)->IsBase()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Derived constructor must return object or undefined",

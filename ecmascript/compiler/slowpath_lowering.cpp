@@ -281,10 +281,10 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::LDLEXENVDYN_PREF:
             LowerLexicalEnv(gate, glue);
             break;
-        case EcmaOpcode::GETUNMAPPEDARGS_PREF:
+        case EcmaOpcode::GETUNMAPPEDARGS:
             LowerGetUnmappedArgs(gate, glue, actualArgc);
             break;
-        case EcmaOpcode::ASYNCFUNCTIONENTER_PREF:
+        case EcmaOpcode::ASYNCFUNCTIONENTER:
             LowerAsyncFunctionEnter(gate, glue);
             break;
         case EcmaOpcode::INC_IMM8:
@@ -293,7 +293,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::DEC_IMM8:
             LowerDec(gate, glue);
             break;
-        case EcmaOpcode::GETPROPITERATOR_PREF:
+        case EcmaOpcode::GETPROPITERATOR:
             LowerGetPropIterator(gate, glue);
             break;
         case EcmaOpcode::RESUMEGENERATOR:
@@ -307,7 +307,8 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::ITERNEXT_PREF_V8:
             LowerIterNext(gate, glue);
             break;
-        case EcmaOpcode::CLOSEITERATOR_PREF_V8:
+        case EcmaOpcode::CLOSEITERATOR_IMM8_V8:
+        case EcmaOpcode::CLOSEITERATOR_IMM16_V8:
             LowerCloseIterator(gate, glue);
             break;
         case EcmaOpcode::ADD2_IMM8_V8:
@@ -343,7 +344,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::GREATEREQ_IMM8_V8:
             LowerGreaterEq(gate, glue);
             break;
-        case EcmaOpcode::CREATEITERRESULTOBJ_PREF_V8_V8:
+        case EcmaOpcode::CREATEITERRESULTOBJ_V8_V8:
             LowerCreateIterResultObj(gate, glue);
             break;
         case EcmaOpcode::SUSPENDGENERATOR_V8:
@@ -366,10 +367,12 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
             LowerStGlobalVar(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::GETITERATOR_PREF:
+        case EcmaOpcode::GETITERATOR_IMM8:
+        case EcmaOpcode::GETITERATOR_IMM16:
             LowerGetIterator(gate, glue);
             break;
-        case EcmaOpcode::NEWOBJAPPLY_PREF_V8_V8:
+        case EcmaOpcode::NEWOBJAPPLY_IMM8_V8:
+        case EcmaOpcode::NEWOBJAPPLY_IMM16_V8:
             LowerNewObjApply(gate, glue);
             break;
         case EcmaOpcode::THROWDYN_PREF:
@@ -458,16 +461,19 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STRICTEQ_IMM8_V8:
             LowerFastStrictEqual(gate, glue);
             break;
-        case EcmaOpcode::CREATEEMPTYARRAY_PREF:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
             LowerCreateEmptyArray(gate, glue);
             break;
-        case EcmaOpcode::CREATEEMPTYOBJECT_PREF:
+        case EcmaOpcode::CREATEEMPTYOBJECT:
             LowerCreateEmptyObject(gate, glue);
             break;
-        case EcmaOpcode::CREATEOBJECTWITHBUFFER_PREF_IMM16:
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
             LowerCreateObjectWithBuffer(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_PREF_IMM16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
             LowerCreateArrayWithBuffer(gate, glue, jsFunc);
             break;
         case EcmaOpcode::STMODULEVAR_PREF_ID32:
@@ -498,7 +504,8 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::GETMODULENAMESPACE_PREF_ID32:
             LowerGetModuleNamespace(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::NEWOBJDYNRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
             LowerNewObjRange(gate, glue);
             break;
         case EcmaOpcode::JEQZ_IMM8: // TODO
@@ -532,10 +539,11 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::COPYDATAPROPERTIES_PREF_V8_V8:
             LowerCopyDataProperties(gate, glue);
             break;
-        case EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8:
+        case EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM16_V8_V8:
             LowerCreateObjectWithExcludedKeys(gate, glue);
             break;
-        case EcmaOpcode::CREATEREGEXPWITHLITERAL_PREF_ID32_IMM8:
+        case EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8:
+        case EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8:
             LowerCreateRegExpWithLiteral(gate, glue, jsFunc);
             break;
         case EcmaOpcode::STOWNBYVALUE_PREF_V8_V8:
@@ -547,10 +555,10 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STOWNBYNAME_PREF_ID32_V8:
             LowerStOwnByName(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::NEWLEXENVDYN_PREF_IMM16:
+        case EcmaOpcode::NEWLEXENVDYN_IMM8:
             LowerNewLexicalEnv(gate, glue);
             break;
-        case EcmaOpcode::NEWLEXENVWITHNAMEDYN_PREF_IMM16_IMM16:
+        case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
             LowerNewLexicalEnvWithName(gate, glue, jsFunc);
             break;
         case EcmaOpcode::POPLEXENV:
@@ -611,13 +619,13 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STSUPERBYNAME_PREF_ID32_V8:
             LowerStSuperByName(gate, glue, jsFunc);
             break;
-        case EcmaOpcode::CREATEGENERATOROBJ_PREF_V8:
+        case EcmaOpcode::CREATEGENERATOROBJ_V8:
             LowerCreateGeneratorObj(gate, glue);
             break;
-        case EcmaOpcode::CREATEASYNCGENERATOROBJ_PREF_V8:
+        case EcmaOpcode::CREATEASYNCGENERATOROBJ_V8:
             LowerCreateAsyncGeneratorObj(gate, glue);
             break;
-        case EcmaOpcode::ASYNCGENERATORRESOLVE_PREF_V8_V8_V8:
+        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
             LowerAsyncGeneratorResolve(gate, glue);
             break;
         case EcmaOpcode::ASYNCGENERATORREJECT_PREF_V8_V8:

@@ -529,7 +529,7 @@ DEF_RUNTIME_STUBS(NewObjApply)
 {
     RUNTIME_STUBS_HEADER(NewObjApply);
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     return RuntimeNewObjApply(thread, func, array).GetRawData();
 }
 
