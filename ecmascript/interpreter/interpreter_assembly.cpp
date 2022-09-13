@@ -2539,7 +2539,7 @@ void InterpreterAssembly::HandleAsyncgeneratorresolveV8V8V8(
     DISPATCH(ASYNCGENERATORRESOLVE_V8_V8_V8);
 }
 
-void InterpreterAssembly::HandleAsyncgeneratorrejectV8V8(
+void InterpreterAssembly::HandleAsyncgeneratorrejectV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
@@ -2552,7 +2552,7 @@ void InterpreterAssembly::HandleAsyncgeneratorrejectV8V8(
     JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorReject(thread, asyncGenerator, value);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
-    DISPATCH(ASYNCGENERATORREJECT_V8_V8);
+    DISPATCH(ASYNCGENERATORREJECT_V8);
 }
 
 void InterpreterAssembly::HandleStarrayspreadV8V8(
@@ -5714,21 +5714,7 @@ void InterpreterAssembly::HandleDefineclasswithbufferImm8Id16Id16Imm16V8(
     DISPATCH(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8);
 }
 
-void InterpreterAssembly::HandleStpatchvarImm8V8(
-    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int16_t hotnessCounter)
-{
-    DISPATCH(STPATCHVAR_IMM8_V8);
-}
-
-void InterpreterAssembly::HandleLdpatchvarImm8(
-    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int16_t hotnessCounter)
-{
-    DISPATCH(LDPATCHVAR_IMM8);
-}
-
-void InterpreterAssembly::HandleWideLdPatchVarPrefImm16(
+void InterpreterAssembly::HandleWideLdpatchvarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
@@ -5742,7 +5728,7 @@ void InterpreterAssembly::HandleWideLdPatchVarPrefImm16(
     DISPATCH(WIDE_LDPATCHVAR_PREF_IMM16);
 }
 
-void InterpreterAssembly::HandleWideStPatchVarPrefImm16(
+void InterpreterAssembly::HandleWideStpatchvarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
