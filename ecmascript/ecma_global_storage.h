@@ -56,7 +56,8 @@ public:
             weakCurrent->IterateUsageGlobal([] (Node *node) {
                 node->SetUsing(false);
                 node->SetObject(JSTaggedValue::Undefined().GetRawData());
-                reinterpret_cast<WeakNode *>(node)->CallWeakCallback();
+                reinterpret_cast<WeakNode *>(node)->CallFirstPassCallback();
+                reinterpret_cast<WeakNode *>(node)->CallSecondPassCallback();
             });
             chunk_->Delete(weakCurrent);
         }
@@ -145,20 +146,43 @@ public:
             reference_ = ref;
         }
 
-        void SetCallback(WeakClearCallback callback)
+        void* GetReference() const
         {
-            callback_ = callback;
+            return reference_;
         }
 
-        void CallWeakCallback()
+        void SetFirstPassCallback(WeakClearCallback callback)
         {
-            if (callback_ != nullptr) {
-                callback_(reference_);
+            firstPassCallback_ = callback;
+        }
+
+        void SetSecondPassCallback(WeakClearCallback callback)
+        {
+            secondPassCallback_ = callback;
+        }
+
+        WeakClearCallback GetSecondPassCallback() const
+        {
+            return secondPassCallback_;
+        }
+
+        void CallFirstPassCallback()
+        {
+            if (firstPassCallback_ != nullptr) {
+                firstPassCallback_(reference_);
+            }
+        }
+
+        void CallSecondPassCallback()
+        {
+            if (secondPassCallback_ != nullptr) {
+                secondPassCallback_(reference_);
             }
         }
     private:
         void *reference_ {nullptr};
-        WeakClearCallback callback_ {nullptr};
+        WeakClearCallback firstPassCallback_ {nullptr};
+        WeakClearCallback secondPassCallback_ {nullptr};
     };
 
     template<typename T>
@@ -232,7 +256,8 @@ public:
             node->SetUsing(false);
             if (node->IsWeak()) {
                 reinterpret_cast<WeakNode *>(node)->SetReference(nullptr);
-                reinterpret_cast<WeakNode *>(node)->SetCallback(nullptr);
+                reinterpret_cast<WeakNode *>(node)->SetFirstPassCallback(nullptr);
+                reinterpret_cast<WeakNode *>(node)->SetSecondPassCallback(nullptr);
             }
             if (freeList_ != nullptr) {
                 freeList_->SetPrev(node);
@@ -357,14 +382,16 @@ public:
         }
     }
 
-    inline uintptr_t SetWeak(uintptr_t nodeAddr, void *ref = nullptr, WeakClearCallback callback = nullptr)
+    inline uintptr_t SetWeak(uintptr_t nodeAddr, void *ref = nullptr, WeakClearCallback firstCallback = nullptr,
+                             WeakClearCallback secondCallback = nullptr)
     {
         auto value = reinterpret_cast<Node *>(nodeAddr)->GetObject();
         DisposeGlobalHandle(nodeAddr);
         uintptr_t addr = NewGlobalHandleImplement<WeakNode>(&lastWeakGlobalNodes_, &weakFreeListNodes_, value);
         WeakNode *node = reinterpret_cast<WeakNode *>(addr);
         node->SetReference(ref);
-        node->SetCallback(callback);
+        node->SetFirstPassCallback(firstCallback);
+        node->SetSecondPassCallback(secondCallback);
         return addr;
     }
 
