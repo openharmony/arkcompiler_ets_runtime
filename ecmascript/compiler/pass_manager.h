@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_COMPILER_PASS_MANAGER_H
 #define ECMASCRIPT_COMPILER_PASS_MANAGER_H
 
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/ecma_vm.h"
@@ -26,16 +25,19 @@ class PassManager {
 public:
     PassManager(EcmaVM* vm, std::string entry, std::string &triple,
         size_t optLevel, size_t relocMode, CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize)
-        : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel),
-        relocMode_(relocMode), log_(log), logList_(logList), maxAotMethodSize_(maxAotMethodSize) {};
+        : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode),
+          log_(log), logList_(logList), maxAotMethodSize_(maxAotMethodSize) {};
     PassManager() = default;
     ~PassManager() = default;
-    bool CollectBCInfo(const std::string &filename, BytecodeInfoCollector::BCInfo *bytecodeInfo);
+
     bool Compile(const std::string &fileName, AOTFileGenerator &generator);
-    void SaveSnapshotFile();
 
 private:
-    EcmaVM* vm_ {nullptr};
+    JSPandaFile *CreateJSPandaFile(const CString &fileName);
+    JSPandaFile *ResolveModuleFile(JSPandaFile *jsPandaFile, const std::string &fileName);
+    JSHandle<JSTaggedValue> CreateConstPool(const JSPandaFile *jsPandaFile);
+
+    EcmaVM *vm_ {nullptr};
     std::string entry_ {};
     std::string triple_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level
@@ -45,4 +47,4 @@ private:
     size_t maxAotMethodSize_ {0};
 };
 }
-#endif
+#endif // ECMASCRIPT_COMPILER_PASS_MANAGER_H

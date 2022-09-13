@@ -41,6 +41,8 @@ group("ark_typeinfer_test") {
     "ldobjbyname:ldobjbynameAotTypeInferAction",
     "ldobjbyvalue:ldobjbyvalueAotTypeInferAction",
     "ldundefined:ldundefinedAotTypeInferAction",
+    "lex_env_var:lex_env_varAotTypeInferAction",
+    "lex_env_var_class:lex_env_var_classAotTypeInferAction",
     "logic_op:logic_opAotTypeInferAction",
     "mod2dyn:mod2dynAotTypeInferAction",
     "mul2dyn:mul2dynAotTypeInferAction",

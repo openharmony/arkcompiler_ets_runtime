@@ -83,11 +83,13 @@ private:
 
 class TypeInferPass {
 public:
-    bool Run(PassData* data, BytecodeCircuitBuilder *builder, TSManager *tsManager)
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder, const JSHandle<JSTaggedValue> &constantPool,
+             TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId)
     {
         if (builder->HasTypes()) {
             bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
-            TypeInfer typeInfer(builder, data->GetCircuit(), tsManager, enableLog);
+            TypeInfer typeInfer(builder, data->GetCircuit(), constantPool, tsManager,
+                                lexEnvManager, methodId, enableLog);
             typeInfer.TraverseCircuit();
         }
         return true;

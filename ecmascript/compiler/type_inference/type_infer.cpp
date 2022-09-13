@@ -197,6 +197,14 @@ bool TypeInfer::Infer(GateRef gate)
             return InferSuperCall(gate);
         case EcmaBytecode::TRYLDGLOBALBYNAME_PREF_ID32:
             return InferTryLdGlobalByName(gate);
+        case EcmaBytecode::LDLEXVARDYN_PREF_IMM4_IMM4:
+        case EcmaBytecode::LDLEXVARDYN_PREF_IMM8_IMM8:
+        case EcmaBytecode::LDLEXVARDYN_PREF_IMM16_IMM16:
+            return InferLdLexVarDyn(gate);
+        case EcmaBytecode::STLEXVARDYN_PREF_IMM4_IMM4_V8:
+        case EcmaBytecode::STLEXVARDYN_PREF_IMM8_IMM8_V8:
+        case EcmaBytecode::STLEXVARDYN_PREF_IMM16_IMM16_V8:
+            return InferStLexVarDyn(gate);
         default:
             break;
     }
@@ -372,9 +380,8 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
         }
         // If this object has no gt type, we cannot get its internal property type
         if (IsObjectOrClass(objType)) {
-            auto constantPool = builder_->GetConstantPool().GetObject<ConstantPool>();
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
-            auto name = constantPool->GetObjectFromCache(index);
+            auto name = constantPool_->GetObjectFromCache(index);
             auto type = GetPropType(objType, name);
             return UpdateType(gate, type);
         }
@@ -471,6 +478,29 @@ bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
     return false;
 }
 
+bool TypeInfer::InferLdLexVarDyn(GateRef gate)
+{
+    auto level = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+    auto slot = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1));
+    auto type = lexEnvManager_->GetLexEnvElementType(methodId_, level, slot);
+    return UpdateType(gate, type);
+}
+
+bool TypeInfer::InferStLexVarDyn(GateRef gate)
+{
+    auto level = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+    auto slot = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1));
+    auto type = lexEnvManager_->GetLexEnvElementType(methodId_, level, slot);
+    if (type.IsAnyType()) {
+        auto valueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 2));
+        if (!valueType.IsAnyType()) {
+            lexEnvManager_->SetLexEnvElementType(methodId_, level, slot, valueType);
+            return true;
+        }
+    }
+    return false;
+}
+
 void TypeInfer::PrintAllGatesTypes() const
 {
     std::vector<GateRef> gateList;
@@ -528,10 +558,9 @@ void TypeInfer::TypeCheck(GateRef gate) const
         return;
     }
     auto funcName = gateAccessor_.GetValueIn(func, 0);
-    auto constantPool = builder_->GetConstantPool().GetObject<ConstantPool>();
-    if (constantPool->GetStdStringByIdx(gateAccessor_.GetBitField(funcName)) ==  "AssertType") {
+    if (constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(funcName)) ==  "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gateAccessor_.GetValueIn(gate, 2), 0);
-        auto expectedTypeStr = constantPool->GetStdStringByIdx(gateAccessor_.GetBitField(expectedGate));
+        auto expectedTypeStr = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(expectedGate));
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {

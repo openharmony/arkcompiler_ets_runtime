@@ -859,7 +859,7 @@ void SlowPathLowering::LowerStGlobalVar(GateRef gate, GateRef glue, GateRef jsFu
     GateRef prop = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
     const int id = RTSTUB_ID(StGlobalVar);
     ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: number of value inputs
-    GateRef newGate = LowerCallRuntime(glue, id, {prop, acc_.GetValueIn(gate, 1)});
+    GateRef newGate = LowerCallRuntime(glue, id, {prop, acc_.GetValueIn(gate, 1)}, true);
     builder_.Branch(builder_.IsSpecial(newGate, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, newGate, successControl, failControl);
@@ -2012,7 +2012,7 @@ void SlowPathLowering::LowerCreateRegExpWithLiteral(GateRef gate, GateRef glue, 
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef pattern = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
     GateRef flags = acc_.GetValueIn(gate, 1);
-    GateRef newGate = LowerCallRuntime(glue, id, { pattern, builder_.ToTaggedInt(flags) });
+    GateRef newGate = LowerCallRuntime(glue, id, { pattern, builder_.ToTaggedInt(flags) }, true);
     builder_.Branch(builder_.IsSpecial(newGate, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, newGate, successControl, failControl);
@@ -2277,7 +2277,7 @@ void SlowPathLowering::LowerStConstToGlobalRecord(GateRef gate, GateRef glue, Ga
     const int id = RTSTUB_ID(StGlobalRecord);
     GateRef value = acc_.GetValueIn(gate, 1);
     GateRef isConst = builder_.TaggedTrue();
-    GateRef newGate = LowerCallRuntime(glue, id, { propKey, value, isConst });
+    GateRef newGate = LowerCallRuntime(glue, id, { propKey, value, isConst }, true);
     builder_.Branch(builder_.IsSpecial(newGate, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, newGate, successControl, failControl);
@@ -2891,7 +2891,7 @@ void SlowPathLowering::LowerCreateObjectHavingMethod(GateRef gate, GateRef glue,
     GateRef literal = GetObjectFromConstPool(jsFunc, imm);
     GateRef env = acc_.GetValueIn(gate, 1);
     GateRef constpool = GetConstPool(jsFunc);
-    GateRef result = LowerCallRuntime(glue, id, { literal, env, constpool });
+    GateRef result = LowerCallRuntime(glue, id, { literal, env, constpool }, true);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
@@ -3253,7 +3253,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     {
-        method = LowerCallRuntime(glue, RTSTUB_ID(DefineMethod), {*method, homeObject});
+        method = LowerCallRuntime(glue, RTSTUB_ID(DefineMethod), {*method, homeObject}, true);
         Label notException(&builder_);
         builder_.Branch(builder_.IsSpecial(*method, JSTaggedValue::VALUE_EXCEPTION),
             &exceptionExit, &notException);

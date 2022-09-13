@@ -217,12 +217,13 @@ public:
         return cpProcessor_.GetConstantPoolInfos(pandaFileNames.size());
     }
 
-    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, const BytecodeInfoCollector::BCInfo &bytecodeInfo)
+    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler,
+                   const JSPandaFile* jsPandaFile, const JSHandle<JSTaggedValue> constantPool)
     {
         modulePackage_.emplace_back(Module(llvmModule, assembler));
-        auto hash = bytecodeInfo.jsPandaFile->GetFileUniqId();
+        auto hash = jsPandaFile->GetFileUniqId();
         aotfileHashs_.emplace_back(hash);
-        CollectConstantPoolInfo(bytecodeInfo.jsPandaFile, bytecodeInfo.constantPool);
+        CollectConstantPoolInfo(jsPandaFile, constantPool);
     }
 
     ConstantPoolProcessor& GetCpProcessor()
