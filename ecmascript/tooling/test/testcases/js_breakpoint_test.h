@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_ASYNC_TEST_H
-#define ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_ASYNC_TEST_H
+#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_TEST_H
+#define ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_TEST_H
 
 #include "ecmascript/tooling/test/utils/test_util.h"
 
 namespace panda::ecmascript::tooling::test {
-class JsBreakpointAsyncTest : public TestEvents {
+class JsBreakpointTest : public TestEvents {
 public:
-    JsBreakpointAsyncTest()
+    JsBreakpointTest()
     {
         vmStart = [this] {
-            location_ = TestUtil::GetLocation("AsyncFunc.js", 18, 0, pandaFile_.c_str()); // 18: breakpointer line
+            location_ = TestUtil::GetLocation(22, 0, pandaFile_.c_str());  // 22: breakpointer line
             ASSERT_TRUE(location_.GetMethodId().IsValid());
             return true;
         };
@@ -38,6 +38,7 @@ public:
         };
 
         loadModule = [this](std::string_view moduleName) {
+            TestUtil::SuspendUntilContinue(DebugEvent::LOAD_MODULE);
             ASSERT_EQ(moduleName, pandaFile_);
             ASSERT_TRUE(debugger_->NotifyScriptParsed(0, pandaFile_));
             auto condFuncRef = FunctionRef::Undefined(vm_);
@@ -47,9 +48,11 @@ public:
         };
 
         scenario = [this]() {
-            ASSERT_BREAKPOINT_SUCCESS(location_);
+            TestUtil::WaitForLoadModule();
             TestUtil::Continue();
-            ASSERT_BREAKPOINT_SUCCESS(location_);
+            TestUtil::WaitForBreakpoint(location_);
+            TestUtil::Continue();
+            TestUtil::WaitForBreakpoint(location_);
             TestUtil::Continue();
             auto ret = debugInterface_->RemoveBreakpoint(location_);
             ASSERT_TRUE(ret);
@@ -67,19 +70,19 @@ public:
     {
         return {pandaFile_, entryPoint_};
     }
-    ~JsBreakpointAsyncTest() = default;
+    ~JsBreakpointTest() = default;
 
 private:
-    std::string pandaFile_ = DEBUGGER_ABC_DIR "AsyncFunc.abc";
+    std::string pandaFile_ = DEBUGGER_ABC_DIR "sample.abc";
     std::string entryPoint_ = "_GLOBAL::func_main_0";
     JSPtLocation location_ {nullptr, JSPtLocation::EntityId(0), 0};
     size_t breakpointCounter_ = 0;
 };
 
-std::unique_ptr<TestEvents> GetJsBreakpointAsyncTest()
+std::unique_ptr<TestEvents> GetJsBreakpointTest()
 {
-    return std::make_unique<JsBreakpointAsyncTest>();
+    return std::make_unique<JsBreakpointTest>();
 }
 }  // namespace panda::ecmascript::tooling::test
 
-#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_ASYNC_TEST_H
+#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_TEST_H

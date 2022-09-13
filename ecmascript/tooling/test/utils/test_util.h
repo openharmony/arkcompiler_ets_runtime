@@ -67,10 +67,15 @@ public:
             }, [] {});
     }
 
-    static bool WaitForStepComplete()
+    static void WaitForStepComplete(JSPtLocation location)
     {
-        auto predicate = []() REQUIRES(eventMutex_) { return lastEvent_ == DebugEvent::STEP_COMPLETE; };
-        return WaitForEvent(DebugEvent::STEP_COMPLETE, predicate, [] {});
+        auto predicate = [&location]() REQUIRES(eventMutex_) { return lastEventLocation_ == location; };
+        auto onSuccess = []() REQUIRES(eventMutex_) {
+            // Need to reset location, because we might want to stop at the same point
+            lastEventLocation_ = JSPtLocation("", EntityId(0), 0);
+        };
+
+        WaitForEvent(DebugEvent::STEP_COMPLETE, predicate, onSuccess);
     }
 
     static bool WaitForException()
@@ -85,6 +90,12 @@ public:
             []() REQUIRES(eventMutex_) {
                 return initialized_;
             }, [] {});
+    }
+
+    static bool WaitForLoadModule()
+    {
+        auto predicate = []() REQUIRES(eventMutex_) { return lastEvent_ == DebugEvent::LOAD_MODULE; };
+        return WaitForEvent(DebugEvent::LOAD_MODULE, predicate, [] {});
     }
 
     static void Event(DebugEvent event, JSPtLocation location = JSPtLocation("", EntityId(0), 0))
@@ -117,14 +128,14 @@ public:
         return lastEvent_ == DebugEvent::VM_DEATH;
     }
 
-    static JSPtLocation GetLocation(const char *sourceFile, int32_t line, int32_t column, const char *pandaFile)
+    static JSPtLocation GetLocation(int32_t line, int32_t column, const char *pandaFile)
     {
         auto jsPandaFile = ::panda::ecmascript::JSPandaFileManager::GetInstance()->OpenJSPandaFile(pandaFile);
         if (jsPandaFile == nullptr) {
             return JSPtLocation("", EntityId(0), 0);
         }
         TestExtractor extractor(jsPandaFile);
-        auto [id, offset] = extractor.GetBreakpointAddress({sourceFile, line, column});
+        auto [id, offset] = extractor.GetBreakpointAddress({"", line, column});
         return JSPtLocation(pandaFile, id, offset);
     }
 
@@ -138,7 +149,7 @@ public:
         return extractor.GetSourceLocation(location.GetMethodId(), location.GetBytecodeOffset());
     }
 
-    static bool SuspendUntilContinue(DebugEvent reason, JSPtLocation location)
+    static bool SuspendUntilContinue(DebugEvent reason, JSPtLocation location = JSPtLocation("", EntityId(0), 0))
     {
         os::memory::LockHolder lock(suspendMutex_);
         suspended_ = true;
@@ -148,7 +159,12 @@ public:
 
         // Wait for continue
         while (suspended_) {
-            suspendCv_.Wait(&suspendMutex_);
+            constexpr uint64_t TIMEOUT_MSEC = 10000U;
+            bool timeExceeded = suspendCv_.TimedWait(&suspendMutex_, TIMEOUT_MSEC);
+            if (timeExceeded) {
+                LOG_DEBUGGER(FATAL) << "Time limit exceeded while suspend";
+                return false;
+            }
         }
 
         return true;
@@ -268,11 +284,6 @@ std::ostream &operator<<(std::ostream &out, std::nullptr_t);
         ASSERT_STREQ((lhs).GetPandaFile(), (rhs).GetPandaFile());                    \
         ASSERT_EQ((lhs).GetMethodId().GetOffset(), (rhs).GetMethodId().GetOffset()); \
         ASSERT_EQ((lhs).GetBytecodeOffset(), (rhs).GetBytecodeOffset());             \
-    } while (0)
-
-#define ASSERT_BREAKPOINT_SUCCESS(location)                         \
-    do {                                                            \
-        TestUtil::WaitForBreakpoint(location);                      \
     } while (0)
 }  // namespace panda::ecmascript::tooling::test
 
