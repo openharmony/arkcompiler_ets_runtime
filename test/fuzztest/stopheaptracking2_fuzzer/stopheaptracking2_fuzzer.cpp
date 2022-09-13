@@ -28,6 +28,9 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }
         std::string pathStr(data, data + size);
         FileStream path(pathStr);
         DFXJSNApi::StopHeapTracking(vm, &path, nullptr);
