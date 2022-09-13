@@ -30,6 +30,9 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }
         if (size <= 0 || size >= 5) { // 5:Utf8 character size
             JSNApi::DestroyJSVM(vm);
             return;
@@ -43,8 +46,8 @@ namespace OHOS {
             JSNApi::DestroyJSVM(vm);
             return;
         }
-        Local<StringRef> res = StringRef::StringRef::NewFromUtf8(vm, (char*)data, (int)size);
-        res->WriteUtf8((char*)(data), (int)size);
+        Local<StringRef> res = StringRef::StringRef::NewFromUtf8(vm, (char*)&vec[0], (int)size);
+        res->WriteUtf8((char*)&vec[0], (int)size);
         JSNApi::DestroyJSVM(vm);
     }
 }
