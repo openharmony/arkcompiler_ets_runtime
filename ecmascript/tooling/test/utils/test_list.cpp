@@ -13,20 +13,20 @@
  * limitations under the License.
  */
 
-#include "ecmascript/tooling/test/utils/testcases/test_list.h"
+#include "ecmascript/tooling/test/utils/test_list.h"
 
 #include "ecmascript/tooling/test/utils/test_util.h"
 
 // testcase list
-#include "js_breakpoint_test.h"
-#include "js_breakpoint_arrow_test.h"
-#include "js_breakpoint_async_test.h"
-#include "js_exception_test.h"
-#include "js_range_error_test.h"
-#include "js_single_step_test.h"
-#include "js_step_into_test.h"
-#include "js_syntaxException_test.h"
-#include "js_throwException_test.h"
+#include "ecmascript/tooling/test/testcases/js_breakpoint_test.h"
+#include "ecmascript/tooling/test/testcases/js_breakpoint_arrow_test.h"
+#include "ecmascript/tooling/test/testcases/js_breakpoint_async_test.h"
+#include "ecmascript/tooling/test/testcases/js_exception_test.h"
+#include "ecmascript/tooling/test/testcases/js_range_error_test.h"
+#include "ecmascript/tooling/test/testcases/js_single_step_test.h"
+#include "ecmascript/tooling/test/testcases/js_step_into_test.h"
+#include "ecmascript/tooling/test/testcases/js_syntax_exception_test.h"
+#include "ecmascript/tooling/test/testcases/js_throw_exception_test.h"
 
 namespace panda::ecmascript::tooling::test {
 static std::string g_currentTestName = "";

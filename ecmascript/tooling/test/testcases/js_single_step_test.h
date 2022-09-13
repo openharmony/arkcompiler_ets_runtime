@@ -24,8 +24,8 @@ public:
     JsSingleStepTest()
     {
         vmStart = [this] {
-            locationStart_ = TestUtil::GetLocation("Sample.js", 19, 0, pandaFile_.c_str());  // 19: line number
-            locationEnd_ = TestUtil::GetLocation("Sample.js", 22, 0, pandaFile_.c_str());  // 22: line number
+            locationStart_ = TestUtil::GetLocation(19, 0, pandaFile_.c_str());  // 19: line number
+            locationEnd_ = TestUtil::GetLocation(22, 0, pandaFile_.c_str());  // 22: line number
             return true;
         };
 
@@ -36,6 +36,7 @@ public:
         };
 
         loadModule = [this](std::string_view moduleName) {
+            TestUtil::SuspendUntilContinue(DebugEvent::LOAD_MODULE);
             ASSERT_EQ(moduleName, pandaFile_);
             auto condFuncRef = FunctionRef::Undefined(vm_);
             auto ret = debugInterface_->SetBreakpoint(locationEnd_, condFuncRef);
@@ -70,6 +71,12 @@ public:
             bytecodeOffset_ = location.GetBytecodeOffset();
             return false;
         };
+
+        scenario = []() {
+            TestUtil::WaitForLoadModule();
+            TestUtil::Continue();
+            return true;
+        };
     }
 
     std::pair<std::string, std::string> GetEntryPoint() override
@@ -78,7 +85,7 @@ public:
     }
 
 private:
-    std::string pandaFile_ = DEBUGGER_ABC_DIR "Sample.abc";
+    std::string pandaFile_ = DEBUGGER_ABC_DIR "sample.abc";
     std::string entryPoint_ = "_GLOBAL::func_main_0";
     JSPtLocation locationStart_ {nullptr, JSPtLocation::EntityId(0), 0};
     JSPtLocation locationEnd_ {nullptr, JSPtLocation::EntityId(0), 0};

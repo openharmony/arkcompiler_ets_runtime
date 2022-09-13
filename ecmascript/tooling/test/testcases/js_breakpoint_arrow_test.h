@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_TEST_H
-#define ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_TEST_H
+#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_ARROW_TEST_H
+#define ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_ARROW_TEST_H
 
 #include "ecmascript/tooling/test/utils/test_util.h"
 
 namespace panda::ecmascript::tooling::test {
-class JsBreakpointTest : public TestEvents {
+class JsBreakpointArrowTest : public TestEvents {
 public:
-    JsBreakpointTest()
+    JsBreakpointArrowTest()
     {
         vmStart = [this] {
-            location_ = TestUtil::GetLocation("Sample.js", 22, 0, pandaFile_.c_str());  // 22: breakpointer line
+            location_ = TestUtil::GetLocation(18, 0, pandaFile_.c_str()); // 18: breakpointer line
             ASSERT_TRUE(location_.GetMethodId().IsValid());
             return true;
         };
@@ -38,6 +38,7 @@ public:
         };
 
         loadModule = [this](std::string_view moduleName) {
+            TestUtil::SuspendUntilContinue(DebugEvent::LOAD_MODULE);
             ASSERT_EQ(moduleName, pandaFile_);
             ASSERT_TRUE(debugger_->NotifyScriptParsed(0, pandaFile_));
             auto condFuncRef = FunctionRef::Undefined(vm_);
@@ -47,9 +48,9 @@ public:
         };
 
         scenario = [this]() {
-            ASSERT_BREAKPOINT_SUCCESS(location_);
+            TestUtil::WaitForLoadModule();
             TestUtil::Continue();
-            ASSERT_BREAKPOINT_SUCCESS(location_);
+            TestUtil::WaitForBreakpoint(location_);
             TestUtil::Continue();
             auto ret = debugInterface_->RemoveBreakpoint(location_);
             ASSERT_TRUE(ret);
@@ -58,7 +59,7 @@ public:
         };
 
         vmDeath = [this]() {
-            ASSERT_EQ(breakpointCounter_, 2U);  // 2: break point counter
+            ASSERT_EQ(breakpointCounter_, 1U);  // 1: break point
             return true;
         };
     }
@@ -67,19 +68,19 @@ public:
     {
         return {pandaFile_, entryPoint_};
     }
-    ~JsBreakpointTest() = default;
+    ~JsBreakpointArrowTest() = default;
 
 private:
-    std::string pandaFile_ = DEBUGGER_ABC_DIR "Sample.abc";
+    std::string pandaFile_ = DEBUGGER_ABC_DIR "arrow_func.abc";
     std::string entryPoint_ = "_GLOBAL::func_main_0";
     JSPtLocation location_ {nullptr, JSPtLocation::EntityId(0), 0};
     size_t breakpointCounter_ = 0;
 };
 
-std::unique_ptr<TestEvents> GetJsBreakpointTest()
+std::unique_ptr<TestEvents> GetJsBreakpointArrowTest()
 {
-    return std::make_unique<JsBreakpointTest>();
+    return std::make_unique<JsBreakpointArrowTest>();
 }
 }  // namespace panda::ecmascript::tooling::test
 
-#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_TEST_H
+#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_ARROW_TEST_H

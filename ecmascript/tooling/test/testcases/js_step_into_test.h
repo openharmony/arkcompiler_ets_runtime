@@ -24,24 +24,23 @@ public:
     JsStepIntoTest()
     {
         vmStart = [this] {
-            // 45、20: line number for breakpoint array
-            int32_t breakpoint[6][2] = {{45, 0}, {20, 0}, {25, 0}, {31, 0}, {33, 0}, {48, 0}};
-            // 16、21: line number for stepinto array
-            int32_t stepInto[5][2] = {{16, 0}, {21, 0}, {30, 0}, {32, 0}, {38, 0}};
-            // 6、2: breakpoint array for total index
-            SetJSPtLocation("StepInto.js", breakpoint[0], 6, 2, pointerLocations_);
-            // 5、2：stepinto array for total index
-            SetJSPtLocation("StepInto.js", stepInto[0], 5, 2, stepLocations_);
+            // line number for breakpoint array
+            size_t breakpoint[POINTER_SIZE][LINE_COLUMN] = {{45, 0}, {20, 0}, {25, 0}, {31, 0}, {33, 0}, {41, 0}, {48, 0}};
+            // line number for stepinto array
+            size_t stepInto[STEP_SIZE][LINE_COLUMN] = {{16, 0}, {21, 0}, {30, 0}, {32, 0}, {38, 0}, {34, 0}};
+            SetJSPtLocation(breakpoint[0], POINTER_SIZE, pointerLocations_);
+            SetJSPtLocation(stepInto[0], STEP_SIZE, stepLocations_);
             return true;
         };
 
         vmDeath = [this]() {
-            ASSERT_EQ(breakpointCounter_, pointerLocations_.size());  // size: break point counter
-            ASSERT_EQ(stepCompleteCounter_, stepLocations_.size());  // size: step complete counter
+            ASSERT_EQ(breakpointCounter_, pointerLocations_.size());
+            ASSERT_EQ(stepCompleteCounter_, stepLocations_.size());
             return true;
         };
 
         loadModule = [this](std::string_view moduleName) {
+            TestUtil::SuspendUntilContinue(DebugEvent::LOAD_MODULE);
             ASSERT_EQ(moduleName, pandaFile_);
             debugger_->NotifyScriptParsed(0, moduleName.data());
             auto condFuncRef = FunctionRef::Undefined(vm_);
@@ -66,24 +65,24 @@ public:
                 ASSERT_TRUE(location.GetMethodId().IsValid());
                 ASSERT_LOCATION_EQ(location, stepLocations_.at(stepCompleteCounter_));
                 stepCompleteCounter_++;
-                if (stepCompleteCounter_ == (int32_t)stepLocations_.size()) {
-                    TestUtil::Event(DebugEvent::STEP_COMPLETE);
-                }
+                TestUtil::SuspendUntilContinue(DebugEvent::STEP_COMPLETE, location);
                 return true;
             }
             return false;
         };
 
         scenario = [this]() {
-            while (true) {
-                if (breakpointCounter_ >= (int32_t)pointerLocations_.size())  {
-                    TestUtil::WaitForStepComplete();
-                    break;
-                }
-                ASSERT_BREAKPOINT_SUCCESS(pointerLocations_.at(breakpointCounter_));
+            TestUtil::WaitForLoadModule();
+            TestUtil::Continue();
+            size_t index = 0;
+            while (index < POINTER_SIZE) {
+                TestUtil::WaitForBreakpoint(pointerLocations_.at(index));
                 TestUtil::Continue();
-                auto ret = debugInterface_->RemoveBreakpoint(pointerLocations_.at(breakpointCounter_-1));
-                ASSERT_TRUE(ret);
+                if (index < STEP_SIZE) {
+                    TestUtil::WaitForStepComplete(stepLocations_.at(index));
+                    TestUtil::Continue();
+                }
+                ++index;
             }
             ASSERT_EXITED();
             return true;
@@ -96,20 +95,23 @@ public:
     }
 
 private:
-    std::string pandaFile_ = DEBUGGER_ABC_DIR "StepInto.abc";
+    static constexpr size_t LINE_COLUMN = 2;
+    static constexpr size_t POINTER_SIZE = 7;
+    static constexpr size_t STEP_SIZE = 6;
+
+    std::string pandaFile_ = DEBUGGER_ABC_DIR "step_into.abc";
     std::string entryPoint_ = "_GLOBAL::func_main_0";
-    JSPtLocation location1_ {nullptr, JSPtLocation::EntityId(0), 0};
-    JSPtLocation location2_ {nullptr, JSPtLocation::EntityId(0), 0};
-    int32_t breakpointCounter_ = 0;
-    int32_t stepCompleteCounter_ = 0;
+    size_t breakpointCounter_ = 0;
+    size_t stepCompleteCounter_ = 0;
     std::vector<JSPtLocation> pointerLocations_;
     std::vector<JSPtLocation> stepLocations_;
 
-    void SetJSPtLocation(const char *sFile, int32_t *arr, int32_t m, int32_t n, std::vector<JSPtLocation> &vct_)
+    void SetJSPtLocation(size_t *arr, size_t number, std::vector<JSPtLocation> &locations)
     {
-        for (int32_t i = 0; i < m; i++) {
-            JSPtLocation location_ = TestUtil::GetLocation(sFile, arr[i*n], arr[i*n + 1], pandaFile_.c_str());
-            vct_.push_back(location_);
+        for (size_t i = 0; i < number; i++) {
+            JSPtLocation location =
+                TestUtil::GetLocation(arr[i * LINE_COLUMN], arr[i * LINE_COLUMN + 1], pandaFile_.c_str());
+            locations.push_back(location);
         }
     };
 };
