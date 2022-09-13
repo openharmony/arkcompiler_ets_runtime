@@ -65,7 +65,7 @@ public:
 
     void SetOverShootSize(size_t size);
     bool AdjustCapacity(size_t allocatedSizeSinceGC);
-
+    void AdjustNativeLimit(size_t previousNativeSize);
     void SetWaterLine();
 
     uintptr_t GetWaterLine() const
@@ -82,9 +82,29 @@ public:
 
     bool SwapRegion(Region *region, SemiSpace *fromSpace);
 
+    void ResetNativeBindingSize()
+    {
+        newSpaceNativeBindingSize_ = 0;
+    }
+    void IncreaseNativeBindingSize(size_t size)
+    {
+        newSpaceNativeBindingSize_ += size;
+    }
+    size_t GetNativeBindingSize()
+    {
+        return newSpaceNativeBindingSize_;
+    }
+
+    bool NativeBindingSizeLargerThanLimit()
+    {
+        return newSpaceNativeBindingSize_ > newSpaceNativeLimit_;
+    }
 private:
+    static constexpr int GROWING_FACTOR = 2;
     os::memory::Mutex lock_;
     size_t minimumCapacity_;
+    size_t newSpaceNativeLimit_;
+    size_t newSpaceNativeBindingSize_ {0};
 };
 
 class SnapshotSpace : public LinearSpace {
