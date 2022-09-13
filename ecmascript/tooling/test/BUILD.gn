@@ -32,108 +32,32 @@ config("debug_api_test") {
   ]
 }
 
-ts2abc_gen_abc("ark_sample_abc") {
-  test_js_path =
-      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/Sample.js"
-  test_abc_path = "$target_out_dir/Sample.abc"
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  src_js = rebase_path(test_js_path)
-  dst_file = rebase_path(test_abc_path)
-  extra_args = [ "--debug" ]
+test_js_path = "//arkcompiler/ets_runtime/ecmascript/tooling/test/testcases/js/"
 
-  in_puts = [ test_js_path ]
-  out_puts = [ test_abc_path ]
-}
+# add new js test file here and modify test/resource/js_runtime/ohos_test.xml
+test_js_files = [
+  "arrow_func",
+  "async_func",
+  "exception",
+  "range_error",
+  "sample",
+  "step_into",
+  "syntax_exception",
+  "throw_exception",
+]
 
-ts2abc_gen_abc("ark_asyncfunc_abc") {
-  test_js_path =
-      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/AsyncFunc.js"
-  test_abc_path = "$target_out_dir/AsyncFunc.abc"
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  src_js = rebase_path(test_js_path)
-  dst_file = rebase_path(test_abc_path)
-  extra_args = [ "--debug" ]
+foreach(file, test_js_files) {
+  ts2abc_gen_abc("gen_${file}_abc") {
+    test_js = "${test_js_path}${file}.js"
+    test_abc = "$target_out_dir/${file}.abc"
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+    src_js = rebase_path(test_js)
+    dst_file = rebase_path(test_abc)
+    extra_args = [ "--debug" ]
 
-  in_puts = [ test_js_path ]
-  out_puts = [ test_abc_path ]
-}
-
-ts2abc_gen_abc("ark_arrowfunc_abc") {
-  test_js_path =
-      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/ArrowFunc.js"
-  test_abc_path = "$target_out_dir/ArrowFunc.abc"
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  src_js = rebase_path(test_js_path)
-  dst_file = rebase_path(test_abc_path)
-  extra_args = [ "--debug" ]
-
-  in_puts = [ test_js_path ]
-  out_puts = [ test_abc_path ]
-}
-
-ts2abc_gen_abc("ark_exception_abc") {
-  test_js_path =
-      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/exception.js"
-  test_abc_path = "$target_out_dir/exception.abc"
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  src_js = rebase_path(test_js_path)
-  dst_file = rebase_path(test_abc_path)
-  extra_args = [ "--debug" ]
-
-  in_puts = [ test_js_path ]
-  out_puts = [ test_abc_path ]
-}
-
-ts2abc_gen_abc("ark_range_error_abc") {
-  test_js_path =
-      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/RangeError.js"
-  test_abc_path = "$target_out_dir/RangeError.abc"
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  src_js = rebase_path(test_js_path)
-  dst_file = rebase_path(test_abc_path)
-  extra_args = [ "--debug" ]
-
-  in_puts = [ test_js_path ]
-  out_puts = [ test_abc_path ]
-}
-
-ts2abc_gen_abc("ark_syntaxException_abc") {
-  test_js_path =
-      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/syntaxException.js"
-  test_abc_path = "$target_out_dir/syntaxException.abc"
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  src_js = rebase_path(test_js_path)
-  dst_file = rebase_path(test_abc_path)
-  extra_args = [ "--debug" ]
-
-  in_puts = [ test_js_path ]
-  out_puts = [ test_abc_path ]
-}
-
-ts2abc_gen_abc("ark_throwException_abc") {
-  test_js_path =
-      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/throwException.js"
-  test_abc_path = "$target_out_dir/throwException.abc"
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  src_js = rebase_path(test_js_path)
-  dst_file = rebase_path(test_abc_path)
-  extra_args = [ "--debug" ]
-
-  in_puts = [ test_js_path ]
-  out_puts = [ test_abc_path ]
-}
-
-ts2abc_gen_abc("ark_stepInto_abc") {
-  test_js_path =
-      "//arkcompiler/ets_runtime/ecmascript/tooling/test/js/StepInto.js"
-  test_abc_path = "$target_out_dir/StepInto.abc"
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  src_js = rebase_path(test_js_path)
-  dst_file = rebase_path(test_abc_path)
-  extra_args = [ "--debug" ]
-
-  in_puts = [ test_js_path ]
-  out_puts = [ test_abc_path ]
+    in_puts = [ test_js ]
+    out_puts = [ test_abc ]
+  }
 }
 
 source_set("debugger_entry_set") {
@@ -141,17 +65,11 @@ source_set("debugger_entry_set") {
 
   public_configs = [ ":debug_api_test" ]
 
-  deps = [
-    ":ark_arrowfunc_abc",
-    ":ark_asyncfunc_abc",
-    ":ark_exception_abc",
-    ":ark_range_error_abc",
-    ":ark_sample_abc",
-    ":ark_stepInto_abc",
-    ":ark_syntaxException_abc",
-    ":ark_throwException_abc",
-    ":jsdebugtest",
-  ]
+  deps = [ ":jsdebugtest" ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
 }
 
 ohos_shared_library("debugger_entry") {
@@ -167,8 +85,8 @@ source_set("jsdebugtest_set") {
   sources = [
     "utils/test_entry.cpp",
     "utils/test_extractor.cpp",
+    "utils/test_list.cpp",
     "utils/test_util.cpp",
-    "utils/testcases/test_list.cpp",
   ]
 
   public_configs = [

@@ -24,7 +24,7 @@ public:
     JsRangeErrorTest()
     {
         vmStart = [this] {
-            location_ = TestUtil::GetLocation("RangeError.js", 20, 0, pandaFile_.c_str());  // 20: breakpointer line
+            location_ = TestUtil::GetLocation(20, 0, pandaFile_.c_str());  // 20: breakpointer line
             ASSERT_TRUE(location_.GetMethodId().IsValid());
             return true;
         };
@@ -61,6 +61,7 @@ public:
         };
 
         loadModule = [this](std::string_view moduleName) {
+            TestUtil::SuspendUntilContinue(DebugEvent::LOAD_MODULE);
             ASSERT_EQ(moduleName, pandaFile_);
             ASSERT_TRUE(debugger_->NotifyScriptParsed(0, pandaFile_));
             auto condFuncRef = FunctionRef::Undefined(vm_);
@@ -70,7 +71,9 @@ public:
         };
 
         scenario = [this]() {
-            ASSERT_BREAKPOINT_SUCCESS(location_);
+            TestUtil::WaitForLoadModule();
+            TestUtil::Continue();
+            TestUtil::WaitForBreakpoint(location_);
             TestUtil::Continue();
             TestUtil::WaitForException();
             TestUtil::Continue();
@@ -94,7 +97,7 @@ public:
     ~JsRangeErrorTest() = default;
 
 private:
-    std::string pandaFile_ = DEBUGGER_ABC_DIR "RangeError.abc";
+    std::string pandaFile_ = DEBUGGER_ABC_DIR "range_error.abc";
     std::string entryPoint_ = "_GLOBAL::func_main_0";
     JSPtLocation location_ {nullptr, JSPtLocation::EntityId(0), 0};
     size_t breakpointCounter_ = 0;

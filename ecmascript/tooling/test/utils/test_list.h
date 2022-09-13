@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_TEST_LIST_H
-#define ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_TEST_LIST_H
+#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TEST_LIST_H
+#define ECMASCRIPT_TOOLING_TEST_UTILS_TEST_LIST_H
 
 #include <utility>
 #include <vector>
@@ -31,4 +31,4 @@ std::string GetCurrentTestName();
 std::pair<std::string, std::string> GetTestEntryPoint(const std::string &testName);
 }  // namespace panda::ecmascript::tooling::test
 
-#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_TEST_LIST_H
+#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TEST_LIST_H
