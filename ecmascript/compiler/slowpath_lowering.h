@@ -154,7 +154,7 @@ private:
     void LowerAdd2(GateRef gate, GateRef glue);
     void LowerCreateIterResultObj(GateRef gate, GateRef glue);
     void SaveFrameToContext(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerSuspendGenerator(GateRef gate, GateRef glue, [[maybe_unused]]GateRef jsFunc);
+    void LowerSuspendGenerator(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerAsyncFunctionAwaitUncaught(GateRef gate, GateRef glue);
     void LowerAsyncFunctionResolve(GateRef gate, GateRef glue);
     void LowerAsyncFunctionReject(GateRef gate, GateRef glue);

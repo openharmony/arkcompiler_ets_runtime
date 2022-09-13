@@ -1224,6 +1224,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v1 = READ_INST_8_2();
+            info.accIn = true;
             uint32_t offset = pc - method_->GetBytecodeArray();
             info.inputs.emplace_back(Immediate(offset)); // Save the pc offset when suspend
             info.inputs.emplace_back(VirtualRegister(v0));
