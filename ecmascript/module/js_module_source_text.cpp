@@ -555,7 +555,8 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
     // 2.If module.[[Status]] is "evaluated", then
     ModuleStatus status = module->GetStatus();
     if (status == ModuleStatus::EVALUATED) {
-        // a. If module.[[EvaluationError]] is undefined, return index.
+        SourceTextModule::ModuleExecution(thread, module, buffer, size);
+        // a. If module.[[EvaluationError]] is undefined, return index
         if (module->GetEvaluationError() == SourceTextModule::UNDEFINED_INDEX) {
             return index;
         }
