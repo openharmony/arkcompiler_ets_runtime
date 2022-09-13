@@ -140,7 +140,7 @@ void PandaFileTranslator::TranslateClassesWithMerge(JSPandaFile *jsPandaFile)
             uint32_t codeSize = codeDataAccessor.GetCodeSize();
 
             CString name = reinterpret_cast<const char *>(pf->GetStringData(mda.GetNameId()).data);
-            if (name == JSPandaFile::ENTRY_FUNCTION_NAME) {
+            if (name == JSPandaFile::PATCH_FUNCTION_NAME_0 || name == JSPandaFile::ENTRY_FUNCTION_NAME) {
                 jsPandaFile->UpdateMainMethodIndex(
                     mda.GetMethodId().GetOffset(), JSPandaFile::ParseEntryPoint(desc));
             }
