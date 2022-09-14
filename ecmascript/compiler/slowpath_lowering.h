@@ -260,7 +260,7 @@ private:
     void LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGetterSetterByValue(GateRef gate, GateRef glue);
-    void LowerLdObjByIndex(GateRef gate, GateRef glue);
+    void LowerLdObjByIndex(GateRef gate, GateRef glue, bool isDeprecated);
     void LowerStObjByIndex(GateRef gate, GateRef glue);
     void LowerLdObjByValue(GateRef gate, GateRef glue);
     void LowerStObjByValue(GateRef gate, GateRef glue);
@@ -270,7 +270,7 @@ private:
     void LowerStLexVar(GateRef gate, GateRef glue);
     void LowerCreateObjectHavingMethod(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdHomeObject(GateRef gate, GateRef jsFunc);
-    void LowerDefineClassWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerDefineClassWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc, bool isDeprecated);
     void LowerAsyncFunctionEnter(GateRef gate, GateRef glue);
     void LowerTypeof(GateRef gate, GateRef glue);
     void LowerResumeGenerator(GateRef gate);
