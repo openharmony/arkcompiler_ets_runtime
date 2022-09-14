@@ -18,6 +18,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_finalization_registry.h"
+#include "ecmascript/js_native_pointer.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -87,7 +88,7 @@ void Heap::Initialize()
     }
     size_t oldSpaceCapacity = maxHeapSize - capacities;
     globalSpaceAllocLimit_ = maxHeapSize - minSemiSpaceCapacity;
-
+    globalSpaceNativeLimit_ = globalSpaceAllocLimit_;
     oldSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     compressSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     oldSpace_->Initialize();
@@ -338,6 +339,7 @@ void Heap::CollectGarbage(TriggerGCType gcType)
         gcType = TriggerGCType::FULL_GC;
     }
     size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
+    size_t originalNewSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize();
     memController_->StartCalculationBeforeGC();
     StatisticHeapObject(gcType);
     switch (gcType) {
@@ -386,7 +388,7 @@ void Heap::CollectGarbage(TriggerGCType gcType)
     // Adjust the old space capacity and global limit for the first partial GC with full mark.
     // Trigger the full mark next time if the current survival rate is much less than half the average survival rates.
     AdjustBySurvivalRate(originalNewSpaceSize);
-
+    activeSemiSpace_->AdjustNativeLimit(originalNewSpaceNativeSize);
     memController_->StopCalculationAfterGC(gcType);
     if (gcType == TriggerGCType::FULL_GC || IsFullMark()) {
         // Only when the gc type is not semiGC and after the old space sweeping has been finished,
@@ -405,6 +407,9 @@ void Heap::CollectGarbage(TriggerGCType gcType)
 # if ECMASCRIPT_ENABLE_GC_LOG
     ecmaVm_->GetEcmaGCStats()->PrintStatisticResult();
 #endif
+    // weak node secondPassCallback may execute JS and change the weakNodeList status,
+    // even lead to another GC, so this have to invoke after this GC process.
+    InvokeWeakNodeSecondPassCallback();
 
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     // post gc heap verify
@@ -452,7 +457,7 @@ void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
         AdjustOldSpaceLimit();
     } else {
         double averageSurvivalRate = memController_->GetAverageSurvivalRate();
-        if ((averageSurvivalRate / 2) > survivalRate && averageSurvivalRate > growObjectSurvivalRate) {
+        if ((averageSurvivalRate / 2) > survivalRate && averageSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
             fullMarkRequested_ = true;
             OPTIONAL_LOG(ecmaVm_, INFO) << " Current survival rate: " << survivalRate
                 << " is less than half the average survival rates: " << averageSurvivalRate
@@ -533,6 +538,8 @@ void Heap::AdjustOldSpaceLimit()
     if (newGlobalSpaceAllocLimit < globalSpaceAllocLimit_) {
         globalSpaceAllocLimit_ = newGlobalSpaceAllocLimit;
     }
+    // temporarily regard the heap limit is the same as the native limit.
+    globalSpaceNativeLimit_ = globalSpaceAllocLimit_;
     OPTIONAL_LOG(ecmaVm_, INFO) << "AdjustOldSpaceLimit oldSpaceAllocLimit_: " << oldSpaceAllocLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
 }
@@ -581,9 +588,13 @@ void Heap::RecomputeLimits()
                                                                    maxGlobalSize, newSpaceCapacity, growingFactor);
     globalSpaceAllocLimit_ = newGlobalSpaceLimit;
     oldSpace_->SetInitialCapacity(newOldSpaceLimit);
+    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
+    globalSpaceNativeLimit_ = memController_->CalculateAllocLimit(globalSpaceNativeSize, MIN_HEAP_SIZE,
+                                                                  maxGlobalSize, newSpaceCapacity, growingFactor);
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
-        << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
-    if ((oldSpace_->GetHeapObjectSize() * 1.0 / shrinkObjectSurvivalRate) < oldSpace_->GetCommittedSize()
+        << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_
+        << " globalSpaceNativeLimit_:" << globalSpaceNativeLimit_;
+    if ((oldSpace_->GetHeapObjectSize() * 1.0 / SHRINK_OBJECT_SURVIVAL_RATE) < oldSpace_->GetCommittedSize()
          && (oldSpace_->GetCommittedSize() / 2) > newOldSpaceLimit) {
         OPTIONAL_LOG(ecmaVm_, INFO) << " Old space heap object size is too much lower than committed size"
                                     << " heapObjectSize: "<< oldSpace_->GetHeapObjectSize()
@@ -643,15 +654,18 @@ void Heap::TryTriggerConcurrentMarking()
     size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
     size_t globalHeapObjectSize = GetHeapObjectSize();
     size_t oldSpaceAllocLimit = oldSpace_->GetInitialCapacity();
+    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
     if (oldSpaceConcurrentMarkSpeed == 0 || oldSpaceAllocSpeed == 0) {
-        if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit ||  globalHeapObjectSize >= globalSpaceAllocLimit_) {
+        if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit ||  globalHeapObjectSize >= globalSpaceAllocLimit_
+            || globalSpaceNativeSize >= globalSpaceNativeLimit_) {
             markType_ = MarkType::MARK_FULL;
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first full mark";
             TriggerConcurrentMarking();
             return;
         }
     } else {
-        if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_) {
+        if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_
+            || globalSpaceNativeSize >= globalSpaceNativeLimit_) {
             isFullMarkNeeded = true;
         }
         oldSpaceAllocToLimitDuration = (oldSpaceAllocLimit - oldSpaceHeapObjectSize) / oldSpaceAllocSpeed;
@@ -688,16 +702,37 @@ void Heap::TryTriggerConcurrentMarking()
             TriggerConcurrentMarking();
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark by speed";
         } else {
-            if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_) {
+            if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_
+                || globalSpaceNativeSize >= globalSpaceNativeLimit_) {
                 markType_ = MarkType::MARK_FULL;
                 TriggerConcurrentMarking();
                 OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark by limit";
             }
         }
-    } else if (newSpaceRemainSize < DEFAULT_REGION_SIZE) {
+    } else if (newSpaceRemainSize < DEFAULT_REGION_SIZE || activeSemiSpace_->NativeBindingSizeLargerThanLimit()) {
         markType_ = MarkType::MARK_YOUNG;
         TriggerConcurrentMarking();
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
+    }
+}
+
+void Heap::IncreaseNativeBindingSize(JSNativePointer *object)
+{
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(object));
+    size_t size = object->GetBindingSize();
+    if (region->InYoungSpace()) {
+        activeSemiSpace_->IncreaseNativeBindingSize(size);
+    } else {
+        nonNewSpaceNativeBindingSize_ += size;
+    }
+}
+
+void Heap::IncreaseNativeBindingSize(bool nonMovable, size_t size)
+{
+    if(!nonMovable) {
+        activeSemiSpace_->IncreaseNativeBindingSize(size);
+    } else {
+        nonNewSpaceNativeBindingSize_ += size;
     }
 }
 
@@ -892,6 +927,24 @@ bool Heap::ContainObject(TaggedObject *object) const
      */
     Region *region = Region::ObjectAddressToRange(object);
     return region->InHeapSpace();
+}
+
+void Heap::InvokeWeakNodeSecondPassCallback()
+{
+    // the second callback may lead to another GC, if this, return directly;
+    if (runningSecondPassCallbacks_) {
+        return;
+    }
+    runningSecondPassCallbacks_ = true;
+    auto weakNodesSecondCallbacks = thread_->GetWeakNodeSecondPassCallbacks();
+    while (!weakNodesSecondCallbacks->empty()) {
+        auto callbackPair = weakNodesSecondCallbacks->back();
+        weakNodesSecondCallbacks->pop_back();
+        ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
+        auto callback = callbackPair.first;
+        callback(callbackPair.second);
+    }
+    runningSecondPassCallbacks_ = false;
 }
 
 void Heap::StatisticHeapObject(TriggerGCType gcType) const

@@ -41,25 +41,376 @@ void TSTypeLowering::Lower(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     switch (op) {
         case ADD2DYN_PREF_V8:
-            // lower JS_ADD
+            LowerTypeAdd2Dyn(gate);
             break;
         case SUB2DYN_PREF_V8:
-            // lower JS_Sub
+            LowerTypeSub2Dyn(gate);
             break;
         case MUL2DYN_PREF_V8:
-            // lower JS_Mul
+            LowerTypeMul2Dyn(gate);
+            break;
+        case DIV2DYN_PREF_V8:
+            // lower JS_Div
+            break;
+        case MOD2DYN_PREF_V8:
+            // lower JS_Mod
             break;
         case LESSDYN_PREF_V8:
-            // lower JS_LESS
+            LowerTypeLess2Dyn(gate);
             break;
         case LESSEQDYN_PREF_V8:
-            // lower JS_LESSEQ
+            LowerTypeLessEq2Dyn(gate);
+            break;
+        case GREATERDYN_PREF_V8:
+            // lower JS_GREATER
+            break;
+        case GREATEREQDYN_PREF_V8:
+            // lower JS_GREATEREQ
+            break;
+        case EQDYN_PREF_V8:
+            // lower JS_EQ
+            break;
+        case NOTEQDYN_PREF_V8:
+            // lower JS_NOTEQ
+            break;
+        case SHL2DYN_PREF_V8:
+            // lower JS_SHL
+            break;
+        case SHR2DYN_PREF_V8:
+            // lower JS_SHR
+            break;
+        case ASHR2DYN_PREF_V8:
+            // lower JS_ASHR
+            break;
+        case AND2DYN_PREF_V8:
+            // lower JS_AND
+            break;
+        case OR2DYN_PREF_V8:
+            // lower JS_OR
+            break;
+        case XOR2DYN_PREF_V8:
+            // lower JS_XOR
+            break;
+        case EXPDYN_PREF_V8:
+            // lower JS_EXP
             break;
         case TONUMERIC_PREF_V8:
             // lower ToNumberic
             break;
+        case NEGDYN_PREF_V8:
+            // lower JS_NEG
+            break;
+        case NOTDYN_PREF_V8:
+            // lower JS_NOT
+            break;
+        case INCDYN_PREF_V8:
+            // lower JS_INC
+            break;
+        case DECDYN_PREF_V8:
+            // lower JS_DEC
+            break;
         default:
             break;
     }
+}
+
+void TSTypeLowering::RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap)
+{
+    acc_.ReplaceStateIn(hir, builder_.GetState());
+    acc_.ReplaceDependIn(hir, builder_.GetDepend());
+    auto uses = acc_.Uses(hir);
+    GateRef stateGate = Circuit::NullGate();
+    for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+        const OpCode op = acc_.GetOpCode(*useIt);
+        if (op == OpCode::IF_SUCCESS) {
+            stateGate = *useIt;
+            builder_.SetState(*useIt);
+            break;
+        }
+    }
+    auto nextUses = acc_.Uses(stateGate);
+    for (auto it = nextUses.begin(); it != nextUses.end(); ++it) {
+        if (it.GetOpCode().IsState()) {
+            stateGateMap[*it] = it.GetIndex();
+        }
+    }
+    builder_.SetDepend(hir);
+}
+
+void TSTypeLowering::GenerateSuccessMerge(std::vector<GateRef> &successControl)
+{
+    GateRef stateMerge = builder_.GetState();
+    GateRef dependSelect = builder_.GetDepend();
+    successControl.emplace_back(stateMerge);
+    successControl.emplace_back(dependSelect);
+}
+
+void TSTypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl)
+{
+    auto uses = acc_.Uses(hir);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        const OpCode op = acc_.GetOpCode(*useIt);
+        if (op == OpCode::JS_BYTECODE && useIt.GetIndex() == 1) {
+            acc_.ReplaceStateIn(*useIt, successControl[0]);
+            useIt = acc_.ReplaceIn(useIt, successControl[1]);
+        } else if (op == OpCode::RETURN) {
+            if (acc_.IsValueIn(useIt)) {
+                useIt = acc_.ReplaceIn(useIt, outir);
+                continue;
+            }
+            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) != OpCode::IF_EXCEPTION) {
+                acc_.ReplaceStateIn(*useIt, successControl[0]);
+                acc_.ReplaceDependIn(*useIt, successControl[1]);
+                acc_.ReplaceValueIn(*useIt, outir);
+            }
+            ++useIt;
+        } else if (op == OpCode::IF_SUCCESS || op == OpCode::IF_EXCEPTION) {
+            ++useIt;
+        } else if (op == OpCode::VALUE_SELECTOR) {
+            if (*useIt != outir) {
+                useIt = acc_.ReplaceIn(useIt, outir);
+            } else {
+                ++useIt;
+            }
+        } else if (op == OpCode::DEPEND_SELECTOR) {
+            if (*useIt != successControl[1]) {
+                useIt = acc_.ReplaceIn(useIt, successControl[1]);
+            } else {
+                ++useIt;
+            }
+        } else {
+            useIt = acc_.ReplaceIn(useIt, outir);
+        }
+    }
+}
+
+void TSTypeLowering::LowerTypeAdd2Dyn(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumberAdd(gate);
+        return;
+    }
+}
+
+void TSTypeLowering::SpeculateNumberAdd(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    Label isNumber(&builder_);
+    Label notNumber(&builder_);
+    Label exit(&builder_);
+    GateType numberType = GateType::NumberType();
+    DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, numberType), builder_.HoleConstant());
+    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), 
+                                     builder_.TypeCheck(numberType, right)),
+                                     &isNumber, &notNumber);
+    std::map<GateRef, size_t> stateGateMap;
+    builder_.Bind(&isNumber);
+    {
+        result = builder_.NumberAdd(left, right);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notNumber);
+    {
+        // slowpath
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TSTypeLowering::LowerTypeSub2Dyn(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumberSub(gate);
+        return;
+    }
+}
+
+void TSTypeLowering::SpeculateNumberSub(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    Label isNumber(&builder_);
+    Label notNumber(&builder_);
+    Label exit(&builder_);
+    GateType numberType = GateType::NumberType();
+    DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, numberType), builder_.HoleConstant());
+    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), 
+                                     builder_.TypeCheck(numberType, right)),
+                                     &isNumber, &notNumber);
+    std::map<GateRef, size_t> stateGateMap;
+    builder_.Bind(&isNumber);
+    {
+        result = builder_.NumberSub(left, right);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notNumber);
+    {
+        // slowpath
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TSTypeLowering::LowerTypeMul2Dyn(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumberMul(gate);
+        return;
+    }
+}
+
+void TSTypeLowering::SpeculateNumberMul(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    Label isNumber(&builder_);
+    Label notNumber(&builder_);
+    Label exit(&builder_);
+    GateType numberType = GateType::NumberType();
+    DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, numberType), builder_.HoleConstant());
+    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), 
+                                     builder_.TypeCheck(numberType, right)),
+                                     &isNumber, &notNumber);
+    std::map<GateRef, size_t> stateGateMap;
+    builder_.Bind(&isNumber);
+    {
+        result = builder_.NumberMul(left, right);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notNumber);
+    {
+        // slowpath
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TSTypeLowering::LowerTypeLess2Dyn(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumberLess(gate);
+        return;
+    }
+}
+
+void TSTypeLowering::SpeculateNumberLess(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    Label isNumber(&builder_);
+    Label notNumber(&builder_);
+    Label exit(&builder_);
+    GateType numberType = GateType::NumberType();
+    DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, GateType::BooleanType()), builder_.HoleConstant());
+    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left),
+                                     builder_.TypeCheck(numberType, right)),
+                                     &isNumber, &notNumber);
+    std::map<GateRef, size_t> stateGateMap;
+    builder_.Bind(&isNumber);
+    {
+        result = builder_.NumberLess(left, right);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notNumber);
+    {
+        // slowpath
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TSTypeLowering::LowerTypeLessEq2Dyn(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumberLessEq(gate);
+        return;
+    }
+}
+
+void TSTypeLowering::SpeculateNumberLessEq(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    Label isNumber(&builder_);
+    Label notNumber(&builder_);
+    Label exit(&builder_);
+    GateType numberType = GateType::NumberType();
+    DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, GateType::BooleanType()), builder_.HoleConstant());
+    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left),
+                                     builder_.TypeCheck(numberType, right)),
+                                     &isNumber, &notNumber);
+    std::map<GateRef, size_t> stateGateMap;
+    builder_.Bind(&isNumber);
+    {
+        result = builder_.NumberLessthanOrEq(left, right);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notNumber);
+    {
+        // slowpath
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 }  // namespace panda::ecmascript

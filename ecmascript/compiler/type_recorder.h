@@ -30,18 +30,31 @@ public:
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
-    GateType GetArgType(const int32_t argIndex) const;
+    GateType GetArgType(const uint32_t argIndex) const;
     GateType UpdateType(const int32_t offset, const GateType &type) const;
 
 private:
+    static constexpr int METHOD_ANNOTATION_THIS_TYPE_OFFSET = -2;
+    static constexpr int METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET = -1;
+
     void LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager);
-    
-    inline int32_t GetArgOffset(const int32_t argIndex) const
-    {
-        return -argIndex - 1;
-    }
+
+    void LoadArgTypes(const TSManager *tsManager, const MethodLiteral *methodLiteral,
+                      GlobalTSTypeRef funcGT, GlobalTSTypeRef thisGT);
+
+    // This function tries to get the type of 'this'. In success, the type of the class is returned if the function is
+    // a static member, or the type of instances of the class is returned. Otherwise the type 'any' is returned.
+    GateType TryGetThisType(const TSManager *tsManager, GlobalTSTypeRef funcGT, GlobalTSTypeRef thisGT) const;
+
+    // This function tries to get the type of 'newTarget'. In success, the type of the class is returned. Otherwise,
+    // the type 'any' is returned.
+    GateType TryGetNewTargetType(const TSManager *tsManager, GlobalTSTypeRef thisGT) const;
+
+    // This function tries to get the type of the function. On failure, the type 'any' is returned.
+    GateType TryGetFuncType(GlobalTSTypeRef funcGT) const;
 
     std::unordered_map<int32_t, GateType> bcOffsetGtMap_ {};
+    std::vector<GateType> argTypes_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_RECORDER_H

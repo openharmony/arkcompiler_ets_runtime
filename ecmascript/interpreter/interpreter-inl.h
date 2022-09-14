@@ -1540,18 +1540,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(GETPROPITERATOR);
     }
-    // TODO
-    // HANDLE_OPCODE(ITERNEXT_IMM8_V8) {
-    //     uint16_t v0 = READ_INST_8_1();
-    //     LOG_INST() << "intrinsics::iternext"
-    //                << " v" << v0;
-    //     SAVE_PC();
-    //     JSTaggedValue iter = GET_VREG_VALUE(v0);
-    //     JSTaggedValue res = SlowRuntimeStub::IterNext(thread, iter);
-    //     INTERPRETER_RETURN_IF_ABRUPT(res);
-    //     SET_ACC(res);
-    //     DISPATCH(ITERNEXT_IMM8_V8);
-    // }
     HANDLE_OPCODE(CLOSEITERATOR_IMM8_V8) {
         uint16_t v0 = READ_INST_8_1();
         LOG_INST() << "intrinsics::closeiterator"
@@ -2980,7 +2968,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(ASYNCGENERATORRESOLVE_V8_V8_V8);
     }
-    HANDLE_OPCODE(ASYNCGENERATORREJECT_V8_V8) {
+    HANDLE_OPCODE(ASYNCGENERATORREJECT_V8) {
         uint16_t v0 = READ_INST_8_0();
         uint16_t v1 = READ_INST_8_1();
         LOG_INST() << "intrinsics::asyncgeneratorreject"
@@ -2993,7 +2981,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorReject(thread, asyncGenerator, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
-        DISPATCH(ASYNCGENERATORREJECT_V8_V8);
+        DISPATCH(ASYNCGENERATORREJECT_V8);
     }
     HANDLE_OPCODE(SUPERCALLTHISRANGE_IMM8_IMM8_V8) {
         uint16_t range = READ_INST_8_1();
@@ -5251,7 +5239,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, receiver, propKey, thisFunc);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
-        DISPATCH(LDSUPERBYVALUE_IMM8_V8);
+        DISPATCH(LDSUPERBYVALUE_IMM16_V8);
     }
     HANDLE_OPCODE(DEPRECATED_LDSUPERBYVALUE_PREF_V8_V8) {
         uint32_t v0 = READ_INST_8_1();
@@ -6229,7 +6217,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(DEPRECATED_ASYNCFUNCTIONREJECT_PREF_V8_V8_V8);
     }
-    // TODO: Implement code of 16bits ic slot bytecode
     HANDLE_OPCODE(CLOSEITERATOR_IMM16_V8) {
         uint16_t v0 = READ_INST_8_2();
         LOG_INST() << "intrinsics::closeiterator"
@@ -6586,14 +6573,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(STTHISBYNAME_IMM16_ID16) {
         LOG_FULL(FATAL) << "not implement";
         DISPATCH(STTHISBYNAME_IMM16_ID16);
-    }
-    HANDLE_OPCODE(LDPATCHVAR_IMM8) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(LDPATCHVAR_IMM8);
-    }
-    HANDLE_OPCODE(STPATCHVAR_IMM8_V8) {
-        LOG_FULL(FATAL) << "not implement";
-        DISPATCH(STPATCHVAR_IMM8_V8);
     }
     HANDLE_OPCODE(WIDE_LDPATCHVAR_PREF_IMM16) {
         uint16_t index = READ_INST_16_1();

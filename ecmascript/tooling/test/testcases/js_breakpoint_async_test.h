@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_EXCEPTION_TEST_H
-#define ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_EXCEPTION_TEST_H
+#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_ASYNC_TEST_H
+#define ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_ASYNC_TEST_H
 
 #include "ecmascript/tooling/test/utils/test_util.h"
 
 namespace panda::ecmascript::tooling::test {
-class JsExceptionTest : public TestEvents {
+class JsBreakpointAsyncTest : public TestEvents {
 public:
-    JsExceptionTest()
+    JsBreakpointAsyncTest()
     {
         vmStart = [this] {
-            location_ = TestUtil::GetLocation("exception.js", 22, 0, pandaFile_.c_str());  // 22：breakpointer line
+            location_ = TestUtil::GetLocation(18, 0, pandaFile_.c_str()); // 18: breakpointer line
             ASSERT_TRUE(location_.GetMethodId().IsValid());
             return true;
         };
@@ -33,34 +33,12 @@ public:
             ASSERT_TRUE(location.GetMethodId().IsValid());
             ASSERT_LOCATION_EQ(location, location_);
             ++breakpointCounter_;
-            std::vector<std::unique_ptr<CallFrame>> callFrames;
-            ASSERT_TRUE(debugger_->GenerateCallFrames(&callFrames));
-            ASSERT_TRUE(callFrames.size() > 0);
-            auto jsLocation = callFrames[0]->GetLocation();
-            ASSERT_TRUE(jsLocation != nullptr);
-            ASSERT_EQ(jsLocation->GetLine(), 22); // 22: breakpoint line
-            ASSERT_EQ(jsLocation->GetColumn(), 0); // 0: breakpoint column
             TestUtil::SuspendUntilContinue(DebugEvent::BREAKPOINT, location);
             return true;
         };
 
-        exception = [this](const JSPtLocation &location) {
-            auto sourceLocation = TestUtil::GetSourceLocation(location, pandaFile_.c_str());
-            ASSERT_EQ(sourceLocation.line, 17); // 17 : exception line
-            ASSERT_EQ(sourceLocation.column, 27); // 27 : exception column
-            ++exceptionCounter_;
-            std::vector<std::unique_ptr<CallFrame>> callFrames;
-            ASSERT_TRUE(debugger_->GenerateCallFrames(&callFrames));
-            ASSERT_TRUE(callFrames.size() > 0);
-            auto jsLocation = callFrames[0]->GetLocation();
-            ASSERT_TRUE(jsLocation != nullptr);
-            ASSERT_EQ(jsLocation->GetLine(), 17); // 17 : exception line
-            ASSERT_EQ(jsLocation->GetColumn(), 27); // 27 : exception column
-            TestUtil::SuspendUntilContinue(DebugEvent::EXCEPTION, location);
-            return true;
-        };
-
         loadModule = [this](std::string_view moduleName) {
+            TestUtil::SuspendUntilContinue(DebugEvent::LOAD_MODULE);
             ASSERT_EQ(moduleName, pandaFile_);
             ASSERT_TRUE(debugger_->NotifyScriptParsed(0, pandaFile_));
             auto condFuncRef = FunctionRef::Undefined(vm_);
@@ -70,9 +48,11 @@ public:
         };
 
         scenario = [this]() {
-            ASSERT_BREAKPOINT_SUCCESS(location_);
+            TestUtil::WaitForLoadModule();
             TestUtil::Continue();
-            TestUtil::WaitForException();
+            TestUtil::WaitForBreakpoint(location_);
+            TestUtil::Continue();
+            TestUtil::WaitForBreakpoint(location_);
             TestUtil::Continue();
             auto ret = debugInterface_->RemoveBreakpoint(location_);
             ASSERT_TRUE(ret);
@@ -81,8 +61,7 @@ public:
         };
 
         vmDeath = [this]() {
-            ASSERT_EQ(breakpointCounter_, 1U);  // 1: break point counter
-            ASSERT_EQ(exceptionCounter_, 1U);  // 1: exception counter
+            ASSERT_EQ(breakpointCounter_, 2U);  // 2: break point counter
             return true;
         };
     }
@@ -91,20 +70,19 @@ public:
     {
         return {pandaFile_, entryPoint_};
     }
-    ~JsExceptionTest() = default;
+    ~JsBreakpointAsyncTest() = default;
 
 private:
-    std::string pandaFile_ = DEBUGGER_ABC_DIR "exception.abc";
+    std::string pandaFile_ = DEBUGGER_ABC_DIR "async_func.abc";
     std::string entryPoint_ = "_GLOBAL::func_main_0";
     JSPtLocation location_ {nullptr, JSPtLocation::EntityId(0), 0};
     size_t breakpointCounter_ = 0;
-    size_t exceptionCounter_ = 0;
 };
 
-std::unique_ptr<TestEvents> GetJsExceptionTest()
+std::unique_ptr<TestEvents> GetJsBreakpointAsyncTest()
 {
-    return std::make_unique<JsExceptionTest>();
+    return std::make_unique<JsBreakpointAsyncTest>();
 }
 }  // namespace panda::ecmascript::tooling::test
 
-#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_EXCEPTION_TEST_H
+#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_BREAKPOINT_ASYNC_TEST_H

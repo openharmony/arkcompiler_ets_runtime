@@ -77,7 +77,7 @@ class CjsModuleCache;
 class SlowRuntimeStub;
 class RequireManager;
 struct CJSInfo;
-class QuickFixLoader;
+class QuickFixManager;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -412,14 +412,14 @@ public:
         return workerVm;
     }
     
-    bool IsBundle() const
+    bool IsBundlePack() const
     {
-        return isBundle_;
+        return isBundlePack_;
     }
 
-    void SetBundle(bool value)
+    void SetIsBundlePack(bool value)
     {
-        isBundle_ = value;
+        isBundlePack_ = value;
     }
 
 #if !WIN_OR_MAC_PLATFORM
@@ -457,9 +457,9 @@ public:
     // For Internal Native MethodLiteral.
     JSTaggedValue GetMethodByIndex(MethodIndex idx);
 
-    QuickFixLoader *GetQuickFixLoader() const
+    QuickFixManager *GetQuickFixManager() const
     {
-        return quickFixLoader_;
+        return quickFixManager_;
     }
 protected:
 
@@ -542,7 +542,7 @@ private:
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
     // merge abc
-    bool isBundle_ {true}; // isBundle means app compile mode is JSBundle
+    bool isBundlePack_ {true}; // isBundle means app compile mode is JSBundle
 #if !WIN_OR_MAC_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
@@ -575,7 +575,7 @@ private:
     CVector<JSTaggedValue> internalNativeMethods_;
 
     // For repair patch.
-    QuickFixLoader *quickFixLoader_;
+    QuickFixManager *quickFixManager_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;

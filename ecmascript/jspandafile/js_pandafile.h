@@ -36,6 +36,8 @@ public:
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
     static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
+    static constexpr char PATCH_FUNCTION_NAME_0[] = "patch_main_0";
+    static constexpr char PATCH_FUNCTION_NAME_1[] = "patch_main_1";
 
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
     static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
@@ -94,6 +96,9 @@ public:
 
     uint32_t GetMainMethodIndex(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
+        if (IsBundlePack()) {
+            return jsRecordInfo_.begin()->second.mainMethodIndex;
+        }
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
             return info->second.mainMethodIndex;
@@ -116,9 +121,13 @@ public:
 
     void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
     {
-        auto info = jsRecordInfo_.find(recordName);
-        if (info != jsRecordInfo_.end()) {
-            info->second.mainMethodIndex = mainMethodIndex;
+        if (IsBundlePack()) {
+            jsRecordInfo_.begin()->second.mainMethodIndex = mainMethodIndex;
+        } else {
+            auto info = jsRecordInfo_.find(recordName);
+            if (info != jsRecordInfo_.end()) {
+                info->second.mainMethodIndex = mainMethodIndex;
+            }
         }
     }
 
@@ -126,6 +135,9 @@ public:
 
     int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
+        if (IsBundlePack()) {
+            return jsRecordInfo_.begin()->second.moduleRecordIdx;
+        }
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
             return info->second.moduleRecordIdx;
@@ -143,9 +155,9 @@ public:
 
     bool IsCjs(const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
-    bool IsBundle() const
+    bool IsBundlePack() const
     {
-        return isBundle_;
+        return isBundlePack_;
     }
 
     bool HasTSTypes() const
@@ -186,15 +198,23 @@ public:
         }
         return false;
     }
+
     const CUnorderedMap<CString, JSRecordInfo> &GetJSRecordInfo() const
     {
         return jsRecordInfo_;
     }
-    void checkIsBundle();
+    static CString ParseEntryPoint(const CString &recordName)
+    {
+        return recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
+    }
+
+    void checkIsBundlePack();
 
     CString FindrecordName(const CString &record) const;
 
     static std::string ParseOhmUrl(std::string fileName);
+    // For local merge abc, get record name from file name.
+    static std::string PUBLIC_API ParseRecordName(const std::string &fileName);
 
 private:
     void InitializeUnMergedPF();
@@ -215,7 +235,7 @@ private:
     bool isNewVersion_ {true};
 
     // marge abc
-    bool isBundle_ {true}; // isBundle means app compile mode is JSBundle
+    bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
 };
 }  // namespace ecmascript

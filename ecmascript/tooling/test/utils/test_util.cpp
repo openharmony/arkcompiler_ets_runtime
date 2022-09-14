@@ -40,11 +40,13 @@ std::ostream &operator<<(std::ostream &out, DebugEvent value)
         ADD_CASE(DebugEvent::LOAD_MODULE);
         ADD_CASE(DebugEvent::PAUSED);
         ADD_CASE(DebugEvent::EXCEPTION);
+        ADD_CASE(DebugEvent::STEP_COMPLETE);
         ADD_CASE(DebugEvent::METHOD_ENTRY);
         ADD_CASE(DebugEvent::SINGLE_STEP);
         ADD_CASE(DebugEvent::VM_START);
         ADD_CASE(DebugEvent::VM_INITIALIZATION);
         ADD_CASE(DebugEvent::VM_DEATH);
+        ADD_CASE(DebugEvent::UNINITIALIZED);
         default: {
             ASSERT(false && "Unknown DebugEvent");  // NOLINT
         }

@@ -95,12 +95,15 @@ void ProtocolHandler::SendResponse(const DispatchRequest &request, const Dispatc
     }
     reply->Add("result", resultObj);
     SendReply(*reply);
+    reply->ReleaseRoot();
 }
 
 void ProtocolHandler::SendNotification(const PtBaseEvents &events)
 {
     LOG_DEBUGGER(DEBUG) << "ProtocolHandler::SendNotification: " << events.GetName();
-    SendReply(*events.ToJson());
+    std::unique_ptr<PtJson> reply = events.ToJson();
+    SendReply(*reply);
+    reply->ReleaseRoot();
 }
 
 void ProtocolHandler::SendReply(const PtJson &reply)

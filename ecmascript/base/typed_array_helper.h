@@ -59,7 +59,7 @@ private:
     static JSTaggedValue CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                                const JSHandle<JSTaggedValue> &constructorName);
     static JSHandle<JSObject> AllocateTypedArrayBuffer(JSThread *thread, EcmaVM *ecmaVm, const JSHandle<JSObject> &obj,
-                                                       double length);
+                                                       uint64_t length);
 };
 }  // namespace panda::ecmascript::base
 

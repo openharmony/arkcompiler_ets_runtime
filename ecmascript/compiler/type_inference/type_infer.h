@@ -31,9 +31,10 @@ class TypeInfer {
 public:
     using JSPtExtractor = tooling::JSPtExtractor;
 
-    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, TSManager *tsManager, bool enableLog)
-        : builder_(builder), circuit_(circuit), gateAccessor_(circuit),
-          tsManager_(tsManager), enableLog_(enableLog) {}
+    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, const JSHandle<JSTaggedValue> &constantPool,
+              TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId, bool enableLog)
+        : builder_(builder), circuit_(circuit), constantPool_(constantPool), gateAccessor_(circuit),
+          tsManager_(tsManager), lexEnvManager_(lexEnvManager), methodId_(methodId), enableLog_(enableLog) {}
     ~TypeInfer() = default;
     NO_COPY_SEMANTIC(TypeInfer);
     NO_MOVE_SEMANTIC(TypeInfer);
@@ -75,6 +76,8 @@ private:
     bool InferNewObjApply(GateRef gate);
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
+    bool InferLdLexVarDyn(GateRef gate);
+    bool InferStLexVarDyn(GateRef gate);
 
     inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
@@ -107,11 +110,13 @@ private:
 
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
+    JSHandle<ConstantPool> constantPool_;
     GateAccessor gateAccessor_;
     TSManager *tsManager_ {nullptr};
+    LexEnvManager *lexEnvManager_ {nullptr};
+    size_t methodId_ {0};
     bool enableLog_ {false};
     std::map<uint32_t, GateType> stringIdToGateType_;
-    friend class TypeFilter;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H

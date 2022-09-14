@@ -66,8 +66,6 @@ int Main(const int argc, const char **argv)
 #else
     panda::PandArg<arg_list_t> files("files", {""}, "path to pandafiles", ":");
 #endif
-    panda::PandArg<std::string> entrypoint("entrypoint", "_GLOBAL::func_main_0",
-                                           "full name of entrypoint function or method");
     panda::PandArgParser paParser;
 
     runtimeOptions.AddOptions(&paParser);
@@ -75,11 +73,10 @@ int Main(const int argc, const char **argv)
     paParser.Add(&help);
     paParser.Add(&options);
     paParser.PushBackTail(&files);
-    paParser.PushBackTail(&entrypoint);
     paParser.EnableTail();
     paParser.EnableRemainder();
 
-    if (!paParser.Parse(argc, argv) || files.GetValue().empty() || entrypoint.GetValue().empty() || help.GetValue()) {
+    if (!paParser.Parse(argc, argv) || files.GetValue().empty() || help.GetValue()) {
         std::cerr << paParser.GetErrorString() << std::endl;
         std::cerr << "Usage: "
                   << "panda"
@@ -105,7 +102,7 @@ int Main(const int argc, const char **argv)
 
     {
         LocalScope scope(vm);
-        std::string entry = entrypoint.GetValue();
+        std::string entry = runtimeOptions.GetEntryPoint();
 
         arg_list_t fileNames = files.GetValue();
         for (const auto &fileName : fileNames) {

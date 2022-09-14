@@ -104,21 +104,31 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
         pos = moduleRequestName.find('/', pos + 1);
         ASSERT(pos != CString::npos);
         entryPoint = moduleRequestName.substr(pos + 1);
-    } else if (moduleRequestName[0] == '.') {
-        pos = moduleRequestName.find_last_of(".js");
-        if (pos != CString::npos) {
-            moduleRequestName = moduleRequestName.substr(0, pos);
+    } else if ((pos = moduleRequestName.rfind(".js")) != CString::npos) {
+        moduleRequestName = moduleRequestName.substr(0, pos);
+        pos = moduleRequestName.find("./");
+        if (pos == 0) {
+            moduleRequestName = moduleRequestName.substr(2); // jump "./"
         }
-        pos = moduleRecordName.find_last_of('/');
-        ASSERT(pos != CString::npos);
-        entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName.substr(2); // 2 : jump './'
+        pos = moduleRecordName.rfind('/');
+        if (pos != CString::npos) {
+            entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
+        } else {
+            entryPoint = moduleRequestName;
+        }
         if (!jsPandaFile->HasRecord(entryPoint)) {
-            pos = baseFilename.find_last_of('/');
-            ASSERT(pos != CString::npos);
-            baseFilename = baseFilename.substr(0, pos + 1) + moduleRequestName.substr(2) + ".abc"; // 2 : jump './'
-            pos = moduleRequestName.find_last_of('/');
-            ASSERT(pos != CString::npos);
-            entryPoint = moduleRequestName.substr(pos + 1);
+            pos = baseFilename.rfind('/');
+            if (pos != CString::npos) {
+                baseFilename = baseFilename.substr(0, pos + 1) + moduleRequestName + ".abc";
+            } else {
+                baseFilename = moduleRequestName + ".abc";
+            }
+            pos = moduleRequestName.rfind('/');
+            if (pos != CString::npos) {
+                entryPoint = moduleRequestName.substr(pos + 1);
+            } else {
+                entryPoint = moduleRequestName;
+            }
         }
     } else {
         pos = moduleRecordName.find(JSPandaFile::NODE_MODULES);
@@ -545,7 +555,8 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
     // 2.If module.[[Status]] is "evaluated", then
     ModuleStatus status = module->GetStatus();
     if (status == ModuleStatus::EVALUATED) {
-        // a. If module.[[EvaluationError]] is undefined, return index.
+        SourceTextModule::ModuleExecution(thread, module, buffer, size);
+        // a. If module.[[EvaluationError]] is undefined, return index
         if (module->GetEvaluationError() == SourceTextModule::UNDEFINED_INDEX) {
             return index;
         }

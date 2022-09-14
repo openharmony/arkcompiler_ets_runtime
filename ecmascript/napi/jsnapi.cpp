@@ -36,7 +36,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/quick_fix_loader.h"
+#include "ecmascript/jspandafile/quick_fix_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
@@ -389,12 +389,13 @@ uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
     return vm->GetJSThread()->GetEcmaGlobalStorage()->SetWeak(localAddress);
 }
 
-uintptr_t JSNApi::SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref, WeakRefClearCallBack callback)
+uintptr_t JSNApi::SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref,
+                                  WeakRefClearCallBack firstCallback, WeakRefClearCallBack secondCallback)
 {
     if (localAddress == 0) {
         return 0;
     }
-    return vm->GetJSThread()->GetEcmaGlobalStorage()->SetWeak(localAddress, ref, callback);
+    return vm->GetJSThread()->GetEcmaGlobalStorage()->SetWeak(localAddress, ref, firstCallback, secondCallback);
 }
 
 uintptr_t JSNApi::ClearWeak(const EcmaVM *vm, uintptr_t localAddress)
@@ -544,7 +545,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
 {
     std::string entry = file;
 #if ECMASCRIPT_ENABLE_MERGE_ABC
-    if (!vm->IsBundle()) {
+    if (!vm->IsBundlePack()) {
         entry = ecmascript::JSPandaFile::ParseOhmUrl(file.c_str());
     }
 #endif
@@ -577,9 +578,9 @@ void JSNApi::InitializeIcuData(const JSRuntimeOptions &options)
 {
     std::string icuPath = options.GetIcuDataPath();
     if (icuPath == "default") {
-        if (!WIN_OR_MAC_PLATFORM) {
-            SetHwIcuDirectory();
-        }
+#if !WIN_OR_MAC_PLATFORM && !defined(PANDA_TARGET_LINUX)
+        SetHwIcuDirectory();
+#endif
     } else {
         std::string absPath;
         if (ecmascript::FileLoader::GetAbsolutePath(icuPath, absPath)) {
@@ -827,18 +828,20 @@ Local<StringRef> SymbolRef::GetDescription(const EcmaVM *vm)
 }
 
 // -------------------------------- NativePointerRef ------------------------------------
-Local<NativePointerRef> NativePointerRef::New(const EcmaVM *vm, void *nativePointer)
+Local<NativePointerRef> NativePointerRef::New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize)
 {
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer);
+    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, nullptr, nullptr,
+        false, nativeBindingsize);
     return JSNApiHelper::ToLocal<NativePointerRef>(JSHandle<JSTaggedValue>(obj));
 }
 
 Local<NativePointerRef> NativePointerRef::New(
-    const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack, void *data)
+    const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, callBack, data);
+    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, callBack, data,
+        false, nativeBindingsize);
     return JSNApiHelper::ToLocal<NativePointerRef>(JSHandle<JSTaggedValue>(obj));
 }
 
@@ -1074,27 +1077,27 @@ void *ObjectRef::GetNativePointerField(int32_t index)
 }
 
 void ObjectRef::SetNativePointerField(int32_t index, void *nativePointer,
-    NativePointerCallback callBack, void *data)
+    NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    object->SetNativePointerField(index, nativePointer, callBack, data);
+    object->SetNativePointerField(index, nativePointer, callBack, data, nativeBindingsize);
 }
 
 // ----------------------------------- FunctionRef --------------------------------------
 Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNative)
+    Deleter deleter, void *data, bool callNative, size_t nativeBindingsize)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
-    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
     current->SetCallNative(callNative);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNative)
+    Deleter deleter, void *data, bool callNative, size_t nativeBindingsize)
 {
     EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
@@ -1110,7 +1113,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     current->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
                                      accessor.GetTaggedValue());
 
-    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data);
+    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
 
     JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, factory, current);
     clsPrototype.GetTaggedValue().GetTaggedObject()->GetClass()->SetClassPrototype(true);
@@ -1234,7 +1237,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     ecmascript::tooling::JSPtExtractor *debugExtractor =
                                         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
-    if (!jsPandaFile->IsBundle()) {
+    if (!jsPandaFile->IsBundlePack()) {
         JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
         JSTaggedValue recordName =
             ecmascript::SourceTextModule::Cast(function->GetModule().GetTaggedObject())->GetEcmaModuleRecordName();
@@ -2437,24 +2440,24 @@ EcmaVM *JsiRuntimeCallInfo::GetVM() const
 // ---------------------------------------Hot Patch----------------------------------------------------
 bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName)
 {
-    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
+    ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();
-    return quickFixLoader->LoadPatch(thread, patchFileName, baseFileName);
+    return quickFixManager->LoadPatch(thread, patchFileName, baseFileName);
 }
 
 bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                        const std::string &baseFileName)
 {
-    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
+    ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();
-    return quickFixLoader->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
+    return quickFixManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
 }
 
 bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
 {
-    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
+    ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();
-    return quickFixLoader->UnLoadPatch(thread, patchFileName);
+    return quickFixManager->UnLoadPatch(thread, patchFileName);
 }
 
 /*
@@ -2465,23 +2468,32 @@ bool JSNApi::IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, c
     if (exception.IsEmpty()) {
         return false;
     }
-    ecmascript::QuickFixLoader *quickFixLoader = vm->GetQuickFixLoader();
+    ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> exceptionInfo = JSNApiHelper::ToJSHandle(exception);
-    return quickFixLoader->IsQuickFixCausedException(thread, exceptionInfo, patchFileName);
+    return quickFixManager->IsQuickFixCausedException(thread, exceptionInfo, patchFileName);
+}
+
+/*
+ * register quickfix query function.
+ */
+void JSNApi::RegisterQuickFixQueryFunc(EcmaVM *vm, QuickFixQueryCallBack callBack)
+{
+    ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
+    quickFixManager->RegisterQuickFixQueryFunc(callBack);
 }
 
 bool JSNApi::IsBundle([[maybe_unused]]EcmaVM *vm)
 {
 #if ECMASCRIPT_ENABLE_MERGE_ABC
-    return vm->IsBundle();
+    return vm->IsBundlePack();
 #endif
     return true;
 }
 
 void JSNApi::SetBundle(EcmaVM *vm, bool value)
 {
-    vm->SetBundle(value);
+    vm->SetIsBundlePack(value);
 }
 
 void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)

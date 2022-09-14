@@ -23,7 +23,6 @@
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 
-// TODO
 #ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
 #else

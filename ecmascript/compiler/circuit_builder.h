@@ -206,6 +206,8 @@ public:
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
+    GateRef TypedUnaryOperator(MachineType type, TypedUnaryOp unaryOp, GateType typleVal,
+                               const std::vector<GateRef>& inList);
     GateRef Arguments(size_t index);
     GateRef Merge(GateRef *in, size_t controlCount);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -446,7 +448,7 @@ public:
     inline void SetDepend(GateRef depend);
     inline void SetState(GateRef state);
     // type bits shift
-    static const int FROM_TYPE_SHIFT = 32;
+    static const int OPRAND_TYPE_BITS = 32;
 
 private:
     Circuit *circuit_ {nullptr};

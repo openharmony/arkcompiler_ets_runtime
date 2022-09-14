@@ -94,7 +94,7 @@ JSHandle<Program> JSPandaFileManager::GenerateProgram(
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
     JSHandle<Program> program;
-    if (jsPandaFile->IsBundle()) {
+    if (jsPandaFile->IsBundlePack()) {
         program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
     } else {
         program = PandaFileTranslator::GenerateProgramWithMerge(vm, jsPandaFile, entryPoint);
@@ -223,7 +223,7 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
         newJsPandaFile->SetLoadedAOTStatus(true);
     }
 
-    if (newJsPandaFile->IsBundle()) {
+    if (newJsPandaFile->IsBundlePack()) {
         // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
         CString methodName = entryPoint.data();
         auto pos = entryPoint.find_last_of("::");

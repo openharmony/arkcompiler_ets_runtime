@@ -186,14 +186,14 @@ struct BytecodeRegion {
     size_t forwardIndex {0};
     size_t loopBackIndex {0};
     std::vector<std::tuple<size_t, const uint8_t *, bool>> expandedPreds {};
-    kungfu::GateRef stateStart {kungfu::Circuit::NullGate()};
-    kungfu::GateRef dependStart {kungfu::Circuit::NullGate()};
-    kungfu::GateRef mergeForwardEdges {kungfu::Circuit::NullGate()};
-    kungfu::GateRef mergeLoopBackEdges {kungfu::Circuit::NullGate()};
-    kungfu::GateRef depForward {kungfu::Circuit::NullGate()};
-    kungfu::GateRef depLoopBack {kungfu::Circuit::NullGate()};
-    std::map<uint16_t, kungfu::GateRef> vregToValSelectorGate {}; // corresponding ValueSelector gates of vregs
-    kungfu::GateRef valueSelectorAccGate {kungfu::Circuit::NullGate()};
+    GateRef stateStart {Circuit::NullGate()};
+    GateRef dependStart {Circuit::NullGate()};
+    GateRef mergeForwardEdges {Circuit::NullGate()};
+    GateRef mergeLoopBackEdges {Circuit::NullGate()};
+    GateRef depForward {Circuit::NullGate()};
+    GateRef depLoopBack {Circuit::NullGate()};
+    std::map<uint16_t, GateRef> vregToValSelectorGate {}; // corresponding ValueSelector gates of vregs
+    GateRef valueSelectorAccGate {Circuit::NullGate()};
 
     bool operator <(const BytecodeRegion &target) const
     {
@@ -446,14 +446,13 @@ enum BytecodeOffset {
 class BytecodeCircuitBuilder {
 public:
     explicit BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
-                                    JSHandle<JSTaggedValue> &constantPool,
                                     const MethodLiteral *methodLiteral,
-                                    BytecodeInfoCollector::MethodPcInfo &methodPCInfo,
+                                    MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager,
                                     const CompilationConfig* cconfig,
                                     bool enableLog)
-        : circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()), method_(methodLiteral),
-          constantPool_(constantPool), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
+        : circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
+          method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)
@@ -465,28 +464,28 @@ public:
     void PUBLIC_API BytecodeToCircuit();
     static void PUBLIC_API CollectBytecodeBlockInfo(uint8_t *pc, std::vector<CfgInfo> &bytecodeBlockInfos);
 
-    [[nodiscard]] kungfu::Circuit* GetCircuit()
+    [[nodiscard]] Circuit* GetCircuit()
     {
         return &circuit_;
     }
 
-    [[nodiscard]] const std::map<kungfu::GateRef, std::pair<size_t, const uint8_t *>>& GetGateToBytecode() const
+    [[nodiscard]] const std::map<GateRef, std::pair<size_t, const uint8_t *>>& GetGateToBytecode() const
     {
         return jsgateToBytecode_;
     }
 
-    [[nodiscard]] const std::map<const uint8_t *, kungfu::GateRef>& GetBytecodeToGate() const
+    [[nodiscard]] const std::map<const uint8_t *, GateRef>& GetBytecodeToGate() const
     {
         return byteCodeToJSGate_;
     }
 
-    [[nodiscard]] std::string GetBytecodeStr(kungfu::GateRef gate) const
+    [[nodiscard]] std::string GetBytecodeStr(GateRef gate) const
     {
         auto pc = jsgateToBytecode_.at(gate).second;
         return GetEcmaBytecodeStr(static_cast<EcmaBytecode>(*pc));
     }
 
-    [[nodiscard]] EcmaBytecode GetByteCodeOpcode(kungfu::GateRef gate) const
+    [[nodiscard]] EcmaBytecode GetByteCodeOpcode(GateRef gate) const
     {
         auto pc = jsgateToBytecode_.at(gate).second;
         return static_cast<EcmaBytecode>(*pc);
@@ -520,7 +519,7 @@ public:
         return enableLog_;
     }
 
-    [[nodiscard]] const std::vector<kungfu::GateRef>& GetAsyncRelatedGates() const
+    [[nodiscard]] const std::vector<GateRef>& GetAsyncRelatedGates() const
     {
         return suspendAndResumeGates_;
     }
@@ -542,11 +541,6 @@ public:
             }
             pc += bytecodeInfo.offset;
         }
-    }
-
-    JSHandle<JSTaggedValue> GetConstantPool() const
-    {
-        return constantPool_;
     }
 
 private:
@@ -590,20 +584,19 @@ private:
         return bbId == 0;
     }
 
-    kungfu::Circuit circuit_;
-    std::map<kungfu::GateRef, std::pair<size_t, const uint8_t *>> jsgateToBytecode_;
-    std::map<const uint8_t *, kungfu::GateRef> byteCodeToJSGate_;
+    Circuit circuit_;
+    std::map<GateRef, std::pair<size_t, const uint8_t *>> jsgateToBytecode_;
+    std::map<const uint8_t *, GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
     const JSPandaFile *file_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     const MethodLiteral *method_ {nullptr};
-    JSHandle<JSTaggedValue> constantPool_;
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;
     TypeRecorder typeRecorder_;
     bool hasTypes_ {false};
     bool enableLog_ {false};
-    std::vector<kungfu::GateRef> suspendAndResumeGates_ {};
+    std::vector<GateRef> suspendAndResumeGates_ {};
     const std::map<const uint8_t *, int32_t> &pcToBCOffset_;
     const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
     std::vector<CfgInfo> &bytecodeBlockInfos_;

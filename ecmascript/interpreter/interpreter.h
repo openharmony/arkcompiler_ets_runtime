@@ -24,7 +24,6 @@
 #include "ecmascript/method.h"
 #include "ecmascript/require/js_cjs_module.h"
 
-// TODO
 #ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
 #else

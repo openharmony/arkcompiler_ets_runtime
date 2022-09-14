@@ -35,7 +35,7 @@ public:
 
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
-                                   JSHandle<JSTaggedValue> constpool, const CString &entryPoint);
+                                   JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                                     JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
 #ifdef NEW_INSTRUCTION_DEFINE
@@ -51,6 +51,9 @@ public:
                                                       const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,
         size_t index, JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
+
+    static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, size_t index,
+                                            std::vector<uint32_t> &methodOffsets);
 private:
     static JSHandle<TaggedArray> EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
         const JSPandaFile *jsPandaFile, size_t index, JSHandle<JSTaggedValue> constpool,

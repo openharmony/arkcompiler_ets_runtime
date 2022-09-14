@@ -446,7 +446,6 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     Register codeAddrReg = rsi;
     Register expectedNumArgsReg = rcx;
     {
-        // TODO: Get from method
         __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
         __ Movq(argc, rdx);  // argc -> rdx
         __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
@@ -859,7 +858,6 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
                                                 Register codeAddrReg, Register expectedNumArgsReg)
 {
     Label lDirectCallCodeEntry;
-    // TODO: Get from method
     Register method = rdx;
     __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
     __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress

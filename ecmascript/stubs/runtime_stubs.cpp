@@ -42,7 +42,6 @@
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
-// TODO
 #ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
 #else

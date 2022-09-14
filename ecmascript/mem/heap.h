@@ -38,6 +38,7 @@ class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
 class STWYoungGC;
+class JSNativePointer;
 
 enum class MarkType : uint8_t {
     MARK_YOUNG,
@@ -420,6 +421,23 @@ public:
 
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
 
+    void IncreaseNativeBindingSize(bool nonMovable, size_t size);
+    void IncreaseNativeBindingSize(JSNativePointer *object);
+    void ResetNativeBindingSize()
+    {
+        activeSemiSpace_->ResetNativeBindingSize();
+        nonNewSpaceNativeBindingSize_ = 0;
+    }
+
+    size_t GetNativeBindingSize() const
+    {
+        return activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
+    }
+
+    size_t GetNonNewSpaceNativeBindingSize() const
+    {
+        return nonNewSpaceNativeBindingSize_;
+    }
 private:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
@@ -430,6 +448,7 @@ private:
     void IncreaseTaskCount();
     void ReduceTaskCount();
     void WaitClearTaskFinished();
+    void InvokeWeakNodeSecondPassCallback();
     inline void ReclaimRegions(TriggerGCType gcType);
 
     class ParallelGCTask : public Task {
@@ -531,10 +550,13 @@ private:
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
     bool shouldThrowOOMError_ {false};
+    bool runningSecondPassCallbacks_ {false};
 
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
+    size_t nonNewSpaceNativeBindingSize_{0};
+    size_t globalSpaceNativeLimit_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
     bool clearTaskFinished_ {true};

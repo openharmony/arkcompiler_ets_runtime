@@ -54,7 +54,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        cda.EnumerateMethods([jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, methodName]
+        cda.EnumerateMethods([jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, &methodName]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
             auto methodId = mda.GetMethodId();
@@ -140,9 +140,9 @@ void PandaFileTranslator::TranslateClassesWithMerge(JSPandaFile *jsPandaFile)
             uint32_t codeSize = codeDataAccessor.GetCodeSize();
 
             CString name = reinterpret_cast<const char *>(pf->GetStringData(mda.GetNameId()).data);
-            if (name == JSPandaFile::ENTRY_FUNCTION_NAME) {
+            if (name == JSPandaFile::PATCH_FUNCTION_NAME_0 || name == JSPandaFile::ENTRY_FUNCTION_NAME) {
                 jsPandaFile->UpdateMainMethodIndex(
-                    mda.GetMethodId().GetOffset(), desc.substr(1, desc.size() - 2)); // 2 : skip symbol "L" and ";"
+                    mda.GetMethodId().GetOffset(), JSPandaFile::ParseEntryPoint(desc));
             }
 
             InitializeMemory(methodLiteral, jsPandaFile, mda.GetMethodId());
@@ -153,8 +153,7 @@ void PandaFileTranslator::TranslateClassesWithMerge(JSPandaFile *jsPandaFile)
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (translatedCode.find(insns) == translatedCode.end()) {
                 translatedCode.insert(insns);
-                // 2 : skip symbol "L" and ";"
-                TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral, desc.substr(1, desc.size() - 2));
+                TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral, JSPandaFile::ParseEntryPoint(desc));
             }
             jsPandaFile->SetMethodLiteralToMap(methodLiteral);
         });
@@ -190,10 +189,10 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
 #endif
         } else {
             CString entry = "";
-            if (!jsPandaFile->IsBundle()) {
+            if (!jsPandaFile->IsBundlePack()) {
                 entry = entryPoint.data();
             }
-            constpool = ParseConstPool(vm, jsPandaFile, entry);
+            constpool = ParseConstPool(vm, jsPandaFile);
         }
         vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);
     } else {
@@ -219,8 +218,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     return program;
 }
 
-JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                           const CString &entryPoint)
+JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
@@ -328,7 +326,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
             JSMutableHandle<TaggedArray> elements(thread, JSTaggedValue::Undefined());
             JSMutableHandle<TaggedArray> properties(thread, JSTaggedValue::Undefined());
             LiteralDataExtractor::ExtractObjectDatas(
-                thread, jsPandaFile, index, elements, properties, JSHandle<JSTaggedValue>(constpool), entryPoint);
+                thread, jsPandaFile, index, elements, properties, JSHandle<JSTaggedValue>(constpool));
             JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties);
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, properties);
@@ -348,7 +346,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
         } else if (value.GetConstpoolType() == ConstPoolType::ARRAY_LITERAL) {
             size_t index = it.first;
             JSHandle<TaggedArray> literal =LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool), entryPoint);
+                thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool));
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, literal);
             }
@@ -360,7 +358,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
         } else if (value.GetConstpoolType() == ConstPoolType::CLASS_LITERAL) {
             size_t index = it.first;
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreTypeForClass(
-                thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool), entryPoint);
+                thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool));
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, literal);
             }
@@ -399,18 +397,17 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramWithMerge(EcmaVM *vm, cons
             constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
 #endif
         } else {
-            // TODO: 0
             uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
             constpool = factory->NewConstantPool(constpoolIndex);
             constpool->SetJSPandaFile(jsPandaFile);
-            ParseConstPoolWithMerge(vm, jsPandaFile, entryPoint.data(), constpool);
+            ParseConstPoolWithMerge(vm, jsPandaFile, constpool);
         }
         vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);
     } else {
         constpool = JSHandle<ConstantPool>(thread, constpoolVal);
     }
 
-    ParseArrayAndClass(vm, jsPandaFile, entryPoint.data(), constpool);
+    ParseLiteralConstPool(vm, jsPandaFile, entryPoint.data(), constpool);
 
     {
         EcmaHandleScope handleScope(thread);
@@ -432,7 +429,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramWithMerge(EcmaVM *vm, cons
 }
 
 void PandaFileTranslator::ParseConstPoolWithMerge(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                  const CString &entryPoint,
                                                   JSHandle<ConstantPool> constpool)
 {
     JSThread *thread = vm->GetJSThread();
@@ -527,35 +523,13 @@ void PandaFileTranslator::ParseConstPoolWithMerge(EcmaVM *vm, const JSPandaFile 
                 }
                 constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
                 method->SetConstantPool(thread, constpool.GetTaggedValue());
-            } else if (value.GetConstpoolType() == ConstPoolType::OBJECT_LITERAL) {
-                size_t index = it.first;
-                JSMutableHandle<TaggedArray> elements(thread, JSTaggedValue::Undefined());
-                JSMutableHandle<TaggedArray> properties(thread, JSTaggedValue::Undefined());
-                LiteralDataExtractor::ExtractObjectDatas(
-                    thread, jsPandaFile, index, elements, properties, JSHandle<JSTaggedValue>(constpool), entryPoint);
-                JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties);
-                if (isLoadedAOT) {
-                    fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, properties);
-                }
-                JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-                JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
-                size_t elementsLen = elements->GetLength();
-                for (size_t i = 0; i < elementsLen; i += 2) {  // 2: Each literal buffer contains a pair of key-value.
-                    key.Update(elements->Get(i));
-                    if (key->IsHole()) {
-                        break;
-                    }
-                    valueHandle.Update(elements->Get(i + 1));
-                    JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
-                }
-                constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), obj.GetTaggedValue());
             }
         }
     }
 }
 
-void PandaFileTranslator::ParseArrayAndClass(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
-                                             JSHandle<ConstantPool> constpool)
+void PandaFileTranslator::ParseLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
+                                                JSHandle<ConstantPool> constpool)
 {
     JSThread *thread = vm->GetJSThread();
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
@@ -589,6 +563,28 @@ void PandaFileTranslator::ParseArrayAndClass(EcmaVM *vm, const JSPandaFile *jsPa
                 fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, literal);
             }
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), literal.GetTaggedValue());
+        } else if (value.GetConstpoolType() == ConstPoolType::OBJECT_LITERAL) {
+            size_t index = it.first;
+            JSMutableHandle<TaggedArray> elements(thread, JSTaggedValue::Undefined());
+            JSMutableHandle<TaggedArray> properties(thread, JSTaggedValue::Undefined());
+            LiteralDataExtractor::ExtractObjectDatas(
+                thread, jsPandaFile, index, elements, properties, JSHandle<JSTaggedValue>(constpool), entryPoint);
+            JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties);
+            if (isLoadedAOT) {
+                fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, properties);
+            }
+            JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+            JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
+            size_t elementsLen = elements->GetLength();
+            for (size_t i = 0; i < elementsLen; i += 2) {  // 2: Each literal buffer contains a pair of key-value.
+                key.Update(elements->Get(i));
+                if (key->IsHole()) {
+                    break;
+                }
+                valueHandle.Update(elements->Get(i + 1));
+                JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
+            }
+            constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), obj.GetTaggedValue());
         }
     }
 }
@@ -1183,13 +1179,13 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_ASHR2DYN_PREF_V8: {
-            newOpcode = EcmaOpcode::SHR2_IMM8_V8;  // TODO: old instruction was wrong
+            newOpcode = EcmaOpcode::SHR2_IMM8_V8;  // old instruction was wrong
             *pc = static_cast<uint8_t>(newOpcode);
             *(pc + 1) = 0x00;
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_SHR2DYN_PREF_V8: {
-            newOpcode = EcmaOpcode::ASHR2_IMM8_V8;  // TODO: old instruction was wrong
+            newOpcode = EcmaOpcode::ASHR2_IMM8_V8;  // old instruction was wrong
             *pc = static_cast<uint8_t>(newOpcode);
             *(pc + 1) = 0x00;
             break;
@@ -1295,7 +1291,7 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORREJECT_PREF_V8_V8: {
-            newOpcode = EcmaOpcode::ASYNCGENERATORREJECT_V8_V8;
+            newOpcode = EcmaOpcode::ASYNCGENERATORREJECT_V8;
             *pc = static_cast<uint8_t>(newOpcode);
             auto newLen = BytecodeInstruction::Size(newOpcode);
             if (memmove_s(pc + 1, newLen - 1, pc + 2, oldLen - 2) != EOK) {  // 2: skip second level inst and pref
@@ -1454,7 +1450,7 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
             }
-            // TODO: add a deprecated inst to translate
+            // TODO: add a deprecated inst to translate?
             *(pc + 4) = *(pc + 4) + 1;
             break;
         }
@@ -1688,66 +1684,18 @@ void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
             U_FALLTHROUGH;
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::ADD2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::SUB2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::MUL2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::DIV2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::MOD2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::SHL2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::SHR2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::ASHR2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::AND2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::OR2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::XOR2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::EQ_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::NOTEQ_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::LESS_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::LESSEQ_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::GREATER_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::GREATEREQ_IMM8_V8:
             offset = methodLiteral->UpdateSlotSizeWith8Bit(1);
             break;
-        // case EcmaOpcode::LDOBJBYVALUE_IMM8_V8_V8:
-        //     U_FALLTHROUGH;
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
             U_FALLTHROUGH;
         case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
             U_FALLTHROUGH;
-        // case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
-        //     U_FALLTHROUGH;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             U_FALLTHROUGH;
         case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
             U_FALLTHROUGH;
-        // case EcmaOpcode::LDOBJBYINDEX_IMM8_V8_IMM16:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM32:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::LDSUPERBYVALUE_IMM8_V8_V8:
-        //     U_FALLTHROUGH;
         case EcmaOpcode::STSUPERBYVALUE_IMM8_V8_V8:
             U_FALLTHROUGH;
-        // case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16_V8:
-        //     U_FALLTHROUGH;
         case EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8:
             offset = methodLiteral->UpdateSlotSizeWith8Bit(2); // 2: occupy two ic slot
             break;

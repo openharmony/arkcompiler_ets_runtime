@@ -30,7 +30,6 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
 
-// TODO
 #ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
 #else
@@ -4574,14 +4573,14 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     }
 }
 
-DECLARE_ASM_HANDLER(HandleAsyncgeneratorrejectV8V8)
+DECLARE_ASM_HANDLER(HandleAsyncgeneratorrejectV8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorReject),
                               { asyncGenerator, value });
-    CHECK_EXCEPTION_VARACC(res, INT_PTR(ASYNCGENERATORREJECT_V8_V8));
+    CHECK_EXCEPTION_VARACC(res, INT_PTR(ASYNCGENERATORREJECT_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleSupercallthisrangeImm8Imm8V8)
@@ -6147,14 +6146,6 @@ DECLARE_ASM_HANDLER(HandleJstricteqzImm8)
 {
     DISPATCH(NOP);
 }
-DECLARE_ASM_HANDLER(HandleStpatchvarImm8V8)
-{
-    DISPATCH(NOP);
-}
-DECLARE_ASM_HANDLER(HandleLdpatchvarImm8)
-{
-    DISPATCH(NOP);
-}
 DECLARE_ASM_HANDLER(HandleStthisbyvalueImm16V8)
 {
     DISPATCH(NOP);
@@ -6379,7 +6370,7 @@ DECLARE_ASM_HANDLER(ThrowStackOverflowException)
     DISPATCH_LAST();
 }
 
-DECLARE_ASM_HANDLER(HandleWideLdPatchVarPrefImm16)
+DECLARE_ASM_HANDLER(HandleWideLdpatchvarPrefImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
@@ -6388,7 +6379,7 @@ DECLARE_ASM_HANDLER(HandleWideLdPatchVarPrefImm16)
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(WIDE_LDPATCHVAR_PREF_IMM16));
 }
 
-DECLARE_ASM_HANDLER(HandleWideStPatchVarPrefImm16)
+DECLARE_ASM_HANDLER(HandleWideStpatchvarPrefImm16)
 {
     GateRef index = ReadInst16_1(pc);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StPatchVar), { IntToTaggedInt(index), acc });

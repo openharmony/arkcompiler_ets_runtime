@@ -208,6 +208,7 @@ config("ark_jsruntime_windows_config") {
 
 config("ark_jsruntime_common_config") {
   defines = [ "PANDA_ENABLE_LTO" ]
+  defines += [ "NEW_INSTRUCTION_DEFINE" ]
   cflags_cc = [
     "-Wall",
     "-Wshadow",
@@ -478,6 +479,7 @@ ecma_source = [
   "ecmascript/jspandafile/method_literal.cpp",
   "ecmascript/jspandafile/program_object.cpp",
   "ecmascript/jspandafile/quick_fix_loader.cpp",
+  "ecmascript/jspandafile/quick_fix_manager.cpp",
   "ecmascript/js_api/js_api_arraylist.cpp",
   "ecmascript/js_api/js_api_arraylist_iterator.cpp",
   "ecmascript/js_api/js_api_deque.cpp",
