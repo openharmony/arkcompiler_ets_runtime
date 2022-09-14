@@ -229,7 +229,8 @@ private:
     void LowerExternalModule(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIteratorNext(GateRef gate, GateRef glue);
-    void LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget);
+    void LowerSuperCall(GateRef gate, GateRef glue, GateRef func, GateRef newTarget);
+    void LowerSuperCallArrow(GateRef gate, GateRef glue, GateRef newTarget);
     void LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef newTarget);
     void LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag);
     void LowerNewObjRange(GateRef gate, GateRef glue);

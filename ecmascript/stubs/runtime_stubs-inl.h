@@ -1980,12 +1980,12 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCall(JSThread *thread, const JSHandle<JS
 
 JSTaggedValue RuntimeStubs::RuntimeOptSuperCall(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
-    size_t fixNums = 2;
+    constexpr size_t fixNums = 2;
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
     JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);
     JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
     ASSERT(superFunc->IsJSFunction());
-    uint16_t length = argc - 2;
+    uint16_t length = argc - fixNums;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, superFunc, undefined, newTarget, length);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

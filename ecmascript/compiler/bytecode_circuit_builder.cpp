@@ -1893,22 +1893,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8: {
-            uint16_t range = READ_INST_8_1();
-            uint16_t v0 = READ_INST_8_2();
-            for (size_t i = 0; i < range; i++) {
-                info.inputs.emplace_back(VirtualRegister(v0 + i));
-            }
-            break;
-        }
-        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8: {
-            uint16_t range = READ_INST_16_1();
-            uint16_t v0 = READ_INST_8_3();
-            for (size_t i = 0; i < range; i++) {
-                info.inputs.emplace_back(VirtualRegister(v0 + i));
-            }
-            break;
-        }
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8: {
             uint16_t range = READ_INST_8_1();
             uint16_t v0 = READ_INST_8_2();
@@ -1917,6 +1902,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             }
             break;
         }
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
         case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8: {
             uint16_t range = READ_INST_16_1();
             uint16_t v0 = READ_INST_8_3();

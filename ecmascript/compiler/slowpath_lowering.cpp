@@ -521,10 +521,15 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::GETITERATORNEXT_PREF_V8_V8:
             LowerGetIteratorNext(gate, glue);
             break;
-        case EcmaOpcode::SUPERCALL_PREF_IMM16_V8:
-            LowerSuperCall(gate, glue, newTarget);
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+            LowerSuperCall(gate, glue, jsFunc, newTarget);
             break;
-        case EcmaOpcode::APPLY_IMM8_V8_V8:
+        case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
+            LowerSuperCallArrow(gate, glue, newTarget);
+            break;
+        case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
             LowerSuperCallSpread(gate, glue, newTarget);
             break;
         case EcmaOpcode::ISTRUE:
@@ -1949,12 +1954,27 @@ void SlowPathLowering::LowerGetIteratorNext(GateRef gate, GateRef glue)
     ReplaceHirToCall(gate, newGate);
 }
 
-void SlowPathLowering::LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget)
+void SlowPathLowering::LowerSuperCall(GateRef gate, GateRef glue, GateRef func, GateRef newTarget)
 {
     DebugPrintBC(gate, glue);
     const int id = RTSTUB_ID(OptSuperCall);
     std::vector<GateRef> vec;
-    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) >= 0);
+    size_t numIns = acc_.GetNumValueIn(gate);
+    vec.emplace_back(func);
+    vec.emplace_back(newTarget);
+    for (size_t i = 0; i < numIns; i++) {
+        vec.emplace_back(acc_.GetValueIn(gate, i));
+    }
+    GateRef newGate = LowerCallRuntime(glue, id, vec);
+    ReplaceHirToCall(gate, newGate);
+}
+
+void SlowPathLowering::LowerSuperCallArrow(GateRef gate, GateRef glue, GateRef newTarget)
+{
+    DebugPrintBC(gate, glue);
+    const int id = RTSTUB_ID(OptSuperCall);
+    std::vector<GateRef> vec;
     ASSERT(acc_.GetNumValueIn(gate) > 0);
     size_t numIns = acc_.GetNumValueIn(gate);
     size_t funcIndex = numIns - 1;
