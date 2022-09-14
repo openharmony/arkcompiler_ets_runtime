@@ -736,6 +736,16 @@ DEF_RUNTIME_STUBS(LdObjByIndex)
     return RuntimeLdObjByIndex(thread, obj, idx.GetInt(), callGetter.IsTrue(), receiver).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(LdObjByValue)
+{
+    RUNTIME_STUBS_HEADER(LdObjByValue);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> propKey = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue callGetter = GetArg(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue receiver = GetArg(argv, argc, 3);  // 3: means the third parameter
+    return RuntimeLdObjByValue(thread, obj, propKey, callGetter.IsTrue(), receiver);
+}
+
 DEF_RUNTIME_STUBS(StObjByIndex)
 {
     RUNTIME_STUBS_HEADER(StObjByIndex);

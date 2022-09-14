@@ -349,6 +349,7 @@ public:
     inline GateRef TaggedFalse();
     inline GateRef SExtInt8ToInt64(GateRef x);
     inline GateRef SExtInt16ToInt64(GateRef x);
+    inline GateRef SExtInt16ToInt32(GateRef x);
     inline GateRef ChangeFloat64ToInt32(GateRef x);
     inline GateRef ChangeUInt32ToFloat64(GateRef x);
     inline GateRef ChangeInt32ToFloat64(GateRef x);

@@ -1521,8 +1521,8 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32: {
             uint16_t v0 = READ_INST_8_1();
             uint32_t idx = READ_INST_32_2();
-            info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(Immediate(idx));
+            info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16: {
@@ -1928,12 +1928,12 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::NOP:
             break;
         case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16: {
-            uint32_t index = READ_INST_16_1();
+            uint16_t index = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(index));
             break;
         }
         case EcmaOpcode::WIDE_STPATCHVAR_PREF_IMM16: {
-            uint32_t index = READ_INST_16_1();
+            uint16_t index = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(index));
             break;
         }

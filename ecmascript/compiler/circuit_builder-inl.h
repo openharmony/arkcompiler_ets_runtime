@@ -158,6 +158,11 @@ GateRef CircuitBuilder::SExtInt16ToInt64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
 }
 
+GateRef CircuitBuilder::SExtInt16ToInt32(GateRef x)
+{
+    return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+}
+
 GateRef CircuitBuilder::SExtInt8ToInt64(GateRef x)
 {
     return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);

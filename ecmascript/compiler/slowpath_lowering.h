@@ -249,7 +249,7 @@ private:
     void LowerLdSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerTryStGlobalByName(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerStConstToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStConstToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc, bool isConst);
     void LowerStLetToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStClassToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStOwnByValueWithNameSet(GateRef gate, GateRef glue);
@@ -286,6 +286,8 @@ private:
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
     void DebugPrintBC(GateRef gate, GateRef glue);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
+    void LowerWideLdPatchVar(GateRef gate, GateRef glue);
+    void LowerWideStPatchVar(GateRef gate, GateRef glue);
 
     TSManager *tsManager_ {nullptr};
     BytecodeCircuitBuilder *bcBuilder_;
