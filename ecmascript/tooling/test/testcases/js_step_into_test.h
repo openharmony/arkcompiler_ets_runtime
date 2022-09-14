@@ -25,7 +25,8 @@ public:
     {
         vmStart = [this] {
             // line number for breakpoint array
-            size_t breakpoint[POINTER_SIZE][LINE_COLUMN] = {{45, 0}, {20, 0}, {25, 0}, {31, 0}, {33, 0}, {41, 0}, {48, 0}};
+            size_t breakpoint[POINTER_SIZE][LINE_COLUMN] =
+                {{45, 0}, {20, 0}, {25, 0}, {31, 0}, {33, 0}, {41, 0}, {48, 0}};
             // line number for stepinto array
             size_t stepInto[STEP_SIZE][LINE_COLUMN] = {{16, 0}, {21, 0}, {30, 0}, {32, 0}, {38, 0}, {34, 0}};
             SetJSPtLocation(breakpoint[0], POINTER_SIZE, pointerLocations_);
