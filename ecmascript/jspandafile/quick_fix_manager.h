@@ -29,7 +29,7 @@ public:
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                    const std::string &baseFileName);
-    bool UnLoadPatch(JSThread *thread, const std::string &patchFileName);
+    bool UnloadPatch(JSThread *thread, const std::string &patchFileName);
     bool IsQuickFixCausedException(JSThread *thread,
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
@@ -42,7 +42,7 @@ public:
     // check whether the patch is loaded.
     inline bool HasLoadedPatch() const
     {
-        return quickFixLoader_.hasLoadedPatch_;
+        return hasLoadedPatch_;
     }
 
 private:
@@ -50,6 +50,7 @@ private:
 
     QuickFixLoader quickFixLoader_;
     QuickFixQueryCallBack callBack_ {nullptr};
+    bool hasLoadedPatch_ {false};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_QUICK_FIX_MANAGER_H

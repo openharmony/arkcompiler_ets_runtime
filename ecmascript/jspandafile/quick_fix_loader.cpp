@@ -29,11 +29,6 @@ QuickFixLoader::~QuickFixLoader()
 
 bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName)
 {
-    if (hasLoadedPatch_) {
-        LOG_ECMA(ERROR) << "Cannot repeat load patch";
-        return false;
-    }
-
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     EcmaVM *vm = thread->GetEcmaVM();
     // Get base constpool.
@@ -90,11 +85,6 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileNam
 bool QuickFixLoader::LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer,
                                size_t patchSize, const std::string &baseFileName)
 {
-    if (hasLoadedPatch_) {
-        LOG_ECMA(ERROR) << "Cannot repeat load patch";
-        return false;
-    }
-
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     EcmaVM *vm = thread->GetEcmaVM();
 
@@ -214,7 +204,6 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
             EcmaInterpreter::NewRuntimeCallInfo(thread, func, global, undefined, 0);
         EcmaInterpreter::Execute(info);
     }
-    hasLoadedPatch_ = true;
     return true;
 }
 
@@ -227,7 +216,7 @@ CString QuickFixLoader::GetRecordName(const JSPandaFile *jsPandaFile, EntityId m
     return JSPandaFile::ParseEntryPoint(desc);
 }
 
-bool QuickFixLoader::UnLoadPatch(JSThread *thread, const std::string &patchFileName)
+bool QuickFixLoader::UnloadPatch(JSThread *thread, const std::string &patchFileName)
 {
     if (patchFile_ == nullptr || ConvertToString(patchFileName) != patchFile_->GetJSPandaFileDesc()) {
         return false;
@@ -273,7 +262,6 @@ bool QuickFixLoader::UnLoadPatch(JSThread *thread, const std::string &patchFileN
     }
 
     ClearReservedInfo();
-    hasLoadedPatch_ = false;
     return true;
 }
 
