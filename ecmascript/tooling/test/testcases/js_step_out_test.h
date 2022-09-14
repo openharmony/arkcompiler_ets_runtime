@@ -13,31 +13,29 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_STEP_INTO_TEST_H
-#define ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_STEP_INTO_TEST_H
+#ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_STEP_OUT_TEST_H
+#define ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_STEP_OUT_TEST_H
 
 #include "ecmascript/tooling/test/utils/test_util.h"
 
 namespace panda::ecmascript::tooling::test {
-class JsStepIntoTest : public TestEvents {
+class JsStepOutTest : public TestEvents {
 public:
-    JsStepIntoTest()
+    JsStepOutTest()
     {
         vmStart = [this] {
-            // line number for breakpoint array
-            size_t breakpoint[POINTER_SIZE][LINE_COLUMN] =
-                {{84, 0}, {87, 0}, {27, 0}, {79, 0}, {42, 0}, {38, 0}, {56, 0}, {60, 0}, {96, 0}, {54, 0}};
-            // line number for stepinto array
-            size_t stepInto[STEP_SIZE][LINE_COLUMN] =
-                {{85, 5}, {23, 0}, {73, 0}, {80, 0}, {36, 0}, {43, 0}, {50, 0}, {61, 0}, {97, 15}};
+            // 74、36: line number for breakpoint array
+            size_t breakpoint[5][2] = {{74, 0}, {36, 0}, {50, 0}, {61, 0}, {96, 0}};
+            // 28: line number for stepinto array
+            size_t stepOut[4][2] = {{28, 0}, {43, 0}, {57, 0}, {88, 5}};
             SetJSPtLocation(breakpoint[0], POINTER_SIZE, pointerLocations_);
-            SetJSPtLocation(stepInto[0], STEP_SIZE, stepLocations_);
+            SetJSPtLocation(stepOut[0], STEP_SIZE, stepLocations_);
             return true;
         };
 
         vmDeath = [this]() {
-            ASSERT_EQ(breakpointCounter_, pointerLocations_.size());
-            ASSERT_EQ(stepCompleteCounter_, stepLocations_.size());
+            ASSERT_EQ(breakpointCounter_, pointerLocations_.size());  // size: break point counter
+            ASSERT_EQ(stepCompleteCounter_, stepLocations_.size());  // size: step complete counter
             return true;
         };
 
@@ -58,7 +56,7 @@ public:
             ASSERT_LOCATION_EQ(location, pointerLocations_.at(breakpointCounter_));
             ++breakpointCounter_;
             TestUtil::SuspendUntilContinue(DebugEvent::BREAKPOINT, location);
-            debugger_->StepInto(StepIntoParams());
+            debugger_->StepOut();
             return true;
         };
 
@@ -77,7 +75,7 @@ public:
             TestUtil::WaitForLoadModule();
             TestUtil::Continue();
             size_t index = 0;
-            while (index < POINTER_SIZE) {
+            while (index < pointerLocations_.size()) {
                 TestUtil::WaitForBreakpoint(pointerLocations_.at(index));
                 TestUtil::Continue();
                 if (index < STEP_SIZE) {
@@ -98,11 +96,13 @@ public:
 
 private:
     static constexpr size_t LINE_COLUMN = 2;
-    static constexpr size_t POINTER_SIZE = 10;
-    static constexpr size_t STEP_SIZE = 9;
+    static constexpr size_t POINTER_SIZE = 5;
+    static constexpr size_t STEP_SIZE = 4;
 
     std::string pandaFile_ = DEBUGGER_ABC_DIR "step.abc";
     std::string entryPoint_ = "_GLOBAL::func_main_0";
+    JSPtLocation location1_ {nullptr, JSPtLocation::EntityId(0), 0};
+    JSPtLocation location2_ {nullptr, JSPtLocation::EntityId(0), 0};
     size_t breakpointCounter_ = 0;
     size_t stepCompleteCounter_ = 0;
     std::vector<JSPtLocation> pointerLocations_;
@@ -111,17 +111,17 @@ private:
     void SetJSPtLocation(size_t *arr, size_t number, std::vector<JSPtLocation> &locations)
     {
         for (size_t i = 0; i < number; i++) {
-            JSPtLocation location =
+            JSPtLocation location_ =
                 TestUtil::GetLocation(arr[i * LINE_COLUMN], arr[i * LINE_COLUMN + 1], pandaFile_.c_str());
-            locations.push_back(location);
+            locations.push_back(location_);
         }
     };
 };
 
-std::unique_ptr<TestEvents> GetJsStepIntoTest()
+std::unique_ptr<TestEvents> GetJsStepOutTest()
 {
-    return std::make_unique<JsStepIntoTest>();
+    return std::make_unique<JsStepOutTest>();
 }
 }  // namespace panda::ecmascript::tooling::test
 
-#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_STEP_INTO_TEST_H
+#endif  // ECMASCRIPT_TOOLING_TEST_UTILS_TESTCASES_JS_STEP_OUT_TEST_H

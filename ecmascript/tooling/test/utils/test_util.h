@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TEST_UTIL_H
 #define ECMASCRIPT_TOOLING_TEST_UTILS_TEST_UTIL_H
 
-#include <vector>
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/tooling/agent/debugger_impl.h"
 #include "ecmascript/tooling/backend/js_debugger.h"

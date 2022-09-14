@@ -25,6 +25,8 @@
 #include "ecmascript/tooling/test/testcases/js_range_error_test.h"
 #include "ecmascript/tooling/test/testcases/js_single_step_test.h"
 #include "ecmascript/tooling/test/testcases/js_step_into_test.h"
+#include "ecmascript/tooling/test/testcases/js_step_over_test.h"
+#include "ecmascript/tooling/test/testcases/js_step_out_test.h"
 #include "ecmascript/tooling/test/testcases/js_syntax_exception_test.h"
 #include "ecmascript/tooling/test/testcases/js_throw_exception_test.h"
 
@@ -43,6 +45,8 @@ static void RegisterTests()
     TestUtil::RegisterTest("JsSyntaxExceptionTest", GetJsSyntaxExceptionTest());
     TestUtil::RegisterTest("JsThrowExceptionTest", GetJsThrowExceptionTest());
     TestUtil::RegisterTest("JsStepIntoTest", GetJsStepIntoTest());
+    TestUtil::RegisterTest("JsStepOverTest", GetJsStepOverTest());
+    TestUtil::RegisterTest("JsStepOutTest", GetJsStepOutTest());
 }
 
 std::vector<const char *> GetTestList()
