@@ -25,12 +25,12 @@ using namespace panda::ecmascript;
 namespace OHOS {
     void JSNApiDeserializeValueFuzzTest(const uint8_t* data, size_t size)
     {
-        if (size == 0) {
-            return;
-        }
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }
         JSThread *thread = vm->GetAssociatedJSThread();
         JSHandle<JSTaggedValue> transfer(thread, JSTaggedValue::Undefined());
         Serializer serializer = Serializer(thread);

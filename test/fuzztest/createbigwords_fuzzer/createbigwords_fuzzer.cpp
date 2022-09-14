@@ -24,13 +24,12 @@ using namespace panda::ecmascript;
 namespace OHOS {
     void CreateBigWordsFuzzTest(const uint8_t* data, size_t size)
     {
-        if (!size) {
-            return;
-        }
-
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }        
         bool sign = true;
         const size_t uint64BytesNum = 8;
         if (size < uint64BytesNum) {

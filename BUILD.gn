@@ -751,6 +751,7 @@ source_set("libark_jsruntime_test_set") {
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
     "$js_root:asm_interp_enable_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
   ]
 }
 
