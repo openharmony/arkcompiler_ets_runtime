@@ -80,7 +80,7 @@ source_set("libark_jsoptimizer_set") {
     "trampoline/x64/common_call.cpp",
     "trampoline/x64/optimized_call.cpp",
     "type.cpp",
-#    "type_inference/type_infer.cpp",
+    "type_inference/type_infer.cpp",
     "type_recorder.cpp",
     "verifier.cpp",
   ]

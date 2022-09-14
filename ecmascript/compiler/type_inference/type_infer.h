@@ -52,6 +52,7 @@ private:
     bool Infer(GateRef gate);
     bool InferPhiGate(GateRef gate);
     bool SetNumberType(GateRef gate);
+    bool SetBigIntType(GateRef gate);
     bool SetBooleanType(GateRef gate);
     bool InferLdUndefined(GateRef gate);
     bool InferLdNull(GateRef gate);
@@ -69,11 +70,10 @@ private:
     bool InferNewObject(GateRef gate);
     bool SetStGlobalBcType(GateRef gate);
     bool InferLdStr(GateRef gate);
-    bool InferCallFunction(GateRef gate);
+    bool InferCallFunction(GateRef gate, bool isDeprecated = false);
     bool InferLdObjByValue(GateRef gate);
     bool InferGetNextPropName(GateRef gate);
     bool InferDefineGetterSetterByValue(GateRef gate);
-    bool InferNewObjApply(GateRef gate);
     bool InferSuperCall(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
     bool InferLdLexVarDyn(GateRef gate);
@@ -116,7 +116,7 @@ private:
     LexEnvManager *lexEnvManager_ {nullptr};
     size_t methodId_ {0};
     bool enableLog_ {false};
-    std::map<uint32_t, GateType> stringIdToGateType_;
+    std::map<uint16_t, GateType> stringIdToGateType_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H
