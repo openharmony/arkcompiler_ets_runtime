@@ -387,7 +387,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::TYPEOF_IMM16:
             LowerTypeof(gate, glue);
             break;
-        case EcmaOpcode::THROWCONSTASSIGNMENT_PREF_V8:
+        case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
             LowerThrowConstAssignment(gate, glue);
             break;
         case EcmaOpcode::THROWTHROWNOTEXISTS_PREF:
@@ -396,16 +396,17 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::THROWPATTERNNONCOERCIBLE_PREF:
             LowerThrowPatternNonCoercible(gate, glue);
             break;
-        case EcmaOpcode::THROWIFNOTOBJECT_PREF_V8:
+        case EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8:
             LowerThrowIfNotObject(gate, glue);
             break;
-        case EcmaOpcode::THROWUNDEFINEDIFHOLE_PREF_V8_V8:
+        case EcmaOpcode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8:
             LowerThrowUndefinedIfHole(gate, glue);
             break;
-        case EcmaOpcode::THROWIFSUPERNOTCORRECTCALL_PREF_IMM16:
+        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
+        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
             LowerThrowIfSuperNotCorrectCall(gate, glue);
             break;
-        case EcmaOpcode::THROWDELETESUPERPROPERTY_PREF:
+        case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
             LowerThrowDeleteSuperProperty(gate, glue);
             break;
         case EcmaOpcode::LDGLOBALTHIS_PREF:
@@ -478,6 +479,7 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
+        case EcmaOpcode::DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16:
             LowerCreateObjectWithBuffer(gate, glue, jsFunc);
             break;
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
@@ -929,7 +931,7 @@ void SlowPathLowering::LowerLoadStr(GateRef gate, GateRef glue, GateRef jsFunc)
     DebugPrintBC(gate, glue);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    GateRef newGate = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef newGate = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     builder_.Branch(builder_.IsSpecial(newGate, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
     ReplaceHirToSubCfg(gate, newGate, successControl, failControl);
@@ -986,7 +988,7 @@ void SlowPathLowering::LowerStGlobalVar(GateRef gate, GateRef glue, GateRef jsFu
     DebugPrintBC(gate, glue);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    GateRef prop = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef prop = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     const int id = RTSTUB_ID(StGlobalVar);
     ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: number of value inputs
     GateRef newGate = LowerCallRuntime(glue, id, {prop, acc_.GetValueIn(gate, 1)}, true);
@@ -1896,7 +1898,7 @@ void SlowPathLowering::LowerLdBigInt(GateRef gate, GateRef glue, GateRef jsFunc)
     Label exceptionExit(&builder_);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef numberBigInt = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef numberBigInt = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdBigInt), {numberBigInt}, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &exceptionExit, &successExit);
@@ -1963,7 +1965,7 @@ void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFu
     std::vector<GateRef> failControl;
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef key = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef key = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef inner = builder_.ToTaggedInt(acc_.GetValueIn(gate, 1));
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdModuleVarOnJSFunc), {key, inner, jsFunc}, true);
     successControl.emplace_back(builder_.GetState());
@@ -1996,7 +1998,7 @@ void SlowPathLowering::LowerGetModuleNamespace(GateRef gate, GateRef glue, GateR
     std::vector<GateRef> failControl;
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef localName = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef localName = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespaceOnJSFunc), { localName, jsFunc }, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
@@ -2220,7 +2222,7 @@ void SlowPathLowering::LowerCreateRegExpWithLiteral(GateRef gate, GateRef glue, 
     const int id = RTSTUB_ID(CreateRegExpWithLiteral);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef pattern = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef pattern = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef flags = acc_.GetValueIn(gate, 1);
     GateRef newGate = LowerCallRuntime(glue, id, { pattern, builder_.ToTaggedInt(flags) }, true);
     builder_.Branch(builder_.IsSpecial(newGate, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
@@ -2318,7 +2320,7 @@ void SlowPathLowering::LowerStOwnByName(GateRef gate, GateRef glue, GateRef jsFu
     DebugPrintBC(gate, glue);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef propKey = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef propKey = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateRef accValue = acc_.GetValueIn(gate, 2);
     // we do not need to merge outValueGate, so using GateRef directly instead of using Variable
@@ -2435,7 +2437,7 @@ void SlowPathLowering::LowerTryStGlobalByName(GateRef gate, GateRef glue, GateRe
     DEFVAlUE(res, (&builder_), VariableType::JS_ANY(), builder_.Int64(JSTaggedValue::VALUE_HOLE));
     // 2 : number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef propKey = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef propKey = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     Label isUndefined(&builder_);
     Label notUndefined(&builder_);
     Label successExit(&builder_);
@@ -2583,7 +2585,7 @@ void SlowPathLowering::LowerStOwnByNameWithNameSet(GateRef gate, GateRef glue, G
     DebugPrintBC(gate, glue);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef propKey = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef propKey = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateRef accValue = acc_.GetValueIn(gate, 2);
     GateRef result;
@@ -2640,7 +2642,7 @@ void SlowPathLowering::LowerLdGlobalVar(GateRef gate, GateRef glue, GateRef jsFu
     GateRef ret;
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef propKey = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef propKey = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef globalObject = builder_.GetGlobalObject(glue);
     result = LowerCallRuntime(glue, RTSTUB_ID(GetGlobalOwnProperty), { propKey }, true);
     builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE),
@@ -2680,7 +2682,7 @@ void SlowPathLowering::LowerLdObjByName(GateRef gate, GateRef glue, GateRef jsFu
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef receiver = acc_.GetValueIn(gate, 1);
-    GateRef prop = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef prop = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     builder_.Branch(builder_.TaggedIsHeapObject(receiver), &receiverIsHeapObject, &slowPath);
     builder_.Bind(&receiverIsHeapObject);
     {
@@ -2723,7 +2725,7 @@ void SlowPathLowering::LowerStObjByName(GateRef gate, GateRef glue, GateRef jsFu
     Label exceptionExit(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef prop = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef prop = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateRef result;
     builder_.Branch(builder_.TaggedIsHeapObject(receiver), &receiverIsHeapObject, &slowPath);
@@ -2948,7 +2950,7 @@ void SlowPathLowering::LowerLdSuperByName(GateRef gate, GateRef glue, GateRef js
     Label exceptionExit(&builder_);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef prop = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef prop = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef result =
         LowerCallRuntime(glue, RTSTUB_ID(OptLdSuperByValue), {acc_.GetValueIn(gate, 1), prop, jsFunc}, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
@@ -2964,7 +2966,7 @@ void SlowPathLowering::LowerStSuperByName(GateRef gate, GateRef glue, GateRef js
     Label exceptionExit(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef prop = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef prop = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     auto args2 = { acc_.GetValueIn(gate, 1), prop, acc_.GetValueIn(gate, 2), jsFunc };
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(OptStSuperByValue), args2, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
