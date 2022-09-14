@@ -904,7 +904,7 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
     auto depend = env_->GetCurrentLabel()->GetDepend();
     GateRef result;
     if (env_->IsArch64Bit()) {
-        GateRef ptr = Int64Add(base, offset);
+        GateRef ptr = PtrAdd(base, offset);
         if (type == VariableType::NATIVE_POINTER()) {
             type = VariableType::INT64();
         }
@@ -914,7 +914,7 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
         if (type == VariableType::NATIVE_POINTER()) {
             type = VariableType::INT32();
         }
-        GateRef ptr = Int32Add(base, offset);
+        GateRef ptr = PtrAdd(base, offset);
         result = env_->GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
         env_->GetCurrentLabel()->SetDepend(result);
     } else {

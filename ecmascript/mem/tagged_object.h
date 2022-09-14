@@ -45,6 +45,8 @@ public:
         return sizeof(TaggedObject);
     }
 
+    static constexpr int HCLASS_OFFSET = 0;
+
     JSThread* GetJSThread() const;
 
 private:

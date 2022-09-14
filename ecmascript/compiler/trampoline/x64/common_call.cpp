@@ -35,7 +35,7 @@ void CommonCall::CopyArgumentWithArgV(ExtendedAssembler *assembler, Register arg
     Label loopBeginning;
     Register arg = __ AvailableRegister1();
     __ Bind(&loopBeginning);
-    __ Movq(Operand(argV, argc, Scale::Times8, -8), arg); // -8: stack index
+    __ Movq(Operand(argV, argc, Scale::Times8, -FRAME_SLOT_SIZE), arg); // -8: stack index
     __ Pushq(arg);
     __ Subq(1, argc);
     __ Ja(&loopBeginning);

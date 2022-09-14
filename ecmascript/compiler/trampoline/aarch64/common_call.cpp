@@ -126,8 +126,8 @@ void CommonCall::PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, R
     }
     __ Add(argv, argv, Operand(argc.W(), UXTW, 3));  // 3: argc * 8
     __ Bind(&loopBeginning);
-    __ Ldr(op, MemoryOperand(argv, -8, PREINDEX));  // -8: 8 bytes
-    __ Str(op, MemoryOperand(currentSlot, -8, PREINDEX));  // -8: 8 bytes
+    __ Ldr(op, MemoryOperand(argv, -FRAME_SLOT_SIZE, PREINDEX));  // -8: 8 bytes
+    __ Str(op, MemoryOperand(currentSlot, -FRAME_SLOT_SIZE, PREINDEX));  // -8: 8 bytes
     __ Sub(argc.W(), argc.W(), Immediate(1));
     __ Cbnz(argc.W(), &loopBeginning);
 }
