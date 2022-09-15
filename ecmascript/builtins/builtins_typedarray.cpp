@@ -973,21 +973,29 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
 
     // 5. Assert: target has a [[ViewedArrayBuffer]] internal slot.
     // 6. Let targetOffset be ToInteger (offset).
-    JSTaggedNumber tTargetOffset = JSTaggedValue::ToInteger(thread, GetCallArg(argv, 1));
-    // 7. ReturnIfAbrupt(targetOffset).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double rawTargetOffset = tTargetOffset.GetNumber();
-    // 8. If targetOffset < 0, throw a RangeError exception.
-    if (rawTargetOffset < 0) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "The targetOffset of This value is less than 0.",
-                                     JSTaggedValue::Exception());
-    }
-    uint64_t targetOffset = 0;
-    if (rawTargetOffset > MAX_ARRAY_INDEX) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "The targetOffset is bigger than 2^32-1.",
+    const JSHandle<JSTaggedValue> srcOffset = GetCallArg(argv, 1);
+    uint32_t targetOffset = 0;
+    if (srcOffset->IsInt()) {
+        if (srcOffset->GetInt() < 0) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "The targetOffset of This value is less than 0.",
                                          JSTaggedValue::Exception());
+        }
+        targetOffset = static_cast<uint32_t>(srcOffset->GetInt());
     } else {
-        targetOffset = static_cast<uint32_t>(rawTargetOffset);
+        JSTaggedNumber tTargetOffset = JSTaggedValue::ToInteger(thread, srcOffset);
+        // 7. ReturnIfAbrupt(targetOffset).
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        double rawTargetOffset = tTargetOffset.GetNumber();
+        // 8. If targetOffset < 0, throw a RangeError exception.
+        if (rawTargetOffset < 0) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "The targetOffset of This value is less than 0.",
+                                         JSTaggedValue::Exception());
+        } else if (rawTargetOffset == base::POSITIVE_INFINITY) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "The targetOffset is infinty, which is greater than targetLength.",
+                                         JSTaggedValue::Exception());
+        } else {
+            targetOffset = static_cast<uint32_t>(rawTargetOffset);
+        }
     }
     // 9. Let targetBuffer be the value of target’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTaggedValue> targetBuffer(thread, targetObj->GetViewedArrayBuffer());
@@ -1017,13 +1025,15 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // 18. Let srcLength be ToLength(Get(src, "length")).
         JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
-        JSHandle<JSTaggedValue> lenResult =
-            JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(src), lengthKey).GetValue();
+        JSHandle<JSTaggedValue> lenResult = JSHandle<JSTaggedValue>(thread, 
+            FastRuntimeStub::FastGetPropertyByValue(thread,
+                                                    JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(),
+                                                    lengthKey.GetTaggedValue()));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSTaggedNumber tSrcLen = JSTaggedValue::ToLength(thread, lenResult);
         // 19. ReturnIfAbrupt(srcLength).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        uint64_t srcLen = tSrcLen.GetNumber();
+        int32_t srcLen = tSrcLen.GetNumber();
         // 20. If srcLength + targetOffset > targetLength, throw a RangeError exception.
         if (srcLen + targetOffset > targetLength) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The sum of srcLength and targetOffset is greater than targetLength.",
@@ -1044,12 +1054,14 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         //   f. Set k to k + 1.
         //   g. Set targetByteIndex to targetByteIndex + targetElementSize.
         JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
+        JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> kNumberHandle(thread, JSTaggedValue::Undefined());
         while (targetByteIndex < limit) {
             tKey.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
-            JSHandle<JSTaggedValue> kValue =
-                JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(src), kKey).GetValue();
+            kValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, 
+                                                                  JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(),
+                                                                  kKey.GetTaggedValue()));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (BuiltinsArrayBuffer::IsDetachedBuffer(targetBuffer.GetTaggedValue())) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
@@ -1126,6 +1138,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     uint32_t targetByteIndex = targetOffset * targetElementSize + targetByteOffset;
     // 27. Let limit be targetByteIndex + targetElementSize × srcLength.
     uint32_t limit = targetByteIndex + targetElementSize * srcLength;
+    uint32_t count = (limit - targetByteIndex) > 0 ? (limit - targetByteIndex) : 0;
     // 28. If SameValue(srcType, targetType) is false, then
     //   a. Repeat, while targetByteIndex < limit
     //     i. Let value be GetValueFromBuffer(srcBuffer, srcByteIndex, srcType).
@@ -1145,7 +1158,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
             srcByteIndex = srcByteIndex + srcElementSize;
             targetByteIndex = targetByteIndex + targetElementSize;
         }
-    } else {
+    } else if (count > 0) {
         // 29. Else,
         //   a. NOTE: If srcType and targetType are the same the transfer must be performed in a manner that preserves
         //   the bit-level encoding of the source data.
@@ -1154,16 +1167,21 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         //     ii. Perform SetValueInBuffer (targetBuffer, targetByteIndex, "Uint8", value).
         //     iii. Set srcByteIndex to srcByteIndex + 1.
         //     iv. Set targetByteIndex to targetByteIndex + 1.
-        while (targetByteIndex < limit) {
-            JSTaggedValue taggedData =
-                BuiltinsArrayBuffer::GetValueFromBuffer(thread, srcBufferHandle.GetTaggedValue(), srcByteIndex,
-                                                        DataViewType::UINT8, true);
-            value.Update(taggedData);
-            BuiltinsArrayBuffer::SetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
-                                                  DataViewType::UINT8, value, true);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            srcByteIndex = srcByteIndex + 1U;
-            targetByteIndex = targetByteIndex + 1U;
+        JSArrayBuffer *jsArrayBuffer = JSArrayBuffer::Cast(srcBufferHandle.GetTaggedValue().GetTaggedObject());
+        JSTaggedValue srcData = jsArrayBuffer->GetArrayBufferData();
+        void *srcBuf =
+            reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(JSNativePointer::Cast(
+                                                                 srcData.GetTaggedObject())->GetExternalPointer())
+                                                                 + srcByteIndex);
+        JSArrayBuffer *jsBuffer = JSArrayBuffer::Cast(targetBuffer.GetTaggedValue().GetTaggedObject());
+        JSTaggedValue targetData = jsBuffer->GetArrayBufferData();
+        void *targetBuf =
+            reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(JSNativePointer::Cast(
+                                                                 targetData.GetTaggedObject())->GetExternalPointer())
+                                                                 + targetByteIndex);
+        if (memcpy_s(targetBuf, srcLength * srcElementSize, srcBuf, srcLength * srcElementSize) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
         }
     }
     // 30. Return undefined.
