@@ -275,6 +275,7 @@ void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, size
                 case LiteralTag::METHOD:
                 case LiteralTag::GENERATORMETHOD: {
                     methodOffsets.emplace_back(std::get<uint32_t>(value));
+                    break;
                 }
                 default: {
                     break;

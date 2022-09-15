@@ -38,10 +38,10 @@ public:
     static JSHandle<JSTaggedValue> GetIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                const JSHandle<JSTaggedValue> &method);
     // 7.4.2
-    static JSHandle<JSObject> IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter,
+    static JSHandle<JSTaggedValue> IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter,
                                            const JSHandle<JSTaggedValue> &value);
 
-    static JSHandle<JSObject> IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter);
+    static JSHandle<JSTaggedValue> IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter);
     // 7.4.3
     static bool IteratorComplete(JSThread *thread, const JSHandle<JSTaggedValue> &iterResult);
     // 7.4.4
