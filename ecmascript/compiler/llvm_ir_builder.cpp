@@ -1628,9 +1628,14 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
         }
     }
     if (e1ValCode == MachineType::I32 || e1ValCode == MachineType::I64 || e1ValCode == MachineType::ARCH) {
-        e1Value = CanonicalizeToInt(e1Value);
-        e2Value = CanonicalizeToInt(e2Value);
-        result = LLVMBuildICmp(builder_, intOpcode, e1Value, e2Value, "");
+        if (LLVMGetTypeKind(LLVMTypeOf(e1Value)) == LLVMPointerTypeKind &&
+            LLVMGetTypeKind(LLVMTypeOf(e2Value)) == LLVMPointerTypeKind) {
+            result = LLVMBuildICmp(builder_, intOpcode, e1Value, e2Value, "");
+        } else {
+            e1Value = CanonicalizeToInt(e1Value);
+            e2Value = CanonicalizeToInt(e2Value);
+            result = LLVMBuildICmp(builder_, intOpcode, e1Value, e2Value, "");
+        }
     } else if (e1ValCode == MachineType::F64) {
         result = LLVMBuildFCmp(builder_, realOpcode, e1Value, e2Value, "");
     } else {

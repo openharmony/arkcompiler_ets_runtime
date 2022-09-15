@@ -279,7 +279,7 @@ void TryStoreICByNameStubBuilder::GenerateCircuit()
         }
     }
     Bind(&receiverNotHeapObject);
-    Return(Hole(VariableType::INT64()));
+    Return(Hole());
 }
 
 void TryStoreICByValueStubBuilder::GenerateCircuit()
@@ -319,7 +319,7 @@ void TryStoreICByValueStubBuilder::GenerateCircuit()
         }
     }
     Bind(&receiverNotHeapObject);
-    Return(Hole(VariableType::INT64()));
+    Return(Hole());
 }
 
 void SetValueWithBarrierStubBuilder::GenerateCircuit()

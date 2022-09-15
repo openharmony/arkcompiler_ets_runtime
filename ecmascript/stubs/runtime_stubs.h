@@ -99,7 +99,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
     V(ThrowTypeError)                     \
-    V(JSProxySetProperty)                 \
+    V(DebugBreak)                         \
     V(GetHash32)                          \
     V(ComputeHashcode)                    \
     V(GetTaggedArrayPtrTest)              \

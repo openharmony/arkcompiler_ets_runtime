@@ -140,6 +140,7 @@ template("host_moduletest_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       js_vm_options += " --enable-ark-tools=true"
+      js_vm_options += " --enable-force-gc=false"
     }
 
     args = [
@@ -186,6 +187,7 @@ template("host_moduletest_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _asm_run_options_ += " --enable-ark-tools=true"
+      _asm_run_options_ += " --enable-force-gc=false"
     }
 
     args = [
@@ -234,6 +236,7 @@ template("host_moduletest_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _asm_run_options_ += " --enable-ark-tools=true"
+      _asm_run_options_ += " --enable-force-gc=false"
     }
 
     args = [
@@ -349,6 +352,7 @@ template("host_aot_js_test_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
     }
 
     _icu_data_path_options_ =
@@ -467,6 +471,7 @@ template("host_aot_test_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
     }
 
     args = [

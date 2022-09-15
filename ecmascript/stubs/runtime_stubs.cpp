@@ -120,16 +120,10 @@ DEF_RUNTIME_STUBS(CallInternalSetter)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(JSProxySetProperty)
+DEF_RUNTIME_STUBS(DebugBreak)
 {
-    RUNTIME_STUBS_HEADER(JSProxySetProperty);
-    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> index = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);   // 2: means the second parameter
-    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
-    JSTaggedValue argMayThrow = GetArg(argv, argc, 4);   // 4: means the fourth parameter
-    auto result = JSProxy::SetProperty(thread, proxy, index, value, receiver, argMayThrow.IsTrue());
-    return JSTaggedValue(result).GetRawData();
+    RUNTIME_STUBS_HEADER(DebugBreak);
+    return JSTaggedValue::Undefined().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetHash32)
