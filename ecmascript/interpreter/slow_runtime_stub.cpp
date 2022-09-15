@@ -47,7 +47,7 @@ JSTaggedValue SlowRuntimeStub::CallSpreadDyn(JSThread *thread, JSTaggedValue fun
                                              JSTaggedValue array)
 {
     INTERPRETER_TRACE(thread, CallSpreadDyn);
-    if ((!obj.IsUndefined() && !obj.IsECMAObject()) || !func.IsJSFunction() || !array.IsJSArray()) {
+    if ((!obj.IsUndefined() && !obj.IsECMAObject()) || !func.IsCallable() || !array.IsJSArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "cannot Callspread", JSTaggedValue::Exception());
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
