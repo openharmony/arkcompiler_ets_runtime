@@ -63,6 +63,7 @@
     V(EvalError, EVAL_ERROR)
 
 namespace panda {
+using NativeFinalize = void (*)(EcmaVM *);
 class JSNApiHelper {
 public:
     template<typename T>
@@ -88,6 +89,37 @@ public:
         ASSERT(from != nullptr);
         return ecmascript::JSHandle<ecmascript::JSTaggedValue>(reinterpret_cast<uintptr_t>(from));
     }
+};
+
+class NativeReferenceHelper {
+public:
+    NativeReferenceHelper(EcmaVM *vm, Global<ObjectRef> obj, NativeFinalize callback)
+        :  vm_(vm), obj_(obj), callback_(callback) {}
+    ~NativeReferenceHelper() = default;
+    static void FirstPassCallBack(void* ref)
+    {
+        auto that = reinterpret_cast<NativeReferenceHelper*>(ref);
+        that->obj_.FreeGlobalHandleAddr();
+    }
+
+    static void SecondPassCallBack(void* ref)
+    {
+        auto that = reinterpret_cast<NativeReferenceHelper*>(ref);
+        if (that->callback_ != nullptr) {
+           that->callback_(that->vm_);
+        }
+        that->callback_ = nullptr;
+    }
+
+    void SetWeakCallback()
+    {
+        obj_.SetWeakCallback(this, FirstPassCallBack, SecondPassCallBack);
+    }
+
+private:
+    EcmaVM *vm_;
+    Global<ObjectRef> obj_;
+    NativeFinalize callback_ = nullptr;
 };
 
 class Callback {

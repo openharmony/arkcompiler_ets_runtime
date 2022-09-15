@@ -984,6 +984,29 @@ void SnapshotProcessor::Initialize()
     snapshotLocalSpace_ = new SnapshotSpace(heap, snapshotSpaceCapacity, snapshotSpaceCapacity);
 }
 
+SnapshotProcessor::~SnapshotProcessor()
+{
+    pandaMethod_.clear();
+    stringVector_.clear();
+    regionIndexMap_.clear();
+    if (oldLocalSpace_ != nullptr) {
+        delete oldLocalSpace_;
+        oldLocalSpace_ = nullptr;
+    }
+    if (nonMovableLocalSpace_ != nullptr) {
+        delete nonMovableLocalSpace_;
+        nonMovableLocalSpace_ = nullptr;
+    }
+    if (machineCodeLocalSpace_ != nullptr) {
+        delete machineCodeLocalSpace_;
+        machineCodeLocalSpace_ = nullptr;
+    }
+    if (snapshotLocalSpace_ != nullptr) {
+        delete snapshotLocalSpace_;
+        snapshotLocalSpace_ = nullptr;
+    }
+}
+
 void SnapshotProcessor::StopAllocate()
 {
     oldLocalSpace_->Stop();

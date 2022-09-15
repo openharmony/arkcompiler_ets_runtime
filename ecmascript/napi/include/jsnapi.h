@@ -309,7 +309,7 @@ public:
 
     void SetWeak();
 
-    void SetWeakCallback(void *ref, WeakRefClearCallBack callback);
+    void SetWeakCallback(void *ref, WeakRefClearCallBack firstCallback, WeakRefClearCallBack secondCallback);
 
     void ClearWeak();
 
@@ -1147,7 +1147,7 @@ private:
     static uintptr_t GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeak(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref,
-                                     WeakRefClearCallBack callback);
+                                     WeakRefClearCallBack firstCallback, WeakRefClearCallBack secondCallback);
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
@@ -1351,9 +1351,9 @@ void Global<T>::SetWeak()
 }
 
 template <typename T>
-void Global<T>::SetWeakCallback(void *ref, WeakRefClearCallBack callback)
+void Global<T>::SetWeakCallback(void *ref, WeakRefClearCallBack firstCallback, WeakRefClearCallBack secondCallback)
 {
-    address_ = JSNApi::SetWeakCallback(vm_, address_, ref, callback);
+    address_ = JSNApi::SetWeakCallback(vm_, address_, ref, firstCallback, secondCallback);
 }
 
 template<typename T>
