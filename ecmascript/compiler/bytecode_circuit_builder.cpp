@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -681,6 +682,13 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.accIn = true;
             break;
         }
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8: {
+            uint32_t startReg = READ_INST_8_1();// this
+            uint32_t a0 = READ_INST_8_2();
+            info.inputs.emplace_back(VirtualRegister(startReg));
+            info.inputs.emplace_back(VirtualRegister(a0));
+            break;
+        }
         case EcmaOpcode::DEPRECATED_CALLARG1_PREF_V8_V8: {
             uint32_t startReg = READ_INST_8_1();
             uint32_t a0 = READ_INST_8_2();
@@ -752,13 +760,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CALLTHIS0_IMM8_V8: {
             int32_t startReg = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(startReg));
-            break;
-        }
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8: {
-            int32_t startReg = READ_INST_8_1();
-            uint32_t a0 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(startReg));
-            info.inputs.emplace_back(VirtualRegister(a0));
             break;
         }
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8: {
