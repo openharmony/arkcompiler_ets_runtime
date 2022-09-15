@@ -41,7 +41,7 @@ using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;
 class SnapshotProcessor final {
 public:
     explicit SnapshotProcessor(EcmaVM *vm) : vm_(vm), objXRay_(vm) {}
-    ~SnapshotProcessor() = default;
+    ~SnapshotProcessor();
 
     void Initialize();
     void StopAllocate();

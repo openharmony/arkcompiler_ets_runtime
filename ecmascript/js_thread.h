@@ -269,6 +269,11 @@ public:
         return handleScopeStorageEnd_;
     }
 
+    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> *GetWeakNodeSecondPassCallbacks()
+    {
+        return &weakNodeSecondPassCallbacks_;
+    }
+
     void SetHandleScopeStorageEnd(JSTaggedType *value)
     {
         handleScopeStorageEnd_ = value;
@@ -651,6 +656,7 @@ private:
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
     int32_t currentHandleStorageIndex_ {-1};
     int32_t handleScopeCount_ {0};
+    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> weakNodeSecondPassCallbacks_ {};
 
     PropertiesCache *propertiesCache_ {nullptr};
     EcmaGlobalStorage *globalStorage_ {nullptr};

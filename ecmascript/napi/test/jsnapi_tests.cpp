@@ -68,6 +68,19 @@ Local<JSValueRef> FunctionCallback(JsiRuntimeCallInfo* info)
     return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
 }
 
+void WeakRefCallback(EcmaVM* vm) {
+    LocalScope scope(vm);
+    Local<ObjectRef> object = ObjectRef::New(vm);
+    Global<ObjectRef> globalObject(vm, object);
+    globalObject.SetWeak();
+    Local<ObjectRef> object1 = ObjectRef::New(vm);
+    Global<ObjectRef> globalObject1(vm, object1);
+    globalObject1.SetWeak();
+    vm->CollectGarbage(TriggerGCType::YOUNG_GC);
+    vm->CollectGarbage(TriggerGCType::OLD_GC);
+    globalObject.FreeGlobalHandleAddr();
+}
+
 void ThreadCheck(const EcmaVM *vm)
 {
     EXPECT_TRUE(vm->GetJSThread()->GetThreadId() != JSThread::GetCurrentThreadId());
@@ -907,5 +920,38 @@ HWTEST_F_L0(JSNApiTests, ClassFunction)
     JSTaggedValue accessor = JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(
                                                            JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(accessor.IsInternalAccessor());
+}
+
+HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object1 = ObjectRef::New(vm_);
+    Global<ObjectRef> globalObject1(vm_, object1);
+    globalObject1.SetWeak();
+    {
+        LocalScope scope1(vm_);
+        Local<ObjectRef> object2 = ObjectRef::New(vm_);
+        Global<ObjectRef> globalObject2(vm_, object2);
+        NativeReferenceHelper *ref1 = new NativeReferenceHelper(vm_, globalObject2, WeakRefCallback);
+        ref1->SetWeakCallback();
+    }
+    {
+        LocalScope scope1(vm_);
+        Local<ObjectRef> object3 = ObjectRef::New(vm_);
+        Global<ObjectRef> globalObject3(vm_, object3);
+        globalObject3.SetWeak();
+    }
+    Local<ObjectRef> object4 = ObjectRef::New(vm_);
+    Global<ObjectRef> globalObject4(vm_, object4);
+    NativeReferenceHelper *ref2 = new NativeReferenceHelper(vm_, globalObject4, WeakRefCallback);
+    globalObject4.SetWeakCallback(ref2, NativeReferenceHelper::FirstPassCallBack, nullptr);
+    int weakNodeNum = 0;
+    vm_->CollectGarbage(TriggerGCType::OLD_GC);
+    auto ecmaGlobalStorage = thread_->GetEcmaGlobalStorage();
+    ecmaGlobalStorage->IterateWeakUsageGlobal([&weakNodeNum]([[maybe_unused]] EcmaGlobalStorage::Node *node) {
+        weakNodeNum++;
+    });
+
+    ASSERT_EQ(weakNodeNum, 4);
 }
 }  // namespace panda::test
