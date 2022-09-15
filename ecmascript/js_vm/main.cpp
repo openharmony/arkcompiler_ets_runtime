@@ -24,7 +24,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/log.cpp"
+#include "ecmascript/log.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "libpandabase/utils/pandargs.h"

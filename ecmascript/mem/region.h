@@ -229,6 +229,7 @@ public:
 
     void Invalidate()
     {
+        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(GetBegin()), GetSize());
         packedData_.flags_.spaceFlag_ = RegionSpaceFlag::UNINITIALIZED;
     }
 

@@ -144,7 +144,7 @@ void Heap::Destroy()
         inactiveSemiSpace_ = nullptr;
     }
     if (oldSpace_ != nullptr) {
-        oldSpace_->Destroy();
+        oldSpace_->Reset();
         delete oldSpace_;
         oldSpace_ = nullptr;
     }
@@ -154,7 +154,7 @@ void Heap::Destroy()
         compressSpace_ = nullptr;
     }
     if (nonMovableSpace_ != nullptr) {
-        nonMovableSpace_->Destroy();
+        nonMovableSpace_->Reset();
         delete nonMovableSpace_;
         nonMovableSpace_ = nullptr;
     }
@@ -164,7 +164,7 @@ void Heap::Destroy()
         snapshotSpace_ = nullptr;
     }
     if (machineCodeSpace_ != nullptr) {
-        machineCodeSpace_->Destroy();
+        machineCodeSpace_->Reset();
         delete machineCodeSpace_;
         machineCodeSpace_ = nullptr;
     }
@@ -180,6 +180,7 @@ void Heap::Destroy()
         readOnlySpace_ = nullptr;
     }
     if (appSpawnSpace_ != nullptr) {
+        appSpawnSpace_->Reset();
         delete appSpawnSpace_;
         appSpawnSpace_ = nullptr;
     }
@@ -952,7 +953,7 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
     OPTIONAL_LOG(ecmaVm_, INFO) << "-----------------------Statistic Heap Object------------------------";
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
                                 << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsFullMark() << ")";
-#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
+#if ECMASCRIPT_ENABLE_HEAP_DETAIL_STATISTICS
     LOG_ECMA(INFO) << "ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize()
                    << "/" << activeSemiSpace_->GetInitialCapacity() << "), NonMovable("
                    << nonMovableSpace_->GetHeapObjectSize() << "/" << nonMovableSpace_->GetCommittedSize()

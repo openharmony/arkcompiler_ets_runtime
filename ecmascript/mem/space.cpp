@@ -19,6 +19,7 @@
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/region-inl.h"
+#include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
 Space::Space(HeapRegionAllocator *heapRegionAllocator,
@@ -53,7 +54,8 @@ void Space::ClearAndFreeRegion(Region *region)
     DecreaseCommitted(region->GetCapacity());
     DecreaseObjectSize(region->GetSize());
     if (spaceType_ == MemSpaceType::OLD_SPACE || spaceType_ == MemSpaceType::NON_MOVABLE ||
-        spaceType_ == MemSpaceType::MACHINE_CODE_SPACE) {
+        spaceType_ == MemSpaceType::MACHINE_CODE_SPACE || spaceType_ == MemSpaceType::LOCAL_SPACE ||
+        spaceType_ == MemSpaceType::APPSPAWN_SPACE) {
         region->DestroyFreeObjectSets();
     }
     heapRegionAllocator_->FreeRegion(region);

@@ -997,18 +997,22 @@ SnapshotProcessor::~SnapshotProcessor()
     stringVector_.clear();
     regionIndexMap_.clear();
     if (oldLocalSpace_ != nullptr) {
+        oldLocalSpace_->Reset();
         delete oldLocalSpace_;
         oldLocalSpace_ = nullptr;
     }
     if (nonMovableLocalSpace_ != nullptr) {
+        nonMovableLocalSpace_->Reset();
         delete nonMovableLocalSpace_;
         nonMovableLocalSpace_ = nullptr;
     }
     if (machineCodeLocalSpace_ != nullptr) {
+        machineCodeLocalSpace_->Reset();
         delete machineCodeLocalSpace_;
         machineCodeLocalSpace_ = nullptr;
     }
     if (snapshotLocalSpace_ != nullptr) {
+        snapshotLocalSpace_->Destroy();
         delete snapshotLocalSpace_;
         snapshotLocalSpace_ = nullptr;
     }
@@ -1062,7 +1066,6 @@ void SnapshotProcessor::WriteSpaceObjectToFile(Space* space, std::fstream &write
         writer.write(reinterpret_cast<char *>(lastRegion->packedData_.markGCBitset_),
                      lastRegion->highWaterMark_ - ToUintPtr(lastRegion->packedData_.markGCBitset_));
         writer.flush();
-        space->ReclaimRegions();
     }
 }
 
@@ -1178,6 +1181,7 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
             (fileRegion->packedData_.begin_ - ToUintPtr(fileRegion->packedData_.markGCBitset_));
         ASSERT(liveObjectSize <= region->end_ - region->packedData_.begin_);
 
+        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->packedData_.begin_), liveObjectSize);
         if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
                      liveObjectSize,
                      ToVoidPtr(copyFrom),
