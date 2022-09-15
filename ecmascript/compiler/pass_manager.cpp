@@ -31,7 +31,6 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         LOG_COMPILER(ERROR) << "Cannot execute panda file '" << fileName << "'";
         return false;
     }
-
     auto bcInfoCollector = BytecodeInfoCollector(jsPandaFile, entry_);
     jsPandaFile = ResolveModuleFile(jsPandaFile, fileName);
     auto constantPool = CreateConstPool(jsPandaFile);

@@ -22,6 +22,12 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
+template<class T, class... Args>
+static T *InitializeMemory(T *mem, Args... args)
+{
+    return new (mem) T(std::forward<Args>(args)...);
+}
+
 const CString BytecodeInfoCollector::GetEntryFunName(const std::string_view &entryPoint) const
 {
     CString methodName;
@@ -55,6 +61,7 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
         cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns, &sd, methodName]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
+            auto methodId = mda.GetMethodId();
             ASSERT(codeId.has_value());
 
             MethodLiteral *methodLiteral = methods + (methodIdx++);
@@ -68,18 +75,87 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
                 bytecodeInfo_.mainMethodIndex = methodOffset;
             }
 
-            new (methodLiteral) MethodLiteral(jsPandaFile_, mda.GetMethodId());
+//            new (methodLiteral) MethodLiteral(jsPandaFile_, mda.GetMethodId());
+            InitializeMemory(methodLiteral, jsPandaFile_, mda.GetMethodId());
             methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
             methodLiteral->InitializeCallField(
                 jsPandaFile_, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
-            auto it = processedInsns.find(insns);
-            if (it == processedInsns.end()) {
-                CollectMethodPcs(codeSize, insns, methodLiteral);
-                processedInsns[insns] = bytecodeInfo_.methodPcInfos.size() - 1;
+            if (jsPandaFile_->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
+                panda_file::IndexAccessor indexAccessor(*pf, methodId);
+                // int32_t index = indexAccessor.GetHeaderIndex();
+                panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
+                FunctionKind kind;
+                switch (funcKind) {
+                    case panda_file::FunctionKind::NONE:
+                    case panda_file::FunctionKind::FUNCTION:
+                        kind = FunctionKind::BASE_CONSTRUCTOR;
+                        break;
+                    case panda_file::FunctionKind::NC_FUNCTION:
+                        kind = FunctionKind::ARROW_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::GENERATOR_FUNCTION:
+                        kind = FunctionKind::GENERATOR_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_FUNCTION:
+                        kind = FunctionKind::ASYNC_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_GENERATOR_FUNCTION:
+                        kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_NC_FUNCTION:
+                        kind = FunctionKind::ASYNC_ARROW_FUNCTION;
+                        break;
+                    default:
+                        UNREACHABLE();
+                }
+                methodLiteral->SetFunctionKind(kind);
+#endif
+                auto it = processedInsns.find(insns);
+                if (it == processedInsns.end()) {
+                    auto bcIns = BytecodeInst(insns);
+                    auto bcInsLast = bcIns.JumpTo(codeSize);
+                    bytecodeInfo_.methodPcInfos.emplace_back(MethodPcInfo { {}, {}, {}, codeSize });
+                    int32_t offsetIndex = 1;
+                    uint8_t *curPc = nullptr;
+                    uint8_t *prePc = nullptr;
+                    while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
+                        auto pc = const_cast<uint8_t *>(bcIns.GetAddress());
+                        auto nextInst = bcIns.GetNext();
+                        bcIns = nextInst;
+
+                        auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
+                        auto &byteCodeCurPrePc = bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc;
+                        auto &pcToBCOffset = bytecodeInfo_.methodPcInfos.back().pcToBCOffset;
+                        if (offsetIndex == 1) {
+                            curPc = prePc = pc;
+                            bytecodeBlockInfos.emplace_back(curPc, SplitKind::START, std::vector<uint8_t *>(1, curPc));
+                            byteCodeCurPrePc[curPc] = prePc;
+                            pcToBCOffset[curPc] = offsetIndex++;
+                        } else {
+                            curPc = pc;
+                            byteCodeCurPrePc[curPc] = prePc;
+                            pcToBCOffset[curPc] = offsetIndex++;
+                            prePc = curPc;
+                            BytecodeCircuitBuilder::CollectBytecodeBlockInfo(curPc, bytecodeBlockInfos);
+                        }
+                    }
+                    auto emptyPc = const_cast<uint8_t *>(bcInsLast.GetAddress());
+                    bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc[emptyPc] = prePc;
+                    bytecodeInfo_.methodPcInfos.back().pcToBCOffset[emptyPc] = offsetIndex++;
+                    processedInsns[insns] = bytecodeInfo_.methodPcInfos.size() - 1;
+                }
+                SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
+            } else {
+                auto it = processedInsns.find(insns);
+                if (it == processedInsns.end()) {
+                    CollectMethodPcs(codeSize, insns, methodLiteral);
+                    processedInsns[insns] = bytecodeInfo_.methodPcInfos.size() - 1;
+                }
+                SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
             }
             jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
-            SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
         });
     }
     LOG_COMPILER(INFO) << "Total number of methods in file: "
@@ -252,9 +328,12 @@ void BytecodeInfoCollector::UpdateEcmaBytecodeICOffset(MethodLiteral* method, ui
 void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst)
 {
     auto opcode = inst.GetOpcode();
+    auto pc = const_cast<uint8_t *>(inst.GetAddress());
+    std::cout << "WYL aot =========== inst: " << *pc << std::endl;
+    std::cout << "WYL aot =========== opcode: " << static_cast<uint16_t>(opcode) << std::endl;
     EcmaOpcode newOpcode;
     auto oldLen = OldBytecodeInst::Size(OldBytecodeInst::GetFormat(opcode));
-    auto pc = const_cast<uint8_t *>(inst.GetAddress());
+    pc = const_cast<uint8_t *>(inst.GetAddress());
 
     // First level opcode
     if (static_cast<uint16_t>(opcode) < 236) {  // 236: second level bytecode index
@@ -941,6 +1020,16 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
             }
             break;
         }
+        case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORREJECT_PREF_V8_V8: {
+            newOpcode = EcmaOpcode::ASYNCGENERATORREJECT_V8;
+            *pc = static_cast<uint8_t>(newOpcode);
+            auto newLen = BytecodeInstruction::Size(newOpcode);
+            if (memmove_s(pc + 1, newLen - 1, pc + 2, oldLen - 2) != EOK) {  // 2: skip second level inst and pref
+                LOG_FULL(FATAL) << "FixOpcode memmove_s fail";
+                UNREACHABLE();
+            }
+            break;
+        }
         case OldBytecodeInst::Opcode::ECMA_CREATEASYNCGENERATOROBJ_PREF_V8: {
             newOpcode = EcmaOpcode::CREATEASYNCGENERATOROBJ_V8;
             *pc = static_cast<uint8_t>(newOpcode);
@@ -1487,8 +1576,7 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     if (bcIns.HasFlag(OldBytecodeInst::Flags::STRING_ID) &&
         OldBytecodeInst::HasId(OldBytecodeInst::GetFormat(bcIns.GetOpcode()), 0)) {
-        auto index = jsPandaFile_->GetOrInsertConstantPool(
-            ConstPoolType::STRING, bcIns.GetId());
+        auto index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::STRING, bcIns.GetId());
         FixInstructionId32(bcIns, index);
     } else {
         OldBytecodeInst::Opcode opcode = static_cast<OldBytecodeInst::Opcode>(bcIns.GetOpcode());
@@ -1511,6 +1599,14 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
                 CollectInnerMethods(method, methodId);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::GENERATOR_FUNCTION, methodId);
+                FixInstructionId32(bcIns, index);
+                break;
+            case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
+                methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
+                if (hasTSTypes_) {
+                    CollectInnerMethods(method, methodId);
+                }
+                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::ASYNC_GENERATOR_FUNCTION, methodId);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:

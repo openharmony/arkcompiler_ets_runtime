@@ -606,6 +606,10 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
     auto opcode = inst.GetOpcode();
     info.offset = BytecodeInstruction::Size(opcode);
     info.opcode = opcode;
+    if (opcode == panda::ecmascript::EcmaOpcode::LDGLOBALVAR_IMM16_ID16)
+    {
+        std::cout << "WYL ==================== " << std::endl;
+    }
     info.accIn = inst.HasFlag(BytecodeInstruction::Flags::ACC_READ);
     info.accOut = inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE);
     switch (opcode) {
@@ -674,13 +678,14 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CALLARG1_IMM8_V8: {
             uint32_t a0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(a0));
+            info.accIn = true;
             break;
         }
         case EcmaOpcode::DEPRECATED_CALLARG1_PREF_V8_V8: {
             uint32_t startReg = READ_INST_8_1();
             uint32_t a0 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(startReg));
             info.inputs.emplace_back(VirtualRegister(a0));
+            info.inputs.emplace_back(VirtualRegister(startReg));
             break;
         }
         case EcmaOpcode::CALLARGS2_IMM8_V8_V8: {
@@ -818,8 +823,10 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             }
             break;
         }
-        case EcmaOpcode::RETURN:
         case EcmaOpcode::RETURNUNDEFINED:
+            info.accIn = true;
+            break;
+        case EcmaOpcode::RETURN:
         case EcmaOpcode::LDNAN:
         case EcmaOpcode::LDINFINITY:
         case EcmaOpcode::LDNEWTARGET:
@@ -2749,6 +2756,9 @@ void BytecodeCircuitBuilder::BuildCircuit()
         auto bytecodeInfo = GetBytecodeInfo(pc);
         [[maybe_unused]] size_t numValueInputs = bytecodeInfo.ComputeTotalValueCount();
         [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount() + bytecodeInfo.vregOut.size();
+        gateAcc_.Print(gate);
+        std::cout << "WYL ========== EcmaOpcode: " << GetEcmaOpcodeStr(bytecodeInfo.opcode) << std::endl;
+        std::cout << "WYL ========== numValueInputs: " << numValueInputs << " valueCount: "<< valueCount << std::endl;
         ASSERT(numValueInputs == valueCount);
         ASSERT(numValueOutputs <= 1);
         auto stateCount = gateAcc_.GetStateCount(gate);
