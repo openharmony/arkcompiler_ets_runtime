@@ -743,7 +743,7 @@ DEF_RUNTIME_STUBS(LdObjByValue)
     JSHandle<JSTaggedValue> propKey = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     JSTaggedValue callGetter = GetArg(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue receiver = GetArg(argv, argc, 3);  // 3: means the third parameter
-    return RuntimeLdObjByValue(thread, obj, propKey, callGetter.IsTrue(), receiver);
+    return RuntimeLdObjByValue(thread, obj, propKey, callGetter.IsTrue(), receiver).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StObjByIndex)

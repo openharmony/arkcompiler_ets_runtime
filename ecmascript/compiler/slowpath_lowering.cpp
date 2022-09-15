@@ -688,7 +688,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
             LowerAsyncGeneratorResolve(gate, glue);
             break;
-        case EcmaOpcode::ASYNCGENERATORREJECT_PREF_V8_V8:
+        case EcmaOpcode::ASYNCGENERATORREJECT_V8:
             LowerAsyncGeneratorReject(gate, glue);
             break;
         case EcmaOpcode::STARRAYSPREAD_PREF_V8_V8:
@@ -773,8 +773,6 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-        case EcmaOpcode::LDPATCHVAR_IMM8:
-        case EcmaOpcode::STPATCHVAR_IMM8_V8:
             break;
         default:
             break;

@@ -189,7 +189,7 @@ source_set("ark_aot_compiler_set") {
   sources = [
     "aot_compiler.cpp",
     "pass_manager.cpp",
-    "slowpath_lowering.cpp",
+#    "slowpath_lowering.cpp",
 #    "ts_type_lowering.cpp",
 #    "type_lowering.cpp",
   ]
