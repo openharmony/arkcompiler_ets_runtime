@@ -41,6 +41,7 @@ group("ark_js_moduletest") {
     "lexicalenv:lexicalenvAction",
     "linkedhashtable:linkedhashtableAction",
     "loadicbyvalue:loadicbyvalueAction",
+    "merge:mergeAction",
     "module:moduleAction",
     "moduleUseCjs:moduleUseCjsAction",
     "multiargs:multiargsAction",
