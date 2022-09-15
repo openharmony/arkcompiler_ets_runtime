@@ -219,7 +219,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
     }
 
     JSTaggedValue data = array->GetArrayBufferData();
-    size_t size = length * sizeof(uint8_t);
+    size_t size = static_cast<size_t>(length) * sizeof(uint8_t);
     if (data != JSTaggedValue::Undefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
         auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(size);
@@ -247,7 +247,8 @@ void ObjectFactory::NewJSSharedArrayBufferData(const JSHandle<JSArrayBuffer> &ar
         return;
     }
     void *newData = nullptr;
-    size_t size = JSSharedMemoryManager::GetInstance()->CreateOrLoad(&newData, length) ? length : 0;
+    size_t size =
+        JSSharedMemoryManager::GetInstance()->CreateOrLoad(&newData, length) ? static_cast<size_t>(length) : 0U;
     if (memset_s(newData, length, 0, length) != EOK) {
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();

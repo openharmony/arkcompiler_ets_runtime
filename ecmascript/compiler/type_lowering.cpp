@@ -50,22 +50,17 @@ void TypeLowering::Lower(GateRef gate)
             LowerTypeNewObjDynRange(gate, glue);
             break;
         case ADD2DYN_PREF_V8:
-            // LowerTypeAdd2(gate, glue);
             break;
         case SUB2DYN_PREF_V8:
-            // LowerTypeSub2(gate);
             break;
         case MUL2DYN_PREF_V8:
-            // LowerTypeMul2(gate);
             break;
         case MOD2DYN_PREF_V8:
             LowerTypeMod2(gate, glue);
             break;
         case LESSDYN_PREF_V8:
-            // LowerTypeLess(gate);
             break;
         case LESSEQDYN_PREF_V8:
-            // LowerTypeLessEq(gate);
             break;
         case GREATERDYN_PREF_V8:
             LowerTypeGreater(gate);
