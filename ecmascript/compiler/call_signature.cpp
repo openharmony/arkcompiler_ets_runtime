@@ -163,7 +163,7 @@ DEF_CALL_SIGNATURE(SetPropertyByName)
 {
     // 4 : 4 input parameters
     CallSignature setPropertyByName("SetPropertyByName", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
-        VariableType::INT64());
+        VariableType::JS_ANY());
     *callSign = setPropertyByName;
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {
@@ -180,7 +180,7 @@ DEF_CALL_SIGNATURE(SetPropertyByNameWithOwn)
 {
     // 4 : 4 input parameters
     CallSignature setPropertyByNameWithOwn("SetPropertyByNameWithOwn", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
-        VariableType::INT64());
+        VariableType::JS_ANY());
     *callSign = setPropertyByNameWithOwn;
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {
@@ -197,7 +197,7 @@ DEF_CALL_SIGNATURE(SetPropertyByValue)
 {
     // 4 : 4 input parameters
     CallSignature setPropertyByName("SetPropertyByValue", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
-        VariableType::INT64());
+        VariableType::JS_ANY());
     *callSign = setPropertyByName;
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {
@@ -214,7 +214,7 @@ DEF_CALL_SIGNATURE(SetPropertyByValueWithOwn)
 {
     // 4 : 4 input parameters
     CallSignature setPropertyByValueWithOwn("SetPropertyByValueWithOwn", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
-        VariableType::INT64());
+        VariableType::JS_ANY());
     *callSign = setPropertyByValueWithOwn;
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {
@@ -262,7 +262,7 @@ DEF_CALL_SIGNATURE(SetPropertyByIndex)
 {
     // 4 : 4 input parameters
     CallSignature setPropertyByIndex("SetPropertyByIndex", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
-        VariableType::INT64()); // hole or undefined
+        VariableType::JS_ANY()); // hole or undefined
     *callSign = setPropertyByIndex;
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {
@@ -279,7 +279,7 @@ DEF_CALL_SIGNATURE(SetPropertyByIndexWithOwn)
 {
     // 4 : 4 input parameters
     CallSignature setPropertyByIndexWithOwn("SetPropertyByIndexWithOwn", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
-        VariableType::INT64()); // hole or undefined
+        VariableType::JS_ANY()); // hole or undefined
     *callSign = setPropertyByIndexWithOwn;
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {
@@ -347,7 +347,7 @@ DEF_CALL_SIGNATURE(TryStoreICByName)
 {
     // 5 : 5 input parameters
     CallSignature tryStoreICByName("TryStoreICByName", 0, 5,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::INT64()); // undefined or hole
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY()); // undefined or hole
     *callSign = tryStoreICByName;
     // 5 : 5 input parameters
     std::array<VariableType, 5> params = {
@@ -365,7 +365,7 @@ DEF_CALL_SIGNATURE(TryStoreICByValue)
 {
     // 6 : 6 input parameters
     CallSignature tryStoreICByValue("TryStoreICByValue", 0, 6,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::INT64()); // undefined or hole
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY()); // undefined or hole
     *callSign = tryStoreICByValue;
     // 6 : 6 input parameters
     std::array<VariableType, 6> params = {

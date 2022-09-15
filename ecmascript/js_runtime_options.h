@@ -59,6 +59,7 @@ public:
         parser->Add(&enableAsmInterpreter_);
         parser->Add(&asmOpcodeDisableRange_);
         parser->Add(&enableForceGc_);
+        parser->Add(&forceFullGc_);
         parser->Add(&stubFile_);
         parser->Add(&aotOutputFile_);
         parser->Add(&targetTriple_);

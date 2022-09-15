@@ -1989,7 +1989,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSetobjectwithprotoPrefV8V8)
 DECLARE_ASM_HANDLER(HandleStobjbyvalueImm8V8V8)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
@@ -2014,7 +2014,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyvalueImm8V8V8)
     {
         GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByValue),
             { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
-        result = ChangeTaggedPointerToInt64(ret);
+        result = ret;
         Jump(&checkException);
     }
     Bind(&checkException);
@@ -2026,7 +2026,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyvalueImm8V8V8)
 DECLARE_ASM_HANDLER(HandleStobjbyvalueImm16V8V8)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
 
     GateRef v0 = ReadInst8_2(pc);
     GateRef v1 = ReadInst8_3(pc);
@@ -2051,7 +2051,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyvalueImm16V8V8)
     {
         GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByValue),
             { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
-        result = ChangeTaggedPointerToInt64(ret);
+        result = ret;
         Jump(&checkException);
     }
     Bind(&checkException);
@@ -3028,7 +3028,7 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm8Id16V8)
     auto env = GetEnvironment();
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
-    DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
 
     Label checkException(env);
     Label tryFastPath(env);
@@ -3050,7 +3050,7 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm8Id16V8)
         GateRef propKey = GetStringFromConstPool(constpool, stringId);
         GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByName),
             { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
-        result = ChangeTaggedPointerToInt64(ret);
+        result = ret;
         Jump(&checkException);
     }
     Bind(&checkException);
@@ -3065,7 +3065,7 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm16Id16V8)
 
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_4(pc)));
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
-    DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
 
     Label checkException(env);
     Label tryFastPath(env);
@@ -3087,7 +3087,7 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm16Id16V8)
         GateRef propKey = GetStringFromConstPool(constpool, stringId);
         GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByName),
             { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
-        result = ChangeTaggedPointerToInt64(ret);
+        result = ret;
         Jump(&checkException);
     }
     Bind(&checkException);
@@ -3188,7 +3188,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm8Id16V8)
     GateRef stringId = ReadInst16_1(pc);
     GateRef propKey = GetStringFromConstPool(constpool, stringId);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
-    DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label checkResult(env);
 
     Label isJSObject(env);
@@ -3211,7 +3211,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm8Id16V8)
     }
     Bind(&slowPath);
     {
-        result = ChangeTaggedPointerToInt64(CallRuntime(glue, RTSTUB_ID(StOwnByName), { receiver, propKey, acc }));
+        result = CallRuntime(glue, RTSTUB_ID(StOwnByName), { receiver, propKey, acc });
         Jump(&checkResult);
     }
     Bind(&checkResult);
@@ -3226,7 +3226,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
     GateRef stringId = ReadInst16_2(pc);
     GateRef propKey = GetStringFromConstPool(constpool, stringId);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_4(pc)));
-    DEFVARIABLE(result, VariableType::INT64(), Hole(VariableType::INT64()));
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label checkResult(env);
 
     Label isJSObject(env);
@@ -3249,7 +3249,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
     }
     Bind(&slowPath);
     {
-        result = ChangeTaggedPointerToInt64(CallRuntime(glue, RTSTUB_ID(StOwnByName), { receiver, propKey, acc }));
+        result = CallRuntime(glue, RTSTUB_ID(StOwnByName), { receiver, propKey, acc });
         Jump(&checkResult);
     }
     Bind(&checkResult);

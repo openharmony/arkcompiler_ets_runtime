@@ -125,7 +125,7 @@ void ArkStackMapParser::ParseArkStackMap(const CallsiteHead& callsiteHead, Binar
         offset += sizeof(DwarfRegType);
         binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&offsetType), sizeof(OffsetType), ptr + offset);
         offset += sizeof(OffsetType);
-        LOG_COMPILER(DEBUG) << " reg: " << std::dec << reg << " offset:" <<  offsetType;
+        LOG_COMPILER(VERBOSE) << " reg: " << std::dec << reg << " offset:" <<  offsetType;
         arkStackMaps.emplace_back(std::make_pair(reg, offsetType));
     }
 }
@@ -153,7 +153,7 @@ void ArkStackMapParser::ParseArkDeopt(const CallsiteHead& callsiteHead,
                 OffsetType v;
                 binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&v), sizeof(v), ptr + deoptOffset);
                 deoptOffset += sizeof(v);
-                LOG_COMPILER(DEBUG) << "const offset:" << deoptOffset;
+                LOG_COMPILER(VERBOSE) << "const offset:" << deoptOffset;
                 deopt.value = v;
                 break;
             }
@@ -161,7 +161,7 @@ void ArkStackMapParser::ParseArkDeopt(const CallsiteHead& callsiteHead,
                 LargeInt v;
                 binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&v), sizeof(v), ptr + deoptOffset);
                 deoptOffset += sizeof(v);
-                LOG_COMPILER(DEBUG) << "large Int:" << v;
+                LOG_COMPILER(VERBOSE) << "large Int:" << v;
                 deopt.value = v;
                 break;
             }
@@ -172,7 +172,7 @@ void ArkStackMapParser::ParseArkDeopt(const CallsiteHead& callsiteHead,
                     sizeof(offsetType), ptr + deoptOffset);
                 deoptOffset += sizeof(offsetType);
                 ASSERT(reg == GCStackMapRegisters::SP || reg == GCStackMapRegisters::FP);
-                LOG_COMPILER(DEBUG) << " reg:" << std::dec << reg << " offset:" << static_cast<int>(offsetType);
+                LOG_COMPILER(VERBOSE) << " reg:" << std::dec << reg << " offset:" << static_cast<int>(offsetType);
                 deopt.value = std::make_pair(reg, offsetType);
                 break;
             }
@@ -198,7 +198,7 @@ void ArkStackMapParser::ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) 
         uint32_t deoptNum = callsiteHead.deoptNum;
         std::vector<ARKDeopt> deopts;
         ArkStackMap arkStackMaps;
-        LOG_COMPILER(DEBUG) << " calliteOffset:0x" << std::hex << callsiteHead.calliteOffset
+        LOG_COMPILER(VERBOSE) << " calliteOffset:0x" << std::hex << callsiteHead.calliteOffset
             << " stackmap offset:0x" << std::hex << offset << " num:" << arkStackMapNum
             <<  "  deopt Offset:0x" << deoptOffset << " num:" << deoptNum;
         ParseArkStackMap(callsiteHead, binBufparser, ptr, arkStackMaps);
