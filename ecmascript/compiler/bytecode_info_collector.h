@@ -161,6 +161,10 @@ private:
     // need to remove in the future
     void TranslateBCIns(const OldBytecodeInst &bcIns, const MethodLiteral *method);
 
+    // use for new ISA
+    void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
+    void CollectMethodInfoFromNewBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
+
     JSPandaFile *jsPandaFile_ {nullptr};
     BCInfo bytecodeInfo_;
     size_t methodInfoIndex_ {0};
