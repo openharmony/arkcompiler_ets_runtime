@@ -71,7 +71,7 @@ JSHandle<JSTaggedValue> JSIterator::GetIterator(JSThread *thread, const JSHandle
     return iter;
 }  // namespace panda::ecmascript
 // 7.4.2
-JSHandle<JSObject> JSIterator::IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter)
+JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
@@ -81,17 +81,17 @@ JSHandle<JSObject> JSIterator::IteratorNext(JSThread *thread, const JSHandle<JST
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, next, iter, undefined, 0);
     JSTaggedValue ret = JSFunction::Call(info);
-    JSHandle<JSObject> result(thread, ret);
     // 3.ReturnIfAbrupt(result)
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, result);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, undefined);
     // 4.If Type(result) is not Object, throw a TypeError exception.
-    if (!result.GetTaggedValue().IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", result);
+    if (!ret.IsECMAObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Is not Object", undefined);
     }
+    JSHandle<JSTaggedValue> result(thread, ret);
     return result;
 }
 
-JSHandle<JSObject> JSIterator::IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter,
+JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter,
                                             const JSHandle<JSTaggedValue> &value)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -100,16 +100,15 @@ JSHandle<JSObject> JSIterator::IteratorNext(JSThread *thread, const JSHandle<JST
     JSHandle<JSTaggedValue> next(JSObject::GetMethod(thread, iter, key));
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, next, iter, undefined, 1);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, thread->GetEcmaVM()->GetFactory()->NewEmptyJSObject());
     info->SetCallArg(value.GetTaggedValue());
     JSTaggedValue ret = JSFunction::Call(info);
-    JSHandle<JSObject> result(thread, ret);
     // 3.ReturnIfAbrupt(result)
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, result);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, undefined);
     // 4.If Type(result) is not Object, throw a TypeError exception.
-    if (!result.GetTaggedValue().IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", result);
+    if (!ret.IsECMAObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Is not Object", undefined);
     }
+    JSHandle<JSTaggedValue> result(thread, ret);
     return result;
 }
 // 7.4.3
@@ -135,7 +134,7 @@ JSHandle<JSTaggedValue> JSIterator::IteratorValue(JSThread *thread, const JSHand
 JSHandle<JSTaggedValue> JSIterator::IteratorStep(JSThread *thread, const JSHandle<JSTaggedValue> &iter)
 {
     // 1.Let result be IteratorNext(iterator).
-    JSHandle<JSTaggedValue> result(IteratorNext(thread, iter));
+    JSHandle<JSTaggedValue> result = IteratorNext(thread, iter);
     // 2.ReturnIfAbrupt(result).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, result);
     // 3.Let done be IteratorComplete(result).
