@@ -175,6 +175,8 @@ private:
     void LowerCallthis2Imm8V8V8V8(GateRef gate, GateRef glue);
     void LowerCallthis0Imm8V8(GateRef gate, GateRef glue);
     void LowerCallArgs3(GateRef gate, GateRef glue);
+    void LowerCallargs3Imm8V8V8(GateRef gate, GateRef glue);
+    void LowerCallthis3Imm8V8V8V8V8(GateRef gate, GateRef glue);
     void LowerCallThisRange(GateRef gate, GateRef glue);
     void LowerCallthisrangeImm8Imm8V8(GateRef gate, GateRef glue);
     void LowerWideCallthisrangePrefImm16V8(GateRef gate, GateRef glue);
