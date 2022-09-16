@@ -147,7 +147,7 @@ private:
     // environment must be initialized
     GateRef GetConstPool(GateRef jsFunc);
     // environment must be initialized
-    GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
+    GateRef GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type);
     // environment must be initialized
     GateRef GetHomeObjectFromJSFunction(GateRef jsFunc);
     void Lower(GateRef gate);

@@ -179,6 +179,12 @@ GateRef CircuitBuilder::Int32ToTaggedPtr(GateRef x)
     return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
 }
 
+GateRef CircuitBuilder::Int32ToTaggedInt(GateRef x)
+{
+    GateRef val = SExtInt32ToInt64(x);
+    return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
+}
+
 // bit operation
 GateRef CircuitBuilder::IsSpecial(GateRef x, JSTaggedType type)
 {
