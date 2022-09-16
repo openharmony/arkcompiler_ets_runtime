@@ -147,6 +147,7 @@ public:
     uint32_t GetBytecodeOffset() const;
     Method *GetMethod() const;
     Method *CheckAndGetMethod() const;
+    JSTaggedValue GetThis() const;
     JSTaggedValue GetFunction() const;
     const uint8_t *GetPc() const;
     ConstantPool *GetConstpool() const;

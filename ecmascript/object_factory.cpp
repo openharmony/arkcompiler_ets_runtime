@@ -1623,6 +1623,7 @@ JSHandle<GeneratorContext> ObjectFactory::NewGeneratorContext()
     JSHandle<GeneratorContext> obj(thread_, header);
     obj->SetRegsArray(thread_, JSTaggedValue::Undefined());
     obj->SetMethod(thread_, JSTaggedValue::Undefined());
+    obj->SetThis(thread_, JSTaggedValue::Undefined());
     obj->SetAcc(thread_, JSTaggedValue::Undefined());
     obj->SetGeneratorObject(thread_, JSTaggedValue::Undefined());
     obj->SetLexicalEnv(thread_, JSTaggedValue::Undefined());

@@ -44,7 +44,7 @@ public:
     static inline JSTaggedValue UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp);
     static inline void InterpreterFrameCopyArgs(JSTaggedType *newSp, uint32_t numVregs, uint32_t numActualArgs,
                                                 uint32_t numDeclaredArgs, bool haveExtraArgs = true);
-    static JSTaggedValue GetThisFunction(JSTaggedType *sp);
+    static JSTaggedValue GetFunction(JSTaggedType *sp);
     static JSTaggedValue GetNewTarget(JSTaggedType *sp);
     static uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static JSTaggedType *GetAsmInterpreterFramePointer(AsmInterpretedFrame *state);

@@ -2184,7 +2184,7 @@ void InterpreterAssembly::HandleStsuperbyvalueImm8V8V8(
 
     // slow path
     SAVE_ACC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::StSuperByValue(thread, receiver, propKey, value, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     RESTORE_ACC();
@@ -2467,7 +2467,7 @@ void InterpreterAssembly::HandleStsuperbynameImm8Id16V8(
 
     // slow path
     SAVE_ACC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::StSuperByValue(thread, obj, propKey, value, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     RESTORE_ACC();
@@ -2577,7 +2577,7 @@ void InterpreterAssembly::HandleLdfunction(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsic::ldfunction";
-    SET_ACC(GetThisFunction(sp));
+    SET_ACC(GetFunction(sp));
     DISPATCH(LDFUNCTION);
 }
 
@@ -3331,6 +3331,7 @@ void InterpreterAssembly::HandleWideSupercallarrowrangePrefImm16V8(
 
             state->base.prev = sp;
             state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->thisObj = thisObj;
             state->pc = pc = methodHandle->GetBytecodeArray();
             sp = newSp;
             state->acc = JSTaggedValue::Hole();
@@ -3359,7 +3360,7 @@ void InterpreterAssembly::HandleWideSupercallthisrangePrefImm16V8(
     LOG_INST() << "intrinsics::supercall"
                << " range: " << range << " v" << v0;
 
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue newTarget = GetNewTarget(sp);
 
     SAVE_PC();
@@ -3476,6 +3477,7 @@ void InterpreterAssembly::HandleWideSupercallthisrangePrefImm16V8(
 
             state->base.prev = sp;
             state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->thisObj = thisObj;
             state->pc = pc = methodHandle->GetBytecodeArray();
             sp = newSp;
             state->acc = JSTaggedValue::Hole();
@@ -3670,6 +3672,7 @@ void InterpreterAssembly::HandleWideNewobjrangePrefImm16V8(
 
             state->base.prev = sp;
             state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->thisObj = thisObj;
             state->pc = pc = methodHandle->GetBytecodeArray();
             sp = newSp;
             state->acc = JSTaggedValue::Hole();
@@ -3741,7 +3744,7 @@ void InterpreterAssembly::HandleDeprecatedLdhomeobjectPrefNone(
 {
     LOG_INST() << "intrinsics::ldhomeobject";
 
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue homeObject = JSFunction::Cast(thisFunc.GetTaggedObject())->GetHomeObject();
 
     SET_ACC(homeObject);
@@ -3843,7 +3846,7 @@ void InterpreterAssembly::HandleDeprecatedLdsuperbynamePrefId32V8(
                << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData();
 
     SAVE_PC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, obj, propKey, thisFunc);
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -4071,7 +4074,7 @@ void InterpreterAssembly::HandleDeprecatedLdsuperbyvaluePrefV8V8(
 
     // slow path
     SAVE_PC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, receiver, propKey, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -4966,7 +4969,7 @@ void InterpreterAssembly::HandleStsuperbynameImm16Id16V8(
     // slow path
     SAVE_ACC();
     SAVE_PC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::StSuperByValue(thread, obj, propKey, value, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     RESTORE_ACC();
@@ -4988,7 +4991,7 @@ void InterpreterAssembly::HandleLdsuperbynameImm16Id16(
                << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData();
 
     SAVE_PC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, obj, propKey, thisFunc);
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5011,7 +5014,7 @@ void InterpreterAssembly::HandleLdsuperbynameImm8Id16(
                << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData();
 
     SAVE_PC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, obj, propKey, thisFunc);
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5467,7 +5470,7 @@ void InterpreterAssembly::HandleStsuperbyvalueImm16V8V8(
     // slow path
     SAVE_ACC();
     SAVE_PC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::StSuperByValue(thread, receiver, propKey, value, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     RESTORE_ACC();
@@ -5487,7 +5490,7 @@ void InterpreterAssembly::HandleLdsuperbyvalueImm16V8(
 
     // slow path
     SAVE_PC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, receiver, propKey, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -5507,7 +5510,7 @@ void InterpreterAssembly::HandleLdsuperbyvalueImm8V8(
 
     // slow path
     SAVE_PC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, receiver, propKey, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -5871,7 +5874,7 @@ void InterpreterAssembly::HandleDynamicimport(
 {
     LOG_INST() << "intrinsics::dynamicimport";
     JSTaggedValue specifier = GET_ACC();
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -5886,7 +5889,7 @@ void InterpreterAssembly::HandleDeprecatedDynamicimportPrefV8(
     LOG_INST() << "intrinsics::dynamicimport"
                 << " v" << v0;
     JSTaggedValue specifier = GET_VREG_VALUE(v0);
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::DynamicImport(thread, specifier, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -6146,6 +6149,7 @@ void InterpreterAssembly::HandleSupercallarrowrangeImm8Imm8V8(
 
             state->base.prev = sp;
             state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->thisObj = thisObj;
             state->pc = pc = methodHandle->GetBytecodeArray();
             sp = newSp;
             state->acc = JSTaggedValue::Hole();
@@ -6173,7 +6177,7 @@ void InterpreterAssembly::HandleSupercallthisrangeImm8Imm8V8(
     LOG_INST() << "intrinsics::supercall"
                << " range: " << range << " v" << v0;
 
-    JSTaggedValue thisFunc = GetThisFunction(sp);
+    JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue newTarget = GetNewTarget(sp);
 
     SAVE_PC();
@@ -6291,6 +6295,7 @@ void InterpreterAssembly::HandleSupercallthisrangeImm8Imm8V8(
 
             state->base.prev = sp;
             state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->thisObj = thisObj;
             state->pc = pc = methodHandle->GetBytecodeArray();
             sp = newSp;
             state->acc = JSTaggedValue::Hole();
@@ -6471,6 +6476,7 @@ void InterpreterAssembly::HandleNewobjrangeImm16Imm8V8(
 
             state->base.prev = sp;
             state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->thisObj = thisObj;
             state->pc = pc = methodHandle->GetBytecodeArray();
             sp = newSp;
             state->acc = JSTaggedValue::Hole();
@@ -6619,6 +6625,7 @@ void InterpreterAssembly::HandleNewobjrangeImm8Imm8V8(
 
             state->base.prev = sp;
             state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
+            state->thisObj = thisObj;
             state->pc = pc = methodHandle->GetBytecodeArray();
             sp = newSp;
             state->acc = JSTaggedValue::Hole();
@@ -6876,7 +6883,7 @@ inline void InterpreterAssembly::InterpreterFrameCopyArgs(
     }
 }
 
-JSTaggedValue InterpreterAssembly::GetThisFunction(JSTaggedType *sp)
+JSTaggedValue InterpreterAssembly::GetFunction(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
