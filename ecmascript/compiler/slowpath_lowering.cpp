@@ -65,7 +65,6 @@ int32_t SlowPathLowering::ComputeCallArgc(GateRef gate, EcmaOpcode op)
             case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
             case EcmaOpcode::CALLTHIS0_IMM8_V8: {
             return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 3; // 3: calltarget, this and bcoffset
-            break;
         }
         default: {
             return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 2; // 2: calltarget and bcoffset
@@ -3921,9 +3920,10 @@ void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate, GateRef glue)
     vec.emplace_back(newTarget);
     vec.emplace_back(thisObj);
     // add common args
-    for (size_t i = fixedInputsNum; i < numIns - 1; i++) {
+    for (size_t i = fixedInputsNum; i < numIns - 2; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
+    vec.emplace_back(acc_.GetValueIn(gate, numIns - 1)); // bcoffset
     LowerToJSCall(gate, glue, vec);
 }
 }  // namespace panda::ecmascript
