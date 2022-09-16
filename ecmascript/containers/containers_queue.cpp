@@ -109,7 +109,7 @@ JSTaggedValue ContainersQueue::ForEach(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSAPIQueue> queue = JSHandle<JSAPIQueue>::Cast(thisHandle);
     // Let len be ToLength(Get(O, "length")).
-    double len = JSAPIQueue::GetArrayLength(thread, queue);
+    uint32_t len = JSAPIQueue::GetArrayLength(thread, queue);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
