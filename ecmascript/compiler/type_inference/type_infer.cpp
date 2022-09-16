@@ -208,9 +208,9 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
         case EcmaOpcode::APPLY_IMM8_V8_V8:
-            return InferCallFunction(gate);
         case EcmaOpcode::DEPRECATED_CALLARG0_PREF_V8:
         case EcmaOpcode::DEPRECATED_CALLARG1_PREF_V8_V8:
+            return InferCallFunction(gate);
         case EcmaOpcode::DEPRECATED_CALLARGS2_PREF_V8_V8_V8:
         case EcmaOpcode::DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8:
         case EcmaOpcode::DEPRECATED_CALLSPREAD_PREF_V8_V8_V8:
