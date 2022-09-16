@@ -169,8 +169,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     int32_t index = 0;
     int32_t total = 1;
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
-    const CUnorderedMap<uint32_t, uint64_t> &constpoolMap = jsPandaFile->GetConstpoolMap();
-    std::cout << "WYL ---------------------------- constpoolMap: " << constpoolMap.size() << std::endl;
     if (jsPandaFile->IsNewVersion()) {
 #ifdef NEW_INSTRUCTION_DEFINE
         panda_file::IndexAccessor indexAccessor(
