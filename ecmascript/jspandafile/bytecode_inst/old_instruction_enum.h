@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#ifndef OLD_INSTRUCTION_ENUM_H
+#define OLD_INSTRUCTION_ENUM_H
+
 enum class Format : uint8_t {
     ID16,
     ID32,
@@ -474,3 +477,5 @@ enum Flags : uint32_t {
     ACC_READ = 0x20000,
     ACC_WRITE = 0x40000,
 };
+
+#endif  // OLD_INSTRUCTION_ENUM_H

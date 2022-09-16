@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef LIBPANDAFILE_BYTECODE_INSTRUCTION_INL_H_
-#define LIBPANDAFILE_BYTECODE_INSTRUCTION_INL_H_
+#ifndef LIBPANDAFILE_BYTECODE_INSTRUCTION_INL_H
+#define LIBPANDAFILE_BYTECODE_INSTRUCTION_INL_H
 
 #include "file.h"
 
@@ -7466,4 +7466,4 @@ inline bool BytecodeInst<Mode>::IsPrimaryOpcodeValid() const
 
 }  // namespace panda::ecmascript
 
-#endif  // LIBPANDAFILE_BYTECODE_INSTRUCTION_INL_H_
+#endif  // LIBPANDAFILE_BYTECODE_INSTRUCTION_INL_H
