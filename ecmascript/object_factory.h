@@ -641,6 +641,7 @@ private:
     friend class ModuleDataExtractor;
     friend class ModuleDataAccessor;
     friend class ConstantPool;
+    friend class ConstantPoolProcessor;
 };
 
 class ClassLinkerFactory {

@@ -2234,6 +2234,7 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                                   GateType::NJSValue());
         } else if (std::holds_alternative<StringId>(input)) {
+            tsManager_->AddStringIndex(std::get<StringId>(input).GetId());
             inList[i + length] = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I16,
                                                   std::get<StringId>(input).GetId(),
                                                   {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},

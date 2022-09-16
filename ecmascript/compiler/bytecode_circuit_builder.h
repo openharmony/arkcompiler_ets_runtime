@@ -464,7 +464,7 @@ public:
                                     TSManager *tsManager,
                                     const CompilationConfig* cconfig,
                                     bool enableLog)
-        : circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
+        : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
@@ -597,6 +597,7 @@ private:
         return bbId == 0;
     }
 
+    TSManager *tsManager_;
     Circuit circuit_;
     std::map<GateRef, std::pair<size_t, const uint8_t *>> jsgateToBytecode_;
     std::map<const uint8_t *, GateRef> byteCodeToJSGate_;

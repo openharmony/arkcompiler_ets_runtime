@@ -986,7 +986,7 @@ void SlowPathLowering::LowerTryLdGlobalByName(GateRef gate, GateRef glue, GateRe
 {
     DebugPrintBC(gate, glue);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), acc_.GetValueIn(gate, 0));
-    GateRef prop = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
+    GateRef prop = GetObjectFromConstPool(jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)));
     GateRef recordResult = LowerCallRuntime(glue, RTSTUB_ID(LdGlobalRecord), {prop}, true);
     Label isFound(&builder_);
     Label isNotFound(&builder_);

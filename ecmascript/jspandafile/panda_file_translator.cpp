@@ -168,6 +168,9 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data());
     int32_t index = 0;
     int32_t total = 1;
+    const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
+    const CUnorderedMap<uint32_t, uint64_t> &constpoolMap = jsPandaFile->GetConstpoolMap();
+    std::cout << "WYL ---------------------------- constpoolMap: " << constpoolMap.size() << std::endl;
     if (jsPandaFile->IsNewVersion()) {
 #ifdef NEW_INSTRUCTION_DEFINE
         panda_file::IndexAccessor indexAccessor(
@@ -185,13 +188,19 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
 #ifdef NEW_INSTRUCTION_DEFINE
             constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
 #endif
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+            if (isLoadedAOT) {
+                JSHandle<TaggedArray> constPoolInfo = vm->GetTSManager()->GetConstantPoolInfo();
+                ConstantPoolProcessor::RestoreConstantPoolInfo(vm->GetJSThread(), constPoolInfo, jsPandaFile, constpool);
+            }
+#endif
         } else {
             CString entry = "";
             if (!jsPandaFile->IsBundlePack()) {
                 entry = entryPoint.data();
             }
+            constpool = ParseConstPool(vm, jsPandaFile);
         }
-        constpool = ParseConstPool(vm, jsPandaFile);
         vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);
     } else {
         constpool = JSHandle<ConstantPool>(thread, constpoolVal);
