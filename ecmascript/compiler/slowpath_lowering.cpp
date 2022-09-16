@@ -56,10 +56,21 @@ void SlowPathLowering::CallRuntimeLowering()
 
 int32_t SlowPathLowering::ComputeCallArgc(GateRef gate, EcmaOpcode op)
 {
-    if (op == EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8) {
-        return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 3; // 3: calltarget, this and bcoffset
+    switch (op) {
+            case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            case EcmaOpcode::DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::CALLTHIS0_IMM8_V8: {
+            return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 3; // 3: calltarget, this and bcoffset
+            break;
+        }
+        default: {
+            return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 2; // 2: calltarget and bcoffset
+        }
     }
-    return acc_.GetNumValueIn(gate) + NUM_MANDATORY_JSFUNC_ARGS - 2; // 2: calltarget and bcoffset
 }
 
 UseIterator SlowPathLowering::ReplaceHirControlGate(const UseIterator &useIt, GateRef newGate, bool noThrow)
@@ -369,9 +380,6 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::DEPRECATED_GETRESUMEMODE_PREF_V8:
             LowerGetResumeMode(gate);
             break;
-//        case EcmaOpcode::ITERNEXT_PREF_V8:
-//            LowerIterNext(gate, glue);
-//            break;
         case EcmaOpcode::CLOSEITERATOR_IMM8_V8:
         case EcmaOpcode::CLOSEITERATOR_IMM16_V8:
             LowerCloseIterator(gate, glue);
@@ -472,9 +480,6 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
             LowerThrowDeleteSuperProperty(gate, glue);
             break;
-//        case EcmaOpcode::LDGLOBALTHIS_PREF:
-//            LowerLdGlobal(gate, glue);
-//            break;
         case EcmaOpcode::LDSYMBOL:
             LowerLdSymbol(gate, glue);
             break;
@@ -3733,9 +3738,9 @@ void SlowPathLowering::LowerCallthis0Imm8V8(GateRef gate, GateRef glue)
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLTHIS0_IMM8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef func = acc_.GetValueIn(gate, 2);
+    GateRef func = acc_.GetValueIn(gate, 1);
     GateRef env = builder_.Undefined();
-    GateRef bcOffset = acc_.GetValueIn(gate, 1);
+    GateRef bcOffset = acc_.GetValueIn(gate, 2);
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, bcOffset});
 }
 
@@ -3766,8 +3771,8 @@ void SlowPathLowering::LowerCallArg1Imm8V8(GateRef gate, GateRef glue)
     GateRef newTarget = builder_.Undefined();
     GateRef a0Value = acc_.GetValueIn(gate, 0);
     GateRef thisObj = builder_.Undefined();
-    GateRef bcOffset = acc_.GetValueIn(gate, 2); // 1: bytecode offset
     GateRef func = acc_.GetValueIn(gate, 1); // acc
+    GateRef bcOffset = acc_.GetValueIn(gate, 2); // 2: bytecode offset
     GateRef env = builder_.Undefined();
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, a0Value, bcOffset});
 }
@@ -3779,7 +3784,7 @@ void SlowPathLowering::LowerWideCallrangePrefImm16V8(GateRef gate, GateRef glue)
     size_t numIns = acc_.GetNumValueIn(gate);
     size_t fixedInputsNum = 2; // 2: bc_offset acc
     ASSERT(acc_.GetNumValueIn(gate) >= fixedInputsNum);
-    GateRef actualArgc = builder_.Int64(numIns - fixedInputsNum); // 2: bc_offset acc
+    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8)); // 2: bc_offset acc
     GateRef callTarget = acc_.GetValueIn(gate, numIns - fixedInputsNum); // acc
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
@@ -3792,9 +3797,10 @@ void SlowPathLowering::LowerWideCallrangePrefImm16V8(GateRef gate, GateRef glue)
     vec.emplace_back(newTarget);
     vec.emplace_back(thisObj);
     // add args
-    for (size_t i = 0; i < numIns - 1; i++) { // skip acc
+    for (size_t i = 0; i < numIns - fixedInputsNum; i++) { // skip acc
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
+    vec.emplace_back(acc_.GetValueIn(gate, numIns - fixedInputsNum + 1));
     LowerToJSCall(gate, glue, vec);
 }
 
@@ -3808,9 +3814,9 @@ void SlowPathLowering::LowerCallThisArg1(GateRef gate, GateRef glue)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef a0 = acc_.GetValueIn(gate, 1);
-    GateRef bcOffset = acc_.GetValueIn(gate, 2);
+    GateRef func = acc_.GetValueIn(gate, 2);
+    GateRef bcOffset = acc_.GetValueIn(gate, 3);
     GateRef env = builder_.Undefined();
-    GateRef func = acc_.GetValueIn(gate, 3);
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, a0, bcOffset});
 }
 
@@ -3826,9 +3832,10 @@ void SlowPathLowering::LowerCallargs2Imm8V8V8(GateRef gate, GateRef glue)
     GateRef thisObj = builder_.Undefined();
     GateRef a0 = acc_.GetValueIn(gate, 0);
     GateRef a1 = acc_.GetValueIn(gate, 1);
-    GateRef func = acc_.GetValueIn(gate, 3);
+    GateRef func = acc_.GetValueIn(gate, 2);
+    GateRef bcOffset = acc_.GetValueIn(gate, 3); // 3: bytecode offset
     GateRef env = builder_.Undefined();
-    GateRef bcOffset = acc_.GetValueIn(gate, 2); // 2: bytecode offset
+
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, a0,
         a1, bcOffset});
 }
@@ -3845,9 +3852,10 @@ void SlowPathLowering::LowerCallargs3Imm8V8V8(GateRef gate, GateRef glue)
     GateRef a0 = acc_.GetValueIn(gate, 0);
     GateRef a1 = acc_.GetValueIn(gate, 1);
     GateRef a2 = acc_.GetValueIn(gate, 2);
-    GateRef func = acc_.GetValueIn(gate, 4);
+    GateRef func = acc_.GetValueIn(gate, 3);
+    GateRef bcOffset = acc_.GetValueIn(gate, 4); // 4: bytecode offset
     GateRef env = builder_.Undefined();
-    GateRef bcOffset = acc_.GetValueIn(gate, 3); // 3: bytecode offset
+
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, a0,
         a1, a2, bcOffset});
 }
@@ -3863,8 +3871,8 @@ void SlowPathLowering::LowerCallthis2Imm8V8V8V8(GateRef gate, GateRef glue)
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef a0Value = acc_.GetValueIn(gate, 1);
     GateRef a1Value = acc_.GetValueIn(gate, 2);
-    GateRef bcOffset = acc_.GetValueIn(gate, 3); // 3: bytecode offset
-    GateRef func = acc_.GetValueIn(gate, 4); //acc
+    GateRef func = acc_.GetValueIn(gate, 3); //acc
+    GateRef bcOffset = acc_.GetValueIn(gate, 4); // 4: bytecode offset
     GateRef env = builder_.Undefined();
 
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, a0Value,
@@ -3882,9 +3890,9 @@ void SlowPathLowering::LowerCallthis3Imm8V8V8V8V8(GateRef gate, GateRef glue)
     GateRef a0Value = acc_.GetValueIn(gate, 1);
     GateRef a1Value = acc_.GetValueIn(gate, 2);
     GateRef a2Value = acc_.GetValueIn(gate, 3);
-    GateRef func = acc_.GetValueIn(gate, 5);
+    GateRef func = acc_.GetValueIn(gate, 4);
     GateRef env = builder_.Undefined();
-    GateRef bcOffset = acc_.GetValueIn(gate, 4); // 4: bytecode offset
+    GateRef bcOffset = acc_.GetValueIn(gate, 5); // 5: bytecode offset
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, a0Value,
         a1Value, a2Value, bcOffset});
 }
@@ -3893,12 +3901,12 @@ void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue);
     std::vector<GateRef> vec;
-    // The first register input is thisobj, second is thisObj and other inputs are common args.
+    // this
     size_t fixedInputsNum = 1;
     ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
     size_t numIns = acc_.GetNumValueIn(gate);
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8));
-    GateRef callTarget = acc_.GetValueIn(gate, numIns - 1); // acc
+    GateRef callTarget = acc_.GetValueIn(gate, numIns - 2); // acc
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
     GateRef env = builder_.Undefined();
