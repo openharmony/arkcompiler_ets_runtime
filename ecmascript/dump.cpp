@@ -2876,6 +2876,9 @@ void GeneratorContext::Dump(std::ostream &os) const
     os << " - Method: ";
     GetMethod().Dump(os);
     os << "\n";
+    os << " - This: ";
+    GetThis().Dump(os);
+    os << "\n";
     os << " - Acc: ";
     GetAcc().Dump(os);
     os << "\n";
@@ -4850,6 +4853,7 @@ void GeneratorContext::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
 {
     vec.push_back(std::make_pair(CString("RegsArray"), GetRegsArray()));
     vec.push_back(std::make_pair(CString("Method"), GetMethod()));
+    vec.push_back(std::make_pair(CString("This"), GetThis()));
     vec.push_back(std::make_pair(CString("Acc"), GetAcc()));
     vec.push_back(std::make_pair(CString("GeneratorObject"), GetGeneratorObject()));
     vec.push_back(std::make_pair(CString("LexicalEnv"), GetLexicalEnv()));

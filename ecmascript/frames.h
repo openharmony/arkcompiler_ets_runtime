@@ -603,12 +603,14 @@ struct InterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSi
                                                      JSTaggedValue,
                                                      JSTaggedValue,
                                                      JSTaggedValue,
+                                                     JSTaggedValue,
                                                      base::AlignedPointer,
                                                      InterpretedFrameBase> {
 public:
     enum class Index : size_t {
         ConstPoolIndex = 0,
         FunctionIndex,
+        ThisObjIndex,
         ProFileTypeInfoIndex,
         AccIndex,
         EnvIndex,
@@ -646,6 +648,7 @@ public:
 
     alignas(EAS) JSTaggedValue constpool {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
+    alignas(EAS) JSTaggedValue thisObj {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue profileTypeInfo {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue acc {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue env {JSTaggedValue::Hole()};

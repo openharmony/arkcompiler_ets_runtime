@@ -150,6 +150,18 @@ Method *FrameHandler::CheckAndGetMethod() const
     return nullptr;
 }
 
+JSTaggedValue FrameHandler::GetThis() const
+{
+    ASSERT(IsInterpretedFrame());
+    FrameIterator it(sp_, thread_);
+    if (IsAsmInterpretedFrame()) {
+        return JSTaggedValue();
+    } else {
+        auto *frame = it.GetFrame<InterpretedFrame>();
+        return frame->thisObj;
+    }
+}
+
 JSTaggedValue FrameHandler::GetFunction() const
 {
     ASSERT(IsInterpretedFrame());

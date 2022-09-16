@@ -656,7 +656,7 @@ DEF_RUNTIME_STUBS(LdSuperByValue)
     JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    JSTaggedValue thisFunc = InterpreterAssembly::GetThisFunction(sp);
+    JSTaggedValue thisFunc = InterpreterAssembly::GetFunction(sp);
     return RuntimeLdSuperByValue(thread, obj, key, thisFunc).GetRawData();
 }
 
@@ -676,7 +676,7 @@ DEF_RUNTIME_STUBS(StSuperByValue)
     JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    JSTaggedValue thisFunc = InterpreterAssembly::GetThisFunction(sp);
+    JSTaggedValue thisFunc = InterpreterAssembly::GetFunction(sp);
     return RuntimeStSuperByValue(thread, obj, key, value, thisFunc).GetRawData();
 }
 
@@ -1996,6 +1996,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     }
     context->SetRegsArray(thread, regsArray.GetTaggedValue());
     context->SetMethod(thread, frameHandler.GetFunction());
+    context->SetThis(thread, frameHandler.GetThis());
 
     BytecodeInstruction ins(frameHandler.GetPc());
     auto offset = ins.GetSize();

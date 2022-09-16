@@ -457,6 +457,7 @@ ARK_INLINE void InterpretedFrame::GCIterate(const FrameIterator &it,
 
     rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
     visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->function)));
+    visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->thisObj)));
 
     // pc == nullptr, init InterpretedFrame & native InterpretedFrame.
     if (frame->pc != nullptr) {
