@@ -28,21 +28,25 @@ public:
     QuickFixLoader() = default;
     ~QuickFixLoader();
 
-    bool LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
-    bool LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                   const std::string &baseFileName);
-    bool UnloadPatch(JSThread *thread, const std::string &patchFileName);
+    bool LoadPatch(JSThread *thread, const CString &patchFileName, const CString &baseFileName);
+    bool LoadPatch(JSThread *thread, const CString &patchFileName, const void *patchBuffer, size_t patchSize,
+                   const CString &baseFileName);
+    bool UnloadPatch(JSThread *thread, const CString &patchFileName);
 
 private:
+    bool LoadPatchInternal(JSThread *thread);
     bool ReplaceMethod(JSThread *thread,
                        const JSHandle<ConstantPool> &baseConstpool,
-                       const JSHandle<ConstantPool> &patchConstpool,
-                       const JSHandle<Program> &patchProgram);
+                       const JSHandle<ConstantPool> &patchConstpool);
     void ReplaceMethodInner(JSThread *thread,
                             Method *destMethod,
                             MethodLiteral *srcMethodLiteral,
                             JSTaggedValue srcConstpool);
     CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
+    CVector<JSHandle<Program>> ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile);
+
+    bool ExecutePatchMain(JSThread *thread, const JSHandle<Program> &patchProgram);
+    bool ExecutePatchMain(JSThread *thread, const CVector<JSHandle<Program>> &programs);
 
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
     void ClearReservedInfo()

@@ -33,21 +33,11 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
                                                         base::AlignedPointer,
                                                         base::AlignedUint64,
                                                         base::AlignedUint64> {
-    enum class Index : size_t {
-        CALL_FIELD_INDEX = 0,
-        NATIVE_POINTER_OR_BYTECODE_ARRAY_INDEX,
-        CODE_ENTRY_INDEX,
-        LITERAL_INFO_INDEX,
-        EXTRA_LITERAL_INFO_INDEX,
-        NUM_OF_MEMBERS
-    };
-
-    static_assert(static_cast<size_t>(Index::NUM_OF_MEMBERS) == NumOfTypes);
-
+public:
     static constexpr uint8_t INVALID_IC_SLOT = 0xFFU;
     static constexpr uint16_t MAX_SLOT_SIZE = 0xFFFFU;
 
-    MethodLiteral(const JSPandaFile *jsPandaFile, EntityId fileId);
+    MethodLiteral(const JSPandaFile *jsPandaFile, EntityId methodId);
     MethodLiteral() = delete;
     ~MethodLiteral() = default;
     MethodLiteral(const MethodLiteral &) = delete;
@@ -303,7 +293,6 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
     }
 
     static uint32_t PUBLIC_API GetNumVregs(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral);
-    static panda_file::File::StringData GetName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static const char * PUBLIC_API GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static std::string PUBLIC_API ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static uint32_t GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId);
@@ -337,6 +326,19 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
     {
         return extraLiteralInfo_;
     }
+
+private:
+    enum class Index : size_t {
+        CALL_FIELD_INDEX = 0,
+        NATIVE_POINTER_OR_BYTECODE_ARRAY_INDEX,
+        CODE_ENTRY_INDEX,
+        LITERAL_INFO_INDEX,
+        EXTRA_LITERAL_INFO_INDEX,
+        NUM_OF_MEMBERS
+    };
+    static_assert(static_cast<size_t>(Index::NUM_OF_MEMBERS) == NumOfTypes);
+
+    static panda_file::File::StringData GetName(const JSPandaFile *jsPandaFile, EntityId methodId);
 
     alignas(EAS) uint64_t callField_ {0ULL};
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
