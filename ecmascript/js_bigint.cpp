@@ -63,6 +63,23 @@ CString BigIntHelper::Conversion(const CString &num, uint32_t conversionToRadix,
     return res;
 }
 
+JSHandle<BigInt> BigInt::GetUint64MaxBigint(JSThread *thread)
+{
+    JSHandle<BigInt> bigint = CreateBigint(thread, 3);
+    bigint->SetDigit(0, 0);
+    bigint->SetDigit(1, 0);
+    bigint->SetDigit(2, 1);
+    return bigint;
+}
+
+JSHandle<BigInt> BigInt::GetInt64MaxBigint(JSThread *thread)
+{
+    JSHandle<BigInt> bigint = CreateBigint(thread, 2);
+    bigint->SetDigit(0, 0);
+    bigint->SetDigit(1, 0x80000000); // 0x80000000:Int MAX
+    return bigint;
+}
+
 JSHandle<BigInt> BigIntHelper::SetBigInt(JSThread *thread, const CString &numStr, uint32_t currentRadix)
 {
     int flag = 0;
