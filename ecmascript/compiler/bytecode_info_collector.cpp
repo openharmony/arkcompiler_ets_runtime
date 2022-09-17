@@ -330,8 +330,6 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
 {
     auto opcode = inst.GetOpcode();
     auto pc = const_cast<uint8_t *>(inst.GetAddress());
-    std::cout << "WYL aot =========== inst: " << *pc << std::endl;
-    std::cout << "WYL aot =========== opcode: " << static_cast<uint16_t>(opcode) << std::endl;
     EcmaOpcode newOpcode;
     auto oldLen = OldBytecodeInst::Size(OldBytecodeInst::GetFormat(opcode));
     pc = const_cast<uint8_t *>(inst.GetAddress());

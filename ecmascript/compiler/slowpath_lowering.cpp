@@ -298,6 +298,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::LDA_STR_ID16:
             LowerLoadStr(gate, glue, jsFunc);
             break;
+        case EcmaOpcode::CALLARG0_IMM8:
+            LowerCallArg0(gate, glue);
+            break;
         case EcmaOpcode::CALLTHIS0_IMM8_V8:
             LowerCallthis0Imm8V8(gate, glue);
             break;
@@ -1260,7 +1263,7 @@ void SlowPathLowering::LowerCallrangeImm8Imm8V8(GateRef gate, GateRef glue)
     std::vector<GateRef> vec;
     size_t numArgs = acc_.GetNumValueIn(gate);
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLRANGE_IMM8_IMM8_V8));
-    GateRef callTarget = acc_.GetValueIn(gate, numArgs - 1); // acc
+    GateRef callTarget = acc_.GetValueIn(gate, numArgs - 2); // acc
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef env = builder_.Undefined();
@@ -1271,9 +1274,10 @@ void SlowPathLowering::LowerCallrangeImm8Imm8V8(GateRef gate, GateRef glue)
     vec.emplace_back(newTarget);
     vec.emplace_back(thisObj);
 
-    for (size_t i = 0; i < numArgs - 1; i++) { // skip acc
+    for (size_t i = 0; i < numArgs - 2; i++) { // skip acc
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
+    vec.emplace_back(acc_.GetValueIn(gate, numArgs - 1));
     LowerToJSCall(gate, glue, vec);
 }
 
@@ -3644,7 +3648,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsF
 {
     DebugPrintBC(gate, glue);
     // 4: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 4);
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef length = acc_.GetValueIn(gate, 1);
     GateRef homeObject = acc_.GetValueIn(gate, 2);

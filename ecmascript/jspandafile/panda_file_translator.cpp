@@ -603,7 +603,6 @@ do {                                                                     \
 void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst)
 {
     auto opcode = inst.GetOpcode();
-    std::cout << "WYL c interpreter =========== opcode: " << static_cast<uint16_t>(opcode) << std::endl;
     EcmaOpcode newOpcode;
     auto oldLen = OldBytecodeInst::Size(OldBytecodeInst::GetFormat(opcode));
     auto pc = const_cast<uint8_t *>(inst.GetAddress());

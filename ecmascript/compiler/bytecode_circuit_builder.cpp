@@ -607,10 +607,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
     auto opcode = inst.GetOpcode();
     info.offset = BytecodeInstruction::Size(opcode);
     info.opcode = opcode;
-    if (opcode == panda::ecmascript::EcmaOpcode::LDGLOBALVAR_IMM16_ID16)
-    {
-        std::cout << "WYL ==================== " << std::endl;
-    }
     info.accIn = inst.HasFlag(BytecodeInstruction::Flags::ACC_READ);
     info.accOut = inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE);
     switch (opcode) {
@@ -679,7 +675,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CALLARG1_IMM8_V8: {
             uint32_t a0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(a0));
-            info.accIn = true;
             break;
         }
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8: {
@@ -735,7 +730,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
             uint32_t actualNumArgs = READ_INST_8_1();
             uint32_t startReg = READ_INST_8_2();
-            for (size_t i = 0; i <= actualNumArgs; i++) {
+            for (size_t i = 1; i <= actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(startReg + i));
             }
             break;
@@ -743,7 +738,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8: {
             uint32_t actualNumArgs = READ_INST_16_1();
             uint32_t startReg = READ_INST_8_3();
-            for (size_t i = 0; i <= actualNumArgs; i++) {
+            for (size_t i = 1; i <= actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(startReg + i));
             }
             break;
@@ -802,7 +797,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8: {
             int32_t actualNumArgs = READ_INST_8_1();
             int32_t startReg = READ_INST_8_2();
-            for (int i = 0; i <= actualNumArgs; i++) {
+            for (int i = 0; i < actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(startReg + i));
             }
             break;
@@ -810,7 +805,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8: {
             int32_t actualNumArgs = READ_INST_16_1();
             int32_t startReg = READ_INST_8_3();
-            for (int i = 0; i <= actualNumArgs; i++) {
+            for (int i = 0; i < actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(startReg + i));
             }
             break;
@@ -1083,7 +1078,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8: {
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_8_3();
-            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(MethodId(methodId));
             info.inputs.emplace_back(Immediate(length));
             break;
@@ -1091,7 +1085,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
             uint16_t methodId = READ_INST_16_2();
             uint16_t length = READ_INST_8_4();
-            info.offset = BytecodeOffset::SEVEN;
             info.inputs.emplace_back(MethodId(methodId));
             info.inputs.emplace_back(Immediate(length));
             break;
@@ -1137,8 +1130,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16: {
             uint16_t level = READ_INST_16_1();
             uint16_t slot = READ_INST_16_3();
-            info.accOut = true;
-            info.offset = BytecodeOffset::SIX;
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
             break;
@@ -1232,7 +1223,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v1 = READ_INST_8_2();
-            info.accIn = true;
             uint32_t offset = pc - method_->GetBytecodeArray();
             info.inputs.emplace_back(Immediate(offset)); // Save the pc offset when suspend
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -1329,7 +1319,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         }
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16: {
             uint16_t imm = READ_INST_16_1();
-            info.inputs.emplace_back(Immediate(imm));
             info.inputs.emplace_back(Immediate(imm));
             break;
         }
@@ -1446,8 +1435,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::DEPRECATED_COPYDATAPROPERTIES_PREF_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v1 = READ_INST_8_2();
-            info.accOut = true;
-            info.offset = BytecodeOffset::FOUR;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
@@ -1516,10 +1503,10 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
-            uint16_t v2 = READ_INST_8_3();
-            uint16_t v3 = READ_INST_8_4();
+            uint16_t v0 = READ_INST_8_0();
+            uint16_t v1 = READ_INST_8_1();
+            uint16_t v2 = READ_INST_8_2();
+            uint16_t v3 = READ_INST_8_3();
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             info.inputs.emplace_back(VirtualRegister(v2));
@@ -1844,8 +1831,8 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::STARRAYSPREAD_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
+            uint16_t v0 = READ_INST_8_0();
+            uint16_t v1 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
@@ -2758,9 +2745,6 @@ void BytecodeCircuitBuilder::BuildCircuit()
         auto bytecodeInfo = GetBytecodeInfo(pc);
         [[maybe_unused]] size_t numValueInputs = bytecodeInfo.ComputeTotalValueCount();
         [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount() + bytecodeInfo.vregOut.size();
-        gateAcc_.Print(gate);
-        std::cout << "WYL ========== EcmaOpcode: " << GetEcmaOpcodeStr(bytecodeInfo.opcode) << std::endl;
-        std::cout << "WYL ========== numValueInputs: " << numValueInputs << " valueCount: "<< valueCount << std::endl;
         ASSERT(numValueInputs == valueCount);
         ASSERT(numValueOutputs <= 1);
         auto stateCount = gateAcc_.GetStateCount(gate);
