@@ -92,15 +92,16 @@ int Main(const int argc, const char **argv)
         std::string logMethodsList = runtimeOptions.GetMethodsListForLog();
         bool isEnableBcTrace = runtimeOptions.IsEnableByteCodeTrace();
         size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
+        bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
         BytecodeStubCSigns::Initialize();
         CommonStubCSigns::Initialize();
         RuntimeStubCSigns::Initialize();
 
         CompilerLog log(logOption, isEnableBcTrace);
         AotMethodLogList logList(logMethodsList);
-        AOTFileGenerator generator(&log, &logList, vm);
-        vm->GetTSManager()->SetConstantPoolInfo(generator.GetConstantPoolInfos(pandaFileNames));
-        PassManager passManager(vm, entry, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize);
+        AOTFileGenerator generator(&log, &logList, vm, pandaFileNames.size());
+        PassManager passManager(vm, entry, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize,
+                                isEnableTypeLowering);
         for (const auto &fileName : pandaFileNames) {
             LOG_COMPILER(INFO) << "AOT compile: " << fileName;
             if (passManager.Compile(fileName, generator) == false) {

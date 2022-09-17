@@ -111,9 +111,9 @@ namespace panda::ecmascript::kungfu {
 
 class SlowPathLowering {
 public:
-    SlowPathLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
-                     bool enableLog)
-        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit),
+    SlowPathLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit,
+                     CompilationConfig *cmpCfg, TSManager *tsManager, bool enableLog)
+        : tsManager_(tsManager), bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
           enableLog_(enableLog)
@@ -282,6 +282,7 @@ private:
     void DebugPrintBC(GateRef gate, GateRef glue);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
 
+    TSManager *tsManager_ {nullptr};
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
     GateAccessor acc_;

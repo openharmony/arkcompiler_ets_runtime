@@ -157,7 +157,6 @@ private:
     GateRef FastEqual(GateRef left, GateRef right);
     GateRef FastDiv(GateRef left, GateRef right);
 
-    void LowerTypeNewObjDynRange(GateRef gate, GateRef glue);
     void LowerTypeAdd2(GateRef gate, GateRef glue);
     void LowerTypeSub2(GateRef gate);
     void LowerTypeMul2(GateRef gate);
@@ -180,7 +179,7 @@ private:
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_;
-    TSManager *tsManager_ {nullptr};
+    [[maybe_unused]] TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
 };
 }  // panda::ecmascript::kungfu

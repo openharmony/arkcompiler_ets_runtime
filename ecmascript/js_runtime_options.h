@@ -88,6 +88,7 @@ public:
         parser->Add(&maxAotMethodSize_);
         parser->Add(&abcFilelist_);
         parser->Add(&entryPoint_);
+        parser->Add(&enableTypeLowering_);
     }
 
     bool EnableArkTools() const
@@ -682,6 +683,17 @@ public:
             moduleFile.close();
         }
     }
+
+    void SetEnableTypeLowering(bool value)
+    {
+        enableTypeLowering_.SetValue(value);
+    }
+
+    bool IsEnableTypeLowering() const
+    {
+        return enableTypeLowering_.GetValue();
+    }
+
 private:
     PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
@@ -797,6 +809,8 @@ private:
         R"(abc's list file. )"};
     PandArg<std::string> entryPoint_ {"entry-point", R"(_GLOBAL::func_main_0)",
         R"(full name of entrypoint function or method. )"};
+    PandArg<bool> enableTypeLowering_ {"enable-type-lowering", true,
+        R"(tnable TSTypeLowering and TypeLowering for aot runtime. Default:true)"};
 };
 }  // namespace panda::ecmascript
 

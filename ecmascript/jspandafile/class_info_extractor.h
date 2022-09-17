@@ -89,6 +89,11 @@ public:
                                                          const JSHandle<JSTaggedValue> &constpool,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
+    static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
+                                                       const JSHandle<JSTaggedValue> &constpool,
+                                                       const JSHandle<JSTaggedValue> &lexenv,
+                                                       const JSHandle<JSHClass> &ihclass);
+
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,

@@ -751,6 +751,36 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     return cls.GetTaggedValue();
 }
 
+JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
+                                                          const JSHandle<JSTaggedValue> &base,
+                                                          const JSHandle<JSTaggedValue> &lexenv,
+                                                          const JSHandle<JSTaggedValue> &constpool,
+                                                          const uint16_t methodId, uint16_t literalId,
+                                                          const JSHandle<JSHClass> &ihclass)
+{
+    if (ihclass.GetTaggedValue().IsHole()) {
+        return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool, methodId, literalId);
+    }
+
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
+    auto methodObj = ConstantPool::GetClassMethodFromCache(thread, constantPool, methodId);
+    JSHandle<JSTaggedValue> method(thread, methodObj);
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId);
+    JSHandle<TaggedArray> literal(thread, literalObj);
+    JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
+
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literal);
+    JSHandle<JSFunction> cls = ClassHelper::DefineClassWithIHClass(thread, extractor, constpool, lexenv, ihclass);
+
+    RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    return cls.GetTaggedValue();
+}
+
 JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                    const JSHandle<JSTaggedValue> &ctor,
                                                                    const JSHandle<JSTaggedValue> &base)
@@ -2288,39 +2318,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t ar
         THROW_TYPE_ERROR_AND_RETURN(thread, "Derived constructor must return object or undefined",
                                     JSTaggedValue::Exception());
     }
-    return object;
-}
-
-JSTaggedValue RuntimeStubs::RuntimeOptNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc)
-{
-    CVector<JSTaggedType> hclassTable = thread->GetEcmaVM()->GetTSManager()->GetStaticHClassTable();
-
-    int32_t ihcIndex = GetArg(argv, argc, argc - 1).GetInt();  // last element
-    JSHandle<JSHClass> ihc(thread, JSTaggedValue(hclassTable[ihcIndex]));
-
-    JSTaggedType *args = reinterpret_cast<JSTaggedType *>(argv);
-    JSHandle<JSFunction> ctor = GetHArg<JSFunction>(argv, argc, 0);
-    JSHandle<JSTaggedValue> newTgt = GetHArg<JSTaggedValue>(argv, argc, 1);
-    JSHandle<JSTaggedValue> thisObj = thread->GlobalConstants()->GetHandledUndefined();
-
-    JSHandle<JSTaggedValue> ctorPrototype = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(ctor),
-        thread->GlobalConstants()->GetHandledPrototypeString()).GetValue();
-    ihc->SetProto(thread, ctorPrototype);
-
-    ctor->SetProtoOrHClass(thread, ihc);
-
-    const size_t numCtorAndNewTgt = 2;
-    const size_t numCtorNewTgtAndIHCIndex = 3;
-    EcmaRuntimeCallInfo *info = ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor),
-        thisObj, newTgt, argc - numCtorNewTgtAndIHCIndex);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    for (size_t i = 0; i < argc - numCtorNewTgtAndIHCIndex; ++i) {
-        info->SetCallArg(i, JSTaggedValue(args[i + numCtorAndNewTgt]));
-    }
-
-    JSTaggedValue object = JSFunction::Construct(info);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     return object;
 }
 
