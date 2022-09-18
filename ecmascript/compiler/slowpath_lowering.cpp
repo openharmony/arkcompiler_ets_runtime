@@ -1701,6 +1701,23 @@ void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, G
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
+void SlowPathLowering::LowerStModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc)
+{
+    DebugPrintBC(gate, glue);
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> failControl;
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));  // TODO: need ToTaggedInt ?
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(StModuleVarByIndexOnJSFunc), {index, jsFunc}, true);
+    successControl.emplace_back(builder_.GetState());
+    successControl.emplace_back(builder_.GetDepend());
+    failControl.emplace_back(Circuit::NullGate());
+    failControl.emplace_back(Circuit::NullGate());
+    // StModuleVar will not be inValue to other hir gates, result will not be used to replace hirgate
+    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+}
+
 void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue);
@@ -1777,6 +1794,38 @@ void SlowPathLowering::LowerDynamicImport(GateRef gate, GateRef glue, GateRef js
     ReplaceHirToCall(gate, newGate);
 }
 
+void SlowPathLowering::LowerLdLocalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc)
+{
+    DebugPrintBC(gate, glue);
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> failControl;
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc), {index, jsFunc}, true);
+    successControl.emplace_back(builder_.GetState());
+    successControl.emplace_back(builder_.GetDepend());
+    failControl.emplace_back(Circuit::NullGate());
+    failControl.emplace_back(Circuit::NullGate());
+    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+}
+
+void SlowPathLowering::LowerLdExternalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc)
+{
+    DebugPrintBC(gate, glue);
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> failControl;
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc), {index, jsFunc}, true);
+    successControl.emplace_back(builder_.GetState());
+    successControl.emplace_back(builder_.GetDepend());
+    failControl.emplace_back(Circuit::NullGate());
+    failControl.emplace_back(Circuit::NullGate());
+    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+}
+
 void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue);
@@ -1787,6 +1836,22 @@ void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFu
     GateRef key = GetObjectFromConstPool(jsFunc, acc_.GetValueIn(gate, 0));
     GateRef inner = builder_.ToTaggedInt(acc_.GetValueIn(gate, 1));
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdModuleVarOnJSFunc), {key, inner, jsFunc}, true);
+    successControl.emplace_back(builder_.GetState());
+    successControl.emplace_back(builder_.GetDepend());
+    failControl.emplace_back(Circuit::NullGate());
+    failControl.emplace_back(Circuit::NullGate());
+    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+}
+
+void SlowPathLowering::LowerGetModuleNamespaceByIndex(GateRef gate, GateRef glue, GateRef jsFunc)
+{
+    DebugPrintBC(gate, glue);
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> failControl;
+    // 1: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndexOnJSFunc), { index, jsFunc }, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());

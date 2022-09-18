@@ -47,6 +47,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
 
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::ECMAMODULE);
+    moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
 }

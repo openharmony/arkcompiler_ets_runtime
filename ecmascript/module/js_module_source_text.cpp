@@ -55,23 +55,16 @@ CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const 
     if (!entryValue.IsUndefined()) {
         JSMutableHandle<StarExportEntry> ee(thread, globalConstants->GetUndefined());
         JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
-        if (entryValue.IsStarExportEntry()) {
-            // handle one starExportEntry
-            ee.Update(entryValue);
+
+        // 7. For each ExportEntry Record e in module.[[StarExportEntries]], do
+        JSHandle<TaggedArray> starExportEntries(thread, entryValue);
+        size_t starExportEntriesLen = starExportEntries->GetLength();
+        for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
+            ee.Update(starExportEntries->Get(idx));
+            // a. Let requestedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
             moduleRequest.Update(ee->GetModuleRequest());
             SetExportName(thread, moduleRequest, module, exportedNames, newExportStarSet);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exportedNames);
-        } else {
-            // 7. For each ExportEntry Record e in module.[[StarExportEntries]], do
-            JSHandle<TaggedArray> starExportEntries(thread, entryValue);
-            size_t starExportEntriesLen = starExportEntries->GetLength();
-            for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
-                ee.Update(starExportEntries->Get(idx));
-                // a. Let requestedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
-                moduleRequest.Update(ee->GetModuleRequest());
-                SetExportName(thread, moduleRequest, module, exportedNames, newExportStarSet);
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exportedNames);
-            }
         }
     }
     return exportedNames;
@@ -221,25 +214,15 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     }
     JSMutableHandle<StarExportEntry> ee(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
-    if (starExportEntriesTv.IsStarExportEntry()) {
-        ee.Update(starExportEntriesTv);
+    JSHandle<TaggedArray> starExportEntries(thread, starExportEntriesTv);
+    size_t starExportEntriesLen = starExportEntries->GetLength();
+    for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
+        ee.Update(starExportEntries->Get(idx));
         moduleRequest.Update(ee->GetModuleRequest());
         JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, moduleRequest,
-                                                           module, starResolution, resolveSet);
-        if (result->IsString() || result->IsException() || result->IsNull()) {
+                                                            module, starResolution, resolveSet);
+        if (result->IsString() || result->IsException()) {
             return result;
-        }
-    } else {
-        JSHandle<TaggedArray> starExportEntries(thread, starExportEntriesTv);
-        size_t starExportEntriesLen = starExportEntries->GetLength();
-        for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
-            ee.Update(starExportEntries->Get(idx));
-            moduleRequest.Update(ee->GetModuleRequest());
-            JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, moduleRequest,
-                                                               module, starResolution, resolveSet);
-            if (result->IsString() || result->IsException()) {
-                return result;
-            }
         }
     }
     // 9. Return starResolution.
@@ -356,7 +339,11 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
     }
 
     // 10. Perform ? ModuleDeclarationEnvironmentSetup(module).
-    SourceTextModule::ModuleDeclarationEnvironmentSetup(thread, module);
+    if (module->GetIsNewBcVersion()) {
+        SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(thread, module);
+    } else {
+        SourceTextModule::ModuleDeclarationEnvironmentSetup(thread, module);
+    }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
     // 11. Assert: module occurs exactly once in stack.
     // 12. Assert: module.[[DFSAncestorIndex]] is less than or equal to module.[[DFSIndex]].
@@ -457,6 +444,72 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
     module->SetEnvironment(thread, envRec);
 }
 
+void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
+                                                              const JSHandle<SourceTextModule> &module)
+{
+    CheckResolvedIndexBinding(thread, module);
+    if (module->GetImportEntries().IsUndefined()) {
+        return;
+    }
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    // 2. Assert: All named exports from module are resolvable.
+    // 3. Let realm be module.[[Realm]].
+    // 4. Assert: realm is not undefined.
+    // 5. Let env be NewModuleEnvironment(realm.[[GlobalEnv]]).
+    JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries());
+    size_t importEntriesLen = importEntries->GetLength();
+    JSHandle<TaggedArray> arr = factory->NewTaggedArray(importEntriesLen);
+    // 6. Set module.[[Environment]] to env.
+    module->SetEnvironment(thread, arr);
+    // 7. Let envRec be env's EnvironmentRecord.
+    JSHandle<TaggedArray> envRec = arr;
+    // 8. For each ImportEntry Record in in module.[[ImportEntries]], do
+    auto globalConstants = thread->GlobalConstants();
+    JSMutableHandle<ImportEntry> in(thread, globalConstants->GetUndefined());
+    JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
+    JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
+    JSMutableHandle<JSTaggedValue> localName(thread, globalConstants->GetUndefined());
+    for (size_t idx = 0; idx < importEntriesLen; idx++) {
+        in.Update(importEntries->Get(idx));
+        localName.Update(in->GetLocalName());
+        importName.Update(in->GetImportName());
+        moduleRequest.Update(in->GetModuleRequest());
+        // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
+        JSMutableHandle<SourceTextModule> importedModule(thread, thread->GlobalConstants()->GetUndefined());
+        JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
+        if (moduleRecordName.IsUndefined()) {
+            importedModule.Update(SourceTextModule::HostResolveImportedModule(thread, module, moduleRequest));
+        } else {
+            ASSERT(moduleRecordName.IsString());
+            importedModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest));
+        }
+        // c. If in.[[ImportName]] is "*", then
+        JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
+        if (JSTaggedValue::SameValue(importName, starString)) {
+            // i. Let namespace be ? GetModuleNamespace(importedModule).
+            JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, importedModule);
+            // ii. Perform ! envRec.CreateImmutableBinding(in.[[LocalName]], true).
+            // iii. Call envRec.InitializeBinding(in.[[LocalName]], namespace).
+            envRec->Set(thread, idx, moduleNamespace);
+        } else {
+            // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
+            CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
+            JSHandle<JSTaggedValue> resolution =
+                SourceTextModule::ResolveExport(thread, importedModule, importName, resolveSet);
+            // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
+            if (resolution->IsNull() || resolution->IsString()) {
+                THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, "");
+            }
+            // iii. Call envRec.CreateImportBinding(
+            //    in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
+            envRec->Set(thread, idx, resolution);
+        }
+    }
+
+    module->SetEnvironment(thread, envRec);
+}
+
 JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
                                                              const JSHandle<SourceTextModule> &module)
 {
@@ -487,7 +540,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
             JSHandle<JSTaggedValue> resolution =
                 SourceTextModule::ResolveExport(thread, module, nameHandle, resolveSet);
             // ii. If resolution is a ResolvedBinding Record, append name to unambiguousNames.
-            if (resolution->IsResolvedBinding()) {
+            if (resolution->IsResolvedBinding() || resolution->IsResolvedIndexBinding()) {
                 unambiguousNames->Set(thread, idx, nameHandle);
                 idx++;
             }
@@ -706,10 +759,6 @@ void SourceTextModule::AddLocalExportEntry(JSThread *thread, const JSHandle<Sour
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSTaggedValue localExportEntries = module->GetLocalExportEntries();
     if (localExportEntries.IsUndefined()) {
-        if (len == 1) {
-            module->SetLocalExportEntries(thread, exportEntry);
-            return;
-        }
         JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
         array->Set(thread, idx, exportEntry.GetTaggedValue());
         module->SetLocalExportEntries(thread, array);
@@ -726,10 +775,6 @@ void SourceTextModule::AddIndirectExportEntry(JSThread *thread, const JSHandle<S
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSTaggedValue indirectExportEntries = module->GetIndirectExportEntries();
     if (indirectExportEntries.IsUndefined()) {
-        if (len == 1) {
-            module->SetIndirectExportEntries(thread, exportEntry);
-            return;
-        }
         JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
         array->Set(thread, idx, exportEntry.GetTaggedValue());
         module->SetIndirectExportEntries(thread, array);
@@ -745,10 +790,6 @@ void SourceTextModule::AddStarExportEntry(JSThread *thread, const JSHandle<Sourc
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSTaggedValue starExportEntries = module->GetStarExportEntries();
     if (starExportEntries.IsUndefined()) {
-        if (len == 1) {
-            module->SetStarExportEntries(thread, exportEntry);
-            return;
-        }
         JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
         array->Set(thread, idx, exportEntry.GetTaggedValue());
         module->SetStarExportEntries(thread, array);
@@ -756,6 +797,21 @@ void SourceTextModule::AddStarExportEntry(JSThread *thread, const JSHandle<Sourc
         JSHandle<TaggedArray> entries(thread, starExportEntries);
         entries->Set(thread, idx, exportEntry.GetTaggedValue());
     }
+}
+
+JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, int32_t index, bool isThrow)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSTaggedValue dictionary = GetNameDictionary();
+    if (dictionary.IsUndefined()) {
+        if (isThrow) {
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, "module environment is undefined", JSTaggedValue::Exception());
+        }
+        return JSTaggedValue::Hole();
+    }
+
+    TaggedArray *array = TaggedArray::Cast(dictionary.GetTaggedObject());
+    return array->Get(index);
 }
 
 JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, JSTaggedValue key, bool isThrow)
@@ -769,116 +825,63 @@ JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, JSTaggedValue k
         return JSTaggedValue::Hole();
     }
 
-    if (GetModes() == ModuleModes::ARRAYMODE) {
-        JSTaggedValue tmp = GetModuleValueFromArray(JSTaggedValue(this), key);
-        return tmp;
-    }
-
     NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
     int entry = dict->FindEntry(key);
     if (entry != -1) {
         return dict->GetValue(entry);
     }
 
-    JSTaggedValue exportEntriesTv = GetLocalExportEntries();
-    if (!exportEntriesTv.IsUndefined()) {
-        JSTaggedValue resolution = FindByExport(exportEntriesTv, key, dictionary);
-        if (!resolution.IsHole()) {
-            return resolution;
-        }
-    }
-
     return JSTaggedValue::Hole();
 }
 
-JSTaggedValue SourceTextModule::GetModuleValueFromArray(const JSTaggedValue &sourceTextmodule, JSTaggedValue &key)
+void SourceTextModule::StoreModuleValue(JSThread *thread, int32_t index, const JSHandle<JSTaggedValue> &value)
 {
-    DISALLOW_GARBAGE_COLLECTION;
-    SourceTextModule *module = SourceTextModule::Cast(sourceTextmodule.GetTaggedObject());
-    JSTaggedValue dictionary = module->GetNameDictionary();
-    int entry = FindEntryFromArray(dictionary, key);
-    if (entry != -1) {
-        return GetValueFromArray(dictionary, entry);
-    }
+    JSHandle<SourceTextModule> module(thread, this);
+    JSTaggedValue localExportEntries = module->GetLocalExportEntries();
+    ASSERT(localExportEntries.IsTaggedArray());
 
-    JSTaggedValue exportEntriesTv = module->GetLocalExportEntries();
-    if (!exportEntriesTv.IsUndefined()) {
-        JSTaggedValue resolution = FindArrayByExport(exportEntriesTv, key, dictionary);
-        if (!resolution.IsHole()) {
-            return resolution;
-        }
+    JSHandle<JSTaggedValue> data(thread, module->GetNameDictionary());
+    if (data->IsUndefined()) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        uint32_t size = TaggedArray::Cast(localExportEntries.GetTaggedObject())->GetLength();
+        ASSERT(index < static_cast<int32_t>(size));
+        data = JSHandle<JSTaggedValue>(factory->NewTaggedArray(size));
+        module->SetNameDictionary(thread, data);
     }
-    return JSTaggedValue::Hole();
+    JSHandle<TaggedArray> arr(data);
+    arr->Set(thread, index, value);
 }
 
 void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTaggedValue> &key,
                                         const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<SourceTextModule> module(thread, this);
-    if (module->GetModes() == ModuleModes::ARRAYMODE) {
-        return StoreModuleValueFromArray(thread, key, value);
-    }
     JSMutableHandle<JSTaggedValue> data(thread, module->GetNameDictionary());
     if (data->IsUndefined()) {
         data.Update(NameDictionary::Create(thread, DEFAULT_DICTIONART_CAPACITY));
     }
-
     JSMutableHandle<NameDictionary> dataDict(data);
+
     JSHandle<JSTaggedValue> localExportEntriesTv(thread, module->GetLocalExportEntries());
-    if (!localExportEntriesTv->IsUndefined()) {
-        StoreByLocalExport(thread, localExportEntriesTv, value, key, dataDict);
+    ASSERT(localExportEntriesTv->IsTaggedArray());
+
+    auto globalConstants = thread->GlobalConstants();
+    JSMutableHandle<LocalExportEntry> ee(thread, globalConstants->GetUndefined());
+    JSMutableHandle<JSTaggedValue> exportName(thread, globalConstants->GetUndefined());
+
+    JSHandle<TaggedArray> localExportEntries(localExportEntriesTv);
+    size_t localExportEntriesLen = localExportEntries->GetLength();
+    for (size_t idx = 0; idx < localExportEntriesLen; idx++) {
+        ee.Update(localExportEntries->Get(idx));
+        if (JSTaggedValue::SameValue(ee->GetLocalName(), key.GetTaggedValue())) {
+            exportName.Update(ee->GetExportName());
+            dataDict.Update(NameDictionary::Put(thread, dataDict, exportName, value,
+                                                PropertyAttributes::Default()));
+            return;
+        }
     }
 
     module->SetNameDictionary(thread, dataDict);
-}
-
-void SourceTextModule::StoreModuleValueFromArray(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                                                 const JSHandle<JSTaggedValue> &value)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module(thread, this);
-
-    JSMutableHandle<JSTaggedValue> data(thread, module->GetNameDictionary());
-    if (data->IsUndefined()) {
-        data.Update(factory->EmptyArray());
-    }
-    int entry = FindEntryFromArray(data.GetTaggedValue(), key.GetTaggedValue());
-    if (entry != -1) {
-        return SetValueFromArray(thread, data, entry, value);
-    }
-
-    JSHandle<JSTaggedValue> localExportEntriesTv(thread, module->GetLocalExportEntries());
-    if (!localExportEntriesTv->IsUndefined()) {
-        StoreArrayByLocalExport(thread, localExportEntriesTv, value, key, data, module);
-    }
-}
-
-int SourceTextModule::FindEntryFromArray(const JSTaggedValue &dictionary, const JSTaggedValue &key)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    TaggedArray *array = TaggedArray::Cast(dictionary.GetTaggedObject());
-    size_t len = array->GetLength();
-    for (size_t idx = 0; idx < len; idx = idx + 2) { // 2 means skip key
-        if (JSTaggedValue::SameValue(key, array->Get(idx))) {
-            return idx;
-        }
-    }
-    return -1;
-}
-
-JSTaggedValue SourceTextModule::GetValueFromArray(const JSTaggedValue &dictionary, int entry)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    TaggedArray *array = TaggedArray::Cast(dictionary.GetTaggedObject());
-    return array->Get(entry + 1);
-}
-
-void SourceTextModule::SetValueFromArray(JSThread *thread, const JSHandle<JSTaggedValue> &dictionary,
-                                         int entry, const JSHandle<JSTaggedValue> &value)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    TaggedArray *array = TaggedArray::Cast(dictionary->GetTaggedObject());
-    array->Set(thread, entry + 1, value.GetTaggedValue());
 }
 
 void SourceTextModule::SetExportName(JSThread *thread, const JSHandle<JSTaggedValue> &moduleRequest,
@@ -940,7 +943,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
         return globalConstants->GetHandledNull();
     }
     // i. Assert: resolution is a ResolvedBinding Record.
-    ASSERT(resolution->IsResolvedBinding());
+    ASSERT(resolution->IsResolvedBinding() || resolution->IsResolvedIndexBinding());
     // ii. If starResolution is null, set starResolution to resolution.
     if (starResolution->IsNull()) {
         starResolution.Update(resolution.GetTaggedValue());
@@ -949,34 +952,26 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
         // 2. If resolution.[[Module]] and starResolution.[[Module]] are not the same Module Record or
         // SameValue(
         //    resolution.[[BindingName]], starResolution.[[BindingName]]) is false, return "ambiguous".
-        JSHandle<ResolvedBinding> resolutionBd = JSHandle<ResolvedBinding>::Cast(resolution);
-        JSHandle<ResolvedBinding> starResolutionBd = JSHandle<ResolvedBinding>::Cast(starResolution);
-        if ((!JSTaggedValue::SameValue(resolutionBd->GetModule(), starResolutionBd->GetModule())) ||
-            (!JSTaggedValue::SameValue(
-                resolutionBd->GetBindingName(), starResolutionBd->GetBindingName()))) {
-            return globalConstants->GetHandledAmbiguousString();
+        // TODO: Adapter new module
+        if (resolution->IsResolvedBinding()) {
+            JSHandle<ResolvedBinding> resolutionBd = JSHandle<ResolvedBinding>::Cast(resolution);
+            JSHandle<ResolvedBinding> starResolutionBd = JSHandle<ResolvedBinding>::Cast(starResolution);
+            if ((!JSTaggedValue::SameValue(resolutionBd->GetModule(), starResolutionBd->GetModule())) ||
+                (!JSTaggedValue::SameValue(
+                    resolutionBd->GetBindingName(), starResolutionBd->GetBindingName()))) {
+                return globalConstants->GetHandledAmbiguousString();
+            }
+        } else {
+            JSHandle<ResolvedIndexBinding> resolutionBd = JSHandle<ResolvedIndexBinding>::Cast(resolution);
+            JSHandle<ResolvedIndexBinding> starResolutionBd = JSHandle<ResolvedIndexBinding>::Cast(starResolution);
+            if ((!JSTaggedValue::SameValue(resolutionBd->GetModule(), starResolutionBd->GetModule())) ||
+                resolutionBd->GetIndex() != starResolutionBd->GetIndex()) {
+                return globalConstants->GetHandledAmbiguousString();
+            }
         }
     }
     return resolution;
 }
-
-void SourceTextModule::UpdateNameDictionary(JSThread *thread, const JSHandle<JSTaggedValue> &exportName,
-                                            JSHandle<JSTaggedValue> &data, JSHandle<SourceTextModule> &module,
-                                            const JSHandle<JSTaggedValue> &value)
-{
-    int entry = FindEntryFromArray(data.GetTaggedValue(), exportName.GetTaggedValue());
-    if (entry != -1) {
-        SetValueFromArray(thread, data, entry, value);
-        return;
-    }
-    JSHandle<TaggedArray> dataArray(data);
-    size_t len = dataArray->GetLength();
-    JSHandle<TaggedArray> newdataArray = TaggedArray::SetCapacity(thread, dataArray, len + 2); // 2 means key and value
-    newdataArray->Set(thread, len, exportName);
-    newdataArray->Set(thread, len + 1, value);
-    module->SetNameDictionary(thread, newdataArray);
-}
-
 
 template <typename T>
 void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &exportEntry,
@@ -984,23 +979,15 @@ void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &expo
 {
     if (!exportEntry.IsUndefined()) {
         JSMutableHandle<T> ee(thread, thread->GlobalConstants()->GetUndefined());
-        if (!exportEntry.IsTaggedArray()) {
-            // handle one ExportEntry
-            ee.Update(exportEntry);
+        JSHandle<TaggedArray> exportEntries(thread, exportEntry);
+        size_t exportEntriesLen = exportEntries->GetLength();
+        for (size_t idx = 0; idx < exportEntriesLen; idx++) {
+            ee.Update(exportEntries->Get(idx));
+            // a. Assert: module provides the direct binding for this export.
+            // b. Append e.[[ExportName]] to exportedNames.
             std::string exportName =
                 base::StringHelper::ToStdString(EcmaString::Cast(ee->GetExportName().GetTaggedObject()));
             exportedNames.emplace_back(exportName);
-        } else {
-            JSHandle<TaggedArray> exportEntries(thread, exportEntry);
-            size_t exportEntriesLen = exportEntries->GetLength();
-            for (size_t idx = 0; idx < exportEntriesLen; idx++) {
-                ee.Update(exportEntries->Get(idx));
-                // a. Assert: module provides the direct binding for this export.
-                // b. Append e.[[ExportName]] to exportedNames.
-                std::string exportName =
-                    base::StringHelper::ToStdString(EcmaString::Cast(ee->GetExportName().GetTaggedObject()));
-                exportedNames.emplace_back(exportName);
-            }
         }
     }
 }
@@ -1013,25 +1000,21 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
     JSMutableHandle<JSTaggedValue> localName(thread, thread->GlobalConstants()->GetUndefined());
-    if (exportEntry->IsLocalExportEntry()) {
-        // handle one localExportEntry
-        ee.Update(exportEntry);
+
+    JSHandle<TaggedArray> localExportEntries(exportEntry);
+    size_t localExportEntriesLen = localExportEntries->GetLength();
+    for (size_t idx = 0; idx < localExportEntriesLen; idx++) {
+        ee.Update(localExportEntries->Get(idx));
+        // a. If SameValue(exportName, e.[[ExportName]]) is true, then
         if (JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue())) {
+            // TODO: Adapter new module
+            if (module->GetIsNewBcVersion()) {
+                return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, idx));
+            }
+            // i. Assert: module provides the direct binding for this export.
+            // ii. Return ResolvedBinding Record { [[Module]]: module, [[BindingName]]: e.[[LocalName]] }.
             localName.Update(ee->GetLocalName());
             return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedBindingRecord(module, localName));
-        }
-    } else {
-        JSHandle<TaggedArray> localExportEntries(exportEntry);
-        size_t localExportEntriesLen = localExportEntries->GetLength();
-        for (size_t idx = 0; idx < localExportEntriesLen; idx++) {
-            ee.Update(localExportEntries->Get(idx));
-            // a. If SameValue(exportName, e.[[ExportName]]) is true, then
-            if (JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue())) {
-                // i. Assert: module provides the direct binding for this export.
-                // ii. Return ResolvedBinding Record { [[Module]]: module, [[BindingName]]: e.[[LocalName]] }.
-                localName.Update(ee->GetLocalName());
-                return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedBindingRecord(module, localName));
-            }
         }
     }
     return thread->GlobalConstants()->GetHandledUndefined();
@@ -1048,10 +1031,14 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
     JSMutableHandle<IndirectExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
-    if (exportEntry->IsIndirectExportEntry()) {
-        // handle one indirectExportEntry
-        ee.Update(exportEntry);
+    JSHandle<TaggedArray> indirectExportEntries(exportEntry);
+    size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
+    for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
+        ee.Update(indirectExportEntries->Get(idx));
+        //  a. If SameValue(exportName, e.[[ExportName]]) is true, then
         if (JSTaggedValue::SameValue(exportName.GetTaggedValue(), ee->GetExportName())) {
+            // i. Assert: module imports a specific binding for this export.
+            // ii. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
             moduleRequest.Update(ee->GetModuleRequest());
             JSMutableHandle<SourceTextModule> requestedModule(thread, thread->GlobalConstants()->GetUndefined());
             JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
@@ -1063,33 +1050,9 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest));
             }
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+            // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolveSet).
             importName.Update(ee->GetImportName());
             return SourceTextModule::ResolveExport(thread, requestedModule, importName, resolveSet);
-        }
-    } else {
-        JSHandle<TaggedArray> indirectExportEntries(exportEntry);
-        size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
-        for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
-            ee.Update(indirectExportEntries->Get(idx));
-            //  a. If SameValue(exportName, e.[[ExportName]]) is true, then
-            if (JSTaggedValue::SameValue(exportName.GetTaggedValue(), ee->GetExportName())) {
-                // i. Assert: module imports a specific binding for this export.
-                // ii. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
-                moduleRequest.Update(ee->GetModuleRequest());
-                JSMutableHandle<SourceTextModule> requestedModule(thread, thread->GlobalConstants()->GetUndefined());
-                JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
-                if (moduleRecordName.IsUndefined()) {
-                    requestedModule.Update(SourceTextModule::HostResolveImportedModule(thread, module, moduleRequest));
-                } else {
-                    ASSERT(moduleRecordName.IsString());
-                    requestedModule.Update(
-                        SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest));
-                }
-                RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-                // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolveSet).
-                importName.Update(ee->GetImportName());
-                return SourceTextModule::ResolveExport(thread, requestedModule, importName, resolveSet);
-            }
         }
     }
     return thread->GlobalConstants()->GetHandledUndefined();
@@ -1106,8 +1069,10 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
 
     JSMutableHandle<IndirectExportEntry> ee(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> exportName(thread, globalConstants->GetUndefined());
-    if (indirectExportEntriesTv.IsIndirectExportEntry()) {
-        ee.Update(indirectExportEntriesTv);
+    JSHandle<TaggedArray> indirectExportEntries(thread, indirectExportEntriesTv);
+    size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
+    for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
+        ee.Update(indirectExportEntries->Get(idx));
         // a. Let resolution be ? module.ResolveExport(e.[[ExportName]], « »).
         exportName.Update(ee->GetExportName());
         CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
@@ -1119,150 +1084,35 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
         }
         // c. Assert: resolution is a ResolvedBinding Record.
         ASSERT(resolution->IsResolvedBinding());
-    } else {
-        JSHandle<TaggedArray> indirectExportEntries(thread, indirectExportEntriesTv);
-        size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
-        for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
-            ee.Update(indirectExportEntries->Get(idx));
-            // a. Let resolution be ? module.ResolveExport(e.[[ExportName]], « »).
-            exportName.Update(ee->GetExportName());
-            CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
-            JSHandle<JSTaggedValue> resolution =
-                SourceTextModule::ResolveExport(thread, module, exportName, resolveSet);
-            // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
-            if (resolution->IsNull() || resolution->IsString()) {
-                THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, "");
-            }
-            // c. Assert: resolution is a ResolvedBinding Record.
-            ASSERT(resolution->IsResolvedBinding());
-        }
     }
 }
 
-
-JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
-                                             const JSTaggedValue &dictionary)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
-    if (exportEntriesTv.IsLocalExportEntry()) {
-        LocalExportEntry *ee = LocalExportEntry::Cast(exportEntriesTv.GetTaggedObject());
-        if (JSTaggedValue::SameValue(ee->GetLocalName(), key)) {
-            JSTaggedValue exportName = ee->GetExportName();
-            int entry = dict->FindEntry(exportName);
-            if (entry != -1) {
-                return dict->GetValue(entry);
-            }
-        }
-    } else {
-        TaggedArray *exportEntries = TaggedArray::Cast(exportEntriesTv.GetTaggedObject());
-        size_t exportEntriesLen = exportEntries->GetLength();
-        for (size_t idx = 0; idx < exportEntriesLen; idx++) {
-            LocalExportEntry *ee = LocalExportEntry::Cast(exportEntries->Get(idx).GetTaggedObject());
-            if (!JSTaggedValue::SameValue(ee->GetLocalName(), key)) {
-                continue;
-            }
-            JSTaggedValue exportName = ee->GetExportName();
-            int entry = dict->FindEntry(exportName);
-            if (entry != -1) {
-                return dict->GetValue(entry);
-            }
-        }
-    }
-    return JSTaggedValue::Hole();
-}
-
-JSTaggedValue SourceTextModule::FindArrayByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
-                                                  const JSTaggedValue &dictionary)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    if (exportEntriesTv.IsLocalExportEntry()) {
-        LocalExportEntry *ee = LocalExportEntry::Cast(exportEntriesTv.GetTaggedObject());
-        if (JSTaggedValue::SameValue(ee->GetLocalName(), key)) {
-            JSTaggedValue exportName = ee->GetExportName();
-            int entry = FindEntryFromArray(dictionary, exportName);
-            if (entry != -1) {
-                return GetValueFromArray(dictionary, entry);
-            }
-        }
-    } else {
-        TaggedArray *exportEntries = TaggedArray::Cast(exportEntriesTv.GetTaggedObject());
-        size_t exportEntriesLen = exportEntries->GetLength();
-        for (size_t idx = 0; idx < exportEntriesLen; idx++) {
-            LocalExportEntry *ee = LocalExportEntry::Cast(exportEntries->Get(idx).GetTaggedObject());
-            if (!JSTaggedValue::SameValue(ee->GetLocalName(), key)) {
-                continue;
-            }
-            JSTaggedValue exportName = ee->GetExportName();
-            int entry = FindEntryFromArray(dictionary, exportName);
-            if (entry != -1) {
-                return GetValueFromArray(dictionary, entry);
-            }
-        }
-    }
-    return JSTaggedValue::Hole();
-}
-
-void SourceTextModule::StoreByLocalExport(JSThread *thread,
-                                          const JSHandle<JSTaggedValue> &localExportEntriesTv,
-                                          const JSHandle<JSTaggedValue> &value,
-                                          const JSHandle<JSTaggedValue> &key,
-                                          JSMutableHandle<NameDictionary> &dataDict)
+void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module)
 {
     auto globalConstants = thread->GlobalConstants();
-    JSMutableHandle<LocalExportEntry> ee(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> exportName(thread, globalConstants->GetUndefined());
-    if (localExportEntriesTv->IsLocalExportEntry()) {
-        ee.Update(localExportEntriesTv);
-        if (JSTaggedValue::SameValue(ee->GetLocalName(), key.GetTaggedValue())) {
-            exportName.Update(ee->GetExportName());
-            dataDict.Update(NameDictionary::Put(thread, dataDict, exportName, value,
-                                                PropertyAttributes::Default()));
-            return;
-        }
-    } else {
-        JSHandle<TaggedArray> localExportEntries(localExportEntriesTv);
-        size_t localExportEntriesLen = localExportEntries->GetLength();
-        for (size_t idx = 0; idx < localExportEntriesLen; idx++) {
-            ee.Update(localExportEntries->Get(idx));
-            if (JSTaggedValue::SameValue(ee->GetLocalName(), key.GetTaggedValue())) {
-                exportName.Update(ee->GetExportName());
-                dataDict.Update(NameDictionary::Put(thread, dataDict, exportName, value,
-                                                    PropertyAttributes::Default()));
-                return;
-            }
-        }
+    // 1. For each ExportEntry Record e in module.[[IndirectExportEntries]], do
+    JSTaggedValue indirectExportEntriesTv = module->GetIndirectExportEntries();
+    if (indirectExportEntriesTv.IsUndefined()) {
+        return;
     }
-}
 
-void SourceTextModule::StoreArrayByLocalExport(JSThread *thread,
-                                               const JSHandle<JSTaggedValue> &localExportEntriesTv,
-                                               const JSHandle<JSTaggedValue> &value,
-                                               const JSHandle<JSTaggedValue> &key,
-                                               JSMutableHandle<JSTaggedValue> &dataDict,
-                                               JSHandle<SourceTextModule> &module)
-{
-    auto globalConstants = thread->GlobalConstants();
-    JSMutableHandle<LocalExportEntry> ee(thread, globalConstants->GetUndefined());
+    JSMutableHandle<IndirectExportEntry> ee(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> exportName(thread, globalConstants->GetUndefined());
-    if (localExportEntriesTv->IsLocalExportEntry()) {
-        ee.Update(localExportEntriesTv);
-        if (JSTaggedValue::SameValue(ee->GetLocalName(), key.GetTaggedValue())) {
-            exportName.Update(ee->GetExportName());
-            UpdateNameDictionary(thread, exportName, dataDict, module, value);
-            return;
+    JSHandle<TaggedArray> indirectExportEntries(thread, indirectExportEntriesTv);
+    size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
+    for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
+        ee.Update(indirectExportEntries->Get(idx));
+        // a. Let resolution be ? module.ResolveExport(e.[[ExportName]], « »).
+        exportName.Update(ee->GetExportName());
+        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
+        JSHandle<JSTaggedValue> resolution =
+            SourceTextModule::ResolveExport(thread, module, exportName, resolveSet);
+        // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
+        if (resolution->IsNull() || resolution->IsString()) {
+            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, "");
         }
-    } else {
-        JSHandle<TaggedArray> localExportEntries(localExportEntriesTv);
-        size_t localExportEntriesLen = localExportEntries->GetLength();
-        for (size_t idx = 0; idx < localExportEntriesLen; idx++) {
-            ee.Update(localExportEntries->Get(idx));
-            if (JSTaggedValue::SameValue(ee->GetLocalName(), key.GetTaggedValue())) {
-                exportName.Update(ee->GetExportName());
-                UpdateNameDictionary(thread, exportName, dataDict, module, value);
-                return;
-            }
-        }
+        // c. Assert: resolution is a ResolvedBinding Record.
+        ASSERT(resolution->IsResolvedIndexBinding());
     }
 }
 } // namespace panda::ecmascript

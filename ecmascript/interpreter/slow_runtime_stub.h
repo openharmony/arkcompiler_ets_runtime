@@ -111,6 +111,9 @@ public:
     static JSTaggedValue CloseIterator(JSThread *thread, JSTaggedValue iter);
     static void StModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static JSTaggedValue LdModuleVar(JSThread *thread, JSTaggedValue key, bool inner);
+    static void StModuleVar(JSThread *thread, int32_t index, JSTaggedValue value);
+    static JSTaggedValue LdLocalModuleVar(JSThread *thread, int32_t index);
+    static JSTaggedValue LdExternalModuleVar(JSThread *thread, int32_t index);
     static JSTaggedValue CreateRegExpWithLiteral(JSThread *thread, JSTaggedValue pattern, uint8_t flags);
     static JSTaggedValue GetIteratorNext(JSThread *thread, JSTaggedValue obj, JSTaggedValue method);
 
@@ -159,6 +162,7 @@ public:
                                                uint16_t methodId, uint16_t literalId);
     static JSTaggedValue SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length);
     static JSTaggedValue GetModuleNamespace(JSThread *thread, JSTaggedValue localName);
+    static JSTaggedValue GetModuleNamespace(JSThread *thread, int32_t index);
     static JSTaggedValue LdBigInt(JSThread *thread, JSTaggedValue numberBigInt);
     static JSTaggedValue ThrowTypeError(JSThread *thread, const char *message);
     static JSTaggedValue SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base);

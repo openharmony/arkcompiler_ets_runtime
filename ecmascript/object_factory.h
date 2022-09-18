@@ -144,6 +144,7 @@ class CjsModule;
 class CjsRequire;
 class CjsExports;
 class ResolvedBinding;
+class ResolvedIndexBinding;
 class BigInt;
 class AsyncGeneratorRequest;
 class JSAsyncGeneratorFunction;
@@ -534,6 +535,10 @@ public:
     JSHandle<ResolvedBinding> NewResolvedBindingRecord();
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &bindingName);
+    JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord();
+    JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord(const JSHandle<SourceTextModule> &module,
+                                                                           int32_t index);
+
     JSHandle<CellRecord> NewCellRecord();
     JSHandle<JSFunction> NewJSAsyncGeneratorFunction(const JSHandle<Method> &method);
     // --------------------------------------require--------------------------------------------

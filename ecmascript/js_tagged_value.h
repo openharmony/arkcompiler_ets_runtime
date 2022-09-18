@@ -647,6 +647,7 @@ public:
     bool IsIndirectExportEntry() const;
     bool IsStarExportEntry() const;
     bool IsResolvedBinding() const;
+    bool IsResolvedIndexBinding() const;
     bool IsModuleNamespace() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
 

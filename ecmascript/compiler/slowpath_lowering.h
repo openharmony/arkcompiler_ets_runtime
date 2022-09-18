@@ -216,13 +216,17 @@ private:
     void LowerCreateEmptyObject(GateRef gate, GateRef glue);
     void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetTemplateObject(GateRef gate, GateRef glue);
     void LowerSetObjectWithProto(GateRef gate, GateRef glue);
     void LowerLdBigInt(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerToNumeric(GateRef gate, GateRef glue);
     void LowerDynamicImport(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerLdLocalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerLdExternalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerGetModuleNamespaceByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIteratorNext(GateRef gate, GateRef glue);
     void LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget);

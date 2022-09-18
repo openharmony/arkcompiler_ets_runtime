@@ -5732,27 +5732,21 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(DEPRECATED_STLEXVAR_PREF_IMM16_IMM16_V8);
     }
     HANDLE_OPCODE(GETMODULENAMESPACE_IMM8) {
-        uint16_t stringId = READ_INST_8_0();
-        auto constpool = GetConstantPool(sp);
-        auto localName = GET_STR_FROM_CACHE(stringId);
+        int32_t index = READ_INST_8_0();
 
-        LOG_INST() << "intrinsics::getmodulenamespace "
-                   << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(localName.GetTaggedObject()));
+        LOG_INST() << "intrinsics::getmodulenamespace index:" << index;
 
-        JSTaggedValue moduleNamespace = SlowRuntimeStub::GetModuleNamespace(thread, localName);
+        JSTaggedValue moduleNamespace = SlowRuntimeStub::GetModuleNamespace(thread, index);
         INTERPRETER_RETURN_IF_ABRUPT(moduleNamespace);
         SET_ACC(moduleNamespace);
         DISPATCH(GETMODULENAMESPACE_IMM8);
     }
     HANDLE_OPCODE(WIDE_GETMODULENAMESPACE_PREF_IMM16) {
-        uint16_t stringId = READ_INST_16_1();
-        auto constpool = GetConstantPool(sp);
-        auto localName = GET_STR_FROM_CACHE(stringId);
+        int32_t index = READ_INST_16_1();
 
-        LOG_INST() << "intrinsics::getmodulenamespace "
-                   << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(localName.GetTaggedObject()));
+        LOG_INST() << "intrinsics::getmodulenamespace index:" << index;
 
-        JSTaggedValue moduleNamespace = SlowRuntimeStub::GetModuleNamespace(thread, localName);
+        JSTaggedValue moduleNamespace = SlowRuntimeStub::GetModuleNamespace(thread, index);
         INTERPRETER_RETURN_IF_ABRUPT(moduleNamespace);
         SET_ACC(moduleNamespace);
         DISPATCH(WIDE_GETMODULENAMESPACE_PREF_IMM16);
@@ -5771,34 +5765,24 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(DEPRECATED_GETMODULENAMESPACE_PREF_ID32);
     }
     HANDLE_OPCODE(STMODULEVAR_IMM8) {
-        uint16_t stringId = READ_INST_8_0();
-        SAVE_ACC();
-        auto constpool = GetConstantPool(sp);
-        auto key = GET_STR_FROM_CACHE(stringId);
-        RESTORE_ACC();
+        int32_t index = READ_INST_8_0();
 
-        LOG_INST() << "intrinsics::stmodulevar "
-                   << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+        LOG_INST() << "intrinsics::stmodulevar index:" << index;
 
         JSTaggedValue value = GET_ACC();
 
-        SlowRuntimeStub::StModuleVar(thread, key, value);
+        SlowRuntimeStub::StModuleVar(thread, index, value);
         RESTORE_ACC();
         DISPATCH(STMODULEVAR_IMM8);
     }
     HANDLE_OPCODE(WIDE_STMODULEVAR_PREF_IMM16) {
-        uint16_t stringId = READ_INST_16_1();
-        SAVE_ACC();
-        auto constpool = GetConstantPool(sp);
-        auto key = GET_STR_FROM_CACHE(stringId);
-        RESTORE_ACC();
+        int32_t index = READ_INST_16_1();
 
-        LOG_INST() << "intrinsics::stmodulevar "
-                   << "stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+        LOG_INST() << "intrinsics::stmodulevar index:" << index;
 
         JSTaggedValue value = GET_ACC();
 
-        SlowRuntimeStub::StModuleVar(thread, key, value);
+        SlowRuntimeStub::StModuleVar(thread, index, value);
         RESTORE_ACC();
         DISPATCH(WIDE_STMODULEVAR_PREF_IMM16);
     }
@@ -5819,57 +5803,39 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(DEPRECATED_STMODULEVAR_PREF_ID32);
     }
     HANDLE_OPCODE(LDLOCALMODULEVAR_IMM8) {
-        uint16_t stringId = READ_INST_8_0();
+        int32_t index = READ_INST_8_0();
 
-        auto constpool = GetConstantPool(sp);
-        JSTaggedValue key = GET_STR_FROM_CACHE(stringId);
-        LOG_INST() << "intrinsics::ldmodulevar "
-                   << "string_id:" << stringId << ", "
-                   << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+        LOG_INST() << "intrinsics::ldmodulevar index:" << index;
 
-        JSTaggedValue moduleVar = SlowRuntimeStub::LdModuleVar(thread, key, true);
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdLocalModuleVar(thread, index);
         INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
         SET_ACC(moduleVar);
         DISPATCH(LDLOCALMODULEVAR_IMM8);
     }
     HANDLE_OPCODE(WIDE_LDLOCALMODULEVAR_PREF_IMM16) {
-        uint16_t stringId = READ_INST_16_1();
+        int32_t index = READ_INST_16_1();
+        LOG_INST() << "intrinsics::ldmodulevar index:" << index;
 
-        auto constpool = GetConstantPool(sp);
-        JSTaggedValue key = GET_STR_FROM_CACHE(stringId);
-        LOG_INST() << "intrinsics::ldmodulevar "
-                   << "string_id:" << stringId << ", "
-                   << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
-
-        JSTaggedValue moduleVar = SlowRuntimeStub::LdModuleVar(thread, key, true);
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdLocalModuleVar(thread, index);
         INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
         SET_ACC(moduleVar);
         DISPATCH(WIDE_LDLOCALMODULEVAR_PREF_IMM16);
     }
     HANDLE_OPCODE(LDEXTERNALMODULEVAR_IMM8) {
-        uint16_t stringId = READ_INST_8_0();
+        int32_t index = READ_INST_8_0();
+        LOG_INST() << "intrinsics::ldmodulevar index:" << index;
 
-        auto constpool = GetConstantPool(sp);
-        JSTaggedValue key = GET_STR_FROM_CACHE(stringId);
-        LOG_INST() << "intrinsics::ldmodulevar "
-                   << "string_id:" << stringId << ", "
-                   << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
-
-        JSTaggedValue moduleVar = SlowRuntimeStub::LdModuleVar(thread, key, false);
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdExternalModuleVar(thread, index);
         INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
         SET_ACC(moduleVar);
         DISPATCH(LDEXTERNALMODULEVAR_IMM8);
     }
     HANDLE_OPCODE(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16) {
-        uint16_t stringId = READ_INST_16_1();
+        int32_t index = READ_INST_16_1();
 
-        auto constpool = GetConstantPool(sp);
-        JSTaggedValue key = GET_STR_FROM_CACHE(stringId);
-        LOG_INST() << "intrinsics::ldmodulevar "
-                   << "string_id:" << stringId << ", "
-                   << "key: " << ConvertToString(EcmaString::Cast(key.GetTaggedObject()));
+        LOG_INST() << "intrinsics::ldmodulevar index:" << index;
 
-        JSTaggedValue moduleVar = SlowRuntimeStub::LdModuleVar(thread, key, false);
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdExternalModuleVar(thread, index);
         INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
         SET_ACC(moduleVar);
         DISPATCH(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);

@@ -1004,6 +1004,21 @@ DEF_RUNTIME_STUBS(UpFrame)
     return JSTaggedValue(static_cast<uint64_t>(0)).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetModuleNamespaceByIndex)
+{
+    RUNTIME_STUBS_HEADER(GetModuleNamespaceByIndex);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeGetModuleNamespace(thread, index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetModuleNamespaceByIndexOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(GetModuleNamespaceByIndexOnJSFunc);
+    JSTaggedValue index = GetArg(argv, argc, 0);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1);
+    return RuntimeGetModuleNamespace(thread, index.GetInt(), jsFunc).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(GetModuleNamespace)
 {
     RUNTIME_STUBS_HEADER(GetModuleNamespace);
@@ -1017,6 +1032,25 @@ DEF_RUNTIME_STUBS(GetModuleNamespaceOnJSFunc)
     JSTaggedValue localName = GetArg(argv, argc, 0);
     JSTaggedValue jsFunc = GetArg(argv, argc, 1);
     return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(StModuleVarByIndex)
+{
+    RUNTIME_STUBS_HEADER(StModuleVar);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue value = GetArg(argv, argc, 1);  // 1: means the first parameter
+    RuntimeStModuleVar(thread, index.GetInt(), value);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(StModuleVarByIndexOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(StModuleVarOnJSFunc);
+    JSTaggedValue index = GetArg(argv, argc, 0);
+    JSTaggedValue value = GetArg(argv, argc, 1);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 2);
+    RuntimeStModuleVar(thread, index.GetInt(), value, jsFunc);
+    return JSTaggedValue::Hole().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StModuleVar)
@@ -1036,6 +1070,36 @@ DEF_RUNTIME_STUBS(StModuleVarOnJSFunc)
     JSTaggedValue jsFunc = GetArg(argv, argc, 2);
     RuntimeStModuleVar(thread, key, value, jsFunc);
     return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdLocalModuleVarByIndex)
+{
+    RUNTIME_STUBS_HEADER(LdLocalModuleVarByIndex);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeLdLocalModuleVar(thread, index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdExternalModuleVarByIndex)
+{
+    RUNTIME_STUBS_HEADER(LdExternalModuleVarByIndex);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeLdExternalModuleVar(thread, index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdLocalModuleVarByIndexOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(LdLocalModuleVarByIndexOnJSFunc);
+    JSTaggedValue index = GetArg(argv, argc, 0);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1);
+    return RuntimeLdLocalModuleVar(thread, index.GetInt(), jsFunc).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdExternalModuleVarByIndexOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(LdExternalModuleVarByIndexOnJSFunc);
+    JSTaggedValue index = GetArg(argv, argc, 0);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1);
+    return RuntimeLdExternalModuleVar(thread, index.GetInt(), jsFunc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LdModuleVar)
