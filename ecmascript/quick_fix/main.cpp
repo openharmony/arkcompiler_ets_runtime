@@ -107,7 +107,7 @@ int Main(const int argc, const char **argv)
     }
 
     {
-        std::cout << "QuickFix Test before!" << std::endl;
+        std::cout << "QuickFix Test start!" << std::endl;
         LocalScope scope(vm);
         std::string entry = entrypoint.GetValue();
 

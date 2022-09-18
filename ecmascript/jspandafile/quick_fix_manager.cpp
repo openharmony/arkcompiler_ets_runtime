@@ -44,8 +44,8 @@ bool QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileNa
         return false;
     }
 
-    LOG_ECMA(INFO) << "Load patch: " << patchFileName;
-    bool ret = quickFixLoader_.LoadPatch(thread, patchFileName, baseFileName);
+    LOG_ECMA(INFO) << "Load patch, patch: " << patchFileName << ", base:" << baseFileName;
+    bool ret = quickFixLoader_.LoadPatch(thread, patchFileName.c_str(), baseFileName.c_str());
     if (!ret) {
         LOG_ECMA(ERROR) << "Load patch fail";
         return false;
@@ -63,8 +63,8 @@ bool QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileNa
         return false;
     }
 
-    LOG_ECMA(INFO) << "Load patch: " << patchFileName;
-    bool ret = quickFixLoader_.LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
+    LOG_ECMA(INFO) << "Load patch, patch: " << patchFileName << ", base:" << baseFileName;
+    bool ret = quickFixLoader_.LoadPatch(thread, patchFileName.c_str(), patchBuffer, patchSize, baseFileName.c_str());
     if (!ret) {
         LOG_ECMA(ERROR) << "Load patch fail";
         return false;
@@ -77,7 +77,7 @@ bool QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileNa
 bool QuickFixManager::UnloadPatch(JSThread *thread, const std::string &patchFileName)
 {
     LOG_ECMA(INFO) << "Unload patch: " << patchFileName;
-    bool ret = quickFixLoader_.UnloadPatch(thread, patchFileName);
+    bool ret = quickFixLoader_.UnloadPatch(thread, patchFileName.c_str());
     if (!ret) {
         LOG_ECMA(ERROR) << "Unload patch fail";
         return false;

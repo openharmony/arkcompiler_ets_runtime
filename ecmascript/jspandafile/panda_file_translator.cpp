@@ -187,10 +187,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
             constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
 #endif
         } else {
-            CString entry = "";
-            if (!jsPandaFile->IsBundlePack()) {
-                entry = entryPoint.data();
-            }
             constpool = ParseConstPool(vm, jsPandaFile);
         }
         vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);

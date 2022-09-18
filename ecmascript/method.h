@@ -222,7 +222,6 @@ public:
     const panda_file::File *GetPandaFile() const;
     uint32_t GetCodeSize() const;
 
-    panda_file::File::StringData GetName() const;
     const char *PUBLIC_API GetMethodName() const;
     std::string PUBLIC_API ParseFunctionName() const;
 
