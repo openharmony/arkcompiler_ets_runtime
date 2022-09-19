@@ -958,8 +958,6 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
 
 void SlowPathLowering::LowerSuspendGenerator(GateRef gate, GateRef glue, GateRef jsFunc)
 {
-    // 4: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 4);
     SaveFrameToContext(gate, glue, jsFunc);
     acc_.SetDep(gate, builder_.GetDepend());
     DebugPrintBC(gate, glue);
@@ -3297,7 +3295,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.Int64(JSTaggedValue::VALUE_HOLE));
 
     // 5: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 5);
+    ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef methodId = builder_.SExtInt16ToInt64(acc_.GetValueIn(gate, 0));
     GateRef proto = acc_.GetValueIn(gate, 3);
     GateRef literalId;
@@ -3342,8 +3340,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     std::vector<GateRef> exceptionControl;
     builder_.Bind(&isNotException);
     {
-        GateRef newLexicalEnv = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
-        builder_.SetLexicalEnvToFunction(glue, *result, newLexicalEnv);
+        builder_.SetLexicalEnvToFunction(glue, *result, lexicalEnv);
         builder_.SetModuleToFunction(glue, *result, builder_.GetModuleFromFunction(jsFunc));
         LowerCallRuntime(glue, RTSTUB_ID(SetClassConstructorLength),
             { *result, builder_.ToTaggedInt(length) }, true);

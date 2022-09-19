@@ -112,50 +112,17 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
                 }
                 methodLiteral->SetFunctionKind(kind);
 #endif
-                auto it = processedInsns.find(insns);
-                if (it == processedInsns.end()) {
-                    auto bcIns = BytecodeInst(insns);
-                    auto bcInsLast = bcIns.JumpTo(codeSize);
-                    bytecodeInfo_.methodPcInfos.emplace_back(MethodPcInfo { {}, {}, {}, codeSize });
-                    int32_t offsetIndex = 1;
-                    uint8_t *curPc = nullptr;
-                    uint8_t *prePc = nullptr;
-                    while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
-                        CollectMethodInfoFromNewBC(bcIns, methodLiteral);
-                        auto pc = const_cast<uint8_t *>(bcIns.GetAddress());
-                        auto nextInst = bcIns.GetNext();
-                        bcIns = nextInst;
-
-                        auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
-                        auto &byteCodeCurPrePc = bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc;
-                        auto &pcToBCOffset = bytecodeInfo_.methodPcInfos.back().pcToBCOffset;
-                        if (offsetIndex == 1) {
-                            curPc = prePc = pc;
-                            bytecodeBlockInfos.emplace_back(curPc, SplitKind::START, std::vector<uint8_t *>(1, curPc));
-                            byteCodeCurPrePc[curPc] = prePc;
-                            pcToBCOffset[curPc] = offsetIndex++;
-                        } else {
-                            curPc = pc;
-                            byteCodeCurPrePc[curPc] = prePc;
-                            pcToBCOffset[curPc] = offsetIndex++;
-                            prePc = curPc;
-                            BytecodeCircuitBuilder::CollectBytecodeBlockInfo(curPc, bytecodeBlockInfos);
-                        }
-                    }
-                    auto emptyPc = const_cast<uint8_t *>(bcInsLast.GetAddress());
-                    bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc[emptyPc] = prePc;
-                    bytecodeInfo_.methodPcInfos.back().pcToBCOffset[emptyPc] = offsetIndex++;
-                    processedInsns[insns] = bytecodeInfo_.methodPcInfos.size() - 1;
-                }
-                SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
-            } else {
-                auto it = processedInsns.find(insns);
-                if (it == processedInsns.end()) {
-                    CollectMethodPcs(codeSize, insns, methodLiteral);
-                    processedInsns[insns] = bytecodeInfo_.methodPcInfos.size() - 1;
-                }
-                SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
             }
+            auto it = processedInsns.find(insns);
+            if (it == processedInsns.end()) {
+                if (jsPandaFile_->IsNewVersion()) {
+                    CollectMethodPcsFromNewBc(codeSize, insns, methodLiteral);
+                } else {
+                    CollectMethodPcs(codeSize, insns, methodLiteral);
+                }
+                processedInsns[insns] = bytecodeInfo_.methodPcInfos.size() - 1;
+            }
+            SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
             jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
         });
     }
@@ -163,6 +130,46 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
                        << jsPandaFile_->GetJSPandaFileDesc()
                        << " is: "
                        << methodIdx;
+}
+
+void BytecodeInfoCollector::CollectMethodPcsFromNewBc(const uint32_t insSz, const uint8_t *insArr,
+                                                      const MethodLiteral *method)
+{
+    auto bcIns = BytecodeInst(insArr);
+    auto bcInsLast = bcIns.JumpTo(insSz);
+    bytecodeInfo_.methodPcInfos.emplace_back(MethodPcInfo { {}, {}, {}, insSz });
+    int32_t offsetIndex = 1;
+    uint8_t *curPc = nullptr;
+    uint8_t *prePc = nullptr;
+    while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
+        CollectMethodInfoFromNewBC(bcIns, method);
+        auto pc = const_cast<uint8_t *>(bcIns.GetAddress());
+        auto nextInst = bcIns.GetNext();
+        bcIns = nextInst;
+
+        auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
+        auto &byteCodeCurPrePc = bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc;
+        auto &pcToBCOffset = bytecodeInfo_.methodPcInfos.back().pcToBCOffset;
+        if (offsetIndex == 1) {
+            curPc = prePc = pc;
+            bytecodeBlockInfos.emplace_back(curPc, SplitKind::START, std::vector<uint8_t *>(1, curPc));
+            byteCodeCurPrePc[curPc] = prePc;
+            pcToBCOffset[curPc] = offsetIndex++;
+        } else {
+            curPc = pc;
+            byteCodeCurPrePc[curPc] = prePc;
+            pcToBCOffset[curPc] = offsetIndex++;
+            prePc = curPc;
+            BytecodeCircuitBuilder::CollectBytecodeBlockInfo(curPc, bytecodeBlockInfos);
+        }
+    }
+
+    auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
+    bytecodeBlockInfos.emplace_back(curPc, SplitKind::END, std::vector<uint8_t *>(1, curPc));
+
+    auto emptyPc = const_cast<uint8_t *>(bcInsLast.GetAddress());
+    bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc[emptyPc] = prePc;
+    bytecodeInfo_.methodPcInfos.back().pcToBCOffset[emptyPc] = offsetIndex++;
 }
 
 void BytecodeInfoCollector::CollectMethodPcs(const uint32_t insSz, const uint8_t *insArr,

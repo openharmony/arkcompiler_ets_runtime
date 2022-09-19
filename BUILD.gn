@@ -140,7 +140,7 @@ if (defined(ark_standalone_build)) {
 
           #"//arkcompiler/ets_runtime/test/moduletest:ark_asm_single_step_test",
           "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test",
-          "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test",
+#          "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test",
         ]
       }
     }

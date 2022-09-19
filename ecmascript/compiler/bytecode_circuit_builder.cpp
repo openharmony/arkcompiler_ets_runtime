@@ -1209,6 +1209,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CREATEITERRESULTOBJ_V8_V8: {
             uint16_t v0 = READ_INST_8_0();
             uint16_t v1 = READ_INST_8_1();
+            info.accIn = false;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
@@ -1223,6 +1224,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v1 = READ_INST_8_2();
+            info.accIn = true;
             uint32_t offset = pc - method_->GetBytecodeArray();
             info.inputs.emplace_back(Immediate(offset)); // Save the pc offset when suspend
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -2629,7 +2631,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
                 break;
             }
         }
-        if (static_cast<EcmaOpcode>(curInfo.opcode) != EcmaOpcode::RESUMEGENERATOR ||
+        if (static_cast<EcmaOpcode>(curInfo.opcode) != EcmaOpcode::RESUMEGENERATOR &&
             static_cast<EcmaOpcode>(curInfo.opcode) != EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8) {
             continue;
         }
@@ -2642,6 +2644,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
         gateAcc_.SetDep(resumeGate, ans);
         auto saveRegGate = RenameVariable(bbId, *pcIter - 1, tmpReg, tmpAcc);
         auto nextPcIter = pcIter;
+        nextPcIter++;
         nextPcIter++;
         ASSERT(GetBytecodeInfo(*nextPcIter).opcode == EcmaOpcode::SUSPENDGENERATOR_V8 ||
             GetBytecodeInfo(*nextPcIter).opcode == EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8);
