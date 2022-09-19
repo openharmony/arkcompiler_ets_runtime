@@ -72,10 +72,12 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
                                                  GateType::Empty());
             GateRef ifTrue = circuit_->NewGate(OpCode(OpCode::IF_TRUE), 0, {ifBranch}, GateType::Empty());
             GateRef ifFalse = circuit_->NewGate(OpCode(OpCode::IF_FALSE), 0, {ifBranch}, GateType::Empty());
+            GateRef ifTrueDepend = builder_.DependRelay(ifTrue, restoreOffsetGate);
+            GateRef ifFalseDepend = builder_.DependRelay(ifFalse, restoreOffsetGate);
             if (flag) {
                 accessor_.ReplaceStateIn(resumeGate, ifTrue);
                 accessor_.ReplaceValueIn(resumeGate, newTarget);
-                accessor_.ReplaceDependIn(firstRestoreRegGate, restoreOffsetGate);
+                accessor_.ReplaceDependIn(firstRestoreRegGate, ifTrueDepend);
                 circuit_->NewGate(OpCode(OpCode::RETURN), 0,
                                   {ifSuccess, suspendGate, suspendGate,
                                    Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST))},
@@ -89,7 +91,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
             } else {
                 auto constant = builder_.UndefineConstant();
                 circuit_->NewGate(OpCode(OpCode::RETURN), 0,
-                                  {ifFalse, restoreOffsetGate, constant,
+                                  {ifFalse, ifFalseDepend, constant,
                                    Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST))},
                                   GateType::AnyType());
             }
