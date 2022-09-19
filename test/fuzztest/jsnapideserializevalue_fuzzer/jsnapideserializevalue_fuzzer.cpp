@@ -25,22 +25,25 @@ using namespace panda::ecmascript;
 namespace OHOS {
     void JSNApiDeserializeValueFuzzTest(const uint8_t* data, size_t size)
     {
-        if (size == 0) {
-            return;
-        }
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetAssociatedJSThread();
-        JSHandle<JSTaggedValue> transfer(thread, JSTaggedValue::Undefined());
-        Serializer serializer = Serializer(thread);
-        for (size_t i = 0; i < size; i++) {
-            JSHandle<JSTaggedValue> value(thread, JSTaggedValue(data[i]));
-            serializer.WriteValue(thread, value, transfer);
+        if (size <= 0) {
+            return;
         }
-        auto serializationData = serializer.Release();
+        double input = 0;
+        if (size > 8) { // 8 : size of double type
+            size = 8;
+        }
+        if (memcpy_s(&input, 8, data, size) != 0) {
+            std::cout << "memcpy_s failed";
+            UNREACHABLE();
+        }
+        Local<JSValueRef> value(NumberRef::New(vm, input));
+        Local<JSValueRef> transfer(JSValueRef::Undefined(vm));
+        void* serializationData = JSNApi::SerializeValue(vm, value, transfer);
         void *hint = nullptr;
-        JSNApi::DeserializeValue(vm, (void *)(serializationData.release()), hint);
+        JSNApi::DeserializeValue(vm, serializationData, hint);
         JSNApi::DestroyJSVM(vm);
     }
 }

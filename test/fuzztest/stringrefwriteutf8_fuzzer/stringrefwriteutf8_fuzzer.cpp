@@ -15,6 +15,7 @@
 
 #include "stringrefwriteutf8_fuzzer.h"
 
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/base/utf_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/tooling/debugger_service.h"
@@ -30,21 +31,18 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0 || size >= 5) { // 5:Utf8 character size
-            JSNApi::DestroyJSVM(vm);
-            return;
-        }
-        std::vector<uint8_t> vec;
-        for (size_t i = 0; i < size; i++) {
-            vec.push_back(data[i]);
-        }
-
-        if (!IsValidUTF8(vec)) {
-            JSNApi::DestroyJSVM(vm);
+        if (size <= 0) {
             return;
         }
         Local<StringRef> res = StringRef::StringRef::NewFromUtf8(vm, (char*)data, (int)size);
-        res->WriteUtf8((char*)(data), (int)size);
+        char *value = new char[size]();
+        if (memcpy_s(value, size, data, size) != EOK) {
+            std::cout << "memcpy_s failed!";
+            UNREACHABLE();
+        }
+        res->WriteUtf8(value, (int)size);
+        delete[] value;
+        value = nullptr;
         JSNApi::DestroyJSVM(vm);
     }
 }

@@ -23,7 +23,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-    void ObjectSetFuzzTest(const uint8_t* data, size_t size)
+    void StopHeapTracking2FuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -39,6 +39,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::ObjectSetFuzzTest(data, size);
+    OHOS::StopHeapTracking2FuzzTest(data, size);
     return 0;
 }
