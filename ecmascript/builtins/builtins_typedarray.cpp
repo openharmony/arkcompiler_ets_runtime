@@ -200,7 +200,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
         JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
         const int32_t argsLength = 2;
-        double k = 0;
+        uint32_t k = 0;
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         while (k < len) {
             tKey.Update(JSTaggedValue(k));
@@ -238,7 +238,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     JSTaggedNumber tLen = JSTaggedValue::ToLength(thread, lenResult);
     // 6. ReturnIfAbrupt(relativeTarget).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double len = tLen.GetNumber();
+    int64_t len = tLen.GetNumber();
 
     // 10. Let targetObj be ? TypedArrayCreate(C, « len »).
     JSTaggedType args[1] = {JSTaggedValue(len).GetRawData()};
@@ -255,7 +255,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     //   f. Set k to k + 1.
     JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
     const int32_t argsLength = 2;
-    double k = 0;
+    int64_t k = 0;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     while (k < len) {
         tKey.Update(JSTaggedValue(k));
@@ -311,7 +311,7 @@ JSTaggedValue BuiltinsTypedArray::Of(EcmaRuntimeCallInfo *argv)
     //   d. ReturnIfAbrupt(status).
     //   e. Set k to k + 1.
     JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
-    double k = 0;
+    int32_t k = 0;
     while (k < len) {
         tKey.Update(JSTaggedValue(k));
         JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
@@ -1206,7 +1206,7 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
     // 4. Let len be the value of O’s [[ArrayLength]] internal slot.
     uint32_t len = thisObj->GetArrayLength();
 
-    double k;
+    uint32_t k = 0;
     // 5. Let relativeStart be ToInteger(start).
     JSTaggedNumber tRelativeStart = JSTaggedValue::ToInteger(thread, GetCallArg(argv, 0));
     // 6. ReturnIfAbrupt(relativeStart).
@@ -1229,14 +1229,14 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
     }
 
     // 10. If relativeEnd < 0, let final be max((len + relativeEnd),0); else let final be min(relativeEnd, len).
-    double final = 0;
+    uint32_t final = 0;
     if (relativeEnd < 0) {
         final = relativeEnd + len > 0 ? relativeEnd + len : 0;
     } else {
         final = relativeEnd < len ? relativeEnd : len;
     }
     // 11. Let count be max(final – k, 0).
-    double count = (final - k) > 0 ? (final - k) : 0;
+    uint32_t count = final > k ? (final - k) : 0;
     // es11 9. Let A be ? TypedArraySpeciesCreate(O, « count »).
     JSTaggedType args[1] = {JSTaggedValue(count).GetRawData()};
     JSHandle<JSObject> newArrObj = TypedArrayHelper::TypedArraySpeciesCreate(thread, thisObj, 1, args);
@@ -1263,7 +1263,7 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> ntKey(thread, JSTaggedValue::Undefined());
     if (srcType != targetType) {
-        double n = 0;
+        uint32_t n = 0;
         while (k < final) {
             tKey.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
@@ -1403,13 +1403,15 @@ JSTaggedValue BuiltinsTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double relativeBegin = tRelativeBegin.GetNumber();
 
-    double beginIndex;
+    uint32_t beginIndex = 0;
     // 9. If relativeBegin < 0, let beginIndex be max((srcLength + relativeBegin), 0); else let beginIndex be
     // min(relativeBegin, srcLength).
     if (relativeBegin < 0) {
-        beginIndex = relativeBegin + srcLength > 0 ? relativeBegin + srcLength : 0;
+        double tempBeginIndex = relativeBegin + static_cast<double>(srcLength);
+        beginIndex = tempBeginIndex > 0 ? static_cast<uint32_t>(tempBeginIndex) : 0;
     } else {
-        beginIndex = relativeBegin < srcLength ? relativeBegin : srcLength;
+        beginIndex = relativeBegin < static_cast<double>(srcLength) ?
+                        static_cast<uint32_t>(relativeBegin) : srcLength;
     }
 
     // 10. If end is undefined, let relativeEnd be srcLength; else, let relativeEnd be ToInteger(end).
@@ -1423,14 +1425,16 @@ JSTaggedValue BuiltinsTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
     }
     // 12. If relativeEnd < 0, let endIndex be max((srcLength + relativeEnd), 0); else let endIndex be
     // min(relativeEnd, srcLength).
-    double endIndex;
+    uint32_t endIndex;
     if (relativeEnd < 0) {
-        endIndex = relativeEnd + srcLength > 0 ? relativeEnd + srcLength : 0;
+        double tempEndIndex = relativeEnd + static_cast<double>(srcLength);
+        endIndex = tempEndIndex > 0 ? static_cast<uint32_t>(tempEndIndex) : 0;
     } else {
-        endIndex = relativeEnd < srcLength ? relativeEnd : srcLength;
+        endIndex = relativeEnd < static_cast<double>(srcLength) ?
+                        static_cast<uint32_t>(relativeEnd) : srcLength;
     }
     // 13. Let newLength be max(endIndex – beginIndex, 0).
-    double newLength = (endIndex - beginIndex) > 0 ? (endIndex - beginIndex) : 0;
+    uint32_t newLength = endIndex > beginIndex ? (endIndex - beginIndex) : 0;
     // 14. Let constructorName be the String value of O’s [[TypedArrayName]] internal slot.
     // 15. Let elementSize be the Number value of the Element Size value specified in Table 49 for constructorName.
     // 16. Let srcByteOffset be the value of O’s [[ByteOffset]] internal slot.

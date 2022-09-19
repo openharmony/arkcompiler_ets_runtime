@@ -25,7 +25,7 @@ MemController::MemController(Heap *heap) : heap_(heap), allocTimeMs_(GetSystemTi
     minAllocLimitGrowingStep_ = heap->GetEcmaVM()->GetEcmaParamConfiguration().GetMinAllocLimitGrowingStep();
 }
 
-double MemController::CalculateAllocLimit(size_t currentSize, size_t minSize, size_t maxSize, size_t newSpaceCapacity,
+size_t MemController::CalculateAllocLimit(size_t currentSize, size_t minSize, size_t maxSize, size_t newSpaceCapacity,
                                           double factor) const
 {
     const uint64_t limit = std::max(static_cast<uint64_t>(currentSize * factor),
@@ -34,7 +34,7 @@ double MemController::CalculateAllocLimit(size_t currentSize, size_t minSize, si
 
     const uint64_t limitAboveMinSize = std::max<uint64_t>(limit, minSize);
     const uint64_t halfToMaxSize = (static_cast<uint64_t>(currentSize) + maxSize) / 2;
-    auto result = static_cast<size_t>(std::min(limitAboveMinSize, halfToMaxSize));
+    size_t result = static_cast<size_t>(std::min(limitAboveMinSize, halfToMaxSize));
     result = static_cast<size_t>(std::min(result, maxSize));
     return result;
 }

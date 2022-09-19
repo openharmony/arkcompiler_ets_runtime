@@ -41,7 +41,7 @@ static constexpr uint8_t DECIMAL = 10;
 static constexpr uint8_t HEXADECIMAL = 16;
 static constexpr double HALF = 0.5;
 static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
-static constexpr double MAX_SAFE_INTEGER = 9007199254740991;
+static constexpr int64_t MAX_SAFE_INTEGER = 9007199254740991;
 static constexpr double MAX_VALUE = std::numeric_limits<double>::max();
 static constexpr double MIN_VALUE = std::numeric_limits<double>::min();
 static constexpr double POSITIVE_INFINITY = std::numeric_limits<double>::infinity();
@@ -94,13 +94,13 @@ public:
     static JSTaggedValue DoubleToPrecision(JSThread *thread, double number, int digit);
     static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix);
     static CString IntToString(int number);
-    static CString IntegerToString(double number, int radix);
+    static CString IntegerToString(int64_t number, int radix);
     static JSTaggedValue StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal);
 
 private:
     static char Carry(char current, int radix);
     static double Strtod(const char *str, int exponent, uint8_t radix);
-    static CString DecimalsToString(double *numberInteger, double fraction, int radix, double delta);
+    static CString DecimalsToString(int64_t *numberInteger, double fraction, int radix, double delta);
     static bool GotoNonspace(uint8_t **ptr, const uint8_t *end);
     static void GetBase(double d, int digits, int *decpt, char *buf, char *bufTmp, int size);
     static int GetMinmumDigits(double d, int *decpt, char *buf);
