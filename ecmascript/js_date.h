@@ -51,13 +51,14 @@ static constexpr std::array<int, 3> LEAP_NUMBER = {4, 100, 400};
 static constexpr std::array<int, 4> YEAR_NUMBER = {1970, 1969, 1901, 1601};
 static constexpr int DAYS_1970_TO_0000 = 719468;
 static constexpr int DAYS_IN_4_YEARS = 1460;
-static constexpr int DAYS_IN_100_YEARS = 35624;
+static constexpr int DAYS_IN_100_YEARS = 36524;
 static constexpr int DAYS_IN_400_YEARS = 146097;
 static constexpr int DAYS_MAR_TO_DEC = 306;
 static constexpr int DAYS_JAN_AND_FEB = 59;
 static constexpr int MONTH_COEFFICIENT = 2;
 static constexpr std::array<int, 2> COEFFICIENT_TO_CIVIL = {5, 153};
-static constexpr std::array<int, 3> MONTH_TRANSFORM = {3, 10, -9};
+static constexpr std::array<int, 3> MONTH_TRANSFORM = {2, 10, -10};
+static constexpr int DAYS_FEBRUARY = 28;
 
 class DateUtils {
 public:
@@ -67,13 +68,14 @@ public:
     static int64_t GetDaysInYear(int64_t year);
     static int64_t GetDaysFromYear(int64_t year);
     // return the year, update days.
-    static int64_t GetYearFromDays(int64_t *days);
+    static void GetYearFromDays(std::array<int64_t, DATE_LENGTH> *date);
     static int64_t FloorDiv(int64_t a, int64_t b);
 
 private:
     static bool isCached_;
     static int preSumDays_;
     static int preDays_;
+    static int preMonth_;
     static int preYear_;
 };
 class JSDate : public JSObject {
