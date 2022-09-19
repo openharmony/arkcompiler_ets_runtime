@@ -28,13 +28,13 @@ enum ElementSize : uint8_t { ONE = 1, TWO = 2, FOUR = 4, EIGHT = 8 };
 class TypedArrayHelper {
 public:
     static JSTaggedValue TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
-                                               const JSHandle<JSTaggedValue> &constructorName);
+                                               const JSHandle<JSTaggedValue> &constructorName, const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
                                                  const JSHandle<JSTaggedValue> &constructorName,
-                                                 const JSHandle<JSTaggedValue> &newTarget);
+                                                 const JSHandle<JSTaggedValue> &newTarget, const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
                                                  const JSHandle<JSTaggedValue> &constructorName,
-                                                 const JSHandle<JSTaggedValue> &newTarget, int32_t length);
+                                                 const JSHandle<JSTaggedValue> &newTarget, int32_t length, const DataViewType arrayType);
     static JSHandle<JSObject> TypedArraySpeciesCreate(JSThread *thread, const JSHandle<JSTypedArray> &obj,
                                                       uint32_t argc, JSTaggedType argv[]);
     static JSHandle<JSObject> TypedArrayCreate(JSThread *thread, const JSHandle<JSTaggedValue> &constructor,
@@ -45,21 +45,21 @@ public:
     inline static uint32_t GetElementSize(const JSHandle<JSTypedArray> &obj);
     inline static uint32_t GetElementSize(JSType type);
     inline static JSHandle<JSTaggedValue> GetConstructor(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
-    inline static JSHandle<JSFunction> GetConstructorFromName(JSThread *thread,
-                                                              const JSHandle<JSTaggedValue> &typeName);
-    inline static uint32_t GetSizeFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName);
+    inline static JSHandle<JSFunction> GetConstructorFromType(JSThread *thread,
+                                                              const DataViewType arrayType);
+    inline static uint32_t GetSizeFromType(const DataViewType arrayType);
     static int32_t SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
                                const JSHandle<JSTaggedValue> &buffer, const JSHandle<JSTaggedValue> &firstValue,
                                const JSHandle<JSTaggedValue> &secondValue);
 
 private:
-    static JSTaggedValue CreateFromOrdinaryObject(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj);
+    static JSTaggedValue CreateFromOrdinaryObject(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj, const DataViewType arrayType);
     static JSTaggedValue CreateFromTypedArray(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
-                                              const JSHandle<JSTaggedValue> &constructorName);
+                                              const DataViewType arrayType);
     static JSTaggedValue CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
-                                               const JSHandle<JSTaggedValue> &constructorName);
+                                               const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArrayBuffer(JSThread *thread, EcmaVM *ecmaVm, const JSHandle<JSObject> &obj,
-                                                       uint64_t length);
+                                                       uint64_t length, const DataViewType arrayType);
 };
 }  // namespace panda::ecmascript::base
 
