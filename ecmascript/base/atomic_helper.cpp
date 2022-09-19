@@ -82,7 +82,8 @@ uint32_t AtomicHelper::ValidateAtomicAccess(JSThread *thread, const JSHandle<JST
     // 7. Let elementSize be the Element Size value specified in Table 60 for arrayTypeName.
     // 8. Let offset be typedArray.[[ByteOffset]].
     JSHandle<JSTaggedValue> arrayTypeName(thread, JSTypedArray::Cast(*typedArrayObj)->GetTypedArrayName());
-    uint32_t elementSize = TypedArrayHelper::GetSizeFromName(thread, arrayTypeName);
+    DataViewType elementType = JSTypedArray::GetTypeFromName(thread, arrayTypeName);
+    uint32_t elementSize = TypedArrayHelper::GetSizeFromType(elementType);
     uint32_t offset = srcObj->GetByteOffset();
     // 9. Return (accessIndex × elementSize) + offset.
     uint32_t allOffset = static_cast<uint32_t>(index) * elementSize + offset;
