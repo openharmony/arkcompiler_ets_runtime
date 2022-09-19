@@ -1628,14 +1628,7 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
         }
     }
     if (e1ValCode == MachineType::I32 || e1ValCode == MachineType::I64 || e1ValCode == MachineType::ARCH) {
-        if (LLVMGetTypeKind(LLVMTypeOf(e1Value)) == LLVMPointerTypeKind &&
-            LLVMGetTypeKind(LLVMTypeOf(e2Value)) == LLVMPointerTypeKind) {
-            result = LLVMBuildICmp(builder_, intOpcode, e1Value, e2Value, "");
-        } else {
-            e1Value = CanonicalizeToInt(e1Value);
-            e2Value = CanonicalizeToInt(e2Value);
-            result = LLVMBuildICmp(builder_, intOpcode, e1Value, e2Value, "");
-        }
+        result = LLVMBuildICmp(builder_, intOpcode, e1Value, e2Value, "");
     } else if (e1ValCode == MachineType::F64) {
         result = LLVMBuildFCmp(builder_, realOpcode, e1Value, e2Value, "");
     } else {
@@ -1708,9 +1701,6 @@ void LLVMIRBuilder::VisitIntOr(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
-
-    e1Value = CanonicalizeToInt(e1Value);
-    e2Value = CanonicalizeToInt(e2Value);
     LLVMValueRef result = LLVMBuildOr(builder_, e1Value, e2Value, "");
     gate2LValue_[gate] = result;
 }
@@ -1726,8 +1716,6 @@ void LLVMIRBuilder::VisitIntAnd(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
-    e1Value = CanonicalizeToInt(e1Value);
-    e2Value = CanonicalizeToInt(e2Value);
     LLVMValueRef result = LLVMBuildAnd(builder_, e1Value, e2Value, "");
     gate2LValue_[gate] = result;
 }
@@ -1736,8 +1724,6 @@ void LLVMIRBuilder::VisitIntXor(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
-    e1Value = CanonicalizeToInt(e1Value);
-    e2Value = CanonicalizeToInt(e2Value);
     LLVMValueRef result = LLVMBuildXor(builder_, e1Value, e2Value, "");
     gate2LValue_[gate] = result;
 }
@@ -1746,8 +1732,6 @@ void LLVMIRBuilder::VisitIntLsr(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
-    e1Value = CanonicalizeToInt(e1Value);
-    e2Value = CanonicalizeToInt(e2Value);
     LLVMValueRef result = LLVMBuildLShr(builder_, e1Value, e2Value, "");
     gate2LValue_[gate] = result;
 }
@@ -1756,8 +1740,6 @@ void LLVMIRBuilder::VisitIntAsr(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
-    e1Value = CanonicalizeToInt(e1Value);
-    e2Value = CanonicalizeToInt(e2Value);
     LLVMValueRef result = LLVMBuildAShr(builder_, e1Value, e2Value, "");
     gate2LValue_[gate] = result;
 }
@@ -1773,8 +1755,6 @@ void LLVMIRBuilder::VisitIntLsl(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
-    e1Value = CanonicalizeToInt(e1Value);
-    e2Value = CanonicalizeToInt(e2Value);
     LLVMValueRef result = LLVMBuildShl(builder_, e1Value, e2Value, "");
     gate2LValue_[gate] = result;
 }

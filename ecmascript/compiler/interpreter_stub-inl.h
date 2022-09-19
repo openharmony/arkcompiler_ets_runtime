@@ -392,7 +392,7 @@ GateRef InterpreterStubBuilder::PushUndefined(GateRef glue, GateRef sp, GateRef 
     Label pushUndefinedEnd(env);
     Branch(Int32LessThan(*i, num), &pushUndefinedBegin, &pushUndefinedEnd);
     LoopBegin(&pushUndefinedBegin);
-    newSp = PushArg(glue, *newSp, Int64(JSTaggedValue::VALUE_UNDEFINED));
+    newSp = PushArg(glue, *newSp, Undefined());
     i = Int32Add(*i, Int32(1));  // 1 : set as high 1 bits
     Branch(Int32LessThan(*i, num), &pushUndefinedAgain, &pushUndefinedEnd);
     Bind(&pushUndefinedAgain);
@@ -589,7 +589,7 @@ void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, Gate
 
 GateRef InterpreterStubBuilder::GetObjectFromConstPool(GateRef constpool, GateRef index)
 {
-    return GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, index);
+    return GetValueFromTaggedArray(constpool, index);
 }
 
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)

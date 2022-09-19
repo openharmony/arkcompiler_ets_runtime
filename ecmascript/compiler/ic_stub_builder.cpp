@@ -30,7 +30,7 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
         {
             Label isHeapObject(env);
             Label notHeapObject(env);
-            GateRef firstValue = GetValueFromTaggedArray(VariableType::JS_ANY(),
+            GateRef firstValue = GetValueFromTaggedArray(
                 profileTypeInfo_, slotId_);
             Branch(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
@@ -68,7 +68,7 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
         {
             Label isHeapObject(env);
             Label notHeapObject(env);
-            GateRef firstValue = GetValueFromTaggedArray(VariableType::JS_ANY(),
+            GateRef firstValue = GetValueFromTaggedArray(
                 profileTypeInfo_, slotId_);
             Branch(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
@@ -102,7 +102,7 @@ void ICStubBuilder::LoadICByName(Variable* result, Label* tryFastPath, Label *sl
     Label loadWithHandler(env);
 
     SetLabels(tryFastPath, slowPath, success);
-    GateRef secondValue = GetValueFromTaggedArray(VariableType::JS_ANY(),
+    GateRef secondValue = GetValueFromTaggedArray(
         profileTypeInfo_, Int32Add(slotId_, Int32(1)));
     DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
     NamedICAccessor(&cachedHandler, &loadWithHandler);
@@ -120,7 +120,7 @@ void ICStubBuilder::StoreICByName(Variable* result, Label* tryFastPath, Label *s
     Label storeWithHandler(env);
 
     SetLabels(tryFastPath, slowPath, success);
-    GateRef secondValue = GetValueFromTaggedArray(VariableType::JS_ANY(),
+    GateRef secondValue = GetValueFromTaggedArray(
         profileTypeInfo_, Int32Add(slotId_, Int32(1)));
     DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
     NamedICAccessor(&cachedHandler, &storeWithHandler);
@@ -139,7 +139,7 @@ void ICStubBuilder::LoadICByValue(Variable* result, Label* tryFastPath, Label *s
     Label loadElement(env);
 
     SetLabels(tryFastPath, slowPath, success);
-    GateRef secondValue = GetValueFromTaggedArray(VariableType::JS_ANY(),
+    GateRef secondValue = GetValueFromTaggedArray(
         profileTypeInfo_, Int32Add(slotId_, Int32(1)));
     DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
     ValuedICAccessor(&cachedHandler, &loadWithHandler, &loadElement);
@@ -164,7 +164,7 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
     Label storeElement(env);
 
     SetLabels(tryFastPath, slowPath, success);
-    GateRef secondValue = GetValueFromTaggedArray(VariableType::JS_ANY(),
+    GateRef secondValue = GetValueFromTaggedArray(
         profileTypeInfo_, Int32Add(slotId_, Int32(1)));
     DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
     ValuedICAccessor(&cachedHandler, &storeWithHandler, &storeElement);

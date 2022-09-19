@@ -2120,7 +2120,7 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
         case EcmaBytecode::LDHOLE_PREF:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64, JSTaggedValue::VALUE_HOLE,
                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                                    GateType::TaggedNPointer());
+                                    GateType::TaggedValue());
             break;
         case EcmaBytecode::LDAI_DYN_IMM32:
             gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,

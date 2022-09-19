@@ -2009,6 +2009,23 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
     Barriers::Update(slotAddr, objectRegion, value, valueRegion);
 }
 
+void RuntimeStubs::StoreBarrier([[maybe_unused]]uintptr_t argGlue,
+    uintptr_t object, size_t offset, TaggedObject *value)
+{
+    uintptr_t slotAddr = object + offset;
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+        // Should align with '8' in 64 and 32 bit platform
+        ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+        objectRegion->InsertOldToNewRSet(slotAddr);
+    }
+    if (!valueRegion->IsMarking()) {
+        return;
+    }
+    Barriers::Update(slotAddr, objectRegion, value, valueRegion);
+}
+
 bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
 {
     return EcmaString::StringsAreEqualSameUtfEncoding(str1, str2);

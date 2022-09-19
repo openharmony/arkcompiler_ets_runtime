@@ -221,10 +221,10 @@ public:
     GateRef IntPtr(int64_t val);
     GateRef Boolean(bool value);
     GateRef Double(double value);
-    GateRef UndefineConstant(GateType type = GateType::TaggedValue());
-    GateRef HoleConstant(GateType type = GateType::TaggedValue());
-    GateRef NullConstant(GateType type = GateType::TaggedValue());
-    GateRef ExceptionConstant(GateType type = GateType::TaggedValue());
+    GateRef UndefineConstant();
+    GateRef HoleConstant();
+    GateRef NullConstant();
+    GateRef ExceptionConstant();
     GateRef RelocatableData(uint64_t val);
     GateRef Alloca(int size);
     GateRef Branch(GateRef state, GateRef condition);
@@ -253,7 +253,7 @@ public:
     // constant
     inline GateRef True();
     inline GateRef False();
-    inline GateRef Undefined(VariableType type = VariableType::JS_ANY());
+    inline GateRef Undefined();
 
     // call operation
     GateRef CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args);
@@ -365,7 +365,7 @@ public:
     inline GateRef Int32Equal(GateRef x, GateRef y);
     template<OpCode::Op Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
-    inline GateRef GetValueFromTaggedArray(VariableType returnType, GateRef array, GateRef index);
+    inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
@@ -429,7 +429,7 @@ public:
     void NewEnvironment(GateRef hir);
     void DeleteCurrentEnvironment();
     inline int NextVariableId();
-    inline void HandleException(GateRef result, Label *success, Label *exception, Label *exit, VariableType type);
+    inline void HandleException(GateRef result, Label *success, Label *exception, Label *exit);
     inline void HandleException(GateRef result, Label *success, Label *fail, Label *exit, GateRef exceptionVal);
     inline void SubCfgEntry(Label *entry);
     inline void SubCfgExit();

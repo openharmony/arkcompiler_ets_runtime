@@ -86,6 +86,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(FatalPrint)                              \
     V(InsertOldToNewRSet)                      \
     V(MarkingBarrier)                          \
+    V(StoreBarrier)                            \
     V(DoubleToInt)                             \
     V(FloatMod)                                \
     V(FindElementWithCache)                    \
@@ -322,6 +323,8 @@ public:
     static void DebugPrintInstruction(uintptr_t pc);
     static void FatalPrint(int fmtMessageId, ...);
     static void MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
+        uintptr_t object, size_t offset, TaggedObject *value);
+    static void StoreBarrier([[maybe_unused]]uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
     static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, uintptr_t object, size_t offset);

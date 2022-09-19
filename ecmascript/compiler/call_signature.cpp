@@ -394,6 +394,7 @@ DEF_CALL_SIGNATURE(SetValueWithBarrier)
         VariableType::JS_ANY()
     };
     callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
@@ -995,6 +996,23 @@ DEF_CALL_SIGNATURE(MarkingBarrier)
 {
     // 4 : 4 input parameters
     CallSignature index("MarkingBarrier", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = index;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(StoreBarrier)
+{
+    // 4 : 4 input parameters
+    CallSignature index("StoreBarrier", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = index;
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {

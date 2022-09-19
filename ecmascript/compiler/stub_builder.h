@@ -59,10 +59,10 @@ public:
     GateRef False();
     GateRef Boolean(bool value);
     GateRef Double(double value);
-    GateRef Undefined(VariableType type = VariableType::JS_ANY());
-    GateRef Hole(VariableType type = VariableType::JS_ANY());
-    GateRef Null(VariableType type = VariableType::JS_ANY());
-    GateRef Exception(VariableType type = VariableType::JS_ANY());
+    GateRef Undefined();
+    GateRef Hole();
+    GateRef Null();
+    GateRef Exception();
     // parameter
     GateRef Argument(size_t index);
     GateRef Int1Argument(size_t index);
@@ -290,7 +290,7 @@ public:
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY());
     GateRef GetPropertyInlinedProps(GateRef obj, GateRef hClass,
-        GateRef index, VariableType type = VariableType::JS_ANY());
+        GateRef index);
 
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
@@ -299,7 +299,7 @@ public:
     GateRef GetInlinedPropsStartFromHClass(GateRef hClass);
     GateRef GetInlinedPropertiesFromHClass(GateRef hClass);
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
-    GateRef GetValueFromTaggedArray(VariableType returnType, GateRef elements, GateRef index);
+    GateRef GetValueFromTaggedArray(GateRef elements, GateRef index);
     void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
@@ -308,9 +308,9 @@ public:
     template<typename DictionaryT>
     GateRef GetAttributesFromDictionary(GateRef elements, GateRef entry);
     template<typename DictionaryT>
-    GateRef GetValueFromDictionary(VariableType returnType, GateRef elements, GateRef entry);
+    GateRef GetValueFromDictionary(GateRef elements, GateRef entry);
     template<typename DictionaryT>
-    GateRef GetKeyFromDictionary(VariableType returnType, GateRef elements, GateRef entry);
+    GateRef GetKeyFromDictionary(GateRef elements, GateRef entry);
     GateRef GetPropAttrFromLayoutInfo(GateRef layout, GateRef entry);
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
@@ -321,7 +321,7 @@ public:
     GateRef FindEntryFromNameDictionary(GateRef glue, GateRef elements, GateRef key);
     GateRef IsMatchInTransitionDictionary(GateRef element, GateRef key, GateRef metaData, GateRef attr);
     GateRef FindEntryFromTransitionDictionary(GateRef glue, GateRef elements, GateRef key, GateRef metaData);
-    GateRef JSObjectGetProperty(VariableType returnType, GateRef obj, GateRef hClass, GateRef propAttr);
+    GateRef JSObjectGetProperty(GateRef obj, GateRef hClass, GateRef propAttr);
     void JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef attr, GateRef value);
     GateRef ShouldCallSetter(GateRef receiver, GateRef holder, GateRef accessor, GateRef attr);
     GateRef CallSetterHelper(GateRef glue, GateRef holder, GateRef accessor,  GateRef value);

@@ -289,14 +289,14 @@ DECLARE_ASM_HANDLER(HandleLdglobal)
 DECLARE_ASM_HANDLER(HandleLdtrue)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    varAcc = Int64ToTaggedPtr(Int64(JSTaggedValue::VALUE_TRUE));
+    varAcc = TaggedTrue();
     DISPATCH_WITH_ACC(LDTRUE);
 }
 
 DECLARE_ASM_HANDLER(HandleLdfalse)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    varAcc = Int64ToTaggedPtr(Int64(JSTaggedValue::VALUE_FALSE));
+    varAcc = TaggedFalse();
     DISPATCH_WITH_ACC(LDFALSE);
 }
 
@@ -688,12 +688,12 @@ DECLARE_ASM_HANDLER(HandleNoteqImm8V8)
         Branch(TaggedIsTrue(*result), &resultIsTrue, &resultNotTrue);
         Bind(&resultIsTrue);
         {
-            varAcc = Int64ToTaggedPtr(TaggedFalse());
+            varAcc = TaggedFalse();
             Jump(&dispatch);
         }
         Bind(&resultNotTrue);
         {
-            varAcc = Int64ToTaggedPtr(TaggedTrue());
+            varAcc = TaggedTrue();
             Jump(&dispatch);
         }
     }
@@ -778,12 +778,12 @@ DECLARE_ASM_HANDLER(HandleLessImm8V8)
     }
     Bind(&leftLessRight);
     {
-        varAcc = Int64ToTaggedPtr(TaggedTrue());
+        varAcc = TaggedTrue();
         Jump(&dispatch);
     }
     Bind(&leftNotLessRight);
     {
-        varAcc = Int64ToTaggedPtr(TaggedFalse());
+        varAcc = TaggedFalse();
         Jump(&dispatch);
     }
     Bind(&slowPath);
@@ -873,12 +873,12 @@ DECLARE_ASM_HANDLER(HandleLesseqImm8V8)
     }
     Bind(&leftLessEqRight);
     {
-        varAcc = Int64ToTaggedPtr(TaggedTrue());
+        varAcc = TaggedTrue();
         Jump(&dispatch);
     }
     Bind(&leftNotLessEqRight);
     {
-        varAcc = Int64ToTaggedPtr(TaggedFalse());
+        varAcc = TaggedFalse();
         Jump(&dispatch);
     }
     Bind(&slowPath);
@@ -968,12 +968,12 @@ DECLARE_ASM_HANDLER(HandleGreaterImm8V8)
     }
     Bind(&leftGreaterRight);
     {
-        varAcc = Int64ToTaggedPtr(TaggedTrue());
+        varAcc = TaggedTrue();
         Jump(&dispatch);
     }
     Bind(&leftNotGreaterRight);
     {
-        varAcc = Int64ToTaggedPtr(TaggedFalse());
+        varAcc = TaggedFalse();
         Jump(&dispatch);
     }
     Bind(&slowPath);
@@ -1064,12 +1064,12 @@ DECLARE_ASM_HANDLER(HandleGreatereqImm8V8)
     }
     Bind(&leftGreaterEqRight);
     {
-        varAcc = Int64ToTaggedPtr(TaggedTrue());
+        varAcc = TaggedTrue();
         Jump(&dispatch);
     }
     Bind(&leftNotGreaterEQRight);
     {
-        varAcc = Int64ToTaggedPtr(TaggedFalse());
+        varAcc = TaggedFalse();
         Jump(&dispatch);
     }
     Bind(&slowPath);
@@ -1604,13 +1604,13 @@ DECLARE_ASM_HANDLER(HandleStrictnoteqImm8V8)
     Branch(FastStrictEqual(glue, left, acc), &strictEqual, &notStrictEqual);
     Bind(&strictEqual);
     {
-        varAcc = Int64ToTaggedPtr(Int64(JSTaggedValue::VALUE_FALSE));
+        varAcc = TaggedFalse();
         Jump(&dispatch);
     }
 
     Bind(&notStrictEqual);
     {
-        varAcc = Int64ToTaggedPtr(Int64(JSTaggedValue::VALUE_TRUE));
+        varAcc = TaggedTrue();
         Jump(&dispatch);
     }
     Bind(&dispatch);
@@ -1631,13 +1631,13 @@ DECLARE_ASM_HANDLER(HandleStricteqImm8V8)
     Branch(FastStrictEqual(glue, left, acc), &strictEqual, &notStrictEqual);
     Bind(&strictEqual);
     {
-        varAcc = Int64ToTaggedPtr(Int64(JSTaggedValue::VALUE_TRUE));
+        varAcc = TaggedTrue();
         Jump(&dispatch);
     }
 
     Bind(&notStrictEqual);
     {
-        varAcc = Int64ToTaggedPtr(Int64(JSTaggedValue::VALUE_FALSE));
+        varAcc = TaggedFalse();
         Jump(&dispatch);
     }
     Bind(&dispatch);
@@ -3931,7 +3931,7 @@ DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm8Id16)
     {
         DEFVARIABLE(icResult, VariableType::JS_ANY(), Undefined());
         GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
-        GateRef handler = GetValueFromTaggedArray(VariableType::JS_ANY(), profileTypeInfo, slotId);
+        GateRef handler = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Label isHeapObject(env);
         Label notHeapObject(env);
         Label ldMiss(env);
@@ -4010,7 +4010,7 @@ DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm16Id16)
     {
         DEFVARIABLE(icResult, VariableType::JS_ANY(), Undefined());
         GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
-        GateRef handler = GetValueFromTaggedArray(VariableType::JS_ANY(), profileTypeInfo, slotId);
+        GateRef handler = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Label isHeapObject(env);
         Label notHeapObject(env);
         Label ldMiss(env);
@@ -4088,7 +4088,7 @@ DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm8Id16)
     Bind(&icAvailable);
     {
         GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
-        GateRef handler = GetValueFromTaggedArray(VariableType::JS_ANY(), profileTypeInfo, slotId);
+        GateRef handler = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Label isHeapObject(env);
         Label stMiss(env);
         Branch(TaggedIsHeapObject(handler), &isHeapObject, &stMiss);
@@ -4156,7 +4156,7 @@ DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm16Id16)
     Bind(&icAvailable);
     {
         GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
-        GateRef handler = GetValueFromTaggedArray(VariableType::JS_ANY(), profileTypeInfo, slotId);
+        GateRef handler = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Label isHeapObject(env);
         Label stMiss(env);
         Branch(TaggedIsHeapObject(handler), &isHeapObject, &stMiss);
@@ -4228,7 +4228,7 @@ DECLARE_ASM_HANDLER(HandleLdglobalvarImm16Id16)
     Bind(&icAvailable);
     {
         GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
-        GateRef handler = GetValueFromTaggedArray(VariableType::JS_ANY(), profileTypeInfo, slotId);
+        GateRef handler = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Label isHeapObject(env);
         Label notHeapObject(env);
         Label ldMiss(env);
@@ -4285,7 +4285,7 @@ DECLARE_ASM_HANDLER(HandleStglobalvarImm16Id16)
     Bind(&icAvailable);
     {
         GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
-        GateRef handler = GetValueFromTaggedArray(VariableType::JS_ANY(), profileTypeInfo, slotId);
+        GateRef handler = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Label isHeapObject(env);
         Label stMiss(env);
         Branch(TaggedIsHeapObject(handler), &isHeapObject, &stMiss);
@@ -4354,12 +4354,12 @@ DECLARE_ASM_HANDLER(HandleIsfalse)
     Branch(TaggedIsTrue(result), &isTrue, &isFalse);
     Bind(&isTrue);
     {
-        varAcc = Int64ToTaggedPtr(TaggedFalse());
+        varAcc = TaggedFalse();
         Jump(&dispatch);
     }
     Bind(&isFalse);
     {
-        varAcc = Int64ToTaggedPtr(TaggedTrue());
+        varAcc = TaggedTrue();
         Jump(&dispatch);
     }
     Bind(&dispatch);
@@ -4755,7 +4755,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdobjbyvaluePrefV8V8)
     {
         result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
             // 0xFF: invalied slot id
-            { Undefined(VariableType::INT64()), receiver, propKey, IntToTaggedInt(Int32(0xFF)) });
+            { Undefined(), receiver, propKey, IntToTaggedInt(Int32(0xFF)) });
         Jump(&checkException);
     }
     Bind(&checkException);
@@ -5340,7 +5340,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdobjbynamePrefId32V8)
     {
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
             // 0xFF: invalied slot id
-            { Undefined(VariableType::INT64()), receiver, propKey, IntToTaggedInt(Int32(0xFF)) });
+            { Undefined(), receiver, propKey, IntToTaggedInt(Int32(0xFF)) });
         Jump(&checkException);
     }
     Bind(&checkException);
