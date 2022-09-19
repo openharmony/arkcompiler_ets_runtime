@@ -491,8 +491,8 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
     __ Bind(&noExtraEntry);
     {
         if (argc == 0) {
-            Register op1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
-            Register op2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
+            Register op1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
+            Register op2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
             PushUndefinedWithArgcAndCheckStack(assembler, glueRegister, declaredNumArgsRegister, op1, op2,
                 stackOverflow);
             __ Jmp(fastPathEntry);

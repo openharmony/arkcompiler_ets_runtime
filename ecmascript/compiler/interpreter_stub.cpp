@@ -5621,7 +5621,8 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef result = GetObjectLiteralFromConstPool(constpool, imm);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithBuffer), { result });
+    GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
 }
 
@@ -5629,7 +5630,8 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_2(pc));
     GateRef result = GetObjectLiteralFromConstPool(constpool, imm);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithBuffer), { result });
+    GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
 }
 
@@ -6231,7 +6233,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjecthavingmethodPrefImm16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef result = GetObjectLiteralFromConstPool(constpool, imm);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, acc, constpool });
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, acc });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16));
 }
 

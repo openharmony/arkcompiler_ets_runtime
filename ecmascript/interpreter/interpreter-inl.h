@@ -4354,7 +4354,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL).GetTaggedObject());
 
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, state->env);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(CREATEOBJECTWITHBUFFER_IMM8_ID16);
@@ -4367,7 +4368,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL).GetTaggedObject());
 
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, state->env);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(CREATEOBJECTWITHBUFFER_IMM16_ID16);
