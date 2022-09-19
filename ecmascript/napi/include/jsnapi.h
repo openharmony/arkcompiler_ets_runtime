@@ -1190,6 +1190,7 @@ public:
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
     static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
 
     static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
     static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,

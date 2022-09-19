@@ -412,6 +412,16 @@ public:
         return workerVm;
     }
     
+    bool DeleteWorker(uint32_t tid)
+    {
+        auto iter = WorkerList_.find(tid);
+        if (iter != WorkerList_.end()) {
+            WorkerList_.erase(iter);
+            return true;
+        }
+        return false;
+    }
+
     bool IsBundlePack() const
     {
         return isBundlePack_;
