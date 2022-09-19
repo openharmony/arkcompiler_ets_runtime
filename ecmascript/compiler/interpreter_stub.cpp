@@ -4958,9 +4958,8 @@ DECLARE_ASM_HANDLER(HandleGetmodulenamespaceImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
-    GateRef stringId = ReadInst8_0(pc);
-    GateRef prop = GetStringFromConstPool(constpool, stringId);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
+    GateRef index = ReadInst8_0(pc);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { IntToTaggedInt(index) });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(GETMODULENAMESPACE_IMM8);
 }
@@ -4969,9 +4968,8 @@ DECLARE_ASM_HANDLER(HandleWideGetmodulenamespacePrefImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
-    GateRef stringId = ReadInst16_1(pc);
-    GateRef prop = GetStringFromConstPool(constpool, stringId);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
+    GateRef index = ReadInst16_1(pc);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { IntToTaggedInt(index) });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(WIDE_GETMODULENAMESPACE_PREF_IMM16);
 }
@@ -4985,6 +4983,46 @@ DECLARE_ASM_HANDLER(HandleDeprecatedGetmodulenamespacePrefId32)
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(DEPRECATED_GETMODULENAMESPACE_PREF_ID32);
+}
+
+DECLARE_ASM_HANDLER(HandleLdlocalmodulevarImm8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef index = ReadInst8_0(pc);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { IntToTaggedInt(index) });
+    varAcc = moduleRef;
+    DISPATCH_WITH_ACC(LDLOCALMODULEVAR_IMM8);
+}
+
+DECLARE_ASM_HANDLER(HandleWideLdlocalmodulevarPrefImm16)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef index = ReadInst16_1(pc);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { IntToTaggedInt(index) });
+    varAcc = moduleRef;
+    DISPATCH_WITH_ACC(WIDE_LDLOCALMODULEVAR_PREF_IMM16);
+}
+
+DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef index = ReadInst8_0(pc);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { IntToTaggedInt(index) });
+    varAcc = moduleRef;
+    DISPATCH_WITH_ACC(LDEXTERNALMODULEVAR_IMM8);
+}
+
+DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    GateRef index = ReadInst16_1(pc);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { IntToTaggedInt(index) });
+    varAcc = moduleRef;
+    DISPATCH_WITH_ACC(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedLdmodulevarPrefId32Imm8)
@@ -5001,21 +5039,19 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdmodulevarPrefId32Imm8)
 
 DECLARE_ASM_HANDLER(HandleStmodulevarImm8)
 {
-    GateRef stringId = ReadInst8_0(pc);
-    GateRef prop = GetStringFromConstPool(constpool, stringId);
+    GateRef index = ReadInst8_0(pc);
     GateRef value = acc;
 
-    CallRuntime(glue, RTSTUB_ID(StModuleVar), { prop, value });
+    CallRuntime(glue, RTSTUB_ID(StModuleVarByIndex), { IntToTaggedInt(index), value });
     DISPATCH(STMODULEVAR_IMM8);
 }
 
 DECLARE_ASM_HANDLER(HandleWideStmodulevarPrefImm16)
 {
-    GateRef stringId = ReadInst16_1(pc);
-    GateRef prop = GetStringFromConstPool(constpool, stringId);
+    GateRef index = ReadInst16_1(pc);
     GateRef value = acc;
 
-    CallRuntime(glue, RTSTUB_ID(StModuleVar), { prop, value });
+    CallRuntime(glue, RTSTUB_ID(StModuleVarByIndex), { IntToTaggedInt(index), value });
     DISPATCH(WIDE_STMODULEVAR_PREF_IMM16);
 }
 
@@ -6029,14 +6065,6 @@ DECLARE_ASM_HANDLER(HandleThrowPrefNone)
     DISPATCH_LAST();
 }
 
-DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
-{
-    DISPATCH(NOP);
-}
-DECLARE_ASM_HANDLER(HandleWideLdlocalmodulevarPrefImm16)
-{
-    DISPATCH(NOP);
-}
 DECLARE_ASM_HANDLER(HandleJnstricteqV8Imm16)
 {
     DISPATCH(NOP);
@@ -6134,10 +6162,6 @@ DECLARE_ASM_HANDLER(HandleJnstricteqzImm8)
 {
     DISPATCH(NOP);
 }
-DECLARE_ASM_HANDLER(HandleLdlocalmodulevarImm8)
-{
-    DISPATCH(NOP);
-}
 DECLARE_ASM_HANDLER(HandleJstricteqzImm16)
 {
     DISPATCH(NOP);
@@ -6175,10 +6199,6 @@ DECLARE_ASM_HANDLER(HandleLdthisbynameImm16Id16)
     DISPATCH(NOP);
 }
 DECLARE_ASM_HANDLER(HandleLdthisbynameImm8Id16)
-{
-    DISPATCH(NOP);
-}
-DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
 {
     DISPATCH(NOP);
 }

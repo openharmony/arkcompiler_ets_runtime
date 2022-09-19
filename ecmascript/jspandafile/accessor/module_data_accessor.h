@@ -70,7 +70,6 @@ public:
     using ModuleValue = std::variant<uint32_t, StringData>;
 
 private:
-    static constexpr size_t SINGLE_MODE_SIZE = 1;
     const panda_file::File &pandaFile_;
     panda_file::File::EntityId moduleDataId_;
     uint32_t numModuleRequests_;

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 &&HANDLE_LDUNDEFINED,
 &&HANDLE_LDNULL,
 &&HANDLE_LDTRUE,

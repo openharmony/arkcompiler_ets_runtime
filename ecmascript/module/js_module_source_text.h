@@ -25,7 +25,6 @@
 namespace panda::ecmascript {
 enum class ModuleStatus : uint8_t { UNINSTANTIATED = 0x01, INSTANTIATING, INSTANTIATED, EVALUATING, EVALUATED };
 enum class ModuleTypes : uint8_t { ECMAMODULE = 0x01, CJSMODULE, UNKNOWN};
-enum class ModuleModes : uint8_t { ARRAYMODE = 0x01, DICTIONARYMODE};
 
 class SourceTextModule final : public ModuleRecord {
 public:
@@ -55,6 +54,7 @@ public:
 
     // 15.2.1.16.4.2 ModuleDeclarationEnvironmentSetup ( module )
     static void ModuleDeclarationEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
+    static void ModuleDeclarationArrayEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
@@ -95,11 +95,11 @@ public:
 
     // define BitField
     static constexpr size_t STATUS_BITS = 3;
-    static constexpr size_t MODULE_TYPE = 2;
-    static constexpr size_t ELEMENT_MODE = 2;
+    static constexpr size_t MODULE_TYPE_BITS = 2;
+    static constexpr size_t IS_NEW_BC_VERSION_BITS = 1;
     FIRST_BIT_FIELD(BitField, Status, ModuleStatus, STATUS_BITS)
-    NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE, Status)
-    NEXT_BIT_FIELD(BitField, Modes, ModuleModes, ELEMENT_MODE, Types)
+    NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE_BITS, Status)
+    NEXT_BIT_FIELD(BitField, IsNewBcVersion, bool, IS_NEW_BC_VERSION_BITS, Types)
 
     DECL_DUMP()
     DECL_VISIT_OBJECT(SOURCE_TEXT_MODULE_OFFSET, EVALUATION_ERROR_OFFSET)
@@ -111,19 +111,15 @@ public:
     // 15.2.1.16.4 Instantiate()
     static int Instantiate(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
+    JSTaggedValue GetModuleValue(JSThread *thread, int32_t index, bool isThrow);
+    void StoreModuleValue(JSThread *thread, int32_t index, const JSHandle<JSTaggedValue> &value);
+
     JSTaggedValue GetModuleValue(JSThread *thread, JSTaggedValue key, bool isThrow);
-    static JSTaggedValue GetModuleValueFromArray(const JSTaggedValue &sourceTextmodule, JSTaggedValue &key);
     void StoreModuleValue(JSThread *thread, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
     static constexpr size_t DEFAULT_DICTIONART_CAPACITY = 2;
     static constexpr size_t DEFAULT_ARRAY_CAPACITY = 2;
 private:
-    void StoreModuleValueFromArray(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                                   const JSHandle<JSTaggedValue> &value);
-    static int FindEntryFromArray(const JSTaggedValue &dictionary, const JSTaggedValue &key);
-    static JSTaggedValue GetValueFromArray(const JSTaggedValue &dictionary, int entry);
-    static void SetValueFromArray(JSThread *thread, const JSHandle<JSTaggedValue> &dictionary,
-                                  int entry, const JSHandle<JSTaggedValue> &value);
     static void SetExportName(JSThread *thread,
                               const JSHandle<JSTaggedValue> &moduleRequest, const JSHandle<SourceTextModule> &module,
                               CVector<std::string> &exportedNames, JSHandle<TaggedArray> &newExportStarSet);
@@ -133,9 +129,6 @@ private:
                                                      JSMutableHandle<JSTaggedValue> &starResolution,
                                                      CVector<std::pair<JSHandle<SourceTextModule>,
                                                      JSHandle<JSTaggedValue>>> &resolveSet);
-    static void UpdateNameDictionary(JSThread *thread, const JSHandle<JSTaggedValue> &exportName,
-                                     JSHandle<JSTaggedValue> &data, JSHandle<SourceTextModule> &module,
-                                     const JSHandle<JSTaggedValue> &value);
     template <typename T>
     static void AddExportName(JSThread *thread, const JSTaggedValue &exportEntry, CVector<std::string> &exportedNames);
     static JSHandle<JSTaggedValue> ResolveLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
@@ -147,28 +140,31 @@ private:
                                                          CVector<std::pair<JSHandle<SourceTextModule>,
                                                          JSHandle<JSTaggedValue>>> &resolveSet);
     static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
-    static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
-                                      const JSTaggedValue &dictionary);
-    static JSTaggedValue FindArrayByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
-                                           const JSTaggedValue &dictionary);
-    static void StoreByLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &localExportEntriesTv,
-                                   const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &key,
-                                   JSMutableHandle<NameDictionary> &dataDict);
-    static void StoreArrayByLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &localExportEntriesTv,
-                                        const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &key,
-                                        JSMutableHandle<JSTaggedValue> &dataDict, JSHandle<SourceTextModule> &module);
+    static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
 };
 
 class ResolvedBinding final : public Record {
 public:
     CAST_CHECK(ResolvedBinding, IsResolvedBinding);
 
-    static constexpr size_t RESOLVED_BINDING_OFFSET = Record::SIZE;
-    ACCESSORS(Module, RESOLVED_BINDING_OFFSET, MODULE_OFFSET);
-    ACCESSORS(BindingName, MODULE_OFFSET, SIZE);
+    static constexpr size_t MODULE_OFFSET = Record::SIZE;
+    ACCESSORS(Module, MODULE_OFFSET, BINDING_NAME_OFFSET);
+    ACCESSORS(BindingName, BINDING_NAME_OFFSET, SIZE);
 
     DECL_DUMP()
-    DECL_VISIT_OBJECT(RESOLVED_BINDING_OFFSET, SIZE)
+    DECL_VISIT_OBJECT(MODULE_OFFSET, SIZE)
+};
+class ResolvedIndexBinding final : public Record {
+public:
+    CAST_CHECK(ResolvedIndexBinding, IsResolvedIndexBinding);
+
+    static constexpr size_t MODULE_OFFSET = Record::SIZE;
+    ACCESSORS(Module, MODULE_OFFSET, INDEX_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(Index, int32_t, INDEX_OFFSET, END_OFFSET);
+    DEFINE_ALIGN_SIZE(END_OFFSET);
+
+    DECL_DUMP()
+    DECL_VISIT_OBJECT(MODULE_OFFSET, INDEX_OFFSET)
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_MODULE_SOURCE_TEXT_H

@@ -953,6 +953,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::RESOLVEDBINDING_RECORD:
             ResolvedBinding::Cast(obj)->Dump(os);
             break;
+        case JSType::RESOLVEDINDEXBINDING_RECORD:
+            ResolvedIndexBinding::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->Dump(os);
             break;
@@ -3279,6 +3282,16 @@ void ResolvedBinding::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void ResolvedIndexBinding::Dump(std::ostream &os) const
+{
+    os << " - Module: ";
+    GetModule().Dump(os);
+    os << "\n";
+    os << " - Index: ";
+    GetIndex();
+    os << "\n";
+}
+
 void ModuleNamespace::Dump(std::ostream &os) const
 {
     os << " - Exports: ";
@@ -3753,6 +3766,9 @@ static void DumpObject(TaggedObject *obj,
             return;
         case JSType::RESOLVEDBINDING_RECORD:
             ResolvedBinding::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::RESOLVEDINDEXBINDING_RECORD:
+            ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->DumpForSnapshot(vec);
@@ -4986,6 +5002,12 @@ void ResolvedBinding::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 {
     vec.push_back(std::make_pair(CString("Module"), GetModule()));
     vec.push_back(std::make_pair(CString("BindingName"), GetBindingName()));
+}
+
+void ResolvedIndexBinding::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("Module"), GetModule()));
+    vec.push_back(std::make_pair(CString("Index"), JSTaggedValue(GetIndex())));
 }
 
 void ModuleNamespace::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

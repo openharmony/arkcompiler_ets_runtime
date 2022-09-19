@@ -635,12 +635,36 @@ JSTaggedValue SlowRuntimeStub::CloseIterator(JSThread *thread, JSTaggedValue ite
     return RuntimeStubs::RuntimeCloseIterator(thread, iterHandle);
 }
 
+void SlowRuntimeStub::StModuleVar(JSThread *thread, int32_t index, JSTaggedValue value)
+{
+    INTERPRETER_TRACE(thread, StModuleVar);
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    return RuntimeStubs::RuntimeStModuleVar(thread, index, value);
+}
+
 void SlowRuntimeStub::StModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
     INTERPRETER_TRACE(thread, StModuleVar);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     return RuntimeStubs::RuntimeStModuleVar(thread, key, value);
+}
+
+JSTaggedValue SlowRuntimeStub::LdLocalModuleVar(JSThread *thread, int32_t index)
+{
+    INTERPRETER_TRACE(thread, LdLocalModuleVar);
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    return RuntimeStubs::RuntimeLdLocalModuleVar(thread, index);
+}
+
+JSTaggedValue SlowRuntimeStub::LdExternalModuleVar(JSThread *thread, int32_t index)
+{
+    INTERPRETER_TRACE(thread, LdExternalModuleVar);
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    return RuntimeStubs::RuntimeLdExternalModuleVar(thread, index);
 }
 
 JSTaggedValue SlowRuntimeStub::LdModuleVar(JSThread *thread, JSTaggedValue key, bool inner)
@@ -1065,6 +1089,11 @@ JSTaggedValue SlowRuntimeStub::SetClassInheritanceRelationship(JSThread *thread,
 JSTaggedValue SlowRuntimeStub::SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length)
 {
     return RuntimeStubs::RuntimeSetClassConstructorLength(thread, ctor, length);
+}
+
+JSTaggedValue SlowRuntimeStub::GetModuleNamespace(JSThread *thread, int32_t index)
+{
+    return RuntimeStubs::RuntimeGetModuleNamespace(thread, index);
 }
 
 JSTaggedValue SlowRuntimeStub::GetModuleNamespace(JSThread *thread, JSTaggedValue localName)

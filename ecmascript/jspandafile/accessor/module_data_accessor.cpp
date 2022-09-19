@@ -45,18 +45,19 @@ void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
 
     auto regularImportNum = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
     JSHandle<TaggedArray> regularImportEntries = factory->NewTaggedArray(regularImportNum);
+    JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
+    JSMutableHandle<JSTaggedValue> localName(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
+
     for (size_t idx = 0; idx < regularImportNum; idx++) {
         auto localNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto importNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto moduleRequestIdx = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint16_t)>(&sp));
         StringData sd = pandaFile_.GetStringData(panda_file::File::EntityId(localNameOffset));
-        JSHandle<JSTaggedValue> localName(thread,
-            factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
+        localName.Update(JSTaggedValue(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii)));
 
         sd = pandaFile_.GetStringData(panda_file::File::EntityId(importNameOffset));
-        JSHandle<JSTaggedValue> importName(thread,
-            factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
+        importName.Update(JSTaggedValue(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii)));
 
         if (requestArraySize != 0) {
             moduleRequest.Update(requestModuleArray->Get(moduleRequestIdx));
@@ -66,29 +67,28 @@ void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
     }
 
     auto namespaceImportNum = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
-    auto totalSize = namespaceImportNum + regularImportNum;
+    auto totalSize = regularImportNum + namespaceImportNum;
+    if (totalSize == 0) {
+        entryDataSp_ = sp;
+        return;
+    }
     JSHandle<TaggedArray> importEntries = TaggedArray::SetCapacity(thread, regularImportEntries, totalSize);
-    JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
-    for (size_t idx = 0; idx < namespaceImportNum; idx++) {
+    importName.Update(globalConstants->GetHandledStarString());
+    for (size_t idx = regularImportNum; idx < totalSize; idx++) {
         auto localNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto moduleRequestIdx = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint16_t)>(&sp));
         StringData sd = pandaFile_.GetStringData(panda_file::File::EntityId(localNameOffset));
-        JSHandle<JSTaggedValue> localName(thread,
-            factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
-        importName.Update(globalConstants->GetHandledStarString());
+        localName.Update(JSTaggedValue(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii)));
 
         if (requestArraySize != 0) {
             moduleRequest.Update(requestModuleArray->Get(moduleRequestIdx));
         }
         JSHandle<ImportEntry> importEntry = factory->NewImportEntry(moduleRequest, importName, localName);
-        importEntries->Set(thread, idx + regularImportNum, importEntry);
-    }
-    if (totalSize) {
-        moduleRecord->SetImportEntries(thread, importEntries);
+        importEntries->Set(thread, idx, importEntry);
     }
     entryDataSp_ = sp;
+    moduleRecord->SetImportEntries(thread, importEntries);
 }
-
 
 void ModuleDataAccessor::EnumerateLocalExportEntry(JSThread *thread, JSHandle<SourceTextModule> &moduleRecord)
 {
@@ -96,6 +96,10 @@ void ModuleDataAccessor::EnumerateLocalExportEntry(JSThread *thread, JSHandle<So
     auto sp = entryDataSp_;
 
     auto localExportNum = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
+    if (localExportNum == 0) {
+        entryDataSp_ = sp;
+        return;
+    }
     JSHandle<TaggedArray> localExportEntries = factory->NewTaggedArray(localExportNum);
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry();
     for (size_t idx = 0; idx < localExportNum; idx++) {
@@ -113,16 +117,7 @@ void ModuleDataAccessor::EnumerateLocalExportEntry(JSThread *thread, JSHandle<So
         localExportEntries->Set(thread, idx, localExportEntry);
     }
     entryDataSp_ = sp;
-    if (localExportNum <= SourceTextModule::DEFAULT_ARRAY_CAPACITY) {
-        moduleRecord->SetModes(ModuleModes::ARRAYMODE);
-    }
-    if (localExportNum == SINGLE_MODE_SIZE) {
-        moduleRecord->SetLocalExportEntries(thread, localExportEntry);
-        return;
-    }
-    if (localExportNum) {
-        moduleRecord->SetLocalExportEntries(thread, localExportEntries);
-    }
+    moduleRecord->SetLocalExportEntries(thread, localExportEntries);
 }
 
 void ModuleDataAccessor::EnumerateIndirectExportEntry(JSThread *thread, const JSHandle<TaggedArray> &requestModuleArray,
@@ -134,6 +129,10 @@ void ModuleDataAccessor::EnumerateIndirectExportEntry(JSThread *thread, const JS
     size_t requestArraySize = requestModuleArray->GetLength();
 
     auto indirectExportNum = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
+    if (indirectExportNum == 0) {
+        entryDataSp_ = sp;
+        return;
+    }
     JSHandle<TaggedArray> indirectExportEntries = factory->NewTaggedArray(indirectExportNum);
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
     JSHandle<IndirectExportEntry> indirectExportEntry = factory->NewIndirectExportEntry();
@@ -156,13 +155,7 @@ void ModuleDataAccessor::EnumerateIndirectExportEntry(JSThread *thread, const JS
         indirectExportEntries->Set(thread, idx, indirectExportEntry);
     }
     entryDataSp_ = sp;
-    if (indirectExportNum == SINGLE_MODE_SIZE) {
-        moduleRecord->SetIndirectExportEntries(thread, indirectExportEntry);
-        return;
-    }
-    if (indirectExportNum) {
-        moduleRecord->SetIndirectExportEntries(thread, indirectExportEntries);
-    }
+    moduleRecord->SetIndirectExportEntries(thread, indirectExportEntries);
 }
 
 void ModuleDataAccessor::EnumerateStarExportEntry(JSThread *thread, const JSHandle<TaggedArray> &requestModuleArray,
@@ -174,6 +167,10 @@ void ModuleDataAccessor::EnumerateStarExportEntry(JSThread *thread, const JSHand
     size_t requestArraySize = requestModuleArray->GetLength();
 
     auto starExportNum = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
+    if (starExportNum == 0) {
+        entryDataSp_ = sp;
+        return;
+    }
     JSHandle<TaggedArray> starExportEntries = factory->NewTaggedArray(starExportNum);
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
     JSHandle<StarExportEntry> starExportEntry = factory->NewStarExportEntry();
@@ -187,13 +184,6 @@ void ModuleDataAccessor::EnumerateStarExportEntry(JSThread *thread, const JSHand
         starExportEntries->Set(thread, idx, starExportEntry.GetTaggedValue());
     }
     entryDataSp_ = sp;
-
-    if (starExportNum == SINGLE_MODE_SIZE) {
-        moduleRecord->SetStarExportEntries(thread, starExportEntry);
-        return;
-    }
-    if (starExportNum) {
-        moduleRecord->SetStarExportEntries(thread, starExportEntries);
-    }
+    moduleRecord->SetStarExportEntries(thread, starExportEntries);
 }
 }  // namespace panda::ecmascript

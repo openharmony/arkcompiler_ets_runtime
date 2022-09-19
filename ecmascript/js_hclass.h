@@ -222,6 +222,7 @@ class ProtoChangeDetails;
         INDIRECT_EXPORTENTRY_RECORD, /* ////////////////////////////////////////////////////////////////-PADDING */    \
         STAR_EXPORTENTRY_RECORD, /* ////////////////////////////////////////////////////////////////////-PADDING */    \
         RESOLVEDBINDING_RECORD, /* /////////////////////////////////////////////////////////////////////-PADDING */    \
+        RESOLVEDINDEXBINDING_RECORD, /* ////////////////////////////////////////////////////////////////-PADDING */    \
         CELL_RECORD,          /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         COMPLETION_RECORD, /* JS_RECORD_LAST /////////////////////////////////////////////////////////////////////// */\
         MACHINE_CODE_OBJECT,                                                                                           \
@@ -1308,6 +1309,11 @@ public:
     inline bool IsResolvedBinding() const
     {
         return GetObjectType() == JSType::RESOLVEDBINDING_RECORD;
+    }
+
+    inline bool IsResolvedIndexBinding() const
+    {
+        return GetObjectType() == JSType::RESOLVEDINDEXBINDING_RECORD;
     }
 
     inline bool IsModuleNamespace() const
