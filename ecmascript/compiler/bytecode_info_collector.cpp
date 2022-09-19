@@ -1100,7 +1100,7 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
             *pc = static_cast<uint8_t>(widePrefOp);
             *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
 
-            uint16_t imm = inst.GetImm<OldBytecodeInst::Format::PREF_IMM16_V8>() - 1;
+            uint16_t imm = static_cast<uint16_t>(inst.GetImm<OldBytecodeInst::Format::PREF_IMM16_V8>() - 1);
             if (memcpy_s(pc + 2, sizeof(uint16_t), &imm, sizeof(uint16_t)) != EOK) {    // 2: skip opcode and ic slot
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
@@ -1290,7 +1290,7 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
         case OldBytecodeInst::Opcode::ECMA_DEFINEMETHOD_PREF_ID16_IMM16_V8: {
             newOpcode = EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8;
             *pc = static_cast<uint8_t>(newOpcode);
-            uint16_t imm = inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>();
+            uint16_t imm = static_cast<uint16_t>(inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>());
             uint8_t newImm = static_cast<uint8_t>(imm);
             if (memcpy_s(pc + 4, sizeof(uint8_t), &newImm, sizeof(uint8_t)) != EOK) {  // 4: offset of imm
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
@@ -1309,7 +1309,7 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
         case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8: {
             newOpcode = EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8;
             *pc = static_cast<uint8_t>(newOpcode);
-            uint16_t imm = inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>();
+            uint16_t imm = static_cast<uint16_t>(inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>());
             uint8_t newImm = static_cast<uint8_t>(imm);
             if (memcpy_s(pc + 4, sizeof(uint8_t), &newImm, sizeof(uint8_t)) != EOK) {  // 4: offset of imm
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
