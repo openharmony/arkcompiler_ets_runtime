@@ -6702,7 +6702,7 @@ void InterpreterAssembly::HandleCreateobjectwithbufferImm16Id16(
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     SAVE_PC();
-    JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
+    JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, state->env);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
     DISPATCH(CREATEOBJECTWITHBUFFER_IMM16_ID16);
@@ -6723,7 +6723,7 @@ void InterpreterAssembly::HandleCreateobjectwithbufferImm8Id16(
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     SAVE_PC();
-    JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
+    JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, state->env);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
     DISPATCH(CREATEOBJECTWITHBUFFER_IMM8_ID16);
