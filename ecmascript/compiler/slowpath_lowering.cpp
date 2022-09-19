@@ -1404,7 +1404,6 @@ void SlowPathLowering::LowerThrowDeleteSuperProperty(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
 {
     GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
-    DebugPrintBC(hirGate, glue);
     GateRef depend = acc_.GetDep(hirGate);
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue, exceptionOffset);
@@ -3721,10 +3720,10 @@ void SlowPathLowering::LowerWideStPatchVar(GateRef gate, GateRef glue)
 void SlowPathLowering::DebugPrintBC(GateRef gate, GateRef glue)
 {
     if (enableBcTrace_) {
-        auto pc = bcBuilder_->GetJSBytecode(gate);
-        auto index = builder_.Int32(*pc);
-        GateRef constIndex = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(index));
-        GateRef debugGate = builder_.CallRuntime(glue,  RTSTUB_ID(DebugAOTPrint), acc_.GetDep(gate), {constIndex});
+        auto ecmaOpcode = bcBuilder_->GetByteCodeOpcode(gate);
+        auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
+        GateRef constOpcode = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(ecmaOpcodeGate));
+        GateRef debugGate = builder_.CallRuntime(glue,  RTSTUB_ID(DebugAOTPrint), acc_.GetDep(gate), {constOpcode});
         acc_.SetDep(gate, debugGate);
     }
 }

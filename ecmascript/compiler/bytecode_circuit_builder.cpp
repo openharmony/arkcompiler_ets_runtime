@@ -148,11 +148,7 @@ void BytecodeCircuitBuilder::CollectBytecodeBlockInfo(uint8_t *pc, std::vector<C
         case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
         case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
         case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
-        case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
-        case EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8:
-        case EcmaOpcode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8:
-        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
-        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16: {
+        case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE: {
             bytecodeBlockInfos.emplace_back(pc, SplitKind::END, std::vector<uint8_t *>(1, pc));
             break;
         }
@@ -1210,7 +1206,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CREATEITERRESULTOBJ_V8_V8: {
             uint16_t v0 = READ_INST_8_0();
             uint16_t v1 = READ_INST_8_1();
-            info.accIn = false;
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
@@ -2427,9 +2422,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
                 if (bbNext->id == bb.id + 1) {
                     auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
                     SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
-                    bbNext->expandedPreds.push_back(
-                        {bb.id, pc, false}
-                    );
+                    bbNext->expandedPreds.push_back({bb.id, pc, false});
                     bitSet |= 1;
                 } else {
                     auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
@@ -2448,9 +2441,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
         auto &bbNext = bb.succs.at(0);
         auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
         SetBlockPred(*bbNext, state, depend, isLoopBack);
-        bbNext->expandedPreds.push_back(
-            {bb.id, pc, false}
-        );
+        bbNext->expandedPreds.push_back({bb.id, pc, false});
     }
 }
 
@@ -2491,9 +2482,7 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb, const uint8_t *pc, 
             auto &bbNext = graph_[bb.id + 1];
             auto isLoopBack = bbNext.loopbackBlocks.count(bb.id);
             SetBlockPred(bbNext, state, depend, isLoopBack);
-            bbNext.expandedPreds.push_back(
-                {bb.id, pc, false}
-            );
+            bbNext.expandedPreds.push_back({bb.id, pc, false});
         }
     } else if (bytecodeInfo.IsGeneral()) {
         // handle general ecma.* bytecodes
@@ -2510,9 +2499,7 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb, const uint8_t *pc, 
             auto &bbNext = graph_[bb.id + 1];
             auto isLoopBack = bbNext.loopbackBlocks.count(bb.id);
             SetBlockPred(bbNext, state, depend, isLoopBack);
-            bbNext.expandedPreds.push_back(
-                {bb.id, pc, false}
-            );
+            bbNext.expandedPreds.push_back({bb.id, pc, false});
         }
     } else if (bytecodeInfo.IsDiscarded()) {
         return;

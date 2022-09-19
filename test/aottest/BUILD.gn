@@ -14,7 +14,7 @@
 group("ark_aot_js_test") {
   testonly = true
   deps = [
-#    "asyncfunctionenter:asyncfunctionenterAotAction", not generate abc
+    "asyncfunctionenter:asyncfunctionenterAotAction",
     "bigint_typed_array_constructors:bigint_typed_array_constructorsAotAction",
     "call_default_args:call_default_argsAotAction",
     "constructor_returns_non_object:constructor_returns_non_objectAotAction",
@@ -31,11 +31,11 @@ group("ark_aot_test") {
   deps = [
     "add:addAotAction",
     "and:andAotAction",
-    "aot_compatibility_test:aot_compatibility_test",
-    "aot_type_test:aot_type_test",
+#    "aot_compatibility_test:aot_compatibility_test",
+#    "aot_type_test:aot_type_test",
     "ashr:ashrAotAction",
     "bind:bindAotAction",
-#    "call_same_bytecode_func:call_same_bytecode_funcAotAction", typeinfer
+    "call_same_bytecode_func:call_same_bytecode_funcAotAction",
     "callithisrange:callithisrangeAotAction",
     "calls:callsAotAction",
     "closeiterator:closeiteratorAotAction",
@@ -50,7 +50,7 @@ group("ark_aot_test") {
     "createregexpwithliteral:createregexpwithliteralAotAction",
     "dec:decAotAction",
     "defineasyncfunc:defineasyncfuncAotAction",
-#    "defineclasswithbuffer:defineclasswithbufferAotAction", not generate abc
+    "defineclasswithbuffer:defineclasswithbufferAotAction",
     "definefunc:definefuncAotAction",
     "definefunc_variable_args:definefunc_variable_argsAotAction",
     "definegeneratorfunc:definegeneratorfuncAotAction",
@@ -60,7 +60,7 @@ group("ark_aot_test") {
     "delobjprop:delobjpropAotAction",
     "destructuring:destructuringAotAction",
     "div:divAotAction",
-#    "duplicatefunctions:duplicatefunctionsAotAction", not generate abc
+    "duplicatefunctions:duplicatefunctionsAotAction",
     "exceptionhandler:exceptionhandlerAotAction",
     "exp:expAotAction",
     "generatorcontinuefinally:generatorcontinuefinallyAotAction",
@@ -68,7 +68,7 @@ group("ark_aot_test") {
     "getiteratornext:getiteratornextAotAction",
     "getnextpropname:getnextpropnameAotAction",
     "getpropiterator:getpropiteratorAotAction",
-#    "getresumemode:getresumemodeAotAction", typeinfer
+    "getresumemode:getresumemodeAotAction",
     "gettemplateobject:gettemplateobjectAotAction",
     "getunmappedargs:getunmappedargsAotAction",
     "global_this_ts:global_this_tsAotAction",
@@ -86,7 +86,7 @@ group("ark_aot_test") {
     "ldglobalvar:ldglobalvarAotAction",
     "ldobjbyname:ldobjbynameAotAction",
     "ldstlexvar:ldstlexvarAotAction",
-#    "ldsuperbyname:ldsuperbynameAotAction", not generate abc
+    "ldsuperbyname:ldsuperbynameAotAction",
     "logic_op:logic_opAotAction",
     "loops:loopsAotAction",
 
@@ -107,7 +107,7 @@ group("ark_aot_test") {
     "shl:shlAotAction",
     "shr:shrAotAction",
     "starrayspread:starrayspreadAotAction",
-#    "stclasstoglobalrecord:stclasstoglobalrecordAotAction", not generate abc
+    "stclasstoglobalrecord:stclasstoglobalrecordAotAction",
     "stconsttoglobalrecord:stconsttoglobalrecordAotAction",
     "stglobalvar:stglobalvarAotAction",
     "stlettoglobalrecord:stlettoglobalrecordAotAction",

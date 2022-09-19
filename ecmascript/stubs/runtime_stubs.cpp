@@ -18,6 +18,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
@@ -1884,8 +1885,8 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
 DEF_RUNTIME_STUBS(DebugAOTPrint)
 {
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
-    JSTaggedValue fmtMessageId = GetArg(argv, argc, 0);
-    std::string result = MessageString::GetMessageString(fmtMessageId.GetInt());
+    auto ecmaOpcode = GetArg(argv, argc, 0).GetInt();
+    std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
     std::cerr << "aot slowpath " << result << std::endl;
     return JSTaggedValue::Undefined().GetRawData();
 }

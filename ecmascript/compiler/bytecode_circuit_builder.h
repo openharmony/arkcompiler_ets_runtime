@@ -333,10 +333,6 @@ struct BytecodeInfo {
             case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
             case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
             case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
-            case EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8:
-            case EcmaOpcode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8:
-            case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
-            case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
                 return true;
             default:
                 return false;
