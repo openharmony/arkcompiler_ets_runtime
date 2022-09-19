@@ -107,6 +107,7 @@ public:
     static JSTaggedValue ToStringTag(EcmaRuntimeCallInfo *argv);
     // es12 23.2.3.13
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
+    static const uint32_t MAX_ARRAY_INDEX = std::numeric_limits<uint32_t>::max();
 };
 }  // namespace panda::ecmascript::builtins
 

@@ -69,7 +69,7 @@ JSTaggedValue JSStableArray::Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo
 }
 
 JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
-                                    double start, double insertCount, double actualDeleteCount)
+                                    uint32_t start, uint32_t insertCount, uint32_t actualDeleteCount)
 {
     JSThread *thread = argv->GetThread();
     uint32_t len = receiver->GetArrayLength();
@@ -97,9 +97,9 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
     } else {
         JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
-        double k = 0;
+        uint32_t k = 0;
         while (k < actualDeleteCount) {
-            double from = start + k;
+            uint32_t from = start + k;
             fromKey.Update(JSTaggedValue(from));
             bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, fromKey);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -279,7 +279,7 @@ JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSOb
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
-    double len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
+    uint64_t len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(true);
     while (k < len) {
@@ -323,7 +323,7 @@ JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JS
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
-    double len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
+    uint64_t len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     while (k < len) {
         JSTaggedValue kValue = array->Get(k);

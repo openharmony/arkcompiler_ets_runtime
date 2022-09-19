@@ -111,7 +111,7 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
                 vec.push_back(nextValue);
             }
         }
-        int32_t len = static_cast<int32_t>(vec.size());
+        uint32_t len = static_cast<uint32_t>(vec.size());
         TypedArrayHelper::AllocateTypedArrayBuffer(thread, ecmaVm, obj, len);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // d. Let k be 0.
@@ -121,7 +121,7 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
         //   iii. Perform ? Set(O, Pk, kValue, true).
         //   iv. Set k to k + 1.
         JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
-        double k = 0;
+        uint32_t k = 0;
         while (k < len) {
             tKey.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
@@ -142,9 +142,9 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
     JSTaggedNumber lenTemp =
         JSTaggedValue::ToLength(thread, JSObject::GetProperty(thread, objectArg, lengthKey).GetValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double len = lenTemp.GetNumber();
+    uint64_t rawLen = lenTemp.GetNumber();
     // 10. Perform ? AllocateTypedArrayBuffer(O, len).
-    TypedArrayHelper::AllocateTypedArrayBuffer(thread, ecmaVm, obj, len);
+    TypedArrayHelper::AllocateTypedArrayBuffer(thread, ecmaVm, obj, rawLen);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11. Let k be 0.
     // 12. Repeat, while k < len
@@ -153,7 +153,8 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
     //   c. Perform ? Set(O, Pk, kValue, true).
     //   d. Set k to k + 1.
     JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
-    double k = 0;
+    uint32_t len = static_cast<uint32_t>(rawLen);
+    uint32_t k = 0;
     while (k < len) {
         tKey.Update(JSTaggedValue(k));
         JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
@@ -400,14 +401,12 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, 
 
 // es11 22.2.4.2.2 Runtime Semantics: AllocateTypedArrayBuffer ( O, length )
 JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, EcmaVM *ecmaVm,
-                                                              const JSHandle<JSObject> &obj, double length)
+                                                              const JSHandle<JSObject> &obj, uint64_t length)
 {
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     // 1. Assert: O is an Object that has a [[ViewedArrayBuffer]] internal slot.
     // 2. Assert: O.[[ViewedArrayBuffer]] is undefined.
     // 3. Assert: ! IsNonNegativeInteger(length) is true.
-    ASSERT(JSTaggedValue(length).IsInteger());
-    ASSERT(length >= 0);
     JSHandle<JSObject> exception(thread, JSTaggedValue::Exception());
     if (length > JSTypedArray::MAX_TYPED_ARRAY_INDEX) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "array length must less than 2^32 - 1", exception);
@@ -417,7 +416,8 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, 
     // 5. Let elementSize be the Element Size value specified in Table 61 for constructorName.
     uint32_t elementSize = TypedArrayHelper::GetSizeFromName(thread, constructorName);
     // 6. Let byteLength be elementSize × length.
-    double byteLength = elementSize * length;
+    uint32_t arrayLength = static_cast<uint32_t>(length);
+    uint64_t byteLength = elementSize * arrayLength;
     // 7. Let data be ? AllocateArrayBuffer(%ArrayBuffer%, byteLength).
     JSHandle<JSTaggedValue> constructor = env->GetArrayBufferFunction();
     JSTaggedValue data = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, constructor, byteLength);
@@ -436,7 +436,7 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, 
     jsTypedArray->SetViewedArrayBuffer(thread, data);
     jsTypedArray->SetByteLength(byteLength);
     jsTypedArray->SetByteOffset(0);
-    jsTypedArray->SetArrayLength(length);
+    jsTypedArray->SetArrayLength(arrayLength);
     // 12. Return O.
     return obj;
 }

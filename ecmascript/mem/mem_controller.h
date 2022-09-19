@@ -47,7 +47,7 @@ public:
         return currentTime * MILLISECOND_PER_SECOND;
     }
 
-    double CalculateAllocLimit(size_t currentSize, size_t minSize, size_t maxSize, size_t newSpaceCapacity,
+    size_t CalculateAllocLimit(size_t currentSize, size_t minSize, size_t maxSize, size_t newSpaceCapacity,
                                double factor) const;
 
     double CalculateGrowingFactor(double gcSpeed, double mutatorSpeed);

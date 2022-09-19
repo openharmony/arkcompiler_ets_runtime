@@ -44,7 +44,7 @@ JSTaggedValue BuiltinsSharedArrayBuffer::SharedArrayBufferConstructor(EcmaRuntim
     // 2. Let byteLength be ? ToIndex(length).
     JSTaggedNumber lenNum = JSTaggedValue::ToIndex(thread, lengthHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double byteLength = lenNum.GetNumber();
+    uint64_t byteLength = lenNum.GetNumber();
     // 3. Return ? AllocateSharedArrayBuffer(NewTarget, byteLength).
     return AllocateSharedArrayBuffer(thread, newTarget, byteLength);
 }
@@ -94,7 +94,7 @@ bool BuiltinsSharedArrayBuffer::IsShared(JSTaggedValue arrayBuffer)
 
 // 25.2.1.1 AllocateSharedArrayBuffer ( constructor, byteLength )
 JSTaggedValue BuiltinsSharedArrayBuffer::AllocateSharedArrayBuffer(
-    JSThread *thread, const JSHandle<JSTaggedValue> &newTarget, double byteLength)
+    JSThread *thread, const JSHandle<JSTaggedValue> &newTarget, uint64_t byteLength)
 {
     BUILTINS_API_TRACE(thread, SharedArrayBuffer, AllocateSharedArrayBuffer);
     /**
@@ -107,9 +107,6 @@ JSTaggedValue BuiltinsSharedArrayBuffer::AllocateSharedArrayBuffer(
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(shaArrBufFunc), newTarget);
     // 2. ReturnIfAbrupt
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 3. Assert: byteLength is a positive integer.
-    ASSERT(JSTaggedValue(byteLength).IsInteger());
-    ASSERT(byteLength >= 0);
     // 4. Let block be CreateSharedByteDataBlock(byteLength).
     if (byteLength > INT_MAX) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Out of range", JSTaggedValue::Exception());
