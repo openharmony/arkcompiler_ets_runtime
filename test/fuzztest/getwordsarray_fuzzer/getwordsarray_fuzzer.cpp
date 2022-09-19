@@ -30,47 +30,23 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
-        bool sign = true;
+        bool sign = false;
         const size_t uint64BytesNum = 8;
-        if (size < uint64BytesNum) {
-            uint64_t words = 0;
-            if (memcpy_s(&words, uint64BytesNum, data, size) != EOK) {
-                std::cout << "memcpy_s failed!";
-                UNREACHABLE();
-            }
-            Local<JSValueRef> bigWordsValue = BigIntRef::CreateBigWords(vm, sign, 1U, &words); // 1 : single word
-            uint64_t *wordsArray = new uint64_t[1]();
-            Local<BigIntRef> bigWords(bigWordsValue);
-            bigWords->GetWordsArray(&sign, 1U, wordsArray);
-            JSNApi::DestroyJSVM(vm);
-            return;
-        }
-
         size_t wordsNum = size / uint64BytesNum;
         size_t hasRemain = size % uint64BytesNum;
         if (hasRemain) {
             wordsNum++;
         }
-        std::vector<uint64_t> wordsVec;
-        size_t count = uint64BytesNum;
-        for (uint32_t i = 0; i < wordsNum; i++) {
-            uint64_t word = 0;
-            if (hasRemain && (i == (wordsNum - 1U))) {
-                count = hasRemain;
-            }
-            if (memcpy_s(&word, uint64BytesNum, data, count) != EOK) {
-                std::cout << "memcpy_s failed!";
-                UNREACHABLE();
-            }
-            wordsVec.push_back(word);
-            data += count;
-        }
         uint64_t *words = new uint64_t[wordsNum]();
-        std::copy(wordsVec.begin(), wordsVec.end(), words);
+        if (memcpy_s(words, size, data, size) != EOK) {
+            std::cout << "memcpy_s failed!";
+            UNREACHABLE();
+        }
         Local<JSValueRef> bigWordsValue = BigIntRef::CreateBigWords(vm, sign, wordsNum, words);
-        uint64_t *wordsArray = new uint64_t[wordsNum]();
         Local<BigIntRef> bigWords(bigWordsValue);
-        bigWords->GetWordsArray(&sign, wordsNum, wordsArray);
+        bigWords->GetWordsArray(&sign, wordsNum, words);
+        delete[] words;
+        words = nullptr;
         JSNApi::DestroyJSVM(vm);
         return;
     }

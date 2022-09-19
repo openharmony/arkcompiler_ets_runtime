@@ -31,15 +31,18 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
-        JSThread *thread = vm->GetAssociatedJSThread();
-        JSHandle<JSTaggedValue> transfer(thread, JSTaggedValue::Undefined());
-        Serializer serializer = Serializer(thread);
-        for (size_t i = 0; i < size; i++) {
-            JSHandle<JSTaggedValue> value(thread, JSTaggedValue(data[i]));
-            serializer.WriteValue(thread, value, transfer);
+        double input = 0;
+        if (size > 8) { // 8 : size of double type
+            size = 8;
         }
-        auto serializationData = serializer.Release();
-        JSNApi::DeleteSerializationData((void *)(serializationData.release()));
+        if (memcpy_s(&input, 8, data, size) != 0) {
+            std::cout << "memcpy_s failed";
+            UNREACHABLE();
+        }
+        Local<JSValueRef> value(NumberRef::New(vm, input));
+        Local<JSValueRef> transfer(JSValueRef::Undefined(vm));
+        void* serializationData = JSNApi::SerializeValue(vm, value, transfer);
+        JSNApi::DeleteSerializationData(serializationData);
         JSNApi::DestroyJSVM(vm);
     }
 }

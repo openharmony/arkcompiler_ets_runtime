@@ -29,41 +29,19 @@ namespace OHOS {
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (size <= 0) {
             return;
-        }        
-        bool sign = true;
-        const size_t uint64BytesNum = 8;
-        if (size < uint64BytesNum) {
-            uint64_t words = 0;
-            if (memcpy_s(&words, uint64BytesNum, data, size) != EOK) {
-                std::cout << "memcpy_s failed!";
-                UNREACHABLE();
-            }
-            BigIntRef::CreateBigWords(vm, sign, 1U, &words); // 1 : single word
-            JSNApi::DestroyJSVM(vm);
-            return;
         }
-
+        bool sign = false;
+        const size_t uint64BytesNum = 8;
         size_t wordsNum = size / uint64BytesNum;
         size_t hasRemain = size % uint64BytesNum;
         if (hasRemain) {
             wordsNum++;
         }
-        std::vector<uint64_t> wordsVec;
-        size_t count = uint64BytesNum;
-        for (uint32_t i = 0; i < wordsNum; i++) {
-            uint64_t word = 0;
-            if (hasRemain && (i == (wordsNum - 1U))) {
-                count = hasRemain;
-            }
-            if (memcpy_s(&word, uint64BytesNum, data, count) != EOK) {
-                std::cout << "memcpy_s failed!";
-                UNREACHABLE();
-            }
-            wordsVec.push_back(word);
-            data += count;
-        }
         uint64_t *words = new uint64_t[wordsNum]();
-        std::copy(wordsVec.begin(), wordsVec.end(), words);
+        if (memcpy_s(words, size, data, size) != EOK) {
+            std::cout << "memcpy_s failed!";
+            UNREACHABLE();
+        }
         BigIntRef::CreateBigWords(vm, sign, wordsNum, words);
         delete[] words;
         words = nullptr;
