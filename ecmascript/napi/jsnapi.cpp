@@ -328,7 +328,9 @@ void JSNApi::postFork(EcmaVM *vm)
 
 void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 {
-    hostVm->WorkersetInfo(workerVm->GetJSThread()->GetThreadId(), workerVm);
+    if (hostVm != nullptr && workerVm != nullptr) {
+        hostVm->WorkersetInfo(hostVm, workerVm);
+    }
 }
 
 Local<ObjectRef> JSNApi::GetUncaughtException(const EcmaVM *vm)
