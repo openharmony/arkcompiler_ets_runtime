@@ -1643,6 +1643,15 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConst->SetConstant(ConstantIndex::JS_API_ITERATOR_FUNC_DYN_CLASS_INDEX, iteratorFuncDynclass);
 
+    // Iterator result dynclass
+    JSHandle<JSHClass> iterResultClass = factory_->CreateIteratorResultInstanceClass();
+    globalConst->SetConstant(ConstantIndex::ITERATOR_RESULT_CLASS, iterResultClass);
+
+    // ues for CloseIterator
+    JSHandle<CompletionRecord> record =
+        factory_->NewCompletionRecord(CompletionRecordType::NORMAL, globalConst->GetHandledUndefined());
+    globalConst->SetConstant(ConstantIndex::UNDEFINED_COMPLRTION_RECORD_INDEX, record);
+
     InitializeForinIterator(env, iteratorFuncDynclass);
     InitializeSetIterator(env, iteratorFuncDynclass);
     InitializeMapIterator(env, iteratorFuncDynclass);

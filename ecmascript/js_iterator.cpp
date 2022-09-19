@@ -18,6 +18,7 @@
 #include "ecma_vm.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "global_env.h"
 #include "js_symbol.h"
 #include "object_factory.h"
@@ -160,17 +161,22 @@ JSHandle<JSTaggedValue> JSIterator::IteratorClose(JSThread *thread, const JSHand
         exceptionOnThread = JSHandle<JSTaggedValue>(thread, thread->GetException());
         thread->ClearException();
     }
-    JSHandle<JSTaggedValue> returnStr(globalConst->GetHandledReturnString());
+    JSTaggedValue returnStr = globalConst->GetReturnString();
     // 3.Let return be GetMethod(iterator, "return").
-    JSHandle<JSTaggedValue> returnFunc(JSObject::GetMethod(thread, iter, returnStr));
+    JSTaggedValue func = FastRuntimeStub::FastGetPropertyByName(thread, iter.GetTaggedValue(), returnStr);
     // 4.ReturnIfAbrupt(return).
+    JSHandle<JSTaggedValue> returnFunc(thread, func);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, returnFunc);
     // 5.If return is undefined, return Completion(completion).
-    if (returnFunc->IsUndefined()) {
+    if (returnFunc->IsUndefined() || returnFunc->IsNull()) {
         if (!exceptionOnThread.IsEmpty()) {
             thread->SetException(exceptionOnThread.GetTaggedValue());
         }
         return completion;
+    }
+
+    if (!returnFunc->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "return function is not Callable", returnFunc);
     }
     // 6.Let innerResult be Call(return, iterator, «‍ »).
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
@@ -208,19 +214,15 @@ JSHandle<JSTaggedValue> JSIterator::IteratorClose(JSThread *thread, const JSHand
 JSHandle<JSObject> JSIterator::CreateIterResultObject(JSThread *thread, const JSHandle<JSTaggedValue> &value, bool done)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> constructor(env->GetObjectFunction());
-    JSHandle<JSTaggedValue> valueStr = globalConst->GetHandledValueString();
-    JSHandle<JSTaggedValue> doneStr = globalConst->GetHandledDoneString();
-    JSHandle<JSTaggedValue> doneValue(thread, JSTaggedValue(done));
     // 2. Let obj be OrdinaryObjectCreate(%Object.prototype%).
-    JSHandle<JSObject> obj(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<JSHClass> klass = JSHandle<JSHClass>::Cast(globalConst->GetHandledIteratorResultClass());
+    JSHandle<JSObject> obj = factory->NewJSObject(klass);
+
     // 3. Perform ! CreateDataPropertyOrThrow(obj, "value", value).
     // 4. Perform ! CreateDataPropertyOrThrow(obj, "done", done).
-    JSObject::CreateDataPropertyOrThrow(thread, obj, valueStr, value);
-    JSObject::CreateDataPropertyOrThrow(thread, obj, doneStr, doneValue);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
+    obj->SetPropertyInlinedProps(thread, VALUE_INLINE_PROPERTY_INDEX, value.GetTaggedValue());
+    obj->SetPropertyInlinedProps(thread, DONE_INLINE_PROPERTY_INDEX, JSTaggedValue(done));
     // 5. Return obj.
     return obj;
 }

@@ -628,6 +628,11 @@ private:
     static uint32_t ComputePropertyCapacity(uint32_t oldCapacity);
 
     static JSTaggedValue ShouldGetValueFromBox(ObjectOperator *op);
+    static JSHandle<TaggedArray> GetOwnEnumerableNamesInFastMode(JSThread *thread, const JSHandle<JSObject> &obj);
+    static bool CheckHClassHit(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &cls);
+    static uint32_t SetValuesOrEntries(JSThread *thread, const JSHandle<TaggedArray> &prop, uint32_t index,
+                                       const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+                                       PropertyKind kind);
 };
 }  // namespace ecmascript
 }  // namespace panda

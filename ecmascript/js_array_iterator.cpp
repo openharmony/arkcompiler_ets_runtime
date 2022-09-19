@@ -56,10 +56,13 @@ JSTaggedValue JSArrayIterator::Next(EcmaRuntimeCallInfo *argv)
     //   a. Let len be the value of O’s [[ArrayLength]] internal slot.
     if (array->IsTypedArray()) {
         length = JSHandle<JSTypedArray>::Cast(array)->GetArrayLength();
+    } else if (array->IsJSArray()) {
+        length = JSHandle<JSArray>(array)->GetArrayLength();
     } else {
         // 9.Else
         JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
-        length = JSTaggedValue::GetProperty(thread, array, lengthKey).GetValue()->GetArrayLength();
+        length =
+            JSTaggedValue::ToLength(thread, JSTaggedValue::GetProperty(thread, array, lengthKey).GetValue()).ToUint32();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
@@ -77,8 +80,7 @@ JSTaggedValue JSArrayIterator::Next(EcmaRuntimeCallInfo *argv)
     if (itemKind == IterationKind::KEY) {
         return JSIterator::CreateIterResultObject(thread, key, false).GetTaggedValue();
     }
-    JSHandle<JSTaggedValue> sKey(JSTaggedValue::ToString(thread, key));
-    JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, array, sKey).GetValue();
+    JSHandle<JSTaggedValue> value = JSArray::FastGetPropertyByValue(thread, array, index);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 15.If itemKind is value, let result be elementValue.
     if (itemKind == IterationKind::VALUE) {

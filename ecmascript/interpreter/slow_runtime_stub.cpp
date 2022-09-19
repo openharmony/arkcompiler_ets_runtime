@@ -1225,8 +1225,7 @@ JSTaggedValue SlowRuntimeStub::CloseIterator(JSThread *thread, JSTaggedValue ite
         record = JSHandle<JSTaggedValue>(factory->NewCompletionRecord(
             CompletionRecordType::THROW, JSHandle<JSTaggedValue>(thread, thread->GetException())));
     } else {
-        JSHandle<JSTaggedValue> undefinedVal = globalConst->GetHandledUndefined();
-        record = JSHandle<JSTaggedValue>(factory->NewCompletionRecord(CompletionRecordType::NORMAL, undefinedVal));
+        record = globalConst->GetHandledUndefinedCompletionRecord();
     }
     JSHandle<JSTaggedValue> result = JSIterator::IteratorClose(thread, iterHandle, record);
     if (result->IsCompletionRecord()) {

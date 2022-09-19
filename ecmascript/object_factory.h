@@ -525,6 +525,11 @@ public:
     JSHandle<CjsExports> NewCjsExports();
     JSHandle<CjsRequire> NewCjsRequire();
 
+    JSHandle<JSHClass> CreateIteratorResultInstanceClass();
+
+    // ---------------------------------New objects used internally--------------------------------------
+    JSHandle<JSArray> NewJSStableArrayWithElements(const JSHandle<TaggedArray> &elements);
+
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
