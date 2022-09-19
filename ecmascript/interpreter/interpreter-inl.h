@@ -113,24 +113,6 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         goto *deprecatedDispatchTable[opcode]; \
     } while (false)
 
-#define DEBUG_DISPATCH_THROW()                  \
-    do {                                        \
-        opcode = *(pc + 1);                     \
-        goto *throwDebugDispatchTable[opcode];  \
-    } while (false)
-
-#define DEBUG_DISPATCH_WIDE()                  \
-    do {                                       \
-        opcode = *(pc + 1);                    \
-        goto *wideDebugDispatchTable[opcode];  \
-    } while (false)
-
-#define DEBUG_DISPATCH_DEPRECATED()                  \
-    do {                                             \
-        opcode = *(pc + 1);                          \
-        goto *deprecatedDebugDispatchTable[opcode];  \
-    } while (false)
-
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GET_FRAME(CurrentSp) \
     (reinterpret_cast<InterpretedFrame *>(CurrentSp) - 1)  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -188,13 +170,6 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
     do {                                                        \
         ASSERT(static_cast<uint16_t>(opcode) <= 0xff);          \
         goto *instDispatchTable[static_cast<uint8_t>(opcode)];  \
-    } while (false)
-
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define REAL_GOTO_SECOND_DISPATCH_OPCODE(opcode)                                    \
-    do {                                                                            \
-        ASSERT(static_cast<uint16_t>(opcode) > 0xff);                               \
-        goto *instDispatchTable[static_cast<uint16_t>(opcode) >> sizeof(uint8_t)];  \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -914,18 +889,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
     static std::array<const void *, numOps> debugDispatchTable {
 #include "templates/debugger_instruction_dispatch.inl"
-    };
-
-    static std::array<const void *, numThrowOps> throwDebugDispatchTable {
-#include "templates/debugger_throw_instruction_dispatch.inl"
-    };
-
-    static std::array<const void *, numWideOps> wideDebugDispatchTable {
-#include "templates/debugger_wide_instruction_dispatch.inl"
-    };
-
-    static std::array<const void *, numDeprecatedOps> deprecatedDebugDispatchTable {
-#include "templates/debugger_deprecated_instruction_dispatch.inl"
     };
 
     auto *dispatchTable = instDispatchTable.data();
