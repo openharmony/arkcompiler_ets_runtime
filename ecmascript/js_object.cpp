@@ -442,9 +442,8 @@ JSHandle<TaggedArray> JSObject::GetEnumElementKeys(JSThread *thread, const JSHan
         uint32_t preElementIndex = elementIndex;
         for (uint32_t i = 0; i < elementsLen; ++i) {
             if (!arr->Get(i).IsHole()) {
-                keyHandle.Update(JSTaggedValue(i));
-                auto key = JSTaggedValue::ToString(thread, keyHandle);
-                elementArray->Set(thread, elementIndex++, key);
+                keyHandle.Update(factory->NewFromASCII(ToCString(i)).GetTaggedValue());
+                elementArray->Set(thread, elementIndex++, keyHandle);
             }
         }
         *keys += (elementIndex - preElementIndex);
@@ -1311,41 +1310,49 @@ bool JSObject::TestIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &ob
     return true;
 }
 
+JSHandle<TaggedArray> JSObject::GetOwnEnumerableNamesInFastMode(JSThread *thread, const JSHandle<JSObject> &obj)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t numOfKeys = obj->GetNumberOfKeys();
+    uint32_t numOfElements = obj->GetNumberOfElements();
+    uint32_t copyLengthOfKeys = 0;
+    uint32_t copyLengthOfElements = 0;
+    JSHandle<TaggedArray> elementArray;
+    if (numOfElements > 0) {
+        elementArray = JSObject::GetEnumElementKeys(thread, obj, 0, numOfElements, &copyLengthOfElements);
+    }
+
+    JSHandle<TaggedArray> keyArray;
+    if (numOfKeys > 0) {
+        keyArray = JSObject::GetAllEnumKeys(thread, obj, 0, numOfKeys, &copyLengthOfKeys);
+    }
+
+    JSHandle<TaggedArray> keys;
+    if (numOfKeys != 0 && numOfElements != 0) {
+        keys = TaggedArray::AppendSkipHole(thread, elementArray, keyArray, copyLengthOfKeys + copyLengthOfElements);
+    } else if (numOfKeys != 0) {
+        keys = factory->CopyArray(keyArray, copyLengthOfKeys, copyLengthOfKeys);
+    } else if (numOfElements != 0) {
+        keys = factory->CopyArray(elementArray, copyLengthOfElements, copyLengthOfElements);
+    } else {
+        keys = factory->EmptyArray();
+    }
+    return keys;
+}
+
 // 7.3.21 EnumerableOwnNames (O)
 JSHandle<TaggedArray> JSObject::EnumerableOwnNames(JSThread *thread, const JSHandle<JSObject> &obj)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "obj is not object");
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> keys;
     JSHandle<JSTaggedValue> tagObj(obj);
-    uint32_t copyLength = 0;
     // fast mode
     if (tagObj->IsJSObject() && !tagObj->IsTypedArray() && !tagObj->IsModuleNamespace()) {
-        uint32_t numOfKeys = obj->GetNumberOfKeys();
-        uint32_t numOfElements = obj->GetNumberOfElements();
-        JSHandle<TaggedArray> elementArray;
-        if (numOfElements > 0) {
-            elementArray = JSObject::GetEnumElementKeys(thread, obj, 0, numOfElements, &copyLength);
-        }
-
-        JSHandle<TaggedArray> keyArray;
-        if (numOfKeys > 0) {
-            keyArray = JSObject::GetAllEnumKeys(thread, obj, 0, numOfKeys, &copyLength);
-        }
-
-        if (numOfKeys != 0 && numOfElements != 0) {
-            keys = TaggedArray::AppendSkipHole(thread, elementArray, keyArray, copyLength);
-        } else if (numOfKeys != 0) {
-            keys = factory->CopyArray(keyArray, copyLength, copyLength);
-        } else if (numOfElements != 0) {
-            keys = factory->CopyArray(elementArray, copyLength, copyLength);
-        } else {
-            keys = factory->EmptyArray();
-        }
-        return keys;
+        return GetOwnEnumerableNamesInFastMode(thread, obj);
     }
 
-    keys = JSTaggedValue::GetOwnPropertyKeys(thread, tagObj);
+    uint32_t copyLength = 0;
+    JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, tagObj);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
     uint32_t length = keys->GetLength();
 
@@ -1376,8 +1383,20 @@ JSHandle<TaggedArray> JSObject::EnumerableOwnPropertyNames(JSThread *thread, con
     ASSERT_PRINT(obj->IsECMAObject(), "obj is not object");
 
     // 2. Let ownKeys be ? O.[[OwnPropertyKeys]]().
-    JSHandle<TaggedArray> ownKeys = JSTaggedValue::GetOwnPropertyKeys(thread, JSHandle<JSTaggedValue>(obj));
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+    JSHandle<JSTaggedValue> tagObj(obj);
+    bool fastMode = false;
+    JSHandle<TaggedArray> ownKeys;
+    if (tagObj->IsJSObject() && !tagObj->IsJSProxy() && !tagObj->IsTypedArray() && !tagObj->IsModuleNamespace()) {
+        // fast mode
+        ownKeys = GetOwnEnumerableNamesInFastMode(thread, obj);
+        if (kind == PropertyKind::KEY) {
+            return ownKeys;
+        }
+        fastMode = true;
+    } else {
+        ownKeys = JSTaggedValue::GetOwnPropertyKeys(thread, tagObj);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+    }
 
     // 3. Let properties be a new empty List.
     uint32_t length = ownKeys->GetLength();
@@ -1398,6 +1417,41 @@ JSHandle<TaggedArray> JSObject::EnumerableOwnPropertyNames(JSThread *thread, con
     //               iii. Append entry to properties.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     uint32_t index = 0;
+    if (fastMode) {
+        JSHandle<JSHClass> objClass(thread, obj->GetJSHClass());
+        for (uint32_t i = 0; i < length; i++) {
+            key.Update(ownKeys->Get(thread, i));
+            JSTaggedValue value = JSTaggedValue::Hole();
+            if (fastMode) {
+                value = FastRuntimeStub::GetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+            }
+            if (value.IsHole()) {
+                PropertyDescriptor desc(thread);
+                bool status = JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>(obj),
+                                                            key, desc);
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+                if (!status || !desc.IsEnumerable()) {
+                    continue;
+                }
+                if (desc.HasValue()) {
+                    value = desc.GetValue().GetTaggedValue();
+                } else {
+                    OperationResult opResult =
+                        JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), key);
+                    RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+                    value = opResult.GetValue().GetTaggedValue();
+                }
+            }
+            index = SetValuesOrEntries(thread, properties, index, key, JSHandle<JSTaggedValue>(thread, value), kind);
+            fastMode = fastMode ? CheckHClassHit(obj, objClass) : fastMode;
+        }
+        if (UNLIKELY(!fastMode && index < length)) {
+            properties->Trim(thread, index);
+        }
+        return properties;
+    }
+
     for (uint32_t i = 0; i < length; i++) {
         key.Update(ownKeys->Get(thread, i));
         if (key->IsString()) {
@@ -1413,20 +1467,12 @@ JSHandle<TaggedArray> JSObject::EnumerableOwnPropertyNames(JSThread *thread, con
                         JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), key);
                     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
                     JSHandle<JSTaggedValue> value = result.GetValue();
-                    if (kind == PropertyKind::VALUE) {
-                        properties->Set(thread, index++, value);
-                    } else {
-                        ASSERT_PRINT(kind == PropertyKind::KEY_VALUE, "kind is invalid");
-                        JSHandle<TaggedArray> keyValue = factory->NewTaggedArray(2);  // 2: key-value pair
-                        keyValue->Set(thread, 0, key.GetTaggedValue());
-                        keyValue->Set(thread, 1, value.GetTaggedValue());
-                        JSHandle<JSArray> entry = JSArray::CreateArrayFromList(thread, keyValue);
-                        properties->Set(thread, index++, entry.GetTaggedValue());
-                    }
+                    index = SetValuesOrEntries(thread, properties, index, key, value, kind);
                 }
             }
         }
     }
+
     if (UNLIKELY(index < length)) {
         properties->Trim(thread, index);
     }
