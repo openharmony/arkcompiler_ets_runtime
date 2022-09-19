@@ -33,7 +33,7 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
-        StringRef::NewFromUtf8(vm, (char*)&vec[0], (int)size);
+        StringRef::NewFromUtf8(vm, (char*)data, (int)size);
         JSNApi::DestroyJSVM(vm);
         return;
     }
