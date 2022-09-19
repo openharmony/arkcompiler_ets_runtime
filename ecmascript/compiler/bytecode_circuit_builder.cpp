@@ -37,7 +37,8 @@ void BytecodeCircuitBuilder::BytecodeToCircuit()
 
 void BytecodeCircuitBuilder::CollectBytecodeBlockInfo(uint8_t *pc, std::vector<CfgInfo> &bytecodeBlockInfos)
 {
-    auto opcode = static_cast<EcmaOpcode>(*pc);
+    BytecodeInstruction inst(pc);
+    auto opcode = inst.GetOpcode();
     auto bytecodeOffset = BytecodeInstruction::Size(opcode);
     switch (opcode) {
         case EcmaOpcode::JMP_IMM8: {
@@ -214,7 +215,7 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(std::map<std::pair<uint8_t
                 auto &succs = bytecodeBlockInfos_[i].succs;
                 auto iter = std::find(succs.cbegin(), succs.cend(), bytecodeBlockInfos_[i].pc);
                 if (iter == succs.cend()) {
-                    auto opcode = static_cast<EcmaOpcode>(*(bytecodeBlockInfos_[i].pc));
+                    auto opcode = PcToOpcode(bytecodeBlockInfos_[i].pc);
                     switch (opcode) {
                         case EcmaOpcode::JMP_IMM8:
                         case EcmaOpcode::JMP_IMM16:
@@ -2266,7 +2267,7 @@ void BytecodeCircuitBuilder::SetBlockPred(BytecodeRegion &bbNext, const GateRef 
 
 GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
 {
-    auto opcode = static_cast<EcmaOpcode>(info.opcode);
+    auto opcode = info.opcode;
     GateRef gate = 0;
     switch (opcode) {
         case EcmaOpcode::LDNAN:
@@ -2457,14 +2458,14 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, const uint8_t *pc, Ga
 {
     ASSERT(bb.succs.empty());
     auto bytecodeInfo = GetBytecodeInfo(pc);
-    if (static_cast<EcmaOpcode>(bytecodeInfo.opcode) == EcmaOpcode::RETURN) {
+    if (bytecodeInfo.opcode == EcmaOpcode::RETURN) {
         // handle return.dyn bytecode
         auto gate = circuit_.NewGate(OpCode(OpCode::RETURN), 0,
                                      { state, depend, Circuit::NullGate(),
                                      Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST)) },
                                      GateType::AnyType());
         jsgateToBytecode_[gate] = {bb.id, pc};
-    } else if (static_cast<EcmaOpcode>(bytecodeInfo.opcode) == EcmaOpcode::RETURNUNDEFINED) {
+    } else if (bytecodeInfo.opcode == EcmaOpcode::RETURNUNDEFINED) {
         // handle returnundefined bytecode
         auto constant = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
                                          JSTaggedValue::VALUE_UNDEFINED,
@@ -2631,8 +2632,8 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
                 break;
             }
         }
-        if (static_cast<EcmaOpcode>(curInfo.opcode) != EcmaOpcode::RESUMEGENERATOR &&
-            static_cast<EcmaOpcode>(curInfo.opcode) != EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8) {
+        if (curInfo.opcode != EcmaOpcode::RESUMEGENERATOR &&
+            curInfo.opcode != EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8) {
             continue;
         }
         // New RESTORE_REGISTER HIR, used to restore the register content when processing resume instruction.
@@ -2872,7 +2873,8 @@ void BytecodeCircuitBuilder::PrintBytecodeInfo()
         LOG_COMPILER(INFO) << "BB_" << bb.id << ": ";
         EnumerateBlock(bb, [](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             std::string log;
-            log += "Inst_" + GetEcmaOpcodeStr(static_cast<EcmaOpcode>(*pc)) + ": " + "In=[";
+            BytecodeInstruction inst(pc);
+            log += "Inst_" + GetEcmaOpcodeStr(inst.GetOpcode()) + ": " + "In=[";
             if (bytecodeInfo.accIn) {
                 log += "acc,";
             }

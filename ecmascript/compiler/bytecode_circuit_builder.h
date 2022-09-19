@@ -492,16 +492,23 @@ public:
         return byteCodeToJSGate_;
     }
 
+    [[nodiscard]] EcmaOpcode PcToOpcode(const uint8_t *pc) const
+    {
+        BytecodeInstruction inst(pc);
+        return inst.GetOpcode();
+    }
+
     [[nodiscard]] std::string GetBytecodeStr(GateRef gate) const
     {
         auto pc = jsgateToBytecode_.at(gate).second;
-        return GetEcmaOpcodeStr(static_cast<EcmaOpcode>(*pc));
+        auto opcode = PcToOpcode(pc);
+        return GetEcmaOpcodeStr(opcode);
     }
 
     [[nodiscard]] EcmaOpcode GetByteCodeOpcode(GateRef gate) const
     {
         auto pc = jsgateToBytecode_.at(gate).second;
-        return static_cast<EcmaOpcode>(*pc);
+        return PcToOpcode(pc);
     }
 
     [[nodiscard]] const uint8_t* GetJSBytecode(GateRef gate) const

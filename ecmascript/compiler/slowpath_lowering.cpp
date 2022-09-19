@@ -290,7 +290,7 @@ void SlowPathLowering::Lower(GateRef gate)
     GateRef actualArgc = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
 
     auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaOpcode op = static_cast<EcmaOpcode>(*pc);
+    EcmaOpcode op = bcBuilder_->PcToOpcode(pc);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {

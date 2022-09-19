@@ -1411,7 +1411,8 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
 void BytecodeInfoCollector::UpdateICOffset(MethodLiteral* methodLiteral, uint8_t *pc)
 {
     uint8_t offset = MethodLiteral::INVALID_IC_SLOT;
-    auto opcode = static_cast<EcmaOpcode>(*pc);
+    BytecodeInstruction inst(pc);
+    auto opcode = inst.GetOpcode();
     switch (opcode) {
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
             U_FALLTHROUGH;
