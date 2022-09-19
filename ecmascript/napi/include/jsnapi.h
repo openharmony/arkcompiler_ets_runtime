@@ -1190,11 +1190,12 @@ public:
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
     static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
 
     static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
     static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                           const std::string &baseFileName);
-    static bool UnLoadPatch(EcmaVM *vm, const std::string &patchFileName);
+    static bool UnloadPatch(EcmaVM *vm, const std::string &patchFileName);
     // check whether the exception is caused by quickfix methods.
     static bool IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName);
     // register quickfix query function.

@@ -1089,7 +1089,7 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
             *pc = static_cast<uint8_t>(widePrefOp);
             *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
 
-            uint16_t imm = inst.GetImm<OldBytecodeInst::Format::PREF_IMM16_V8>() - 1;
+            uint16_t imm = static_cast<uint16_t>(inst.GetImm<OldBytecodeInst::Format::PREF_IMM16_V8>() - 1);
             if (memcpy_s(pc + 2, sizeof(uint16_t), &imm, sizeof(uint16_t)) != EOK) {    // 2: skip opcode and ic slot
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
@@ -1279,7 +1279,7 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
         case OldBytecodeInst::Opcode::ECMA_DEFINEMETHOD_PREF_ID16_IMM16_V8: {
             newOpcode = EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8;
             *pc = static_cast<uint8_t>(newOpcode);
-            uint16_t imm = inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>();
+            uint16_t imm = static_cast<uint16_t>(inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>());
             uint8_t newImm = static_cast<uint8_t>(imm);
             if (memcpy_s(pc + 4, sizeof(uint8_t), &newImm, sizeof(uint8_t)) != EOK) {  // 4: offset of imm
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
@@ -1298,7 +1298,7 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
         case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8: {
             newOpcode = EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8;
             *pc = static_cast<uint8_t>(newOpcode);
-            uint16_t imm = inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>();
+            uint16_t imm = static_cast<uint16_t>(inst.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_V8>());
             uint8_t newImm = static_cast<uint8_t>(imm);
             if (memcpy_s(pc + 4, sizeof(uint8_t), &newImm, sizeof(uint8_t)) != EOK) {  // 4: offset of imm
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
@@ -1500,50 +1500,38 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
             uint32_t methodId;
             case OldBytecodeInst::Opcode::ECMA_DEFINEFUNCDYN_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
-                if (hasTSTypes_) {
-                    CollectInnerMethods(method, methodId);
-                }
+                CollectInnerMethods(method, methodId);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::BASE_FUNCTION, methodId);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINENCFUNCDYN_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
-                if (hasTSTypes_) {
-                    CollectInnerMethods(method, methodId);
-                }
+                CollectInnerMethods(method, methodId);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::NC_FUNCTION, methodId);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
-                if (hasTSTypes_) {
-                    CollectInnerMethods(method, methodId);
-                }
+                CollectInnerMethods(method, methodId);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::GENERATOR_FUNCTION, methodId);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
-                if (hasTSTypes_) {
-                    CollectInnerMethods(method, methodId);
-                }
+                CollectInnerMethods(method, methodId);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::ASYNC_FUNCTION, methodId);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINEMETHOD_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
-                if (hasTSTypes_) {
-                    CollectInnerMethods(method, methodId);
-                }
+                CollectInnerMethods(method, methodId);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_CREATEOBJECTWITHBUFFER_PREF_IMM16:
             case OldBytecodeInst::Opcode::ECMA_CREATEOBJECTHAVINGMETHOD_PREF_IMM16: {
                 auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_IMM16>();
-                if (hasTSTypes_) {
-                    CollectInnerMethodsFromLiteral(method, imm);
-                }
+                CollectInnerMethodsFromLiteral(method, imm);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::OBJECT_LITERAL,
                     static_cast<uint16_t>(imm));
                 FixInstructionId32(bcIns, index);
@@ -1551,9 +1539,7 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
             }
             case OldBytecodeInst::Opcode::ECMA_CREATEARRAYWITHBUFFER_PREF_IMM16: {
                 auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_IMM16>();
-                if (hasTSTypes_) {
-                    CollectInnerMethodsFromLiteral(method, imm);
-                }
+                CollectInnerMethodsFromLiteral(method, imm);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::ARRAY_LITERAL,
                     static_cast<uint16_t>(imm));
                 FixInstructionId32(bcIns, index);
@@ -1564,27 +1550,21 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::CLASS_FUNCTION, methodId);
                 FixInstructionId32(bcIns, index);
                 auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_IMM16_V8_V8>();
-                if (hasTSTypes_) {
-                    CollectInnerMethods(method, methodId);
-                    CollectInnerMethodsFromLiteral(method, imm);
-                }
+                CollectInnerMethods(method, methodId);
+                CollectInnerMethodsFromLiteral(method, imm);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::CLASS_LITERAL,
                     static_cast<uint16_t>(imm));
                 FixInstructionId32(bcIns, index, 1);
                 break;
             }
             case OldBytecodeInst::Opcode::ECMA_NEWLEXENVDYN_PREF_IMM16: {
-                if (hasTSTypes_) {
-                    auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_IMM16>();
-                    NewLexEnvWithSize(method, imm);
-                }
+                auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_IMM16>();
+                NewLexEnvWithSize(method, imm);
                 break;
             }
             case OldBytecodeInst::Opcode::ECMA_NEWLEXENVWITHNAMEDYN_PREF_IMM16_IMM16: {
-                if (hasTSTypes_) {
-                    auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_IMM16_IMM16>();
-                    NewLexEnvWithSize(method, imm);
-                }
+                auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_IMM16_IMM16>();
+                NewLexEnvWithSize(method, imm);
                 break;
             }
             default:

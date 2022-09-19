@@ -38,18 +38,6 @@ public:
 
     ~EcmaGlobalStorage()
     {
-        auto *next = topGlobalNodes_;
-        NodeList<Node> *current = nullptr;
-        while (next != nullptr) {
-            current = next;
-            next = current->GetNext();
-            current->IterateUsageGlobal([] (Node *node) {
-                node->SetUsing(false);
-                node->SetObject(JSTaggedValue::Undefined().GetRawData());
-            });
-            allocator_->Delete(current);
-        }
-
         auto *weakNext = topWeakGlobalNodes_;
         NodeList<WeakNode> *weakCurrent = nullptr;
         while (weakNext != nullptr) {
@@ -62,6 +50,18 @@ public:
                 reinterpret_cast<WeakNode *>(node)->CallSecondPassCallback();
             });
             allocator_->Delete(weakCurrent);
+        }
+
+        auto *next = topGlobalNodes_;
+        NodeList<Node> *current = nullptr;
+        while (next != nullptr) {
+            current = next;
+            next = current->GetNext();
+            current->IterateUsageGlobal([] (Node *node) {
+                node->SetUsing(false);
+                node->SetObject(JSTaggedValue::Undefined().GetRawData());
+            });
+            allocator_->Delete(current);
         }
     }
 

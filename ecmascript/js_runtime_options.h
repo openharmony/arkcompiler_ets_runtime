@@ -65,7 +65,7 @@ public:
         parser->Add(&targetTriple_);
         parser->Add(&asmOptLevel_);
         parser->Add(&relocationMode_);
-        parser->Add(&methodsListForLog_);
+        parser->Add(&compilerLogMethods_);
         parser->Add(&compilerLogOpt_);
         parser->Add(&serializerBufferSizeLimit_);
         parser->Add(&heapSizeLimit_);
@@ -364,17 +364,17 @@ public:
 
     std::string GetMethodsListForLog() const
     {
-        return methodsListForLog_.GetValue();
+        return compilerLogMethods_.GetValue();
     }
 
     void SetMethodsListForLog(std::string value)
     {
-        methodsListForLog_.SetValue(std::move(value));
+        compilerLogMethods_.SetValue(std::move(value));
     }
 
     bool WasSetMethodsListForLog() const
     {
-        return methodsListForLog_.WasSet() &&
+        return compilerLogMethods_.WasSet() &&
             GetCompilerLogOption().find("none") == std::string::npos &&
             GetCompilerLogOption().find("all") == std::string::npos;
     }
@@ -738,13 +738,13 @@ private:
         "allllir or all1" : print llir info for all methods,
         "allasm or all2" : print asm log for all methods,
         "alltype or all3" : print type log for all methods,
-        "cerllircirasm or cer0112": print llIR file, CIR log and asm log for certain method defined in 'mlist-for-log',
-        "cercir or cer0": print cir info for certain method illustrated in 'mlist-for-log',
-        "cerllir or cer1": print llir info for certain method illustrated in 'mlist-for-log',
-        "cerasm or cer2": print asm log for certain method illustrated in 'mlist-for-log',
-        "certype or cer3": print type log for certain method illustrated in 'mlist-for-log',
+        "cerllircirasm or cer0112": print llIR file, CIR log and asm log for the method in 'compiler-log-methos',
+        "cercir or cer0": print cir info for certain method illustrated in 'compiler-log-methods',
+        "cerllir or cer1": print llir info for certain method illustrated in 'compiler-log-methods',
+        "cerasm or cer2": print asm log for certain method illustrated in 'compiler-log-methods',
+        "certype or cer3": print type log for certain method illustrated in 'compiler-log-methods',
         Default: "none")"};
-    PandArg<std::string> methodsListForLog_ {"mlist-for-log",
+    PandArg<std::string> compilerLogMethods_ {"compiler-log-methods",
         R"(none)",
         R"(specific method list for compiler log output, only used when compiler-log)"};
     PandArg<bool> enableRuntimeStat_ {"enable-runtime-stat", false,

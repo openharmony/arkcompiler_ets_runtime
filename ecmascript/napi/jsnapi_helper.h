@@ -88,7 +88,10 @@ class NativeReferenceHelper {
 public:
     NativeReferenceHelper(EcmaVM *vm, Global<ObjectRef> obj, NativeFinalize callback)
         :  vm_(vm), obj_(obj), callback_(callback) {}
-    ~NativeReferenceHelper() = default;
+    ~NativeReferenceHelper()
+    {
+        obj_.FreeGlobalHandleAddr();
+    }
     static void FirstPassCallBack(void* ref)
     {
         auto that = reinterpret_cast<NativeReferenceHelper*>(ref);

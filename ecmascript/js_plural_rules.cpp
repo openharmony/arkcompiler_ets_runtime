@@ -30,13 +30,16 @@ icu::number::LocalizedNumberFormatter *JSPluralRules::GetIcuNumberFormatter() co
     return reinterpret_cast<icu::number::LocalizedNumberFormatter *>(result);
 }
 
-void JSPluralRules::FreeIcuNumberFormatter(void *pointer, [[maybe_unused]] void* hint)
+void JSPluralRules::FreeIcuNumberFormatter(void *pointer, void* hint)
 {
     if (pointer == nullptr) {
         return;
     }
     auto icuNumberFormatter = reinterpret_cast<icu::number::LocalizedNumberFormatter *>(pointer);
     icuNumberFormatter->~LocalizedNumberFormatter();
+    if (hint != nullptr) {
+        reinterpret_cast<EcmaVM *>(hint)->GetNativeAreaAllocator()->FreeBuffer(pointer);
+    }
 }
 
 void JSPluralRules::SetIcuNumberFormatter(JSThread *thread, const JSHandle<JSPluralRules> &pluralRules,
@@ -54,7 +57,7 @@ void JSPluralRules::SetIcuNumberFormatter(JSThread *thread, const JSHandle<JSPlu
         native->ResetExternalPointer(icuPointer);
         return;
     }
-    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuPointer, callback);
+    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuPointer, callback, ecmaVm);
     pluralRules->SetIcuNF(thread, pointer.GetTaggedValue());
 }
 
@@ -65,13 +68,16 @@ icu::PluralRules *JSPluralRules::GetIcuPluralRules() const
     return reinterpret_cast<icu::PluralRules *>(result);
 }
 
-void JSPluralRules::FreeIcuPluralRules(void *pointer, [[maybe_unused]] void* hint)
+void JSPluralRules::FreeIcuPluralRules(void *pointer, void* hint)
 {
     if (pointer == nullptr) {
         return;
     }
     auto icuPluralRules = reinterpret_cast<icu::PluralRules *>(pointer);
     icuPluralRules->~PluralRules();
+    if (hint != nullptr) {
+        reinterpret_cast<EcmaVM *>(hint)->GetNativeAreaAllocator()->FreeBuffer(pointer);
+    }
 }
 
 void JSPluralRules::SetIcuPluralRules(JSThread *thread, const JSHandle<JSPluralRules> &pluralRules,
@@ -89,7 +95,7 @@ void JSPluralRules::SetIcuPluralRules(JSThread *thread, const JSHandle<JSPluralR
         native->ResetExternalPointer(icuPointer);
         return;
     }
-    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuPointer, callback);
+    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuPointer, callback, ecmaVm);
     pluralRules->SetIcuPR(thread, pointer.GetTaggedValue());
 }
 

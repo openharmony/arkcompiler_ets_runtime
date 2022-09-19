@@ -68,6 +68,11 @@ JSPandaFile::~JSPandaFile()
         delete pf_;
         pf_ = nullptr;
     }
+    for (auto iter = jsRecordInfo_.begin(); iter != jsRecordInfo_.end(); iter++) {
+        auto recordInfo = iter->second;
+        recordInfo.constpoolMap.clear();
+    }
+    jsRecordInfo_.clear();
     methodLiteralMap_.clear();
     if (methodLiterals_ != nullptr) {
         JSPandaFileManager::FreeBuffer(methodLiterals_);

@@ -130,7 +130,7 @@ void AsmInterpreterCall::JSCallDispatch(ExtendedAssembler *assembler)
     Register argvRegister = r9;
     Register bitFieldRegister = r12;
     Register tempRegister = r11;  // can not be used to store any variable
-    __ Movq(Operand(callTargetRegister, 0), tempRegister);  // hclass
+    __ Movq(Operand(callTargetRegister, TaggedObject::HCLASS_OFFSET), tempRegister);  // hclass
     __ Movq(Operand(tempRegister, JSHClass::BIT_FIELD_OFFSET), bitFieldRegister);
     __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST), bitFieldRegister);
     __ Jb(&notJSFunction);
@@ -220,7 +220,7 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
     __ Pushq(static_cast<int64_t>(FrameType::ASM_INTERPRETER_ENTRY_FRAME));
     __ Pushq(fpRegister);
     __ Pushq(0);    // pc
-    __ Leaq(Operand(rsp, 24), rbp);  // 24: skip frame type, prevSp and pc
+    __ Leaq(Operand(rsp, 3 * FRAME_SLOT_SIZE), rbp);  // 24: skip frame type, prevSp and pc
 }
 
 void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)
@@ -228,7 +228,7 @@ void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)
     __ Addq(8, rsp);   // 8: skip pc
     Register fpRegister = r10;
     __ Popq(fpRegister);
-    __ Addq(8, rsp);  // 8: skip frame type
+    __ Addq(FRAME_SLOT_SIZE, rsp);  // 8: skip frame type
     __ Popq(rbp);
     __ PopAlignBytes();
     __ Popq(rdi);
@@ -564,7 +564,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         case JSCallMode::CALL_FROM_AOT: {
             Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
             Register thisRegister = __ AvailableRegister2();
-            __ Movq(Operand(argvRegister, -8), thisRegister);  // 8: this is just before the argv list
+            __ Movq(Operand(argvRegister, -FRAME_SLOT_SIZE), thisRegister);  // 8: this is just before the argv list
             return thisRegister;
         }
         default:
@@ -584,7 +584,7 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
             Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
             Register newTargetRegister = __ AvailableRegister2();
             // 16: new Target offset
-            __ Movq(Operand(argvRegister, -16), newTargetRegister);
+            __ Movq(Operand(argvRegister, -2 * FRAME_SLOT_SIZE), newTargetRegister);
             return newTargetRegister;
         }
         default:
@@ -777,7 +777,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     }
     __ Pushq(func);
     // 40: skip frame type, numArgs, func, newTarget and this
-    __ Leaq(Operand(rsp, numArgs, Times8, 40), rbp);
+    __ Leaq(Operand(rsp, numArgs, Times8, 5 * FRAME_SLOT_SIZE), rbp);
     __ Movq(rsp, stackArgs);
 
     // push argc
@@ -805,7 +805,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // this
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // newTarget
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // callTarget
-        __ Leaq(Operand(rsp, 40), rbp);  // 40: skip frame type, numArgs, func, newTarget and this
+        __ Leaq(Operand(rsp, 5 * FRAME_SLOT_SIZE), rbp);  // 40: skip frame type, numArgs, func, newTarget and this
 
         __ Testq(0xf, rsp);  // 0xf: 0x1111
         __ Jz(&aligneThrow, Distance::Near);
@@ -837,19 +837,19 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
     __ PushAlignBytes();
     __ Push(function);
     // 24: skip thread & argc & returnAddr
-    __ Subq(24, rsp);
+    __ Subq(3 * FRAME_SLOT_SIZE, rsp);
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_ENTRY_FRAME);
     __ Movq(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode); // get native pointer
     __ Movq(argv, r11);
     // 16: skip numArgs & thread
-    __ Subq(16, r11);
+    __ Subq(2 * FRAME_SLOT_SIZE, r11);
     // EcmaRuntimeCallInfo
     __ Movq(r11, rdi);
 
     CallNativeInternal(assembler, nativeCode);
 
     // 40: skip function
-    __ Addq(40, rsp);
+    __ Addq(5 * FRAME_SLOT_SIZE, rsp);
     __ Ret();
 }
 
@@ -882,9 +882,9 @@ void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assemb
     Register nativeCode = rax;
     Register glue = rdi;
 
-    __ Movq(Operand(rsp, 8), glue); // 8: glue
+    __ Movq(Operand(rsp, FRAME_SLOT_SIZE), glue); // 8: glue
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME);
-    __ Leaq(Operand(rbp, 16), rdi); // 16: skip argc & thread
+    __ Leaq(Operand(rbp, 2 * FRAME_SLOT_SIZE), rdi); // 16: skip argc & thread
     __ PushAlignBytes();
     CallNativeInternal(assembler, nativeCode);
     __ Ret();
@@ -897,7 +897,7 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler,
     __ Movq(rsp, Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
     __ Pushq(static_cast<int32_t>(type));
     if (type != FrameType::BUILTIN_FRAME_WITH_ARGV) {
-        __ Leaq(Operand(rsp, 8), rbp);  // 8: skip frame type
+        __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);  // 8: skip frame type
     }
 }
 
@@ -966,7 +966,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     __ Movzbq(Operand(pcRegister, 0), opcodeRegister);
     {
         __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetFpOffset(false)), rsp);   // resume rsp
-        __ Movq(Operand(rsp, index * 8), ret);  // 8: byte size, update acc
+        __ Movq(Operand(rsp, index * FRAME_SLOT_SIZE), ret);  // 8: byte size, update acc
         Register bcStubRegister = r11;
         __ Movq(Operand(glueRegister, opcodeRegister, Times8, JSThread::GlueData::GetBCStubEntriesOffset(false)),
             bcStubRegister);
@@ -1137,7 +1137,7 @@ void AsmInterpreterCall::PushArgsWithArgvAndCheckStack(ExtendedAssembler *assemb
     }
     Label loopBeginning;
     __ Bind(&loopBeginning);
-    __ Movq(Operand(argv, opArgc, Times8, -8), op);  // 8: 8 bytes
+    __ Movq(Operand(argv, opArgc, Times8, -FRAME_SLOT_SIZE), op);  // 8: 8 bytes
     __ Pushq(op);
     __ Subq(1, opArgc);
     __ Ja(&loopBeginning);

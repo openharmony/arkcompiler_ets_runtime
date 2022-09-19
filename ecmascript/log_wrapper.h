@@ -19,10 +19,10 @@
 #include "ecmascript/log.h"
 
 #define LOG_FULL(level) LOG_ECMA(level) << __func__ << ":" << __LINE__ << " "
-#define LOG_GC(level) LOG_ECMA(level) << " gc: "
-#define LOG_INTERPRETER(level) LOG_ECMA(level) << " interpreter: "
-#define LOG_COMPILER(level) LOG_ECMA(level) << " compiler: "
-#define LOG_DEBUGGER(level) LOG_ECMA(level) << " debugger: "
+#define LOG_GC(level) LOG_ECMA(level) << " [gc]: "
+#define LOG_INTERPRETER(level) LOG_ECMA(level) << " [interpreter]: "
+#define LOG_COMPILER(level) LOG_ECMA(level) << " [compiler]: "
+#define LOG_DEBUGGER(level) LOG_ECMA(level) << " [debugger]: "
 #define LOG_ECMA_IF(cond, level) (cond) && LOG_ECMA(level)
 
 #endif  // ECMASCRIPT_LOG_WRAPPER_H

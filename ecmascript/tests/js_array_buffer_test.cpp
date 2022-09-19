@@ -78,6 +78,9 @@ HWTEST_F_L0(JsArrayBufferTest, CopyDataBlockBytes)
     for (uint32_t i = 0; i < length; i++) {
         EXPECT_EQ(*(toData + i), *(fromData + i));
     }
+    vm->GetNativeAreaAllocator()->FreeBuffer(toBuffer);
+    vm->GetNativeAreaAllocator()->FreeBuffer(data);
+    vm->GetNativeAreaAllocator()->FreeBuffer(formBuffer);
 }
 
 /**
@@ -111,5 +114,7 @@ HWTEST_F_L0(JsArrayBufferTest, Attach_Detach_IsDetach)
     EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 0U);
     EXPECT_EQ(arrBuf->GetArrayBufferData().GetRawData(), JSTaggedValue::Null().GetRawData());
     EXPECT_TRUE(arrBuf->IsDetach());
+    vm->GetNativeAreaAllocator()->FreeBuffer(buffer);
+    vm->GetNativeAreaAllocator()->FreeBuffer(data);
 }
 } // namespace panda::test

@@ -172,7 +172,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetNextPropName(JSThread *thread, const JSHan
 
 JSTaggedValue RuntimeStubs::RuntimeIterNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter)
 {
-    JSHandle<JSObject> resultObj = JSIterator::IteratorNext(thread, iter);
+    JSHandle<JSTaggedValue> resultObj = JSIterator::IteratorNext(thread, iter);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return resultObj.GetTaggedValue();
 }

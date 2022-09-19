@@ -84,7 +84,7 @@ HWTEST_F_L0(JSLocaleTest, JSIntlIteratorTest)
     CreateLanguageIterator(languageVector);
     uint32_t arrayDataLength = languageVector.size();
     JSHandle<TaggedArray> arrayData = factory->NewTaggedArray(arrayDataLength);
-    
+
     for (uint32_t i = 0 ; i < arrayDataLength; i++) {
         JSHandle<JSTaggedValue> languageStr(factory->NewFromASCII(languageVector[i].c_str()));
         arrayData->Set(thread, i, languageStr);
@@ -243,10 +243,12 @@ HWTEST_F_L0(JSLocaleTest, IsValidTimeZoneName)
     icu::UnicodeString stringID1("GMT-8:00");
     icu::TimeZone *timeZone = icu::TimeZone::createTimeZone(stringID1);
     EXPECT_TRUE(JSLocale::IsValidTimeZoneName(*timeZone));
+    delete timeZone;
 
     icu::UnicodeString stringID2("Etc/Unknown");
     timeZone = icu::TimeZone::createTimeZone(stringID2);
     EXPECT_FALSE(JSLocale::IsValidTimeZoneName(*timeZone));
+    delete timeZone;
 }
 
 /**
@@ -274,7 +276,7 @@ HWTEST_F_L0(JSLocaleTest, CanonicalizeLocaleList)
     // test locale is object
     JSArray *arr = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetObject<JSArray>();
     JSHandle<JSTaggedValue> localeObj(thread, arr);
-    
+
     JSHandle<JSTaggedValue> localeStr1(factory->NewFromASCII("EN-us"));
     PropertyDescriptor desc1(thread, localeStr1, true, true, true);
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("1"));

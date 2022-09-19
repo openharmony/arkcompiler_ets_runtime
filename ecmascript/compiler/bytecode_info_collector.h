@@ -112,8 +112,7 @@ private:
 class BytecodeInfoCollector {
 public:
     explicit BytecodeInfoCollector(JSPandaFile *jsPandaFile, std::string entry)
-        : jsPandaFile_(jsPandaFile),
-          hasTSTypes_(jsPandaFile_->HasTSTypes())
+        : jsPandaFile_(jsPandaFile)
     {
         ProcessClasses(GetEntryFunName(entry));
     }
@@ -164,7 +163,6 @@ private:
 
     JSPandaFile *jsPandaFile_ {nullptr};
     BCInfo bytecodeInfo_;
-    bool hasTSTypes_ {false};
     size_t methodInfoIndex_ {0};
 };
 }  // namespace panda::ecmascript::kungfu

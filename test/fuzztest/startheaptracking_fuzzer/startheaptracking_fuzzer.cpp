@@ -32,6 +32,9 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
+        if (size <= 0) {
+            return;
+        }
         double timeInterval = 0;
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
@@ -39,6 +42,9 @@ namespace OHOS {
         if (memcpy_s(&timeInterval, MAXBYTELEN, data, size) != 0) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
+        }
+        if (std::isnan(timeInterval)) {
+            timeInterval = ecmascript::base::NAN_VALUE;
         }
         bool isVmMode = true;
         // std::string path(data, data + size);

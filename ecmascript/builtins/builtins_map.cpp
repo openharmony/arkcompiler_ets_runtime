@@ -278,8 +278,6 @@ JSTaggedValue BuiltinsMap::AddEntriesFromIterable(JSThread *thread, const JSHand
     JSHandle<JSTaggedValue> next = JSIterator::IteratorStep(thread, iter);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, next.GetTaggedValue());
     while (!next->IsFalse()) {
-        // ReturnIfAbrupt(next).
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, next.GetTaggedValue());
         // Let nextValue be IteratorValue(next).
         JSHandle<JSTaggedValue> nextValue(JSIterator::IteratorValue(thread, next));
         // ReturnIfAbrupt(nextValue).
@@ -321,6 +319,8 @@ JSTaggedValue BuiltinsMap::AddEntriesFromIterable(JSThread *thread, const JSHand
         }
         // Let next be IteratorStep(iter).
         next = JSIterator::IteratorStep(thread, iter);
+        // ReturnIfAbrupt(next).
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, next.GetTaggedValue());
     }
     return target.GetTaggedValue();
 }

@@ -22,6 +22,7 @@
 import { Car } from './B.js';   // Test direct Export & use after import
 import { Star } from './C.js';  // Test indirect Export & use after import
 import * as ns from './A.js';
+import { D as ClassD} from './D.js';
 let A = Car;
 
 var myCar = {
@@ -58,3 +59,5 @@ class Test {
 
 var test = new Test(ns.a)
 print(test.a)
+var classTestD = new ClassD()
+print(classTestD.d)

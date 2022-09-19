@@ -623,7 +623,7 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc,
     JSHandle<ECMAObject> obj(thread, this);
     JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(nativeFunc, deleter, data,
         false, nativeBindingsize);
-    if (!HasHash()) {
+    if (!obj->HasHash()) {
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
         return;
     }

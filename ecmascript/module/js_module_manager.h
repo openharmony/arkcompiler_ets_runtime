@@ -48,15 +48,14 @@ public:
     // deprecated end
 
     JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
+    JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
+    bool IsImportedModuleLoaded(JSTaggedValue referencing);
+
     JSHandle<SourceTextModule> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
     JSHandle<SourceTextModule> HostResolveImportedModule(std::string &baseFilename, std::string &moduleFilename);
-
     JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
-    JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
-    JSHandle<SourceTextModule> HostGetImportedModule(JSHandle<EcmaString> &referencingHandle);
-    bool IsImportedModuleLoaded(JSTaggedValue referencing);
     JSHandle<SourceTextModule> HostResolveImportedModuleWithMerge(const CString &referencingModule,
-                                                                  const CString &recodeName);
+                                                                  const CString &recordName);
     JSTaggedValue GetCurrentModule();
 
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
@@ -88,6 +87,10 @@ private:
                                   JSTaggedValue key, JSTaggedValue value);
     // deprecated end
 
+    JSHandle<SourceTextModule> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile);
+    JSHandle<SourceTextModule> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                      const CString &recodeName);
+
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 
     EcmaVM *vm_ {nullptr};
@@ -95,6 +98,7 @@ private:
     bool isExecuteBuffer_ = false;
 
     friend class EcmaVM;
+    friend class QuickFixLoader;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_JS_MODULE_MANAGER_H

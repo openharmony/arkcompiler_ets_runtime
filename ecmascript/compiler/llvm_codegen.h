@@ -39,7 +39,6 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 
-#include "ecmascript/base/asan_interface.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/region.h"
 #include "llvm-c/Analysis.h"
@@ -70,18 +69,12 @@ struct CodeInfo {
         if (reqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
             reqSecs_ = nullptr;
         }
-        if (reqSecs_ != nullptr) {
-            ASAN_UNPOISON_MEMORY_REGION(reqSecs_, REQUIRED_SECS_LIMIT);
-        }
         // align machineCode for aarch64
         reqSecs_ += MachineCode::DATA_OFFSET +
             AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
         unreqSecs_ = static_cast<uint8_t *>(mmap(nullptr, UNREQUIRED_SECS_LIMIT, protRWX, flags, -1, 0));
         if (unreqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
             unreqSecs_ = nullptr;
-        }
-        if (unreqSecs_ != nullptr) {
-            ASAN_UNPOISON_MEMORY_REGION(unreqSecs_, UNREQUIRED_SECS_LIMIT);
         }
         secInfos_.fill(std::make_pair(nullptr, 0));
     }
@@ -91,12 +84,10 @@ struct CodeInfo {
         if (reqSecs_ != nullptr) {
             reqSecs_ -= MachineCode::DATA_OFFSET +
                 AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-            ASAN_POISON_MEMORY_REGION(reqSecs_, REQUIRED_SECS_LIMIT);
             munmap(reqSecs_, REQUIRED_SECS_LIMIT);
         }
         reqSecs_ = nullptr;
         if (unreqSecs_ != nullptr) {
-            ASAN_POISON_MEMORY_REGION(unreqSecs_, UNREQUIRED_SECS_LIMIT);
             munmap(unreqSecs_, UNREQUIRED_SECS_LIMIT);
         }
         unreqSecs_ = nullptr;
