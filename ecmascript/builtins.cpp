@@ -215,12 +215,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     // initialize Function, forbidden change order
     InitializeFunction(env, emptyFuncDynclass);
 
-    JSHandle<JSObject> objFuncInstancePrototype = factory_->NewJSObject(objFuncDynclass);
-    JSHandle<JSTaggedValue> objFuncInstancePrototypeValue(objFuncInstancePrototype);
-    JSHandle<JSHClass> asyncFuncClass = factory_->CreateFunctionClass(
-        FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION, objFuncInstancePrototypeValue);
-    env->SetAsyncFunctionClass(thread_, asyncFuncClass);
-
     JSHandle<JSHClass> asyncAwaitStatusFuncClass =
         factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSAsyncAwaitStatusFunction::SIZE,
                                       JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION, env->GetFunctionPrototype());
@@ -315,6 +309,10 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
                                       env->GetGeneratorFunctionPrototype());
     env->SetGeneratorFunctionClass(thread_, generatorFuncClass);
     env->SetObjectFunctionPrototypeClass(thread_, JSTaggedValue(objFuncPrototype->GetClass()));
+    JSHandle<JSHClass> asyncFuncClass = factory_->CreateFunctionClass(
+        FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION,
+        env->GetAsyncFunctionPrototype());
+    env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
 }
 void Builtins::InitializeForSnapshot(JSThread *thread)
