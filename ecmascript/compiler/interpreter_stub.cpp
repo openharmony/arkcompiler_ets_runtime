@@ -140,7 +140,7 @@ void InterpreterStubBuilder::DebugPrintInstruction()
     }
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));
-    UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(DebugPrintInstruction), { pc });
+    UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(DebugPrintInstruction), { glue, pc });
 #endif
 }
 

@@ -33,6 +33,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
 
@@ -56,11 +57,10 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #endif
 
 #if ECMASCRIPT_ENABLE_INTERPRETER_LOG
-#define HANDLE_OPCODE(opcode)           \
-    HANDLE_##opcode:                    \
-    {                                   \
-        BytecodeInstruction inst(pc);   \
-        LOG_INTERPRETER(DEBUG) << inst; \
+#define HANDLE_OPCODE(opcode)                                           \
+    HANDLE_##opcode:                                                    \
+    {                                                                   \
+        RuntimeStubs::DebugPrintInstruction(thread->GetGlueAddr(), pc); \
     }
 #else
 #define HANDLE_OPCODE(opcode)       \

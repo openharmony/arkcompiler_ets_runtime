@@ -342,9 +342,9 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     va_end(args);
 }
 
-void RuntimeStubs::DebugPrintInstruction(uintptr_t pc)
+void RuntimeStubs::DebugPrintInstruction([[maybe_unused]]uintptr_t argGlue, const uint8_t *pc)
 {
-    BytecodeInstruction inst(reinterpret_cast<const uint8_t*>(pc));
+    BytecodeInstruction inst(pc);
     LOG_INTERPRETER(DEBUG) << inst;
 }
 
@@ -1922,7 +1922,7 @@ DEF_RUNTIME_STUBS(JSObjectGetMethod)
 
 DEF_RUNTIME_STUBS(BigIntEqual)
 {
-    RUNTIME_STUBS_HEADER(OptBigIntEqual);
+    RUNTIME_STUBS_HEADER(BigIntEqual);
     JSTaggedValue left = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue right = GetArg(argv, argc, 1);  // 1: means the first parameter
     if (BigInt::Equal(left, right)) {
@@ -1933,7 +1933,7 @@ DEF_RUNTIME_STUBS(BigIntEqual)
 
 DEF_RUNTIME_STUBS(StringEqual)
 {
-    RUNTIME_STUBS_HEADER(OptBigIntEqual);
+    RUNTIME_STUBS_HEADER(StringEqual);
     JSTaggedValue left = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue right = GetArg(argv, argc, 1);  // 1: means the first parameter
     auto leftStr = EcmaString::Cast(left.GetTaggedObject());
