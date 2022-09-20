@@ -3556,7 +3556,6 @@ void InterpreterAssembly::HandleWideNewobjrangePrefImm16V8(
     uint16_t firstArgRegIdx = READ_INST_8_3();
     LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
     JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
     if (ctor.IsJSFunction() && ctor.IsConstructor()) {
         JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
         methodHandle.Update(ctorFunc->GetMethod());
@@ -4241,7 +4240,6 @@ void InterpreterAssembly::HandleDeprecatedGetresumemodePrefV8(
     LOG_INST() << "intrinsics::getresumemode";
     uint16_t vs = READ_INST_8_1();
     JSTaggedValue objVal = GET_VREG_VALUE(vs);
-
     if (objVal.IsAsyncGeneratorObject()) {
         JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
         SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
@@ -4259,7 +4257,6 @@ void InterpreterAssembly::HandleDeprecatedResumegeneratorPrefV8(
     LOG_INST() << "intrinsics::resumegenerator";
     uint16_t vs = READ_INST_8_1();
     JSTaggedValue objVal = GET_VREG_VALUE(vs);
-
     if (objVal.IsAsyncGeneratorObject()) {
         JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
         SET_ACC(obj->GetResumeResult());
@@ -4300,7 +4297,8 @@ void InterpreterAssembly::HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm1
     lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
     cls->SetLexicalEnv(thread, lexenv);
 
-    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    JSFunction *currentFunc =
+        JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
     cls->SetModule(thread, currentFunc->GetModule());
 
     SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
@@ -5667,7 +5665,8 @@ void InterpreterAssembly::HandleDefineclasswithbufferImm16Id16Id16Imm16V8(
     lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
     cls->SetLexicalEnv(thread, lexenv);
 
-    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    JSFunction *currentFunc =
+        JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
     cls->SetModule(thread, currentFunc->GetModule());
 
     SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
@@ -5705,7 +5704,8 @@ void InterpreterAssembly::HandleDefineclasswithbufferImm8Id16Id16Imm16V8(
     lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
     cls->SetLexicalEnv(thread, lexenv);
 
-    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    JSFunction *currentFunc =
+        JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
     cls->SetModule(thread, currentFunc->GetModule());
 
     SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
@@ -5858,7 +5858,8 @@ void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(
     JSTaggedValue taggedCurEnv = state->env;
     result->SetLexicalEnv(thread, taggedCurEnv);
 
-    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    JSFunction *currentFunc =
+        JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
     result->SetModule(thread, currentFunc->GetModule());
     SET_ACC(JSTaggedValue(result));
 
@@ -5972,7 +5973,8 @@ void InterpreterAssembly::HandleDefinemethodImm8Id16Imm8(
     JSTaggedValue taggedCurEnv = state->env;
     result->SetLexicalEnv(thread, taggedCurEnv);
 
-    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    JSFunction *currentFunc =
+        JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
     result->SetModule(thread, currentFunc->GetModule());
     SET_ACC(JSTaggedValue(result));
 
@@ -5999,7 +6001,8 @@ void InterpreterAssembly::HandleDefinefuncImm16Id16Imm8(
     JSTaggedValue envHandle = state->env;
     jsFunc->SetLexicalEnv(thread, envHandle);
 
-    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    JSFunction *currentFunc =
+        JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
     jsFunc->SetModule(thread, currentFunc->GetModule());
     SET_ACC(JSTaggedValue(jsFunc));
 
@@ -6025,7 +6028,8 @@ void InterpreterAssembly::HandleDefinefuncImm8Id16Imm8(
     JSTaggedValue envHandle = state->env;
     jsFunc->SetLexicalEnv(thread, envHandle);
 
-    JSFunction *currentFunc = JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+    JSFunction *currentFunc =
+        JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
     jsFunc->SetModule(thread, currentFunc->GetModule());
     jsFunc->SetHomeObject(thread, currentFunc->GetHomeObject());
     SET_ACC(JSTaggedValue(jsFunc));

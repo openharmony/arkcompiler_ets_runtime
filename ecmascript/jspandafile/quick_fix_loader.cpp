@@ -93,7 +93,6 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
             return false;
         }
         JSHandle<ConstantPool> patchConstpool = JSHandle<ConstantPool>(thread, patchConstpoolValue);
-        // TODO: execute patch_main_0 for add function.
         if (!ReplaceMethod(thread, baseConstpool, patchConstpool)) {
             LOG_FULL(ERROR) << "replace method failed";
             return false;
