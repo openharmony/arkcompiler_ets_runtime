@@ -54,6 +54,10 @@ void Log::SetLogComponentFromString(const std::vector<std::string>& components)
             components_ |= Component::GC;
             continue;
         }
+        if (component == "ecma") {
+            components_ |= Component::ECMA;
+            continue;
+        }
         if (component == "interpreter") {
             components_ |= Component::INTERPRETER;
             continue;

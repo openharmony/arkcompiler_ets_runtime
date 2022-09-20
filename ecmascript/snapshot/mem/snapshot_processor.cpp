@@ -1719,7 +1719,7 @@ JSTaggedValue ConstantPoolProcessor::GetConstantPoolInfos(size_t nums)
 void ConstantPoolProcessor::CollectConstantPoolInfo(const JSPandaFile* pf, JSHandle<JSTaggedValue> constantPool)
 {
     JSThread *thread = vm_->GetJSThread();
-    JSHandle<TaggedArray> array = vm_->GetTSManager()->GetConstantPoolInfo();
+    JSHandle<TaggedArray> array = vm_->GetTSManager()->GetConstantPoolInfos();
     ASSERT(index_ < array->GetLength());
     JSHandle<ConstantPool> cp(thread, constantPool.GetTaggedValue());
 

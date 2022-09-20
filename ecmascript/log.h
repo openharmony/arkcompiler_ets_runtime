@@ -60,6 +60,7 @@ enum Component {
     INTERPRETER = 1ULL << 1ULL,
     COMPILER = 1ULL << 2ULL,
     DEBUGGER = 1ULL << 3ULL,
+    ECMA = 1ULL << 4ULL,
     ALL = 0xFFFFFFFFULL,
 };
 
@@ -79,6 +80,9 @@ public:
         }
         if (component == Component::GC) {
             return "gc";
+        }
+        if (component == Component::ECMA) {
+            return "ecma";
         }
         if (component == Component::INTERPRETER) {
             return "interpreter";
