@@ -41,7 +41,7 @@ test_js_files = [
   "exception",
   "range_error",
   "sample",
-  "step_into",
+  "step",
   "syntax_exception",
   "throw_exception",
 ]

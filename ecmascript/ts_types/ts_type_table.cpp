@@ -41,7 +41,7 @@ void TSTypeTable::Initialize(JSThread *thread, const JSPandaFile *jsPandaFile,
     tsManager->AddTypeTable(JSHandle<JSTaggedValue>(tsTypeTable), fileName);
 
     TSTypeTable::LinkClassType(thread, tsTypeTable);
-    tsManager->GenerateStaticHClass(tsTypeTable);
+    tsManager->GenerateStaticHClass(tsTypeTable, jsPandaFile);
 
     // management dependency module
     while (recordImportModules.size() > 0) {

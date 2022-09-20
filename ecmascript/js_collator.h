@@ -73,7 +73,7 @@ public:
             return;
         }
         auto icuCollator = reinterpret_cast<icu::Collator *>(pointer);
-        icuCollator->~Collator();
+        delete icuCollator;
     }
 
     static void SetIcuCollator(JSThread *thread, const JSHandle<JSCollator> &collator,

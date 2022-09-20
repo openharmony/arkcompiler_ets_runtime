@@ -122,57 +122,50 @@ JSHandle<JSTaggedValue> TypedArrayHelper::GetConstructor(JSThread *thread, const
     }
 }
 
-JSHandle<JSFunction> TypedArrayHelper::GetConstructorFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName)
+JSHandle<JSFunction> TypedArrayHelper::GetConstructorFromType(JSThread *thread, const DataViewType arrayType)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    auto globalConst = thread->GlobalConstants();
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt8ArrayString())) {
+    switch (arrayType)
+    {
+    case DataViewType::INT8:
         return JSHandle<JSFunction>(env->GetInt8ArrayFunction());
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint8ArrayString())) {
+    case DataViewType::UINT8:
         return JSHandle<JSFunction>(env->GetUint8ArrayFunction());
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint8ClampedArrayString())) {
+    case DataViewType::UINT8_CLAMPED:
         return JSHandle<JSFunction>(env->GetUint8ClampedArrayFunction());
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt16ArrayString())) {
+    case DataViewType::INT16:
         return JSHandle<JSFunction>(env->GetInt16ArrayFunction());
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint16ArrayString())) {
+    case DataViewType::UINT16:
         return JSHandle<JSFunction>(env->GetUint16ArrayFunction());
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt32ArrayString())) {
+    case DataViewType::INT32:
         return JSHandle<JSFunction>(env->GetInt32ArrayFunction());
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint32ArrayString())) {
+    case DataViewType::UINT32:
         return JSHandle<JSFunction>(env->GetUint32ArrayFunction());
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat32ArrayString())) {
+    case DataViewType::FLOAT32:
         return JSHandle<JSFunction>(env->GetFloat32ArrayFunction());
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat64ArrayString())) {
+    case DataViewType::FLOAT64:
         return JSHandle<JSFunction>(env->GetFloat64ArrayFunction());
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledBigInt64ArrayString())) {
+    case DataViewType::BIGINT64:
         return JSHandle<JSFunction>(env->GetBigInt64ArrayFunction());
+    default:
+        break;
     }
     return JSHandle<JSFunction>(env->GetBigUint64ArrayFunction());
 }
 
-uint32_t TypedArrayHelper::GetSizeFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName)
+uint32_t TypedArrayHelper::GetSizeFromType(const DataViewType arrayType)
 {
     uint32_t elementSize;
-    auto globalConst = thread->GlobalConstants();
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt8ArrayString()) ||
-        JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint8ArrayString()) ||
-        JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint8ClampedArrayString())) {
+    if (arrayType == DataViewType::INT8 ||
+        arrayType == DataViewType::UINT8 ||
+        arrayType == DataViewType::UINT8_CLAMPED) {
         elementSize = ElementSize::ONE;
-    } else if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt16ArrayString()) ||
-               JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint16ArrayString())) {
+    } else if (arrayType == DataViewType::INT16 ||
+               arrayType == DataViewType::UINT16) {
         elementSize = ElementSize::TWO;
-    } else if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt32ArrayString()) ||
-               JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint32ArrayString()) ||
-               JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat32ArrayString())) {
+    } else if (arrayType == DataViewType::INT32 ||
+               arrayType == DataViewType::UINT32 ||
+               arrayType == DataViewType::FLOAT32) {
         elementSize = ElementSize::FOUR;
     } else {
         elementSize = ElementSize::EIGHT;

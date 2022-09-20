@@ -99,7 +99,7 @@ void ObjectFactory::NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const
         native->ResetExternalPointer(icuPoint);
         return;
     }
-    JSHandle<JSNativePointer> pointer = NewJSNativePointer(icuPoint, callback);
+    JSHandle<JSNativePointer> pointer = NewJSNativePointer(icuPoint, callback, vm_);
     obj->SetIcuField(thread_, pointer.GetTaggedValue());
 }
 

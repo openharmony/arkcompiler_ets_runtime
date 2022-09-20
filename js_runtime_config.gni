@@ -19,7 +19,7 @@ if (!defined(ark_standalone_build)) {
 } else {
   ark_root = "//runtime_core"
   js_root = "//ets_runtime"
-  third_party_gn_path = "//ets_runtime/build/third_party_gn"
+  third_party_gn_path = "//toolchain/build/third_party_gn"
   import("$build_root/ark.gni")
 }
 compile_llvm_online = false

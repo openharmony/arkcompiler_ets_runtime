@@ -41,7 +41,7 @@ private:
 
 struct ModuleSectionDes {
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
-    uint32_t startIndex_ {-1}; // record current module first function index in PackInfo
+    uint32_t startIndex_ {static_cast<uint32_t>(-1)}; // record current module first function index in PackInfo
     uint32_t funcCount_ {0};
     /* arkStackMapPtr_: generator aot file, stackmap buffer lifecycle is managned by share ptr
     while arkStackMapRawPtr_ is allocated by machinecode, lifecycle is managned by machinecode.
@@ -423,7 +423,7 @@ public:
     bool hasLoaded(const JSPandaFile *jsPandaFile);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);
-    void LoadSnapshotFile();
+    void LoadSnapshotFile([[maybe_unused]]const std::string& filename);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);

@@ -75,11 +75,10 @@ JSTaggedValue BuiltinsWeakSet::WeakSetConstructor(EcmaRuntimeCallInfo *argv)
     // jsarray
     JSHandle<JSTaggedValue> valueIndex(thread, JSTaggedValue(1));
     JSHandle<JSTaggedValue> next = JSIterator::IteratorStep(thread, iter);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, next.GetTaggedValue());
     JSMutableHandle<JSTaggedValue> status(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     while (!next->IsFalse()) {
-        // ReturnIfAbrupt(next).
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, next.GetTaggedValue());
         // Let nextValue be IteratorValue(next).
         JSHandle<JSTaggedValue> nextValue(JSIterator::IteratorValue(thread, next));
         // ReturnIfAbrupt(nextValue).
@@ -100,6 +99,8 @@ JSTaggedValue BuiltinsWeakSet::WeakSetConstructor(EcmaRuntimeCallInfo *argv)
         }
         // Let next be IteratorStep(iter).
         next = JSIterator::IteratorStep(thread, iter);
+        // ReturnIfAbrupt(next).
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, next.GetTaggedValue());
     }
     return weakSet.GetTaggedValue();
 }

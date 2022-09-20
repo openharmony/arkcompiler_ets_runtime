@@ -13,6 +13,16 @@
  * limitations under the License.
  */
 
-"use strict";
-print("Hello World !");
+/*
+ * @tc.name:module
+ * @tc.desc:test module
+ * @tc.type: FUNC
+ * @tc.require: issueI5RC2C
+ */
 
+import { a } from "A.js"
+export class D {
+    constructor() {
+        this.d = a
+    }
+}

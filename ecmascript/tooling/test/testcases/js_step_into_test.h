@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,9 +26,10 @@ public:
         vmStart = [this] {
             // line number for breakpoint array
             size_t breakpoint[POINTER_SIZE][LINE_COLUMN] =
-                {{45, 0}, {20, 0}, {25, 0}, {31, 0}, {33, 0}, {41, 0}, {48, 0}};
+                {{84, 0}, {87, 0}, {27, 0}, {79, 0}, {42, 0}, {38, 0}, {56, 0}, {60, 0}, {96, 0}, {54, 0}};
             // line number for stepinto array
-            size_t stepInto[STEP_SIZE][LINE_COLUMN] = {{16, 0}, {21, 0}, {30, 0}, {32, 0}, {38, 0}, {34, 0}};
+            size_t stepInto[STEP_SIZE][LINE_COLUMN] =
+                {{85, 5}, {23, 0}, {73, 0}, {80, 0}, {36, 0}, {43, 0}, {50, 0}, {61, 0}, {97, 15}};
             SetJSPtLocation(breakpoint[0], POINTER_SIZE, pointerLocations_);
             SetJSPtLocation(stepInto[0], STEP_SIZE, stepLocations_);
             return true;
@@ -97,10 +98,10 @@ public:
 
 private:
     static constexpr size_t LINE_COLUMN = 2;
-    static constexpr size_t POINTER_SIZE = 7;
-    static constexpr size_t STEP_SIZE = 6;
+    static constexpr size_t POINTER_SIZE = 10;
+    static constexpr size_t STEP_SIZE = 9;
 
-    std::string pandaFile_ = DEBUGGER_ABC_DIR "step_into.abc";
+    std::string pandaFile_ = DEBUGGER_ABC_DIR "step.abc";
     std::string entryPoint_ = "_GLOBAL::func_main_0";
     size_t breakpointCounter_ = 0;
     size_t stepCompleteCounter_ = 0;

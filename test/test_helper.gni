@@ -79,6 +79,10 @@ template("host_moduletest_action") {
   if (defined(invoker.is_commonjs) && invoker.is_commonjs) {
     _is_commonjs_ = true
   }
+  _is_merge_ = false
+  if (defined(invoker.is_merge) && invoker.is_merge) {
+    _is_merge_ = true
+  }
 
   _test_js_path_ = "./${_target_name_}.js"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
@@ -96,7 +100,9 @@ template("host_moduletest_action") {
     if (_is_commonjs_) {
       extra_args += [ "--commonjs" ]
     }
-
+    if (_is_merge_) {
+      extra_args += [ "--merge-abc" ]
+    }
     in_puts = [
       _test_js_path_,
       _test_expect_path_,

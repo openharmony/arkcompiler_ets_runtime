@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_JSOBJECT_H
 #define ECMASCRIPT_JSOBJECT_H
 
-#include <vector>
-
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ic/property_box.h"

@@ -183,7 +183,7 @@ EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
     }
     auto config = ecmascript::EcmaParamConfiguration(options.IsWorker(),
         MemMapAllocator::GetInstance()->GetCapacity());
-    LOG_ECMA(INFO) << "CreateEcmaVM: isWorker = " << options.IsWorker() << ", vmCount = " << vmCount_;
+    LOG_ECMA(INFO) << " [NAPI]: CreateEcmaVM, isWorker = " << options.IsWorker() << ", vmCount = " << vmCount_;
     MemMapAllocator::GetInstance()->IncreaseAndCheckReserved(config.GetMaxHeapSize());
     return EcmaVM::Create(options, config);
 }
@@ -329,6 +329,11 @@ void JSNApi::postFork(EcmaVM *vm)
 void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 {
     hostVm->WorkersetInfo(workerVm->GetJSThread()->GetThreadId(), workerVm);
+}
+
+bool JSNApi::DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
+{
+    return hostVm->DeleteWorker(workerVm->GetJSThread()->GetThreadId());
 }
 
 Local<ObjectRef> JSNApi::GetUncaughtException(const EcmaVM *vm)
@@ -1136,6 +1141,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     if (!IsFunction()) {
         return JSValueRef::Undefined(vm);
     }
+    vm->GetJsDebuggerManager()->ClearSingleStepper();
     JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSTaggedValue> thisValue = JSNApiHelper::ToJSHandle(thisObj);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
@@ -2453,11 +2459,11 @@ bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void 
     return quickFixManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
 }
 
-bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
+bool JSNApi::UnloadPatch(EcmaVM *vm, const std::string &patchFileName)
 {
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();
-    return quickFixManager->UnLoadPatch(thread, patchFileName);
+    return quickFixManager->UnloadPatch(thread, patchFileName);
 }
 
 /*

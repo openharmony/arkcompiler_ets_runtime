@@ -78,7 +78,7 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME)));
     // 2 : 2 means pairs
     __ Stp(tmp, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-    __ Add(fp, sp, Immediate(16));  // 16: skip frame type and tmp
+    __ Add(fp, sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip frame type and tmp
     __ Str(fp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 
     // load runtime trampoline address
@@ -417,7 +417,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         Register nativeFuncAddr(X4);
         __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         // -8 : -8 means sp increase step
-        __ Str(nativeFuncAddr, MemoryOperand(sp, -8, AddrMode::PREINDEX));
+        __ Str(nativeFuncAddr, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
     }
 
@@ -498,7 +498,7 @@ void OptimizedCall::ConstructorJSCallInternal(ExtendedAssembler *assembler, Regi
     Label callOptimizedMethod;
     __ Ldr(Register(X5), MemoryOperand(jsfunc, JSFunction::LEXICAL_ENV_OFFSET));
     __ Str(Register(X5), MemoryOperand(sp, 0));
-    __ Ldr(Register(X5), MemoryOperand(jsfunc, 0));
+    __ Ldr(Register(X5), MemoryOperand(jsfunc, JSFunction::HCLASS_OFFSET));
     __ Ldr(Register(X5), MemoryOperand(Register(X5), JSHClass::BIT_FIELD_OFFSET));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(actualArgC, MemoryOperand(sp, FRAME_SLOT_SIZE));
@@ -519,7 +519,7 @@ void OptimizedCall::ConstructorJSCallInternal(ExtendedAssembler *assembler, Regi
         Register nativeFuncAddr(X4);
         __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         // -8 : -8 means sp increase step
-        __ Str(nativeFuncAddr, MemoryOperand(sp, -8, AddrMode::PREINDEX));
+        __ Str(nativeFuncAddr, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
     }
 
@@ -567,7 +567,7 @@ void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, R
     __ Cbnz(taggedValue, nonCallable);
 
     Register jshclass(X2);
-    __ Ldr(jshclass, MemoryOperand(jsfunc, 0));
+    __ Ldr(jshclass, MemoryOperand(jsfunc, JSFunction::HCLASS_OFFSET));
     Register bitfield(X2);
     __ Ldr(bitfield, MemoryOperand(jshclass, JSHClass::BIT_FIELD_OFFSET));
     __ Tbz(bitfield, JSHClass::CallableBit::START_BIT, nonCallable);

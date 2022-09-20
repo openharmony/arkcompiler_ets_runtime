@@ -936,12 +936,14 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
     Local<ObjectRef> object1 = ObjectRef::New(vm_);
     Global<ObjectRef> globalObject1(vm_, object1);
     globalObject1.SetWeak();
+    NativeReferenceHelper *temp = nullptr;
     {
         LocalScope scope1(vm_);
         Local<ObjectRef> object2 = ObjectRef::New(vm_);
         Global<ObjectRef> globalObject2(vm_, object2);
         NativeReferenceHelper *ref1 = new NativeReferenceHelper(vm_, globalObject2, WeakRefCallback);
         ref1->SetWeakCallback();
+        temp = ref1;
     }
     {
         LocalScope scope1(vm_);
@@ -952,13 +954,15 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
     Local<ObjectRef> object4 = ObjectRef::New(vm_);
     Global<ObjectRef> globalObject4(vm_, object4);
     NativeReferenceHelper *ref2 = new NativeReferenceHelper(vm_, globalObject4, WeakRefCallback);
-    globalObject4.SetWeakCallback(ref2, NativeReferenceHelper::FirstPassCallBack, nullptr);
+    ref2->SetWeakCallback();
     int weakNodeNum = 0;
     vm_->CollectGarbage(TriggerGCType::OLD_GC);
-    thread_->GetEcmaGlobalStorage()->IterateWeakUsageGlobal([&weakNodeNum](EcmaGlobalStorage::Node *node) {
+    auto ecmaGlobalStorage = thread_->GetEcmaGlobalStorage();
+    ecmaGlobalStorage->IterateWeakUsageGlobal([&weakNodeNum]([[maybe_unused]] EcmaGlobalStorage::Node *node) {
         weakNodeNum++;
     });
-
+    delete temp;
+    delete ref2;
     ASSERT_EQ(weakNodeNum, 4);
 }
 }  // namespace panda::test

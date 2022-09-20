@@ -80,6 +80,7 @@ HWTEST_F_L0(JSPluralRulesTest, GetIcuPluralRules)
     icu::UnicodeString result2 = getPluralRules->select(0);
     JSHandle<EcmaString> stringValue2 = JSLocale::IcuToString(thread, result2);
     EXPECT_EQ(EcmaString::StringsAreEqual(*stringValue1, *stringValue2), true);
+    delete icuPluralRules;
 }
 
 HWTEST_F_L0(JSPluralRulesTest, BuildLocaleSet)

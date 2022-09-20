@@ -29,15 +29,10 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0 || size >= 5) { // 5:Utf8 character size
-            JSNApi::DestroyJSVM(vm);
+        if (size <= 0) {
             return;
         }
-        std::vector<uint8_t> vec;
-        for (size_t i = 0; i<size; i++) {
-            vec.push_back(data[i]);
-        }
-        if (!IsValidUTF8(vec)) {
+        if (size > 4) { // 4 : The maximum utf8 encoding length of a single character
             JSNApi::DestroyJSVM(vm);
             return;
         }

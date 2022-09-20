@@ -376,6 +376,109 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSH
     return constructor;
 }
 
+JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
+                                                         const JSHandle<JSTaggedValue> &constpool,
+                                                         const JSHandle<JSTaggedValue> &lexenv,
+                                                         const JSHandle<JSHClass> &ihclass)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
+    JSHandle<TaggedArray> staticKeys(thread, extractor->GetStaticKeys());
+    JSHandle<TaggedArray> staticProperties(thread, extractor->GetStaticProperties());
+    JSHandle<JSHClass> constructorHClass = ClassInfoExtractor::CreateConstructorHClass(thread, staticKeys,
+                                                                                       staticProperties);
+
+    JSHandle<TaggedArray> nonStaticKeys(thread, extractor->GetNonStaticKeys());
+    JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
+    JSHandle<JSObject> prototype(thread, ihclass->GetProto());
+
+    JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
+    JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method,
+        constructorHClass, MemSpaceType::OLD_SPACE);
+
+    // non-static
+    nonStaticProperties->Set(thread, 0, constructor);
+
+    uint32_t nonStaticLength = nonStaticProperties->GetLength();
+    JSMutableHandle<JSTaggedValue> propValue(thread, JSTaggedValue::Undefined());
+
+    if (LIKELY(!prototype->GetJSHClass()->IsDictionaryMode())) {
+        for (uint32_t index = 0; index < nonStaticLength; ++index) {
+            propValue.Update(nonStaticProperties->Get(index));
+            if (propValue->IsJSFunction()) {
+                JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
+                propFunc->SetHomeObject(thread, prototype);
+                JSHandle<Method> propMethod(thread, propFunc->GetMethod());
+                propMethod->SetConstantPool(thread, constantPool.GetTaggedValue());
+                propFunc->SetLexicalEnv(thread, lexenv);
+            }
+            prototype->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
+        }
+    } else {
+        JSHandle<NameDictionary> dict = BuildDictionaryProperties(thread, prototype, nonStaticKeys, nonStaticProperties,
+                                                                  ClassPropertyType::NON_STATIC, constantPool);
+        for (uint32_t index = 0; index < nonStaticLength; ++index) {
+            propValue.Update(nonStaticProperties->Get(index));
+            if (propValue->IsJSFunction()) {
+                JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
+                propFunc->SetLexicalEnv(thread, lexenv);
+            }
+        }
+        prototype->SetProperties(thread, dict);
+    }
+
+    // non-static elements
+    if (UNLIKELY(extractor->GetNonStaticWithElements())) {
+        JSHandle<TaggedArray> nonStaticElements(thread, extractor->GetNonStaticElements());
+        ClassHelper::HandleElementsProperties(thread, prototype, nonStaticElements, constantPool);
+    }
+
+    // static
+    uint32_t staticLength = staticProperties->GetLength();
+
+    if (LIKELY(!constructorHClass->IsDictionaryMode())) {
+        for (uint32_t index = 0; index < staticLength; ++index) {
+            propValue.Update(staticProperties->Get(index));
+            if (propValue->IsJSFunction()) {
+                JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
+                propFunc->SetHomeObject(thread, constructor);
+                JSHandle<Method> propMethod(thread, propFunc->GetMethod());
+                propMethod->SetConstantPool(thread, constantPool.GetTaggedValue());
+                propFunc->SetLexicalEnv(thread, lexenv);
+            }
+            JSHandle<JSObject>::Cast(constructor)->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
+        }
+    } else {
+        JSHandle<NameDictionary> dict = BuildDictionaryProperties(thread, JSHandle<JSObject>(constructor), staticKeys,
+                                                                  staticProperties, ClassPropertyType::STATIC,
+                                                                  constantPool);
+        for (uint32_t index = 0; index < staticLength; ++index) {
+            propValue.Update(staticProperties->Get(index));
+            if (propValue->IsJSFunction()) {
+                JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
+                propFunc->SetLexicalEnv(thread, lexenv);
+            }
+        }
+        constructor->SetProperties(thread, dict);
+    }
+
+    // static elements
+    if (UNLIKELY(extractor->GetStaticWithElements())) {
+        JSHandle<TaggedArray> staticElements(thread, extractor->GetStaticElements());
+        ClassHelper::HandleElementsProperties(thread, JSHandle<JSObject>(constructor), staticElements, constantPool);
+    }
+
+    PropertyDescriptor ctorDesc(thread, JSHandle<JSTaggedValue>(constructor), true, false, true);
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSTaggedValue::DefinePropertyOrThrow(thread, JSHandle<JSTaggedValue>(prototype),
+                                         globalConst->GetHandledConstructorString(), ctorDesc);
+
+    constructor->SetHomeObject(thread, prototype);
+    constructor->SetProtoOrHClass(thread, ihclass);
+
+    return constructor;
+}
+
 JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                                 JSHandle<TaggedArray> &keys,
                                                                 JSHandle<TaggedArray> &properties,

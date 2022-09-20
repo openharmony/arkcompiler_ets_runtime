@@ -46,26 +46,18 @@ void TypeLowering::Lower(GateRef gate)
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case NEWOBJDYNRANGE_PREF_IMM16_V8:
-            LowerTypeNewObjDynRange(gate, glue);
-            break;
         case ADD2DYN_PREF_V8:
-            // LowerTypeAdd2(gate, glue);
             break;
         case SUB2DYN_PREF_V8:
-            // LowerTypeSub2(gate);
             break;
         case MUL2DYN_PREF_V8:
-            // LowerTypeMul2(gate);
             break;
         case MOD2DYN_PREF_V8:
             LowerTypeMod2(gate, glue);
             break;
         case LESSDYN_PREF_V8:
-            // LowerTypeLess(gate);
             break;
         case LESSEQDYN_PREF_V8:
-            // LowerTypeLessEq(gate);
             break;
         case GREATERDYN_PREF_V8:
             LowerTypeGreater(gate);
@@ -1406,36 +1398,6 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
     auto ret = *result;
     env->SubCfgExit();
     return ret;
-}
-
-void TypeLowering::LowerTypeNewObjDynRange(GateRef gate, GateRef glue)
-{
-    GateRef ctor = acc_.GetValueIn(gate, 0);
-    GateType ctorType = acc_.GetGateType(ctor);
-    if (!ctorType.IsTSType()) {
-        return;
-    }
-
-    if (!tsManager_->IsClassTypeKind(ctorType)) {
-        return;
-    }
-
-    GlobalTSTypeRef gt = GlobalTSTypeRef(ctorType.GetType());
-    std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap = tsManager_->GetGtHClassIndexMap();
-    int64_t index = gtHClassIndexMap[gt];
-    GateRef ihcIndex = builder_.ToTaggedInt(builder_.Int64(index));
-
-    size_t range = acc_.GetNumValueIn(gate);
-    std::vector<GateRef> args(range + 1);
-
-    for (size_t i = 0; i < range; ++i) {
-        args[i] = acc_.GetValueIn(gate, i);
-    }
-    args[range] = ihcIndex;
-
-    const int id = RTSTUB_ID(OptNewObjWithIHClass);
-    GateRef newGate = LowerCallRuntime(glue, id, args);
-    ReplaceHirToCall(gate, newGate);
 }
 
 void TypeLowering::LowerTypeAdd2(GateRef gate, [[maybe_unused]]GateRef glue)

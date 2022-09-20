@@ -26,7 +26,6 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/file_loader.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/snapshot/mem/snapshot_processor.h"
 
 namespace panda::ecmascript::kungfu {
 class Module {
@@ -164,7 +163,7 @@ public:
 private:
     LLVMModule *llvmModule_ {nullptr};
     LLVMAssembler *assembler_ {nullptr};
-    uint32_t startIndex_ {-1}; // record current module first function index in StubModulePackInfo/AOTModulePackInfo
+    uint32_t startIndex_ {static_cast<uint32_t>(-1)}; // record current module first function index in StubModulePackInfo/AOTModulePackInfo
     uint32_t funcCount_ {0};
 };
 
@@ -209,41 +208,31 @@ protected:
 class AOTFileGenerator : public FileGenerator {
 public:
     AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList,
-        EcmaVM* vm) : FileGenerator(log, logList), vm_(vm), cpProcessor_(vm) {};
-    ~AOTFileGenerator() override = default;
-
-    JSTaggedValue GetConstantPoolInfos(const arg_list_t pandaFileNames)
+        EcmaVM* vm, size_t pandaFileNums) : FileGenerator(log, logList), vm_(vm)
     {
-        return cpProcessor_.GetConstantPoolInfos(pandaFileNames.size());
+        vm->GetTSManager()->CreateConstantPoolInfos(pandaFileNums);
     }
 
-    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler,
-                   const JSPandaFile* jsPandaFile, const JSHandle<JSTaggedValue> constantPool)
+    ~AOTFileGenerator() override = default;
+
+    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, const JSPandaFile *jsPandaFile)
     {
         modulePackage_.emplace_back(Module(llvmModule, assembler));
         auto hash = jsPandaFile->GetFileUniqId();
         aotfileHashs_.emplace_back(hash);
-        CollectConstantPoolInfo(jsPandaFile, constantPool);
-    }
 
-    ConstantPoolProcessor& GetCpProcessor()
-    {
-        return cpProcessor_;
+        // Process and clean caches in tsmanager that needs to be serialized
+        vm_->GetTSManager()->CollectConstantPoolInfo(jsPandaFile);
+        vm_->GetTSManager()->ClearCaches();
     }
 
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename);
     void SaveSnapshotFile();
 private:
-    void CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool)
-    {
-        cpProcessor_.CollectConstantPoolInfo(pf, constantPool);
-    }
-
     AOTModulePackInfo aotInfo_;
     std::vector<uint32_t> aotfileHashs_ {};
     EcmaVM* vm_;
-    ConstantPoolProcessor cpProcessor_;
 
     // collect aot component info
     void CollectCodeInfo();

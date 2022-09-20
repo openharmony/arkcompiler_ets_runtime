@@ -75,7 +75,7 @@ void AsmInterpreterCall::JSCallDispatch(ExtendedAssembler *assembler)
     Register bitFieldRegister(X16);
     Register tempRegister(X17); // can not be used to store any variable
     Register functionTypeRegister(X18, W);
-    __ Ldr(tempRegister, MemoryOperand(callTargetRegister, 0)); // hclass
+    __ Ldr(tempRegister, MemoryOperand(callTargetRegister, TaggedObject::HCLASS_OFFSET));
     __ Ldr(bitFieldRegister, MemoryOperand(tempRegister, JSHClass::BIT_FIELD_OFFSET));
     __ And(functionTypeRegister, bitFieldRegister.W(), LogicalImmediate::Create(0xFF, RegWSize));
     __ Mov(tempRegister.W(), Immediate(static_cast<int64_t>(JSType::JS_FUNCTION_FIRST)));
@@ -209,8 +209,8 @@ void AsmInterpreterCall::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCa
         __ Mov(numRegister, argcRegister);
         [[maybe_unused]] TempRegister1Scope scope(assembler);
         Register opRegister = __ TempRegister1();
-        PushArgsWithArgv(assembler, glueRegister, numRegister, argvRegister, opRegister, currentSlotRegister,
-            pushCallThis, stackOverflow);
+        PushArgsWithArgv(assembler, glueRegister, numRegister, argvRegister, opRegister,
+                         currentSlotRegister, pushCallThis, stackOverflow);
     } else if (argc > 0) {
         Register arg0 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
         Register arg1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
@@ -261,7 +261,7 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
                 [[maybe_unused]] TempRegister1Scope scope(assembler);
                 Register tempRegister = __ TempRegister1();
                 PushUndefinedWithArgc(assembler, glueRegister, declaredNumArgsRegister, tempRegister,
-                    currentSlotRegister, nullptr, stackOverflow);
+                                      currentSlotRegister, nullptr, stackOverflow);
             }
             __ B(fastPathEntry);
             return;
@@ -275,8 +275,8 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
         }
         [[maybe_unused]] TempRegister2Scope scope2(assembler);
         Register tempRegister = __ TempRegister2();
-        PushUndefinedWithArgc(assembler, glueRegister, diffRegister, tempRegister, currentSlotRegister, &pushArgsEntry,
-            stackOverflow);
+        PushUndefinedWithArgc(assembler, glueRegister, diffRegister, tempRegister,
+                              currentSlotRegister, &pushArgsEntry, stackOverflow);
         __ B(fastPathEntry);
     }
     // declare < actual
@@ -295,8 +295,9 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
         if (argc < 0) {
             [[maybe_unused]] TempRegister1Scope scope(assembler);
             Register opRegister = __ TempRegister1();
-            PushArgsWithArgv(assembler, glueRegister, declaredNumArgsRegister, argvRegister, opRegister,
-                currentSlotRegister, nullptr, stackOverflow);
+            PushArgsWithArgv(assembler, glueRegister, declaredNumArgsRegister,
+                             argvRegister, opRegister,
+                             currentSlotRegister, nullptr, stackOverflow);
         } else if (argc > 0) {
             Label pushArgs0;
             if (argc > 2) {  // 2: call arg2
@@ -602,15 +603,15 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
         // push stack args
         __ Add(next, sp, Immediate(BuiltinFrame::GetStackArgsToFpDelta(false)));
         // 16: type & next
-        __ Stp(next, op, MemoryOperand(sp, -16, AddrMode::PREINDEX));
-        __ Add(Register(FP), sp, Immediate(16));  // 16: skip next and frame type
+        __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
     } else if (type == FrameType::BUILTIN_ENTRY_FRAME) {
         // 16: type & next
-        __ Stp(next, op, MemoryOperand(sp, -16, AddrMode::PREINDEX));
-        __ Add(Register(FP), sp, Immediate(16));  // 16: skip next and frame type
+        __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
     } else {
         // 16: type & next
-        __ Stp(next, op, MemoryOperand(sp, -16, AddrMode::PREINDEX));
+        __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
 }
 
@@ -700,7 +701,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Cmp(temp, Immediate(0));
         __ B(Condition::NE, &notEcmaObject);
         // acc is heap object
-        __ Ldr(temp, MemoryOperand(ret, 0)); // hclass
+        __ Ldr(temp, MemoryOperand(ret, TaggedObject::HCLASS_OFFSET));
         __ Ldr(temp, MemoryOperand(temp, JSHClass::BIT_FIELD_OFFSET));
         __ And(temp.W(), temp.W(), LogicalImmediate::Create(0xFF, RegWSize));
         __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST)));
@@ -905,14 +906,14 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     __ Ldr(nRegsRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_NREGS_OFFSET));
     __ Ldr(regsArrayRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET));
     __ Add(regsArrayRegister, regsArrayRegister, Immediate(TaggedArray::DATA_OFFSET));
-    PushArgsWithArgv(assembler, glue, nRegsRegister, regsArrayRegister, temp, currentSlotRegister, &pushFrameState,
-        &stackOverflow);
+    PushArgsWithArgv(assembler, glue, nRegsRegister, regsArrayRegister, temp,
+                     currentSlotRegister, &pushFrameState, &stackOverflow);
 
     __ Bind(&pushFrameState);
     __ Mov(newSp, currentSlotRegister);
     // push frame state
-    PushGeneratorFrameState(
-        assembler, prevSpRegister, fpRegister, currentSlotRegister, callTarget, method, contextRegister, pc, temp);
+    PushGeneratorFrameState(assembler, prevSpRegister, fpRegister, currentSlotRegister,
+                            callTarget, method, contextRegister, pc, temp);
     __ Align16(currentSlotRegister);
     __ Mov(Register(SP), currentSlotRegister);
     // call bc stub
@@ -1040,13 +1041,17 @@ void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register p
     Register callTarget, Register method, Register pc, Register op)
 {
     __ Mov(op, Immediate(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME)));
-    __ Stp(prevSp, op, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));            // -16: frame type & prevSp
+    __ Stp(prevSp, op, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));// -16: frame type & prevSp
     __ Ldr(pc, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-    __ Stp(fp, pc, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));                // -16: pc & fp
+    __ Stp(fp, pc, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX)); // -16: pc & fp
     __ Ldr(op, MemoryOperand(callTarget, JSFunction::LEXICAL_ENV_OFFSET));
-    __ Stp(op, Register(Zero), MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));    // -16: jumpSizeAfterCall & env
+    __ Stp(op, Register(Zero), MemoryOperand(currentSlot,
+                                             -2 * FRAME_SLOT_SIZE, // -16: jumpSizeAfterCall & env
+                                             AddrMode::PREINDEX));
     __ Mov(op, Immediate(JSTaggedValue::VALUE_HOLE));
-    __ Stp(callTarget, op, MemoryOperand(currentSlot, -16, AddrMode::PREINDEX));        // -16: acc & callTarget
+    __ Stp(callTarget, op, MemoryOperand(currentSlot,
+                                         -2 * FRAME_SLOT_SIZE, // -16: acc & callTarget
+                                         AddrMode::PREINDEX));
 }
 
 void AsmInterpreterCall::GetNumVregsFromCallField(ExtendedAssembler *assembler, Register callField, Register numVregs)
@@ -1090,7 +1095,7 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
     __ Stp(prevFrameRegister, frameTypeRegister, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // 2 : pc & glue
     __ Stp(glue, Register(Zero), MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));  // pc
-    __ Add(fp, sp, Immediate(32));  // 32: skip frame type, prevSp, pc and glue
+    __ Add(fp, sp, Immediate(4 * FRAME_SLOT_SIZE));  // 32: skip frame type, prevSp, pc and glue
 }
 
 void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)

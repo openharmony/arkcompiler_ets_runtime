@@ -49,7 +49,9 @@ DebuggerImpl::DebuggerImpl(const EcmaVM *vm, ProtocolChannel *channel, RuntimeIm
 
     DebuggerExecutor::Initialize(vm_);
     updaterFunc_ = std::bind(&DebuggerImpl::UpdateScopeObject, this, _1, _2, _3);
+    stepperFunc_ = std::bind(&DebuggerImpl::ClearSingleStepper, this);
     vm_->GetJsDebuggerManager()->SetLocalScopeUpdater(&updaterFunc_);
+    vm_->GetJsDebuggerManager()->SetStepperFunc(&stepperFunc_);
 }
 
 DebuggerImpl::~DebuggerImpl()
@@ -59,7 +61,7 @@ DebuggerImpl::~DebuggerImpl()
 
 bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &fileName, std::string_view entryPoint)
 {
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_ANDROID)
     if (fileName.substr(0, DATA_APP_PATH.length()) != DATA_APP_PATH) {
         LOG_DEBUGGER(DEBUG) << "NotifyScriptParsed: unsupport file: " << fileName;
         return false;
@@ -1081,6 +1083,13 @@ void DebuggerImpl::UpdateScopeObject(const FrameHandler *frameHandler,
         localObj->DefineProperty(vm_, name, descriptor);
     } else {
         LOG_DEBUGGER(ERROR) << "UpdateScopeObject: not found " << varName;
+    }
+}
+
+void DebuggerImpl::ClearSingleStepper()
+{
+    if (singleStepper_ != nullptr) {
+        singleStepper_.reset();
     }
 }
 

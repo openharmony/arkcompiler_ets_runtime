@@ -22,7 +22,7 @@
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/range_error.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/syntax_exception.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/throw_exception.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/step_into.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/step.abc -> /data/test" src="out"/>
             <option name="push" value="test/test/libjsdebugtest.so -> /data/test" src="out"/>
             <option name="push" value="test/test/libdebugger_entry.so -> /data/test" src="out"/>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
@@ -171,6 +171,16 @@
         </preparer>
     </target>
     <target name="StringRefWriteUtf8FuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="InitializeDebuggerFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="StartHeapTrackingFuzzTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>

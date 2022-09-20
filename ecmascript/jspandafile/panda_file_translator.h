@@ -53,9 +53,11 @@ private:
     static void FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst);
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
     static JSHandle<ConstantPool> ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
-    static void ParseConstPoolWithMerge(EcmaVM *vm, const JSPandaFile *jsPandaFile, JSHandle<ConstantPool> constpool);
+    static JSHandle<ConstantPool> ParseMergedConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
     static void ParseLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
                                       JSHandle<ConstantPool> constpool);
+    static JSHandle<ConstantPool> AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+    friend class QuickFixLoader;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_PANDA_FILE_TRANSLATOR_H

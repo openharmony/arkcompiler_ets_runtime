@@ -527,6 +527,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf16ToUtf8)
     modify = true;
     utf8Pos = ConvertRegionUtf16ToUtf8(utf16ValuePtr, utf8Out, utf16Len, utf8Len, start, modify);
     EXPECT_EQ(utf8Pos, 18U);
+    free(utf8Out);
 }
 
 /*
@@ -565,5 +566,6 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16)
     start = 7;
     outPos = ConvertRegionUtf8ToUtf16(utf8ValuePtr, utf16Out, sizeof(utf8Value), utf16Len, start);
     EXPECT_EQ(outPos, 0U);
+    free(utf16Out);
 }
 } // namespace panda:test

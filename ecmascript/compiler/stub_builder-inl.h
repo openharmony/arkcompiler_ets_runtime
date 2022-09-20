@@ -1478,7 +1478,7 @@ inline GateRef StubBuilder::TaggedCastToDouble(GateRef x)
 
 inline GateRef StubBuilder::LoadObjectFromWeakRef(GateRef x)
 {
-    return env_->GetBuilder()->PtrAdd(x, Int64(-JSTaggedValue::TAG_WEAK));
+    return env_->GetBuilder()->PtrAdd(x, IntPtr(-JSTaggedValue::TAG_WEAK));
 }
 
 inline GateRef StubBuilder::ChangeInt32ToFloat64(GateRef x)

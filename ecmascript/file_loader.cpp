@@ -309,13 +309,11 @@ void FileLoader::LoadAOTFile(const std::string &fileName)
     AddAOTPackInfo(aotPackInfo_);
 }
 
-void FileLoader::LoadSnapshotFile()
+void FileLoader::LoadSnapshotFile([[maybe_unused]] const std::string& filename)
 {
-    CString snapshotArg(vm_->GetJSOptions().GetAOTOutputFile().c_str());
-    CString snapshotPath = snapshotArg + ".etso";
     Snapshot snapshot(vm_);
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-    snapshot.Deserialize(SnapshotType::ETSO, snapshotPath);
+    snapshot.Deserialize(SnapshotType::ETSO, filename.c_str());
 #endif
 }
 

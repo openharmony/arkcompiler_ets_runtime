@@ -35,7 +35,7 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Pushq(rbp);
     __ Movq(rsp, Operand(rax, JSThread::GlueData::GetLeaveFrameOffset(false)));
     __ Pushq(static_cast<int32_t>(FrameType::LEAVE_FRAME));
-    __ Leaq(Operand(rsp, 8), rbp);  // 8: skip frame type
+    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);  // 8: skip frame type
 
     __ Pushq(r10);
     __ Pushq(rdx);
@@ -43,24 +43,24 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
 
     __ Movq(rbp, rdx);
     // 16: rbp & return address
-    __ Addq(16, rdx);
+    __ Addq(2 * FRAME_SLOT_SIZE, rdx);
 
     __ Movq(Operand(rdx, 0), r10);
     __ Movq(Operand(rax, r10, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r10);
     __ Movq(rax, rdi);
     // 8: argc
-    __ Movq(Operand(rdx, 8), rsi);
+    __ Movq(Operand(rdx, FRAME_SLOT_SIZE), rsi);
     // 16: argv
-    __ Addq(16, rdx);
+    __ Addq(2 * FRAME_SLOT_SIZE, rdx);
     __ Callq(r10);
 
     // 8: skip rax
-    __ Addq(8, rsp);
+    __ Addq(FRAME_SLOT_SIZE, rsp);
     __ Popq(rdx);
     __ Popq(r10);
 
     // 8: skip frame type
-    __ Addq(8, rsp);
+    __ Addq(FRAME_SLOT_SIZE, rsp);
     __ Popq(rbp);
     __ Ret();
 }
@@ -130,7 +130,7 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
 
     __ Bind(&lCopyLoop);
     {
-        __ Movq(Operand(argvReg, rax, Scale::Times8, -8), actualNumArgsReg); // -8 : disp
+        __ Movq(Operand(argvReg, rax, Scale::Times8, -FRAME_SLOT_SIZE), actualNumArgsReg); // -8 : disp
         __ Pushq(actualNumArgsReg);
         __ Addq(-1, rax);
         __ Jne(&lCopyLoop);
@@ -142,7 +142,7 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
         __ Callq(codeAddrReg); // then call jsFunction
         __ Leaq(Operand(r14, Scale::Times8, 0), actualNumArgsReg); // Note: fixed for 3 extra arguments
         __ Addq(actualNumArgsReg, rsp);
-        __ Addq(16, rsp); // 16: skip r14 and env
+        __ Addq(2 * FRAME_SLOT_SIZE, rsp); // 16: skip r14 and env
         __ Testb(1, r14); // stack 16bytes align check
         __ Je(&lPopFrame);
         __ Addq(8, rsp); // 8: align byte
@@ -151,7 +151,7 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     __ Bind(&lPopFrame);
     {
         __ Popq(prevFpReg);
-        __ Addq(8, rsp); // 8: frame type
+        __ Addq(FRAME_SLOT_SIZE, rsp); // 8: frame type
         __ Popq(rbp);
         __ Popq(glueReg); // caller restore
         __ PopCppCalleeSaveRegisters(); // callee restore
@@ -229,7 +229,7 @@ void OptimizedCall::OptimizedCallOptimized(ExtendedAssembler *assembler)
     __ Movl(actualNumArgsReg, rax); // rax = actualNumArgsReg
 
     __ Bind(&lCopyLoop1);
-    __ Movq(Operand(argvReg, rax, Scale::Times8, -8), rbx); // -8: stack index
+    __ Movq(Operand(argvReg, rax, Scale::Times8, -FRAME_SLOT_SIZE), rbx); // -8: stack index
     __ Pushq(rbx);
     __ Addq(-1, rax);
     __ Jne(&lCopyLoop1);
@@ -307,7 +307,7 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
     __ Pushq(rbx);
 
     __ Movq(rbp, rdx);
-    __ Addq(16, rdx); // 16 : for rbp & return address
+    __ Addq(2 * FRAME_SLOT_SIZE, rdx); // 16 : for rbp & return address
     // load native pointer address
     __ Movq(Operand(rdx, 0), r10);
     __ Movq(glueReg, Operand(rdx, FRAME_SLOT_SIZE)); // thread (instead of env)
@@ -317,11 +317,11 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
 
     __ Popq(rbx);
     __ Pop(r10);
-    __ Addq(8, rsp); // 8: sp + 8
+    __ Addq(FRAME_SLOT_SIZE, rsp); // 8: sp + 8
     __ Popq(rbp);
     Register pcReg = rdx;
     __ Popq(pcReg); // load pc
-    __ Addq(8, rsp); // 8: skip code address
+    __ Addq(FRAME_SLOT_SIZE, rsp); // 8: skip code address
     __ Pushq(pcReg); // save pc
     __ Ret();
 }
@@ -377,7 +377,7 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Jne(&lNonCallable);
 
         __ Movq(jsFuncReg, rsi); // save jsFunc
-        __ Movq(Operand(jsFuncReg, 0), rax); // get jsHclass
+        __ Movq(Operand(jsFuncReg, JSFunction::HCLASS_OFFSET), rax); // get jsHclass
         Register jsHclassReg = rax;
         __ Movl(Operand(jsHclassReg, JSHClass::BIT_FIELD_OFFSET), rax);
         __ Btl(JSHClass::CallableBit::START_BIT, rax); // IsCallable
@@ -413,7 +413,7 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Movq(Operand(rax, r10, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r10);
         __ Callq(r10); // call CallRuntime
         __ Movabs(JSTaggedValue::VALUE_EXCEPTION, rax); // return exception
-        __ Addq(32, rsp); // 32: sp + 32 argv
+        __ Addq(4 * FRAME_SLOT_SIZE, rsp); // 32: sp + 32 argv
         __ Pop(rbp);
         __ Ret();
     }
@@ -512,7 +512,7 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
 
     __ Bind(&lCopyArgument2);
     {
-        __ Movq(Operand(rdx, rax, Scale::Times8, 24), rcx); // 24: slot size
+        __ Movq(Operand(rdx, rax, Scale::Times8, 3 * FRAME_SLOT_SIZE), rcx); // 24: slot size
         __ Pushq(rcx);
         __ Addq(-1, rax);
         __ Jne(&lCopyArgument2);
@@ -558,7 +558,7 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     __ Bind(&lPopFrame2);
     {
         __ Pop(r10);
-        __ Addq(8, rsp); // 8: sp + 8
+        __ Addq(FRAME_SLOT_SIZE, rsp); // 8: sp + 8
         __ Pop(rbp);
         __ Ret();
     }
@@ -567,7 +567,7 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     __ Movq(jsFuncReg, rdx);
     __ Addq(DOUBLE_SLOT_SIZE, rcx); // skip returnAddr
     __ Mov(Operand(rcx, 0), rsi); // get origin argc
-    __ Addq(8, rcx); // 8: sp + 8 argv
+    __ Addq(FRAME_SLOT_SIZE, rcx); // 8: sp + 8 argv
     __ Movq(kungfu::CommonStubCSigns::JsProxyCallInternal, r9);
     __ Movq(Operand(rdi, r9, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), r8);
     __ Jmp(r8);
@@ -682,7 +682,7 @@ void OptimizedCall::JSCall(ExtendedAssembler *assembler)
             __ Movq(kungfu::RuntimeStubCSigns::ID_CallRuntime, r10);
             __ Movq(Operand(rax, r10, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r10);
             __ Callq(r10); // call CallRuntime
-            __ Addq(32, rsp);
+            __ Addq(4 * FRAME_SLOT_SIZE, rsp);
             __ Pop(rbp);
             __ Ret();
         }
@@ -820,7 +820,7 @@ void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg
     __ Jne(lNonCallable);
 
     __ Movq(jsFuncReg, rsi); // save jsFunc
-    __ Movq(Operand(jsFuncReg, 0), rax); // get jsHclass
+    __ Movq(Operand(jsFuncReg, JSFunction::HCLASS_OFFSET), rax); // get jsHclass
     Register jsHclassReg = rax;
     __ Movl(Operand(jsHclassReg, JSHClass::BIT_FIELD_OFFSET), rax);
     __ Btl(JSHClass::CallableBit::START_BIT, rax); // IsCallable
@@ -848,7 +848,7 @@ void OptimizedCall::ThrowNonCallableInternal(ExtendedAssembler *assembler, Regis
     __ Movq(Operand(rax, r10, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r10);
     __ Callq(r10); // call CallRuntime
     __ Movabs(JSTaggedValue::VALUE_EXCEPTION, rax); // return exception
-    __ Addq(32, rsp); // 32: sp + 32 argv
+    __ Addq(4 * FRAME_SLOT_SIZE, rsp); // 32: sp + 32 argv
     __ Pop(rbp);
     __ Ret();
 }
@@ -918,7 +918,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
 
     __ Bind(&lCopyArgument2);
     {
-        __ Movq(Operand(rdx, rax, Scale::Times8, 24), rcx); // 24 : disp
+        __ Movq(Operand(rdx, rax, Scale::Times8, 3 * FRAME_SLOT_SIZE), rcx); // 24 : disp
         __ Pushq(rcx);
         __ Addq(-1, rax);
         __ Jne(&lCopyArgument2);
@@ -1043,7 +1043,7 @@ void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
     __ Pushq(r8);
     __ Callq(r9);
     __ Popq(r8);
-    __ Addq(8, rsp); // 8: skip type
+    __ Addq(FRAME_SLOT_SIZE, rsp); // 8: skip type
     __ Popq(rbp);
     __ Movq(r8, rsp);
     __ Ret();
@@ -1099,7 +1099,7 @@ void OptimizedCall::PopJSFunctionArgs(ExtendedAssembler *assembler, Register exp
     __ Andq(~1, expectedNumArgs);
     __ Leaq(Operand(expectedNumArgs, Scale::Times8, 0), expectedNumArgs);
     __ Addq(expectedNumArgs, rsp);
-    __ Addq(8, rsp); // 8: skip expectedNumArgs
+    __ Addq(FRAME_SLOT_SIZE, rsp); // 8: skip expectedNumArgs
 }
 
 void OptimizedCall::PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Register prevFp)
@@ -1118,7 +1118,7 @@ void OptimizedCall::PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Regist
 {
     Register prevFp(rsi);
     __ Popq(prevFp);
-    __ Addq(8, rsp); // 8: frame type
+    __ Addq(FRAME_SLOT_SIZE, rsp); // 8: frame type
     __ Popq(rbp);
     __ Popq(glue); // caller restore
     __ PopCppCalleeSaveRegisters(); // callee restore
@@ -1138,7 +1138,7 @@ void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 {
     Register sp(rsp);
     // 16 : 16 means pop call site sp and type
-    __ Addq(Immediate(16), sp);
+    __ Addq(Immediate(2 * FRAME_SLOT_SIZE), sp);
     __ Popq(rbp);
 }
 
@@ -1157,7 +1157,7 @@ void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
     Label pushCallThis;
 
     __ Movq(sp, callsiteSp);
-    __ Addq(Immediate(8), callsiteSp);   // 8 : 8 means skip pc to get last callsitesp
+    __ Addq(Immediate(FRAME_SLOT_SIZE), callsiteSp);   // 8 : 8 means skip pc to get last callsitesp
     PushOptimizedUnfoldArgVFrame(assembler, callsiteSp);
     __ Testb(1, actualNumArgs);
     __ Jne(&align16Bytes);
@@ -1197,7 +1197,7 @@ void OptimizedCall::ConstructorJSCallWithArgV(ExtendedAssembler *assembler)
     Label pushCallThis;
 
     __ Movq(sp, callsiteSp);
-    __ Addq(Immediate(8), callsiteSp);   // 8 : 8 means skip pc to get last callsitesp
+    __ Addq(Immediate(FRAME_SLOT_SIZE), callsiteSp);   // 8 : 8 means skip pc to get last callsitesp
     PushOptimizedUnfoldArgVFrame(assembler, callsiteSp);
     __ Testb(1, actualNumArgs);
     __ Jne(&align16Bytes);

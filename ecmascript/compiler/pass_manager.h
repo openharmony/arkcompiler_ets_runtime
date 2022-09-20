@@ -23,10 +23,10 @@
 namespace panda::ecmascript::kungfu {
 class PassManager {
 public:
-    PassManager(EcmaVM* vm, std::string entry, std::string &triple,
-        size_t optLevel, size_t relocMode, CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize)
-        : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode),
-          log_(log), logList_(logList), maxAotMethodSize_(maxAotMethodSize) {};
+    PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
+                CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, bool enableTypeLowering)
+        : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
+          logList_(logList), maxAotMethodSize_(maxAotMethodSize), enableTypeLowering_(enableTypeLowering) {};
     PassManager() = default;
     ~PassManager() = default;
 
@@ -36,6 +36,12 @@ private:
     JSPandaFile *CreateJSPandaFile(const CString &fileName);
     JSPandaFile *ResolveModuleFile(JSPandaFile *jsPandaFile, const std::string &fileName);
     JSHandle<JSTaggedValue> CreateConstPool(const JSPandaFile *jsPandaFile);
+    void DecodeTSTypes(const JSPandaFile *jsPandaFile, const std::string &fileName);
+
+    bool EnableTypeLowering() const
+    {
+        return enableTypeLowering_;
+    }
 
     EcmaVM *vm_ {nullptr};
     std::string entry_ {};
@@ -45,6 +51,7 @@ private:
     const CompilerLog *log_ {nullptr};
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
+    bool enableTypeLowering_ {true};
 };
 }
 #endif // ECMASCRIPT_COMPILER_PASS_MANAGER_H

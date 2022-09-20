@@ -62,9 +62,10 @@ static WaiterListNode *CreateListNode(JSThread *thread, uint32_t bufferLength)
     return listNode;
 }
 
-static void DeleteListNode(WaiterListNode *listNode)
+static void DeleteListNode(JSThread *thread, WaiterListNode *listNode)
 {
     if (listNode != nullptr) {
+        thread->GetEcmaVM()->GetNativeAreaAllocator()->Delete(listNode->date_);
         delete listNode;
         listNode = nullptr;
     }
@@ -97,14 +98,14 @@ HWTEST_F_L0(WaiterListTest, AddNode)
     EXPECT_EQ(listNode->prev_, listNode);
     EXPECT_EQ(listNode->next_, listNode);
     EXPECT_EQ(listNode->prev_->waiting_, false);
-    DeleteListNode(listNode);
+    DeleteListNode(thread, listNode);
 }
 
 HWTEST_F_L0(WaiterListTest, DeleteNode)
 {
     uint32_t bufferLength = 5;
     WaiterList *waitLists = Singleton<WaiterList>::GetInstance();
-    
+
     WaiterListNode *listNode = CreateListNode(thread, bufferLength);
     WaiterListNode *listNode1 = CreateListNode(thread, bufferLength + 1);
     waitLists->AddNode(listNode);
@@ -121,7 +122,7 @@ HWTEST_F_L0(WaiterListTest, DeleteNode)
     indexOneIter = waitLists->locationListMap_.find(listNode->waitPointer_);
     EXPECT_EQ(indexOneIter, waitLists->locationListMap_.end());
 
-    DeleteListNode(listNode);
-    DeleteListNode(listNode1);
+    DeleteListNode(thread, listNode);
+    DeleteListNode(thread, listNode1);
 }
 }  // namespace panda::test
