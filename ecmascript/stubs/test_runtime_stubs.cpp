@@ -36,7 +36,6 @@ JSTaggedType RuntimeStubs::name(uintptr_t argGlue, uint32_t argc, uintptr_t argv
 
 #define RUNTIME_STUBS_HEADER(name)                        \
     auto thread = JSThread::GlueToJSThread(argGlue);      \
-    RUNTIME_TRACE(thread, name);                          \
     [[maybe_unused]] EcmaHandleScope handleScope(thread)  \
 
 #define CONVERT_ARG_TAGGED_TYPE_CHECKED(name, index) \
@@ -82,7 +81,7 @@ DEF_RUNTIME_STUBS(GetPrintFunc)
     auto env = ecmaVm->GetGlobalEnv();
     JSHandle<JSTaggedValue> globalObject(thread, env->GetGlobalObject());
     JSHandle<JSTaggedValue> printString(thread, factory->NewFromStdString("print").GetTaggedValue());
-        
+
     return JSObject::GetProperty(thread, globalObject, printString).
         GetValue().GetTaggedValue().GetRawData();
 }

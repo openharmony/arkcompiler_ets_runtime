@@ -465,7 +465,7 @@ JSTaggedValue SlowRuntimeStub::AsyncFunctionResolveOrReject(JSThread *thread, JS
 
 JSTaggedValue SlowRuntimeStub::NewObjApply(JSThread *thread, JSTaggedValue func, JSTaggedValue array)
 {
-    INTERPRETER_TRACE(thread, Newobjspread);
+    INTERPRETER_TRACE(thread, NewObjApply);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> funcHandle(thread, func);
@@ -653,7 +653,7 @@ void SlowRuntimeStub::StModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedV
 
 JSTaggedValue SlowRuntimeStub::LdLocalModuleVar(JSThread *thread, int32_t index)
 {
-    INTERPRETER_TRACE(thread, LdLocalModuleVar);
+    RUNTIME_TRACE(thread, LdLocalModuleVarByIndex);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     return RuntimeStubs::RuntimeLdLocalModuleVar(thread, index);
@@ -661,7 +661,7 @@ JSTaggedValue SlowRuntimeStub::LdLocalModuleVar(JSThread *thread, int32_t index)
 
 JSTaggedValue SlowRuntimeStub::LdExternalModuleVar(JSThread *thread, int32_t index)
 {
-    INTERPRETER_TRACE(thread, LdExternalModuleVar);
+    RUNTIME_TRACE(thread, LdExternalModuleVarByIndex);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     return RuntimeStubs::RuntimeLdExternalModuleVar(thread, index);
@@ -723,7 +723,7 @@ JSTaggedValue SlowRuntimeStub::CopyDataProperties(JSThread *thread, JSTaggedValu
 
 JSTaggedValue SlowRuntimeStub::GetIteratorNext(JSThread *thread, JSTaggedValue obj, JSTaggedValue method)
 {
-    INTERPRETER_TRACE(thread, GetIteratorNext);
+    RUNTIME_TRACE(thread, GetIteratorNext);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> iter(thread, obj);
@@ -1073,7 +1073,7 @@ JSTaggedValue SlowRuntimeStub::CreateClassWithBuffer(JSThread *thread, JSTaggedV
     JSHandle<JSTaggedValue> baseHandle(thread, base);
     JSHandle<JSTaggedValue> lexenvHandle(thread, lexenv);
     JSHandle<JSTaggedValue> constpoolHandle(thread, constpool);
-    return RuntimeStubs::RuntimeCreateClassWithBuffer(thread, baseHandle, lexenvHandle, 
+    return RuntimeStubs::RuntimeCreateClassWithBuffer(thread, baseHandle, lexenvHandle,
                                                       constpoolHandle, methodId, literalId);
 }
 

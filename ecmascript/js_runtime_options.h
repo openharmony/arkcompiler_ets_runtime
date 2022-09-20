@@ -811,7 +811,7 @@ private:
     PandArg<std::string> entryPoint_ {"entry-point", R"(_GLOBAL::func_main_0)",
         R"(full name of entrypoint function or method. )"};
     PandArg<bool> enableTypeLowering_ {"enable-type-lowering", true,
-        R"(tnable TSTypeLowering and TypeLowering for aot runtime. Default:true)"};
+        R"(enable TSTypeLowering and TypeLowering for aot runtime. Default:true)"};
 };
 }  // namespace panda::ecmascript
 
