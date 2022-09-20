@@ -321,7 +321,7 @@ JSHandle<SourceTextModule> ModuleManager::ResolveModule(JSThread *thread, const 
     CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
     JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
     if (jsPandaFile->IsCjs()) {
-        moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
+        moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     } else if (jsPandaFile->IsModule()) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
     } else {
@@ -344,7 +344,7 @@ JSHandle<SourceTextModule> ModuleManager::ResolveModuleWithMerge(
     CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
     JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
     if (jsPandaFile->IsCjs(recordName)) {
-        moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
+        moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     } else if (jsPandaFile->IsModule(recordName)) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordName, moduleFileName);
     } else {

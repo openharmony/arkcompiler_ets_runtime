@@ -3905,10 +3905,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 newSp[index++] = numArgs + 2; // +1 for newtarget/this
                 // func
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                newSp[index++] = GET_VREG(firstArgRegIdx);
+                newSp[index++] = ctor.GetRawData();
                 // newTarget
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                newSp[index++] = GET_VREG(firstArgRegIdx + 1);
+                newSp[index++] = ctor.GetRawData();
                 // this
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
