@@ -872,7 +872,7 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTagge
             exportName.Update(ee->GetExportName());
             dataDict.Update(NameDictionary::Put(thread, dataDict, exportName, value,
                                                 PropertyAttributes::Default()));
-            return;
+            break;
         }
     }
 

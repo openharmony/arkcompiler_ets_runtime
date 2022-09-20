@@ -35,6 +35,13 @@ constexpr static OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, ARK_DOMAIN, TAG}
 #else
 #define LOG_VERBOSE LOG_LEVEL_MIN
 #endif
+
+static bool LOGGABLE_VERBOSE = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_VERBOSE);
+static bool LOGGABLE_DEBUG = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_DEBUG);
+static bool LOGGABLE_INFO = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_INFO);
+static bool LOGGABLE_WARN = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_WARN);
+static bool LOGGABLE_ERROR = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_ERROR);
+static bool LOGGABLE_FATAL = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_FATAL);
 #endif // ENABLE_HILOG
 
 enum Level {
@@ -46,27 +53,54 @@ enum Level {
     FATAL,
 };
 
+using ComponentMark = uint64_t;
+enum Component {
+    NONE = 0ULL,
+    GC = 1ULL << 0ULL,
+    INTERPRETER = 1ULL << 1ULL,
+    COMPILER = 1ULL << 2ULL,
+    DEBUGGER = 1ULL << 3ULL,
+    ALL = 0xFFFFFFFFULL,
+};
+
 namespace panda::ecmascript {
 class JSRuntimeOptions;
 class PUBLIC_API Log {
 public:
     static void Initialize(const JSRuntimeOptions &options);
-    static Level GetLevel()
+    static inline bool LogIsLoggable(Level level, Component component)
     {
-        return level_;
+        return (level >= level_) && ((components_ & component) != 0ULL);
     }
-
-    static void SetLevel(Level level)
+    static inline std::string GetComponentStr(Component component)
     {
-        level_ = level;
+        if (component == Component::ALL) {
+            return "default";
+        }
+        if (component == Component::GC) {
+            return "gc";
+        }
+        if (component == Component::INTERPRETER) {
+            return "interpreter";
+        }
+        if (component == Component::DEBUGGER) {
+            return "debugger";
+        }
+        if (component == Component::COMPILER) {
+            return "compiler";
+        }
+        return "unknown";
     }
 
 private:
     static void SetLogLevelFromString(const std::string& level);
+    static void SetLogComponentFromString(const std::vector<std::string>& components);
+
     static Level level_;
+    static ComponentMark components_;
 };
 
-#ifdef ENABLE_HILOG
+#if defined(ENABLE_HILOG)
 template<LogLevel level>
 class HiLog {
 public:
@@ -98,12 +132,32 @@ public:
 private:
     std::ostringstream stream_;
 };
-#define LOG_ECMA(level) HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_##level) && panda::ecmascript::HiLog<LOG_##level>()
-#else // ENABLE_HILOG
+#elif defined(PANDA_TARGET_ANDROID)  // PANDA_TARGET_ANDROID
 template<Level level>
+class PUBLIC_API AndroidLog {
+public:
+    AndroidLog() = default;
+    ~AndroidLog();
+
+    template<class type>
+    std::ostream &operator <<(type input)
+    {
+        stream_ << input;
+        return stream_;
+    }
+
+private:
+    std::ostringstream stream_;
+};
+#else
+template<Level level, Component component>
 class StdLog {
 public:
-    StdLog() = default;
+    StdLog()
+    {
+        std::string str = Log::GetComponentStr(component);
+        stream_ << std::string("[") << str << std::string("]: ");
+    }
     ~StdLog()
     {
         std::cerr << stream_.str().c_str() << std::endl;
@@ -122,44 +176,15 @@ public:
 private:
     std::ostringstream stream_;
 };
-
-#ifdef PANDA_TARGET_ANDROID
-template<Level level>
-class PUBLIC_API AndroidLog {
-public:
-    AndroidLog() = default;
-    ~AndroidLog();
-
-    template<class type>
-    std::ostream &operator <<(type input)
-    {
-        stream_ << input;
-        return stream_;
-    }
-
-private:
-    std::ostringstream stream_;
-};
 #endif
 
-#ifdef ENABLE_HILOG
-#if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
-static bool LOGGABLE_VERBOSE = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_VERBOSE);
-#else
-static bool LOGGABLE_VERBOSE = false;
-#endif
-static bool LOGGABLE_DEBUG = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_DEBUG);
-static bool LOGGABLE_INFO = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_INFO);
-static bool LOGGABLE_WARN = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_WARN);
-static bool LOGGABLE_ERROR = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_ERROR);
-static bool LOGGABLE_FATAL = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_FATAL);
-
-#define LOG_ECMA(level) panda::ecmascript::LOGGABLE_##level && panda::ecmascript::HiLog<LOG_##level>()
+#if defined(ENABLE_HILOG)
+#define ARK_LOG(level) panda::ecmascript::LOGGABLE_##level && panda::ecmascript::HiLog<LOG_##level>()
 #elif defined(PANDA_TARGET_ANDROID)
-#define LOG_ECMA(level) panda::ecmascript::AndroidLog<(level)>()
+#define ARK_LOG(level) panda::ecmascript::AndroidLog<(level)>()
 #else
-#define LOG_ECMA(level) ((level) >= panda::ecmascript::Log::GetLevel()) && panda::ecmascript::StdLog<(level)>()
-#endif
+#define ARK_LOG(level, component) panda::ecmascript::Log::LogIsLoggable(level, component) && \
+                                  panda::ecmascript::StdLog<(level), (component)>()
 #endif
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LOG_H

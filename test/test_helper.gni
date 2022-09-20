@@ -311,7 +311,7 @@ template("host_aot_js_test_action") {
 
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-        _test_aot_log_level + " --log-components=ECMASCRIPT"
+        _test_aot_log_level + " --log-components=all"
 
     args = [
       "--script-file",
@@ -430,7 +430,7 @@ template("host_aot_test_action") {
 
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-        _test_aot_log_level + " --log-components=ECMASCRIPT"
+        _test_aot_log_level + " --log-components=all"
 
     args = [
       "--script-file",

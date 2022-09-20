@@ -232,7 +232,7 @@ private:
     bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
     uint32_t typeSummaryIndex_ {0};
-    bool isNewVersion_ {true};
+    bool isNewVersion_ {false};
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
