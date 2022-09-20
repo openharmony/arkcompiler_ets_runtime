@@ -17,8 +17,12 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
 #include "ecmascript/ts_types/ts_manager.h"
+#ifdef NEW_INSTRUCTION_DEFINE
+#include "libpandafile/bytecode_instruction-inl.h"
+#else
+#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
+#endif
 
 namespace panda::ecmascript::kungfu {
 void BytecodeCircuitBuilder::BytecodeToCircuit()

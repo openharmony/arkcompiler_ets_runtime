@@ -251,6 +251,12 @@ public:
 
     JSHandle<ConstantPool> PUBLIC_API RestoreConstantPool(const JSPandaFile* pf, uint32_t constantPool);
 
+    void ClearCaches()
+    {
+        stringIndexCache_.clear();
+        hclassCache_.clear();
+    }
+
     void AddStringIndex(uint32_t index)
     {
         if (stringIndexCache_.find(index) != stringIndexCache_.end()) {
@@ -259,30 +265,9 @@ public:
         stringIndexCache_.insert(index);
     }
 
-    void ClearCaches()
-    {
-        stringIndexCache_.clear();
-        hclassCache_.clear();
-    }
-
-    void PUBLIC_API SortConstantPoolInfos();
-
-    void AddStringIndex(uint32_t index)
-    {
-        if (stringIndexTable_.find(index) != stringIndexTable_.end()) {
-            return;
-        }
-        stringIndexTable_.insert(index);
-    }
-
-    void ClearIntermediateTable()
-    {
-        stringIndexTable_.clear();
-    }
-
     std::set<uint32_t> getStringIndexTable()
     {
-        return stringIndexTable_;
+        return stringIndexCache_;
     }
 
     EcmaVM * GetEcmaVM() const
@@ -405,7 +390,6 @@ private:
     std::set<uint32_t> stringIndexCache_ {};
     // store hclass of each abc which produced from static type info
     CVector<JSTaggedType> hclassCache_ {};
-    std::set<uint32_t> stringIndexTable_ {};
 };
 }  // namespace panda::ecmascript
 

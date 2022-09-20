@@ -91,38 +91,20 @@ const std::string HELP_OPTION_MSG =
     "--help: Print this message and exit\n"
     "--icu-data-path: Path to generated icu data file. Default: \"default\"\n"
     "--IsWorker: whether is worker vm. Default: false\n"
-    "--log-components: Enable logs from specified components. Possible values: [\"all\", \"alloc\",\n"
-    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
-    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
-    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
-    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
-    "--log-debug: Enable debug or above logs from specified components. Possible values: [\"all\", \"alloc\",\n"
-    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
-    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
-    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
-    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
-    "--log-error: Enable error or above logs from specified components. Possible values: [\"all\", \"alloc\",\n"
-    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
-    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
-    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
-    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
-    "--log-fatal: Enable fatal logs from specified components. Possible values: [\"all\", \"alloc\",\n"
-    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
-    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
-    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
-    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
-    "--log-info: Enable info or above logs from specified components. Possible values: [\"all\", \"alloc\",\n"
-    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
-    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
-    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
-    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
+    "--log-components: Enable logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
+    "--log-debug: Enable debug or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
+    "--log-error: Enable error or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
+    "--log-fatal: Enable fatal logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
+    "--log-info: Enable info or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
     "--log-level: Log level. Possible values: [\"debug\", \"info\", \"warning\", \"error\", \"fatal\"].\n"
     "       Default: \"error\"\n"
-    "--log-warning: Enable warning or above logs from specified components. Possible values: [\"all\", \"alloc\",\n"
-    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
-    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
-    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
-    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
+    "--log-warning: Enable warning or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
     "--longPauseTime: set longPauseTime. Default: 40ms\n"
     "--maxAotMethodSize: enable aot to skip too large method. Default size: 32 KB\n"
     "--maxNonmovableSpaceCapacity: set max nonmovable space capacity\n"

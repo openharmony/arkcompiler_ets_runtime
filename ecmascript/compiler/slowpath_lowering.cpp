@@ -248,7 +248,7 @@ GateRef SlowPathLowering::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, G
     Label cacheMiss(&builder_);
 
     GateRef constPool = GetConstPool(jsFunc);
-    auto cacheValue = builder_.GetValueFromTaggedArray(VariableType::JS_ANY(), constPool, index);
+    auto cacheValue = builder_.GetValueFromTaggedArray(constPool, index);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), cacheValue);
     builder_.Branch(builder_.TaggedIsHole(cacheValue), &cacheMiss, &exit);
     builder_.Bind(&cacheMiss);
@@ -3323,7 +3323,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
         GlobalTSTypeRef gt = GlobalTSTypeRef(type.GetType());
         const std::map<GlobalTSTypeRef, uint32_t> &classTypeIhcIndexMap = tsManager_->GetClassTypeIhcIndexMap();
         GateRef ihcIndex = builder_.Int32((classTypeIhcIndexMap.at(gt)));
-        GateRef ihclass = GetObjectFromConstPool(jsFunc, ihcIndex);
+        GateRef ihclass = GetObjectFromConstPool(glue, jsFunc, ihcIndex, ConstPoolType::CLASS_LITERAL);
         GateRef offset = builder_.PtrMul(builder_.ChangeInt32ToIntPtr(ihcIndex),
                                          builder_.IntPtr(JSTaggedValue::TaggedTypeSize()));
         GateRef dataOffset = builder_.PtrAdd(offset, builder_.IntPtr(TaggedArray::DATA_OFFSET));
