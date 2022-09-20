@@ -164,7 +164,7 @@ void SlowPathLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool 
     GateRef ifBranch;
     if (!noThrow) {
         // exception value
-        GateRef exceptionVal = builder_.ExceptionConstant(GateType::TaggedNPointer());
+        GateRef exceptionVal = builder_.ExceptionConstant();
         // compare with trampolines result
         GateRef equal = builder_.BinaryLogic(OpCode(OpCode::EQ), callGate, exceptionVal);
         ifBranch = builder_.Branch(stateInGate, equal);
@@ -232,7 +232,7 @@ GateRef SlowPathLowering::GetConstPool(GateRef jsFunc)
 GateRef SlowPathLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
 {
     GateRef constPool = GetConstPool(jsFunc);
-    return builder_.GetValueFromTaggedArray(VariableType::JS_ANY(), constPool, index);
+    return builder_.GetValueFromTaggedArray(constPool, index);
 }
 
 // labelmanager must be initialized
@@ -1139,7 +1139,7 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
     GateRef loadException = circuit_->NewGate(OpCode(OpCode::LOAD), VariableType::JS_ANY().GetMachineType(),
         0, { depend, val }, VariableType::JS_ANY().GetGateType());
     acc_.SetDep(loadException, depend);
-    GateRef holeCst = builder_.HoleConstant(VariableType::JS_ANY().GetGateType());
+    GateRef holeCst = builder_.HoleConstant();
     GateRef clearException = circuit_->NewGate(OpCode(OpCode::STORE), 0,
         { loadException, holeCst, val }, VariableType::INT64().GetGateType());
     auto uses = acc_.Uses(hirGate);
@@ -1466,12 +1466,12 @@ void SlowPathLowering::LowerFastStrictNotEqual(GateRef gate, GateRef glue)
         &notStrictEqual);
     builder_.Bind(&strictEqual);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        result = builder_.TaggedFalse();
         builder_.Jump(&exit);
     }
     builder_.Bind(&notStrictEqual);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        result = builder_.TaggedTrue();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1497,12 +1497,12 @@ void SlowPathLowering::LowerFastStrictEqual(GateRef gate, GateRef glue)
         &notStrictEqual);
     builder_.Bind(&strictEqual);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        result = builder_.TaggedTrue();
         builder_.Jump(&exit);
     }
     builder_.Bind(&notStrictEqual);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        result = builder_.TaggedFalse();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1939,13 +1939,13 @@ void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag)
     builder_.Bind(&isTrue);
     {
         auto trueResult = flag ? builder_.TaggedTrue() : builder_.TaggedFalse();
-        result = builder_.Int64ToTaggedPtr(trueResult);
+        result = trueResult;
         builder_.Jump(&successExit);
     }
     builder_.Bind(&isFalse);
     {
         auto falseResult = flag ? builder_.TaggedFalse() : builder_.TaggedTrue();
-        result = builder_.Int64ToTaggedPtr(falseResult);
+        result = falseResult;
         builder_.Jump(&successExit);
     }
     builder_.Bind(&successExit);
@@ -2896,14 +2896,14 @@ void SlowPathLowering::LowerLdLexVar(GateRef gate, GateRef glue)
     builder_.Branch(builder_.Int32LessThan(*i, level), &loopHead, &afterLoop);
     builder_.LoopBegin(&loopHead);
     GateRef index = builder_.Int32(LexicalEnv::PARENT_ENV_INDEX);
-    currentEnv = builder_.GetValueFromTaggedArray(VariableType::JS_ANY(), *currentEnv, index);
+    currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
     i = builder_.Int32Add(*i, builder_.Int32(1));
     builder_.Branch(builder_.Int32LessThan(*i, level), &loopEnd, &afterLoop);
     builder_.Bind(&loopEnd);
     builder_.LoopEnd(&loopHead);
     builder_.Bind(&afterLoop);
     GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(LexicalEnv::RESERVED_ENV_LENGTH));
-    GateRef result = builder_.GetValueFromTaggedArray(VariableType::JS_ANY(), *currentEnv, valueIndex);
+    GateRef result = builder_.GetValueFromTaggedArray(*currentEnv, valueIndex);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     exceptionControl.emplace_back(Circuit::NullGate());
@@ -2930,7 +2930,7 @@ void SlowPathLowering::LowerStLexVar(GateRef gate, GateRef glue)
     builder_.Branch(builder_.Int32LessThan(*i, level), &loopHead, &afterLoop);
     builder_.LoopBegin(&loopHead);
     GateRef index = builder_.Int32(LexicalEnv::PARENT_ENV_INDEX);
-    currentEnv = builder_.GetValueFromTaggedArray(VariableType::JS_ANY(), *currentEnv, index);
+    currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
     i = builder_.Int32Add(*i, builder_.Int32(1));
     builder_.Branch(builder_.Int32LessThan(*i, level), &loopEnd, &afterLoop);
     builder_.Bind(&loopEnd);

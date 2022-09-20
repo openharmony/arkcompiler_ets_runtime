@@ -423,7 +423,7 @@ void TypeLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noTh
     GateRef ifBranch;
     if (!noThrow) {
         // exception value
-        GateRef exceptionVal = builder_.ExceptionConstant(GateType::TaggedNPointer());
+        GateRef exceptionVal = builder_.ExceptionConstant();
         // compare with trampolines result
         GateRef equal = builder_.BinaryLogic(OpCode(OpCode::EQ), callGate, exceptionVal);
         ifBranch = builder_.Branch(stateInGate, equal);
@@ -732,12 +732,12 @@ GateRef TypeLowering::Less2Number(GateRef left, GateRef right)
     }
     builder_.Bind(&leftLessRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        result = builder_.TaggedTrue();
         builder_.Jump(&exit);
     }
     builder_.Bind(&leftGreaterEqRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        result = builder_.TaggedFalse();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -809,12 +809,12 @@ GateRef TypeLowering::LessEq2Number(GateRef left, GateRef right)
     }
     builder_.Bind(&leftLessEqRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        result = builder_.TaggedTrue();
         builder_.Jump(&exit);
     }
     builder_.Bind(&leftGreaterRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        result = builder_.TaggedFalse();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1080,12 +1080,12 @@ GateRef TypeLowering::Less(GateRef left, GateRef right)
     }
     builder_.Bind(&leftLessRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        result = builder_.TaggedTrue();
         builder_.Jump(&exit);
     }
     builder_.Bind(&leftGreaterEqRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        result = builder_.TaggedFalse();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1167,12 +1167,12 @@ GateRef TypeLowering::LessEq(GateRef left, GateRef right)
     }
     builder_.Bind(&leftLessEqRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        result = builder_.TaggedTrue();
         builder_.Jump(&exit);
     }
     builder_.Bind(&leftGreaterRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        result = builder_.TaggedFalse();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1312,13 +1312,13 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
             builder_.Branch(builder_.DoubleIsNAN(doubleLeft), &leftIsNan, &leftNotDoubleOrLeftNotNan);
             builder_.Bind(&leftIsNan);
             {
-                result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                result = builder_.TaggedFalse();
                 builder_.Jump(&exit);
             }
         }
         builder_.Bind(&leftNotDoubleOrLeftNotNan);
         {
-            result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+            result = builder_.TaggedTrue();
             builder_.Jump(&exit);
         }
     }
@@ -1338,7 +1338,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
                     builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &leftNotNumberOrLeftNotIntOrRightNotInt);
                     builder_.Bind(&rightIsInt);
                     {
-                        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                        result = builder_.TaggedFalse();
                         builder_.Jump(&exit);
                     }
                 }
@@ -1357,7 +1357,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
                 builder_.Branch(builder_.TaggedIsHeapObject(left), &leftIsHeapObject, &leftNotHeapObject);
                 builder_.Bind(&leftIsHeapObject);
                 {
-                    result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                    result = builder_.TaggedFalse();
                     builder_.Jump(&exit);
                 }
                 builder_.Bind(&leftNotHeapObject);
@@ -1367,7 +1367,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
                                     &leftOrRightNotUndefinedOrNull);
                     builder_.Bind(&leftIsUndefinedOrNull);
                     {
-                        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+                        result = builder_.TaggedTrue();
                         builder_.Jump(&exit);
                     }
                 }
@@ -1383,7 +1383,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
                     builder_.Branch(builder_.TaggedIsSpecial(right), &rightIsSpecial, &leftNotBooleanOrRightNotSpecial);
                     builder_.Bind(&rightIsSpecial);
                     {
-                        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                        result = builder_.TaggedFalse();
                         builder_.Jump(&exit);
                     }
                 }
@@ -1720,12 +1720,12 @@ void TypeLowering::LowerTypeNotEq(GateRef gate)
         builder_.Branch(builder_.TaggedIsTrue(*result), &resultIsTrue, &resultIsFalse);
         builder_.Bind(&resultIsTrue);
         {
-            result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+            result = builder_.TaggedFalse();
             builder_.Jump(&successExit);
         }
         builder_.Bind(&resultIsFalse);
         {
-            result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+            result = builder_.TaggedTrue();
             builder_.Jump(&successExit);
         }
     }

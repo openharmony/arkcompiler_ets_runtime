@@ -90,24 +90,24 @@ inline GateRef StubBuilder::Double(double value)
     return env_->GetBuilder()->Double(value);
 }
 
-inline GateRef StubBuilder::Undefined(VariableType type)
+inline GateRef StubBuilder::Undefined()
 {
-    return env_->GetBuilder()->UndefineConstant(type.GetGateType());
+    return env_->GetBuilder()->UndefineConstant();
 }
 
-inline GateRef StubBuilder::Hole(VariableType type)
+inline GateRef StubBuilder::Hole()
 {
-    return env_->GetBuilder()->HoleConstant(type.GetGateType());
+    return env_->GetBuilder()->HoleConstant();
 }
 
-inline GateRef StubBuilder::Null(VariableType type)
+inline GateRef StubBuilder::Null()
 {
-    return env_->GetBuilder()->NullConstant(type.GetGateType());
+    return env_->GetBuilder()->NullConstant();
 }
 
-inline GateRef StubBuilder::Exception(VariableType type)
+inline GateRef StubBuilder::Exception()
 {
-    return env_->GetBuilder()->ExceptionConstant(type.GetGateType());
+    return env_->GetBuilder()->ExceptionConstant();
 }
 
 inline GateRef StubBuilder::RelocatableData(uint64_t value)
@@ -1080,7 +1080,7 @@ inline GateRef StubBuilder::IsInlinedProperty(GateRef attr)
 inline GateRef StubBuilder::GetProtoCell(GateRef object)
 {
     GateRef protoCellOffset = IntPtr(PrototypeHandler::PROTO_CELL_OFFSET);
-    return Load(VariableType::INT64(), object, protoCellOffset);
+    return Load(VariableType::JS_POINTER(), object, protoCellOffset);
 }
 
 inline GateRef StubBuilder::GetPrototypeHandlerHolder(GateRef object)
@@ -1185,7 +1185,7 @@ inline GateRef StubBuilder::IsInternalAccessor(GateRef attr)
 inline GateRef StubBuilder::IsInvalidPropertyBox(GateRef obj)
 {
     GateRef valueOffset = IntPtr(PropertyBox::VALUE_OFFSET);
-    GateRef value = Load(VariableType::INT64(), obj, valueOffset);
+    GateRef value = Load(VariableType::JS_ANY(), obj, valueOffset);
     return TaggedIsHole(value);
 }
 
@@ -1327,12 +1327,12 @@ inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, Gate
 }
 
 inline GateRef StubBuilder::GetPropertyInlinedProps(GateRef obj, GateRef hClass,
-    GateRef index, VariableType type)
+    GateRef index)
 {
     GateRef inlinedPropsStart = GetInlinedPropsStartFromHClass(hClass);
     GateRef propOffset = Int32Mul(
         Int32Add(inlinedPropsStart, index), Int32(JSTaggedValue::TaggedTypeSize()));
-    return Load(type, obj, ZExtInt32ToInt64(propOffset));
+    return Load(VariableType::JS_ANY(), obj, ZExtInt32ToInt64(propOffset));
 }
 
 inline void StubBuilder::IncNumberOfProps(GateRef glue, GateRef hClass)
@@ -1398,12 +1398,12 @@ inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glu
     Store(valType, glue, array, dataOffset, val);
 }
 
-inline GateRef StubBuilder::GetValueFromTaggedArray(VariableType returnType, GateRef array, GateRef index)
+inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
 {
     GateRef offset =
         PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
-    return Load(returnType, array, dataOffset);
+    return Load(VariableType::JS_ANY(), array, dataOffset);
 }
 
 inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
@@ -1436,7 +1436,7 @@ inline GateRef StubBuilder::GetPropAttrFromLayoutInfo(GateRef layout, GateRef en
 {
     GateRef index = Int32Add(Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)),
         Int32(LayoutInfo::ATTR_INDEX_OFFSET));
-    return GetValueFromTaggedArray(VariableType::INT64(), layout, index);
+    return TaggedCastToInt64(GetValueFromTaggedArray(layout, index));
 }
 
 inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)
@@ -1448,7 +1448,7 @@ inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)
 inline GateRef StubBuilder::GetKeyFromLayoutInfo(GateRef layout, GateRef entry)
 {
     GateRef index = Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2));
-    return GetValueFromTaggedArray(VariableType::JS_ANY(), layout, index);
+    return GetValueFromTaggedArray(layout, index);
 }
 
 inline GateRef StubBuilder::GetPropertiesAddrFromLayoutInfo(GateRef layout)
@@ -1716,13 +1716,13 @@ inline GateRef StubBuilder::InYoungGeneration(GateRef region)
 inline GateRef StubBuilder::GetParentEnv(GateRef object)
 {
     GateRef index = Int32(LexicalEnv::PARENT_ENV_INDEX);
-    return GetValueFromTaggedArray(VariableType::JS_ANY(), object, index);
+    return GetValueFromTaggedArray(object, index);
 }
 
 inline GateRef StubBuilder::GetPropertiesFromLexicalEnv(GateRef object, GateRef index)
 {
     GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
-    return GetValueFromTaggedArray(VariableType::JS_ANY(), object, valueIndex);
+    return GetValueFromTaggedArray(object, valueIndex);
 }
 
 inline void StubBuilder::SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value)
