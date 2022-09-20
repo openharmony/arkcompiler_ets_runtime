@@ -124,10 +124,10 @@ public:
 
 class SlowPathLoweringPass {
 public:
-    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg, TSManager *tsManager)
     {
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        SlowPathLowering lowering(builder, data->GetCircuit(), cmpCfg, enableLog);
+        SlowPathLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog);
         lowering.CallRuntimeLowering();
         return true;
     }

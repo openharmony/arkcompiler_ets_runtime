@@ -29,6 +29,11 @@ enum class MTableIdx : uint8_t {
     NUM_OF_DEFAULT_TABLES,
 };
 
+enum class CacheKind: uint8_t {
+    STRING_INDEX = 0,
+    HCLASS,
+};
+
 class TSModuleTable : public TaggedArray {
 public:
 
@@ -217,46 +222,48 @@ public:
         return CString(fileName);
     }
 
-    CVector<JSTaggedType> GetStaticHClassTable() const
+    const std::map<GlobalTSTypeRef, uint32_t> &GetClassTypeIhcIndexMap() const
     {
-        return staticHClassTable_;
+        return classTypeIhcIndexMap_;
     }
 
-    void AddStaticHClassInCompilePhase(GlobalTSTypeRef gt, JSTaggedValue hclass)
-    {
-        staticHClassTable_.emplace_back(hclass.GetRawData());
-        gtHClassIndexMap_[gt] = staticHClassTable_.size() - 1;
-    }
-
-    void AddStaticHClassInRuntimePhase(JSTaggedValue hclass)
-    {
-        staticHClassTable_.emplace_back(hclass.GetRawData());
-    }
-
-    std::map<GlobalTSTypeRef, uint32_t> GetGtHClassIndexMap()
-    {
-        return gtHClassIndexMap_;
-    }
-
-    void GenerateStaticHClass(JSHandle<TSTypeTable> tsTypeTable);
+    void GenerateStaticHClass(JSHandle<TSTypeTable> tsTypeTable, const JSPandaFile *jsPandaFile);
 
     JSHandle<JSTaggedValue> GetTSType(const GlobalTSTypeRef &gt) const;
 
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
 
-    void PUBLIC_API CollectConstantPoolInfo(const JSPandaFile* pf, const JSHandle<JSTaggedValue> constantPool);
+    void PUBLIC_API CreateConstantPoolInfos(size_t size);
 
-    JSHandle<TaggedArray> PUBLIC_API GetConstantPoolInfo() const
+    void PUBLIC_API CollectConstantPoolInfo(const JSPandaFile* jsPandaFile);
+
+    JSHandle<TaggedArray> PUBLIC_API GetConstantPoolInfos() const
     {
-        return JSHandle<TaggedArray>(uintptr_t(&constantPoolInfo_));
+        return JSHandle<TaggedArray>(uintptr_t(&constantPoolInfos_));
     }
 
-    void PUBLIC_API SetConstantPoolInfo(JSTaggedValue constantPoolInfo)
+    void PUBLIC_API SetConstantPoolInfos(JSTaggedValue constantPoolInfos)
     {
-        constantPoolInfo_ = constantPoolInfo;
+        constantPoolInfos_ = constantPoolInfos;
     }
 
     void PUBLIC_API SortConstantPoolInfos();
+
+    JSHandle<ConstantPool> PUBLIC_API RestoreConstantPool(const JSPandaFile* pf, uint32_t constantPool);
+
+    void AddStringIndex(uint32_t index)
+    {
+        if (stringIndexCache_.find(index) != stringIndexCache_.end()) {
+            return;
+        }
+        stringIndexCache_.insert(index);
+    }
+
+    void ClearCaches()
+    {
+        stringIndexCache_.clear();
+        hclassCache_.clear();
+    }
 
 #define IS_TSTYPEKIND_METHOD_LIST(V)              \
     V(Primitive, TSTypeKind::PRIMITIVE)           \
@@ -282,7 +289,12 @@ public:
     static constexpr int BUILTIN_ARRAY_ID = 24;
 
 private:
-    static constexpr uint32_t CONSTANTPOOL_INFO_ITEM_SIZE = 2;
+    // constantpoolInfos
+    static constexpr uint32_t CONSTANTPOOL_INFO_DATA_OFFSET = 2;
+    static constexpr uint32_t CONSTANTPOOL_INFOS_ITEM_SIZE = 2;
+    static constexpr uint32_t NUM_OF_ORIGINAL_CONSTANTPOOL_DATA_INDEX = 0;
+    static constexpr uint32_t ORIGINAL_CONSTANTPOOL_DATA_SIZE = 2;
+    static constexpr uint32_t NUM_OF_HCLASS_INDEX = 1;
 
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
@@ -305,16 +317,69 @@ private:
 
     std::string GetPrimitiveStr(const GlobalTSTypeRef &gt) const;
 
+    JSTaggedValue GenerateConstantPoolInfo(const JSPandaFile* jsPandaFile);
+
+    int BinarySearch(uint32_t target, uint32_t itemSize, bool findLeftBound = true);
+
+    uint32_t ComputeSizeOfConstantPoolInfo() const
+    {
+        return CONSTANTPOOL_INFO_DATA_OFFSET + ORIGINAL_CONSTANTPOOL_DATA_SIZE *
+               GetStringCacheSize() + GetHClassCacheSize();
+    }
+
+    uint32_t GetHClassCacheSize() const
+    {
+        return hclassCache_.size();
+    }
+
+    uint32_t GetStringCacheSize() const
+    {
+        return stringIndexCache_.size();
+    }
+
+    void AddHClassInCompilePhase(GlobalTSTypeRef gt, JSTaggedValue hclass, uint32_t constantPoolLen)
+    {
+        hclassCache_.emplace_back(hclass.GetRawData());
+        classTypeIhcIndexMap_[gt] = constantPoolLen + hclassCache_.size() - 1;
+    }
+
+    template <class Callback>
+    void IterateCaches(CacheKind kind, const Callback &cb)
+    {
+        switch (kind) {
+            case CacheKind::STRING_INDEX: {
+                for (uint32_t item: stringIndexCache_) {
+                    cb(item);
+                }
+                break;
+            }
+            case CacheKind::HCLASS: {
+                for (JSTaggedType item: hclassCache_) {
+                    cb(item);
+                }
+                break;
+            }
+            default:
+                UNREACHABLE();
+        };
+    }
+
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    JSTaggedValue constantPoolInfo_ {JSTaggedValue::Hole()};
     JSTaggedValue globalModuleTable_ {JSTaggedValue::Hole()};
-    CVector<JSTaggedType> staticHClassTable_ {};  // store hclass which produced from static type info
-    std::map<GlobalTSTypeRef, uint32_t> gtHClassIndexMap_ {};  // record gt and static hclass index mapping relation
+    JSTaggedValue constantPoolInfos_ {JSTaggedValue::Hole()};
+    size_t constantPoolInfosSize_ {0};
+    // record the mapping relationship between classType and instance hclass index in the constant pool
+    std::map<GlobalTSTypeRef, uint32_t> classTypeIhcIndexMap_ {};
     bool assertTypes_ {false};
     bool printAnyTypes_ {false};
     friend class EcmaVM;
+
+    // recode the index of String in each constpool
+    std::set<uint32_t> stringIndexCache_ {};
+    // store hclass of each abc which produced from static type info
+    CVector<JSTaggedType> hclassCache_ {};
 };
 }  // namespace panda::ecmascript
 

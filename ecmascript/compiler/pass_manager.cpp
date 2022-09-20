@@ -35,6 +35,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto bcInfoCollector = BytecodeInfoCollector(jsPandaFile, entry_);
     jsPandaFile = ResolveModuleFile(jsPandaFile, fileName);
     auto constantPool = CreateConstPool(jsPandaFile);
+    DecodeTSTypes(jsPandaFile, fileName);
 
     auto aotModule = new LLVMModule("aot_" + fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
@@ -63,10 +64,10 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             enableMethodLog = logList_->IncludesMethod(fileName, methodName);
         }
 
-            if (enableMethodLog) {
-                LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
-                                << methodName << "] log:" << "\033[0m";
-            }
+        if (enableMethodLog) {
+            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
+                            << methodName << "] log:" << "\033[0m";
+        }
 
         BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager,
                                        &cmpCfg, enableMethodLog && log_->OutputCIR());
@@ -75,15 +76,17 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         PassRunner<PassData> pipeline(&data);
         pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
-        pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager);
-        pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
-        pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg);
+        if (EnableTypeLowering()) {
+            pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager);
+            pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
+        }
+        pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg, tsManager);
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<SchedulingPass>();
         pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);
     });
     LOG_COMPILER(INFO) << skippedMethodNum << " large methods in " << fileName << " have been skipped";
-    generator.AddModule(aotModule, aotModuleAssembler, jsPandaFile, constantPool);
+    generator.AddModule(aotModule, aotModuleAssembler, jsPandaFile);
     return true;
 }
 
@@ -97,12 +100,6 @@ JSPandaFile *PassManager::CreateJSPandaFile(const CString &fileName)
     }
 
     JSPandaFileManager::GetInstance()->InsertJSPandaFile(jsPandaFile);
-
-    if (jsPandaFile->HasTSTypes()) {
-        vm_->GetTSManager()->DecodeTSTypes(jsPandaFile);
-    } else {
-        LOG_COMPILER(INFO) << fileName << " has no type info";
-    }
     return jsPandaFile;
 }
 
@@ -127,5 +124,14 @@ JSHandle<JSTaggedValue> PassManager::CreateConstPool(const JSPandaFile *jsPandaF
     JSHandle<Method> method(thread, mainFunc->GetMethod());
     JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());
     return constPool;
+}
+
+void PassManager::DecodeTSTypes(const JSPandaFile *jsPandaFile, const std::string &fileName)
+{
+    if (jsPandaFile->HasTSTypes()) {
+        vm_->GetTSManager()->DecodeTSTypes(jsPandaFile);
+    } else {
+        LOG_COMPILER(INFO) << fileName << " has no type info";
+    }
 }
 } // namespace panda::ecmascript::kungfu
