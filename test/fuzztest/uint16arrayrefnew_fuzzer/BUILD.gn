@@ -31,7 +31,6 @@ ohos_fuzztest("Uint16ArrayRefNewFuzzTest") {
 
   deps = [
     "//arkcompiler/ets_runtime:libark_jsruntime",
-    "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger_set",
     "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog",
     sdk_libc_secshared_dep,
   ]

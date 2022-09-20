@@ -21,8 +21,8 @@
 #include "ecmascript/dfx/hprof/heap_tracker.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/tooling/interface/file_stream.h"
-#include "ecmascript/tooling/interface/progress.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
+#include "ecmascript/dfx/hprof/progress.h"
 
 #include "os/mem.h"
 

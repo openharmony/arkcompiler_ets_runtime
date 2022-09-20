@@ -24,7 +24,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/tests/test_helper.h"
-#include "ecmascript/tooling/interface/file_stream.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
 
 using namespace panda::ecmascript;
 

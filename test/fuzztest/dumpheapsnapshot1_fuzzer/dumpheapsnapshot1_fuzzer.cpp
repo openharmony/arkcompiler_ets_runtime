@@ -17,7 +17,6 @@
 
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
-#include "ecmascript/tooling/debugger_service.h"
 #include "ecmascript/ecma_string-inl.h"
 
 using namespace panda;

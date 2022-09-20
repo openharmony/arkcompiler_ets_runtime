@@ -18,7 +18,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
-#include "ecmascript/tooling/interface/file_stream.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
