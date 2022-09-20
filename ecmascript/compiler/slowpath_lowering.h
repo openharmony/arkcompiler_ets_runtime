@@ -147,14 +147,14 @@ private:
     // environment must be initialized
     GateRef GetConstPool(GateRef jsFunc);
     // environment must be initialized
-    GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
+    GateRef GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type);
     // environment must be initialized
     GateRef GetHomeObjectFromJSFunction(GateRef jsFunc);
     void Lower(GateRef gate);
     void LowerAdd2(GateRef gate, GateRef glue);
     void LowerCreateIterResultObj(GateRef gate, GateRef glue);
     void SaveFrameToContext(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerSuspendGenerator(GateRef gate, GateRef glue, [[maybe_unused]]GateRef jsFunc);
+    void LowerSuspendGenerator(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerAsyncFunctionAwaitUncaught(GateRef gate, GateRef glue);
     void LowerAsyncFunctionResolve(GateRef gate, GateRef glue);
     void LowerAsyncFunctionReject(GateRef gate, GateRef glue);
@@ -165,12 +165,25 @@ private:
     void LowerGetIterator(GateRef gate, GateRef glue);
     void LowerToJSCall(GateRef gate, GateRef glue, const std::vector<GateRef> &args);
     void LowerCallArg0(GateRef gate, GateRef glue);
+    void LowerDeprecatedCallarg0PrefV8(GateRef gate, GateRef glue);
     void LowerCallArg1(GateRef gate, GateRef glue);
+    void LowerDeprecatedCallarg1PrefV8V8(GateRef gate, GateRef glue);
+    void LowerCallArg1Imm8V8(GateRef gate, GateRef glue);
+    void LowerCallThisArg1(GateRef gate, GateRef glue);
     void LowerCallArgs2(GateRef gate, GateRef glue);
+    void LowerCallargs2Imm8V8V8(GateRef gate, GateRef glue);
+    void LowerCallthis2Imm8V8V8V8(GateRef gate, GateRef glue);
+    void LowerCallthis0Imm8V8(GateRef gate, GateRef glue);
     void LowerCallArgs3(GateRef gate, GateRef glue);
+    void LowerCallargs3Imm8V8V8(GateRef gate, GateRef glue);
+    void LowerCallthis3Imm8V8V8V8V8(GateRef gate, GateRef glue);
     void LowerCallThisRange(GateRef gate, GateRef glue);
+    void LowerCallthisrangeImm8Imm8V8(GateRef gate, GateRef glue);
+    void LowerWideCallthisrangePrefImm16V8(GateRef gate, GateRef glue);
     void LowerCallSpread(GateRef gate, GateRef glue);
     void LowerCallRange(GateRef gate, GateRef glue);
+    void LowerCallrangeImm8Imm8V8(GateRef gate, GateRef glue);
+    void LowerWideCallrangePrefImm16V8(GateRef gate, GateRef glue);
     void LowerNewObjApply(GateRef gate, GateRef glue);
     void LowerThrow(GateRef gate, GateRef glue);
     void LowerThrowConstAssignment(GateRef gate, GateRef glue);
@@ -226,10 +239,11 @@ private:
     void LowerLdLocalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdExternalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerGetModuleNamespaceByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerExternalModule(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetIteratorNext(GateRef gate, GateRef glue);
-    void LowerSuperCall(GateRef gate, GateRef glue, GateRef newTarget);
+    void LowerSuperCall(GateRef gate, GateRef glue, GateRef func, GateRef newTarget);
+    void LowerSuperCallArrow(GateRef gate, GateRef glue, GateRef newTarget);
     void LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef newTarget);
     void LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag);
     void LowerNewObjRange(GateRef gate, GateRef glue);
@@ -248,7 +262,7 @@ private:
     void LowerLdSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerTryStGlobalByName(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerStConstToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStConstToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc, bool isConst);
     void LowerStLetToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStClassToGlobalRecord(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStOwnByValueWithNameSet(GateRef gate, GateRef glue);
@@ -259,7 +273,7 @@ private:
     void LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGetterSetterByValue(GateRef gate, GateRef glue);
-    void LowerLdObjByIndex(GateRef gate, GateRef glue);
+    void LowerLdObjByIndex(GateRef gate, GateRef glue, bool isDeprecated);
     void LowerStObjByIndex(GateRef gate, GateRef glue);
     void LowerLdObjByValue(GateRef gate, GateRef glue);
     void LowerStObjByValue(GateRef gate, GateRef glue);
@@ -269,7 +283,7 @@ private:
     void LowerStLexVar(GateRef gate, GateRef glue);
     void LowerCreateObjectHavingMethod(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdHomeObject(GateRef gate, GateRef jsFunc);
-    void LowerDefineClassWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerDefineClassWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc, bool isDeprecated);
     void LowerAsyncFunctionEnter(GateRef gate, GateRef glue);
     void LowerTypeof(GateRef gate, GateRef glue);
     void LowerResumeGenerator(GateRef gate);
@@ -278,13 +292,15 @@ private:
     void LowerGetUnmappedArgs(GateRef gate, GateRef glue, GateRef actualArgc);
     void LowerCopyRestArgs(GateRef gate, GateRef glue, GateRef actualArgc);
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
-    int32_t ComputeCallArgc(GateRef gate, EcmaBytecode op);
+    int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
     void LowerCreateAsyncGeneratorObj(GateRef gate, GateRef glue);
     void LowerAsyncGeneratorResolve(GateRef gate, GateRef glue);
     void LowerAsyncGeneratorReject(GateRef gate, GateRef glue);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
     void DebugPrintBC(GateRef gate, GateRef glue);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
+    void LowerWideLdPatchVar(GateRef gate, GateRef glue);
+    void LowerWideStPatchVar(GateRef gate, GateRef glue);
 
     TSManager *tsManager_ {nullptr};
     BytecodeCircuitBuilder *bcBuilder_;

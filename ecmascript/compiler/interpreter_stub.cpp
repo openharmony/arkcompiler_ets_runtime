@@ -6395,6 +6395,7 @@ DECLARE_ASM_HANDLER(HandleWideLdpatchvarPrefImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
+
     GateRef index = ReadInst16_1(pc);
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdPatchVar), { IntToTaggedInt(index) });
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(WIDE_LDPATCHVAR_PREF_IMM16));

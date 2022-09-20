@@ -340,7 +340,7 @@ JSTaggedValue SlowRuntimeStub::DelObjProp(JSThread *thread, JSTaggedValue obj, J
 }
 
 JSTaggedValue SlowRuntimeStub::NewObjRange(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
-                                              uint16_t firstArgIdx, uint16_t length)
+                                           uint16_t firstArgIdx, uint16_t length)
 {
     INTERPRETER_TRACE(thread, NewobjRange);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);

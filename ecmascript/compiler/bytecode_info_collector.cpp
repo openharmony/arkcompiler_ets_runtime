@@ -22,6 +22,12 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
+template<class T, class... Args>
+static T *InitializeMemory(T *mem, Args... args)
+{
+    return new (mem) T(std::forward<Args>(args)...);
+}
+
 const CString BytecodeInfoCollector::GetEntryFunName(const std::string_view &entryPoint) const
 {
     CString methodName;
@@ -55,6 +61,7 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
         cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns, &sd, methodName]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
+            auto methodId = mda.GetMethodId();
             ASSERT(codeId.has_value());
 
             MethodLiteral *methodLiteral = methods + (methodIdx++);
@@ -68,18 +75,55 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
                 bytecodeInfo_.mainMethodIndex = methodOffset;
             }
 
-            new (methodLiteral) MethodLiteral(jsPandaFile_, mda.GetMethodId());
+//            new (methodLiteral) MethodLiteral(jsPandaFile_, mda.GetMethodId());
+            InitializeMemory(methodLiteral, jsPandaFile_, mda.GetMethodId());
             methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
             methodLiteral->InitializeCallField(
                 jsPandaFile_, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
+            if (jsPandaFile_->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
+                panda_file::IndexAccessor indexAccessor(*pf, methodId);
+                // int32_t index = indexAccessor.GetHeaderIndex();
+                panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
+                FunctionKind kind;
+                switch (funcKind) {
+                    case panda_file::FunctionKind::NONE:
+                    case panda_file::FunctionKind::FUNCTION:
+                        kind = FunctionKind::BASE_CONSTRUCTOR;
+                        break;
+                    case panda_file::FunctionKind::NC_FUNCTION:
+                        kind = FunctionKind::ARROW_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::GENERATOR_FUNCTION:
+                        kind = FunctionKind::GENERATOR_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_FUNCTION:
+                        kind = FunctionKind::ASYNC_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_GENERATOR_FUNCTION:
+                        kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_NC_FUNCTION:
+                        kind = FunctionKind::ASYNC_ARROW_FUNCTION;
+                        break;
+                    default:
+                        UNREACHABLE();
+                }
+                methodLiteral->SetFunctionKind(kind);
+#endif
+            }
             auto it = processedInsns.find(insns);
             if (it == processedInsns.end()) {
-                CollectMethodPcs(codeSize, insns, methodLiteral);
+                if (jsPandaFile_->IsNewVersion()) {
+                    CollectMethodPcsFromNewBc(codeSize, insns, methodLiteral);
+                } else {
+                    CollectMethodPcs(codeSize, insns, methodLiteral);
+                }
                 processedInsns[insns] = bytecodeInfo_.methodPcInfos.size() - 1;
             }
-            jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
             SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
+            jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
         });
     }
     LOG_COMPILER(INFO) << "Total number of methods in file: "
@@ -88,10 +132,50 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
                        << methodIdx;
 }
 
+void BytecodeInfoCollector::CollectMethodPcsFromNewBc(const uint32_t insSz, const uint8_t *insArr,
+                                                      const MethodLiteral *method)
+{
+    auto bcIns = BytecodeInst(insArr);
+    auto bcInsLast = bcIns.JumpTo(insSz);
+    bytecodeInfo_.methodPcInfos.emplace_back(MethodPcInfo { {}, {}, {}, insSz });
+    int32_t offsetIndex = 1;
+    uint8_t *curPc = nullptr;
+    uint8_t *prePc = nullptr;
+    while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
+        CollectMethodInfoFromNewBC(bcIns, method);
+        auto pc = const_cast<uint8_t *>(bcIns.GetAddress());
+        auto nextInst = bcIns.GetNext();
+        bcIns = nextInst;
+
+        auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
+        auto &byteCodeCurPrePc = bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc;
+        auto &pcToBCOffset = bytecodeInfo_.methodPcInfos.back().pcToBCOffset;
+        if (offsetIndex == 1) {
+            curPc = prePc = pc;
+            bytecodeBlockInfos.emplace_back(curPc, SplitKind::START, std::vector<uint8_t *>(1, curPc));
+            byteCodeCurPrePc[curPc] = prePc;
+            pcToBCOffset[curPc] = offsetIndex++;
+        } else {
+            curPc = pc;
+            byteCodeCurPrePc[curPc] = prePc;
+            pcToBCOffset[curPc] = offsetIndex++;
+            prePc = curPc;
+            BytecodeCircuitBuilder::CollectBytecodeBlockInfo(curPc, bytecodeBlockInfos);
+        }
+    }
+
+    auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
+    bytecodeBlockInfos.emplace_back(curPc, SplitKind::END, std::vector<uint8_t *>(1, curPc));
+
+    auto emptyPc = const_cast<uint8_t *>(bcInsLast.GetAddress());
+    bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc[emptyPc] = prePc;
+    bytecodeInfo_.methodPcInfos.back().pcToBCOffset[emptyPc] = offsetIndex++;
+}
+
 void BytecodeInfoCollector::CollectMethodPcs(const uint32_t insSz, const uint8_t *insArr,
                                              const MethodLiteral *method)
 {
-    bool isNewVersion = jsPandaFile_->IsNewVersion();
+    [[maybe_unused]]bool isNewVersion = jsPandaFile_->IsNewVersion();
     auto bcIns = OldBytecodeInst(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
 
@@ -101,18 +185,15 @@ void BytecodeInfoCollector::CollectMethodPcs(const uint32_t insSz, const uint8_t
     uint8_t *curPc = nullptr;
     uint8_t *prePc = nullptr;
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
+        TranslateBCIns(bcIns, method);
         auto pc = const_cast<uint8_t *>(bcIns.GetAddress());
         auto nextInst = bcIns.GetNext();
-        if (!isNewVersion) {
-            TranslateBCIns(bcIns, method);
-            FixOpcode(bcIns);
-            UpdateEcmaBytecodeICOffset(const_cast<MethodLiteral *>(method), pc);
-        }
+        FixOpcode(const_cast<MethodLiteral *>(method), bcIns);
         bcIns = nextInst;
+
         auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
         auto &byteCodeCurPrePc = bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc;
         auto &pcToBCOffset = bytecodeInfo_.methodPcInfos.back().pcToBCOffset;
-
         if (offsetIndex == 1) {
             curPc = prePc = pc;
             bytecodeBlockInfos.emplace_back(curPc, SplitKind::START, std::vector<uint8_t *>(1, curPc));
@@ -255,9 +336,10 @@ void BytecodeInfoCollector::UpdateEcmaBytecodeICOffset(MethodLiteral* method, ui
 void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst)
 {
     auto opcode = inst.GetOpcode();
+    auto pc = const_cast<uint8_t *>(inst.GetAddress());
     EcmaOpcode newOpcode;
     auto oldLen = OldBytecodeInst::Size(OldBytecodeInst::GetFormat(opcode));
-    auto pc = const_cast<uint8_t *>(inst.GetAddress());
+    pc = const_cast<uint8_t *>(inst.GetAddress());
 
     // First level opcode
     if (static_cast<uint16_t>(opcode) < 236) {  // 236: second level bytecode index
@@ -942,6 +1024,16 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
             }
             break;
         }
+        case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORREJECT_PREF_V8_V8: {
+            newOpcode = EcmaOpcode::ASYNCGENERATORREJECT_V8;
+            *pc = static_cast<uint8_t>(newOpcode);
+            auto newLen = BytecodeInstruction::Size(newOpcode);
+            if (memmove_s(pc + 1, newLen - 1, pc + 2, oldLen - 2) != EOK) {  // 2: skip second level inst and pref
+                LOG_FULL(FATAL) << "FixOpcode memmove_s fail";
+                UNREACHABLE();
+            }
+            break;
+        }
         case OldBytecodeInst::Opcode::ECMA_CREATEASYNCGENERATOROBJ_PREF_V8: {
             newOpcode = EcmaOpcode::CREATEASYNCGENERATOROBJ_V8;
             *pc = static_cast<uint8_t>(newOpcode);
@@ -1316,7 +1408,8 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
 void BytecodeInfoCollector::UpdateICOffset(MethodLiteral* methodLiteral, uint8_t *pc)
 {
     uint8_t offset = MethodLiteral::INVALID_IC_SLOT;
-    auto opcode = static_cast<EcmaOpcode>(*pc);
+    BytecodeInstruction inst(pc);
+    auto opcode = inst.GetOpcode();
     switch (opcode) {
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
             U_FALLTHROUGH;
@@ -1439,8 +1532,7 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     if (bcIns.HasFlag(OldBytecodeInst::Flags::STRING_ID) &&
         OldBytecodeInst::HasId(OldBytecodeInst::GetFormat(bcIns.GetOpcode()), 0)) {
-        auto index = jsPandaFile_->GetOrInsertConstantPool(
-            ConstPoolType::STRING, bcIns.GetId());
+        auto index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::STRING, bcIns.GetId());
         FixInstructionId32(bcIns, index);
     } else {
         OldBytecodeInst::Opcode opcode = static_cast<OldBytecodeInst::Opcode>(bcIns.GetOpcode());
@@ -1463,6 +1555,12 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
                 CollectInnerMethods(method, methodId);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::GENERATOR_FUNCTION, methodId);
+                FixInstructionId32(bcIns, index);
+                break;
+            case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
+                methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
+                CollectInnerMethods(method, methodId);
+                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::ASYNC_GENERATOR_FUNCTION, methodId);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
@@ -1580,6 +1678,103 @@ void BytecodeInfoCollector::NewLexEnvWithSize(const MethodLiteral *method, uint6
         return;
     }
     methodList.emplace(methodOffset, MethodInfo { GetMethodInfoID(), 0, {}, LexEnv { 0, lexVarTypes } });
+}
+
+void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(const MethodLiteral *method,
+                                                              panda_file::File::EntityId literalId)
+{
+    std::vector<uint32_t> methodOffsets;
+    LiteralDataExtractor::GetMethodOffsets(jsPandaFile_, literalId, methodOffsets);
+    for (auto methodOffset : methodOffsets) {
+        CollectInnerMethods(method, methodOffset);
+    }
+}
+
+void BytecodeInfoCollector::CollectMethodInfoFromNewBC(const BytecodeInstruction &bcIns,
+                                                       const MethodLiteral *method)
+{
+    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
+    if (!(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
+        BytecodeInstruction::HasId(BytecodeInstruction::GetFormat(bcIns.GetOpcode()), 0))) {
+        BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
+        switch (opcode) {
+            uint32_t methodId;
+            case BytecodeInstruction::Opcode::DEFINEFUNC_IMM8_ID16_IMM8:
+            case BytecodeInstruction::Opcode::DEFINEFUNC_IMM16_ID16_IMM8: {
+                methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue()).GetOffset();
+                CollectInnerMethods(method, methodId);
+                break;
+            }
+            case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM8_ID16_IMM8:
+            case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
+                methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue()).GetOffset();
+                CollectInnerMethods(method, methodId);
+                break;
+            }
+            case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
+            case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
+                auto entityId = pf->ResolveMethodIndex(method->GetMethodId(),
+                    (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
+                methodId = entityId.GetOffset();
+                CollectInnerMethods(method, methodId);
+                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
+                    (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
+                CollectInnerMethodsFromNewLiteral(method, literalId);
+                break;
+            }
+            case BytecodeInstruction::Opcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8: {
+                methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue()).GetOffset();
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_ID16_IMM16_IMM16_V8_V8>();
+                CollectInnerMethods(method, methodId);
+                CollectInnerMethodsFromLiteral(method, imm);
+                break;
+            }
+            case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+            case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
+                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue());
+                CollectInnerMethodsFromNewLiteral(method, literalId);
+                break;
+            }
+            case BytecodeInstruction::Opcode::DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16: {
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
+                CollectInnerMethodsFromLiteral(method, imm);
+                break;
+            }
+            case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+            case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
+                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue());
+                CollectInnerMethodsFromNewLiteral(method, literalId);
+                break;
+            }
+            case BytecodeInstruction::Opcode::DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16: {
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
+                CollectInnerMethodsFromLiteral(method, imm);
+                break;
+            }
+            case BytecodeInstruction::Opcode::NEWLEXENV_IMM8: {
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::IMM8>();
+                NewLexEnvWithSize(method, imm);
+                break;
+            }
+            case BytecodeInstruction::Opcode::NEWLEXENVWITHNAME_IMM8_ID16: {
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::IMM8_ID16>();
+                NewLexEnvWithSize(method, imm);
+                break;
+            }
+            case BytecodeInstruction::Opcode::WIDE_NEWLEXENV_PREF_IMM16: {
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
+                NewLexEnvWithSize(method, imm);
+                break;
+            }
+            case BytecodeInstruction::Opcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16: {
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16_ID16>();
+                NewLexEnvWithSize(method, imm);
+                break;
+            }
+            default:
+                break;
+        }
+    }
 }
 
 LexEnvManager::LexEnvManager(BCInfo &bcInfo)

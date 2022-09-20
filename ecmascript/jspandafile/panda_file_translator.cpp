@@ -169,6 +169,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data());
     int32_t index = 0;
     int32_t total = 1;
+    const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     if (jsPandaFile->IsNewVersion()) {
 #ifdef NEW_INSTRUCTION_DEFINE
         panda_file::IndexAccessor indexAccessor(
@@ -186,7 +187,17 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
 #ifdef NEW_INSTRUCTION_DEFINE
             constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
 #endif
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+            if (isLoadedAOT) {
+                JSHandle<TaggedArray> constPoolInfo = vm->GetTSManager()->GetConstantPoolInfo();
+                ConstantPoolProcessor::RestoreConstantPoolInfo(vm->GetJSThread(), constPoolInfo, jsPandaFile, constpool);
+            }
+#endif
         } else {
+            CString entry = "";
+            if (!jsPandaFile->IsBundlePack()) {
+                entry = entryPoint.data();
+            }
             constpool = ParseConstPool(vm, jsPandaFile);
         }
         vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);
@@ -1669,7 +1680,8 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
 void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *pc)
 {
     uint8_t offset = MethodLiteral::INVALID_IC_SLOT;
-    auto opcode = static_cast<EcmaOpcode>(*pc);
+    BytecodeInstruction inst(pc);
+    auto opcode = inst.GetOpcode();
     switch (opcode) {
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
             U_FALLTHROUGH;

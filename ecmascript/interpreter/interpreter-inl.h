@@ -2077,7 +2077,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(NEWOBJAPPLY_IMM8_V8) {
         uint16_t v0 = READ_INST_8_1();
-        LOG_INST() << "intrinsic::newobjspeard"
+        LOG_INST() << "intrinsic::newobjapply"
                    << " v" << v0;
         JSTaggedValue func = GET_VREG_VALUE(v0);
         JSTaggedValue array = GET_ACC();
@@ -2089,7 +2089,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(NEWOBJAPPLY_IMM16_V8) {
         uint16_t v0 = READ_INST_8_2();
-        LOG_INST() << "intrinsic::newobjspeard"
+        LOG_INST() << "intrinsic::newobjapply"
                    << " v" << v0;
         JSTaggedValue func = GET_VREG_VALUE(v0);
         JSTaggedValue array = GET_ACC();

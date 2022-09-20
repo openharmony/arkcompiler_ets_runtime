@@ -39,14 +39,47 @@ void TypeLowering::RunTypeLowering()
 void TypeLowering::Lower(GateRef gate)
 {
     auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaBytecode op = static_cast<EcmaBytecode>(*pc);
+    EcmaOpcode op = bcBuilder_->PcToOpcode(pc);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case TONUMERIC_PREF_V8:
+        case EcmaOpcode::ADD2_IMM8_V8:
+            // LowerTypeAdd2(gate, glue);
+            break;
+        case EcmaOpcode::SUB2_IMM8_V8:
+            // LowerTypeSub2(gate);
+            break;
+        case EcmaOpcode::MUL2_IMM8_V8:
+            // LowerTypeMul2(gate);
+            break;
+        case EcmaOpcode::MOD2_IMM8_V8:
+            LowerTypeMod2(gate, glue);
+            break;
+        case EcmaOpcode::LESS_IMM8_V8:
+            // LowerTypeLess(gate);
+            break;
+        case EcmaOpcode::LESSEQ_IMM8_V8:
+            // LowerTypeLessEq(gate);
+            break;
+        case EcmaOpcode::GREATER_IMM8_V8:
+            LowerTypeGreater(gate);
+            break;
+        case EcmaOpcode::GREATEREQ_IMM8_V8:
+            LowerTypeGreaterEq(gate);
+            break;
+        case EcmaOpcode::DIV2_IMM8_V8:
+            LowerTypeDiv2(gate);
+            break;
+        case EcmaOpcode::EQ_IMM8_V8:
+            LowerTypeEq(gate);
+            break;
+        case EcmaOpcode::NOTEQ_IMM8_V8:
+            LowerTypeNotEq(gate);
+            break;
+        case EcmaOpcode::TONUMERIC_IMM8:
             LowerToNumeric(gate);
             break;
-        case INCDYN_PREF_V8:
+        case EcmaOpcode::INC_IMM8:
             LowerTypeInc(gate);
             break;
         default:break;

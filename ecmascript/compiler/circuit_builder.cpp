@@ -483,6 +483,12 @@ GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, offset);
 }
 
+GateRef CircuitBuilder::GetHomeObjectFromFunction(GateRef function)
+{
+    GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
+    return Load(VariableType::JS_POINTER(), function, offset);
+}
+
 GateRef CircuitBuilder::GetLengthFromString(GateRef value)
 {
     GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));

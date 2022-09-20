@@ -31,7 +31,7 @@ group("ark_aot_test") {
   deps = [
     "add:addAotAction",
     "and:andAotAction",
-    "aot_compatibility_test:aot_compatibility_test",
+    # "aot_compatibility_test:aot_compatibility_test",
     "aot_type_test:aot_type_test",
     "ashr:ashrAotAction",
     "bind:bindAotAction",
@@ -89,8 +89,7 @@ group("ark_aot_test") {
     "ldsuperbyname:ldsuperbynameAotAction",
     "logic_op:logic_opAotAction",
     "loops:loopsAotAction",
-
-    #"loop_with_variable_exchange:loop_with_variable_exchangeAotAction",
+    "loop_with_variable_exchange:loop_with_variable_exchangeAotAction",
     "mod:modAotAction",
     "mul:mulAotAction",
     "neg:negAotAction",
@@ -100,8 +99,7 @@ group("ark_aot_test") {
     "not:notAotAction",
     "or:orAotAction",
     "poplexenv:poplexenvAotAction",
-
-    #"proxy:proxyAotAction",
+    "proxy:proxyAotAction",
     "resumegenerator:resumegeneratorAotAction",
     "setobjectwithproto:setobjectwithprotoAotAction",
     "shl:shlAotAction",
@@ -111,8 +109,7 @@ group("ark_aot_test") {
     "stconsttoglobalrecord:stconsttoglobalrecordAotAction",
     "stglobalvar:stglobalvarAotAction",
     "stlettoglobalrecord:stlettoglobalrecordAotAction",
-
-    #"stobjbyindex:stobjbyindexAotAction",
+    "stobjbyindex:stobjbyindexAotAction",
     "stobjbyname:stobjbynameAotAction",
     "stobjbyvalue:stobjbyvalueAotAction",
     "stownbyindex:stownbyindexAotAction",

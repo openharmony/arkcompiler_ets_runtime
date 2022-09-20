@@ -164,6 +164,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(LdSuperByValue)                     \
     V(StSuperByValue)                     \
     V(LdObjByIndex)                       \
+    V(LdObjByValue)                       \
     V(StObjByIndex)                       \
     V(StOwnByIndex)                       \
     V(ResolveClass)                       \

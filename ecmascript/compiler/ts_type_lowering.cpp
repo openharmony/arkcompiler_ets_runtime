@@ -36,77 +36,77 @@ void TSTypeLowering::RunTSTypeLowering()
 void TSTypeLowering::Lower(GateRef gate)
 {
     auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaBytecode op = static_cast<EcmaBytecode>(*pc);
+    EcmaOpcode op = bcBuilder_->PcToOpcode(pc);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case ADD2DYN_PREF_V8:
+        case EcmaOpcode::ADD2_IMM8_V8:
             LowerTypeAdd2Dyn(gate);
             break;
-        case SUB2DYN_PREF_V8:
+        case EcmaOpcode::SUB2_IMM8_V8:
             LowerTypeSub2Dyn(gate);
             break;
-        case MUL2DYN_PREF_V8:
+        case EcmaOpcode::MUL2_IMM8_V8:
             LowerTypeMul2Dyn(gate);
             break;
-        case DIV2DYN_PREF_V8:
-            LowerTypeDiv2Dyn(gate);
+        case EcmaOpcode::DIV2_IMM8_V8:
+            // lower JS_Div
             break;
-        case MOD2DYN_PREF_V8:
-            LowerTypeMod2Dyn(gate);
+        case EcmaOpcode::MOD2_IMM8_V8:
+            // lower JS_Mod
             break;
-        case LESSDYN_PREF_V8:
-            LowerTypeLessDyn(gate);
+        case EcmaOpcode::LESS_IMM8_V8:
+            LowerTypeLess2Dyn(gate);
             break;
-        case LESSEQDYN_PREF_V8:
-            LowerTypeLessEqDyn(gate);
+        case EcmaOpcode::LESSEQ_IMM8_V8:
+            LowerTypeLessEq2Dyn(gate);
             break;
-        case GREATERDYN_PREF_V8:
-            LowerTypeGreaterDyn(gate);
+        case EcmaOpcode::GREATER_IMM8_V8:
+            // lower JS_GREATER
             break;
-        case GREATEREQDYN_PREF_V8:
-            LowerTypeGreaterEqDyn(gate);
+        case EcmaOpcode::GREATEREQ_IMM8_V8:
+            // lower JS_GREATEREQ
             break;
-        case EQDYN_PREF_V8:
-            LowerTypeEqDyn(gate);
+        case EcmaOpcode::EQ_IMM8_V8:
+            // lower JS_EQ
             break;
-        case NOTEQDYN_PREF_V8:
-            LowerTypeNotEqDyn(gate);
+        case EcmaOpcode::NOTEQ_IMM8_V8:
+            // lower JS_NOTEQ
             break;
-        case SHL2DYN_PREF_V8:
+        case EcmaOpcode::SHL2_IMM8_V8:
             // lower JS_SHL
             break;
-        case SHR2DYN_PREF_V8:
+        case EcmaOpcode::SHR2_IMM8_V8:
             // lower JS_SHR
             break;
-        case ASHR2DYN_PREF_V8:
+        case EcmaOpcode::ASHR2_IMM8_V8:
             // lower JS_ASHR
             break;
-        case AND2DYN_PREF_V8:
+        case EcmaOpcode::AND2_IMM8_V8:
             // lower JS_AND
             break;
-        case OR2DYN_PREF_V8:
+        case EcmaOpcode::OR2_IMM8_V8:
             // lower JS_OR
             break;
-        case XOR2DYN_PREF_V8:
+        case EcmaOpcode::XOR2_IMM8_V8:
             // lower JS_XOR
             break;
-        case EXPDYN_PREF_V8:
+        case EcmaOpcode::EXP_IMM8_V8:
             // lower JS_EXP
             break;
-        case TONUMERIC_PREF_V8:
+        case EcmaOpcode::TONUMERIC_IMM8:
             // lower ToNumberic
             break;
-        case NEGDYN_PREF_V8:
+        case EcmaOpcode::NEG_IMM8:
             // lower JS_NEG
             break;
-        case NOTDYN_PREF_V8:
+        case EcmaOpcode::NOT_IMM8:
             // lower JS_NOT
             break;
-        case INCDYN_PREF_V8:
+        case EcmaOpcode::INC_IMM8:
             // lower JS_INC
             break;
-        case DECDYN_PREF_V8:
+        case EcmaOpcode::DEC_IMM8:
             // lower JS_DEC
             break;
         default:

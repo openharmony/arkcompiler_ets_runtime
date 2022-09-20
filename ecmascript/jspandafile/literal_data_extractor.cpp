@@ -284,6 +284,28 @@ void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, size
         });
 }
 
+void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
+                                            std::vector<uint32_t> &methodOffsets)
+{
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
+    panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
+
+    lda.EnumerateLiteralVals(
+        index, [&methodOffsets]
+        (const panda_file::LiteralDataAccessor::LiteralValue &value, const LiteralTag &tag) {
+            switch (tag) {
+                case LiteralTag::METHOD:
+                case LiteralTag::GENERATORMETHOD: {
+                    methodOffsets.emplace_back(std::get<uint32_t>(value));
+                }
+                default: {
+                    break;
+                }
+            }
+        });
+}
+
 #ifdef NEW_INSTRUCTION_DEFINE
 void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile,
                                               panda_file::File::EntityId index,
