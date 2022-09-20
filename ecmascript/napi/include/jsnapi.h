@@ -478,6 +478,8 @@ private:
 };
 
 class PUBLIC_API PrimitiveRef : public JSValueRef {
+public:
+    Local<JSValueRef> GetValue(const EcmaVM *vm);
 };
 
 class PUBLIC_API IntegerRef : public PrimitiveRef {
