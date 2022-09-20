@@ -1431,7 +1431,8 @@ JSTaggedValue BuiltinsArray::Map(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
 
     // 7. Let A be ArraySpeciesCreate(O, len).
-    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(static_cast<double>(rawLen)));
+    JSTaggedValue newArray =
+        JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(static_cast<double>(rawLen)));
     // 8. ReturnIfAbrupt(A).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!newArray.IsECMAObject()) {
@@ -2081,7 +2082,7 @@ JSTaggedValue BuiltinsArray::Slice(EcmaRuntimeCallInfo *argv)
             }
         } else {
             for (uint32_t idx = 0; idx < count; idx++) {
-                uint32_t index = static_cast<uint32_t>(k + idx);
+                uint32_t index = static_cast<uint32_t>(k) + idx;
                 JSTaggedValue value = length > index ? srcElements->Get(index) : JSTaggedValue::Hole();
                 destElements->Set(thread, idx, value);
             }
@@ -2091,7 +2092,8 @@ JSTaggedValue BuiltinsArray::Slice(EcmaRuntimeCallInfo *argv)
     }
 
     // 12. Let A be ArraySpeciesCreate(O, count).
-    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(static_cast<double>(count)));
+    JSTaggedValue newArray =
+        JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(static_cast<double>(count)));
     // 13. ReturnIfAbrupt(A).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (count == 0) {
@@ -2343,8 +2345,8 @@ JSTaggedValue BuiltinsArray::Splice(EcmaRuntimeCallInfo *argv)
         return JSStableArray::Splice(JSHandle<JSArray>::Cast(thisHandle), argv, start, insertCount, actualDeleteCount);
     }
     // 12. Let A be ArraySpeciesCreate(O, actualDeleteCount).
-    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, 
-                                                            JSTaggedNumber(static_cast<double>(actualDeleteCount)));
+    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle,
+                                                         JSTaggedNumber(static_cast<double>(actualDeleteCount)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     // 14. Let k be 0.

@@ -60,7 +60,6 @@ public:
     uint32_t GetId() const
     {
         Format format = GetFormat(GetOpcode());
-
         if (format == Format::ID16) {
             return static_cast<uint32_t>(Read<8, 16>());
         }
@@ -448,7 +447,7 @@ public:
 
     static constexpr Format GetFormat(Opcode opcode)
     {
-        switch(opcode) {
+        switch (opcode) {
             case Opcode::NOP:
                 return Format::NONE;
             case Opcode::MOV_V4_V4:
@@ -1264,7 +1263,7 @@ public:
 
     inline bool HasFlag(Flags flag) const
     {
-        switch(GetOpcode()) {
+        switch (GetOpcode()) {
             case Opcode::NOP:
                 return ((Flags::ACC_NONE) & flag) == flag;
             case Opcode::MOV_V4_V4:
@@ -1314,7 +1313,8 @@ public:
             case Opcode::FLDAI_64_IMM64:
                 return ((Flags::FLOAT | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::LDA_STR_ID32:
-                return ((Flags::STRING_ID | Flags::LANGUAGE_TYPE | Flags::MAYBE_DYNAMIC | Flags::ACC_WRITE) & flag) == flag;
+                return ((Flags::STRING_ID | Flags::LANGUAGE_TYPE | Flags::MAYBE_DYNAMIC | Flags::ACC_WRITE) & flag)
+                    == flag;
             case Opcode::LDA_CONST_V8_ID32:
                 return ((Flags::LITERALARRAY_ID | Flags::ACC_NONE) & flag) == flag;
             case Opcode::LDA_TYPE_ID16:
@@ -1506,7 +1506,8 @@ public:
             case Opcode::LENARR_V8:
                 return ((Flags::ACC_WRITE) & flag) == flag;
             case Opcode::NEWARR_V4_V4_ID16:
-                return ((Flags::TYPE_ID | Flags::LANGUAGE_TYPE | Flags::INITIALIZE_TYPE | Flags::ACC_NONE) & flag) == flag;
+                return ((Flags::TYPE_ID | Flags::LANGUAGE_TYPE | Flags::INITIALIZE_TYPE | Flags::ACC_NONE) & flag)
+                    == flag;
             case Opcode::NEWOBJ_V8_ID16:
                 return ((Flags::TYPE_ID | Flags::INITIALIZE_TYPE | Flags::ACC_NONE) & flag) == flag;
             case Opcode::INITOBJ_SHORT_V4_V4_ID16:
@@ -1566,15 +1567,20 @@ public:
             case Opcode::ISINSTANCE_ID16:
                 return ((Flags::TYPE_ID | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;
             case Opcode::CALL_SHORT_V4_V4_ID16:
-                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::INITIALIZE_TYPE | Flags::ACC_WRITE) & flag) == flag;
+                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::INITIALIZE_TYPE |
+                    Flags::ACC_WRITE) & flag)== flag;
             case Opcode::CALL_V4_V4_V4_V4_ID16:
-                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::INITIALIZE_TYPE | Flags::ACC_WRITE) & flag) == flag;
+                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::INITIALIZE_TYPE |
+                    Flags::ACC_WRITE) & flag) == flag;
             case Opcode::CALL_RANGE_V8_ID16:
-                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::INITIALIZE_TYPE | Flags::ACC_WRITE) & flag) == flag;
+                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::INITIALIZE_TYPE |
+                    Flags::ACC_WRITE) & flag) == flag;
             case Opcode::CALL_ACC_SHORT_V4_IMM4_ID16:
-                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;
+                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::ACC_WRITE | Flags::ACC_READ) &
+                    flag) == flag;
             case Opcode::CALL_ACC_V4_V4_V4_IMM4_ID16:
-                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;
+                return ((Flags::METHOD_ID | Flags::CALL | Flags::MAYBE_DYNAMIC | Flags::ACC_WRITE | Flags::ACC_READ) &
+                    flag) == flag;
             case Opcode::CALL_VIRT_SHORT_V4_V4_ID16:
                 return ((Flags::METHOD_ID | Flags::CALL | Flags::CALL_VIRT | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::CALL_VIRT_V4_V4_V4_V4_ID16:
@@ -1582,9 +1588,11 @@ public:
             case Opcode::CALL_VIRT_RANGE_V8_ID16:
                 return ((Flags::METHOD_ID | Flags::CALL | Flags::CALL_VIRT | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::CALL_VIRT_ACC_SHORT_V4_IMM4_ID16:
-                return ((Flags::METHOD_ID | Flags::CALL | Flags::CALL_VIRT | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;
+                return ((Flags::METHOD_ID | Flags::CALL | Flags::CALL_VIRT | Flags::ACC_WRITE | Flags::ACC_READ) &
+                    flag) == flag;
             case Opcode::CALL_VIRT_ACC_V4_V4_V4_IMM4_ID16:
-                return ((Flags::METHOD_ID | Flags::CALL | Flags::CALL_VIRT | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;
+                return ((Flags::METHOD_ID | Flags::CALL | Flags::CALL_VIRT | Flags::ACC_WRITE | Flags::ACC_READ) &
+                    flag) == flag;
             case Opcode::MOV_DYN_V8_V8:
                 return ((Flags::DYNAMIC | Flags::ACC_NONE) & flag) == flag;
             case Opcode::MOV_DYN_V16_V16:
@@ -1942,13 +1950,15 @@ public:
             case Opcode::ECMA_DEFINEFUNCDYN_PREF_ID16_IMM16_V8:
                 return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::ECMA_DEFINENCFUNCDYN_PREF_ID16_IMM16_V8:
-                return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;
+                return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE | Flags::ACC_READ) &
+                    flag) == flag;
             case Opcode::ECMA_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
                 return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
                 return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::ECMA_DEFINEMETHOD_PREF_ID16_IMM16_V8:
-                return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;
+                return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::METHOD_ID | Flags::ACC_WRITE | Flags::ACC_READ) &
+                    flag) == flag;
             case Opcode::ECMA_NEWLEXENVDYN_PREF_IMM16:
                 return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::ECMA_COPYRESTARGS_PREF_IMM16:
@@ -2040,7 +2050,6 @@ public:
             default:
                 return false;
         }
-
         UNREACHABLE();
     }
 };

@@ -726,7 +726,7 @@ void Heap::IncreaseNativeBindingSize(JSNativePointer *object)
 
 void Heap::IncreaseNativeBindingSize(bool nonMovable, size_t size)
 {
-    if(!nonMovable) {
+    if (!nonMovable) {
         activeSemiSpace_->IncreaseNativeBindingSize(size);
     } else {
         nonNewSpaceNativeBindingSize_ += size;

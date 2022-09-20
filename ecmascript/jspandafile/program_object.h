@@ -286,7 +286,7 @@ public:
                     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
                     size_t elementsLen = elements->GetLength();
-                    for (size_t i = 0; i < elementsLen; i += 2) {  // 2: Each literal buffer contains a pair of key-value.
+                    for (size_t i = 0; i < elementsLen; i += 2) {  // 2: Each literal buffer has a pair of key-value.
                         key.Update(elements->Get(i));
                         if (key->IsHole()) {
                             break;

@@ -22,7 +22,6 @@
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
-
 using namespace panda::ecmascript;
 
 namespace panda::test {
@@ -187,16 +186,19 @@ HWTEST_F_L0(GCTest, NativeBindingCheckGCTest)
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
     
-        [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(array, nullptr, nullptr, false, 1 * 1024 * 1024);
+        [[maybe_unused]] JSHandle<JSNativePointer> obj =
+            factory->NewJSNativePointer(array, nullptr, nullptr, false, 1 * 1024 * 1024);
         newNativeSize = heap->GetNativeBindingSize();
         EXPECT_EQ(newNativeSize - oldNativeSize, 1UL * 1024 * 1024);
 
-        [[maybe_unused]] JSHandle<JSNativePointer> obj2 = factory->NewJSNativePointer(array, nullptr, nullptr, false, 1 * 1024 * 1024);
+        [[maybe_unused]] JSHandle<JSNativePointer> obj2 =
+            factory->NewJSNativePointer(array, nullptr, nullptr, false, 1 * 1024 * 1024);
     
         EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
         EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
         for (int i = 0; i < 20; i++) {
-            [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(array, nullptr, nullptr, false, 1 * 1024 * 1024);
+            [[maybe_unused]] JSHandle<JSNativePointer> obj3 =
+                factory->NewJSNativePointer(array, nullptr, nullptr, false, 1 * 1024 * 1024);
         }
         // Young GC should be trigger here, so the size should be reduced.
         EXPECT_TRUE(newNativeSize - oldNativeSize < 22 * 1024 *1024);
@@ -216,16 +218,19 @@ HWTEST_F_L0(GCTest, NonNewSpaceNativeBindingCheckGCTest)
     char array[] = "Hello World!";
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-        [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(array, nullptr, nullptr, true, 1 * 1024 * 1024);
+        [[maybe_unused]] JSHandle<JSNativePointer> obj =
+            factory->NewJSNativePointer(array, nullptr, nullptr, true, 1 * 1024 * 1024);
         newNativeSize = heap->GetNonNewSpaceNativeBindingSize();
         EXPECT_EQ(newNativeSize - oldNativeSize, 1UL * 1024 * 1024);
 
-        [[maybe_unused]] JSHandle<JSNativePointer> obj2 = factory->NewJSNativePointer(array, nullptr, nullptr, false, 1 * 1024 * 1024);
+        [[maybe_unused]] JSHandle<JSNativePointer> obj2 =
+            factory->NewJSNativePointer(array, nullptr, nullptr, false, 1 * 1024 * 1024);
 
         EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
         EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
         for (int i = 0; i < 300; i++) {
-            [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(array, nullptr, nullptr, true, 1 * 1024 * 1024);
+            [[maybe_unused]] JSHandle<JSNativePointer> obj3 =
+                factory->NewJSNativePointer(array, nullptr, nullptr, true, 1 * 1024 * 1024);
         }
         // Old GC should be trigger here, so the size should be reduced.
         EXPECT_TRUE(newNativeSize - oldNativeSize < 256 * 1024 *1024);
