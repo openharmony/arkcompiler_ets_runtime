@@ -772,38 +772,27 @@ private:
         R"(builtins.d.abc file path for AOT.)"};
     PandArg<bool> enablebcTrace_ {"enable-bytecode-trace", false,
         R"(enable tracing bytecode for aot runtime. Default: false)"};
-    PandArg<std::string> logLevel_ {"log-level", R"(error)", R"(Log level. Possible values: ["debug", "info", "warning",
+    PandArg<std::string> logLevel_ {"log-level", R"(error)",
+        R"(Log level. Possible values: ["debug", "info", "warning",
         "error", "fatal"]. Default: "error")"};
     PandArg<arg_list_t> logDebug_ {"log-debug", {R"(all)"},
-        R"(Enable debug or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+        R"(Enable debug or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
     PandArg<arg_list_t> logInfo_ {"log-info", {R"(all)"},
-        R"(Enable info or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+        R"(Enable debug or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
     PandArg<arg_list_t> logWarning_ {"log-warning", {R"(all)"},
-        R"(Enable warning or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot","events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+        R"(Enable debug or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
     PandArg<arg_list_t> logError_ {"log-error", {R"(all)"},
-        R"(Enable error or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+        R"(Enable debug or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
     PandArg<arg_list_t> logFatal_ {"log-fatal", {R"(all)"},
-        R"(Enable fatal logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+        R"(Enable debug or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
     PandArg<arg_list_t> logComponents_ {"log-components", {R"(all)"},
-        R"(Enable logs from specified components. Possible values: ["all", "alloc", "mm-obj-events", "classlinker",
-        "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler", "pandafile",
-        "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue", "jvmti", "aot",
-        "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
+        R"(Enable debug or above logs from specified components. Possible values: ["all", "gc", "ecma",
+        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
     PandArg<uint32_t> maxAotMethodSize_ {"maxAotMethodSize", 32_KB,
         R"(enable aot to skip too large method. Default size: 32 KB)"};
     PandArg<std::string> abcFilelist_ {"abc-list-file", R"(none)",
