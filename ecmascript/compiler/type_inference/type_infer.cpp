@@ -208,9 +208,9 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
         case EcmaOpcode::APPLY_IMM8_V8_V8:
+            return InferCallFunction(gate);
         case EcmaOpcode::DEPRECATED_CALLARG0_PREF_V8:
         case EcmaOpcode::DEPRECATED_CALLARG1_PREF_V8_V8:
-            return InferCallFunction(gate);
         case EcmaOpcode::DEPRECATED_CALLARGS2_PREF_V8_V8_V8:
         case EcmaOpcode::DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8:
         case EcmaOpcode::DEPRECATED_CALLSPREAD_PREF_V8_V8_V8:
@@ -433,7 +433,8 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
         // If this object has no gt type, we cannot get its internal property type
         if (IsObjectOrClass(objType)) {
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
-            auto name = constantPool_->GetObjectFromCache(index);
+            auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+            auto name = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index);
             auto type = GetPropType(objType, name);
             return UpdateType(gate, type);
         }
@@ -465,8 +466,8 @@ bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
     // first elem is function in old isa
     auto funcIndex = 0;
     if (!isDeprecated) {
-        // last elem is function in new isa
-        funcIndex = gateAccessor_.GetNumValueIn(gate) - 1;
+        // last two elem is function anc bytecode offset in new isa
+        funcIndex = gateAccessor_.GetNumValueIn(gate) - 2;
     }
     auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, funcIndex));
     if (funcType.IsTSType() && tsManager_->IsFunctionTypeKind(funcType)) {
@@ -609,17 +610,25 @@ void TypeInfer::TypeCheck(GateRef gate) const
     if (!info.IsBc(EcmaOpcode::CALLARGS2_IMM8_V8_V8)) {
         return;
     }
-    auto func = gateAccessor_.GetValueIn(gate, 0);
+    auto func = gateAccessor_.GetValueIn(gate, 2);
     auto funcInfo = builder_->GetByteCodeInfo(func);
-    if (!funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16) ||
+    if (!funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16) &&
         !funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16)) {
         return;
     }
     auto funcName = gateAccessor_.GetValueIn(func, 0);
-    if (constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(funcName)) ==  "AssertType") {
-        GateRef expectedGate = gateAccessor_.GetValueIn(gateAccessor_.GetValueIn(gate, 2), 0);
+#ifdef NEW_INSTRUCTION_DEFINE
+    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+    ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), gateAccessor_.GetBitField(funcName));
+#endif
+    auto funcNameString = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(funcName));
+    if (funcNameString ==  "AssertType") {
+        GateRef expectedGate = gateAccessor_.GetValueIn(gateAccessor_.GetValueIn(gate, 1), 0);
+#ifdef NEW_INSTRUCTION_DEFINE
+        ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), gateAccessor_.GetBitField(expectedGate));
+#endif
         auto expectedTypeStr = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(expectedGate));
-        GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
+        GateRef valueGate = gateAccessor_.GetValueIn(gate, 0);
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {
             const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();

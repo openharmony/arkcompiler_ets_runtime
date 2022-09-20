@@ -285,6 +285,11 @@ public:
         return stringIndexTable_;
     }
 
+    EcmaVM * GetEcmaVM() const
+    {
+        return vm_;
+    }
+
 #define IS_TSTYPEKIND_METHOD_LIST(V)              \
     V(Primitive, TSTypeKind::PRIMITIVE)           \
     V(Class, TSTypeKind::CLASS)                   \

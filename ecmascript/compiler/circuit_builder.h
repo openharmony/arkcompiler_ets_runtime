@@ -400,6 +400,7 @@ public:
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
+    GateRef GetHomeObjectFromFunction(GateRef function);
     GateRef FunctionIsResolved(GateRef function);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);

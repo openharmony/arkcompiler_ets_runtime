@@ -47,12 +47,9 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     bool enableMethodLog = !log_->NoneMethod();
     uint32_t skippedMethodNum = 0;
 
-//    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, constantPool,
-//        &cmpCfg, tsManager, &lexEnvManager, &skippedMethodNum]
-//        (uint32_t methodOffset, MethodPcInfo &methodPCInfo, [[maybe_unused]]size_t methodInfoId) {
-    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, &cmpCfg, tsManager,
-                                  &skippedMethodNum] (uint32_t methodOffset, MethodPcInfo &methodPCInfo,
-                                      [[maybe_unused]]size_t methodInfoId) {
+    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, constantPool,
+        &cmpCfg, tsManager, &lexEnvManager, &skippedMethodNum]
+        (uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
             auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
         if (methodPCInfo.methodsSize > maxAotMethodSize_ &&
@@ -76,7 +73,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         builder.BytecodeToCircuit();
         PassData data(builder.GetCircuit(), log_, enableMethodLog);
         PassRunner<PassData> pipeline(&data);
-//        pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
+        pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
         if (EnableTypeLowering()) {
             pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager);

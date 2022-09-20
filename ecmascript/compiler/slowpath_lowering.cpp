@@ -3360,7 +3360,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFun
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef length = acc_.GetValueIn(gate, 1);
     DEFVAlUE(result, (&builder_), VariableType::JS_POINTER(),
-        GetObjectFromConstPool(glue, jsFunc, builder_.ZExtInt16ToInt32(methodId), ConstPoolType::BASE_FUNCTION));
+        GetObjectFromConstPool(glue, jsFunc, builder_.ZExtInt16ToInt32(methodId), ConstPoolType::METHOD));
     Label defaultLabel(&builder_);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
@@ -3389,6 +3389,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFun
         GateRef env = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
         builder_.SetLexicalEnvToFunction(glue, *result, env);
         builder_.SetModuleToFunction(glue, *result, builder_.GetModuleFromFunction(jsFunc));
+        builder_.SetHomeObjectToFunction(glue, *result, builder_.GetHomeObjectFromFunction(jsFunc));
         builder_.Jump(&successExit);
     }
     builder_.Bind(&successExit);
@@ -3818,7 +3819,6 @@ void SlowPathLowering::LowerCallThisArg1(GateRef gate, GateRef glue)
     GateRef env = builder_.Undefined();
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, a0, bcOffset});
 }
-
 
 void SlowPathLowering::LowerCallargs2Imm8V8V8(GateRef gate, GateRef glue)
 {
