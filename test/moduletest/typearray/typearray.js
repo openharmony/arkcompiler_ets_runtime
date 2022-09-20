@@ -91,3 +91,8 @@ function testTypeArray3(ctor) {
     }
     return true;
 }
+
+let a1 = new ArrayBuffer(1024*1024*8);
+let a2 = new Uint8Array(a1);
+let a3 = Uint8Array.from(a2);
+print(a3.length);
