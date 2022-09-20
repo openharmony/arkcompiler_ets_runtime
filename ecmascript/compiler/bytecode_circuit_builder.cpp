@@ -2447,9 +2447,14 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
         // New RESTORE_REGISTER HIR, used to restore the register content when processing resume instruction.
         // New SAVE_REGISTER HIR, used to save register content when processing suspend instruction.
         auto resumeGate = byteCodeToJSGate_.at(*pcIter);
+        ans = GetExistingRestore(resumeGate, tmpReg);
+        if (ans != Circuit::NullGate()) {
+            break;
+        }
         GateRef resumeDependGate = gateAcc_.GetDep(resumeGate);
         ans = circuit_.NewGate(OpCode(OpCode::RESTORE_REGISTER), MachineType::I64, tmpReg,
                                {resumeDependGate}, GateType::AnyType());
+        SetExistingRestore(resumeGate, tmpReg, ans);
         gateAcc_.SetDep(resumeGate, ans);
         auto saveRegGate = RenameVariable(bbId, *pcIter - 1, tmpReg, tmpAcc);
         auto nextPcIter = pcIter;
@@ -2590,6 +2595,19 @@ void BytecodeCircuitBuilder::AddBytecodeOffsetInfo(GateRef &gate, const Bytecode
                                          GateType::NJSValue());
         gateAcc_.NewIn(gate, bcOffsetIndex, bcOffset);
     }
+}
+
+GateRef BytecodeCircuitBuilder::GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const {
+    auto pr = std::make_pair(resumeGate, tmpReg);
+    if (resumeRegToRestore_.count(pr)) {
+        return resumeRegToRestore_.at(pr);
+    }
+    return Circuit::NullGate();
+}
+
+void BytecodeCircuitBuilder::SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate) {
+    auto pr = std::make_pair(resumeGate, tmpReg);
+    resumeRegToRestore_[pr] = restoreGate;
 }
 
 void BytecodeCircuitBuilder::PrintCollectBlockInfo(std::vector<CfgInfo> &bytecodeBlockInfos)
