@@ -129,10 +129,11 @@ public:
 
 private:
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSpRegister, Register fpRegister,
-        Register callTargetRegister, Register methodRegister, Register pcRegister, Register operatorRegister);
+        Register callTargetRegister, Register thisRegister, Register methodRegister, Register pcRegister,
+        Register operatorRegister);
     static void PushGeneratorFrameState(ExtendedAssembler *assembler, Register prevSpRegister,
-        Register fpRegister, Register callTargetRegister, Register methodRegister, Register contextRegister,
-        Register pcRegister, Register operatorRegister);
+        Register fpRegister, Register callTargetRegister, Register thisRegister, Register methodRegister,
+        Register contextRegister, Register pcRegister, Register operatorRegister);
     static void PushAsmInterpEntryFrame(ExtendedAssembler *assembler);
     static void PopAsmInterpEntryFrame(ExtendedAssembler *assembler);
     static void CallBCStub(ExtendedAssembler *assembler, Register newSpRegister, Register glueRegister,
@@ -151,8 +152,8 @@ private:
         Register op);
     static void HasPendingException(ExtendedAssembler *assembler, Register threadRegister);
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
-    static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode);
-    static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode);
+    static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
+    static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister);
     static void CallNativeEntry(ExtendedAssembler *assemblSer);

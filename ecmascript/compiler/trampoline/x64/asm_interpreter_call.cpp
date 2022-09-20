@@ -87,8 +87,10 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     __ Movq(rsp, fpRegister);
     Register nRegsRegister = rdx;
     Register regsArrayRegister = r12;
+    Register thisRegister = r15;
     // push context regs
     __ Movl(Operand(rsi, GeneratorContext::GENERATOR_NREGS_OFFSET), nRegsRegister);
+    __ Movq(Operand(rsi, GeneratorContext::GENERATOR_THIS_OFFSET), thisRegister);
     __ Movq(Operand(rsi, GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET), regsArrayRegister);
     __ Addq(TaggedArray::DATA_OFFSET, regsArrayRegister);
     PushArgsWithArgvAndCheckStack(assembler, glueRegister, nRegsRegister, regsArrayRegister, tempRegister, opRegister,
@@ -100,8 +102,8 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
 
     // resume asm interp frame
     Register pcRegister = r12;
-    PushGeneratorFrameState(assembler, prevSpRegister, fpRegister, callTargetRegister, methodRegister, contextRegister,
-        pcRegister, tempRegister);
+    PushGeneratorFrameState(assembler, prevSpRegister, fpRegister, callTargetRegister, thisRegister, methodRegister,
+        contextRegister, pcRegister, tempRegister);
 
     // call bc stub
     CallBCStub(assembler, newSpRegister, glueRegister, callTargetRegister, methodRegister, pcRegister);
@@ -173,7 +175,8 @@ void AsmInterpreterCall::JSCallDispatch(ExtendedAssembler *assembler)
 }
 
 void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register prevSpRegister, Register fpRegister,
-    Register callTargetRegister, Register methodRegister, Register pcRegister, Register operatorRegister)
+    Register callTargetRegister, Register thisRegister, Register methodRegister, Register pcRegister,
+    Register operatorRegister)
 {
     __ Pushq(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME));  // frame type
     __ Pushq(prevSpRegister);                                          // prevSp
@@ -184,12 +187,13 @@ void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register p
     __ Movq(Operand(callTargetRegister, JSFunction::LEXICAL_ENV_OFFSET), operatorRegister);
     __ Pushq(operatorRegister);                                        // env
     __ Pushq(JSTaggedValue::Hole().GetRawData());                      // acc
+    __ Pushq(thisRegister);                                            // thisObj
     __ Pushq(callTargetRegister);                                      // callTarget
 }
 
 void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, Register prevSpRegister,
-    Register fpRegister, Register callTargetRegister, Register methodRegister, Register contextRegister,
-    Register pcRegister, Register operatorRegister)
+    Register fpRegister, Register callTargetRegister, Register thisRegister, Register methodRegister,
+    Register contextRegister, Register pcRegister, Register operatorRegister)
 {
     __ Pushq(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME));  // frame type
     __ Pushq(prevSpRegister);                                          // prevSp
@@ -203,6 +207,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     __ Pushq(operatorRegister);                                        // env
     __ Movq(Operand(contextRegister, GeneratorContext::GENERATOR_ACC_OFFSET), operatorRegister);
     __ Pushq(operatorRegister);                                        // acc
+    __ Pushq(thisRegister);                                            // thisObj
     __ Pushq(callTargetRegister);                                      // callTarget
 }
 
@@ -450,8 +455,8 @@ void AsmInterpreterCall::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCa
         }
         __ Bind(&pushCallThis);
     } else if (argc > 0) {
-        Register arg2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         if (argc > 2) { // 2: call arg2
+            Register arg2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
             __ Pushq(arg2);
         }
         if (argc > 1) {
@@ -492,7 +497,8 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
     {
         if (argc == 0) {
             Register op1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
-            Register op2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
+            [[maybe_unused]] TempRegisterScope scope(assembler);
+            Register op2 = __ TempRegister();
             PushUndefinedWithArgcAndCheckStack(assembler, glueRegister, declaredNumArgsRegister, op1, op2,
                 stackOverflow);
             __ Jmp(fastPathEntry);
@@ -545,7 +551,7 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
     __ Jmp(pushCallThis);
 }
 
-Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode)
+Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister)
 {
     switch (mode) {
         case JSCallMode::CALL_GETTER:
@@ -563,9 +569,8 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT: {
             Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
-            Register thisRegister = __ AvailableRegister2();
-            __ Movq(Operand(argvRegister, -FRAME_SLOT_SIZE), thisRegister);  // 8: this is just before the argv list
-            return thisRegister;
+            __ Movq(Operand(argvRegister, -FRAME_SLOT_SIZE), defaultRegister);  // 8: this is just before the argv list
+            return defaultRegister;
         }
         default:
             UNREACHABLE();
@@ -573,7 +578,8 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
     return rInvalid;
 }
 
-Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode)
+Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode,
+                                                  Register defaultRegister)
 {
     switch (mode) {
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
@@ -582,10 +588,9 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_ENTRY: {
             Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
-            Register newTargetRegister = __ AvailableRegister2();
-            // 16: new Target offset
-            __ Movq(Operand(argvRegister, -2 * FRAME_SLOT_SIZE), newTargetRegister);
-            return newTargetRegister;
+            // -2: new Target offset
+            __ Movq(Operand(argvRegister, -2 * FRAME_SLOT_SIZE), defaultRegister);
+            return defaultRegister;
         }
         default:
             UNREACHABLE();
@@ -599,6 +604,8 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
 {
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
+    Register thisRegister = __ AvailableRegister2();
+    __ Movq(JSTaggedValue::VALUE_UNDEFINED, thisRegister);  // default this: undefined
 
     Label pushVregs;
     Label pushNewTarget;
@@ -616,8 +623,11 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     if (!haveThis) {
         __ Pushq(JSTaggedValue::Undefined().GetRawData());
     } else {
-        Register thisRegister = GetThisRegsiter(assembler, mode);
-        __ Pushq(thisRegister);
+        Register thisArgRegister = GetThisRegsiter(assembler, mode, thisRegister);
+        __ Pushq(thisArgRegister);
+        if (thisRegister != thisArgRegister) {
+            __ Movq(thisArgRegister, thisRegister);
+        }
     }
     // fall through
     __ Bind(&pushNewTarget);
@@ -627,7 +637,9 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
         if (!haveNewTarget) {
             __ Pushq(JSTaggedValue::Undefined().GetRawData());
         } else {
-            Register newTargetRegister = GetNewTargetRegsiter(assembler, mode);
+            [[maybe_unused]] TempRegisterScope scope(assembler);
+            Register defaultRegister = __ TempRegister();
+            Register newTargetRegister = GetNewTargetRegsiter(assembler, mode, defaultRegister);
             __ Pushq(newTargetRegister);
         }
     }
@@ -659,6 +671,7 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register fpRegister = __ AvailableRegister1();
+    Register thisRegister = __ AvailableRegister2();
 
     Label pushFrameState;
     Label dispatchCall;
@@ -666,8 +679,7 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
     Register tempRegister = __ TempRegister();
     // args register can reused now.
     Register pcRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
-    Register newSpRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
-    Register numVregsRegister = __ AvailableRegister2();
+    Register numVregsRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
     GetNumVregsFromCallField(assembler, callFieldRegister, numVregsRegister);
     __ Cmpq(0, numVregsRegister);
     __ Jz(&pushFrameState);
@@ -675,12 +687,13 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
     PushUndefinedWithArgcAndCheckStack(assembler, glueRegister, numVregsRegister, tempRegister, temp2Register,
         stackOverflow);
     // fall through
+    Register newSpRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
     __ Bind(&pushFrameState);
     {
         __ Movq(rsp, newSpRegister);
 
         PushFrameState(assembler, prevSpRegister, fpRegister,
-            callTargetRegister, methodRegister, pcRegister, tempRegister);
+            callTargetRegister, thisRegister, methodRegister, pcRegister, tempRegister);
         // align 16 bytes
         __ Testq(15, rsp);  // 15: low 4 bits must be 0b0000
         __ Jnz(&dispatchCall);

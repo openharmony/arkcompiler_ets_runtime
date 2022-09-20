@@ -6174,39 +6174,291 @@ DECLARE_ASM_HANDLER(HandleJstricteqzImm8)
 }
 DECLARE_ASM_HANDLER(HandleStthisbyvalueImm16V8)
 {
-    DISPATCH(NOP);
+    auto env = GetEnvironment();
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    GateRef v0 = ReadInst8_2(pc);
+    GateRef receiver = GetThisFromFrame(GetFrame(sp));
+    GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+
+    Label checkException(env);
+    Label slowPath(env);
+    Label tryFastPath(env);
+
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, acc, slotId, propKey);
+    builder.StoreICByValue(&result, &tryFastPath, &slowPath, &checkException);
+    Bind(&tryFastPath);
+    {
+        result = SetPropertyByValue(glue, receiver, propKey, acc, false);
+        Branch(TaggedIsHole(*result), &slowPath, &checkException);
+    }
+    Bind(&slowPath);
+    {
+        GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByValue),
+            { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
+        result = ret;
+        Jump(&checkException);
+    }
+    Bind(&checkException);
+    {
+        CHECK_EXCEPTION(*result, INT_PTR(STTHISBYVALUE_IMM16_V8));
+    }
 }
 DECLARE_ASM_HANDLER(HandleStthisbyvalueImm8V8)
 {
-    DISPATCH(NOP);
+    auto env = GetEnvironment();
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    GateRef v0 = ReadInst8_1(pc);
+    GateRef receiver = GetThisFromFrame(GetFrame(sp));
+    GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+
+    Label checkException(env);
+    Label slowPath(env);
+    Label tryFastPath(env);
+
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, acc, slotId, propKey);
+    builder.StoreICByValue(&result, &tryFastPath, &slowPath, &checkException);
+    Bind(&tryFastPath);
+    {
+        result = SetPropertyByValue(glue, receiver, propKey, acc, false);
+        Branch(TaggedIsHole(*result), &slowPath, &checkException);
+    }
+    Bind(&slowPath);
+    {
+        GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByValue),
+            { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
+        result = ret;
+        Jump(&checkException);
+    }
+    Bind(&checkException);
+    {
+        CHECK_EXCEPTION(*result, INT_PTR(STTHISBYVALUE_IMM8_V8));
+    }
 }
 DECLARE_ASM_HANDLER(HandleLdthisbyvalueImm16)
 {
-    DISPATCH(NOP);
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    GateRef receiver = GetThisFromFrame(GetFrame(sp));
+    GateRef propKey = acc;
+    GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+
+    Label checkException(env);
+    Label slowPath(env);
+    Label tryFastPath(env);
+
+    GateRef value = 0;
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, propKey);
+    builder.LoadICByValue(&result, &tryFastPath, &slowPath, &checkException);
+    Bind(&tryFastPath);
+    {
+        result = GetPropertyByValue(glue, receiver, propKey);
+        Branch(TaggedIsHole(*result), &slowPath, &checkException);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
+            { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
+        Jump(&checkException);
+    }
+    Bind(&checkException);
+    {
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDTHISBYVALUE_IMM16));
+    }
 }
 DECLARE_ASM_HANDLER(HandleLdthisbyvalueImm8)
 {
-    DISPATCH(NOP);
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    GateRef receiver = GetThisFromFrame(GetFrame(sp));
+    GateRef propKey = acc;
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+
+    Label checkException(env);
+    Label slowPath(env);
+    Label tryFastPath(env);
+
+    GateRef value = 0;
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, propKey);
+    builder.LoadICByValue(&result, &tryFastPath, &slowPath, &checkException);
+    Bind(&tryFastPath);
+    {
+        result = GetPropertyByValue(glue, receiver, propKey);
+        Branch(TaggedIsHole(*result), &slowPath, &checkException);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
+            { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
+        Jump(&checkException);
+    }
+    Bind(&checkException);
+    {
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDTHISBYVALUE_IMM8));
+    }
 }
 DECLARE_ASM_HANDLER(HandleStthisbynameImm16Id16)
 {
-    DISPATCH(NOP);
+    auto env = GetEnvironment();
+
+    GateRef receiver = GetThisFromFrame(GetFrame(sp));
+    GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    Label checkException(env);
+    Label tryFastPath(env);
+    Label slowPath(env);
+
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, acc, slotId);
+    builder.StoreICByName(&result, &tryFastPath, &slowPath, &checkException);
+    Bind(&tryFastPath);
+    {
+        GateRef stringId = ReadInst16_2(pc);
+        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        result = SetPropertyByName(glue, receiver, propKey, acc, false);
+        Branch(TaggedIsHole(*result), &slowPath, &checkException);
+    }
+    Bind(&slowPath);
+    {
+        GateRef stringId = ReadInst16_2(pc);
+        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByName),
+            { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
+        result = ret;
+        Jump(&checkException);
+    }
+    Bind(&checkException);
+    {
+        CHECK_EXCEPTION(*result, INT_PTR(STTHISBYNAME_IMM16_ID16));
+    }
 }
 DECLARE_ASM_HANDLER(HandleStthisbynameImm8Id16)
 {
-    DISPATCH(NOP);
+    auto env = GetEnvironment();
+
+    GateRef receiver = GetThisFromFrame(GetFrame(sp));
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    Label checkException(env);
+    Label tryFastPath(env);
+    Label slowPath(env);
+
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, acc, slotId);
+    builder.StoreICByName(&result, &tryFastPath, &slowPath, &checkException);
+    Bind(&tryFastPath);
+    {
+        GateRef stringId = ReadInst16_1(pc);
+        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        result = SetPropertyByName(glue, receiver, propKey, acc, false);
+        Branch(TaggedIsHole(*result), &slowPath, &checkException);
+    }
+    Bind(&slowPath);
+    {
+        GateRef stringId = ReadInst16_1(pc);
+        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByName),
+            { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
+        result = ret;
+        Jump(&checkException);
+    }
+    Bind(&checkException);
+    {
+        CHECK_EXCEPTION(*result, INT_PTR(STTHISBYNAME_IMM8_ID16));
+    }
 }
 DECLARE_ASM_HANDLER(HandleLdthisbynameImm16Id16)
 {
-    DISPATCH(NOP);
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    Label checkException(env);
+    Label tryFastPath(env);
+    Label slowPath(env);
+
+    GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+    GateRef receiver = GetThisFromFrame(GetFrame(sp));
+    GateRef value = 0;
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
+    builder.LoadICByName(&result, &tryFastPath, &slowPath, &checkException);
+    Bind(&tryFastPath);
+    {
+
+        GateRef stringId = ReadInst16_2(pc);
+        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        result = GetPropertyByName(glue, receiver, propKey);
+        Branch(TaggedIsHole(*result), &slowPath, &checkException);
+    }
+    Bind(&slowPath);
+    {
+        GateRef stringId = ReadInst16_2(pc);
+        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
+                             { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
+        Jump(&checkException);
+    }
+    Bind(&checkException);
+    {
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDTHISBYNAME_IMM16_ID16));
+    }
 }
 DECLARE_ASM_HANDLER(HandleLdthisbynameImm8Id16)
 {
-    DISPATCH(NOP);
+    auto env = GetEnvironment();
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    Label checkException(env);
+    Label tryFastPath(env);
+    Label slowPath(env);
+
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+    GateRef receiver = GetThisFromFrame(GetFrame(sp));
+    GateRef value = 0;
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
+    builder.LoadICByName(&result, &tryFastPath, &slowPath, &checkException);
+    Bind(&tryFastPath);
+    {
+
+        GateRef stringId = ReadInst16_1(pc);
+        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        result = GetPropertyByName(glue, receiver, propKey);
+        Branch(TaggedIsHole(*result), &slowPath, &checkException);
+    }
+    Bind(&slowPath);
+    {
+        GateRef stringId = ReadInst16_1(pc);
+        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
+                             { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
+        Jump(&checkException);
+    }
+    Bind(&checkException);
+    {
+        CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(LDTHISBYNAME_IMM8_ID16));
+    }
 }
 DECLARE_ASM_HANDLER(HandleLdthis)
 {
-    DISPATCH(LDTHIS);
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    varAcc = GetThisFromFrame(GetFrame(sp));
+    DISPATCH_WITH_ACC(LDTHIS);
 }
 DECLARE_ASM_HANDLER(HandleLdnewtarget)
 {

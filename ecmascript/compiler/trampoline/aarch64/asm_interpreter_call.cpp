@@ -212,16 +212,16 @@ void AsmInterpreterCall::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCa
         PushArgsWithArgv(assembler, glueRegister, numRegister, argvRegister, opRegister,
                          currentSlotRegister, pushCallThis, stackOverflow);
     } else if (argc > 0) {
-        Register arg0 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
-        Register arg1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
-        Register arg2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         if (argc > 2) { // 2: call arg2
+            Register arg2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
             __ Str(arg2, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         }
         if (argc > 1) {
+            Register arg1 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
             __ Str(arg1, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         }
         if (argc > 0) {
+            Register arg0 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
             __ Str(arg0, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         }
     }
@@ -316,7 +316,7 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
     }
 }
 
-Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode)
+Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister)
 {
     switch (mode) {
         case JSCallMode::CALL_GETTER:
@@ -334,9 +334,8 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_ENTRY: {
             Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
-            Register thisRegister = __ AvailableRegister2();
-            __ Ldur(thisRegister, MemoryOperand(argvRegister, -FRAME_SLOT_SIZE));
-            return thisRegister;
+            __ Ldur(defaultRegister, MemoryOperand(argvRegister, -FRAME_SLOT_SIZE));
+            return defaultRegister;
         }
         default:
             UNREACHABLE();
@@ -344,7 +343,8 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
     return INVALID_REG;
 }
 
-Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode)
+Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode,
+    Register defaultRegister)
 {
     switch (mode) {
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
@@ -353,10 +353,9 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_ENTRY: {
             Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
-            Register newTargetRegister = __ AvailableRegister2();
             // 2: new Target index
-            __ Ldur(newTargetRegister, MemoryOperand(argvRegister, -2 * FRAME_SLOT_SIZE));
-            return newTargetRegister;
+            __ Ldur(defaultRegister, MemoryOperand(argvRegister, -2 * FRAME_SLOT_SIZE));
+            return defaultRegister;
         }
         default:
             UNREACHABLE();
@@ -890,6 +889,7 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     Register temp(X6); // can not be used to store any variable
     Register currentSlotRegister(X7);
     Register fpRegister(X9);
+    Register thisRegister(X25);
     Register nRegsRegister(X26, W);
     Register regsArrayRegister(X27);
     Register newSp(X28);
@@ -904,6 +904,7 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     __ Mov(Register(SP), temp);
     // push context regs
     __ Ldr(nRegsRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_NREGS_OFFSET));
+    __ Ldr(thisRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_THIS_OFFSET));
     __ Ldr(regsArrayRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET));
     __ Add(regsArrayRegister, regsArrayRegister, Immediate(TaggedArray::DATA_OFFSET));
     PushArgsWithArgv(assembler, glue, nRegsRegister, regsArrayRegister, temp,
@@ -912,8 +913,8 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     __ Bind(&pushFrameState);
     __ Mov(newSp, currentSlotRegister);
     // push frame state
-    PushGeneratorFrameState(assembler, prevSpRegister, fpRegister, currentSlotRegister,
-                            callTarget, method, contextRegister, pc, temp);
+    PushGeneratorFrameState(assembler, prevSpRegister, fpRegister, currentSlotRegister, callTarget, thisRegister,
+                            method, contextRegister, pc, temp);
     __ Align16(currentSlotRegister);
     __ Mov(Register(SP), currentSlotRegister);
     // call bc stub
@@ -929,7 +930,9 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
 {
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
+    Register thisRegister = __ AvailableRegister2();
     Register currentSlotRegister = __ AvailableRegister3();
+    __ Mov(thisRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));  // default this: undefined
 
     Label pushVregs;
     Label pushNewTarget;
@@ -947,8 +950,11 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
         __ Mov(tempRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         __ Str(tempRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     } else {
-        Register thisRegister = GetThisRegsiter(assembler, mode);
-        __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        Register thisArgRegister = GetThisRegsiter(assembler, mode, thisRegister);
+        __ Str(thisArgRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        if (thisRegister.GetId() != thisArgRegister.GetId()) {
+            __ Mov(thisRegister, thisArgRegister);
+        }
     }
     __ Bind(&pushNewTarget);
     {
@@ -959,7 +965,9 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
             __ Mov(newTarget, Immediate(JSTaggedValue::VALUE_UNDEFINED));
             __ Str(newTarget, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         } else {
-            Register newTargetRegister = GetNewTargetRegsiter(assembler, mode);
+            [[maybe_unused]] TempRegister1Scope scope1(assembler);
+            Register defaultRegister = __ TempRegister1();
+            Register newTargetRegister = GetNewTargetRegsiter(assembler, mode, defaultRegister);
             __ Str(newTargetRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         }
     }
@@ -982,26 +990,27 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register fpRegister = __ AvailableRegister1();
+    Register thisRegister = __ AvailableRegister2();
     Register currentSlotRegister = __ AvailableRegister3();
 
     Label pushFrameStateAndCall;
     [[maybe_unused]] TempRegister1Scope scope1(assembler);
     Register tempRegister = __ TempRegister1();
     // args register can be reused now.
-    Register numVregsRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
+    Register newSpRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
+    Register numVregsRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
     GetNumVregsFromCallField(assembler, callFieldRegister, numVregsRegister);
     PushUndefinedWithArgc(assembler, glue, numVregsRegister, tempRegister, currentSlotRegister, &pushFrameStateAndCall,
         stackOverflow);
     // fall through
     __ Bind(&pushFrameStateAndCall);
     {
-        Register newSpRegister = __ AvailableRegister2();
         __ Mov(newSpRegister, currentSlotRegister);
 
         [[maybe_unused]] TempRegister2Scope scope2(assembler);
         Register pcRegister = __ TempRegister2();
-        PushFrameState(assembler, prevSpRegister, fpRegister, currentSlotRegister, callTargetRegister, methodRegister,
-            pcRegister, tempRegister);
+        PushFrameState(assembler, prevSpRegister, fpRegister, currentSlotRegister, callTargetRegister, thisRegister,
+            methodRegister, pcRegister, tempRegister);
 
         __ Align16(currentSlotRegister);
         __ Mov(Register(SP), currentSlotRegister);
@@ -1037,21 +1046,20 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     __ Br(tempRegister);
 }
 
-void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register currentSlot,
-    Register callTarget, Register method, Register pc, Register op)
+void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp,
+    Register currentSlot, Register callTarget, Register thisObj, Register method, Register pc, Register op)
 {
     __ Mov(op, Immediate(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME)));
-    __ Stp(prevSp, op, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));// -16: frame type & prevSp
+    __ Stp(prevSp, op, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));// -2: frame type & prevSp
     __ Ldr(pc, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-    __ Stp(fp, pc, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX)); // -16: pc & fp
+    __ Stp(fp, pc, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX)); // -2: pc & fp
     __ Ldr(op, MemoryOperand(callTarget, JSFunction::LEXICAL_ENV_OFFSET));
     __ Stp(op, Register(Zero), MemoryOperand(currentSlot,
-                                             -2 * FRAME_SLOT_SIZE, // -16: jumpSizeAfterCall & env
+                                             -2 * FRAME_SLOT_SIZE, // -2: jumpSizeAfterCall & env
                                              AddrMode::PREINDEX));
     __ Mov(op, Immediate(JSTaggedValue::VALUE_HOLE));
-    __ Stp(callTarget, op, MemoryOperand(currentSlot,
-                                         -2 * FRAME_SLOT_SIZE, // -16: acc & callTarget
-                                         AddrMode::PREINDEX));
+    __ Stp(thisObj, op, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));    // -2: acc & this
+    __ Str(callTarget, MemoryOperand(currentSlot, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));         // -1: callTarget
 }
 
 void AsmInterpreterCall::GetNumVregsFromCallField(ExtendedAssembler *assembler, Register callField, Register numVregs)
@@ -1119,8 +1127,8 @@ void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)
 }
 
 void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, Register &prevSpRegister,
-    Register &fpRegister, Register &currentSlotRegister, Register &callTargetRegister, Register &methodRegister,
-    Register &contextRegister, Register &pcRegister, Register &operatorRegister)
+    Register &fpRegister, Register &currentSlotRegister, Register &callTargetRegister, Register &thisRegister,
+    Register &methodRegister, Register &contextRegister, Register &pcRegister, Register &operatorRegister)
 {
     __ Mov(operatorRegister, Immediate(static_cast<int64_t>(FrameType::ASM_INTERPRETER_FRAME)));
     __ Stp(prevSpRegister, operatorRegister,
@@ -1139,7 +1147,9 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     // env
     __ Str(operatorRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Ldr(operatorRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_ACC_OFFSET));
-    __ Stp(callTargetRegister, operatorRegister,
+    // acc
+    __ Str(operatorRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Stp(callTargetRegister, thisRegister,
         MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));  // 2 : acc and callTarget
 }
 
