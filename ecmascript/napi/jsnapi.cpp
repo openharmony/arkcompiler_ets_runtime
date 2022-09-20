@@ -1141,6 +1141,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     if (!IsFunction()) {
         return JSValueRef::Undefined(vm);
     }
+    vm->GetJsDebuggerManager()->ClearSingleStepper();
     JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSTaggedValue> thisValue = JSNApiHelper::ToJSHandle(thisObj);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
