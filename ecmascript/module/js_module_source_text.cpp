@@ -338,6 +338,7 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
         }
     }
 
+    // Adapter new opcode
     // 10. Perform ? ModuleDeclarationEnvironmentSetup(module).
     if (module->GetIsNewBcVersion()) {
         SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(thread, module);
@@ -469,10 +470,8 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
     JSMutableHandle<ImportEntry> in(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> localName(thread, globalConstants->GetUndefined());
     for (size_t idx = 0; idx < importEntriesLen; idx++) {
         in.Update(importEntries->Get(idx));
-        localName.Update(in->GetLocalName());
         importName.Update(in->GetImportName());
         moduleRequest.Update(in->GetModuleRequest());
         // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
@@ -487,24 +486,20 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
         if (JSTaggedValue::SameValue(importName, starString)) {
-            // i. Let namespace be ? GetModuleNamespace(importedModule).
-            JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, importedModule);
-            // ii. Perform ! envRec.CreateImmutableBinding(in.[[LocalName]], true).
-            // iii. Call envRec.InitializeBinding(in.[[LocalName]], namespace).
-            envRec->Set(thread, idx, moduleNamespace);
-        } else {
-            // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
-            CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
-            JSHandle<JSTaggedValue> resolution =
-                SourceTextModule::ResolveExport(thread, importedModule, importName, resolveSet);
-            // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
-            if (resolution->IsNull() || resolution->IsString()) {
-                THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, "");
-            }
-            // iii. Call envRec.CreateImportBinding(
-            //    in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
-            envRec->Set(thread, idx, resolution);
+            // TODO: need refactor
+            return;
         }
+        // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
+        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
+        JSHandle<JSTaggedValue> resolution =
+            SourceTextModule::ResolveExport(thread, importedModule, importName, resolveSet);
+        // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
+        if (resolution->IsNull() || resolution->IsString()) {
+            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, "");
+        }
+        // iii. Call envRec.CreateImportBinding(
+        //    in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
+        envRec->Set(thread, idx, resolution);
     }
 
     module->SetEnvironment(thread, envRec);
@@ -952,7 +947,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
         // 2. If resolution.[[Module]] and starResolution.[[Module]] are not the same Module Record or
         // SameValue(
         //    resolution.[[BindingName]], starResolution.[[BindingName]]) is false, return "ambiguous".
-        // TODO: Adapter new module
+        // Adapter new opcode
         if (resolution->IsResolvedBinding()) {
             JSHandle<ResolvedBinding> resolutionBd = JSHandle<ResolvedBinding>::Cast(resolution);
             JSHandle<ResolvedBinding> starResolutionBd = JSHandle<ResolvedBinding>::Cast(starResolution);

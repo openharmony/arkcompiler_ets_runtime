@@ -480,14 +480,24 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
         LOG_FULL(FATAL) << "GetModuleNamespace currentModule failed";
         UNREACHABLE();
     }
-    JSTaggedValue moduleEnvironment = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetEnvironment();
-    if (moduleEnvironment.IsUndefined()) {
-        return vm_->GetJSThread()->GlobalConstants()->GetUndefined();
+    JSThread *thread = vm_->GetJSThread();
+    SourceTextModule *module = SourceTextModule::Cast(currentModule.GetTaggedObject());
+    JSTaggedValue requestedModule = module->GetRequestedModules();
+    JSTaggedValue moduleName = TaggedArray::Cast(requestedModule.GetTaggedObject())->Get(index);
+    JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
+    JSHandle<SourceTextModule> requiredModule;
+    if (moduleRecordName.IsUndefined()) {
+        requiredModule = SourceTextModule::HostResolveImportedModule(thread,
+            JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
+    } else {
+        ASSERT(moduleRecordName.IsString());
+        requiredModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread,
+            JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
     }
-    ASSERT(moduleEnvironment.IsTaggedArray());
-    JSTaggedValue moduleNamespace = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
-    ASSERT(moduleNamespace.IsModuleNamespace());
-    return moduleNamespace;
+
+    JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, requiredModule);
+    ASSERT(moduleNamespace->IsModuleNamespace());
+    return moduleNamespace.GetTaggedValue();
 }
 
 JSTaggedValue ModuleManager::GetModuleNamespace(JSTaggedValue localName)
