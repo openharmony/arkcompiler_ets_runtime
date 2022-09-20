@@ -3569,7 +3569,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetEvaluationError(SourceTextModule::UNDEFINED_INDEX);
     obj->SetStatus(ModuleStatus::UNINSTANTIATED);
     obj->SetTypes(ModuleTypes::UNKNOWN);
-    obj->SetIsNewBcVersion(true);
+    obj->SetIsNewBcVersion(false);
     return obj;
 }
 

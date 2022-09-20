@@ -826,7 +826,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_GENERATOR_CONTEXT: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), GeneratorContext::SIZE, 6U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), GeneratorContext::SIZE, 7U);
                 JSHandle<GeneratorContext> genContext = factory->NewGeneratorContext();
                 DUMP_FOR_HANDLE(genContext)
                 break;
