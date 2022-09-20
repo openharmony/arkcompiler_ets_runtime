@@ -4,12 +4,12 @@
 
 ArkCompiler JS Runtime分成两个部分，分别是JS编译工具链与JS运行时。JS工具链将JS源码编译成方舟字节码\(ArkCompiler Bytecode\)，JS运行时负责执行生成的方舟字节码\(后续如无特殊说明，字节码特指方舟字节码\)。
 
-图 1 JS编译工具链架构
+**图1** JS编译工具链架构
 ![](figures/zh-cn_image_0000001197967897.png)
 
 ArkCompiler JS Runtime的源码编译器接收JS源码的输入，再由ts2abc（将JavaScript文件转换为字节码的工具）生成abc文件。
 
-图 2 JS运行时（ArkCompiler JS Runtime）架构
+**图2** JS运行时（ArkCompiler JS Runtime）架构
 
 ![](figures/zh-cn_image_ark-js-arch.png)
 

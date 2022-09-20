@@ -21,17 +21,17 @@
 
 	编译x64版本：
 	```
-	./build.sh --product-name rk3568 --build-target ark_js_host_linux_tools_packages --build-target ark_ts2abc_build  # arm平台和host端运行工具
+	./build.sh --product-name hispark_taurus_standard --build-target ark_js_host_linux_tools_packages --build-target ark_ts2abc_build  # arm平台和host端运行工具
 	```
 
 	编译arm64版本：
 	```
-	./build.sh --product-name ohos_arm64 --build-target ark_js_vm --build-target ld-musl-aarch64.so.1
+	./build.sh --product-name hispark_taurus_standard --gn-args use_musl=true --target-cpu arm64 --build-target ark_js_vm
 	```
 
 	编译arm32版本:
 	```
-	./build.sh --product-name rk3568 --build-target ark_js_runtime --build-target ld-musl-arm.so.1
+	./build.sh --product-name hispark_taurus_standard --build-target  ark_js_runtime
 	```
 
 2.  编译方舟前端，编译命令：
@@ -86,7 +86,7 @@
 编译生成反汇编工具：
 
 ```
-./build.sh --product-name rk3568 --build-target ark_host_linux_tools_packages
+./build.sh --product-name hispark_taurus_standard --build-target ark_host_linux_tools_packages
 ```
 
 执行如下命令，结果输出到output.pa文件中：
