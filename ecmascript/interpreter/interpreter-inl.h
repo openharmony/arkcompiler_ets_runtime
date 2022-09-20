@@ -304,7 +304,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         if (UNLIKELY(thread->DoStackOverflowCheck(newSp - actualNumArgs))) { \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
-        for (int i = actualNumArgs; i >= 0; i--) {                           \
+        for (int i = actualNumArgs - 1; i >= 0; i--) {                           \
             *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];            \
         }                                                                    \
     } while (false)
@@ -395,20 +395,20 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         if (UNLIKELY(thread->DoStackOverflowCheck(newSp - num))) {           \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
-        for (int i = num - 1; i >= 0; i--) {                                      \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];             \
+        for (int i = num - 1; i >= 0; i--) {                                 \
+            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];            \
         }                                                                    \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DEPRECATED_CALL_PUSH_ARGS_RANGE_NO_EXTRA()                                      \
+#define DEPRECATED_CALL_PUSH_ARGS_RANGE_NO_EXTRA()                           \
     do {                                                                     \
         int num = std::min(actualNumArgs, declaredNumArgs);                  \
         if (UNLIKELY(thread->DoStackOverflowCheck(newSp - num))) {           \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
         for (int i = num; i > 0; i--) {                                      \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];             \
+            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];            \
         }                                                                    \
     } while (false)
 
@@ -420,8 +420,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                                \
         }                                                                        \
         /* 1: skip this */                                                       \
-        for (int i = num; i > 0; i--) {                                      \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];                 \
+        for (int i = num; i > 0; i--) {                                          \
+            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];                \
         }                                                                        \
     } while (false)
 
@@ -3902,7 +3902,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
                 newSp[index++] = ToUintPtr(thread);
-                newSp[index++] = numArgs + 2; // +1 for newtarget/this
+                newSp[index++] = numArgs + 2; // 2: for newtarget/this
                 // func
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = ctor.GetRawData();
@@ -3912,7 +3912,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // this
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
-                for (size_t i = 1; i < numArgs; ++i) {  // 2: func and newTarget
+                for (size_t i = 1; i < numArgs; ++i) {  // 1: func
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = GET_VREG(firstArgRegIdx + i);
                 }
