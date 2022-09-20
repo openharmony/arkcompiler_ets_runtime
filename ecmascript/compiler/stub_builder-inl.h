@@ -740,6 +740,11 @@ inline GateRef StubBuilder::DoubleEqual(GateRef x, GateRef y)
     return env_->GetBuilder()->DoubleEqual(x, y);
 }
 
+inline GateRef StubBuilder::DoubleNotEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->DoubleNotEqual(x, y);
+}
+
 inline GateRef StubBuilder::DoubleLessThan(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->DoubleLessThan(x, y);

@@ -44,13 +44,16 @@ private:
     void LowerTypeAdd2Dyn(GateRef gate);
     void LowerTypeSub2Dyn(GateRef gate);
     void LowerTypeMul2Dyn(GateRef gate);
-    void LowerTypeLess2Dyn(GateRef gate);
-    void LowerTypeLessEq2Dyn(GateRef gate);
-    void SpeculateNumberAdd(GateRef gate);
-    void SpeculateNumberSub(GateRef gate);
-    void SpeculateNumberMul(GateRef gate);
-    void SpeculateNumberLess(GateRef gate);
-    void SpeculateNumberLessEq(GateRef gate);
+    void LowerTypeMod2Dyn(GateRef gate);
+    void LowerTypeLessDyn(GateRef gate);
+    void LowerTypeLessEqDyn(GateRef gate);
+    void LowerTypeGreaterDyn(GateRef gate);
+    void LowerTypeGreaterEqDyn(GateRef gate);
+    void LowerTypeDiv2Dyn(GateRef gate);
+    void LowerTypeEqDyn(GateRef gate);
+    void LowerTypeNotEqDyn(GateRef gate);
+    template<TypedBinOp Op>
+    void SpeculateNumberBinaryOp(GateRef gate);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

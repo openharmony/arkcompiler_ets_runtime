@@ -3890,7 +3890,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             methodHandle.Update(ctorFunc->GetMethod());
             if (ctorFunc->IsBuiltinConstructor()) {
                 ASSERT(methodHandle->GetNumVregsWithCallField() == 0);
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numArgs + 4;  // 4: newtarget/this & numArgs & thread
+                size_t frameSize =
+                    InterpretedFrame::NumOfMembers() + numArgs + 4; // 4: newtarget/this & numArgs & thread
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 if (UNLIKELY(thread->DoStackOverflowCheck(newSp))) {

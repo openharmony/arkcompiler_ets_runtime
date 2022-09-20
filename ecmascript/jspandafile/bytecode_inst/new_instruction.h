@@ -1949,7 +1949,8 @@ ALWAYS_INLINE inline uint16_t BytecodeInst<Mode>::GetVReg() const {  // NOLINTNE
 
 template<const BytecodeInstMode Mode>
 __attribute__ ((visibility("hidden")))
-ALWAYS_INLINE inline uint16_t BytecodeInst<Mode>::GetVReg(size_t idx /* = 0 */) const {  // NOLINTNEXTLINE(readability-function-size)
+// NOLINTNEXTLINE(readability-function-size)
+ALWAYS_INLINE inline uint16_t BytecodeInst<Mode>::GetVReg(size_t idx /* = 0 */) const {
     Format format = GetFormat();
     ASSERT_PRINT(HasVReg(format, idx), "Instruction doesn't have vreg operand with such index");
 
@@ -2832,7 +2833,7 @@ inline typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat() const
 /* static */
 template <const BytecodeInstMode Mode>
 constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opcode opcode) {  // NOLINT(readability-function-size)
-    switch(opcode) {
+    switch (opcode) {
     case BytecodeInst<Mode>::Opcode::LDNAN:
         return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
@@ -3420,7 +3421,7 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
 
 // NOLINTNEXTLINE(readability-function-size)
 template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Flags flag) const {
-    switch(GetOpcode()) {
+    switch (GetOpcode()) {
     case BytecodeInst<Mode>::Opcode::LDNAN:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
@@ -4008,7 +4009,7 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
 
 // NOLINTNEXTLINE(readability-function-size)
 template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Exceptions exception) const {
-    switch(GetOpcode()) {
+    switch (GetOpcode()) {
     case BytecodeInst<Mode>::Opcode::LDNAN:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
@@ -4596,7 +4597,7 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
 
 // NOLINTNEXTLINE(readability-function-size)
 template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow() const {
-    switch(GetOpcode()) {
+    switch (GetOpcode()) {
     case BytecodeInst<Mode>::Opcode::LDNAN:
         return false;
     case BytecodeInst<Mode>::Opcode::LDINFINITY:
@@ -5184,7 +5185,7 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
 
 // NOLINTNEXTLINE(readability-function-size)
 template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os, const BytecodeInst<Mode>& inst) {
-    switch(inst.GetOpcode()) {
+    switch (inst.GetOpcode()) {
     case BytecodeInst<Mode>::Opcode::LDNAN:
         os << "ldnan";
         break;
@@ -6537,7 +6538,7 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
 template<const BytecodeInstMode Mode> // NOLINTNEXTLINE(readability-function-size)
 std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Opcode& op)
 {
-    switch(op) {
+    switch (op) {
     case BytecodeInst<Mode>::Opcode::LDNAN:
         os << "LDNAN";
         break;
@@ -7408,7 +7409,6 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     default:
         os << "(unknown opcode:) " << static_cast<uint16_t>(op);
         break;
-
     }
     return os;
 }

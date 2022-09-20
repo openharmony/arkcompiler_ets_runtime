@@ -152,7 +152,7 @@ $ node --expose-gc src/index.js [选项] file.js
 编译生成反汇编工具：
 
 ```
-./build.sh --product-name rk3568 --build-target ark_host_linux_tools_packages
+./build.sh --product-name hispark_taurus_standard --build-target ark_host_linux_tools_packages
 ```
 
 命令行格式：

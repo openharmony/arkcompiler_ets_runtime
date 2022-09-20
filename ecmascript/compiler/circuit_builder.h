@@ -361,6 +361,7 @@ public:
     inline GateRef Int32NotEqual(GateRef x, GateRef y);
     inline GateRef Int64Equal(GateRef x, GateRef y);
     inline GateRef DoubleEqual(GateRef x, GateRef y);
+    inline GateRef DoubleNotEqual(GateRef x, GateRef y);
     inline GateRef Int8Equal(GateRef x, GateRef y);
     inline GateRef Int32Equal(GateRef x, GateRef y);
     template<OpCode::Op Op, MachineType Type>
@@ -371,11 +372,8 @@ public:
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
     // middle ir: Number operations
-    inline GateRef NumberAdd(GateRef x, GateRef y);
-    inline GateRef NumberSub(GateRef x, GateRef y);
-    inline GateRef NumberMul(GateRef x, GateRef y);
-    inline GateRef NumberLess(GateRef x, GateRef y);
-    inline GateRef NumberLessthanOrEq(GateRef x, GateRef y);
+    template<TypedBinOp Op>
+    inline GateRef NumberBinaryOp(GateRef x, GateRef y);
     inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
 
     // Object Operations

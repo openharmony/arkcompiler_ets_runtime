@@ -16,13 +16,17 @@
 #ifndef ECMASCRIPT_JS_RUNTIME_OPTIONS_H_
 #define ECMASCRIPT_JS_RUNTIME_OPTIONS_H_
 
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/mem/mem_common.h"
 
-#include "libpandabase/utils/pandargs.h"
-
 // namespace panda {
 namespace panda::ecmascript {
+using arg_list_t = std::vector<std::string>;
 enum ArkProperties {
     DEFAULT = -1,
     OPTIONAL_LOG = 1,
@@ -43,200 +47,306 @@ struct AsmInterParsedOption {
     bool enableAsm {false};
 };
 
-class JSRuntimeOptions {
+const std::string COMMON_HELP_HEAD_MSG =
+    "Usage: panda [OPTIONS] [file1:file2:file3] [entrypoint] -- [arguments]\n"
+    "\n"
+    "optional arguments:\n";
+
+const std::string STUB_HELP_HEAD_MSG =
+    "Usage: ark_stub_compiler [OPTIONS]\n"
+    "\n"
+    "optional arguments:\n";
+
+const std::string HELP_OPTION_MSG =
+    "--abc-list-file: abc's list file.\n"
+    "--aot-file: Path (file suffix not needed) to AOT output file. Default: \"aot_file\"\n"
+    "--ark-properties: set ark properties\n"
+    "--asm-interpreter: Enable asm interpreter. Default: true\n"
+    "--asm-opcode-disable-range: Opcode range when asm interpreter is enabled.\n"
+    "--assert-types: Enable type assertion for type inference tests. Default: false\n"
+    "--builtins-dts: builtins.d.abc file path for AOT.\n"
+    "--compiler-log: log Option For aot compiler and stub compiler,\n"
+    "       \"none\": no log,\n"
+    "       \"allllircirasm or all012\": print llIR file, CIR log and asm log for all methods,\n"
+    "       \"allcir or all0\": print cir info for all methods,\n"
+    "       \"allllir or all1\": print llir info for all methods,\n"
+    "       \"allasm or all2\": print asm log for all methods,\n"
+    "       \"cerllircirasm or cer0112\": print llIR file, CIR log and asm log for certain method defined "
+                                          "in 'mlist-for-log',\n"
+    "       \"cercir or cer0\": print cir info for certain method illustrated in 'mlist-for-log',\n"
+    "       \"cerasm or cer2\": print asm log for certain method illustrated in 'mlist-for-log',\n"
+    "       Default: \"none\"\n"
+    "--enable-ark-tools: Enable ark tools to debug. Default: false\n"
+    "--enable-bytecode-trace: enable tracing bytecode for aot runtime. Default: false\n"
+    "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
+    "--enable-force-gc: enable force gc when allocating object. Default: true\n"
+    "--enable-ic: switch of inline cache. Default: true\n"
+    "--enable-runtime-stat: enable statistics of runtime state. Default: false\n"
+    "--enable-type-lowering: enable TSTypeLowering and TypeLowering for aot runtime. Default:true\n"
+    "--entry-point: full name of entrypoint function or method. Default: _GLOBAL::func_main_0\n"
+    "--force-full-gc: if true trigger full gc, else trigger semi and old gc. Default: true\n"
+    "--framework-abc-file: snapshot file. Default: \"strip.native.min.abc\"\n"
+    "--gcThreadNum: set gcThreadNum. Default: 7\n"
+    "--heap-size-limit: Max heap size. Default: 512MB\n"
+    "--help: Print this message and exit\n"
+    "--icu-data-path: Path to generated icu data file. Default: \"default\"\n"
+    "--IsWorker: whether is worker vm. Default: false\n"
+    "--log-components: Enable logs from specified components. Possible values: [\"all\", \"alloc\",\n"
+    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
+    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
+    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
+    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
+    "--log-debug: Enable debug or above logs from specified components. Possible values: [\"all\", \"alloc\",\n"
+    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
+    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
+    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
+    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
+    "--log-error: Enable error or above logs from specified components. Possible values: [\"all\", \"alloc\",\n"
+    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
+    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
+    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
+    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
+    "--log-fatal: Enable fatal logs from specified components. Possible values: [\"all\", \"alloc\",\n"
+    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
+    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
+    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
+    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
+    "--log-info: Enable info or above logs from specified components. Possible values: [\"all\", \"alloc\",\n"
+    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
+    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
+    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
+    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
+    "--log-level: Log level. Possible values: [\"debug\", \"info\", \"warning\", \"error\", \"fatal\"].\n"
+    "       Default: \"error\"\n"
+    "--log-warning: Enable warning or above logs from specified components. Possible values: [\"all\", \"alloc\",\n"
+    "       \"mm-obj-events\", \"classlinker\", \"common\", \"core\", \"gc\", \"gc_trigger\",\n"
+    "       \"reference_processor\", \"interpreter\", \"compiler\", \"pandafile\", \"memorypool\", \"runtime\",\n"
+    "       \"trace\", \"debugger\", \"interop\", \"jni\", \"verifier\", \"compilation_queue\", \"jvmti\", \"aot\",\n"
+    "       \"events\", \"ecmascript\", \"scheduler\"]. Default: [\"all\"]\n"
+    "--longPauseTime: set longPauseTime. Default: 40ms\n"
+    "--maxAotMethodSize: enable aot to skip too large method. Default size: 32 KB\n"
+    "--maxNonmovableSpaceCapacity: set max nonmovable space capacity\n"
+    "--merge-abc: abc file is merge abc. Default: false\n"
+    "--mlist-for-log: specific method list for compiler log output, only used when compiler-log. Default: \"none\"\n"
+    "--opt-level: Optimization level configuration on llvm back end. Default: \"3\"\n"
+    "--options: Print compiler and runtime options\n"
+    "--print-any-types: Enable TypeFilter to print any types after type inference. Default: false\n"
+    "--reloc-mode: Relocation configuration on llvm back end. Default: \"2\"\n"
+    "--serializer-buffer-size-limit: Max serializer buffer size used by the VM. Default: 2GB\n"
+    "--snapshot-file: snapshot file. Default: \"/system/etc/snapshot\"\n"
+    "--startup-time: Print the start time of command execution. Default: false\n"
+    "--stub-file: Path of file includes common stubs module compiled by stub compiler. Default: \"stub.an\"\n"
+    "--target-triple: target triple for aot compiler or stub compiler.\n"
+    "       Possible values: [\"x86_64-unknown-linux-gnu\", \"arm-unknown-linux-gnu\", "
+                             "\"aarch64-unknown-linux-gnu\"].\n"
+    "       Default: \"x86_64-unknown-linux-gnu\"\n";
+
+const std::string HELP_TAIL_MSG =
+    "Tail arguments:\n"
+    "files: path to pandafiles\n";
+
+enum CommandValues {
+    OPTION_DEFAULT,
+    OPTION_ENABLE_ARK_TOOLS,
+    OPTION_ENABLE_CPUPROFILER,
+    OPTION_STUB_FILE,
+    OPTION_ENABLE_FORCE_GC,
+    OPTION_FORCE_FULL_GC,
+    OPTION_ARK_PROPERTIES,
+    OPTION_GC_THREADNUM,
+    OPTION_LONG_PAUSE_TIME,
+    OPTION_AOT_FILE,
+    OPTION_TARGET_TRIPLE,
+    OPTION_ASM_OPT_LEVEL,
+    OPTION_RELOCATION_MODE,
+    OPTION_MAX_NONMOVABLE_SPACE_CAPACITY,
+    OPTION_ENABLE_ASM_INTERPRETER,
+    OPTION_ASM_OPCODE_DISABLE_RANGE,
+    OPTION_SERIALIZER_BUFFER_SIZE_LIMIT,
+    OPTION_HEAP_SIZE_LIMIT,
+    OPTION_ENABLE_IC,
+    OPTION_SNAPSHOT_FILE,
+    OPTION_FRAMEWORK_ABC_FILE,
+    OPTION_ICU_DATA_PATH,
+    OPTION_STARTUP_TIME,
+    OPTION_COMPILER_LOG_OPT,
+    OPTION_METHODS_LIST_FOR_LOG,
+    OPTION_ENABLE_RUNTIME_STAT,
+    OPTION_ASSERT_TYPES,
+    OPTION_PRINT_ANY_TYPES,
+    OPTION_IS_WORKER,
+    OPTION_BUILTINS_DTS,
+    OPTION_ENABLE_BC_TRACE,
+    OPTION_LOG_LEVEL,
+    OPTION_LOG_DEBUG,
+    OPTION_LOG_INFO,
+    OPTION_LOG_WARNING,
+    OPTION_LOG_ERROR,
+    OPTION_LOG_FATAL,
+    OPTION_LOG_COMPONENTS,
+    OPTION_MAX_AOTMETHODSIZE,
+    OPTION_ABC_FILES_LIST,
+    OPTION_ENTRY_POINT,
+    OPTION_MERGE_ABC,
+    OPTION_ENABLE_TYPE_LOWERING,
+    OPTION_HELP,
+    OPTION_OPTIONS
+};
+
+class PUBLIC_API JSRuntimeOptions {
 public:
     explicit JSRuntimeOptions() {}
     ~JSRuntimeOptions() = default;
     DEFAULT_COPY_SEMANTIC(JSRuntimeOptions);
     DEFAULT_MOVE_SEMANTIC(JSRuntimeOptions);
 
-    void AddOptions(PandArgParser *parser)
-    {
-        parser->Add(&enableArkTools_);
-        parser->Add(&enableCpuprofiler_);
-        parser->Add(&arkProperties_);
-        parser->Add(&maxNonmovableSpaceCapacity_);
-        parser->Add(&enableAsmInterpreter_);
-        parser->Add(&asmOpcodeDisableRange_);
-        parser->Add(&enableForceGc_);
-        parser->Add(&forceFullGc_);
-        parser->Add(&stubFile_);
-        parser->Add(&aotOutputFile_);
-        parser->Add(&targetTriple_);
-        parser->Add(&asmOptLevel_);
-        parser->Add(&relocationMode_);
-        parser->Add(&compilerLogMethods_);
-        parser->Add(&compilerLogOpt_);
-        parser->Add(&serializerBufferSizeLimit_);
-        parser->Add(&heapSizeLimit_);
-        parser->Add(&enableIC_);
-        parser->Add(&snapshotFile_);
-        parser->Add(&frameworkAbcFile_);
-        parser->Add(&icuDataPath_);
-        parser->Add(&startupTime_);
-        parser->Add(&enableRuntimeStat_);
-        parser->Add(&assertTypes_);
-        parser->Add(&printAnyTypes_);
-        parser->Add(&builtinsDTS_);
-        parser->Add(&enablebcTrace_);
-        parser->Add(&logLevel_);
-        parser->Add(&logDebug_);
-        parser->Add(&logInfo_);
-        parser->Add(&logWarning_);
-        parser->Add(&logError_);
-        parser->Add(&logFatal_);
-        parser->Add(&logComponents_);
-        parser->Add(&maxAotMethodSize_);
-        parser->Add(&abcFilelist_);
-        parser->Add(&entryPoint_);
-        parser->Add(&enableTypeLowering_);
-    }
+    bool ParseCommand(const int argc, const char **argv);
+    bool SetDefaultValue(char* argv);
 
     bool EnableArkTools() const
     {
-        return (enableArkTools_.GetValue()) ||
-            ((static_cast<uint32_t>(arkProperties_.GetValue()) & ArkProperties::ENABLE_ARKTOOLS) != 0);
+        return (enableArkTools_) ||
+            ((static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_ARKTOOLS) != 0);
     }
 
-    void SetEnableArkTools(bool value)
-    {
-        enableArkTools_.SetValue(value);
+    void SetEnableArkTools(bool value) {
+        enableArkTools_ = value;
     }
 
     bool WasSetEnableArkTools() const
     {
-        return enableArkTools_.WasSet();
+        return WasOptionSet(OPTION_ENABLE_ARK_TOOLS);
     }
 
     bool IsEnableRuntimeStat() const
     {
-        return enableRuntimeStat_.GetValue();
+        return enableRuntimeStat_;
     }
 
     void SetEnableRuntimeStat(bool value)
     {
-        enableRuntimeStat_.SetValue(value);
+        enableRuntimeStat_ = value;
     }
 
     bool WasSetEnableRuntimeStat() const
     {
-        return enableRuntimeStat_.WasSet();
+        return WasOptionSet(OPTION_ENABLE_RUNTIME_STAT);
     }
 
     std::string GetStubFile() const
     {
-        return stubFile_.GetValue();
+        return stubFile_;
     }
 
     void SetStubFile(std::string value)
     {
-        stubFile_.SetValue(std::move(value));
+        stubFile_ = std::move(value);
     }
 
     bool WasStubFileSet() const
     {
-        return stubFile_.WasSet();
+        return WasOptionSet(OPTION_STUB_FILE);
     }
 
     std::string GetAOTOutputFile() const
     {
-        return aotOutputFile_.GetValue();
+        return aotOutputFile_;
     }
 
     void SetAOTOutputFile(std::string value)
     {
-        aotOutputFile_.SetValue(std::move(value));
+        aotOutputFile_ = std::move(value);
     }
 
     bool WasAOTOutputFileSet() const
     {
-        return aotOutputFile_.WasSet();
+        return WasOptionSet(OPTION_AOT_FILE);
     }
 
     std::string GetTargetTriple() const
     {
-        return targetTriple_.GetValue();
+        return targetTriple_;
     }
 
     void SetTargetTriple(std::string value)
     {
-        targetTriple_.SetValue(std::move(value));
+        targetTriple_ = std::move(value);
     }
 
     size_t GetOptLevel() const
     {
-        return asmOptLevel_.GetValue();
+        return asmOptLevel_;
     }
 
     void SetOptLevel(size_t value)
     {
-        asmOptLevel_.SetValue(value);
+        asmOptLevel_ = value;
     }
 
     size_t GetRelocMode() const
     {
-        return relocationMode_.GetValue();
+        return relocationMode_;
     }
 
     void SetRelocMode(size_t value)
     {
-        relocationMode_.SetValue(value);
+        relocationMode_ = value;
     }
 
     bool EnableForceGC() const
     {
-        return enableForceGc_.GetValue();
+        return enableForceGc_;
     }
 
     void SetEnableForceGC(bool value)
     {
-        enableForceGc_.SetValue(value);
+        enableForceGc_ = value;
     }
 
     bool ForceFullGC() const
     {
-        return forceFullGc_.GetValue();
+        return forceFullGc_;
     }
 
     void SetForceFullGC(bool value)
     {
-        forceFullGc_.SetValue(value);
+        forceFullGc_ = value;
     }
 
     bool EnableCpuProfiler() const
     {
-        return enableCpuprofiler_.GetValue();
+        return enableCpuprofiler_;
     }
 
     void SetEnableCpuprofiler(bool value)
     {
-        enableCpuprofiler_.SetValue(value);
+        enableCpuprofiler_ = value;
     }
 
     void SetGcThreadNum(size_t num)
     {
-        gcThreadNum_.SetValue(num);
+        gcThreadNum_ = num;
     }
 
     size_t GetGcThreadNum() const
     {
-        return gcThreadNum_.GetValue();
+        return gcThreadNum_;
     }
 
     void SetLongPauseTime(size_t time)
     {
-        longPauseTime_.SetValue(time);
+        longPauseTime_ = time;
     }
 
     size_t GetLongPauseTime() const
     {
-        return longPauseTime_.GetValue();
+        return longPauseTime_;
     }
 
     void SetArkProperties(int prop)
     {
         if (prop != ArkProperties::DEFAULT) {
-            arkProperties_.SetValue(prop);
+            arkProperties_ = prop;
         }
     }
 
@@ -247,42 +357,42 @@ public:
 
     int GetArkProperties()
     {
-        return arkProperties_.GetValue();
+        return arkProperties_;
     }
 
     bool EnableOptionalLog() const
     {
-        return (static_cast<uint32_t>(arkProperties_.GetValue()) & ArkProperties::OPTIONAL_LOG) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::OPTIONAL_LOG) != 0;
     }
 
     bool EnableGCStatsPrint() const
     {
-        return (static_cast<uint32_t>(arkProperties_.GetValue()) & ArkProperties::GC_STATS_PRINT) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::GC_STATS_PRINT) != 0;
     }
 
     bool EnableParallelGC() const
     {
-        return (static_cast<uint32_t>(arkProperties_.GetValue()) & ArkProperties::PARALLEL_GC) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::PARALLEL_GC) != 0;
     }
 
     bool EnableConcurrentMark() const
     {
-        return (static_cast<uint32_t>(arkProperties_.GetValue()) & ArkProperties::CONCURRENT_MARK) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
     }
 
     bool EnableConcurrentSweep() const
     {
-        return (static_cast<uint32_t>(arkProperties_.GetValue()) & ArkProperties::CONCURRENT_SWEEP) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_SWEEP) != 0;
     }
 
     bool EnableThreadCheck() const
     {
-        return (static_cast<uint32_t>(arkProperties_.GetValue()) & ArkProperties::THREAD_CHECK) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::THREAD_CHECK) != 0;
     }
 
     bool EnableSnapshotSerialize() const
     {
-        return (static_cast<uint32_t>(arkProperties_.GetValue()) & ArkProperties::ENABLE_SNAPSHOT_SERIALIZE) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SNAPSHOT_SERIALIZE) != 0;
     }
 
     bool EnableSnapshotDeserialize() const
@@ -291,38 +401,43 @@ public:
             return false;
         }
 
-        return (static_cast<uint32_t>(arkProperties_.GetValue()) & ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const
     {
-        return maxNonmovableSpaceCapacity_.WasSet();
+        return WasOptionSet(OPTION_MAX_NONMOVABLE_SPACE_CAPACITY);
     }
 
     size_t MaxNonmovableSpaceCapacity() const
     {
-        return maxNonmovableSpaceCapacity_.GetValue();
+        return maxNonmovableSpaceCapacity_;
+    }
+
+    void SetMaxNonmovableSpaceCapacity(uint32_t value)
+    {
+        maxNonmovableSpaceCapacity_ = value;
     }
 
     void SetEnableAsmInterpreter(bool value)
     {
-        enableAsmInterpreter_.SetValue(value);
+        enableAsmInterpreter_ = value;
     }
 
     bool GetEnableAsmInterpreter() const
     {
-        return enableAsmInterpreter_.GetValue();
+        return enableAsmInterpreter_;
     }
 
     void SetAsmOpcodeDisableRange(std::string value)
     {
-        asmOpcodeDisableRange_.SetValue(std::move(value));
+        asmOpcodeDisableRange_ = std::move(value);
     }
 
     void ParseAsmInterOption()
     {
-        asmInterParsedOption_.enableAsm = enableAsmInterpreter_.GetValue();
-        std::string strAsmOpcodeDisableRange = asmOpcodeDisableRange_.GetValue();
+        asmInterParsedOption_.enableAsm = enableAsmInterpreter_;
+        std::string strAsmOpcodeDisableRange = asmOpcodeDisableRange_;
         if (strAsmOpcodeDisableRange.empty()) {
             return;
         }
@@ -350,329 +465,355 @@ public:
 
     std::string GetCompilerLogOption() const
     {
-        return compilerLogOpt_.GetValue();
+        return compilerLogOpt_;
     }
 
     void SetCompilerLogOption(std::string value)
     {
-        compilerLogOpt_.SetValue(std::move(value));
+        compilerLogOpt_ = std::move(value);
     }
 
     bool WasSetCompilerLogOption() const
     {
-        return compilerLogOpt_.WasSet() && GetCompilerLogOption().find("none") == std::string::npos;
+        return 1ULL << static_cast<uint64_t>(OPTION_COMPILER_LOG_OPT) & wasSet_ &&
+            GetCompilerLogOption().find("none") == std::string::npos;
     }
 
     std::string GetMethodsListForLog() const
     {
-        return compilerLogMethods_.GetValue();
+        return methodsListForLog_;
     }
 
     void SetMethodsListForLog(std::string value)
     {
-        compilerLogMethods_.SetValue(std::move(value));
+        methodsListForLog_ = std::move(value);
     }
 
     bool WasSetMethodsListForLog() const
     {
-        return compilerLogMethods_.WasSet() &&
+        return 1ULL << static_cast<uint64_t>(OPTION_METHODS_LIST_FOR_LOG) & wasSet_ &&
             GetCompilerLogOption().find("none") == std::string::npos &&
             GetCompilerLogOption().find("all") == std::string::npos;
     }
 
     uint64_t GetSerializerBufferSizeLimit() const
     {
-        return serializerBufferSizeLimit_.GetValue();
+        return serializerBufferSizeLimit_;
+    }
+
+    void SetSerializerBufferSizeLimit(uint64_t value)
+    {
+        serializerBufferSizeLimit_ = value;
     }
 
     uint32_t GetHeapSizeLimit() const
     {
-        return heapSizeLimit_.GetValue();
+        return heapSizeLimit_;
     }
 
     void SetHeapSizeLimit(uint32_t value)
     {
-        heapSizeLimit_.SetValue(value);
+        heapSizeLimit_ = value;
     }
 
     bool WasSetHeapSizeLimit() const
     {
-        return heapSizeLimit_.WasSet();
+        return WasOptionSet(OPTION_HEAP_SIZE_LIMIT);
     }
 
     void SetIsWorker(bool isWorker)
     {
-        isWorker_.SetValue(isWorker);
+        isWorker_ = isWorker;
     }
 
     bool IsWorker() const
     {
-        return isWorker_.GetValue();
+        return isWorker_;
     }
 
     bool EnableIC() const
     {
-        return enableIC_.GetValue();
+        return enableIC_;
     }
 
     void SetEnableIC(bool value)
     {
-        enableIC_.SetValue(value);
+        enableIC_ = value;
     }
 
     bool WasSetEnableIC() const
     {
-        return enableIC_.WasSet();
+        return WasOptionSet(OPTION_ENABLE_IC);
     }
 
     std::string GetSnapshotFile() const
     {
-        return snapshotFile_.GetValue();
+        return snapshotFile_;
     }
 
     void SetSnapshotFile(std::string value)
     {
-        snapshotFile_.SetValue(std::move(value));
+        snapshotFile_ = std::move(value);
     }
 
     bool WasSetSnapshotFile() const
     {
-        return snapshotFile_.WasSet();
+        return WasOptionSet(OPTION_SNAPSHOT_FILE);
     }
 
     std::string GetFrameworkAbcFile() const
     {
-        return frameworkAbcFile_.GetValue();
+        return frameworkAbcFile_;
     }
 
     void SetFrameworkAbcFile(std::string value)
     {
-        frameworkAbcFile_.SetValue(std::move(value));
+        frameworkAbcFile_ = std::move(value);
     }
 
     bool WasSetFrameworkAbcFile() const
     {
-        return frameworkAbcFile_.WasSet();
+        return WasOptionSet(OPTION_FRAMEWORK_ABC_FILE);
     }
 
     std::string GetIcuDataPath() const
     {
-        return icuDataPath_.GetValue();
+        return icuDataPath_;
     }
 
     void SetIcuDataPath(std::string value)
     {
-        icuDataPath_.SetValue(std::move(value));
+        icuDataPath_ = std::move(value);
     }
 
     bool WasSetIcuDataPath() const
     {
-        return icuDataPath_.WasSet();
+        return WasOptionSet(OPTION_ICU_DATA_PATH);
     }
 
     bool IsStartupTime() const
     {
-        return startupTime_.GetValue();
+        return startupTime_;
     }
 
     void SetStartupTime(bool value)
     {
-        startupTime_.SetValue(value);
+        startupTime_ = value;
     }
 
     bool WasSetStartupTime() const
     {
-        return startupTime_.WasSet();
+        return WasOptionSet(OPTION_STARTUP_TIME);
     }
 
     bool AssertTypes() const
     {
-        return assertTypes_.GetValue();
+        return assertTypes_;
     }
 
     void SetAssertTypes(bool value)
     {
-        assertTypes_.SetValue(value);
+        assertTypes_ = value;
     }
 
     bool PrintAnyTypes() const
     {
-        return printAnyTypes_.GetValue();
+        return printAnyTypes_;
     }
 
     void SetPrintAnyTypes(bool value)
     {
-        printAnyTypes_.SetValue(value);
+        printAnyTypes_ = value;
+    }
+
+    void SetBuiltinsDTS(std::string value)
+    {
+        builtinsDTS_ = std::move(value);
     }
 
     bool WasSetBuiltinsDTS() const
     {
-        return builtinsDTS_.WasSet();
+        return WasOptionSet(OPTION_BUILTINS_DTS);
     }
 
     std::string GetBuiltinsDTS() const
     {
-        return builtinsDTS_.GetValue();
+        return builtinsDTS_;
     }
 
     void SetEnableByteCodeTrace(bool value)
     {
-        enablebcTrace_.SetValue(value);
+        enablebcTrace_ = value;
     }
 
     bool IsEnableByteCodeTrace() const
     {
-        return enablebcTrace_.GetValue();
+        return enablebcTrace_;
     }
 
     bool WasSetEnableByteCodeTrace() const
     {
-        return enablebcTrace_.WasSet();
+        return WasOptionSet(OPTION_ENABLE_BC_TRACE);
     }
 
-    std::string GetLogLevel([[maybe_unused]] std::string_view lang = "") const
+    std::string GetLogLevel() const
     {
-        return logLevel_.GetValue();
+        return logLevel_;
     }
 
     void SetLogLevel(std::string value)
     {
-        logLevel_.SetValue(std::move(value));
+        logLevel_ = std::move(value);
     }
 
-    bool WasSetLogLevel([[maybe_unused]] std::string_view lang = "") const
+    bool WasSetLogLevel() const
     {
-        return logLevel_.WasSet();
+        return WasOptionSet(OPTION_LOG_LEVEL);
     }
 
-    arg_list_t GetLogComponents([[maybe_unused]] std::string_view lang = "") const
+    arg_list_t GetLogComponents() const
     {
-        return logComponents_.GetValue();
+        return logComponents_;
     }
 
     void SetLogComponents(arg_list_t value)
     {
-        logComponents_.SetValue(std::move(value));
+        logComponents_ = std::move(value);
     }
 
-    bool WasSetLogComponents([[maybe_unused]] std::string_view lang = "") const
+    bool WasSetLogComponents() const
     {
-        return logComponents_.WasSet();
+        return WasOptionSet(OPTION_LOG_COMPONENTS);
     }
 
-    arg_list_t GetLogDebug([[maybe_unused]] std::string_view lang = "") const
+    arg_list_t GetLogDebug() const
     {
-        return logDebug_.GetValue();
+        return logDebug_;
     }
 
     void SetLogDebug(arg_list_t value)
     {
-        logDebug_.SetValue(std::move(value));
+        logDebug_ = std::move(value);
     }
 
-    bool WasSetLogDebug([[maybe_unused]] std::string_view lang = "") const
+    bool WasSetLogDebug() const
     {
-        return logDebug_.WasSet();
+        return WasOptionSet(OPTION_LOG_DEBUG);
     }
 
-    arg_list_t GetLogInfo([[maybe_unused]] std::string_view lang = "") const
+    arg_list_t GetLogInfo() const
     {
-        return logInfo_.GetValue();
+        return logInfo_;
     }
 
     void SetLogInfo(arg_list_t value)
     {
-        logInfo_.SetValue(std::move(value));
+        logInfo_ = std::move(value);
     }
 
-    bool WasSetLogInfo([[maybe_unused]] std::string_view lang = "") const
+    bool WasSetLogInfo() const
     {
-        return logInfo_.WasSet();
+        return WasOptionSet(OPTION_LOG_INFO);
     }
 
-    arg_list_t GetLogWarning([[maybe_unused]] std::string_view lang = "") const
+    arg_list_t GetLogWarning() const
     {
-        return logWarning_.GetValue();
+        return logWarning_;
     }
 
     void SetLogWarning(arg_list_t value)
     {
-        logWarning_.SetValue(std::move(value));
+        logWarning_ = std::move(value);
     }
 
-    bool WasSetLogWarning([[maybe_unused]] std::string_view lang = "") const
+    bool WasSetLogWarning() const
     {
-        return logWarning_.WasSet();
+        return WasOptionSet(OPTION_LOG_WARNING);
     }
 
-    arg_list_t GetLogError([[maybe_unused]] std::string_view lang = "") const
+    arg_list_t GetLogError() const
     {
-        return logError_.GetValue();
+        return logError_;
     }
 
     void SetLogError(arg_list_t value)
     {
-        logError_.SetValue(std::move(value));
+        logError_ = std::move(value);
     }
 
-    bool WasSetLogError([[maybe_unused]] std::string_view lang = "") const
+    bool WasSetLogError() const
     {
-        return logError_.WasSet();
+        return WasOptionSet(OPTION_LOG_ERROR);
     }
 
-    arg_list_t GetLogFatal([[maybe_unused]] std::string_view lang = "") const
+    arg_list_t GetLogFatal() const
     {
-        return logFatal_.GetValue();
+        return logFatal_;
     }
 
     void SetLogFatal(arg_list_t value)
     {
-        logFatal_.SetValue(std::move(value));
+        logFatal_ = std::move(value);
     }
 
-    bool WasSetLogFatal([[maybe_unused]] std::string_view lang = "") const
+    bool WasSetLogFatal() const
     {
-        return logFatal_.WasSet();
+        return WasOptionSet(OPTION_LOG_FATAL);
     }
 
     size_t GetMaxAotMethodSize() const
     {
-        return maxAotMethodSize_.GetValue();
+        return maxAotMethodSize_;
+    }
+
+    void SetMaxAotMethodSize(uint32_t value)
+    {
+        maxAotMethodSize_ = value;
     }
 
     std::string GetAbcListFile() const
     {
-        return abcFilelist_.GetValue();
+        return abcFilelist_;
     }
 
     void SetAbcListFile(std::string value)
     {
-        abcFilelist_.SetValue(std::move(value));
+        abcFilelist_ = std::move(value);
     }
 
     bool WasSetAbcListFile() const
     {
-        return abcFilelist_.WasSet();
+        return WasOptionSet(OPTION_ABC_FILES_LIST);
     }
 
     std::string GetEntryPoint() const
     {
-        return entryPoint_.GetValue();
+        return entryPoint_;
     }
 
     void SetEntryPoint(std::string value)
     {
-        entryPoint_.SetValue(std::move(value));
+        entryPoint_ = std::move(value);
     }
 
     bool WasSetEntryPoint() const
     {
-        return entryPoint_.WasSet();
+        return WasOptionSet(OPTION_ENTRY_POINT);
+    }
+
+    bool GetMergeAbc() const
+    {
+        return mergeAbc_;
+    }
+
+    void SetMergeAbc(bool value)
+    {
+        mergeAbc_ = value;
     }
 
     void ParseAbcListFile(std::vector<std::string> &moduleList) const
     {
-        std::ifstream moduleFile(abcFilelist_.GetValue());
+        std::ifstream moduleFile(abcFilelist_);
         if (moduleFile.is_open()) {
             char moduleName[FILENAME_MAX];
             while (!moduleFile.eof()) {
@@ -687,131 +828,79 @@ public:
 
     void SetEnableTypeLowering(bool value)
     {
-        enableTypeLowering_.SetValue(value);
+        enableTypeLowering_ = value;
     }
 
     bool IsEnableTypeLowering() const
     {
-        return enableTypeLowering_.GetValue();
+        return enableTypeLowering_;
     }
 
+    void WasSet(int opt)
+    {
+        wasSet_ |= 1ULL << static_cast<uint64_t>(opt);
+    }
 private:
-    PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
-    PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
-        R"(Enable cpuprofiler to sample call stack and output to json file. Default: false)"};
-    PandArg<std::string> stubFile_ {"stub-file",
-        R"(stub.an)",
-        R"(Path of file includes common stubs module compiled by stub compiler. Default: "stub.an")"};
-    PandArg<bool> enableForceGc_ {"enable-force-gc", true, R"(enable force gc when allocating object)"};
-    PandArg<bool> forceFullGc_ {"force-full-gc",
-        true,
-        R"(if true trigger full gc, else trigger semi and old gc)"};
-    PandArg<int> arkProperties_ {"ark-properties", GetDefaultProperties(), R"(set ark properties)"};
-    PandArg<uint32_t> gcThreadNum_ {"gcThreadNum", 7, R"(set gcThreadNum. Default: 7)"};
-    PandArg<uint32_t> longPauseTime_ {"longPauseTime", 40, R"(set longPauseTime. Default: 40ms)"};
-    PandArg<std::string> aotOutputFile_ {"aot-file",
-        R"(aot_file)",
-        R"(Path (file suffix not needed) to AOT output file. Default: "aot_file")"};
-    PandArg<std::string> targetTriple_ {"target-triple", R"(x86_64-unknown-linux-gnu)",
-        R"(target triple for aot compiler or stub compiler.
-        Possible values: ["x86_64-unknown-linux-gnu", "arm-unknown-linux-gnu", "aarch64-unknown-linux-gnu"].
-        Default: "x86_64-unknown-linux-gnu")"};
-    PandArg<uint32_t> asmOptLevel_ {"opt-level", 3,
-        R"(Optimization level configuration on llvm back end. Default: "3")"};
-    PandArg<uint32_t> relocationMode_ {"reloc-mode", 2,
-        R"(Relocation configuration on llvm back end. Default: "2")"};
-    PandArg<uint32_t> maxNonmovableSpaceCapacity_ {"maxNonmovableSpaceCapacity",
-        4_MB,
-        R"(set max nonmovable space capacity)"};
-    PandArg<bool> enableAsmInterpreter_ {"asm-interpreter", true,
-        R"(Enable asm interpreter. Default: true)"};
-    PandArg<std::string> asmOpcodeDisableRange_ {"asm-opcode-disable-range",
-        "",
-        R"(Opcode range when asm interpreter is enabled.)"};
+    static bool StartsWith(const std::string &haystack, const std::string &needle)
+    {
+        return std::equal(needle.begin(), needle.end(), haystack.begin());
+    }
+
+    bool WasOptionSet(int option) const
+    {
+        return ((1ULL << static_cast<uint64_t>(option)) & wasSet_) != 0;
+    }
+
+    bool ParseBoolParam(const std::string &option, bool* argBool);
+    bool ParseIntParam(const std::string &option, int* argInt);
+    bool ParseUint32Param(const std::string &option, uint32_t *argUInt32);
+    bool ParseUint64Param(const std::string &option, uint64_t *argUInt64);
+    void ParseListArgParam(const std::string &option, arg_list_t *argListStr, std::string delimiter);
+
+    bool enableArkTools_ {false};
+    bool enableCpuprofiler_ {false};
+    std::string stubFile_ {"stub.an"};
+    bool enableForceGc_ {true};
+    bool forceFullGc_ {true};
+    int arkProperties_ = GetDefaultProperties();
+    uint32_t gcThreadNum_ {7}; // 7: default thread num
+    uint32_t longPauseTime_ {40}; // 40: default pause time
+    std::string aotOutputFile_ {"aot-file"};
+    std::string targetTriple_ {"x86_64-unknown-linux-gnu"};
+    uint32_t asmOptLevel_ {3}; // 3: default opt level
+    uint32_t relocationMode_ {2}; // 2: default relocation mode
+    uint32_t maxNonmovableSpaceCapacity_ {4_MB};
+    bool enableAsmInterpreter_ {true};
+    std::string asmOpcodeDisableRange_ {""};
     AsmInterParsedOption asmInterParsedOption_;
-    PandArg<uint64_t> serializerBufferSizeLimit_ {"serializer-buffer-size-limit", 2_GB,
-        R"(Max serializer buffer size used by the VM. Default: 2GB)"};
-    PandArg<uint32_t> heapSizeLimit_ {"heap-size-limit", 512_MB,
-        R"(Max heap size. Default: 512MB)"};
-    PandArg<bool> enableIC_ {"enable-ic", true, R"(switch of inline cache. Default: true)"};
-    PandArg<std::string> snapshotFile_ {"snapshot-file", R"(/system/etc/snapshot)",
-        R"(snapshot file. Default: "/system/etc/snapshot")"};
-    PandArg<std::string> frameworkAbcFile_ {"framework-abc-file", R"(strip.native.min.abc)",
-        R"(snapshot file. Default: "strip.native.min.abc")"};
-    PandArg<std::string> icuDataPath_ {"icu-data-path", R"(default)",
-        R"(Path to generated icu data file. Default: "default")"};
-    PandArg<bool> startupTime_ {"startup-time", false, R"(Print the start time of command execution. Default: false)"};
-    PandArg<std::string> compilerLogOpt_ {"compiler-log",
-        R"(none)",
-        R"(log Option For aot compiler and stub compiler,
-        "none": no log,
-        "allllircirasm or all012": print llIR file, CIR log and asm log for all methods,
-        "allcir or all0" : print cir info for all methods,
-        "allllir or all1" : print llir info for all methods,
-        "allasm or all2" : print asm log for all methods,
-        "alltype or all3" : print type log for all methods,
-        "cerllircirasm or cer0112": print llIR file, CIR log and asm log for the method in 'compiler-log-methos',
-        "cercir or cer0": print cir info for certain method illustrated in 'compiler-log-methods',
-        "cerllir or cer1": print llir info for certain method illustrated in 'compiler-log-methods',
-        "cerasm or cer2": print asm log for certain method illustrated in 'compiler-log-methods',
-        "certype or cer3": print type log for certain method illustrated in 'compiler-log-methods',
-        Default: "none")"};
-    PandArg<std::string> compilerLogMethods_ {"compiler-log-methods",
-        R"(none)",
-        R"(specific method list for compiler log output, only used when compiler-log)"};
-    PandArg<bool> enableRuntimeStat_ {"enable-runtime-stat", false,
-        R"(enable statistics of runtime state. Default: false)"};
-    PandArg<bool> assertTypes_ {"assert-types", false,
-        R"(Enable type assertion for type inference tests. Default: false)"};
-    PandArg<bool> printAnyTypes_ {"print-any-types", false,
-        R"(Enable TypeFilter to print any types after type inference. Default: false)"};
-    PandArg<bool> isWorker_ {"IsWorker", false,
-        R"(whether is worker vm)"};
-    PandArg<std::string> builtinsDTS_ {"builtins-dts",
-        "",
-        R"(builtins.d.abc file path for AOT.)"};
-    PandArg<bool> enablebcTrace_ {"enable-bytecode-trace", false,
-        R"(enable tracing bytecode for aot runtime. Default: false)"};
-    PandArg<std::string> logLevel_ {"log-level", R"(error)", R"(Log level. Possible values: ["debug", "info", "warning",
-        "error", "fatal"]. Default: "error")"};
-    PandArg<arg_list_t> logDebug_ {"log-debug", {R"(all)"},
-        R"(Enable debug or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
-    PandArg<arg_list_t> logInfo_ {"log-info", {R"(all)"},
-        R"(Enable info or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
-    PandArg<arg_list_t> logWarning_ {"log-warning", {R"(all)"},
-        R"(Enable warning or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot","events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
-    PandArg<arg_list_t> logError_ {"log-error", {R"(all)"},
-        R"(Enable error or above logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
-    PandArg<arg_list_t> logFatal_ {"log-fatal", {R"(all)"},
-        R"(Enable fatal logs from specified components. Possible values: ["all", "alloc", "mm-obj-events",
-        "classlinker", "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler",
-        "pandafile", "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue",
-        "jvmti", "aot", "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
-    PandArg<arg_list_t> logComponents_ {"log-components", {R"(all)"},
-        R"(Enable logs from specified components. Possible values: ["all", "alloc", "mm-obj-events", "classlinker",
-        "common", "core", "gc", "gc_trigger", "reference_processor", "interpreter", "compiler", "pandafile",
-        "memorypool", "runtime", "trace", "debugger", "interop", "jni", "verifier", "compilation_queue", "jvmti", "aot",
-        "events", "ecmascript", "scheduler"]. Default: ["all"])", ":"};
-    PandArg<uint32_t> maxAotMethodSize_ {"maxAotMethodSize", 32_KB,
-        R"(enable aot to skip too large method. Default size: 32 KB)"};
-    PandArg<std::string> abcFilelist_ {"abc-list-file", R"(none)",
-        R"(abc's list file. )"};
-    PandArg<std::string> entryPoint_ {"entry-point", R"(_GLOBAL::func_main_0)",
-        R"(full name of entrypoint function or method. )"};
-    PandArg<bool> enableTypeLowering_ {"enable-type-lowering", true,
-        R"(enable TSTypeLowering and TypeLowering for aot runtime. Default:true)"};
+    uint64_t serializerBufferSizeLimit_ {2_GB};
+    uint32_t heapSizeLimit_ {512_MB};
+    bool enableIC_ {true};
+    std::string snapshotFile_ {"/system/etc/snapshot"};
+    std::string frameworkAbcFile_ {"strip.native.min.abc"};
+    std::string icuDataPath_ {"default"};
+    bool startupTime_ {false};
+    std::string compilerLogOpt_ {"none"};
+    std::string methodsListForLog_ {"none"};
+    bool enableRuntimeStat_ {false};
+    bool assertTypes_ {false};
+    bool printAnyTypes_ {false};
+    bool isWorker_ {false};
+    std::string builtinsDTS_ {""};
+    bool enablebcTrace_ {false};
+    std::string logLevel_ {"error"};
+    arg_list_t logDebug_ {{"all"}};
+    arg_list_t logInfo_ {{"all"}};
+    arg_list_t logWarning_ {{"all"}};
+    arg_list_t logError_ {{"all"}};
+    arg_list_t logFatal_ {{"all"}};
+    arg_list_t logComponents_ {{"all"}};
+    uint32_t maxAotMethodSize_ {32_KB};
+    std::string abcFilelist_ {"none"};
+    std::string entryPoint_ {"_GLOBAL::func_main_0"};
+    bool mergeAbc_ {false};
+    bool enableTypeLowering_ {true};
+    uint64_t wasSet_ {0};
 };
 }  // namespace panda::ecmascript
 

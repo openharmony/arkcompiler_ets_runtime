@@ -18,6 +18,7 @@
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <vector>
 
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
@@ -25,46 +26,42 @@
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
-#include "libpandabase/utils/pandargs.h"
-
 namespace panda::ecmascript::kungfu {
+std::string GetHelper()
+{
+    std::string str;
+    str.append(COMMON_HELP_HEAD_MSG);
+    str.append(HELP_OPTION_MSG);
+    str.append(HELP_TAIL_MSG);
+    return str;
+}
 int Main(const int argc, const char **argv)
 {
     auto startTime =
             std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch())
                     .count();
-    Span<const char *> sp(argv, argc);
-    JSRuntimeOptions runtimeOptions;
+    std::string entrypoint = "init::func_main_0";
 
-    panda::PandArg<bool> help("help", false, "Print this message and exit");
-    panda::PandArg<bool> options("options", false, "Print options");
-    // tail arguments
-    panda::PandArg<arg_list_t> files("files", {""}, "path to pandafiles", ":");
-    panda::PandArg<std::string> entrypoint("entrypoint", "init::func_main_0",
-                                           "full name of entrypoint function or method");
-    panda::PandArgParser paParser;
-
-    runtimeOptions.AddOptions(&paParser);
-
-    paParser.Add(&help);
-    paParser.Add(&options);
-    paParser.PushBackTail(&files);
-    paParser.PushBackTail(&entrypoint);
-    paParser.EnableTail();
-    paParser.EnableRemainder();
-
-    if (!paParser.Parse(argc, argv) || files.GetValue().empty() || entrypoint.GetValue().empty() || help.GetValue()) {
-        std::cerr << paParser.GetErrorString() << std::endl;
-        std::cerr << "Usage: "
-                  << "panda"
-                  << " [OPTIONS] [file1:file2:file3] [entrypoint] -- [arguments]" << std::endl;
-        std::cerr << std::endl;
-        std::cerr << "optional arguments:" << std::endl;
-        std::cerr << paParser.GetHelpString() << std::endl;
-        return 1;
+    int newArgc = argc;
+    if (argc < 1) { // 1: arguments
+        std::cerr << GetHelper();
+        return -1;
     }
 
-    arg_list_t arguments = paParser.GetRemainder();
+    std::string files = argv[argc - 1];
+    if (!base::StringHelper::EndsWith(files, ".abc")) {
+        std::cerr << "The last argument must be abc file" << std::endl;
+        std::cerr << GetHelper();
+        return 1;
+    }
+    newArgc--;
+
+    JSRuntimeOptions runtimeOptions;
+    bool retOpt = runtimeOptions.ParseCommand(newArgc, argv);
+    if (!retOpt) {
+        std::cerr << GetHelper();
+        return 1;
+    }
 
     if (runtimeOptions.IsStartupTime()) {
         LOG_COMPILER(DEBUG) << "Startup start time: " << startTime;
@@ -81,8 +78,7 @@ int Main(const int argc, const char **argv)
 
     {
         LocalScope scope(vm);
-        std::string entry = entrypoint.GetValue();
-        arg_list_t pandaFileNames = files.GetValue();
+        arg_list_t pandaFileNames = base::StringHelper::SplitString(files, ":");
         runtimeOptions.ParseAbcListFile(pandaFileNames);
         std::string triple = runtimeOptions.GetTargetTriple();
         std::string outputFileName = runtimeOptions.GetAOTOutputFile();
@@ -100,7 +96,10 @@ int Main(const int argc, const char **argv)
         CompilerLog log(logOption, isEnableBcTrace);
         AotMethodLogList logList(logMethodsList);
         AOTFileGenerator generator(&log, &logList, vm, pandaFileNames.size());
-        PassManager passManager(vm, entry, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize,
+        if (runtimeOptions.WasSetEntryPoint()) {
+            entrypoint = runtimeOptions.GetEntryPoint();
+        }
+        PassManager passManager(vm, entrypoint, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize,
                                 isEnableTypeLowering);
         for (const auto &fileName : pandaFileNames) {
             LOG_COMPILER(INFO) << "AOT compile: " << fileName;
@@ -112,9 +111,9 @@ int Main(const int argc, const char **argv)
         generator.SaveAOTFile(outputFileName + ".an");
         generator.SaveSnapshotFile();
     }
+
     LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");
     JSNApi::DestroyJSVM(vm);
-    paParser.DisableTail();
     return ret ? 0 : -1;
 }
 } // namespace panda::ecmascript::kungfu
