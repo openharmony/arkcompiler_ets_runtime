@@ -875,6 +875,21 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
                                         static_cast<uint16_t>(literalId.GetInt())).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CreateClassWithIHClass)
+{
+    RUNTIME_STUBS_HEADER(CreateClassWithIHClass);
+    JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
+    JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
+    JSHandle<JSHClass> ihclass = GetHArg<JSHClass>(argv, argc, 5);  // 5: means the fifth parameter
+    return RuntimeCreateClassWithIHClass(thread, base, lexenv, constpool,
+                                         static_cast<uint16_t>(methodId.GetInt()),
+                                         static_cast<uint16_t>(literalId.GetInt()),
+                                         ihclass).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
 {
     RUNTIME_STUBS_HEADER(SetClassConstructorLength);
@@ -1805,12 +1820,6 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     std::string result = MessageString::GetMessageString(fmtMessageId.GetInt());
     std::cerr << "aot slowpath " << result << std::endl;
     return JSTaggedValue::Undefined().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(OptNewObjWithIHClass)
-{
-    RUNTIME_STUBS_HEADER(OptNewObjWithIHClass);
-    return RuntimeOptNewObjWithIHClass(thread, argv, argc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(OptLdLexVar)

@@ -139,10 +139,7 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     JSHandle<ConstantPool> constpool;
     JSTaggedValue constpoolValue = vm->FindConstpool(jsPandaFile, 0);
     if (constpoolValue.IsHole()) {
-        uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
-        constpool = factory->NewConstantPool(constpoolIndex);
-        constpool->SetJSPandaFile(jsPandaFile);
-        PandaFileTranslator::ParseConstPoolWithMerge(vm, jsPandaFile, constpool);
+        constpool = PandaFileTranslator::ParseMergedConstPool(vm, jsPandaFile);
         int32_t index = 0;
         int32_t total = 1;
         vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);

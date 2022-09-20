@@ -168,6 +168,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(ResolveClass)                       \
     V(CloneClassFromTemplate)             \
     V(CreateClassWithBuffer)              \
+    V(CreateClassWithIHClass)             \
     V(SetClassConstructorLength)          \
     V(LoadICByName)                       \
     V(StoreICByName)                      \
@@ -251,7 +252,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(OptNewObjRange)                     \
     V(GetTypeArrayPropertyByIndex)        \
     V(SetTypeArrayPropertyByIndex)        \
-    V(OptNewObjWithIHClass)               \
     V(OptPopLexicalEnv)                   \
     V(OptLdLexVar)                        \
     V(OptStLexVar)                        \
@@ -409,6 +409,12 @@ private:
                                                              const JSHandle<JSTaggedValue> &lexenv,
                                                              const JSHandle<JSTaggedValue> &constpool,
                                                              uint16_t methodId, uint16_t literalId);
+    static inline JSTaggedValue RuntimeCreateClassWithIHClass(JSThread *thread,
+                                                              const JSHandle<JSTaggedValue> &base,
+                                                              const JSHandle<JSTaggedValue> &lexenv,
+                                                              const JSHandle<JSTaggedValue> &constpool,
+                                                              const uint16_t methodId, uint16_t literalId,
+                                                              const JSHandle<JSHClass> &ihclass);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base);
@@ -575,7 +581,6 @@ private:
     static inline JSTaggedValue RuntimeOptConstructGeneric(JSThread *thread, JSHandle<JSFunction> ctor,
                                                            JSHandle<JSTaggedValue> newTgt,
                                                            JSHandle<JSTaggedValue> preArgs, JSHandle<TaggedArray> args);
-    static inline JSTaggedValue RuntimeOptNewObjWithIHClass(JSThread *thread, uintptr_t argv, uint32_t argc);
     static inline JSTaggedValue RuntimeOptGetLexEnv(JSThread *thread);
     static inline void RuntimeOptSetLexEnv(JSThread *thread, JSTaggedValue lexEnv);
     static inline JSTaggedValue RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func);

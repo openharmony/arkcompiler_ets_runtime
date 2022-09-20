@@ -37,17 +37,9 @@
 namespace panda::ecmascript {
 void Snapshot::Serialize(const CString &fileName)
 {
-    JSThread *thread = vm_->GetJSThread();
     TSManager *tsManager = vm_->GetTSManager();
-    CVector<JSTaggedType> staticHClassTable = tsManager->GetStaticHClassTable();
-    uint32_t staticHClassTableLen = staticHClassTable.size();
-    JSHandle<TaggedArray> root = vm_->GetFactory()->NewTaggedArray(staticHClassTableLen + 1);
-    
     tsManager->SortConstantPoolInfos();
-    root->Set(thread, 0, tsManager->GetConstantPoolInfo());
-    for (uint32_t i = 0; i < staticHClassTableLen; ++i) {
-        root->Set(thread, i + 1, JSTaggedValue(staticHClassTable[i]));
-    }
+    JSHandle<TaggedArray> root = tsManager->GetConstantPoolInfos();
     Serialize(root.GetTaggedValue().GetTaggedObject(), nullptr, fileName);
 }
 

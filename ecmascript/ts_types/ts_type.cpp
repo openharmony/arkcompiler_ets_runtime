@@ -24,16 +24,29 @@
 #include "ecmascript/ts_types/ts_type_table.h"
 
 namespace panda::ecmascript {
-JSHClass *TSObjectType::GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectType> objectType)
+JSHClass *TSObjectType::GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectType> objectType, TSObjectTypeKind kind)
 {
     JSTaggedValue mayBeHClass = objectType->GetHClass();
     if (mayBeHClass.IsJSHClass()) {
         return JSHClass::Cast(mayBeHClass.GetTaggedObject());
     }
     JSHandle<TSObjLayoutInfo> propTypeInfo(thread, objectType->GetObjLayoutInfo());
-    JSHClass *hclass = objectType->CreateHClassByProps(thread, propTypeInfo);
-    objectType->SetHClass(thread, JSTaggedValue(hclass));
+    JSHClass *hclass = nullptr;
 
+    switch (kind) {
+        case TSObjectTypeKind::INSTANCE: {
+            hclass = objectType->CreateHClassByProps(thread, propTypeInfo);
+            break;
+        }
+        case TSObjectTypeKind::PROTOTYPE: {
+            hclass = objectType->CreatePrototypeHClassByProps(thread, propTypeInfo);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+
+    objectType->SetHClass(thread, JSTaggedValue(hclass));
     return hclass;
 }
 
@@ -42,27 +55,80 @@ JSHClass *TSObjectType::CreateHClassByProps(JSThread *thread, JSHandle<TSObjLayo
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     uint32_t numOfProps = propType->NumberOfElements();
-    if (numOfProps > PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES) {
-        LOG_ECMA(ERROR) << "TSobject type has too many keys and cannot create hclass";
-        UNREACHABLE();
+    JSHandle<JSHClass> hclass;
+    if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
+        JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
+        for (uint32_t index = 0; index < numOfProps; ++index) {
+            JSTaggedValue tsPropKey = propType->GetKey(index);
+            key.Update(tsPropKey);
+            ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
+            PropertyAttributes attributes = PropertyAttributes::Default();
+            attributes.SetIsInlinedProps(true);
+            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetOffset(index);
+            layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
+        }
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, numOfProps);
+        hclass->SetLayout(thread, layout);
+        hclass->SetNumberOfProps(numOfProps);
+    } else {
+        // dictionary mode
+        hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, 0);  // without in-obj
+        hclass->SetIsDictionaryMode(true);
+        hclass->SetNumberOfProps(0);
     }
 
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
-    for (uint32_t index = 0; index < numOfProps; ++index) {
-        JSTaggedValue tsPropKey = propType->GetKey(index);
-        key.Update(tsPropKey);
-        ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
-        PropertyAttributes attributes = PropertyAttributes::Default();
-        attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
-        attributes.SetOffset(index);
-        layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
-    }
-    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, numOfProps);
-    hclass->SetLayout(thread, layout);
-    hclass->SetNumberOfProps(numOfProps);
     hclass->SetAOT(true);
+
+    return *hclass;
+}
+
+JSHClass *TSObjectType::CreatePrototypeHClassByProps(JSThread *thread, JSHandle<TSObjLayoutInfo> propType) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+
+    uint32_t numOfProps = propType->NumberOfElements();
+    JSHandle<JSHClass> hclass;
+    if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
+        JSHandle<JSTaggedValue> ctor = globalConst->GetHandledConstructorString();
+        CVector<JSHandle<JSTaggedValue>> prototypeKeys {ctor};
+        for (uint32_t index = 0; index < numOfProps; ++index) {
+            auto key = propType->GetKey(index);
+            if (!JSTaggedValue::SameValue(key, ctor.GetTaggedValue())) {
+                prototypeKeys.emplace_back(JSHandle<JSTaggedValue>(thread, key));
+            }
+        }
+
+        uint32_t keysLen = prototypeKeys.size();
+        JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(keysLen);
+
+        for (uint32_t index = 0; index < keysLen; ++index) {
+            key.Update(prototypeKeys[index]);
+            ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
+            PropertyAttributes attributes = PropertyAttributes::Default(true, false, true);
+            attributes.SetIsInlinedProps(true);
+            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetOffset(index);
+            layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
+        }
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, keysLen);
+        hclass->SetLayout(thread, layout);
+        hclass->SetNumberOfProps(keysLen);
+    } else {
+        // dictionary mode
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, 0);  // without in-obj
+        hclass->SetIsDictionaryMode(true);
+        hclass->SetNumberOfProps(0);
+    }
+
+    hclass->SetAOT(true);
+    hclass->SetClassPrototype(true);
+    hclass->SetIsPrototype(true);
 
     return *hclass;
 }
