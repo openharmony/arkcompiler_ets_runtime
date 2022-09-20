@@ -30,9 +30,15 @@ namespace panda::ecmascript::tooling {
 DispatchRequest::DispatchRequest(const std::string &message)
 {
     std::unique_ptr<PtJson> json = PtJson::Parse(message);
-    if (json == nullptr || !json->IsObject()) {
+    if (json == nullptr) {
         code_ = RequestCode::JSON_PARSE_ERROR;
         LOG_DEBUGGER(ERROR) << "json parse error";
+        return;
+    }
+    if (!json->IsObject()) {
+        code_ = RequestCode::PARAMS_FORMAT_ERROR;
+        LOG_DEBUGGER(ERROR) << "json parse format error";
+        json->ReleaseRoot();
         return;
     }
 

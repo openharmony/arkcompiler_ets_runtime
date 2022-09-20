@@ -17,8 +17,8 @@
 
 #include <thread>
 
-#include "ecmascript/tooling/test/utils/testcases/test_list.h"
 #include "ecmascript/tooling/test/utils/test_hooks.h"
+#include "ecmascript/tooling/test/utils/test_list.h"
 
 namespace panda::ecmascript::tooling::test {
 static std::thread g_debuggerThread;
