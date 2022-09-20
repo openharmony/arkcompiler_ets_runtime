@@ -31,7 +31,6 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         LOG_COMPILER(ERROR) << "Cannot execute panda file '" << fileName << "'";
         return false;
     }
-
     auto bcInfoCollector = BytecodeInfoCollector(jsPandaFile, entry_);
     jsPandaFile = ResolveModuleFile(jsPandaFile, fileName);
     auto constantPool = CreateConstPool(jsPandaFile);
@@ -51,7 +50,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, constantPool,
         &cmpCfg, tsManager, &lexEnvManager, &skippedMethodNum]
         (uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
-        auto method = jsPandaFile->FindMethodLiteral(methodOffset);
+            auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
         if (methodPCInfo.methodsSize > maxAotMethodSize_ &&
             methodOffset != jsPandaFile->GetMainMethodIndex()) {

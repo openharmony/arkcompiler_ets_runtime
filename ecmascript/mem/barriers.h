@@ -51,7 +51,7 @@ public:
         return *addr;
     }
 
-    static void Update(uintptr_t slotAddr, Region *objectRegion, TaggedObject *value, Region *valueRegion);
+    static void PUBLIC_API Update(uintptr_t slotAddr, Region *objectRegion, TaggedObject *value, Region *valueRegion);
 };
 }  // namespace panda::ecmascript
 

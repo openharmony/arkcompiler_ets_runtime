@@ -181,6 +181,16 @@ namespace panda::ecmascript::kungfu {
     V(MOV_V4_V4) \
     V(JNEZ_IMM8) \
     V(JNEZ_IMM16) \
+    V(CALLARGS2_IMM8_V8_V8) \
+    V(CALLTHIS1_IMM8_V8_V8) \
+    V(CALLARG1_IMM8_V8)     \
+    V(DEPRECATED_CALLARG1_PREF_V8_V8)   \
+    V(DEPRECATED_CALLARG0_PREF_V8)      \
+    V(CALLRANGE_IMM8_IMM8_V8)           \
+    V(WIDE_CALLTHISRANGE_PREF_IMM16_V8) \
+    V(CALLTHISRANGE_IMM8_IMM8_V8)       \
+    V(CALLTHIS2_IMM8_V8_V8_V8)          \
+    V(CALLTHIS0_IMM8_V8)                \
 
 enum EcmaBytecode {
 #define BYTECODE_ENUM(name) name,

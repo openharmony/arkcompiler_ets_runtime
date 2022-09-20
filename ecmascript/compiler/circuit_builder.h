@@ -315,6 +315,7 @@ public:
     inline GateRef ChangeTaggedPointerToInt64(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
+    inline GateRef Int32ToTaggedInt(GateRef x);
     // bit operation
     inline GateRef IsSpecial(GateRef x, JSTaggedType type);
     inline GateRef TaggedIsInt(GateRef x);
@@ -349,6 +350,7 @@ public:
     inline GateRef TaggedFalse();
     inline GateRef SExtInt8ToInt64(GateRef x);
     inline GateRef SExtInt16ToInt64(GateRef x);
+    inline GateRef SExtInt16ToInt32(GateRef x);
     inline GateRef ChangeFloat64ToInt32(GateRef x);
     inline GateRef ChangeUInt32ToFloat64(GateRef x);
     inline GateRef ChangeInt32ToFloat64(GateRef x);
@@ -398,6 +400,7 @@ public:
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
+    GateRef GetHomeObjectFromFunction(GateRef function);
     GateRef FunctionIsResolved(GateRef function);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);

@@ -220,6 +220,9 @@ public:
         modulePackage_.emplace_back(Module(llvmModule, assembler));
         auto hash = jsPandaFile->GetFileUniqId();
         aotfileHashs_.emplace_back(hash);
+        CollectConstantPoolInfo(jsPandaFile, constantPool);
+        vm_->GetTSManager()->ClearIntermediateTable();
+    }
 
         // Process and clean caches in tsmanager that needs to be serialized
         vm_->GetTSManager()->CollectConstantPoolInfo(jsPandaFile);

@@ -18,6 +18,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
@@ -529,7 +530,7 @@ DEF_RUNTIME_STUBS(NewObjApply)
 {
     RUNTIME_STUBS_HEADER(NewObjApply);
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     return RuntimeNewObjApply(thread, func, array).GetRawData();
 }
 
@@ -734,6 +735,16 @@ DEF_RUNTIME_STUBS(LdObjByIndex)
     JSTaggedValue callGetter = GetArg(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue receiver = GetArg(argv, argc, 3);  // 3: means the third parameter
     return RuntimeLdObjByIndex(thread, obj, idx.GetInt(), callGetter.IsTrue(), receiver).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdObjByValue)
+{
+    RUNTIME_STUBS_HEADER(LdObjByValue);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> propKey = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue callGetter = GetArg(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue receiver = GetArg(argv, argc, 3);  // 3: means the third parameter
+    return RuntimeLdObjByValue(thread, obj, propKey, callGetter.IsTrue(), receiver).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StObjByIndex)
@@ -1874,8 +1885,8 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
 DEF_RUNTIME_STUBS(DebugAOTPrint)
 {
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
-    JSTaggedValue fmtMessageId = GetArg(argv, argc, 0);
-    std::string result = MessageString::GetMessageString(fmtMessageId.GetInt());
+    auto ecmaOpcode = GetArg(argv, argc, 0).GetInt();
+    std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
     std::cerr << "aot slowpath " << result << std::endl;
     return JSTaggedValue::Undefined().GetRawData();
 }

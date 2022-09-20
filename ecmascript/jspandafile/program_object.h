@@ -319,7 +319,7 @@ public:
         return val;
     }
 
-    static JSTaggedValue GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
+    static JSTaggedValue PUBLIC_API GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         auto val = taggedPool->Get(index);

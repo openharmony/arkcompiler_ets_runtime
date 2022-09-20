@@ -265,6 +265,31 @@ public:
         hclassCache_.clear();
     }
 
+    void PUBLIC_API SortConstantPoolInfos();
+
+    void AddStringIndex(uint32_t index)
+    {
+        if (stringIndexTable_.find(index) != stringIndexTable_.end()) {
+            return;
+        }
+        stringIndexTable_.insert(index);
+    }
+
+    void ClearIntermediateTable()
+    {
+        stringIndexTable_.clear();
+    }
+
+    std::set<uint32_t> getStringIndexTable()
+    {
+        return stringIndexTable_;
+    }
+
+    EcmaVM * GetEcmaVM() const
+    {
+        return vm_;
+    }
+
 #define IS_TSTYPEKIND_METHOD_LIST(V)              \
     V(Primitive, TSTypeKind::PRIMITIVE)           \
     V(Class, TSTypeKind::CLASS)                   \
@@ -380,6 +405,7 @@ private:
     std::set<uint32_t> stringIndexCache_ {};
     // store hclass of each abc which produced from static type info
     CVector<JSTaggedType> hclassCache_ {};
+    std::set<uint32_t> stringIndexTable_ {};
 };
 }  // namespace panda::ecmascript
 

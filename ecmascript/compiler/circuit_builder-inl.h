@@ -158,6 +158,11 @@ GateRef CircuitBuilder::SExtInt16ToInt64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
 }
 
+GateRef CircuitBuilder::SExtInt16ToInt32(GateRef x)
+{
+    return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+}
+
 GateRef CircuitBuilder::SExtInt8ToInt64(GateRef x)
 {
     return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
@@ -172,6 +177,12 @@ GateRef CircuitBuilder::Int32ToTaggedPtr(GateRef x)
 {
     GateRef val = SExtInt32ToInt64(x);
     return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
+}
+
+GateRef CircuitBuilder::Int32ToTaggedInt(GateRef x)
+{
+    GateRef val = SExtInt32ToInt64(x);
+    return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
 }
 
 // bit operation
