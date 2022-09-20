@@ -190,6 +190,7 @@ public:
     GateRef Int32NotEqual(GateRef x, GateRef y);
     GateRef Int64Equal(GateRef x, GateRef y);
     GateRef DoubleEqual(GateRef x, GateRef y);
+    GateRef DoubleNotEqual(GateRef x, GateRef y);
     GateRef Int64NotEqual(GateRef x, GateRef y);
     GateRef DoubleLessThan(GateRef x, GateRef y);
     GateRef DoubleLessThanOrEqual(GateRef x, GateRef y);

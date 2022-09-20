@@ -109,6 +109,11 @@ GateRef CircuitBuilder::DoubleEqual(GateRef x, GateRef y)
     return BinaryLogic(OpCode(OpCode::EQ), x, y);
 }
 
+GateRef CircuitBuilder::DoubleNotEqual(GateRef x, GateRef y)
+{
+    return BinaryLogic(OpCode(OpCode::NE), x, y);
+}
+
 GateRef CircuitBuilder::Int64Equal(GateRef x, GateRef y)
 {
     return BinaryLogic(OpCode(OpCode::EQ), x, y);
@@ -528,69 +533,18 @@ GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
 }
 
 // Number operator
-GateRef CircuitBuilder::NumberAdd(GateRef x, GateRef y)
+template<TypedBinOp Op>
+GateRef CircuitBuilder::NumberBinaryOp(GateRef x, GateRef y)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto numberAdd = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_ADD,
-                                         GateType::NumberType(), GateType::NumberType(),
-                                         {currentControl, currentDepend, x, y});
-    currentLabel->SetControl(numberAdd);
-    currentLabel->SetDepend(numberAdd);
-    return numberAdd;
-}
-
-GateRef CircuitBuilder::NumberSub(GateRef x, GateRef y)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto numberSub = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_SUB,
-                                         GateType::NumberType(), GateType::NumberType(),
-                                         {currentControl, currentDepend, x, y});
-    currentLabel->SetControl(numberSub);
-    currentLabel->SetDepend(numberSub);
-    return numberSub;
-}
-
-GateRef CircuitBuilder::NumberMul(GateRef x, GateRef y)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto numberMul = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_MUL,
-                                         GateType::NumberType(), GateType::NumberType(),
-                                         {currentControl, currentDepend, x, y});
-    currentLabel->SetControl(numberMul);
-    currentLabel->SetDepend(numberMul);
-    return numberMul;
-}
-
-GateRef CircuitBuilder::NumberLess(GateRef x, GateRef y)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto numberLess = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESS,
-                                          GateType::NumberType(), GateType::NumberType(),
-                                          {currentControl, currentDepend, x, y});
-    currentLabel->SetControl(numberLess);
-    currentLabel->SetDepend(numberLess);
-    return numberLess;
-}
-
-GateRef CircuitBuilder::NumberLessthanOrEq(GateRef x, GateRef y)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto numberLessEq = TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESSEQ,
-                                            GateType::NumberType(), GateType::NumberType(),
-                                            {currentControl, currentDepend, x, y});
-    currentLabel->SetControl(numberLessEq);
-    currentLabel->SetDepend(numberLessEq);
-    return numberLessEq;
+    auto numberBinaryOp = TypedBinaryOperator(MachineType::I64, Op,
+                                              GateType::NumberType(), GateType::NumberType(),
+                                              {currentControl, currentDepend, x, y});
+    currentLabel->SetControl(numberBinaryOp);
+    currentLabel->SetDepend(numberBinaryOp);
+    return numberBinaryOp;
 }
 
 GateRef CircuitBuilder::PrimitiveToNumber(GateRef x, VariableType type)
