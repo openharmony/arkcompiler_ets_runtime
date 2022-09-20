@@ -21,6 +21,7 @@
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <vector>
 
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
@@ -28,8 +29,6 @@
 #include "ecmascript/log.cpp"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "libpandabase/utils/pandargs.h"
-#include "libpandabase/utils/span.h"
 
 namespace panda::ecmascript {
 void BlockSignals()
@@ -49,6 +48,15 @@ void BlockSignals()
 #endif  // PANDA_TARGET_UNIX
 }
 
+std::string GetHelper()
+{
+    std::string str;
+    str.append(COMMON_HELP_HEAD_MSG);
+    str.append(HELP_OPTION_MSG);
+    str.append(HELP_TAIL_MSG);
+    return str;
+}
+
 int Main(const int argc, const char **argv)
 {
     auto startTime =
@@ -56,44 +64,26 @@ int Main(const int argc, const char **argv)
             .count();
 
     BlockSignals();
-    Span<const char *> sp(argv, argc);
-    JSRuntimeOptions runtimeOptions;
 
-    panda::PandArg<bool> help("help", false, "Print this message and exit");
-    panda::PandArg<bool> options("options", false, "Print compiler and runtime options");
-    // tail arguments
-#if defined(PANDA_TARGET_WINDOWS)
-    panda::PandArg<arg_list_t> files("files", {""}, "path to pandafiles", ";");
-#else
-    panda::PandArg<arg_list_t> files("files", {""}, "path to pandafiles", ":");
-#endif
-    panda::PandArg<std::string> entrypoint("entrypoint", "_GLOBAL::func_main_0",
-                                           "full name of entrypoint function or method");
-    panda::PandArg<bool> mergeAbc("merge-abc", false, "abc file is merge abc. Default: false");
-    panda::PandArgParser paParser;
+    if (argc < 1) { // 1: arguments
+        std::cerr << GetHelper();
+        return -1;
+    }
 
-    runtimeOptions.AddOptions(&paParser);
-
-    paParser.Add(&help);
-    paParser.Add(&options);
-    paParser.Add(&mergeAbc);
-    paParser.PushBackTail(&files);
-    paParser.PushBackTail(&entrypoint);
-    paParser.EnableTail();
-    paParser.EnableRemainder();
-
-    if (!paParser.Parse(argc, argv) || files.GetValue().empty() || entrypoint.GetValue().empty() || help.GetValue()) {
-        std::cerr << paParser.GetErrorString() << std::endl;
-        std::cerr << "Usage: "
-                  << "quick_fix"
-                  << " [OPTIONS] [file1:file2:file3] [entrypoint] -- [arguments]" << std::endl;
-        std::cerr << std::endl;
-        std::cerr << "optional arguments:" << std::endl;
-        std::cerr << paParser.GetHelpString() << std::endl;
+    int newArgc = argc;
+    std::string files = argv[argc - 1];
+    if (!base::StringHelper::EndsWith(files, ".abc")) {
+        std::cerr << "The last argument must be abc file" << std::endl;
+        std::cerr << GetHelper();
         return 1;
     }
 
-    arg_list_t arguments = paParser.GetRemainder();
+    JSRuntimeOptions runtimeOptions;
+    bool retOpt = runtimeOptions.ParseCommand(newArgc, argv);
+    if (retOpt == false) {
+        std::cerr << GetHelper();
+        return 1;
+    }
 
     if (runtimeOptions.IsStartupTime()) {
         std::cout << "\n"
@@ -109,9 +99,13 @@ int Main(const int argc, const char **argv)
     {
         std::cout << "QuickFix Test start!" << std::endl;
         LocalScope scope(vm);
-        std::string entry = entrypoint.GetValue();
+        std::string entry = runtimeOptions.GetEntryPoint();
 
-        arg_list_t fileNames = files.GetValue();
+#if defined(PANDA_TARGET_WINDOWS)
+        arg_list_t fileNames = base::StringHelper::SplitString(files, ";");
+#else
+        arg_list_t fileNames = base::StringHelper::SplitString(files, ":");
+#endif
         uint32_t len = fileNames.size();
         if (len < 4) {  // 4: four abc file
             std::cerr << "Must include base.abc, patch.abc, test1.abc, test2.abc absolute path" << std::endl;
@@ -124,7 +118,7 @@ int Main(const int argc, const char **argv)
 
         JSNApi::EnableUserUncaughtErrorHandler(vm);
 
-        bool isMergeAbc = mergeAbc.GetValue();
+        bool isMergeAbc = runtimeOptions.GetMergeAbc();
         if (isMergeAbc) {
             entry = JSPandaFile::ParseRecordName(baseFileName);
         }
@@ -178,7 +172,6 @@ int Main(const int argc, const char **argv)
     }
 
     JSNApi::DestroyJSVM(vm);
-    paParser.DisableTail();
     return ret ? 0 : -1;
 }
 }  // namespace panda::ecmascript

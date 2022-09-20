@@ -342,6 +342,34 @@ public:
 
         return result;
     }
+
+    static std::vector<std::string> SplitString(const std::string &str, const std::string &delimiter)
+    {
+        std::size_t strIndex = 0;
+        std::vector<std::string> value;
+        std::size_t pos = str.find_first_of(delimiter, strIndex);
+        while ((pos < str.size()) && (pos > strIndex)) {
+            std::string subStr = str.substr(strIndex, pos - strIndex);
+            value.push_back(std::move(subStr));
+            strIndex = pos;
+            strIndex = str.find_first_not_of(delimiter, strIndex);
+            pos = str.find_first_of(delimiter, strIndex);
+        }
+        if (pos > strIndex) {
+            std::string subStr = str.substr(strIndex, pos - strIndex);
+            value.push_back(std::move(subStr));
+        }
+        return value;
+    }
+
+    static bool EndsWith(const std::string &str, const std::string &suffix)
+    {
+        if (str.length() < suffix.length()) {
+            return false;
+        }
+        std::string subStr = str.substr(str.length() - suffix.length(), str.length());
+        return subStr == suffix;
+    }
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_STRING_HELP_H

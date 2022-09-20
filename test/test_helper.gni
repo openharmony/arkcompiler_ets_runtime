@@ -116,12 +116,14 @@ template("host_moduletest_action") {
       _extra_modules_ += [ "$target_out_dir/${module}.abc" ]
     }
   }
-  _script_args_ = rebase_path(_test_abc_path_)
+  if (defined(invoker.entry_point)) {
+    _script_args_ = invoker.entry_point
+    _script_args_ += " " + rebase_path(_test_abc_path_)
+  } else {
+    _script_args_ = rebase_path(_test_abc_path_)
+  }
   foreach(extra_module, _extra_modules_) {
     _script_args_ += ":" + rebase_path(extra_module)
-  }
-  if (defined(invoker.entry_point)) {
-    _script_args_ += " " + invoker.entry_point
   }
 
   action("${_target_name_}Action") {

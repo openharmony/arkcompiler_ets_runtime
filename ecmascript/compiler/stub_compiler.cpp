@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/stub_compiler.h"
 
 #include "ecmascript/base/config.h"
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
@@ -28,9 +29,6 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
-
-#include "libpandabase/utils/pandargs.h"
-#include "libpandabase/utils/span.h"
 
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
@@ -166,33 +164,26 @@ bool StubCompiler::BuildStubModuleAndSave() const
     }
     return (res > 0);
 }
+
+std::string GetHelper()
+{
+    std::string str;
+    str.append(STUB_HELP_HEAD_MSG);
+    str.append(HELP_OPTION_MSG);
+    return str;
+}
 }  // namespace panda::ecmascript::kungfu
 
 int main(const int argc, const char **argv)
 {
-    panda::Span<const char *> sp(argv, argc);
     panda::ecmascript::JSRuntimeOptions runtimeOptions;
-    panda::PandArg<bool> help("help", false, "Print this message and exit");
-    panda::PandArg<bool> options("options", false, "Print options");
-    panda::PandArgParser paParser;
-
-    runtimeOptions.AddOptions(&paParser);
-
-    paParser.Add(&help);
-    paParser.Add(&options);
-
-    if (!paParser.Parse(argc, argv) || help.GetValue()) {
-        std::cerr << paParser.GetErrorString() << std::endl;
-        std::cerr << "Usage: " << "ark_stub_compiler" << " [OPTIONS]" << std::endl;
-        std::cerr << std::endl;
-        std::cerr << "optional arguments:" << std::endl;
-
-        std::cerr << paParser.GetHelpString() << std::endl;
+    bool ret = runtimeOptions.ParseCommand(argc, argv);
+    if (!ret) {
+        std::cerr << panda::ecmascript::kungfu::GetHelper();
         return 1;
     }
 
     panda::ecmascript::Log::Initialize(runtimeOptions);
-
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();
     size_t optLevel = runtimeOptions.GetOptLevel();
