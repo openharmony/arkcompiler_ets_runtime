@@ -30,6 +30,7 @@ using NumberHelper = base::NumberHelper;
 bool DateUtils::isCached_ = false;
 int DateUtils::preSumDays_ = 0;
 int DateUtils::preDays_ = 0;
+int DateUtils::preMonth_ = 0;
 int DateUtils::preYear_ = 0;
 void DateUtils::TransferTimeToDate(int64_t timeMs, std::array<int64_t, DATE_LENGTH> *date)
 {
@@ -42,7 +43,7 @@ void DateUtils::TransferTimeToDate(int64_t timeMs, std::array<int64_t, DATE_LENG
     (*date)[MIN] = (*date)[HOUR] % SEC_PER_MINUTE;                           // min
     (*date)[HOUR] = ((*date)[HOUR] - (*date)[MIN]) / SEC_PER_MINUTE;         // hour
     (*date)[WEEKDAY] = Mod(((*date)[DAYS] + LEAP_NUMBER[0]), DAY_PER_WEEK);  // weekday
-    (*date)[YEAR] = GetYearFromDays(&((*date)[DAYS]));                       // year
+    GetYearFromDays(date);                       
 }
 // static
 bool DateUtils::IsLeap(int64_t year)
@@ -76,42 +77,47 @@ int64_t DateUtils::FloorDiv(int64_t a, int64_t b)
 }
 
 // static
-int64_t DateUtils::GetYearFromDays(int64_t *days)
+void DateUtils::GetYearFromDays(std::array<int64_t, DATE_LENGTH> *date)
 {
+    if (date == nullptr) {
+        return;
+    }
     if (isCached_) {
-        int64_t t = *days;
+        int64_t t = (*date)[DAYS];
         int64_t newDays = preDays_ + (t - preSumDays_);
-        if (newDays >= 1 && newDays < DAYS_IN_YEAR) {
+        if (newDays >= 1 && newDays < DAYS_FEBRUARY) {
             preSumDays_ = t;
-            *days = newDays;
             preDays_ = newDays;
-            return preYear_;
+            (*date)[DAYS] = newDays;
+            (*date)[MONTH] = preMonth_;
+            (*date)[YEAR] = preYear_;
+            return;
         }
     }
     int64_t realDay;
-    int64_t dayTemp = 0;
-    int64_t d = *days;
+    int64_t d = (*date)[DAYS];
     preSumDays_ = d;
-    d += DAYS_1970_TO_0000;                                          // shift from 1970-01-01 to 0000-03-01
+    d += DAYS_1970_TO_0000;                                               // shift from 1970-01-01 to 0000-03-01
     int64_t era = (d >= 0 ? d : d - DAYS_IN_400_YEARS + 1) / DAYS_IN_400_YEARS;   // an era is a 400 year period
     int64_t doe = static_cast<int64_t>(d - era * DAYS_IN_400_YEARS);              // days of era
     int64_t yoe = (doe - doe / DAYS_IN_4_YEARS + doe / DAYS_IN_100_YEARS -
-                   doe / DAYS_IN_400_YEARS) / DAYS_IN_YEAR;        // year of era
+                   doe / (DAYS_IN_400_YEARS - 1)) / DAYS_IN_YEAR;                 // year of era
     int64_t y = static_cast<int64_t>(yoe) + era * LEAP_NUMBER[2];
     int64_t doy = doe - (DAYS_IN_YEAR * yoe + yoe / LEAP_NUMBER[0] -
-                  yoe / LEAP_NUMBER[1]);                            // days of year
+                  yoe / LEAP_NUMBER[1]);                                          // days of year
     int64_t mp = (COEFFICIENT_TO_CIVIL[0] * doy + MONTH_COEFFICIENT) /
-                  COEFFICIENT_TO_CIVIL[1];                           // [0, 11] / [Mar,Feb] system
-    int64_t m = mp + (mp < MONTH_TRANSFORM[1] ?
-                MONTH_TRANSFORM[0] : MONTH_TRANSFORM[2]);           // transform the month to civil system
-    int64_t year = y + (m <= MONTH_COEFFICIENT);
-    dayTemp = doy + DAYS_JAN_AND_FEB + IsLeap(year);                // 03-01 is the first day of year
-    realDay = m > MONTH_COEFFICIENT ? dayTemp : (doy - DAYS_MAR_TO_DEC);   // shift from 03-01 to 01-01
-    *days = realDay;
+                  COEFFICIENT_TO_CIVIL[1];                                        // [0, 11] / [Mar,Feb] system
+    int64_t month = mp + (mp < MONTH_TRANSFORM[1] ?
+                MONTH_TRANSFORM[0] : MONTH_TRANSFORM[2]);                         // transform month to civil system
+    int64_t year = y + (month <= MONTH_COEFFICIENT);
+    realDay = doy - (COEFFICIENT_TO_CIVIL[1] * mp + 2) / COEFFICIENT_TO_CIVIL[0] + 1;   // shift from 03-01 to 01-01
+    (*date)[YEAR] = year;
+    (*date)[MONTH] = month;
+    (*date)[DAYS] = realDay;
     preDays_ = realDay;
+    preMonth_ = month;
     preYear_ = year;
     isCached_ = true;
-    return year;
 }
 
 // static
@@ -923,7 +929,6 @@ void JSDate::GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date
 {
     int64_t tz = 0;
     int64_t timeMsInt;
-    int month = 0;
     timeMsInt = static_cast<int64_t>(timeMs);
     if (isLocal) {  // timezone offset
         tz = GetLocalOffsetFromOS(timeMsInt, isLocal);
@@ -937,25 +942,6 @@ void JSDate::GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date
     }
 
     DateUtils::TransferTimeToDate(timeMsInt, date);
-
-    int index = DateUtils::IsLeap((*date)[YEAR]) ? 1 : 0;
-    int left = 0;
-    int right = MONTH_PER_YEAR;
-    while (left <= right) {
-        int middle = (left + right) / 2; // 2 : half
-        if (DAYS_FROM_MONTH[index][middle] <= (*date)[DAYS] && DAYS_FROM_MONTH[index][middle + 1] > (*date)[DAYS]) {
-            month = middle;
-            (*date)[DAYS] -= DAYS_FROM_MONTH[index][month];
-            break;
-        } else if ((*date)[DAYS] > DAYS_FROM_MONTH[index][middle]) { // NOLINT(readability-else-after-return)
-            left = middle + 1;
-        } else if ((*date)[DAYS] < DAYS_FROM_MONTH[index][middle]) {
-            right = middle - 1;
-        }
-    }
-
-    (*date)[MONTH] = month;
-    (*date)[DAYS] = (*date)[DAYS] + 1;
     (*date)[TIMEZONE] = -tz;
 }
 

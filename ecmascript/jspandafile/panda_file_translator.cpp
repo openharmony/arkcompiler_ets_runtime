@@ -543,7 +543,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseMergedConstPool(EcmaVM *vm, con
 void PandaFileTranslator::ParseLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
                                                 JSHandle<ConstantPool> constpool)
 {
-    if (!jsPandaFile->HasParsedLiteralConstPool(entryPoint)) {
+    if (jsPandaFile->HasParsedLiteralConstPool(entryPoint)) {
         return;
     }
     JSThread *thread = vm->GetJSThread();
