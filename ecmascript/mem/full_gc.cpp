@@ -109,7 +109,7 @@ void FullGC::Sweep()
             Region *objectRegion = Region::ObjectAddressToRange(header);
             if (!objectRegion->InYoungOrOldSpace()) {
                 if (!objectRegion->Test(header)) {
-                    slot.Update(static_cast<JSTaggedType>(JSTaggedValue::Undefined().GetRawData()));
+                    slot.Clear();
                 }
             } else {
                 MarkWord markWord(header);
