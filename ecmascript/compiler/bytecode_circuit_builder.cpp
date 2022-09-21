@@ -637,16 +637,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(StringId(stringId));
             break;
         }
-        case EcmaOpcode::JMP_IMM8:
-        case EcmaOpcode::JMP_IMM16:
-        case EcmaOpcode::JMP_IMM32:
-        case EcmaOpcode::JEQZ_IMM8:
-        case EcmaOpcode::JEQZ_IMM16:
-        case EcmaOpcode::JEQZ_IMM32:
-        case EcmaOpcode::JNEZ_IMM8:
-        case EcmaOpcode::JNEZ_IMM16:
-        case EcmaOpcode::JNEZ_IMM32:
-            break;
         case EcmaOpcode::LDA_V8: {
             uint16_t vsrc = READ_INST_8_0();
             info.inputs.emplace_back(VirtualRegister(vsrc));
@@ -663,9 +653,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         }
         case EcmaOpcode::FLDAI_IMM64: {
             info.inputs.emplace_back(Immediate(READ_INST_64_0()));
-            break;
-        }
-        case EcmaOpcode::CALLARG0_IMM8: {
             break;
         }
         case EcmaOpcode::DEPRECATED_CALLARG0_PREF_V8: {
@@ -823,31 +810,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::RETURNUNDEFINED:
             info.accIn = true;
             break;
-        case EcmaOpcode::RETURN:
-        case EcmaOpcode::LDNAN:
-        case EcmaOpcode::LDINFINITY:
-        case EcmaOpcode::LDNEWTARGET:
-        case EcmaOpcode::LDUNDEFINED:
-        case EcmaOpcode::LDNULL:
-        case EcmaOpcode::LDSYMBOL:
-        case EcmaOpcode::LDGLOBAL:
-        case EcmaOpcode::LDTRUE:
-        case EcmaOpcode::LDFALSE:
-        case EcmaOpcode::LDHOLE:
-        case EcmaOpcode::DEPRECATED_LDLEXENV_PREF_NONE:
-        case EcmaOpcode::POPLEXENV:
-        case EcmaOpcode::DEPRECATED_POPLEXENV_PREF_NONE:
-        case EcmaOpcode::GETUNMAPPEDARGS:
-        case EcmaOpcode::ASYNCFUNCTIONENTER:
-        case EcmaOpcode::TYPEOF_IMM8:
-        case EcmaOpcode::TYPEOF_IMM16:
-        case EcmaOpcode::TONUMBER_IMM8:
-        case EcmaOpcode::TONUMERIC_IMM8:
-        case EcmaOpcode::NEG_IMM8:
-        case EcmaOpcode::NOT_IMM8:
-        case EcmaOpcode::INC_IMM8:
-        case EcmaOpcode::DEC_IMM8:
-            break;
         case EcmaOpcode::DEPRECATED_TONUMBER_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -878,11 +840,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::THROW_PREF_NONE:
-        case EcmaOpcode::GETPROPITERATOR:
-        case EcmaOpcode::RESUMEGENERATOR:
-        case EcmaOpcode::GETRESUMEMODE:
-            break;
         case EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8: {
             uint16_t vs = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(vs));
@@ -893,9 +850,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(vs));
             break;
         }
-        case EcmaOpcode::GETITERATOR_IMM8:
-        case EcmaOpcode::GETITERATOR_IMM16:
-            break;
         case EcmaOpcode::DEPRECATED_GETITERATORNEXT_PREF_V8_V8: {
             uint16_t v0 = READ_INST_8_1();
             uint16_t v1 = READ_INST_8_2();
@@ -908,9 +862,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
-        case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
-            break;
         case EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -923,8 +874,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
-            break;
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8: {
             uint8_t imm = READ_INST_8_1();
             info.inputs.emplace_back(Immediate(imm));
@@ -1296,10 +1245,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
-        case EcmaOpcode::CREATEEMPTYOBJECT:
-            break;
         case EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8: {
             uint16_t stringId = READ_INST_16_1();
             uint8_t flags = READ_INST_8_3();
@@ -1397,13 +1342,13 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::LDLOCALMODULEVAR_IMM8: {
-            uint16_t stringId = READ_INST_8_0();
-            info.inputs.emplace_back(StringId(stringId));
+            int32_t index = READ_INST_8_0();
+            info.inputs.emplace_back(Immediate(index));
             break;
         }
         case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16: {
-            uint16_t stringId = READ_INST_16_1();
-            info.inputs.emplace_back(StringId(stringId));
+            int32_t index = READ_INST_16_1();
+            info.inputs.emplace_back(Immediate(index));
             break;
         }
         case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8: {
@@ -1695,6 +1640,16 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
+        case EcmaOpcode::STTHISBYVALUE_IMM8_V8: {
+            uint32_t v0 = READ_INST_8_1();
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaOpcode::STTHISBYVALUE_IMM16_V8: {
+            uint32_t v0 = READ_INST_8_2();
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
         // not implement
         case EcmaOpcode::JSTRICTEQZ_IMM8:
         case EcmaOpcode::JSTRICTEQZ_IMM16:
@@ -1725,10 +1680,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::JNSTRICTEQ_V8_IMM8:
         case EcmaOpcode::JNSTRICTEQ_V8_IMM16:
         case EcmaOpcode::LDTHIS:
-        case EcmaOpcode::LDTHISBYVALUE_IMM8:
-        case EcmaOpcode::LDTHISBYVALUE_IMM16:
-        case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
-        case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
@@ -1916,11 +1867,59 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(Immediate(imm));
             break;
         }
+        case EcmaOpcode::JMP_IMM8:
+        case EcmaOpcode::JMP_IMM16:
+        case EcmaOpcode::JMP_IMM32:
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+        case EcmaOpcode::JNEZ_IMM8:
+        case EcmaOpcode::JNEZ_IMM16:
+        case EcmaOpcode::JNEZ_IMM32:
+        case EcmaOpcode::RETURN:
+        case EcmaOpcode::LDNAN:
+        case EcmaOpcode::LDINFINITY:
+        case EcmaOpcode::LDNEWTARGET:
+        case EcmaOpcode::LDUNDEFINED:
+        case EcmaOpcode::LDNULL:
+        case EcmaOpcode::LDSYMBOL:
+        case EcmaOpcode::LDGLOBAL:
+        case EcmaOpcode::LDTRUE:
+        case EcmaOpcode::LDFALSE:
+        case EcmaOpcode::LDHOLE:
+        case EcmaOpcode::CALLARG0_IMM8:
+        case EcmaOpcode::DEPRECATED_LDLEXENV_PREF_NONE:
+        case EcmaOpcode::POPLEXENV:
+        case EcmaOpcode::DEPRECATED_POPLEXENV_PREF_NONE:
+        case EcmaOpcode::GETUNMAPPEDARGS:
+        case EcmaOpcode::ASYNCFUNCTIONENTER:
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+        case EcmaOpcode::TONUMBER_IMM8:
+        case EcmaOpcode::TONUMERIC_IMM8:
+        case EcmaOpcode::NEG_IMM8:
+        case EcmaOpcode::NOT_IMM8:
+        case EcmaOpcode::INC_IMM8:
+        case EcmaOpcode::DEC_IMM8:
+        case EcmaOpcode::THROW_PREF_NONE:
+        case EcmaOpcode::GETPROPITERATOR:
+        case EcmaOpcode::RESUMEGENERATOR:
+        case EcmaOpcode::GETRESUMEMODE:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+        case EcmaOpcode::CREATEEMPTYOBJECT:
         case EcmaOpcode::DEPRECATED_LDHOMEOBJECT_PREF_NONE:
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:
         case EcmaOpcode::NOP:
+        case EcmaOpcode::GETITERATOR_IMM8:
+        case EcmaOpcode::GETITERATOR_IMM16:
+        case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
+        case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
+        case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
+        case EcmaOpcode::LDTHISBYVALUE_IMM8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM16:
             break;
         case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16: {
             uint16_t index = READ_INST_16_1();
