@@ -15,10 +15,18 @@
 
 #include "ecmascript/jspandafile/program_object.h"
 
+#include "ecmascript/ts_types/ts_manager.h"
+
 namespace panda::ecmascript {
 std::string ConstantPool::GetStdStringByIdx(size_t index) const
 {
     JSTaggedType str = GetObjectFromCache(index).GetRawData();
     return JSHandle<EcmaString>(reinterpret_cast<uintptr_t>(&str))->GetCString().get();
+}
+
+JSHandle<ConstantPool> ConstantPool::RestoreConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
+                                                         uint32_t constpoolSize)
+{
+    return vm->GetTSManager()->RestoreConstantPool(jsPandaFile, constpoolSize);
 }
 }

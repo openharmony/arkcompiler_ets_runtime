@@ -79,9 +79,18 @@ public:
         const panda_file::File::IndexHeader *mainIndex =
             jsPandaFile->GetPandaFile()->GetIndexHeader(panda_file::File::EntityId(methodId));
         LOG_ECMA_IF(mainIndex == nullptr, FATAL) << "Unknown methodId: " << methodId;
+        auto constpoolSize = mainIndex->method_idx_size + RESERVED_POOL_LENGTH;
 
-        ObjectFactory *factory = vm->GetFactory();
-        JSHandle<ConstantPool> constpool = factory->NewConstantPool(mainIndex->method_idx_size + RESERVED_POOL_LENGTH);
+        JSHandle<ConstantPool> constpool;
+        bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
+        if (isLoadedAOT) {
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+            constpool = RestoreConstantPool(vm, jsPandaFile, constpoolSize);
+#endif
+        } else {
+            ObjectFactory *factory = vm->GetFactory();
+            constpool = factory->NewConstantPool(constpoolSize);
+        }
 
         constpool->SetJSPandaFile(jsPandaFile);
         constpool->SetIndexHeader(mainIndex);
@@ -371,6 +380,9 @@ private:
     {
         return JSTaggedValue::TaggedTypeSize() * GetLength() + DATA_OFFSET;
     }
+
+    static JSHandle<ConstantPool> RestoreConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
+                                                      uint32_t constpoolSize);
 };
 }  // namespace ecmascript
 }  // namespace panda

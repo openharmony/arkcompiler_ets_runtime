@@ -38,28 +38,30 @@ void TypeLowering::RunTypeLowering()
 
 void TypeLowering::Lower(GateRef gate)
 {
+    ArgumentAccessor argAcc(circuit_);
+    auto glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
     auto pc = bcBuilder_->GetJSBytecode(gate);
     EcmaOpcode op = bcBuilder_->PcToOpcode(pc);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
         case EcmaOpcode::ADD2_IMM8_V8:
-            // LowerTypeAdd2(gate, glue);
+            LowerTypeAdd(gate, glue);
             break;
         case EcmaOpcode::SUB2_IMM8_V8:
-            // LowerTypeSub2(gate);
+            LowerTypeSub(gate);
             break;
         case EcmaOpcode::MUL2_IMM8_V8:
-            // LowerTypeMul2(gate);
+            LowerTypeMul(gate);
             break;
         case EcmaOpcode::MOD2_IMM8_V8:
-            LowerTypeMod2(gate, glue);
+            LowerTypeMod(gate, glue);
             break;
         case EcmaOpcode::LESS_IMM8_V8:
-            // LowerTypeLess(gate);
+            LowerTypeLess(gate);
             break;
         case EcmaOpcode::LESSEQ_IMM8_V8:
-            // LowerTypeLessEq(gate);
+            LowerTypeLessEq(gate);
             break;
         case EcmaOpcode::GREATER_IMM8_V8:
             LowerTypeGreater(gate);
@@ -68,7 +70,7 @@ void TypeLowering::Lower(GateRef gate)
             LowerTypeGreaterEq(gate);
             break;
         case EcmaOpcode::DIV2_IMM8_V8:
-            LowerTypeDiv2(gate);
+            LowerTypeDiv(gate);
             break;
         case EcmaOpcode::EQ_IMM8_V8:
             LowerTypeEq(gate);
@@ -1773,7 +1775,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
     return ret;
 }
 
-void TypeLowering::LowerTypeAdd2(GateRef gate, [[maybe_unused]]GateRef glue)
+void TypeLowering::LowerTypeAdd(GateRef gate, [[maybe_unused]]GateRef glue)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1809,7 +1811,7 @@ void TypeLowering::LowerTypeAdd2(GateRef gate, [[maybe_unused]]GateRef glue)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeSub2([[maybe_unused]]GateRef gate)
+void TypeLowering::LowerTypeSub([[maybe_unused]]GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1842,7 +1844,7 @@ void TypeLowering::LowerTypeSub2([[maybe_unused]]GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeMul2(GateRef gate)
+void TypeLowering::LowerTypeMul(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1875,7 +1877,7 @@ void TypeLowering::LowerTypeMul2(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeMod2(GateRef gate, GateRef glue)
+void TypeLowering::LowerTypeMod(GateRef gate, GateRef glue)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -2111,7 +2113,7 @@ void TypeLowering::LowerTypeNotEq(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeDiv2(GateRef gate)
+void TypeLowering::LowerTypeDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);

@@ -129,7 +129,7 @@ void SlowPathLowering::ReplaceHirToJSCall(GateRef hirGate, GateRef callGate, Gat
     GateRef exceptionOffset = builder_.IntPtr(JSThread::GlueData::GetExceptionOffset(false));
     GateRef exception = builder_.Load(VariableType::JS_ANY(), glue, exceptionOffset);
     acc_.SetDep(exception, callGate);
-    GateRef equal = builder_.NotEqual(exception, builder_.Int64(JSTaggedValue::VALUE_HOLE));
+    GateRef equal = builder_.NotEqual(exception, builder_.HoleConstant());
     GateRef ifBranch = builder_.Branch(stateInGate, equal);
 
     auto uses = acc_.Uses(hirGate);
@@ -2581,7 +2581,7 @@ void SlowPathLowering::LowerTryStGlobalByName(GateRef gate, GateRef glue, GateRe
 {
     DebugPrintBC(gate, glue);
     // order: 1. global record 2. global object
-    DEFVAlUE(res, (&builder_), VariableType::JS_ANY(), builder_.Int64(JSTaggedValue::VALUE_HOLE));
+    DEFVAlUE(res, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     // 2 : number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef propKey = GetObjectFromConstPool(glue, jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)),
@@ -3291,7 +3291,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     DebugPrintBC(gate, glue);
 
     GateType type = acc_.GetGateType(gate);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.Int64(JSTaggedValue::VALUE_HOLE));
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);

@@ -41,13 +41,13 @@ void TSTypeLowering::Lower(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     switch (op) {
         case EcmaOpcode::ADD2_IMM8_V8:
-            LowerTypeAdd2Dyn(gate);
+            LowerTypeAdd(gate);
             break;
         case EcmaOpcode::SUB2_IMM8_V8:
-            LowerTypeSub2Dyn(gate);
+            LowerTypeSub(gate);
             break;
         case EcmaOpcode::MUL2_IMM8_V8:
-            LowerTypeMul2Dyn(gate);
+            LowerTypeMul(gate);
             break;
         case EcmaOpcode::DIV2_IMM8_V8:
             // lower JS_Div
@@ -56,10 +56,10 @@ void TSTypeLowering::Lower(GateRef gate)
             // lower JS_Mod
             break;
         case EcmaOpcode::LESS_IMM8_V8:
-            LowerTypeLess2Dyn(gate);
+            LowerTypeLess(gate);
             break;
         case EcmaOpcode::LESSEQ_IMM8_V8:
-            LowerTypeLessEq2Dyn(gate);
+            LowerTypeLessEq(gate);
             break;
         case EcmaOpcode::GREATER_IMM8_V8:
             // lower JS_GREATER
@@ -184,7 +184,7 @@ void TSTypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const s
     }
 }
 
-void TSTypeLowering::LowerTypeAdd2Dyn(GateRef gate)
+void TSTypeLowering::LowerTypeAdd(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -196,7 +196,7 @@ void TSTypeLowering::LowerTypeAdd2Dyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeSub2Dyn(GateRef gate)
+void TSTypeLowering::LowerTypeSub(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -208,7 +208,7 @@ void TSTypeLowering::LowerTypeSub2Dyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeMul2Dyn(GateRef gate)
+void TSTypeLowering::LowerTypeMul(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -220,7 +220,7 @@ void TSTypeLowering::LowerTypeMul2Dyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeMod2Dyn(GateRef gate)
+void TSTypeLowering::LowerTypeMod(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -232,7 +232,7 @@ void TSTypeLowering::LowerTypeMod2Dyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeLessDyn(GateRef gate)
+void TSTypeLowering::LowerTypeLess(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -244,7 +244,7 @@ void TSTypeLowering::LowerTypeLessDyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeLessEqDyn(GateRef gate)
+void TSTypeLowering::LowerTypeLessEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -256,7 +256,7 @@ void TSTypeLowering::LowerTypeLessEqDyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeGreaterDyn(GateRef gate)
+void TSTypeLowering::LowerTypeGreater(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -268,7 +268,7 @@ void TSTypeLowering::LowerTypeGreaterDyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeGreaterEqDyn(GateRef gate)
+void TSTypeLowering::LowerTypeGreaterEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -280,7 +280,7 @@ void TSTypeLowering::LowerTypeGreaterEqDyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeDiv2Dyn(GateRef gate)
+void TSTypeLowering::LowerTypeDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -292,7 +292,7 @@ void TSTypeLowering::LowerTypeDiv2Dyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeEqDyn(GateRef gate)
+void TSTypeLowering::LowerTypeEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -304,7 +304,7 @@ void TSTypeLowering::LowerTypeEqDyn(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypeNotEqDyn(GateRef gate)
+void TSTypeLowering::LowerTypeNotEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);

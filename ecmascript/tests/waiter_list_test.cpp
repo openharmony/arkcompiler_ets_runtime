@@ -112,10 +112,11 @@ HWTEST_F_L0(WaiterListTest, DeleteNode)
     waitLists->AddNode(listNode1);
     // change listNode waiting
     listNode1->waiting_ = false;
-    waitLists->AddNode(listNode1);
+    auto indexOneIter = waitLists->locationListMap_.find(listNode1->waitPointer_);
+    EXPECT_NE(indexOneIter, waitLists->locationListMap_.end());
     // delete listNode1
     waitLists->DeleteNode(listNode1);
-    auto indexOneIter = waitLists->locationListMap_.find(listNode1->waitPointer_);
+    indexOneIter = waitLists->locationListMap_.find(listNode1->waitPointer_);
     EXPECT_EQ(indexOneIter, waitLists->locationListMap_.end());
     // delete listNode
     waitLists->DeleteNode(listNode);

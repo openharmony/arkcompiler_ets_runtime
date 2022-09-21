@@ -91,20 +91,19 @@ const std::string HELP_OPTION_MSG =
     "--help: Print this message and exit\n"
     "--icu-data-path: Path to generated icu data file. Default: \"default\"\n"
     "--IsWorker: whether is worker vm. Default: false\n"
-    "--log-components: Enable logs from specified components. Possible values: ["all", "gc", "ecma",
-        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
-    "--log-debug: Enable debug or above logs from specified components. Possible values: ["all", "gc", "ecma",
-        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
-    "--log-error: Enable error or above logs from specified components. Possible values: ["all", "gc", "ecma",
-        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
-    "--log-fatal: Enable fatal logs from specified components. Possible values: ["all", "gc", "ecma",
-        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
-    "--log-info: Enable info or above logs from specified components. Possible values: ["all", "gc", "ecma",
-        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
     "--log-level: Log level. Possible values: [\"debug\", \"info\", \"warning\", \"error\", \"fatal\"].\n"
-    "       Default: \"error\"\n"
-    "--log-warning: Enable warning or above logs from specified components. Possible values: ["all", "gc", "ecma",
-        "interpreter", "debugger", "compiler", "all"]. Default: ["all"])", ":"};
+    "--log-components: Enable logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
+        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"])\", \":\"};"
+    "--log-debug: Enable debug or above logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
+        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"])\", \":\"};"
+    "--log-error: Enable error or above logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
+        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"])\", \":\"};"
+    "--log-fatal: Enable fatal logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
+        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"])\", \":\"};"
+    "--log-info: Enable info or above logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
+        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"])\", \":\"};"
+    "--log-warning: Enable warning or above logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
+        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"])\", \":\"};"
     "--longPauseTime: set longPauseTime. Default: 40ms\n"
     "--maxAotMethodSize: enable aot to skip too large method. Default size: 32 KB\n"
     "--maxNonmovableSpaceCapacity: set max nonmovable space capacity\n"
