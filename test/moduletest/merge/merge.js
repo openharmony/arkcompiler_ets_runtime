@@ -20,4 +20,9 @@
  * @tc.require: issueI5NO8G
  */
 import { a } from './A.js';
+import { Merge } from './A.js'
+import { merge } from './A.js'
+var m = new Merge("a")
+m.test();
 print(a);
+merge();

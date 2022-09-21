@@ -179,7 +179,8 @@ group("unittest") {
   deps = [
     ":EcmaVm_001_Test",
     ":EcmaVm_002_Test",
-    ":EcmaVm_003_Test",
+
+    # ":EcmaVm_003_Test",
   ]
 }
 
@@ -190,6 +191,7 @@ group("host_unittest") {
   deps = [
     ":EcmaVm_001_TestAction",
     ":EcmaVm_002_TestAction",
-    ":EcmaVm_003_TestAction",
+
+    # ":EcmaVm_003_TestAction",
   ]
 }
