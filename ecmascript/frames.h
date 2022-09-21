@@ -48,6 +48,8 @@
 //   |----------------------------------|InterpretedFrame   |
 //   |    profileTypeInfo               |        |          |
 //   |----------------------------------|        |          |
+//   |    thisObj                       |        |          |
+//   |----------------------------------|        |          |
 //   |    function                      |        |          |
 //   |----------------------------------|        |          |
 //   |    constpool                     |        v          v
@@ -183,6 +185,8 @@
 //   |    acc                           |        |          |
 //   |----------------------------------|        |          |
 //   |    profileTypeInfo               |InterpretedFrame   |
+//   |----------------------------------|        |          |
+//   |    thisObj                       |        |          |
 //   |----------------------------------|        |          |
 //   |    function                      |        |          |
 //   |----------------------------------|        |          |
@@ -701,12 +705,14 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
                                                         JSTaggedValue,
                                                         JSTaggedValue,
                                                         JSTaggedValue,
+                                                        JSTaggedValue,
                                                         base::AlignedPointer,
                                                         base::AlignedPointer,
                                                         base::AlignedPointer,
                                                         InterpretedFrameBase> {
     enum class Index : size_t {
         FunctionIndex = 0,
+        ThisObjIndex,
         AccIndex,
         EnvIndex,
         CallSizeIndex,
@@ -746,6 +752,11 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
     static size_t GetFunctionOffset(bool isArch32)
     {
         return GetOffset<static_cast<size_t>(Index::FunctionIndex)>(isArch32);
+    }
+
+    static size_t GetThisOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::ThisObjIndex)>(isArch32);
     }
 
     static size_t GetAccOffset(bool isArch32)
@@ -791,6 +802,7 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
     }
 
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
+    alignas(EAS) JSTaggedValue thisObj {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue acc {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue env {JSTaggedValue::Hole()};
     alignas(EAS) uintptr_t callSize {0};

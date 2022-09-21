@@ -211,6 +211,12 @@ GateRef InterpreterStubBuilder::GetFunctionFromFrame(GateRef frame)
         IntPtr(AsmInterpretedFrame::GetFunctionOffset(GetEnvironment()->IsArch32Bit())));
 }
 
+GateRef InterpreterStubBuilder::GetThisFromFrame(GateRef frame)
+{
+    return Load(VariableType::JS_POINTER(), frame,
+        IntPtr(AsmInterpretedFrame::GetThisOffset(GetEnvironment()->IsArch32Bit())));
+}
+
 GateRef InterpreterStubBuilder::GetCallSizeFromFrame(GateRef frame)
 {
     return Load(VariableType::NATIVE_POINTER(), frame,

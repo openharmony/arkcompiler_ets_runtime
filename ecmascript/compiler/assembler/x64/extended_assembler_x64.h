@@ -62,7 +62,11 @@ public:
     Register CallDispatcherArgument(kungfu::CallDispatchInputs index)
     {
         size_t i = static_cast<size_t>(index);
-        return isGhcCallingConv_ ? ghcJSCallDispacherArgs_[i] : cppJSCallDispacherArgs_[i];
+        Register ret = isGhcCallingConv_ ? ghcJSCallDispacherArgs_[i] : cppJSCallDispacherArgs_[i];
+        if (ret == rInvalid) {
+            LOG_COMPILER(FATAL) << "x64 invalid call argument:" << i;
+        }
+        return ret;
     }
     Register GlueRegister()
     {

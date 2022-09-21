@@ -155,7 +155,8 @@ JSTaggedValue FrameHandler::GetThis() const
     ASSERT(IsInterpretedFrame());
     FrameIterator it(sp_, thread_);
     if (IsAsmInterpretedFrame()) {
-        return JSTaggedValue();
+        auto *frame = it.GetFrame<AsmInterpretedFrame>();
+        return frame->thisObj;
     } else {
         auto *frame = it.GetFrame<InterpretedFrame>();
         return frame->thisObj;

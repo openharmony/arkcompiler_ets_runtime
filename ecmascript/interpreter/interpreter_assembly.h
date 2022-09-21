@@ -46,6 +46,9 @@ public:
                                                 uint32_t numDeclaredArgs, bool haveExtraArgs = true);
     static JSTaggedValue GetFunction(JSTaggedType *sp);
     static JSTaggedValue GetNewTarget(JSTaggedType *sp);
+    static JSTaggedValue GetThis(JSTaggedType *sp);
+    static JSTaggedValue GetConstantPool(JSTaggedType *sp);
+    static JSTaggedValue GetProfileTypeInfo(JSTaggedType *sp);
     static uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static JSTaggedType *GetAsmInterpreterFramePointer(AsmInterpretedFrame *state);
 

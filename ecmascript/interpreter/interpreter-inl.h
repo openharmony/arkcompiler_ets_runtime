@@ -6736,6 +6736,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 auto constpool = GetConstantPool(sp);
                 JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
                 receiver = GetThis(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(GetRuntimeProfileTypeInfo(sp).GetTaggedObject());
                 res = ICRuntimeStub::LoadICByName(thread,
                                                   profileTypeArray,
                                                   receiver, propKey, slotId);
@@ -6792,6 +6793,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 auto constpool = GetConstantPool(sp);
                 JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
                 receiver = GetThis(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(GetRuntimeProfileTypeInfo(sp).GetTaggedObject());
                 res = ICRuntimeStub::LoadICByName(thread,
                                                   profileTypeArray,
                                                   receiver, propKey, slotId);
@@ -6853,6 +6855,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 RESTORE_ACC();
                 value = GET_ACC();
                 receiver = GetThis(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(GetRuntimeProfileTypeInfo(sp).GetTaggedObject());
                 res = ICRuntimeStub::StoreICByName(thread,
                                                    profileTypeArray,
                                                    receiver, propKey, value, slotId);
@@ -6923,6 +6926,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 RESTORE_ACC();
                 value = GET_ACC();
                 receiver = GetThis(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(GetRuntimeProfileTypeInfo(sp).GetTaggedObject());
                 res = ICRuntimeStub::StoreICByName(thread,
                                                    profileTypeArray,
                                                    receiver, propKey, value, slotId);
