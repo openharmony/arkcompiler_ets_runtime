@@ -86,6 +86,9 @@ public:
         if (isLoadedAOT) {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
             constpool = RestoreConstantPool(vm, jsPandaFile, constpoolSize);
+#elif
+            LOG_FULL(FATAL) << "Aot don't support Windows and MacOS platform";
+            UNREACHABLE();
 #endif
         } else {
             ObjectFactory *factory = vm->GetFactory();
