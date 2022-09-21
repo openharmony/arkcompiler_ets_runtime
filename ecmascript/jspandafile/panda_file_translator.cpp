@@ -71,7 +71,8 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
 
             InitializeMemory(methodLiteral, jsPandaFile, methodId);
             methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
-            methodLiteral->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
+            methodLiteral->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(),
+                                               codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (jsPandaFile->IsNewVersion()) {
 #ifdef NEW_INSTRUCTION_DEFINE
@@ -169,7 +170,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data());
     int32_t index = 0;
     int32_t total = 1;
-    const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     if (jsPandaFile->IsNewVersion()) {
 #ifdef NEW_INSTRUCTION_DEFINE
         panda_file::IndexAccessor indexAccessor(
@@ -187,17 +187,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
 #ifdef NEW_INSTRUCTION_DEFINE
             constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
 #endif
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-            if (isLoadedAOT) {
-                JSHandle<TaggedArray> constPoolInfo = vm->GetTSManager()->GetConstantPoolInfos();
-                ConstantPoolProcessor::RestoreConstantPoolInfo(vm->GetJSThread(), constPoolInfo, jsPandaFile, constpool);
-            }
-#endif
         } else {
-            CString entry = "";
-            if (!jsPandaFile->IsBundlePack()) {
-                entry = entryPoint.data();
-            }
             constpool = ParseConstPool(vm, jsPandaFile);
         }
         vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);
@@ -402,7 +392,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramWithMerge(EcmaVM *vm, cons
     }
 
     ParseLiteralConstPool(vm, jsPandaFile, entryPoint.data(), constpool);
-
     {
         EcmaHandleScope handleScope(thread);
 
@@ -521,6 +510,9 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseMergedConstPool(EcmaVM *vm, con
 void PandaFileTranslator::ParseLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
                                                 JSHandle<ConstantPool> constpool)
 {
+    if (!jsPandaFile->HasParsedLiteralConstPool(entryPoint)) {
+        return;
+    }
     JSThread *thread = vm->GetJSThread();
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     auto fileLoader = vm->GetFileLoader();
@@ -571,6 +563,7 @@ void PandaFileTranslator::ParseLiteralConstPool(EcmaVM *vm, const JSPandaFile *j
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), obj.GetTaggedValue());
         }
     }
+    const_cast<JSPandaFile *>(jsPandaFile)->UpdateJSRecordInfo(entryPoint);
 }
 
 JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
@@ -1453,7 +1446,6 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
             }
-            // TODO: add a deprecated inst to translate?
             *(pc + 4) = *(pc + 4) + 1;
             break;
         }

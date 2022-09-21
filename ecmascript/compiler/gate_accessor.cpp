@@ -264,8 +264,6 @@ UseIterator GateAccessor::DeleteExceptionDep(const UseIterator &useIt)
     next++;
     ASSERT(GetOpCode(*useIt) == OpCode::RETURN || GetOpCode(*useIt) == OpCode::DEPEND_SELECTOR);
     if (GetOpCode(*useIt) == OpCode::RETURN) {
-        // 0 : the index of CONSTANT
-        circuit_->DeleteGate(GetValueIn(*useIt, 0));
         DeleteGate(useIt);
     } else {
         size_t idx = useIt.GetIndex();

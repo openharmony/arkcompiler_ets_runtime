@@ -7,7 +7,8 @@
 
 Ubuntu版本要求18.04或20.04，详细环境搭建参考：
 
-[搭建Ubuntu环境及编译（安装包方式）](https://gitee.com/openharmony/docs/blob/master/zh-cn/device-dev/quick-start/quickstart-standard-package-environment.md)
+[搭建Ubuntu环境](https://developer.huawei.com/consumer/cn/training/course/video/C101639988048536240)
+[源码获取](https://gitee.com/openharmony/docs/blob/master/zh-cn/device-dev/get-code/sourcecode-acquire.md)
 
 ## 代码编译<a name="section1166711064317"></a>
 
@@ -19,19 +20,19 @@ Ubuntu版本要求18.04或20.04，详细环境搭建参考：
 
 2.  首次编译后增量编译方舟运行时：
 
-    编译x64版本：
+	编译x64版本：
 	```
-    ./build.sh --product-name rk3568 --build-target ark_js_host_linux_tools_packages --build-target ark_ts2abc_build  # arm平台和host端运行工具
-    ```
+	./build.sh --product-name hispark_taurus_standard --build-target ark_js_host_linux_tools_packages --build-target ark_ts2abc_build  # arm平台和host端运行工具
+	```
 
 	编译arm64版本：
 	```
-	./build.sh --product-name ohos_arm64 --build-target ark_js_vm --build-target ld-musl-aarch64.so.1
+	./build.sh --product-name hispark_taurus_standard --gn-args use_musl=true --target-cpu arm64 --build-target ark_js_vm
 	```
 
 	编译arm32版本:
 	```
-	./build.sh --product-name rk3568 --build-target ark_js_runtime --build-target ld-musl-arm.so.1
+	./build.sh --product-name hispark_taurus_standard --build-target  ark_js_runtime
 	```
 
 3.  首次编译后增量编译方舟前端：

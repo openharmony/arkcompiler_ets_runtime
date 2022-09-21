@@ -133,7 +133,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     builder.Branch(builder.TypeCheck(GateType::NumberType(), arg0), &isNumber, &notNumber);
     builder.Bind(&isNumber);
     auto convert = builder.PrimitiveToNumber(arg1, arg1Type);
-    result = builder.NumberAdd(arg0, convert);
+    result = builder.NumberBinaryOp<TypedBinOp::TYPED_ADD>(arg0, convert);
     builder.Jump(&exit);
     builder.Bind(&notNumber);
     builder.Jump(&exit);

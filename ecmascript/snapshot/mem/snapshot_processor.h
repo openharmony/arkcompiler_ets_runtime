@@ -130,29 +130,6 @@ private:
     NO_COPY_SEMANTIC(SnapshotProcessor);
     NO_MOVE_SEMANTIC(SnapshotProcessor);
 };
-
-class PUBLIC_API ConstantPoolProcessor {
-public:
-    ConstantPoolProcessor(EcmaVM *vm) : vm_(vm), index_(0) {}
-
-    JSTaggedValue GetConstantPoolInfos(size_t nums);
-
-    void CollectConstantPoolInfo(const JSPandaFile* pf, JSHandle<JSTaggedValue> constantPool);
-
-    static void RestoreConstantPoolInfo(JSThread *thread, JSHandle<TaggedArray> constPoolInfos,
-                                        const JSPandaFile* pf, JSHandle<ConstantPool> constPool);
-
-private:
-    JSTaggedValue GenerateConstantPoolInfo(const JSPandaFile* pf, JSHandle<ConstantPool> constPool);
-
-    static int BinarySearch(JSHandle<TaggedArray> constPoolInfos, uint32_t target, bool findLeftBound = true);
-
-    static bool EcmaStringsAreEqual(const JSTaggedValue &x, const JSTaggedValue &y);
-
-    EcmaVM *vm_ {nullptr};
-    size_t index_ {0};
-    static const int ITEM_SIZE = 2;
-};
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_PROCESSOR_H

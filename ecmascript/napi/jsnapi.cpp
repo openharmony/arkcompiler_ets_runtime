@@ -72,7 +72,6 @@
 #include "ecmascript/regexp/regexp_parser.h"
 
 #include "ohos/init_data.h"
-#include "utils/pandargs.h"
 
 #include "os/mutex.h"
 

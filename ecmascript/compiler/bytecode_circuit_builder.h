@@ -589,6 +589,8 @@ private:
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
     GateRef RenameVariable(const size_t bbId, const uint8_t *end, const uint16_t reg, const bool acc);
     void BuildCircuit();
+    GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
+    void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);
     void PrintCollectBlockInfo(std::vector<CfgInfo> &bytecodeBlockInfos);
     void PrintGraph();
     void PrintBytecodeInfo();
@@ -617,6 +619,7 @@ private:
     const std::map<const uint8_t *, int32_t> &pcToBCOffset_;
     const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
     std::vector<CfgInfo> &bytecodeBlockInfos_;
+    std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

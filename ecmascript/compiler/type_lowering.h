@@ -121,15 +121,27 @@ private:
     void LowerTypedAdd(GateRef gate);
     void LowerTypedSub(GateRef gate);
     void LowerTypedMul(GateRef gate);
+    void LowerTypedMod(GateRef gate);
     void LowerTypedLess(GateRef gate);
     void LowerTypedLessEq(GateRef gate);
+    void LowerTypedGreater(GateRef gate);
+    void LowerTypedGreaterEq(GateRef gate);
+    void LowerTypedDiv(GateRef gate);
+    void LowerTypedEq(GateRef gate);
+    void LowerTypedNotEq(GateRef gate);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerNumberCheck(GateRef gate);
     void LowerNumberAdd(GateRef gate);
     void LowerNumberSub(GateRef gate);
     void LowerNumberMul(GateRef gate);
+    void LowerNumberMod(GateRef gate);
     void LowerNumberLess(GateRef gate);
     void LowerNumberLessEq(GateRef gate);
+    void LowerNumberGreater(GateRef gate);
+    void LowerNumberGreaterEq(GateRef gate);
+    void LowerNumberDiv(GateRef gate);
+    void LowerNumberEq(GateRef gate);
+    void LowerNumberNotEq(GateRef gate);
     void GenerateSuccessMerge(std::vector<GateRef> &successControl);
     void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
@@ -141,31 +153,37 @@ private:
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul2Number(GateRef left, GateRef right);
+    template<TypedBinOp Op>
+    GateRef CompareNumbers(GateRef left, GateRef right);
+    template<TypedBinOp Op>
+    GateRef CompareInt(GateRef left, GateRef right);
+    template<TypedBinOp Op>
+    GateRef CompareDouble(GateRef left, GateRef right);
     template<OpCode::Op Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
     GateRef ChangeInt32ToFloat64(GateRef gate);
     GateRef GeneralMod(GateRef left, GateRef right, GateRef glue);
+    GateRef ModNumbers(GateRef left, GateRef right);
     GateRef Int32Mod(GateRef left, GateRef right);
     GateRef DoubleMod(GateRef left, GateRef right);
-    GateRef IntToTaggedNGc(GateRef x);
+    GateRef IntToTaggedIntPtr(GateRef x);
     GateRef DoubleIsINF(GateRef x);
     GateRef Less(GateRef left, GateRef right);
     GateRef LessEq(GateRef left, GateRef right);
-    GateRef Less2Number(GateRef left, GateRef right);
-    GateRef LessEq2Number(GateRef left, GateRef right);
-    GateRef FastEqual(GateRef left, GateRef right);
     GateRef FastDiv(GateRef left, GateRef right);
+    GateRef FastDiv2Number(GateRef left, GateRef right);
+    GateRef FastEqual(GateRef left, GateRef right);
 
-    void LowerTypeAdd2(GateRef gate, GateRef glue);
-    void LowerTypeSub2(GateRef gate);
-    void LowerTypeMul2(GateRef gate);
-    void LowerTypeMod2(GateRef gate, GateRef glue);
-    void LowerTypeLess2(GateRef gate);
-    void LowerTypeLessEq2(GateRef gate);
+    void LowerTypeAdd(GateRef gate, GateRef glue);
+    void LowerTypeSub(GateRef gate);
+    void LowerTypeMul(GateRef gate);
+    void LowerTypeMod(GateRef gate, GateRef glue);
+    void LowerTypeLess(GateRef gate);
+    void LowerTypeLessEq(GateRef gate);
     void LowerTypeGreater(GateRef gate);
     void LowerTypeGreaterEq(GateRef gate);
-    void LowerTypeDiv2(GateRef gate);
+    void LowerTypeDiv(GateRef gate);
     void LowerTypeEq(GateRef gate);
     void LowerTypeNotEq(GateRef gate);
     void LowerToNumeric(GateRef gate);

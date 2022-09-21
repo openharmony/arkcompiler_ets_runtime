@@ -1,6 +1,6 @@
-# 方舟编译器JS运行时组件<a name="ZH-CN_TOPIC_0000001183610495"></a>
+# 方舟编译器JS运行时部件<a name="ZH-CN_TOPIC_0000001183610495"></a>
 
-- [方舟JS运行时组件<a name="ZH-CN_TOPIC_0000001183610495"></a>](#方舟js运行时组件)
+- [方舟JS运行时部件<a name="ZH-CN_TOPIC_0000001183610495"></a>](#方舟js运行时部件)
     - [简介<a name="section190813718209"></a>](#简介)
   - [目录<a name="section161941989596"></a>](#目录)
   - [约束<a name="section119744591305"></a>](#约束)
@@ -15,7 +15,7 @@
 
 更多信息请参考：[方舟运行时子系统](https://gitee.com/openharmony/docs/blob/master/zh-cn/readme/ARK-Runtime-Subsystem-zh.md)
 
-**方舟JS运行时组件架构图：**
+**图1** 方舟JS运行时部件架构图：
 
 ![](/docs/figures/zh-cn_image_ark-js-arch.png)
 
@@ -62,7 +62,7 @@ $./build.sh --product-name hispark_taurus_standard --build-target ark_js_host_li
 
 ### 接口说明<a name="section175841548124517"></a>
 
-NAPI接口说明参考[NAPI组件](https://gitee.com/openharmony/ace_napi/blob/master/README_zh.md)
+NAPI接口说明参考[NAPI部件](https://gitee.com/openharmony/ace_napi/blob/master/README_zh.md)
 
 ### 使用说明<a name="section129654513264"></a>
 

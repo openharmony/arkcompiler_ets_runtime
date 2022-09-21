@@ -30,6 +30,7 @@ public:
     struct JSRecordInfo {
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
+        bool hasParsedLiteralConstPool {false};
         int moduleRecordIdx {-1};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
     };
@@ -197,6 +198,26 @@ public:
             return true;
         }
         return false;
+    }
+
+    bool HasParsedLiteralConstPool(const CString &recordName) const
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info == jsRecordInfo_.end()) {
+            LOG_FULL(FATAL) << "find recordName fail " << recordName;
+            UNREACHABLE();
+        }
+        return info->second.hasParsedLiteralConstPool;
+    }
+
+    void UpdateJSRecordInfo(const CString &recordName)
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info == jsRecordInfo_.end()) {
+            LOG_FULL(FATAL) << "find recordName fail " << recordName;
+            UNREACHABLE();
+        }
+        info->second.hasParsedLiteralConstPool = true;
     }
 
     const CUnorderedMap<CString, JSRecordInfo> &GetJSRecordInfo() const
