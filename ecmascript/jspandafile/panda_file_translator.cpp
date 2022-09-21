@@ -133,6 +133,7 @@ void PandaFileTranslator::TranslateClassesWithMerge(JSPandaFile *jsPandaFile)
         cda.EnumerateMethods([jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, &desc]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
+            auto methodId = mda.GetMethodId();
             ASSERT(codeId.has_value());
 
             MethodLiteral *methodLiteral = methodLiterals + (methodIdx++);
@@ -142,18 +143,50 @@ void PandaFileTranslator::TranslateClassesWithMerge(JSPandaFile *jsPandaFile)
             CString name = reinterpret_cast<const char *>(pf->GetStringData(mda.GetNameId()).data);
             if (name == JSPandaFile::PATCH_FUNCTION_NAME_0 || name == JSPandaFile::ENTRY_FUNCTION_NAME) {
                 jsPandaFile->UpdateMainMethodIndex(
-                    mda.GetMethodId().GetOffset(), JSPandaFile::ParseEntryPoint(desc));
+                    methodId.GetOffset(), JSPandaFile::ParseEntryPoint(desc));
             }
 
-            InitializeMemory(methodLiteral, jsPandaFile, mda.GetMethodId());
+            InitializeMemory(methodLiteral, jsPandaFile, methodId);
             methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
             methodLiteral->InitializeCallField(
                 jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
 
             const uint8_t *insns = codeDataAccessor.GetInstructions();
-            if (translatedCode.find(insns) == translatedCode.end()) {
-                translatedCode.insert(insns);
-                TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral, JSPandaFile::ParseEntryPoint(desc));
+            if (jsPandaFile->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
+                panda_file::IndexAccessor indexAccessor(*pf, methodId);
+                panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
+                FunctionKind kind;
+                switch (funcKind) {
+                    case panda_file::FunctionKind::NONE:
+                    case panda_file::FunctionKind::FUNCTION:
+                        kind = FunctionKind::BASE_CONSTRUCTOR;
+                        break;
+                    case panda_file::FunctionKind::NC_FUNCTION:
+                        kind = FunctionKind::ARROW_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::GENERATOR_FUNCTION:
+                        kind = FunctionKind::GENERATOR_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_FUNCTION:
+                        kind = FunctionKind::ASYNC_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_GENERATOR_FUNCTION:
+                        kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+                        break;
+                    case panda_file::FunctionKind::ASYNC_NC_FUNCTION:
+                        kind = FunctionKind::ASYNC_ARROW_FUNCTION;
+                        break;
+                    default:
+                        UNREACHABLE();
+                }
+                methodLiteral->SetFunctionKind(kind);
+#endif
+            } else {
+                if (translatedCode.find(insns) == translatedCode.end()) {
+                    translatedCode.insert(insns);
+                    TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral, JSPandaFile::ParseEntryPoint(desc));
+                }
             }
             jsPandaFile->SetMethodLiteralToMap(methodLiteral);
         });
