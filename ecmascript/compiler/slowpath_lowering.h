@@ -276,8 +276,8 @@ private:
     void LowerDefineGetterSetterByValue(GateRef gate, GateRef glue);
     void LowerLdObjByIndex(GateRef gate, GateRef glue, bool isDeprecated);
     void LowerStObjByIndex(GateRef gate, GateRef glue);
-    void LowerLdObjByValue(GateRef gate, GateRef glue);
-    void LowerStObjByValue(GateRef gate, GateRef glue);
+    void LowerLdObjByValue(GateRef gate, GateRef glue, GateRef thisObj, bool useThis);
+    void LowerStObjByValue(GateRef gate, GateRef glue, GateRef thisObj, bool useThis);
     void LowerCreateGeneratorObj(GateRef gate, GateRef glue);
     void LowerStArraySpread(GateRef gate, GateRef glue);
     void LowerLdLexVar(GateRef gate, GateRef glue);
