@@ -20,3 +20,17 @@
  * @tc.require: issueI5NO8G
  */
 export var a = "hello merge abc"
+
+export class Merge {
+    constructor(a) {
+        this.a = a
+    }
+    test() {
+        print("this is merge abc test")
+    }
+}
+
+export function merge() {
+    var s = "1111"
+    print(s)
+}

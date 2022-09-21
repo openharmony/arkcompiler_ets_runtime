@@ -587,9 +587,6 @@ public:
                 break;
             case JSType::METHOD:
                 Method::Cast(object)->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    Method::Cast(object)->VisitRangeSlotForNative(visitor);
-                }
                 break;
             default:
                 UNREACHABLE();

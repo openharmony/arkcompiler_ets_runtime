@@ -44,7 +44,7 @@ void Log::SetLogLevelFromString(const std::string& level)
 
 void Log::SetLogComponentFromString(const std::vector<std::string>& components)
 {
-    components_ = Component::NONE;
+    components_ = Component::LOG_NONE;
     for (const auto &component : components) {
         if (component == "all") {
             components_ = Component::ALL;
