@@ -17,6 +17,7 @@
 
 #include <csignal>
 #include <pthread.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "ecmascript/base/config.h"
@@ -25,24 +26,21 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/log_wrapper.h"
 
-#include <sys/time.h>
-
 namespace panda::ecmascript {
 const int USEC_PER_SEC = 1000 * 1000;
 const int NSEC_PER_USEC = 1000;
-SamplingProcessor::SamplingProcessor(SamplesRecord *generator, int interval, bool outToFile)
+SamplingProcessor::SamplingProcessor(SamplesRecord *generator, int interval)
 {
     generator_ = generator;
     interval_ = interval;
     pid_ = pthread_self();
-    outToFile_ = outToFile;
 }
 SamplingProcessor::~SamplingProcessor() {}
 
 bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
 {
     uint64_t startTime = GetMicrosecondsTimeStamp();
-    uint64_t endTime = GetMicrosecondsTimeStamp();
+    uint64_t endTime = startTime;
     generator_->SetThreadStartTime(startTime);
     while (generator_->GetIsStart()) {
 #if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
@@ -54,16 +52,6 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
                 LOG_ECMA(ERROR) << "sem_[0] wait failed";
             }
         }
-#else
-        if (pthread_kill(pid_, SIGPROF) != 0) {
-            LOG(ERROR, RUNTIME) << "pthread_kill signal failed";
-            return false;
-        }
-        if (generator_->SemWait(0) != 0) {
-            LOG_ECMA(ERROR) << "sem_[0] wait failed";
-            return false;
-        }
-#endif
         startTime = GetMicrosecondsTimeStamp();
         int64_t ts = interval_ - static_cast<int64_t>(startTime - endTime);
         endTime = startTime;
@@ -75,19 +63,57 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
             break;
         }
         generator_->AddSample(endTime, outToFile_);
-        if (outToFile_) {
+#else
+        if (generator_->GetBeforeGetCallNapiStackFlag()) {
+            generator_->SetBeforeGetCallNapiStackFlag(false);
+            while (!generator_->GetAfterGetCallNapiStackFlag()) {
+                usleep(10); // 10: sleep 10 us;
+            }
+            generator_->SetAfterGetCallNapiStackFlag(false);
+        }
+        if (!generator_->GetCallNapiFlag()) {
+            if (pthread_kill(pid_, SIGPROF) != 0) {
+                LOG(ERROR, RUNTIME) << "pthread_kill signal failed";
+                return false;
+            }
+            if (generator_->SemWait(0) != 0) {
+                LOG_ECMA(ERROR) << "sem_[0] wait failed";
+                return false;
+            }
+            startTime = GetMicrosecondsTimeStamp();
+            int64_t ts = interval_ - static_cast<int64_t>(startTime - endTime);
+            endTime = startTime;
+            if (ts > 0 && !generator_->GetBeforeGetCallNapiStackFlag() && !generator_->GetCallNapiFlag()) {
+                usleep(ts);
+                endTime = GetMicrosecondsTimeStamp();
+            }
+            if (generator_->GetMethodNodeCount() + generator_->GetframeStackLength() >= MAX_NODE_COUNT) {
+                break;
+            }
+            generator_->AddSample(endTime);
+        } else {
+            if (generator_->GetMethodNodeCount() + generator_->GetNapiFrameStackLength() >= MAX_NODE_COUNT) {
+                break;
+            }
+            generator_->AddSampleCallNapi(&endTime);
+            generator_->SetCallNapiFlag(false);
+            if (generator_->SemPost(2) != 0) { // 2: signal 2
+                LOG_ECMA(ERROR) << "sem_[2] post failed";
+                return false;
+            }
+        }
+#endif
+        if (generator_->GetOutToFile()) {
             if (generator_->GetMethodNodeCount() >= 10 || // 10:Number of nodes currently stored
                 generator_->GetSamples().size() == 100) { // 100:Number of Samples currently stored
                 generator_->WriteMethodsAndSampleInfo(false);
             }
-        }
-        if (outToFile_) {
             if (collectCount_ % 50 == 0) { // 50:The sampling times reached 50 times.
                 WriteSampleDataToFile();
             }
             collectCount_++;
         }
-        generator_->SetSampleFlag(false);
+        generator_->SetIsBreakSampleFlag(false);
     }
     uint64_t stopTime = GetMicrosecondsTimeStamp();
     generator_->SetThreadStopTime(stopTime);
