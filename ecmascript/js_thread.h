@@ -456,6 +456,16 @@ public:
         return getStackSignal_;
     }
 
+    void SetCallNapiGetStack(bool needGetStack)
+    {
+        callNapiGetStack_ = needGetStack;
+    }
+
+    bool GetCallNapiGetStack()
+    {
+        return callNapiGetStack_;
+    }
+
     void SetGcState(bool gcState)
     {
         gcState_ = gcState;
@@ -712,6 +722,7 @@ private:
 
     // Run-time state
     bool getStackSignal_ {false};
+    bool callNapiGetStack_ {false};
     bool gcState_ {false};
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};
