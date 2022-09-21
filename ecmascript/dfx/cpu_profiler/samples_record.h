@@ -44,6 +44,7 @@ struct CpuProfileNode {
     CVector<int> children;
 };
 struct ProfileInfo {
+    uint64_t tid = 0;
     uint64_t startTime = 0;
     uint64_t stopTime = 0;
     struct CpuProfileNode nodes[MAX_NODE_COUNT];
@@ -80,7 +81,8 @@ public:
     explicit SamplesRecord();
     virtual ~SamplesRecord();
 
-    void AddSample(uint64_t sampleTimeStamp, bool outToFile);
+    void AddSample(uint64_t sampleTimeStamp);
+    void AddSampleCallNapi(uint64_t *sampleTimeStamp);
     void WriteMethodsAndSampleInfo(bool timeEnd);
     int GetMethodNodeCount() const;
     int GetframeStackLength() const;
@@ -95,43 +97,64 @@ public:
     std::unique_ptr<struct ProfileInfo> GetProfileInfo();
     bool GetIsStart() const;
     void SetIsStart(bool isStart);
+    bool GetOutToFile() const;
+    void SetOutToFile(bool outToFile);
     bool GetGcState() const;
     void SetGcState(bool gcState);
-    void SetSampleFlag(bool sampleFlag);
+    void SetIsBreakSampleFlag(bool sampleFlag);
     int SemInit(int index, int pshared, int value);
     int SemPost(int index);
     int SemWait(int index);
     int SemDestroy(int index);
     const CMap<Method *, struct FrameInfo> &GetStackInfo() const;
     void InsertStackInfo(Method *method, struct FrameInfo &codeEntry);
-    void PushFrameStack(Method *method);
-    void PushStackInfo(const FrameInfoTemp &frameInfoTemp);
+    bool PushFrameStack(Method *method);
+    bool PushStackInfo(const FrameInfoTemp &frameInfoTemp);
+    bool GetBeforeGetCallNapiStackFlag();
+    void SetBeforeGetCallNapiStackFlag(bool flag);
+    bool GetAfterGetCallNapiStackFlag();
+    void SetAfterGetCallNapiStackFlag(bool flag);
+    bool GetCallNapiFlag();
+    void SetCallNapiFlag(bool flag);
+    bool PushNapiFrameStack(Method *method);
+    bool PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp);
+    int GetNapiFrameStackLength();
+    void ClearNapiStack();
     std::ofstream fileHandle_;
+
 private:
     void WriteAddNodes();
     void WriteAddSamples();
     struct FrameInfo GetMethodInfo(Method *method);
     struct FrameInfo GetGcInfo();
     void FrameInfoTempToMap();
+    void NapiFrameInfoTempToMap();
 
     int previousId_ = 0;
     uint64_t threadStartTime_ = 0;
-    std::atomic_bool isLastSample_ = false;
+    bool outToFile_ = false;
+    std::atomic_bool isBreakSample_ = false;
     std::atomic_bool gcState_ = false;
     std::atomic_bool isStart_ = false;
+    std::atomic_bool beforeCallNapi_ = false;
+    std::atomic_bool afterCallNapi_ = false;
+    std::atomic_bool callNapi_ = false;
     std::unique_ptr<struct ProfileInfo> profileInfo_;
     CVector<int> stackTopLines_;
     CMap<struct MethodKey, int> methodMap_;
     CDeque<struct SampleInfo> samples_;
     std::string sampleData_ = "";
     std::string fileName_ = "";
-    sem_t sem_[2]; // 2 : sem_ size is two.
+    sem_t sem_[3]; // 3 : sem_ size is three.
     CMap<Method *, struct FrameInfo> stackInfoMap_;
     Method *frameStack_[MAX_ARRAY_COUNT] = {};
     int frameStackLength_ = 0;
     CMap<std::string, int> scriptIdMap_;
     FrameInfoTemp frameInfoTemps_[MAX_ARRAY_COUNT] = {};
     int frameInfoTempLength_ = 0;
+    // napi stack
+    CVector<Method *> napiFrameStack_;
+    CVector<FrameInfoTemp> napiFrameInfoTemps_;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_SAMPLES_RECORD_H
