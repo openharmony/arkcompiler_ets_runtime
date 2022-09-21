@@ -52,6 +52,9 @@ private:
     void LowerTypeDiv2Dyn(GateRef gate);
     void LowerTypeEqDyn(GateRef gate);
     void LowerTypeNotEqDyn(GateRef gate);
+    void LowerTypeToNumeric(GateRef gate);
+    void LowerPrimitiveTypeToNumber(GateRef gate);
+
     template<TypedBinOp Op>
     void SpeculateNumberBinaryOp(GateRef gate);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};

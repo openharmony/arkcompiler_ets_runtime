@@ -293,6 +293,7 @@ public:
     ~GateAccessor() = default;
 
     void GetInVector(GateRef gate, std::vector<GateRef>& ins) const;
+    void GetInStateVector(GateRef gate, std::vector<GateRef>& ins) const;
     void GetOutVector(GateRef gate, std::vector<GateRef>& outs) const;
     void GetOutStateVector(GateRef gate, std::vector<GateRef>& outStates) const;
     void GetAllGates(std::vector<GateRef>& gates) const;

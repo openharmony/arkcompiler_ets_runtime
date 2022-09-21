@@ -43,7 +43,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
             bbGatesList.push_back(curGate);
             if (acc.GetOpCode(curGate) != OpCode::LOOP_BACK) {
                 std::vector<GateRef> succGates;
-                acc.GetOutVector(curGate, succGates);
+                acc.GetOutStateVector(curGate, succGates);
                 for (const auto &succGate : succGates) {
                     if (acc.GetOpCode(succGate).IsState() && acc.GetMark(succGate) == MarkCode::NO_MARK) {
                         acc.SetMark(succGate, MarkCode::VISITED);
@@ -81,7 +81,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         semiDom[0] = semiDom.size();
         for (size_t idx = bbGatesList.size() - 1; idx >= 1; idx--) {
             std::vector<GateRef> preGates;
-            acc.GetInVector(bbGatesList[idx], preGates);
+            acc.GetInStateVector(bbGatesList[idx], preGates);
             for (const auto &predGate : preGates) {
                 if (bbGatesAddrToIdx.count(predGate) > 0) {
                     if (bbGatesAddrToIdx[predGate] < idx) {
