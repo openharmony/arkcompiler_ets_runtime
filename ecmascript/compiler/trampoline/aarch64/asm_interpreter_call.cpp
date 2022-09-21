@@ -932,7 +932,6 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register thisRegister = __ AvailableRegister2();
     Register currentSlotRegister = __ AvailableRegister3();
-    __ Mov(thisRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));  // default this: undefined
 
     Label pushVregs;
     Label pushNewTarget;
@@ -940,9 +939,15 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     bool haveThis = kungfu::AssemblerModule::JSModeHaveThisArg(mode);
     bool haveNewTarget = kungfu::AssemblerModule::JSModeHaveNewTargetArg(mode);
     if (!haveThis) {
-        __ Tst(callFieldRegister, LogicalImmediate::Create(CALL_TYPE_MASK, RegXSize));
-        __ B(Condition::EQ, &pushVregs);
+        __ Mov(thisRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));  // default this: undefined
+    } else {
+        Register thisArgRegister = GetThisRegsiter(assembler, mode, thisRegister);
+        if (thisRegister.GetId() != thisArgRegister.GetId()) {
+            __ Mov(thisRegister, thisArgRegister);
+        }
     }
+    __ Tst(callFieldRegister, LogicalImmediate::Create(CALL_TYPE_MASK, RegXSize));
+    __ B(Condition::EQ, &pushVregs);
     __ Tbz(callFieldRegister, MethodLiteral::HaveThisBit::START_BIT, &pushNewTarget);
     if (!haveThis) {
         [[maybe_unused]] TempRegister1Scope scope1(assembler);
@@ -950,11 +955,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
         __ Mov(tempRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         __ Str(tempRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     } else {
-        Register thisArgRegister = GetThisRegsiter(assembler, mode, thisRegister);
-        __ Str(thisArgRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-        if (thisRegister.GetId() != thisArgRegister.GetId()) {
-            __ Mov(thisRegister, thisArgRegister);
-        }
+        __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
     __ Bind(&pushNewTarget);
     {

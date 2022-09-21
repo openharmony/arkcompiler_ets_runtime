@@ -295,6 +295,7 @@ void SlowPathLowering::Lower(GateRef gate)
     GateRef newTarget = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
     GateRef actualArgc = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
+    GateRef thisObj = argAcc_.GetCommonArgGate(CommonArgIdx::THIS);
 
     auto pc = bcBuilder_->GetJSBytecode(gate);
     EcmaOpcode op = bcBuilder_->PcToOpcode(pc);
@@ -741,11 +742,19 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
         case EcmaOpcode::DEPRECATED_LDOBJBYVALUE_PREF_V8_V8:
-            LowerLdObjByValue(gate, glue);
+            LowerLdObjByValue(gate, glue, thisObj, false);
+            break;
+        case EcmaOpcode::LDTHISBYVALUE_IMM8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM16:
+            LowerLdObjByValue(gate, glue, thisObj, true);
             break;
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
-            LowerStObjByValue(gate, glue);
+            LowerStObjByValue(gate, glue, thisObj, false);
+            break;
+        case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
+        case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
+            LowerStObjByValue(gate, glue, thisObj, true);
             break;
         case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16:
         case EcmaOpcode::LDSUPERBYNAME_IMM16_ID16:
@@ -813,6 +822,8 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
+            LowerLdLocalModuleVarByIndex(gate, glue, jsFunc);
+            break;
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::JSTRICTEQZ_IMM8:
         case EcmaOpcode::JSTRICTEQZ_IMM16:
@@ -842,10 +853,6 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::JSTRICTEQ_V8_IMM16:
         case EcmaOpcode::JNSTRICTEQ_V8_IMM8:
         case EcmaOpcode::JNSTRICTEQ_V8_IMM16:
-        case EcmaOpcode::LDTHISBYVALUE_IMM8:
-        case EcmaOpcode::LDTHISBYVALUE_IMM16:
-        case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
-        case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
@@ -3020,15 +3027,24 @@ void SlowPathLowering::LowerStObjByIndex(GateRef gate, GateRef glue)
     ReplaceHirToSubCfg(gate, Circuit::NullGate(), successControl, failControl);
 }
 
-void SlowPathLowering::LowerLdObjByValue(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerLdObjByValue(GateRef gate, GateRef glue, GateRef thisObj, bool useThis)
 {
     DebugPrintBC(gate, glue);
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    // 2: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef propKey = acc_.GetValueIn(gate, 1);
+    GateRef receiver;
+    GateRef propKey;
+    if (useThis) {
+        // 1: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 1);
+        receiver = thisObj;
+        propKey = acc_.GetValueIn(gate, 0);
+    } else {
+        // 2: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 2);
+        receiver = acc_.GetValueIn(gate, 0);
+        propKey = acc_.GetValueIn(gate, 1);
+    }
     GateRef holeConst = builder_.HoleConstant();
     DEFVAlUE(varAcc, (&builder_), VariableType::JS_ANY(), holeConst);
     GateRef result;
@@ -3068,14 +3084,25 @@ void SlowPathLowering::LowerLdObjByValue(GateRef gate, GateRef glue)
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
-void SlowPathLowering::LowerStObjByValue(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerStObjByValue(GateRef gate, GateRef glue, GateRef thisObj, bool useThis)
 {
     DebugPrintBC(gate, glue);
-    // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef propKey = acc_.GetValueIn(gate, 1);
-    GateRef accValue = acc_.GetValueIn(gate, 2);
+    GateRef receiver;
+    GateRef propKey;
+    GateRef accValue;
+    if (useThis) {
+        // 2: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 2);
+        receiver = thisObj;
+        propKey = acc_.GetValueIn(gate, 0);
+        accValue = acc_.GetValueIn(gate, 1);
+    } else {
+        // 3: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 3);
+        receiver = acc_.GetValueIn(gate, 0);
+        propKey = acc_.GetValueIn(gate, 1);
+        accValue = acc_.GetValueIn(gate, 2);
+    }
     // we do not need to merge outValueGate, so using GateRef directly instead of using Variable
     GateRef result;
     Label isHeapObject(&builder_);

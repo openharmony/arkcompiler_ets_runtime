@@ -596,7 +596,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register thisRegister = __ AvailableRegister2();
-    __ Movq(JSTaggedValue::VALUE_UNDEFINED, thisRegister);  // default this: undefined
+
 
     Label pushVregs;
     Label pushNewTarget;
@@ -604,9 +604,15 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     bool haveThis = kungfu::AssemblerModule::JSModeHaveThisArg(mode);
     bool haveNewTarget = kungfu::AssemblerModule::JSModeHaveNewTargetArg(mode);
     if (!haveThis) {
-        __ Testb(CALL_TYPE_MASK, callFieldRegister);
-        __ Jz(&pushVregs);
+        __ Movq(JSTaggedValue::VALUE_UNDEFINED, thisRegister);  // default this: undefined
+    } else {
+        Register thisArgRegister = GetThisRegsiter(assembler, mode, thisRegister);
+        if (thisRegister != thisArgRegister) {
+            __ Movq(thisArgRegister, thisRegister);
+        }
     }
+    __ Testb(CALL_TYPE_MASK, callFieldRegister);
+    __ Jz(&pushVregs);
     // fall through
     __ Testq(MethodLiteral::HaveThisBit::Mask(), callFieldRegister);
     __ Jz(&pushNewTarget);
@@ -614,11 +620,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     if (!haveThis) {
         __ Pushq(JSTaggedValue::Undefined().GetRawData());
     } else {
-        Register thisArgRegister = GetThisRegsiter(assembler, mode, thisRegister);
-        __ Pushq(thisArgRegister);
-        if (thisRegister != thisArgRegister) {
-            __ Movq(thisArgRegister, thisRegister);
-        }
+        __ Pushq(thisRegister);
     }
     // fall through
     __ Bind(&pushNewTarget);
