@@ -262,13 +262,6 @@ GateRef InterpreterStubBuilder::GetConstpoolFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), method, offset);
 }
 
-// only use for fast new, not universal API
-GateRef InterpreterStubBuilder::GetThisObjectFromFastNewFrame(GateRef prevSp)
-{
-    auto idx = AsmInterpretedFrame::ReverseIndex::THIS_OBJECT_REVERSE_INDEX;
-    return Load(VariableType::JS_ANY(), prevSp, IntPtr(idx * sizeof(JSTaggedType)));
-}
-
 GateRef InterpreterStubBuilder::GetResumeModeFromGeneratorObject(GateRef obj)
 {
     GateRef bitfieldOffset = IntPtr(JSGeneratorObject::BIT_FIELD_OFFSET);

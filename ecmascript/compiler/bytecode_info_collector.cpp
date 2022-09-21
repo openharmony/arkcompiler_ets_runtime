@@ -18,7 +18,6 @@
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/ecma_bytecode_des.h"
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -220,118 +219,6 @@ do {                                                                     \
         *(pc + newLen + i) = static_cast<uint8_t>(EcmaOpcode::NOP);      \
     }                                                                    \
 } while (false)
-
-void BytecodeInfoCollector::FixOpcode(const OldBytecodeInst &inst)
-{
-    auto opcode = inst.GetOpcode();
-    auto pc = const_cast<uint8_t *>(inst.GetAddress());
-    switch (opcode) {
-        case OldBytecodeInst::Opcode::MOV_V4_V4:
-            *pc = static_cast<uint8_t>(EcmaBytecode::MOV_V4_V4);
-            break;
-        case OldBytecodeInst::Opcode::MOV_DYN_V8_V8:
-            *pc = static_cast<uint8_t>(EcmaBytecode::MOV_DYN_V8_V8);
-            break;
-        case OldBytecodeInst::Opcode::MOV_DYN_V16_V16:
-            *pc = static_cast<uint8_t>(EcmaBytecode::MOV_DYN_V16_V16);
-            break;
-        case OldBytecodeInst::Opcode::LDA_STR_ID32:
-            *pc = static_cast<uint8_t>(EcmaBytecode::LDA_STR_ID32);
-            break;
-        case OldBytecodeInst::Opcode::JMP_IMM8:
-            *pc = static_cast<uint8_t>(EcmaBytecode::JMP_IMM8);
-            break;
-        case OldBytecodeInst::Opcode::JMP_IMM16:
-            *pc = static_cast<uint8_t>(EcmaBytecode::JMP_IMM16);
-            break;
-        case OldBytecodeInst::Opcode::JMP_IMM32:
-            *pc = static_cast<uint8_t>(EcmaBytecode::JMP_IMM32);
-            break;
-        case OldBytecodeInst::Opcode::JEQZ_IMM8:
-            *pc = static_cast<uint8_t>(EcmaBytecode::JEQZ_IMM8);
-            break;
-        case OldBytecodeInst::Opcode::JEQZ_IMM16:
-            *pc = static_cast<uint8_t>(EcmaBytecode::JEQZ_IMM16);
-            break;
-        case OldBytecodeInst::Opcode::JNEZ_IMM8:
-            *pc = static_cast<uint8_t>(EcmaBytecode::JNEZ_IMM8);
-            break;
-        case OldBytecodeInst::Opcode::JNEZ_IMM16:
-            *pc = static_cast<uint8_t>(EcmaBytecode::JNEZ_IMM16);
-            break;
-        case OldBytecodeInst::Opcode::LDA_DYN_V8:
-            *pc = static_cast<uint8_t>(EcmaBytecode::LDA_DYN_V8);
-            break;
-        case OldBytecodeInst::Opcode::STA_DYN_V8:
-            *pc = static_cast<uint8_t>(EcmaBytecode::STA_DYN_V8);
-            break;
-        case OldBytecodeInst::Opcode::LDAI_DYN_IMM32:
-            *pc = static_cast<uint8_t>(EcmaBytecode::LDAI_DYN_IMM32);
-            break;
-        case OldBytecodeInst::Opcode::FLDAI_DYN_IMM64:
-            *pc = static_cast<uint8_t>(EcmaBytecode::FLDAI_DYN_IMM64);
-            break;
-        case OldBytecodeInst::Opcode::RETURN_DYN:
-            *pc = static_cast<uint8_t>(EcmaBytecode::RETURN_DYN);
-            break;
-        case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
-            U_FALLTHROUGH;
-        case OldBytecodeInst::Opcode::ECMA_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
-            U_FALLTHROUGH;
-        case OldBytecodeInst::Opcode::ECMA_DEFINENCFUNCDYN_PREF_ID16_IMM16_V8:
-            U_FALLTHROUGH;
-        case OldBytecodeInst::Opcode::ECMA_DEFINEFUNCDYN_PREF_ID16_IMM16_V8:
-            U_FALLTHROUGH;
-        case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
-            *pc = static_cast<uint8_t>(EcmaBytecode::DEFINEFUNCDYN_PREF_ID16_IMM16_V8);
-            *(pc + 1) = 0xFF;
-            break;
-        default: {
-            if (*pc != static_cast<uint8_t>(OldBytecodeInst::Opcode::ECMA_LDNAN_PREF_NONE)) {
-                LOG_FULL(FATAL) << "Is not an Ecma Opcode opcode: " << static_cast<uint16_t>(opcode);
-                UNREACHABLE();
-            }
-            *pc = *(pc + 1);
-            *(pc + 1) = 0xFF;
-            break;
-        }
-    }
-}
-
-void BytecodeInfoCollector::UpdateEcmaBytecodeICOffset(MethodLiteral* method, uint8_t *pc)
-{
-    uint8_t offset = MethodLiteral::INVALID_IC_SLOT;
-    auto opcode = static_cast<EcmaBytecode>(*pc);
-    switch (opcode) {
-        case EcmaBytecode::TRYLDGLOBALBYNAME_PREF_ID32:
-        case EcmaBytecode::TRYSTGLOBALBYNAME_PREF_ID32:
-        case EcmaBytecode::LDGLOBALVAR_PREF_ID32:
-        case EcmaBytecode::STGLOBALVAR_PREF_ID32:
-            offset = method->UpdateSlotSizeWith8Bit(1);
-            break;
-        case EcmaBytecode::LDOBJBYVALUE_PREF_V8_V8:
-        case EcmaBytecode::STOBJBYVALUE_PREF_V8_V8:
-        case EcmaBytecode::STOWNBYVALUE_PREF_V8_V8:
-        case EcmaBytecode::LDOBJBYNAME_PREF_ID32_V8:
-        case EcmaBytecode::STOBJBYNAME_PREF_ID32_V8:
-        case EcmaBytecode::STOWNBYNAME_PREF_ID32_V8:
-        case EcmaBytecode::LDOBJBYINDEX_PREF_V8_IMM32:
-        case EcmaBytecode::STOBJBYINDEX_PREF_V8_IMM32:
-        case EcmaBytecode::STOWNBYINDEX_PREF_V8_IMM32:
-        case EcmaBytecode::LDSUPERBYVALUE_PREF_V8_V8:
-        case EcmaBytecode::STSUPERBYVALUE_PREF_V8_V8:
-        case EcmaBytecode::LDSUPERBYNAME_PREF_ID32_V8:
-        case EcmaBytecode::STSUPERBYNAME_PREF_ID32_V8:
-        case EcmaBytecode::LDMODULEVAR_PREF_ID32_IMM8:
-        case EcmaBytecode::STMODULEVAR_PREF_ID32:
-            offset = method->UpdateSlotSizeWith8Bit(2); // 2: occupy two ic slot
-            break;
-        default:
-            return;
-    }
-
-    *(pc + 1) = offset;
-}
 
 void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst)
 {

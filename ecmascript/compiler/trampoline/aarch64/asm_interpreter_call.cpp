@@ -653,6 +653,8 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
     int64_t spOffset = static_cast<int64_t>(AsmInterpretedFrame::GetBaseOffset(false))
         - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
+    int64_t thisOffset = static_cast<int64_t>(AsmInterpretedFrame::GetThisOffset(false))
+        - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
     ASSERT(fpOffset < 0);
     ASSERT(spOffset < 0);
 
@@ -679,13 +681,11 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     {
         __ Cmp(ret, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         __ B(Condition::NE, &notUndefined);
-        auto index = AsmInterpretedFrame::ReverseIndex::THIS_OBJECT_REVERSE_INDEX;
-        auto thisOffset = index * 8;  // 8: byte size
         ASSERT(thisOffset < 0);
         __ Bind(&getHiddenThis);
+        __ Ldur(ret, MemoryOperand(sp, thisOffset));  // update acc
         __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
         __ Mov(rsp, fp);  // resume rsp
-        __ Ldur(ret, MemoryOperand(rsp, thisOffset));  // update acc
         __ Sub(pc, pc, jumpSizeRegister); // sub negative jmupSize
         __ Ldrb(opcode, MemoryOperand(pc, 0));
         __ Add(bcStub, glueRegister, Operand(opcode, UXTW, SHIFT_OF_FRAMESLOT));
