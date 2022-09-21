@@ -154,7 +154,7 @@ void TSTypeLowering::SpeculateNumberAdd(GateRef gate)
     Label exit(&builder_);
     GateType numberType = GateType::NumberType();
     DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, numberType), builder_.HoleConstant());
-    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), 
+    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left),
                                      builder_.TypeCheck(numberType, right)),
                                      &isNumber, &notNumber);
     std::map<GateRef, size_t> stateGateMap;
@@ -200,7 +200,7 @@ void TSTypeLowering::SpeculateNumberSub(GateRef gate)
     Label exit(&builder_);
     GateType numberType = GateType::NumberType();
     DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, numberType), builder_.HoleConstant());
-    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), 
+    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left),
                                      builder_.TypeCheck(numberType, right)),
                                      &isNumber, &notNumber);
     std::map<GateRef, size_t> stateGateMap;
@@ -246,7 +246,7 @@ void TSTypeLowering::SpeculateNumberMul(GateRef gate)
     Label exit(&builder_);
     GateType numberType = GateType::NumberType();
     DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, numberType), builder_.HoleConstant());
-    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), 
+    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left),
                                      builder_.TypeCheck(numberType, right)),
                                      &isNumber, &notNumber);
     std::map<GateRef, size_t> stateGateMap;

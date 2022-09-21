@@ -1751,7 +1751,6 @@ void TypeLowering::LowerTypeDiv2(GateRef gate)
     if (!leftType.IsNumberType() || !rightType.IsNumberType()) {
         return;
     }
-
     std::map<GateRef, size_t> stateGateMap;
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = FastDiv(left, right);

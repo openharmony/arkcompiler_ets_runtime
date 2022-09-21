@@ -32,10 +32,11 @@ namespace OHOS {
             return;
         }
         double input = 0;
-        if (size > 8) { // 8 : size of double type
-            size = 8;
+        const uint32_t doubleTypeSize = 8; // 8 : size of double type
+        if (size > doubleTypeSize) {
+            size = doubleTypeSize;
         }
-        if (memcpy_s(&input, 8, data, size) != 0) {
+        if (memcpy_s(&input, doubleTypeSize, data, size) != 0) {
             std::cout << "memcpy_s failed";
             UNREACHABLE();
         }

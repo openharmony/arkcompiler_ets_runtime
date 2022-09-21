@@ -898,8 +898,6 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
             break;
         }
         case OldBytecodeInst::Opcode::ECMA_ITERNEXT_PREF_V8: {
-            // *pc = static_cast<uint8_t>(EcmaOpcode::new_op_xxxxxxxx);
-            // *(pc + 1) = 0x00;
             LOG_FULL(FATAL) << "Need Add ITERNEXT Deprecated";
             return;
         }
@@ -1105,7 +1103,6 @@ void BytecodeInfoCollector::FixOpcode(MethodLiteral *method, const OldBytecodeIn
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
             }
-            // TODO: add a deprecated inst to translate?
             *(pc + 4) = *(pc + 4) + 1;
             break;
         }
@@ -1339,66 +1336,18 @@ void BytecodeInfoCollector::UpdateICOffset(MethodLiteral* methodLiteral, uint8_t
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
             U_FALLTHROUGH;
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::ADD2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::SUB2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::MUL2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::DIV2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::MOD2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::SHL2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::SHR2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::ASHR2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::AND2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::OR2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::XOR2_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::EQ_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::NOTEQ_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::LESS_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::LESSEQ_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::GREATER_IMM8_V8:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::GREATEREQ_IMM8_V8:
             offset = methodLiteral->UpdateSlotSizeWith8Bit(1);
             break;
-        // case EcmaOpcode::LDOBJBYVALUE_IMM8_V8_V8:
-        //     U_FALLTHROUGH;
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
             U_FALLTHROUGH;
         case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
             U_FALLTHROUGH;
-        // case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
-        //     U_FALLTHROUGH;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             U_FALLTHROUGH;
         case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
             U_FALLTHROUGH;
-        // case EcmaOpcode::LDOBJBYINDEX_IMM8_V8_IMM16:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM32:
-        //     U_FALLTHROUGH;
-        // case EcmaOpcode::LDSUPERBYVALUE_IMM8_V8_V8:
-        //     U_FALLTHROUGH;
         case EcmaOpcode::STSUPERBYVALUE_IMM8_V8_V8:
             U_FALLTHROUGH;
-        // case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16_V8:
-        //     U_FALLTHROUGH;
         case EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8:
             offset = methodLiteral->UpdateSlotSizeWith8Bit(2); // 2: occupy two ic slot
             break;

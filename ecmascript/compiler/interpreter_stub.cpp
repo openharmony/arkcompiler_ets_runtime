@@ -5224,7 +5224,6 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm8Id16)
     builder.LoadICByName(&result, &tryFastPath, &slowPath, &checkException);
     Bind(&tryFastPath);
     {
-
         GateRef stringId = ReadInst16_1(pc);
         GateRef propKey = GetStringFromConstPool(constpool, stringId);
         result = GetPropertyByName(glue, receiver, propKey);
@@ -5312,8 +5311,6 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdobjbynamePrefId32V8)
         CHECK_EXCEPTION_WITH_VARACC(*result, INT_PTR(DEPRECATED_LDOBJBYNAME_PREF_ID32_V8));
     }
 }
-
-
 
 DECLARE_ASM_HANDLER(HandleCallarg0Imm8)
 {
@@ -5521,7 +5518,8 @@ DECLARE_ASM_HANDLER(HandleCallthis1Imm8V8V8)
     GateRef func = acc;
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8));
-    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, JSCallMode::CALL_THIS_ARG1, { a0Value, thisValue });
+    GateRef res =
+        JSCallDispatch(glue, func, actualNumArgs, jumpSize, JSCallMode::CALL_THIS_ARG1, { a0Value, thisValue });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 

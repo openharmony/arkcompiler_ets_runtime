@@ -1049,7 +1049,7 @@ JSTaggedValue SlowRuntimeStub::CreateClassWithBuffer(JSThread *thread, JSTaggedV
     JSHandle<JSTaggedValue> baseHandle(thread, base);
     JSHandle<JSTaggedValue> lexenvHandle(thread, lexenv);
     JSHandle<JSTaggedValue> constpoolHandle(thread, constpool);
-    return RuntimeStubs::RuntimeCreateClassWithBuffer(thread, baseHandle, lexenvHandle, 
+    return RuntimeStubs::RuntimeCreateClassWithBuffer(thread, baseHandle, lexenvHandle,
                                                       constpoolHandle, methodId, literalId);
 }
 

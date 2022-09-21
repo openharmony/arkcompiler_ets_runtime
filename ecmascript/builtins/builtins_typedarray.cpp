@@ -1023,7 +1023,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         JSTaggedNumber tSrcLen = JSTaggedValue::ToLength(thread, lenResult);
         // 19. ReturnIfAbrupt(srcLength).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        uint64_t srcLen = tSrcLen.GetNumber();
+        uint64_t srcLen = static_cast<uint64_t>(tSrcLen.GetNumber());
         // 20. If srcLength + targetOffset > targetLength, throw a RangeError exception.
         if (srcLen + targetOffset > targetLength) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The sum of srcLength and targetOffset is greater than targetLength.",
