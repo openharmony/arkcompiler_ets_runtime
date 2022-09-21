@@ -239,6 +239,13 @@ GateRef SlowPathLowering::GetConstPool(GateRef jsFunc)
 }
 
 // labelmanager must be initialized
+GateRef SlowPathLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
+{
+    GateRef constPool = GetConstPool(jsFunc);
+    return builder_.GetValueFromTaggedArray(constPool, index);
+}
+
+// labelmanager must be initialized
 GateRef SlowPathLowering::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type)
 {
     auto env = builder_.GetCurrentEnvironment();
@@ -3262,7 +3269,7 @@ void SlowPathLowering::LowerCreateObjectHavingMethod(GateRef gate, GateRef glue,
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef imm = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef literal = GetObjectFromConstPool(glue, jsFunc, imm, ConstPoolType::METHOD);
+    GateRef literal = GetObjectFromConstPool(glue, jsFunc, imm, ConstPoolType::OBJECT_LITERAL);
     GateRef env = acc_.GetValueIn(gate, 1);
     GateRef constpool = GetConstPool(jsFunc);
     GateRef result = LowerCallRuntime(glue, id, { literal, env, constpool }, true);
