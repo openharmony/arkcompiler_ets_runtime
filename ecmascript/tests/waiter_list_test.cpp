@@ -100,29 +100,4 @@ HWTEST_F_L0(WaiterListTest, AddNode)
     EXPECT_EQ(listNode->prev_->waiting_, false);
     DeleteListNode(thread, listNode);
 }
-
-HWTEST_F_L0(WaiterListTest, DeleteNode)
-{
-    uint32_t bufferLength = 5;
-    WaiterList *waitLists = Singleton<WaiterList>::GetInstance();
-
-    WaiterListNode *listNode = CreateListNode(thread, bufferLength);
-    WaiterListNode *listNode1 = CreateListNode(thread, bufferLength + 1);
-    waitLists->AddNode(listNode);
-    waitLists->AddNode(listNode1);
-    // change listNode waiting
-    listNode1->waiting_ = false;
-    waitLists->AddNode(listNode1);
-    // delete listNode1
-    waitLists->DeleteNode(listNode1);
-    auto indexOneIter = waitLists->locationListMap_.find(listNode1->waitPointer_);
-    EXPECT_EQ(indexOneIter, waitLists->locationListMap_.end());
-    // delete listNode
-    waitLists->DeleteNode(listNode);
-    indexOneIter = waitLists->locationListMap_.find(listNode->waitPointer_);
-    EXPECT_EQ(indexOneIter, waitLists->locationListMap_.end());
-
-    DeleteListNode(thread, listNode);
-    DeleteListNode(thread, listNode1);
-}
 }  // namespace panda::test
