@@ -21,10 +21,32 @@
 #include <sstream>
 
 #include "ecmascript/common.h"
-
 #ifdef ENABLE_HILOG
 #include "hilog/log.h"
+#endif
 
+enum Level {
+    VERBOSE,
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+    FATAL,
+};
+
+using ComponentMark = uint64_t;
+enum Component {
+    LOG_NONE = 0ULL,
+    GC = 1ULL << 0ULL,
+    INTERPRETER = 1ULL << 1ULL,
+    COMPILER = 1ULL << 2ULL,
+    DEBUGGER = 1ULL << 3ULL,
+    ECMA = 1ULL << 4ULL,
+    ALL = 0xFFFFFFFFULL,
+};
+
+namespace panda::ecmascript {
+#ifdef ENABLE_HILOG
 constexpr static unsigned int ARK_DOMAIN = 0xD003F00;
 constexpr static auto TAG = "ArkCompiler";
 constexpr static OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, ARK_DOMAIN, TAG};
@@ -44,27 +66,6 @@ static bool LOGGABLE_ERROR = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_ERROR);
 static bool LOGGABLE_FATAL = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_FATAL);
 #endif // ENABLE_HILOG
 
-enum Level {
-    VERBOSE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    FATAL,
-};
-
-using ComponentMark = uint64_t;
-enum Component {
-    NONE = 0ULL,
-    GC = 1ULL << 0ULL,
-    INTERPRETER = 1ULL << 1ULL,
-    COMPILER = 1ULL << 2ULL,
-    DEBUGGER = 1ULL << 3ULL,
-    ECMA = 1ULL << 4ULL,
-    ALL = 0xFFFFFFFFULL,
-};
-
-namespace panda::ecmascript {
 class JSRuntimeOptions;
 class PUBLIC_API Log {
 public:
@@ -105,10 +106,14 @@ private:
 };
 
 #if defined(ENABLE_HILOG)
-template<LogLevel level>
+template<LogLevel level, Component component>
 class HiLog {
 public:
-    HiLog() = default;
+    HiLog()
+    {
+        std::string str = Log::GetComponentStr(component);
+        stream_ << std::string("[") << str << std::string("]: ");
+    }
     ~HiLog()
     {
         if constexpr (level == LOG_LEVEL_MIN) {
@@ -137,10 +142,14 @@ private:
     std::ostringstream stream_;
 };
 #elif defined(PANDA_TARGET_ANDROID)  // PANDA_TARGET_ANDROID
-template<Level level>
+template<Level level, Component component>
 class PUBLIC_API AndroidLog {
 public:
-    AndroidLog() = default;
+    AndroidLog()
+    {
+        std::string str = Log::GetComponentStr(component);
+        stream_ << std::string("[") << str << std::string("]: ");
+    }
     ~AndroidLog();
 
     template<class type>
@@ -183,9 +192,10 @@ private:
 #endif
 
 #if defined(ENABLE_HILOG)
-#define ARK_LOG(level) panda::ecmascript::LOGGABLE_##level && panda::ecmascript::HiLog<LOG_##level>()
+#define ARK_LOG(level, component) panda::ecmascript::LOGGABLE_##level && \
+                                  panda::ecmascript::HiLog<LOG_##level, (component)>()
 #elif defined(PANDA_TARGET_ANDROID)
-#define ARK_LOG(level) panda::ecmascript::AndroidLog<(level)>()
+#define ARK_LOG(level, component) panda::ecmascript::AndroidLog<(level), (component)>()
 #else
 #define ARK_LOG(level, component) panda::ecmascript::Log::LogIsLoggable(level, component) && \
                                   panda::ecmascript::StdLog<(level), (component)>()

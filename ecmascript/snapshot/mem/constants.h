@@ -43,7 +43,7 @@ public:
 
     // builtins native method encode
     // builtins deserialize: nativeMehtods_ + getter/setter; program deserialize: getter/setter + programFunctionMethods
-    static constexpr size_t PROGRAM_NATIVE_METHOD_BEGIN = 7;
+    static constexpr size_t PROGRAM_NATIVE_METHOD_BEGIN = 6;
 
     // serialize use constants
     static constexpr uint8_t MASK_METHOD_SPACE_BEGIN = 0xFF;

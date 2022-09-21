@@ -185,7 +185,7 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValue)
     moduleExport->StoreModuleValue(thread, exportLocalNameHandle, exportValueHandle);
 
     JSTaggedValue importDefaultValue =
-        moduleExport->GetModuleValue(thread, exportLocalNameHandle.GetTaggedValue(), false);
+        moduleExport->GetModuleValue(thread, exportNameHandle.GetTaggedValue(), false);
     EXPECT_EQ(exportValueHandle.GetTaggedValue(), importDefaultValue);
 }
 }  // namespace panda::test
