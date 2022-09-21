@@ -21,7 +21,6 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/ecma_bytecode_des.h"
 #include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {

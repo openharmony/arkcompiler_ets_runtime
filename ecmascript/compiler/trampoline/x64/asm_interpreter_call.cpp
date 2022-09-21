@@ -295,15 +295,6 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
     Register argcRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
     // save fp
     __ Movq(rsp, fpRegister);
-
-    if (kungfu::AssemblerModule::IsCallNew(mode)) {
-        Register thisRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
-        [[maybe_unused]] TempRegisterScope scope(assembler);
-        Register tempArgcRegister = __ TempRegister();
-        __ PushArgc(argcRegister, tempArgcRegister);
-        __ Pushq(thisRegister);
-    }
-
     Register declaredNumArgsRegister = __ AvailableRegister2();
     GetDeclaredNumArgsFromCallField(assembler, callFieldRegister, declaredNumArgsRegister);
 
@@ -972,14 +963,13 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     __ Cmpq(JSTaggedValue::Undefined().GetRawData(), ret);
     __ Jne(&notUndefined);
 
-    auto index = AsmInterpretedFrame::ReverseIndex::THIS_OBJECT_REVERSE_INDEX;
     __ Bind(&getHiddenThis);
     __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetBaseOffset(false)), spRegister);  // update sp
     __ Subq(jumpSizeRegister, pcRegister);  // sub negative jmupSize
     __ Movzbq(Operand(pcRegister, 0), opcodeRegister);
     {
+        __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetThisOffset(false)), ret);
         __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetFpOffset(false)), rsp);   // resume rsp
-        __ Movq(Operand(rsp, index * FRAME_SLOT_SIZE), ret);  // 8: byte size, update acc
         Register bcStubRegister = r11;
         __ Movq(Operand(glueRegister, opcodeRegister, Times8, JSThread::GlueData::GetBCStubEntriesOffset(false)),
             bcStubRegister);

@@ -265,11 +265,6 @@ public:
         stringIndexCache_.insert(index);
     }
 
-    std::set<uint32_t> getStringIndexTable()
-    {
-        return stringIndexCache_;
-    }
-
     EcmaVM * GetEcmaVM() const
     {
         return vm_;
