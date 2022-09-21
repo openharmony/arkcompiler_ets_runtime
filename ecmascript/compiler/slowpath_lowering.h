@@ -146,6 +146,7 @@ private:
     void LowerExceptionHandler(GateRef hirGate);
     // environment must be initialized
     GateRef GetConstPool(GateRef jsFunc);
+    GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
     // environment must be initialized
     GateRef GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type);
     // environment must be initialized

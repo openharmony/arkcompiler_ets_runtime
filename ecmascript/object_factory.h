@@ -561,6 +561,7 @@ private:
     friend class GlobalEnvConstants;
     friend class EcmaString;
     friend class SnapshotProcessor;
+    friend class TSManager;
     void InitObjectFields(const TaggedObject *object);
 
     JSThread *thread_ {nullptr};

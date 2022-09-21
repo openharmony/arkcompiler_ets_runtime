@@ -44,7 +44,7 @@ void BytecodeCircuitBuilder::CollectBytecodeBlockInfo(uint8_t *pc, std::vector<C
     BytecodeInstruction inst(pc);
     auto opcode = inst.GetOpcode();
     auto bytecodeOffset = BytecodeInstruction::Size(opcode);
-    switch (opcode) {
+    switch (static_cast<EcmaOpcode>(opcode)) {
         case EcmaOpcode::JMP_IMM8: {
             int8_t offset = static_cast<int8_t>(READ_INST_8_0());
             std::vector<uint8_t *> temp;
@@ -607,10 +607,10 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
     BytecodeInstruction inst(pc);
     auto opcode = inst.GetOpcode();
     info.offset = BytecodeInstruction::Size(opcode);
-    info.opcode = opcode;
+    info.opcode = static_cast<EcmaOpcode>(opcode);
     info.accIn = inst.HasFlag(BytecodeInstruction::Flags::ACC_READ);
     info.accOut = inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE);
-    switch (opcode) {
+    switch (static_cast<EcmaOpcode>(opcode)) {
         case EcmaOpcode::MOV_V4_V4: {
             uint16_t vdst = READ_INST_4_0();
             uint16_t vsrc = READ_INST_4_1();
@@ -2883,7 +2883,7 @@ void BytecodeCircuitBuilder::PrintBytecodeInfo()
         EnumerateBlock(bb, [](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             std::string log;
             BytecodeInstruction inst(pc);
-            log += "Inst_" + GetEcmaOpcodeStr(inst.GetOpcode()) + ": " + "In=[";
+            log += "Inst_" + GetEcmaOpcodeStr(static_cast<EcmaOpcode>(inst.GetOpcode())) + ": " + "In=[";
             if (bytecodeInfo.accIn) {
                 log += "acc,";
             }
