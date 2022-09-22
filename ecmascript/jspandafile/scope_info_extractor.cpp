@@ -57,7 +57,7 @@ JSTaggedValue ScopeInfoExtractor::GenerateScopeInfo(JSThread *thread, uint16_t s
         if (scopeDebugInfo == nullptr) {
             return JSTaggedValue::Hole();
         }
-        scopeDebugInfo->scopeInfo.insert(std::make_pair(name, slot));
+        scopeDebugInfo->scopeInfo.emplace(name, slot);
     }
 
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(
