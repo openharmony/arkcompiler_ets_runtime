@@ -719,8 +719,11 @@ void Heap::TryTriggerConcurrentMarking()
 
 void Heap::IncreaseNativeBindingSize(JSNativePointer *object)
 {
-    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(object));
     size_t size = object->GetBindingSize();
+    if (size == 0) {
+        return;
+    }
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(object));
     if (region->InYoungSpace()) {
         activeSemiSpace_->IncreaseNativeBindingSize(size);
     } else {
@@ -730,6 +733,9 @@ void Heap::IncreaseNativeBindingSize(JSNativePointer *object)
 
 void Heap::IncreaseNativeBindingSize(bool nonMovable, size_t size)
 {
+    if (size == 0) {
+        return;
+    }
     if(!nonMovable) {
         activeSemiSpace_->IncreaseNativeBindingSize(size);
     } else {

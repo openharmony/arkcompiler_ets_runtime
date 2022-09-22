@@ -72,7 +72,7 @@ public:
         callField_ = IsAotCodeBit::Update(callField_, isCompiled);
     }
 
-    void InitializeCallField(const JSPandaFile *jsPandaFile, uint32_t numVregs, uint32_t numArgs);
+    void Initialize(const JSPandaFile *jsPandaFile, uint32_t numVregs, uint32_t numArgs);
 
     bool HaveThisWithCallField() const
     {
@@ -225,6 +225,11 @@ public:
     uint16_t GetSlotSize() const
     {
         return SlotSizeBits::Decode(literalInfo_);
+    }
+
+    void SetSlotSize(uint16_t size)
+    {
+        literalInfo_ = SlotSizeBits::Update(literalInfo_, size);
     }
 
     uint8_t UpdateSlotSizeWith8Bit(uint16_t size)

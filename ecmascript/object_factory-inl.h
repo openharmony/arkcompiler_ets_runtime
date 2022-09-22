@@ -67,8 +67,8 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     obj->SetData(data);
     obj->SetBindingSize(nativeBindingsize);
 
-    heap_->IncreaseNativeBindingSize(nonMovable, nativeBindingsize);
     if (callBack != nullptr) {
+        heap_->IncreaseNativeBindingSize(nonMovable, nativeBindingsize);
         vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header));
     }
     return obj;

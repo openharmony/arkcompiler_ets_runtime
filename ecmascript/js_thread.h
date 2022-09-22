@@ -456,6 +456,16 @@ public:
         return getStackSignal_;
     }
 
+    void SetCallNapiGetStack(bool needGetStack)
+    {
+        callNapiGetStack_ = needGetStack;
+    }
+
+    bool GetCallNapiGetStack()
+    {
+        return callNapiGetStack_;
+    }
+
     void SetGcState(bool gcState)
     {
         gcState_ = gcState;
@@ -660,6 +670,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::GlueGlobalEnvIndex)>(isArch32);
         }
 
+        static size_t GetGlueGlobalConstOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::GlobalConstIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -712,6 +727,7 @@ private:
 
     // Run-time state
     bool getStackSignal_ {false};
+    bool callNapiGetStack_ {false};
     bool gcState_ {false};
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};

@@ -466,7 +466,9 @@ public:
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_GET(Type, Name, Index, Desc) \
     const Type Get##Name() const;         \
-    const JSHandle<Type> GetHandled##Name() const;
+    const JSHandle<Type> GetHandled##Name() const; \
+    static size_t GetOffsetOf##Name(); 
+
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET)
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET)
     GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET)

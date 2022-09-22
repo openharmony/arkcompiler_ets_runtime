@@ -34,24 +34,26 @@ MethodLiteral::MethodLiteral(const JSPandaFile *jsPandaFile, EntityId methodId)
     }
     SetHotnessCounter(static_cast<int16_t>(0));
     SetMethodId(methodId);
-    UpdateSlotSizeWith8Bit(static_cast<uint8_t>(0));
 }
 
-void MethodLiteral::InitializeCallField(const JSPandaFile *jsPandaFile, uint32_t numVregs, uint32_t numArgs)
+void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, uint32_t numVregs, uint32_t numArgs)
 {
     uint32_t callType = UINT32_MAX;  // UINT32_MAX means not found
+    uint16_t slotSize = 0;
     const panda_file::File *pandaFile = jsPandaFile->GetPandaFile();
     panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
     mda.EnumerateAnnotations([&](EntityId annotation_id) {
         panda_file::AnnotationDataAccessor ada(*pandaFile, annotation_id);
-        auto *annotation_name = reinterpret_cast<const char *>(pandaFile->GetStringData(ada.GetClassId()).data);
-        if (::strcmp("L_ESCallTypeAnnotation;", annotation_name) == 0) {
-            uint32_t elem_count = ada.GetCount();
-            for (uint32_t i = 0; i < elem_count; i++) {
+        auto *annotationName = reinterpret_cast<const char *>(pandaFile->GetStringData(ada.GetClassId()).data);
+        if (::strcmp("L_ESCallTypeAnnotation;", annotationName) == 0) {
+            uint32_t elemCount = ada.GetCount();
+            for (uint32_t i = 0; i < elemCount; i++) {
                 panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-                auto *elem_name = reinterpret_cast<const char *>(pandaFile->GetStringData(adae.GetNameId()).data);
-                if (::strcmp("callType", elem_name) == 0) {
+                auto *elemName = reinterpret_cast<const char *>(pandaFile->GetStringData(adae.GetNameId()).data);
+                if (::strcmp("callType", elemName) == 0) {
                     callType = adae.GetScalarValue().GetValue();
+                } else if (::strcmp("slotSize", elemName) == 0) {
+                    slotSize = adae.GetScalarValue().GetValue();
                 }
             }
         }
@@ -63,6 +65,7 @@ void MethodLiteral::InitializeCallField(const JSPandaFile *jsPandaFile, uint32_t
                  NumArgsBits::Encode(numArgs - HaveFuncBit::Decode(callType)  // exclude func
                                              - HaveNewTargetBit::Decode(callType)  // exclude new target
                                              - HaveThisBit::Decode(callType));  // exclude this
+    SetSlotSize(slotSize);
 }
 
 // It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.

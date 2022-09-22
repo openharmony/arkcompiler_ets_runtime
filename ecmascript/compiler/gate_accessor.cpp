@@ -133,6 +133,14 @@ void GateAccessor::GetInVector(GateRef gate, std::vector<GateRef>& ins) const
     }
 }
 
+void GateAccessor::GetInStateVector(GateRef gate, std::vector<GateRef>& ins) const
+{
+    const Gate *curGate = circuit_->LoadGatePtrConst(gate);
+    for (size_t idx = 0; idx < curGate->GetStateCount(); idx++) {
+        ins.push_back(circuit_->GetGateRef(curGate->GetInGateConst(idx)));
+    }
+}
+
 void GateAccessor::GetOutVector(GateRef gate, std::vector<GateRef>& outs) const
 {
     const Gate *curGate = circuit_->LoadGatePtrConst(gate);

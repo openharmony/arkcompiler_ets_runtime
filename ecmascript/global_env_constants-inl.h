@@ -63,6 +63,11 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
     {                                                                        \
         return JSHandle<Type>(reinterpret_cast<uintptr_t>(                   \
             &constants_[static_cast<int>(ConstantIndex::Index)]));           \
+    }                                                                        \
+    inline size_t GlobalEnvConstants::GetOffsetOf##Name()                    \
+    {                                                                        \
+        return sizeof(JSTaggedValue)                                         \
+            * static_cast<int>(ConstantIndex::Index);                        \
     }
 
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)

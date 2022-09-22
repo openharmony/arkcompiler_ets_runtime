@@ -439,6 +439,28 @@ std::unique_ptr<SetMixedDebugParams> SetMixedDebugParams::Create(const PtJson &p
     return paramsObject;
 }
 
+std::unique_ptr<ReplyNativeCallingParams> ReplyNativeCallingParams::Create(const PtJson &params)
+{
+    auto paramsObject = std::make_unique<ReplyNativeCallingParams>();
+    std::string error;
+    Result ret;
+
+    bool userCode= false;
+    ret = params.GetBool("userCode", &userCode);
+    if (ret == Result::SUCCESS) {
+        paramsObject->userCode_ = userCode;
+    } else if (ret == Result::TYPE_ERROR) {  // optional value
+        error += "Unknown 'userCode';";
+    }
+
+    if (!error.empty()) {
+        LOG_DEBUGGER(ERROR) << "ReplyNativeCallingParams::Create " << error;
+        return nullptr;
+    }
+
+    return paramsObject;
+}
+
 std::unique_ptr<GetPropertiesParams> GetPropertiesParams::Create(const PtJson &params)
 {
     auto paramsObject = std::make_unique<GetPropertiesParams>();

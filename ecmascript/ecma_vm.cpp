@@ -577,7 +577,7 @@ void EcmaVM::HandleUncaughtException(TaggedObject *exception)
     }
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread_, exceptionHandle);
     CString string = ConvertToString(*result);
-    LOG_ECMA(ERROR) << string;
+    LOG_NO_TAG(ERROR) << string;
 }
 
 void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo)
@@ -592,12 +592,11 @@ void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo)
     CString nameBuffer = ConvertToString(*name);
     CString msgBuffer = ConvertToString(*msg);
     CString stackBuffer = ConvertToString(*stack);
-    LOG_ECMA(ERROR) << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
+    LOG_NO_TAG(ERROR) << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
 }
 
 void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
-    heap_->ResetNativeBindingSize();
     auto iter = nativePointerList_.begin();
     while (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
@@ -606,7 +605,6 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             object->Destroy();
             iter = nativePointerList_.erase(iter);
         } else {
-            heap_->IncreaseNativeBindingSize(object);
             ++iter;
         }
     }
@@ -640,11 +638,11 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
         JSNativePointer *object = *iter;
         auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
         if (fwd == nullptr) {
-            heap_->IncreaseNativeBindingSize(object);
             object->Destroy();
             iter = nativePointerList_.erase(iter);
             continue;
         }
+        heap_->IncreaseNativeBindingSize(JSNativePointer::Cast(fwd));
         if (fwd != reinterpret_cast<TaggedObject *>(object)) {
             *iter = JSNativePointer::Cast(fwd);
         }

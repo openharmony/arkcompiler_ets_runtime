@@ -36,12 +36,13 @@ enum Level {
 
 using ComponentMark = uint64_t;
 enum Component {
-    LOG_NONE = 0ULL,
+    NONE = 0ULL,
     GC = 1ULL << 0ULL,
     INTERPRETER = 1ULL << 1ULL,
     COMPILER = 1ULL << 2ULL,
     DEBUGGER = 1ULL << 3ULL,
-    ECMA = 1ULL << 4ULL,
+    ECMASCRIPT = 1ULL << 4ULL,
+    NO_TAG = 0xFFFFFFFFULL >> 1ULL,
     ALL = 0xFFFFFFFFULL,
 };
 
@@ -76,25 +77,25 @@ public:
     }
     static inline std::string GetComponentStr(Component component)
     {
-        if (component == Component::ALL) {
-            return "default";
+        switch (component)
+        {
+            case Component::NO_TAG:
+                return "";
+            case Component::GC:
+                return "[gc] ";
+            case Component::ECMASCRIPT:
+                return "[ecmascript] ";
+            case Component::INTERPRETER:
+                return "[interpreter] ";
+            case Component::DEBUGGER:
+                return "[debugger] ";
+            case Component::COMPILER:
+                return "[compiler] ";
+            case Component::ALL:
+                return "[default] ";
+            default:
+                return "[unknown] ";
         }
-        if (component == Component::GC) {
-            return "gc";
-        }
-        if (component == Component::ECMA) {
-            return "ecma";
-        }
-        if (component == Component::INTERPRETER) {
-            return "interpreter";
-        }
-        if (component == Component::DEBUGGER) {
-            return "debugger";
-        }
-        if (component == Component::COMPILER) {
-            return "compiler";
-        }
-        return "unknown";
     }
 
 private:
@@ -112,7 +113,7 @@ public:
     HiLog()
     {
         std::string str = Log::GetComponentStr(component);
-        stream_ << std::string("[") << str << std::string("]: ");
+        stream_ << str;
     }
     ~HiLog()
     {
@@ -148,7 +149,7 @@ public:
     AndroidLog()
     {
         std::string str = Log::GetComponentStr(component);
-        stream_ << std::string("[") << str << std::string("]: ");
+        stream_ << str;
     }
     ~AndroidLog();
 
@@ -169,7 +170,7 @@ public:
     StdLog()
     {
         std::string str = Log::GetComponentStr(component);
-        stream_ << std::string("[") << str << std::string("]: ");
+        stream_ << str;
     }
     ~StdLog()
     {

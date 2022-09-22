@@ -33,6 +33,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"assert-types", required_argument, nullptr, OPTION_ASSERT_TYPES},
         {"builtins-dts", required_argument, nullptr, OPTION_BUILTINS_DTS},
         {"compiler-log", required_argument, nullptr, OPTION_COMPILER_LOG_OPT},
+        {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"enable-bytecode-trace", required_argument, nullptr, OPTION_ENABLE_BC_TRACE},
         {"enable-cpuprofiler", required_argument, nullptr, OPTION_ENABLE_CPUPROFILER},
@@ -59,7 +60,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"maxAotMethodSize", required_argument, nullptr, OPTION_MAX_AOTMETHODSIZE},
         {"maxNonmovableSpaceCapacity", required_argument, nullptr, OPTION_MAX_NONMOVABLE_SPACE_CAPACITY},
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
-        {"mlist-for-log", no_argument, nullptr, OPTION_METHODS_LIST_FOR_LOG},
         {"opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
         {"options", no_argument, nullptr, OPTION_OPTIONS},
         {"print-any-types", required_argument, nullptr, OPTION_PRINT_ANY_TYPES},
@@ -81,6 +81,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
     uint32_t argUint32;
     int argInt;
     bool argBool;
+    static std::string COLON = ":";
+
+    if (argc <= 1) {
+        return true;
+    }
 
     while (true) {
         count++;
@@ -96,7 +101,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 std::cerr << " Invalid option \"" << argv[optind] << "\"\n" << std::endl;
                 return false;
             }
-            return true;;
+            return true;
         }
 
         // unknown option or required_argument option has no argument
@@ -121,7 +126,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_ENABLE_ASM_INTERPRETER:
-                ret = ParseBoolParam("asm-interpreter", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableAsmInterpreter(argBool);
                 } else {
@@ -132,7 +137,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 SetAsmOpcodeDisableRange(optarg);
                 break;
             case OPTION_ASSERT_TYPES:
-                ret = ParseBoolParam("assert-types", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetAssertTypes(argBool);
                 } else {
@@ -146,7 +151,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 SetCompilerLogOption(optarg);
                 break;
             case OPTION_ENABLE_ARK_TOOLS:
-                ret = ParseBoolParam("enable-ark-tools", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableArkTools(argBool);
                 } else {
@@ -154,7 +159,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_ENABLE_BC_TRACE:
-                ret = ParseBoolParam("enable-bytecode-trace", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableByteCodeTrace(argBool);
                 } else {
@@ -162,7 +167,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_ENABLE_CPUPROFILER:
-                ret = ParseBoolParam("enable-cpuprofiler", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableCpuprofiler(argBool);
                 } else {
@@ -170,7 +175,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_ENABLE_FORCE_GC:
-                ret = ParseBoolParam("enable-force-gc", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableForceGC(argBool);
                 } else {
@@ -178,7 +183,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_FORCE_FULL_GC:
-                ret = ParseBoolParam("force-full-gc", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetForceFullGC(argBool);
                 } else {
@@ -186,7 +191,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_ENABLE_IC:
-                ret = ParseBoolParam("enable-ic", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableIC(argBool);
                 } else {
@@ -194,7 +199,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_ENABLE_RUNTIME_STAT:
-                ret = ParseBoolParam("enable-runtime-stat", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableRuntimeStat(argBool);
                 } else {
@@ -226,7 +231,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 SetIcuDataPath(optarg);
                 break;
             case OPTION_IS_WORKER:
-                ret = ParseBoolParam("IsWorker", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetIsWorker(argBool);
                 } else {
@@ -234,30 +239,30 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_LOG_COMPONENTS:
-                ParseListArgParam(optarg, &argListStr, ":");
+                ParseListArgParam(optarg, &argListStr, COLON);
                 SetLogComponents(argListStr);
                 break;
             case OPTION_LOG_DEBUG:
-                ParseListArgParam(optarg, &argListStr, ":");
+                ParseListArgParam(optarg, &argListStr, COLON);
                 SetLogDebug(argListStr);
                 break;
             case OPTION_LOG_ERROR:
-                ParseListArgParam(optarg, &argListStr, ":");
+                ParseListArgParam(optarg, &argListStr, COLON);
                 SetLogError(argListStr);
                 break;
             case OPTION_LOG_FATAL:
-                ParseListArgParam(optarg, &argListStr, ":");
+                ParseListArgParam(optarg, &argListStr, COLON);
                 SetLogFatal(argListStr);
                 break;
             case OPTION_LOG_INFO:
-                ParseListArgParam(optarg, &argListStr, ":");
+                ParseListArgParam(optarg, &argListStr, COLON);
                 SetLogInfo(argListStr);
                 break;
             case OPTION_LOG_LEVEL:
                 SetLogLevel(optarg);
                 break;
             case OPTION_LOG_WARNING:
-                ParseListArgParam(optarg, &argListStr, ":");
+                ParseListArgParam(optarg, &argListStr, COLON);
                 SetLogWarning(argListStr);
                 break;
             case OPTION_LONG_PAUSE_TIME:
@@ -284,7 +289,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_METHODS_LIST_FOR_LOG:
+            case OPTION_COMPILER_LOG_METHODS:
                 SetMethodsListForLog(optarg);
                 break;
             case OPTION_ASM_OPT_LEVEL:
@@ -296,7 +301,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_PRINT_ANY_TYPES:
-                ret = ParseBoolParam("print-any-types", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetPrintAnyTypes(argBool);
                 } else {
@@ -324,7 +329,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 SetSnapshotFile(optarg);
                 break;
             case OPTION_STARTUP_TIME:
-                ret = ParseBoolParam("startup-time", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetStartupTime(argBool);
                 } else {
@@ -341,7 +346,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 SetEntryPoint(optarg);
                 break;
             case OPTION_MERGE_ABC:
-                ret = ParseBoolParam("merge-abc", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetMergeAbc(argBool);
                 } else {
@@ -349,7 +354,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_ENABLE_TYPE_LOWERING:
-                ret = ParseBoolParam("enable-type-lowering", &argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableTypeLowering(argBool);
                 } else {
@@ -379,18 +384,13 @@ bool JSRuntimeOptions::SetDefaultValue(char* argv)
     return true;
 }
 
-bool JSRuntimeOptions::ParseBoolParam(const std::string &option, bool* argBool)
+bool JSRuntimeOptions::ParseBoolParam(bool* argBool)
 {
-    if (strcmp(optarg, "false") == 0) {
+    if ((strcmp(optarg, "false") == 0) || (strcmp(optarg, "0") == 0)) {
         *argBool = false;
-    } else if (strcmp(optarg, "true") == 0) {
-        *argBool = true;
     } else {
-        std::cerr << "getopt: \"" << option <<"\" argument has invalid parameter value \""
-            << optarg <<"\"\n" << std::endl;
-        return false;
+        *argBool = true;
     }
-
     return true;
 }
 

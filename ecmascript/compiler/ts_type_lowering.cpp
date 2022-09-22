@@ -114,6 +114,7 @@ void TSTypeLowering::Lower(GateRef gate)
     }
 }
 
+
 void TSTypeLowering::RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap)
 {
     acc_.ReplaceStateIn(hir, builder_.GetState());
@@ -336,6 +337,48 @@ void TSTypeLowering::SpeculateNumberBinaryOp(GateRef gate)
         builder_.Jump(&exit);
     }
     builder_.Bind(&notNumber);
+    {
+        // slowpath
+        result = gate;
+        RebuildSlowpathCfg(gate, stateGateMap);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    for (auto [state, index] : stateGateMap) {
+        acc_.ReplaceIn(state, index, builder_.GetState());
+    }
+    std::vector<GateRef> successControl;
+    GenerateSuccessMerge(successControl);
+    ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
+{
+    GateRef src = acc_.GetValueIn(gate, 0);
+    GateType srcType = acc_.GetGateType(src);
+
+    if (srcType.IsPrimitiveType() && !srcType.IsStringType()) {
+        LowerPrimitiveTypeToNumber(gate);
+        return;
+    }
+}
+
+void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
+{
+    Label isPrimitive(&builder_);
+    Label notPrimitive(&builder_);
+    Label exit(&builder_);
+    GateRef src = acc_.GetValueIn(gate, 0);
+    GateType srcType = acc_.GetGateType(src);
+    DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, GateType::NumberType()), builder_.HoleConstant());
+    builder_.Branch(builder_.TypeCheck(srcType, src), &isPrimitive, &notPrimitive);
+    std::map<GateRef, size_t> stateGateMap;
+    builder_.Bind(&isPrimitive);
+    {
+        result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notPrimitive);
     {
         // slowpath
         result = gate;

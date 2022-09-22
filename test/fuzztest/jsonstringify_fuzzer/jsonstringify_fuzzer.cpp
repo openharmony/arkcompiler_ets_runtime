@@ -23,8 +23,6 @@ using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base::utf_helper;
 
-#define UTF8BYTES 4
-
 namespace OHOS {
     void JSONStringifyFuzzTest(const uint8_t* data, size_t size)
     {

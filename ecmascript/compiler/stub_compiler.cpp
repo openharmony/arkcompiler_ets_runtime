@@ -164,14 +164,6 @@ bool StubCompiler::BuildStubModuleAndSave() const
     }
     return (res > 0);
 }
-
-std::string GetHelper()
-{
-    std::string str;
-    str.append(STUB_HELP_HEAD_MSG);
-    str.append(HELP_OPTION_MSG);
-    return str;
-}
 }  // namespace panda::ecmascript::kungfu
 
 int main(const int argc, const char **argv)
@@ -179,7 +171,6 @@ int main(const int argc, const char **argv)
     panda::ecmascript::JSRuntimeOptions runtimeOptions;
     bool ret = runtimeOptions.ParseCommand(argc, argv);
     if (!ret) {
-        std::cerr << panda::ecmascript::kungfu::GetHelper();
         return 1;
     }
 

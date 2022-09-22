@@ -44,7 +44,7 @@ void Log::SetLogLevelFromString(const std::string& level)
 
 void Log::SetLogComponentFromString(const std::vector<std::string>& components)
 {
-    components_ = Component::LOG_NONE;
+    components_ = Component::NONE;
     for (const auto &component : components) {
         if (component == "all") {
             components_ = Component::ALL;
@@ -55,7 +55,7 @@ void Log::SetLogComponentFromString(const std::vector<std::string>& components)
             continue;
         }
         if (component == "ecma") {
-            components_ |= Component::ECMA;
+            components_ |= Component::ECMASCRIPT;
             continue;
         }
         if (component == "interpreter") {
