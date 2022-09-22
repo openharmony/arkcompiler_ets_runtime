@@ -670,6 +670,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::GlueGlobalEnvIndex)>(isArch32);
         }
 
+        static size_t GetGlueGlobalConstOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::GlobalConstIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};

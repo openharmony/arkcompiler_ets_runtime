@@ -107,8 +107,10 @@ void TypeLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType src
         result = DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
     } else if (srcType.IsBigIntType() || srcType.IsNumberType()) {
         result = src;
+        builder_.Jump(&exit);
     } else if (srcType.IsNullType()) {
         result = IntToTaggedIntPtr(builder_.Int32(0));
+        builder_.Jump(&exit);
     } else {
         UNREACHABLE();
     }

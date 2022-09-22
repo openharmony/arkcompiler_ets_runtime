@@ -59,7 +59,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"maxAotMethodSize", required_argument, nullptr, OPTION_MAX_AOTMETHODSIZE},
         {"maxNonmovableSpaceCapacity", required_argument, nullptr, OPTION_MAX_NONMOVABLE_SPACE_CAPACITY},
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
-        {"mlist-for-log", no_argument, nullptr, OPTION_METHODS_LIST_FOR_LOG},
+        {"mlist-for-log", required_argument, nullptr, OPTION_METHODS_LIST_FOR_LOG},
         {"opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
         {"options", no_argument, nullptr, OPTION_OPTIONS},
         {"print-any-types", required_argument, nullptr, OPTION_PRINT_ANY_TYPES},

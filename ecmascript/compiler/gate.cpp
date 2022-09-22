@@ -201,6 +201,18 @@ Properties OpCode::GetProperties() const
             return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
         case TYPED_UNARY_OP:
             return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case HEAP_ALLOC:
+            return {ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(I64), NO_ROOT};
+        case LOAD_ELEMENT:
+            return {ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, I64), NO_ROOT};
+        case LOAD_PROPERTY:
+            return {ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
+        case STORE_ELEMENT:
+            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, I64, ANYVALUE), NO_ROOT};
+        case STORE_PROPERTY:
+            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE, ANYVALUE), NO_ROOT};
+        case TO_LENGTH:
+            return {I64, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
         default:
             LOG_COMPILER(ERROR) << "Please complete OpCode properties (OpCode=" << op_ << ")";
             UNREACHABLE();
@@ -318,6 +330,12 @@ std::string OpCode::Str() const
         {TYPED_BINARY_OP, "TYPED_BINARY_OP"},
         {TYPE_CONVERT, "TYPE_CONVERT"},
         {TYPED_UNARY_OP, "TYPED_UNARY_OP"},
+        {TO_LENGTH, "TO_LENGTH"},
+        {HEAP_ALLOC, "HEAP_ALLOC"},
+        {LOAD_ELEMENT, "LOAD_ELEMENT"},
+        {LOAD_PROPERTY, "LOAD_PROPERTY"},
+        {STORE_ELEMENT, "STORE_ELEMENT"},
+        {STORE_PROPERTY, "STORE_PROPERTY"},
     };
     if (strMap.count(op_) > 0) {
         return strMap.at(op_);
@@ -1214,7 +1232,10 @@ bool OpCode::IsGeneralState() const
             (op_ == OpCode::IF_SUCCESS) || (op_ == OpCode::IF_EXCEPTION) || (op_ == OpCode::SWITCH_CASE) ||
             (op_ == OpCode::DEFAULT_CASE) || (op_ == OpCode::MERGE) || (op_ == OpCode::LOOP_BEGIN) ||
             (op_ == OpCode::ORDINARY_BLOCK) || (op_ == OpCode::STATE_ENTRY) ||
-            (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT) || (op_ == OpCode::TYPED_UNARY_OP));
+            (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT) || (op_ == OpCode::TYPED_UNARY_OP) ||
+            (op_ == OpCode::TO_LENGTH) || (op_ == OpCode::HEAP_ALLOC) ||
+            (op_ == OpCode::LOAD_ELEMENT) || (op_ == OpCode::LOAD_PROPERTY) ||
+            (op_ == OpCode::STORE_ELEMENT) || (op_ == OpCode::STORE_PROPERTY));
 }
 
 bool OpCode::IsTypedGate() const
