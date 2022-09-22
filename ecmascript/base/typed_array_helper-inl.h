@@ -163,9 +163,9 @@ uint32_t TypedArrayHelper::GetSizeFromType(const DataViewType arrayType)
     } else if (arrayType == DataViewType::INT16 ||
                arrayType == DataViewType::UINT16) {
         elementSize = ElementSize::TWO;
-    } else if (arrayType == DataViewType::INT32 ||
+    } else if (arrayType == DataViewType::FLOAT32 ||
                arrayType == DataViewType::UINT32 ||
-               arrayType == DataViewType::FLOAT32) {
+               arrayType == DataViewType::INT32) {
         elementSize = ElementSize::FOUR;
     } else {
         elementSize = ElementSize::EIGHT;

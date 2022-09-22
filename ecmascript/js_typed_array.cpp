@@ -410,6 +410,9 @@ bool JSTypedArray::IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray
 DataViewType JSTypedArray::GetTypeFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat32ArrayString())) {
+        return DataViewType::FLOAT32;
+    }
     if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt8ArrayString())) {
         return DataViewType::INT8;
     }
@@ -430,9 +433,6 @@ DataViewType JSTypedArray::GetTypeFromName(JSThread *thread, const JSHandle<JSTa
     }
     if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledUint32ArrayString())) {
         return DataViewType::UINT32;
-    }
-    if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat32ArrayString())) {
-        return DataViewType::FLOAT32;
     }
     if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledFloat64ArrayString())) {
         return DataViewType::FLOAT64;
