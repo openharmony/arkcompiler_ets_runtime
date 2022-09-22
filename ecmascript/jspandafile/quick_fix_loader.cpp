@@ -138,7 +138,7 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     JSHandle<ConstantPool> constpool;
     JSTaggedValue constpoolValue = vm->FindConstpool(jsPandaFile, 0);
     if (constpoolValue.IsHole()) {
-        constpool = PandaFileTranslator::ParseMergedConstPool(vm, jsPandaFile);
+        constpool = PandaFileTranslator::ParseConstPool(vm, jsPandaFile);
         int32_t index = 0;
         int32_t total = 1;
         vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);
@@ -153,7 +153,7 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
         CString recordName = item.first;
         LOG_FULL(DEBUG) << "Parse constpool: " << fileName << ":" << recordName;
         vm->GetModuleManager()->HostResolveImportedModuleWithMerge(fileName, recordName);
-        PandaFileTranslator::ParseLiteralConstPool(vm, jsPandaFile, recordName, constpool);
+        PandaFileTranslator::ParseFuncAndLiteralConstPool(vm, jsPandaFile, recordName, constpool);
 
         // Generate Program for every record.
         uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(recordName);
