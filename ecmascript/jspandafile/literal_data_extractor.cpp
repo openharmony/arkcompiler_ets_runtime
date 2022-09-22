@@ -372,6 +372,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 uint16_t length = std::get<uint16_t>(value);
                 auto methodLiteral = jsPandaFile->FindMethodLiteral(methodId);
                 ASSERT(methodLiteral != nullptr);
+                // Should replace with ASSERT(kind == methodLiteral->GetFunctionKind())
+                methodLiteral->SetFunctionKind(kind);
 
                 JSHandle<Method> method = factory->NewMethod(methodLiteral);
                 method->SetConstantPool(thread, constpool.GetTaggedValue());

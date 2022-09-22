@@ -66,7 +66,7 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
             MethodLiteral *methodLiteral = methods + (methodIdx++);
             panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
             uint32_t codeSize = codeDataAccessor.GetCodeSize();
-            auto methodOffset = mda.GetMethodId().GetOffset();
+            auto methodOffset = methodId.GetOffset();
 
             uint32_t mainMethodIndex = jsPandaFile_->GetMainMethodIndex();
             if (mainMethodIndex == 0 && pf->GetStringData(mda.GetNameId()) == sd) {
@@ -74,8 +74,7 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
                 bytecodeInfo_.mainMethodIndex = methodOffset;
             }
 
-//            new (methodLiteral) MethodLiteral(jsPandaFile_, mda.GetMethodId());
-            InitializeMemory(methodLiteral, jsPandaFile_, mda.GetMethodId());
+            InitializeMemory(methodLiteral, jsPandaFile_, methodId);
             methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
             methodLiteral->Initialize(
                 jsPandaFile_, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
