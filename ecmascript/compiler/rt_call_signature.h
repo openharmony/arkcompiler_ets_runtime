@@ -46,6 +46,20 @@ public:
         ASSERT(index < NUM_OF_RTSTUBS_WITHOUT_GC);
         return &callSigns_[index];
     }
+
+    static std::string GetRTName(int index)
+    {
+        ASSERT(index < NUM_OF_STUBS);
+        switch (index) {
+#define DEF_STUB_NAME(name) case ID_##name: { return std::string("RTStub_") + #name; }
+RUNTIME_STUB_LIST(DEF_STUB_NAME)
+#undef DEF_STUB_NAME
+            default:
+                return "unknown";
+        }
+        return "unknown";
+    }
+
 private:
     static CallSignature callSigns_[NUM_OF_RTSTUBS_WITHOUT_GC];
 };

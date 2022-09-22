@@ -51,21 +51,7 @@ int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
 std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
     auto loader = thread_->GetEcmaVM()->GetFileLoader();
-    const std::vector<AOTModulePackInfo>& aotPackInfos = loader->GetPackInfos();
-    std::tuple<uint64_t, uint8_t *, int> callsiteInfo;
-
-    StubModulePackInfo stubInfo = loader->GetStubPackInfo();
-    bool ans = stubInfo.CalCallSiteInfo(retAddr, callsiteInfo);
-    if (ans) {
-        return callsiteInfo;
-    }
-    // aot
-    for (auto &info : aotPackInfos) {
-        ans = info.CalCallSiteInfo(retAddr, callsiteInfo);
-        if (ans) {
-            return callsiteInfo;
-        }
-    }
+    std::tuple<uint64_t, uint8_t *, int> callsiteInfo = loader->CalCallSiteInfo(retAddr);
     return callsiteInfo;
 }
 

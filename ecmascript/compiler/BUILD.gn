@@ -67,8 +67,10 @@ source_set("libark_jsoptimizer_set") {
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
     "new_object_stub_builder.cpp",
+    "pass_manager.cpp",
     "rt_call_signature.cpp",
     "scheduler.cpp",
+    "slowpath_lowering.cpp",
     "stub.cpp",
     "stub_builder.cpp",
     "test_stubs.cpp",
@@ -79,8 +81,10 @@ source_set("libark_jsoptimizer_set") {
     "trampoline/x64/asm_interpreter_call.cpp",
     "trampoline/x64/common_call.cpp",
     "trampoline/x64/optimized_call.cpp",
+    "ts_type_lowering.cpp",
     "type.cpp",
     "type_inference/type_infer.cpp",
+    "type_lowering.cpp",
     "type_recorder.cpp",
     "verifier.cpp",
   ]
@@ -186,13 +190,7 @@ source_set("ark_stub_compiler_set") {
 }
 
 source_set("ark_aot_compiler_set") {
-  sources = [
-    "aot_compiler.cpp",
-    "pass_manager.cpp",
-    "slowpath_lowering.cpp",
-    "ts_type_lowering.cpp",
-    "type_lowering.cpp",
-  ]
+  sources = [ "aot_compiler.cpp" ]
 
   public_configs = [
     ":include_llvm",

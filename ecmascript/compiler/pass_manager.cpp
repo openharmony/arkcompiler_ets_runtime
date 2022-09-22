@@ -36,7 +36,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto constantPool = CreateConstPool(jsPandaFile);
     DecodeTSTypes(jsPandaFile, fileName);
 
-    auto aotModule = new LLVMModule("aot_" + fileName, triple_);
+    auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
                                                 LOptions(optLevel_, true, relocMode_));
     CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
@@ -65,7 +65,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
         if (enableMethodLog) {
             LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
-                            << methodName << "] log:" << "\033[0m";
+                                << methodName << "] log:" << "\033[0m";
         }
 
         BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager,
@@ -84,6 +84,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<SchedulingPass>();
         pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);
     });
+    LOG_COMPILER(INFO) << " ";
     LOG_COMPILER(INFO) << skippedMethodNum << " large methods in " << fileName << " have been skipped";
     generator.AddModule(aotModule, aotModuleAssembler, jsPandaFile);
     return true;

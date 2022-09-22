@@ -1127,7 +1127,7 @@ void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) 
         std::string log("(id=" + std::to_string(id_) + ", op=" + GetOpCode().Str() + ", ");
         log += ((bytecode.compare("") == 0) ? "" : "bytecode=") + bytecode;
         log += ((bytecode.compare("") == 0) ? "" : ", ");
-        log += "machineType=" + MachineTypeStr(GetMachineType()) + ", ";
+        log += "MType=" + MachineTypeStr(GetMachineType()) + ", ";
         log += "bitfield=" + std::to_string(bitfield_) + ", ";
         log += "type=" + GateTypeStr(type_) + ", ";
         log += "stamp=" + std::to_string(static_cast<uint32_t>(stamp_)) + ", ";
@@ -1161,7 +1161,48 @@ void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) 
             }
         }
         log += "])";
-        log += "\n";
+        LOG_COMPILER(INFO) << std::dec << log;
+    }
+}
+
+void Gate::ShortPrint(std::string bytecode, bool inListPreview, size_t highlightIdx) const
+{
+    if (GetOpCode() != OpCode::NOP) {
+        std::string log("(id=" + std::to_string(id_) + ", op=" + GetOpCode().Str() + ", ");
+        log += ((bytecode.compare("") == 0) ? "" : "bytecode=") + bytecode;
+        log += ((bytecode.compare("") == 0) ? "" : ", ");
+        log += "MType=" + MachineTypeStr(GetMachineType()) + ", ";
+        log += "bitfield=" + std::to_string(bitfield_) + ", ";
+        log += "type=" + GateTypeStr(type_) + ", ";
+        log += "in=[";
+
+        size_t idx = 0;
+        auto stateSize = GetStateCount();
+        auto dependSize = GetDependCount();
+        auto valueSize = GetInValueCount();
+        auto rootSize = GetRootCount();
+        idx = PrintInGate(stateSize, idx, 0, inListPreview, highlightIdx, log);
+        idx = PrintInGate(stateSize + dependSize, idx, stateSize, inListPreview, highlightIdx, log);
+        idx = PrintInGate(stateSize + dependSize + valueSize, idx, stateSize + dependSize,
+                          inListPreview, highlightIdx, log);
+        PrintInGate(stateSize + dependSize + valueSize + rootSize, idx, stateSize + dependSize + valueSize,
+                    inListPreview, highlightIdx, log, true);
+
+        log += "], out=[";
+
+        if (!IsFirstOutNull()) {
+            const Out *curOut = GetFirstOutConst();
+            log += std::to_string(curOut->GetGateConst()->GetId()) +
+                   (inListPreview ? std::string(":" + curOut->GetGateConst()->GetOpCode().Str()) : std::string(""));
+
+            while (!curOut->IsNextOutNull()) {
+                curOut = curOut->GetNextOutConst();
+                log += " " +  std::to_string(curOut->GetGateConst()->GetId()) +
+                       (inListPreview ? std::string(":" + curOut->GetGateConst()->GetOpCode().Str())
+                                      : std::string(""));
+            }
+        }
+        log += "])";
         LOG_COMPILER(INFO) << std::dec << log;
     }
 }
@@ -1174,11 +1215,11 @@ size_t Gate::PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPrev
         log += ((idx == size) ? "" : " ");
         log += ((idx == highlightIdx) ? "\033[4;31m" : "");
         log += ((IsInGateNull(idx)
-                       ? "N"
-                       : (std::to_string(GetInGateConst(idx)->GetId()) +
-                          (inListPreview ? std::string(":" + GetInGateConst(idx)->GetOpCode().Str())
-                                         : std::string("")))));
-        log += ((idx == highlightIdx) ? "\033[0m" : "");
+                ? "N"
+                : (std::to_string(GetInGateConst(idx)->GetId()) +
+                    (inListPreview ? std::string(":" + GetInGateConst(idx)->GetOpCode().Str())
+                                   : std::string("")))));
+            log += ((idx == highlightIdx) ? "\033[0m" : "");
     }
     log += "]";
     log += ((isEnd) ? "" : ", ");

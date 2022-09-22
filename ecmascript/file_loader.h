@@ -43,9 +43,6 @@ struct ModuleSectionDes {
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
     uint32_t startIndex_ {static_cast<uint32_t>(-1)}; // record current module first function index in PackInfo
     uint32_t funcCount_ {0};
-    /* arkStackMapPtr_: generator aot file, stackmap buffer lifecycle is managned by share ptr
-    while arkStackMapRawPtr_ is allocated by machinecode, lifecycle is managned by machinecode.
-    */
     std::shared_ptr<uint8_t> arkStackMapPtr_ {nullptr};
     uint32_t arkStackMapSize_ {0};
     uint8_t *arkStackMapRawPtr_ {nullptr};
@@ -267,6 +264,7 @@ public:
         totalCodeSize_ += size;
     }
     bool CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uint8_t *, int>& ret) const;
+
 protected:
     uint32_t entryNum_ {0};
     uint32_t moduleNum_ {0};
@@ -297,6 +295,7 @@ public:
         accumulateTotalSize(moduleDes.GetArkStackMapSize());
         aotFileHashs_.emplace_back(hash);
     }
+
 private:
     std::vector<uint32_t> aotFileHashs_ {};
 };
@@ -363,25 +362,14 @@ private:
 };
 
 class FileLoader {
-using CommonStubCSigns = kungfu::CommonStubCSigns;
-using BytecodeStubCSigns = kungfu::BytecodeStubCSigns;
 public:
     explicit FileLoader(EcmaVM *vm);
     virtual ~FileLoader();
     void LoadStubFile();
     void LoadAOTFile(const std::string &fileName);
-    void SetAOTmmap(void *addr, size_t totalCodeSize)
-    {
-        aotAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
-    }
-    void SetStubmmap(void *addr, size_t totalCodeSize)
-    {
-        stubAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
-    }
-    void AddAOTPackInfo(AOTModulePackInfo packInfo)
-    {
-        aotPackInfos_.emplace_back(packInfo);
-    }
+    std::tuple<uint64_t, uint8_t *, int> CalCallSiteInfo(uintptr_t retAddr) const;
+    bool InsideStub(uint64_t pc) const;
+
     void Iterate(const RootVisitor &v)
     {
         if (!stubPackInfo_.isCodeHole()) {
@@ -399,26 +387,6 @@ public:
         hashToEntryMap_[hash][methodId] = funcEntry;
     }
 
-    uintptr_t GetAOTFuncEntry(uint32_t hash, uint32_t methodId)
-    {
-        auto m = hashToEntryMap_[hash];
-        auto it = m.find(methodId);
-        if (it == m.end()) {
-            return 0;
-        }
-        return static_cast<uintptr_t>(it->second);
-    }
-
-    const StubModulePackInfo& GetStubPackInfo() const
-    {
-        return stubPackInfo_;
-    }
-
-    const std::vector<AOTModulePackInfo>& GetPackInfos() const
-    {
-        return aotPackInfos_;
-    }
-
     void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile);
     bool hasLoaded(const JSPandaFile *jsPandaFile);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method);
@@ -428,10 +396,43 @@ public:
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
-
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
-    void RuntimeRelocate();
+
 private:
+    void SetAOTmmap(void *addr, size_t totalCodeSize)
+    {
+        aotAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
+    }
+
+    void SetStubmmap(void *addr, size_t totalCodeSize)
+    {
+        stubAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
+    }
+
+    const StubModulePackInfo& GetStubPackInfo() const
+    {
+        return stubPackInfo_;
+    }
+
+    void AddAOTPackInfo(AOTModulePackInfo packInfo)
+    {
+        aotPackInfos_.emplace_back(packInfo);
+    }
+
+    uintptr_t GetAOTFuncEntry(uint32_t hash, uint32_t methodId)
+    {
+        auto m = hashToEntryMap_[hash];
+        auto it = m.find(methodId);
+        if (it == m.end()) {
+            return 0;
+        }
+        return static_cast<uintptr_t>(it->second);
+    }
+    void PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry);
+    void InitializeStubEntries(const std::vector<AOTModulePackInfo::FuncEntryDes>& stubs);
+    void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<ModulePackInfo::FuncEntryDes> &stubs,
+                                            const AsmInterParsedOption &asmInterOpt);
+
     std::vector<std::pair<void *, size_t>> aotAddrs_;
     std::vector<std::pair<void *, size_t>> stubAddrs_;
     EcmaVM *vm_ {nullptr};
@@ -441,9 +442,8 @@ private:
     std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint64_t>> hashToEntryMap_ {};
     kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 
-    void InitializeStubEntries(const std::vector<AOTModulePackInfo::FuncEntryDes>& stubs);
-    void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<ModulePackInfo::FuncEntryDes> &stubs,
-        const AsmInterParsedOption &asmInterOpt);
+    friend class AOTModulePackInfo;
+    friend class StubModulePackInfo;
 };
 }
 #endif // ECMASCRIPT_COMPILER_FILE_LOADER_H

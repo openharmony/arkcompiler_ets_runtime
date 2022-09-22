@@ -292,7 +292,8 @@ private:
     {
         return enableLog_;
     }
-    LLVMValueRef GetFunction(LLVMValueRef glue, const CallSignature *signature, LLVMValueRef rtbaseoffset) const;
+    LLVMValueRef GetFunction(LLVMValueRef glue, const CallSignature *signature, LLVMValueRef rtbaseoffset,
+                             const std::string &realName = "") const;
     LLVMValueRef GetFunctionFromGlobalValue(LLVMValueRef glue, const CallSignature *signature,
         LLVMValueRef reloc) const;
     bool IsInterpreted();

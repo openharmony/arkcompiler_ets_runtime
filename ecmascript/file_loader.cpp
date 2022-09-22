@@ -38,6 +38,9 @@ extern const uint8_t _binary_stub_an_start[];
 extern const uint32_t _binary_stub_an_length;
 
 namespace panda::ecmascript {
+using CommonStubCSigns = kungfu::CommonStubCSigns;
+using BytecodeStubCSigns = kungfu::BytecodeStubCSigns;
+
 void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
 {
     uint32_t secInfoSize = GetSecInfosSize();
@@ -199,7 +202,7 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
             entry.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
         }
     }
-    LOG_COMPILER(INFO) << "Load stub file success";
+    LOG_COMPILER(INFO) << "loaded stub file successfully";
     return true;
 }
 
@@ -226,11 +229,12 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
 {
     if (!VerifyFilePath(filename)) {
         LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
-            << "please execute ark_aot_compiler with options --aot-file.";
+                            << "please execute ark_aot_compiler with options --aot-file.";
         return false;
     }
     std::ifstream file(filename.c_str(), std::ofstream::binary);
     if (!file.good()) {
+        LOG_COMPILER(ERROR) << "Fail to load aot file: " << filename.c_str();
         file.close();
         return false;
     }
@@ -253,14 +257,15 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
         des_[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
     }
     for (size_t i = 0; i < entries_.size(); i++) {
-        auto des = des_[entries_[i].moduleIndex_];
-        entries_[i].codeAddr_ += des.GetSecAddr(ElfSecName::TEXT);
-        auto curFileHash = aotFileHashs_[entries_[i].moduleIndex_];
-        auto curMethodId = entries_[i].indexInKind_;
-        vm->GetFileLoader()->SaveAOTFuncEntry(curFileHash, curMethodId, entries_[i].codeAddr_);
+        FuncEntryDes& funcDes = entries_[i];
+        auto moduleDes = des_[funcDes.moduleIndex_];
+        funcDes.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
+        auto curFileHash = aotFileHashs_[funcDes.moduleIndex_];
+        auto curMethodId = funcDes.indexInKind_;
+        vm->GetFileLoader()->SaveAOTFuncEntry(curFileHash, curMethodId, funcDes.codeAddr_);
     }
     file.close();
-    LOG_COMPILER(INFO) << "Load aot file success";
+    LOG_COMPILER(INFO) << "loaded aot file: " << filename.c_str();
     return true;
 }
 
@@ -335,12 +340,67 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
     mainMethod->SetCodeEntry(reinterpret_cast<uintptr_t>(mainEntry));
     Method *method = mainFunc->GetCallTarget();
     method->SetCodeEntryAndMarkAOT(reinterpret_cast<uintptr_t>(mainEntry));
+#ifndef NDEBUG
+    PrintAOTEntry(jsPandaFile, method, mainEntry);
+#endif
+}
+
+bool FileLoader::InsideStub(uint64_t pc) const
+{
+    uint64_t stubStartAddr = stubPackInfo_.GetAsmStubAddr();
+    uint64_t stubEndAddr = stubStartAddr + stubPackInfo_.GetAsmStubSize();
+    if (pc >= stubStartAddr && pc <= stubEndAddr) {
+        return true;
+    }
+
+    const std::vector<ModuleSectionDes> &des = stubPackInfo_.GetCodeUnits();
+    stubStartAddr = des[0].GetSecAddr(ElfSecName::TEXT);
+    stubEndAddr = stubStartAddr + des[0].GetSecSize(ElfSecName::TEXT);
+    if (pc >= stubStartAddr && pc <= stubEndAddr) {
+        return true;
+    }
+
+    stubStartAddr = des[1].GetSecAddr(ElfSecName::TEXT);
+    stubEndAddr = stubStartAddr + des[1].GetSecSize(ElfSecName::TEXT);
+    if (pc >= stubStartAddr && pc <= stubEndAddr) {
+        return true;
+    }
+    return false;
+}
+
+std::tuple<uint64_t, uint8_t *, int> FileLoader::CalCallSiteInfo(uintptr_t retAddr) const
+{
+    std::tuple<uint64_t, uint8_t *, int> callsiteInfo;
+    bool ans = stubPackInfo_.CalCallSiteInfo(retAddr, callsiteInfo);
+    if (ans) {
+        return callsiteInfo;
+    }
+    // aot
+    for (auto &info : aotPackInfos_) {
+        ans = info.CalCallSiteInfo(retAddr, callsiteInfo);
+        if (ans) {
+            return callsiteInfo;
+        }
+    }
+    return callsiteInfo;
+}
+
+void FileLoader::PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry)
+{
+    uint32_t mId = method->GetMethodId().GetOffset();
+    std::string mName = method->GetMethodName(file);
+    std::string fileName = file->GetFileName();
+    LOG_COMPILER(INFO) << "Bind " << mName << "@" << mId << "@" << fileName
+                       << " -> AOT-Entry = " << reinterpret_cast<void*>(entry);
 }
 
 void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method)
 {
     uint32_t methodId = method->GetMethodId().GetOffset();
     auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
+#ifndef NDEBUG
+    PrintAOTEntry(jsPandaFile, method, codeEntry);
+#endif
     if (!codeEntry) {
         return;
     }
@@ -429,16 +489,6 @@ bool FileLoader::RewriteDataSection(uintptr_t dataSec, size_t size,
         return false;
     }
     return true;
-}
-
-void FileLoader::RuntimeRelocate()
-{
-    auto desVector = stubPackInfo_.GetModuleSectionDes();
-    for (auto &des : desVector) {
-        auto dataSec = des.GetSecAddr(ElfSecName::DATA);
-        auto dataSecSize = des.GetSecSize(ElfSecName::DATA);
-        (void)RewriteDataSection(dataSec, dataSecSize, 0, 0);
-    }
 }
 
 FileLoader::~FileLoader()

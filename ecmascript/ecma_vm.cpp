@@ -770,11 +770,9 @@ void EcmaVM::LoadStubFile()
 void EcmaVM::LoadAOTFiles()
 {
     std::string anFile = options_.GetAOTOutputFile() + ".an";
-    LOG_ECMA(INFO) << "Try to load an file" << anFile.c_str();
     fileLoader_->LoadAOTFile(anFile);
 
     std::string etsoFile = options_.GetAOTOutputFile() + ".etso";
-    LOG_ECMA(INFO) << "Try to load etso file" << etsoFile.c_str();
     fileLoader_->LoadSnapshotFile(etsoFile);
 }
 

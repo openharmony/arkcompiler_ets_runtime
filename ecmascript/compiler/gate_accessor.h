@@ -310,6 +310,7 @@ public:
     BitField GetBitField(GateRef gate) const;
     void SetBitField(GateRef gate, BitField bitField);
     void Print(GateRef gate) const;
+    void ShortPrint(GateRef gate) const;
     GateId GetId(GateRef gate) const;
     GateRef GetValueIn(GateRef gate, size_t idx = 0) const;
     size_t GetNumValueIn(GateRef gate) const;

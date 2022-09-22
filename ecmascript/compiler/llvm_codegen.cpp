@@ -187,9 +187,11 @@ void LLVMAssembler::Run(const CompilerLog &log)
 {
     char *error = nullptr;
     std::string originName = llvm::unwrap(module_)->getModuleIdentifier() + ".ll";
-    std::string optName = llvm::unwrap(module_)->getModuleIdentifier() + "_opt" + ".ll";
+    std::string optName = llvm::unwrap(module_)->getModuleIdentifier() + "_opt.ll";
     if (!log.NoneMethod() && log.OutputLLIR()) {
         LLVMPrintModuleToFile(module_, originName.c_str(), &error);
+        std::string errInfo = (error != nullptr) ? error : "";
+        LOG_COMPILER(INFO) << "generate " << originName << " " << errInfo;
     }
     LLVMVerifyModule(module_, LLVMAbortProcessAction, &error);
     LLVMDisposeMessage(error);
@@ -197,10 +199,13 @@ void LLVMAssembler::Run(const CompilerLog &log)
     if (!BuildMCJITEngine()) {
         return;
     }
-    llvm::unwrap(engine_)-> setProcessAllSections(true);
+    llvm::unwrap(engine_)->setProcessAllSections(true);
     BuildAndRunPasses();
     if (!log.NoneMethod() && log.OutputLLIR()) {
+        error = nullptr;
         LLVMPrintModuleToFile(module_, optName.c_str(), &error);
+        std::string errInfo = (error != nullptr) ? error : "";
+        LOG_COMPILER(INFO) << "generate " << optName << " " << errInfo;
     }
 }
 
@@ -311,8 +316,8 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
                     logFlag = false;
                 }
                 if (logFlag) {
-                    LOG_COMPILER(INFO) << "=======================================================================";
-                    LOG_COMPILER(INFO) << methodName.c_str() << " disassemble:";
+                    LOG_COMPILER(INFO) << "========================  Generated Asm Code =============================";
+                    LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << methodName << "]:" << "\033[0m";
                 }
             }
 

@@ -395,6 +395,7 @@ void CommonStubCSigns::Initialize()
 #define INIT_SIGNATURES(name)                                                              \
     name##CallSignature::Initialize(&callSigns_[name]);                                    \
     callSigns_[name].SetID(name);                                                          \
+    callSigns_[name].SetName(std::string("COStub_") + #name);                              \
     callSigns_[name].SetConstructor(                                                       \
         [](void* env) {                                                                    \
             return static_cast<void*>(                                                     \

@@ -435,9 +435,9 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
     std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit);
-    LOG_COMPILER(INFO) << "==========================================================================";
+    LOG_COMPILER(INFO) << "==================================== Scheduling ==================================";
     for (size_t bbIdx = 0; bbIdx < cfg->size(); bbIdx++) {
-        LOG_COMPILER(INFO) << "BB_" << bbIdx << "_" << acc.GetOpCode((*cfg)[bbIdx].front()).Str() << ":"
+        LOG_COMPILER(INFO) << "B" << bbIdx << "_" << acc.GetOpCode((*cfg)[bbIdx].front()).Str() << ":"
                            << "  immDom=" << immDom[bbIdx];
         LOG_COMPILER(INFO) << "  pred=[";
         bool isFirst = true;
@@ -464,6 +464,6 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
             acc.Print((*cfg)[bbIdx][instIdx - 1]);
         }
     }
-    LOG_COMPILER(INFO) << "==========================================================================";
+    LOG_COMPILER(INFO) << "==================================== Scheduling ==================================";
 }
 }  // namespace panda::ecmascript::kungfu

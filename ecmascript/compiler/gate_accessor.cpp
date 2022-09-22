@@ -77,6 +77,12 @@ void GateAccessor::Print(GateRef gate) const
     gatePtr->Print();
 }
 
+void GateAccessor::ShortPrint(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    gatePtr->ShortPrint();
+}
+
 GateId GateAccessor::GetId(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);

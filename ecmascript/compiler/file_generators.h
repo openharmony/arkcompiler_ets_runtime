@@ -74,7 +74,7 @@ public:
     }
 
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AOTModulePackInfo &aotInfo,
-        uint32_t moduleIndex, const CompilerLog &log)
+                              uint32_t moduleIndex, const CompilerLog &log)
     {
         auto engine = assembler_->GetEngine();
         std::vector<std::tuple<uint64_t, size_t, int>> funcInfo; // entry、idx、delta
@@ -83,6 +83,7 @@ public:
             uint64_t length = 0;
             std::string funcName(LLVMGetValueName2(func, reinterpret_cast<size_t *>(&length)));
             ASSERT(length != 0);
+            LOG_COMPILER(INFO) << " ";
             LOG_COMPILER(INFO) << "CollectCodeInfo for AOT func: " << funcName.c_str();
             addr2name[funcEntry] = funcName;
             int delta = assembler_->GetFpDeltaPrevFramSp(func, log);
@@ -105,7 +106,7 @@ public:
                 funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - funcEntry;
             }
             aotInfo.AddStubEntry(CallSignature::TargetKind::JSFUNCTION, idx,
-                funcEntry - codeBuff, moduleIndex, delta, funcSize);
+                                 funcEntry - codeBuff, moduleIndex, delta, funcSize);
         }
     }
 
