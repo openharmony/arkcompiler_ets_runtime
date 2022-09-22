@@ -18,10 +18,22 @@
 
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/ts_types/ts_type.h"
-
+/*
+ * ExportValueTable :
+ *      +----------------------------------------------------------------+
+ *      | symbol (if a user-define type)                                 |
+ *      +----------------------------------------------------------------+
+ *      | GT{module-Id: current module-Id of type-table; local-Id:xxx}   |
+ *      +----------------------------------------------------------------+
+ *      | symbol (if a primitive/builtin type)                           |
+ *      +----------------------------------------------------------------+
+ *      | GT{module-Id: module-Id(0/1) of primitive/builtin type-table}  |
+ *      +----------------------------------------------------------------+
+ */
 namespace panda::ecmascript {
 class TSTypeTable : public TaggedArray {
 public:
+    static constexpr int32_t ITEM_SIZE = 2;
     static constexpr std::string_view ENTRY_FUNC_NAME = "func_main_0";
     static constexpr size_t NUM_OF_TYPES_INDEX_IN_SUMMARY_LITREAL = 0;
     static constexpr size_t TYPE_KIND_INDEX_IN_LITERAL = 0;
@@ -40,9 +52,6 @@ public:
         ASSERT(JSTaggedValue(object).IsTaggedArray());
         return static_cast<TSTypeTable *>(object);
     }
-
-    static void Initialize(JSThread *thread, const JSPandaFile *jsPandaFile, const CString &recordName,
-                           CVector<JSHandle<EcmaString>> &recordImportModules);
 
     static JSHandle<TSTypeTable> GenerateTypeTable(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    const CString &recordName, uint32_t moduleId,
@@ -63,7 +72,9 @@ public:
         TaggedArray::Set(thread, NUMBER_OF_TYPES_INDEX, JSTaggedValue(num));
     }
 
-    static void SetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> tTable, const JSPandaFile *jsPandaFile);
+    static void SetExportValueTable(JSThread *thread, const JSPandaFile *jsPandaFile, JSHandle<TSTypeTable> typeTable);
+
+    static JSHandle<TaggedArray> GenerateExportTableFromPandaFile(JSThread *thread, const JSPandaFile *jsPandaFile);
 
     static JSHandle<TSTypeTable> PushBackTypeToTable(JSThread *thread, JSHandle<TSTypeTable> &table,
                                                      const JSHandle<TSType> &type);
@@ -72,18 +83,13 @@ public:
                                                        JSHandle<EcmaString> fileName,
                                                        CVector<JSHandle<EcmaString>> &recordImportModules);
 
-    static void LinkClassType(JSThread *thread, JSHandle<TSTypeTable> table);
-
 private:
-    static JSHandle<TaggedArray> GetExportTableFromPandFile(JSThread *thread, const JSPandaFile *jsPandaFile);
+    static JSHandle<TaggedArray> GetExportDataFromPandaFile(JSThread *thread, const JSPandaFile *jsPandaFile);
 
     static panda_file::File::EntityId GetFileId(const panda_file::File &pf);
 
     static void CheckModule(JSThread *thread, const TSManager* tsManager, const JSHandle<EcmaString> target,
                             CVector<JSHandle<EcmaString>> &recordImportModules);
-
-    static void MergeClassFiled(JSThread *thread, JSHandle<TSClassType> classType,
-                                JSHandle<TSClassType> extendClassType);
 };
 }  // namespace panda::ecmascript
 

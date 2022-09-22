@@ -42,6 +42,11 @@ public:
 
     inline GlobalTSTypeRef CreateGT(uint32_t typeId)
     {
+        return CreateGT(vm_, jsPandaFile_, typeId);
+    }
+
+    inline static GlobalTSTypeRef CreateGT(EcmaVM *vm, const JSPandaFile *jsPandaFile, uint32_t typeId)
+    {
         if (typeId <= BUILDIN_TYPE_OFFSET) {
             return GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, typeId);
         }
@@ -50,9 +55,9 @@ public:
             return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, typeId - BUILDIN_TYPE_OFFSET);
         }
 
-        TSManager *tsManager = vm_->GetTSManager();
+        TSManager *tsManager = vm->GetTSManager();
         panda_file::File::EntityId offset(typeId);
-        return tsManager->GetGTFromOffset(jsPandaFile_, offset);
+        return tsManager->GetGTFromOffset(jsPandaFile, offset);
     }
 
     inline CVector<JSHandle<EcmaString>> GetImportModules() const
