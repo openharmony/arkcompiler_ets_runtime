@@ -21,8 +21,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/gc_stats.h"
-#include "ecmascript/tooling/interface/file_stream.h"
-#include "ecmascript/tooling/interface/stream.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"

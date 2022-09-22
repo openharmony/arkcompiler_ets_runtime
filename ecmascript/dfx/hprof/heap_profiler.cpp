@@ -21,7 +21,7 @@
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/tooling/interface/stream.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
 
 namespace panda::ecmascript {
 HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm)

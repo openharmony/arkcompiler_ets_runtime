@@ -27,7 +27,7 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/tooling/interface/stream.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/interpreter/frame_handler.h"
 
 #include <sys/time.h>
