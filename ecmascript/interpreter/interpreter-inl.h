@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_INTERPRETER_INTERPRETER_INL_H
 #define ECMASCRIPT_INTERPRETER_INTERPRETER_INL_H
 
+#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -35,7 +36,6 @@
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/template_string.h"
-#include "ecmascript/tooling/interface/js_debugger_manager.h"
 
 #include "libpandafile/code_data_accessor.h"
 #include "libpandafile/file.h"

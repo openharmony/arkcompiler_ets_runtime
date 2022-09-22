@@ -24,7 +24,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/record.h"
 #include "ecmascript/tagged_array.h"
-#include "ecmascript/tooling/interface/js_debugger_manager.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript::job {

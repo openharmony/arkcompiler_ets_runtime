@@ -18,7 +18,6 @@
 #include "ecmascript/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/tooling/debugger_service.h"
 
 using namespace panda;
 using namespace panda::ecmascript;

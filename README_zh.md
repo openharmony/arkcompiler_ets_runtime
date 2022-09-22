@@ -42,7 +42,7 @@
 │   ├─ snapshot           # 快照模块
 │   ├─ stubs              # runtime桩函数
 │   ├─ tests              # 单元测试用例
-│   ├─ tooling            # JS调试器
+│   ├─ debugger           # JS调试器
 │   ├─ trampoline         # 跳转桥函数
 │   ├─ ts_type            # TS类型管理模块
 └─ test                   # 模块测试用例     

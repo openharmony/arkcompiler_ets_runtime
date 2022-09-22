@@ -13,28 +13,6 @@
      limitations under the License.
 -->
 <configuration ver="2.0">
-    <target name="DebuggerEntryTest">
-        <preparer>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/sample.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/exception.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/arrow_func.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/async_func.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/range_error.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/syntax_exception.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/throw_exception.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/tooling/test/step.abc -> /data/test" src="out"/>
-            <option name="push" value="test/test/libjsdebugtest.so -> /data/test" src="out"/>
-            <option name="push" value="test/test/libdebugger_entry.so -> /data/test" src="out"/>
-            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
-            <option name="push" value="test/test/libark_ecma_debugger_test.so -> /data/test" src="out"/>
-        </preparer>
-    </target>
-    <target name="DebuggerTest">
-        <preparer>
-            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
-            <option name="push" value="test/test/libark_ecma_debugger_test.so -> /data/test" src="out"/>
-        </preparer>
-    </target>
     <target name="BaseTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>

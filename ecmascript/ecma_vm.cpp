@@ -38,6 +38,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
+#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/file_loader.h"
@@ -79,7 +80,6 @@
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
-#include "ecmascript/tooling/interface/js_debugger_manager.h"
 #ifdef PANDA_TARGET_WINDOWS
 #ifdef ERROR
 #undef ERROR

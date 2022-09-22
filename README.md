@@ -33,7 +33,7 @@ For more information, see [ArkCompiler JS Runtime](https://gitee.com/openharmony
 │   ├─ snapshot           # Snapshot module
 │   ├─ stubs              # Runtime stub functions
 │   ├─ tests              # Unit test cases
-│   ├─ tooling            # JS debugger
+│   ├─ debugger           # JS debugger
 │   ├─ trampoline         # Trampoline function
 │   ├─ ts_type            # TS type management module
 └─ test                   # Module test cases    

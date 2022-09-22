@@ -26,6 +26,7 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
+#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
@@ -34,6 +35,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
+#include "ecmascript/jspandafile/debug_info_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/quick_fix_manager.h"
@@ -68,7 +70,6 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
-#include "ecmascript/tooling/interface/js_debugger_manager.h"
 #include "ecmascript/regexp/regexp_parser.h"
 
 #include "ohos/init_data.h"
@@ -136,6 +137,7 @@ using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
 using ecmascript::RegExpParser;
+using ecmascript::DebugInfoExtractor;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -1239,8 +1241,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    ecmascript::tooling::JSPtExtractor *debugExtractor =
-                                        JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
     if (!jsPandaFile->IsBundlePack()) {
         JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());

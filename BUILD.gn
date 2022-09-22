@@ -24,7 +24,6 @@ if (defined(ark_standalone_build)) {
       deps += [
         "//arkcompiler/ets_runtime:libark_jsruntime",
         "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm",
-        "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger",
       ]
     }
   }
@@ -79,7 +78,6 @@ if (defined(ark_standalone_build)) {
         "//arkcompiler/ets_runtime/ecmascript/regexp/tests:unittest",
         "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:unittest",
         "//arkcompiler/ets_runtime/ecmascript/tests:unittest",
-        "//arkcompiler/ets_runtime/ecmascript/tooling/test:unittest",
         "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
       ]
       if (is_ohos && is_standard_system) {
@@ -111,7 +109,6 @@ if (defined(ark_standalone_build)) {
         "//arkcompiler/ets_runtime/ecmascript/regexp/tests:host_unittest",
         "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:host_unittest",
         "//arkcompiler/ets_runtime/ecmascript/tests:host_unittest",
-        "//arkcompiler/ets_runtime/ecmascript/tooling/test:host_unittest",
         "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:host_unittest",
       ]
       if (is_standard_system && !run_with_asan) {
@@ -609,7 +606,7 @@ ecma_source = [
 
 if (!is_mingw && !is_mac) {
   ecma_source += [ "ecmascript/napi/dfx_jsnapi.cpp" ]
-  ecma_source += [ "ecmascript/tooling/interface/file_stream.cpp" ]
+  ecma_source += [ "ecmascript/dfx/hprof/file_stream.cpp" ]
 }
 
 hitrace_scope_source = []
@@ -618,8 +615,8 @@ if (is_ohos && is_standard_system && enable_hitrace) {
 }
 
 ecma_debugger_source = [
-  "ecmascript/tooling/backend/debugger_api.cpp",
-  "ecmascript/tooling/backend/js_debugger.cpp",
+  "ecmascript/debugger/debugger_api.cpp",
+  "ecmascript/debugger/js_debugger.cpp",
 ]
 
 ecma_profiler_source = []

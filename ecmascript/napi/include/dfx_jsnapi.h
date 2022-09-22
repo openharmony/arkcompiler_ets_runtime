@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "ecmascript/common.h"
-#include "ecmascript/tooling/interface/stream.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
 
 #include "libpandabase/macros.h"
 

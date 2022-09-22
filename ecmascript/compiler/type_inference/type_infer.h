@@ -22,15 +22,9 @@
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
-namespace panda::ecmascript::tooling {
-    class JSPtExtractor;
-}  // namespace panda::ecmascript::tooling
-
 namespace panda::ecmascript::kungfu {
 class TypeInfer {
 public:
-    using JSPtExtractor = tooling::JSPtExtractor;
-
     TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, const JSHandle<JSTaggedValue> &constantPool,
               TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId, bool enableLog)
         : builder_(builder), circuit_(circuit), constantPool_(constantPool), gateAccessor_(circuit),
@@ -106,7 +100,7 @@ private:
     void TypeCheck(GateRef gate) const;
     void FilterAnyTypeGates() const;
 
-    std::string CollectGateTypeLogInfo(GateRef gate, JSPtExtractor *debugExtractor, const std::string &logPreFix) const;
+    std::string CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor, const std::string &logPreFix) const;
 
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};

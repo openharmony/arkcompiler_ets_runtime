@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <thread>
 
-#include "ecmascript/tooling/interface/stream.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/mem/tagged_object.h"
 
 #include "libpandabase/macros.h"
