@@ -44,7 +44,7 @@ namespace OHOS {
         }
         bool isVmMode = true;
         bool isPrivate = false;
-        std::string path((char*)data);
+        std::string path(data, data + size);
         DFXJSNApi::DumpHeapSnapshot(vm, input, path, isVmMode, isPrivate);
         JSNApi::DestroyJSVM(vm);
     }
