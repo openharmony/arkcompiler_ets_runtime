@@ -735,7 +735,7 @@ DispatchResponse DebuggerImpl::SetBreakpointByUrl(const SetBreakpointByUrlParams
                 return false;
             }
             condFuncRef = DebuggerApi::GenerateFuncFromBuffer(vm_, dest.data(), dest.size(),
-                JSPandaFile::ENTRY_MAIN_FUNCTION);
+                JSPandaFile::ENTRY_FUNCTION_NAME);
             if (condFuncRef->IsUndefined()) {
                 LOG_DEBUGGER(ERROR) << "SetBreakpointByUrl: generate function failed";
                 return false;
