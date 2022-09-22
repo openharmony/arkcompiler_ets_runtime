@@ -1055,9 +1055,15 @@ DEF_RUNTIME_STUBS(GetModuleNamespace)
 DEF_RUNTIME_STUBS(GetModuleNamespaceOnJSFunc)
 {
     RUNTIME_STUBS_HEADER(GetModuleNamespaceOnJSFunc);
-    JSTaggedValue localName = GetArg(argv, argc, 0);
     JSTaggedValue jsFunc = GetArg(argv, argc, 1);
-    return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
+    JSTaggedValue isDeprecated = GetArg(argv, argc, 2); // 2: means the second parameter
+    if (isDeprecated.IsTrue()) {
+        JSTaggedValue localName = GetArg(argv, argc, 0);
+        return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
+    } else {
+        JSTaggedValue index = GetArg(argv, argc, 0);
+        return RuntimeGetModuleNamespace(thread, index.GetInt(), jsFunc).GetRawData();
+    }
 }
 
 DEF_RUNTIME_STUBS(StModuleVarByIndex)
@@ -1968,6 +1974,16 @@ DEF_RUNTIME_STUBS(StPatchVar)
     JSTaggedValue idx = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     return RuntimeStPatchVar(thread, idx.GetInt(), value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdObjByName)
+{
+    RUNTIME_STUBS_HEADER(LdObjByName);
+    JSTaggedValue receiver = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue propKey = GetArg(argv, argc, 1);  // 1: means the first parameter
+    bool callGetter = GetArg(argv, argc, 2).IsTrue();
+    JSTaggedValue undefined = GetArg(argv, argc, 3);
+    return RuntimeLdObjByName(thread, receiver, propKey, callGetter, undefined).GetRawData();
 }
 
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)

@@ -1312,13 +1312,13 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::GETMODULENAMESPACE_IMM8: {
-            uint16_t stringId = READ_INST_8_0();
-            info.inputs.emplace_back(StringId(stringId));
+            int32_t index = READ_INST_8_0();
+            info.inputs.emplace_back(Immediate(index));
             break;
         }
         case EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16: {
-            uint16_t stringId = READ_INST_16_1();
-            info.inputs.emplace_back(StringId(stringId));
+            int32_t index = READ_INST_16_1();
+            info.inputs.emplace_back(Immediate(index));
             break;
         }
         case EcmaOpcode::DEPRECATED_GETMODULENAMESPACE_PREF_ID32: {
@@ -1680,11 +1680,19 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::JNSTRICTEQ_V8_IMM8:
         case EcmaOpcode::JNSTRICTEQ_V8_IMM16:
         case EcmaOpcode::LDTHIS:
-        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             break;
+        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16: {
+            uint16_t stringId = READ_INST_16_2();
+            info.inputs.emplace_back(StringId(stringId));
+            break;
+        }
+        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::STTHISBYNAME_IMM16_ID16: {
+            uint16_t stringId = READ_INST_16_2();
+            info.inputs.emplace_back(StringId(stringId));
+            break;
+        }
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16: {
             uint16_t stringId = READ_INST_16_2();
             info.inputs.emplace_back(StringId(stringId));

@@ -1267,7 +1267,6 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
 
     // 6. IfAbruptRejectPromise(specifierString, promiseCapability).
     RETURN_REJECT_PROMISE_IF_ABRUPT(thread, specifierString, promiseCapability);
-    JSHandle<JSTaggedValue> currentModule(thread, thread->GetEcmaVM()->GetModuleManager()->GetCurrentModule());
     JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
 
     JSHandle<TaggedArray> argv = factory->NewTaggedArray(4); // 4: 4 means two args stored in array
