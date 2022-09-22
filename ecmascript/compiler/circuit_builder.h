@@ -378,6 +378,14 @@ public:
     inline GateRef NumberBinaryOp(GateRef x, GateRef y);
     inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
 
+    // middle ir: object operations
+    GateRef ToLength(GateRef receiver);
+    GateRef LoadElement(GateRef receiver, GateRef index);
+    GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
+    GateRef LoadProperty(GateRef receiver, GateRef key);
+    GateRef StoreProperty(GateRef receiver, GateRef key, GateRef value);
+    GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
+
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
     inline GateRef IsJsType(GateRef object, JSType type);

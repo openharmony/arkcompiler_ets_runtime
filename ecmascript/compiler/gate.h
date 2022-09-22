@@ -197,6 +197,14 @@ public:
         TYPE_CONVERT,
         TYPED_UNARY_OP,
 
+        // middle hir level
+        TO_LENGTH,
+        HEAP_ALLOC,
+        LOAD_ELEMENT,
+        LOAD_PROPERTY,
+        STORE_ELEMENT,
+        STORE_PROPERTY,
+
         COMMON_CIR_FIRST = NOP,
         COMMON_CIR_LAST = DEPEND_AND,
         HIGH_CIR_FIRST = JS_BYTECODE,

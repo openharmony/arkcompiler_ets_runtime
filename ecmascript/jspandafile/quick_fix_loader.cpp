@@ -223,6 +223,7 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
 
                     ReplaceMethodInner(thread, baseMethod, patch, patchConstpool.GetTaggedValue());
                     LOG_FULL(INFO) << "Replace class method: " << patchRecordName << ":" << patchMethodName;
+                    break;
                 }
             }
             // For normal function and class constructor modified.
@@ -244,6 +245,7 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
 
                 ReplaceMethodInner(thread, baseMethod, patch, patchConstpool.GetTaggedValue());
                 LOG_FULL(INFO) << "Replace normal method: " << patchRecordName << ":" << patchMethodName;
+                break;
             }
         }
     }

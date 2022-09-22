@@ -21,7 +21,9 @@
 namespace panda::test {
 class LoweringRelateGateTests : public testing::Test {
 };
-
+using ecmascript::GlobalEnvConstants;
+using ecmascript::ConstantIndex;
+using ecmascript::RegionSpaceFlag;
 using ecmascript::kungfu::Circuit;
 using ecmascript::kungfu::OpCode;
 using ecmascript::kungfu::GateType;
@@ -141,6 +143,41 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     builder.Return(*result);
     EXPECT_TRUE(Verifier::Run(&circuit));
     typeLowering.RunTypeLowering();
+    EXPECT_TRUE(Verifier::Run(&circuit));
+}
+
+HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
+{
+    // construct a circuit
+    Circuit circuit;
+    CircuitBuilder builder(&circuit);
+    Environment env(0, &builder);
+    builder.SetEnvironment(&env);
+    auto glue = builder.Arguments(0);
+    auto arg0 = builder.Arguments(1);
+    auto arg1 = builder.Arguments(2);
+    auto array = builder.HeapAlloc(arg0, GateType::AnyType(), RegionSpaceFlag::IN_YOUNG_SPACE);
+
+    auto offset = builder.Int64(JSThread::GlueData::GetGlueGlobalConstOffset(false));
+    auto globalEnv = builder.Load(VariableType::JS_POINTER(), glue, offset);
+    auto lenthOffset = builder.IntPtr(GlobalEnvConstants::GetOffsetOfLengthString());
+    auto lengthString = builder.Load(VariableType::JS_POINTER(), globalEnv, lenthOffset);
+
+    builder.Store(VariableType::JS_POINTER(), glue, array, builder.IntPtr(0), arg1);
+    builder.StoreElement(array, builder.IntPtr(0), builder.ToTaggedInt(builder.Int64(0)));
+    builder.StoreElement(array, builder.IntPtr(1), builder.ToTaggedInt(builder.Int64(1)));
+    builder.StoreProperty(array, lengthString, builder.ToTaggedInt(builder.Int64(2)));
+    auto length = builder.LoadProperty(array, lengthString);
+    Label less2(&builder);
+    Label notLess2(&builder);
+    auto condtion = builder.TaggedIsTrue(builder.NumberBinaryOp<TypedBinOp::TYPED_LESS>(length,
+        builder.ToTaggedInt(builder.Int64(2))));
+    builder.Branch(condtion, &less2, &notLess2);
+    builder.Bind(&less2);
+    auto ret = builder.LoadElement(array,  builder.IntPtr(1));
+    builder.Return(ret);
+    builder.Bind(&notLess2);
+    builder.Return(builder.Int64(-1));
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
 } // namespace panda::test
