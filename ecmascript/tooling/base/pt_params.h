@@ -429,6 +429,24 @@ private:
     bool enabled_ { false };
 };
 
+class ReplyNativeCallingParams : public PtBaseParams {
+public:
+    ReplyNativeCallingParams() = default;
+    ~ReplyNativeCallingParams() override = default;
+    static std::unique_ptr<ReplyNativeCallingParams> Create(const PtJson &params);
+
+    bool GetUserCode() const
+    {
+        return userCode_;
+    }
+
+private:
+    NO_COPY_SEMANTIC(ReplyNativeCallingParams);
+    NO_MOVE_SEMANTIC(ReplyNativeCallingParams);
+
+    bool userCode_ { false };
+};
+
 class GetPropertiesParams : public PtBaseParams {
 public:
     GetPropertiesParams() = default;
