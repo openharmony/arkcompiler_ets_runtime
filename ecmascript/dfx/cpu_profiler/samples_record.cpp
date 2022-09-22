@@ -81,8 +81,10 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
         }
         gcState_.store(false);
     } else {
+        if (frameStackLength_ != 0) {
+            frameStackLength_--;
+        }
         methodNode.id = 1;
-        frameStackLength_--;
         for (; frameStackLength_ >= 1; frameStackLength_--) {
             methodkey.method = frameStack_[frameStackLength_ - 1];
             methodNode.parentId = methodkey.parentId = methodNode.id;
@@ -112,7 +114,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
         sampleInfo.timeStamp = timeDelta;
         samples_.push_back(sampleInfo);
     } else {
-        profileInfo_->nodes[sampleNodeId].hitCount++;
+        profileInfo_->nodes[sampleNodeId - 1].hitCount++;
         profileInfo_->samples.push_back(sampleNodeId);
         profileInfo_->timeDeltas.push_back(timeDelta);
     }
@@ -159,7 +161,7 @@ void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
         sampleInfo.timeStamp = timeDelta;
         samples_.push_back(sampleInfo);
     } else {
-        profileInfo_->nodes[sampleNodeId].hitCount++;
+        profileInfo_->nodes[sampleNodeId - 1].hitCount++;
         profileInfo_->samples.push_back(sampleNodeId);
         profileInfo_->timeDeltas.push_back(timeDelta);
     }
