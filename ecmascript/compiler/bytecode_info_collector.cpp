@@ -77,7 +77,7 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
 //            new (methodLiteral) MethodLiteral(jsPandaFile_, mda.GetMethodId());
             InitializeMemory(methodLiteral, jsPandaFile_, mda.GetMethodId());
             methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
-            methodLiteral->InitializeCallField(
+            methodLiteral->Initialize(
                 jsPandaFile_, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (jsPandaFile_->IsNewVersion()) {
