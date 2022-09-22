@@ -240,7 +240,8 @@ private:
     void LowerLdExternalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerExternalModule(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc, bool isDeprecated = false);
+    void LowerGetModuleNamespace(GateRef gate, GateRef glue);
     void LowerGetIteratorNext(GateRef gate, GateRef glue);
     void LowerSuperCall(GateRef gate, GateRef glue, GateRef func, GateRef newTarget);
     void LowerSuperCallArrow(GateRef gate, GateRef glue, GateRef newTarget);
@@ -269,7 +270,7 @@ private:
     void LowerStOwnByNameWithNameSet(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdGlobalVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdObjByName(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerStObjByName(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStObjByName(GateRef gate, GateRef glue, GateRef jsFunc, GateRef thisObj, bool isThis = false);
     void LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGetterSetterByValue(GateRef gate, GateRef glue);
@@ -301,6 +302,7 @@ private:
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
     void LowerWideLdPatchVar(GateRef gate, GateRef glue);
     void LowerWideStPatchVar(GateRef gate, GateRef glue);
+    void LowerLdThisByName(GateRef gate, GateRef glue, GateRef jsFunc, GateRef thisObj);
 
     TSManager *tsManager_ {nullptr};
     BytecodeCircuitBuilder *bcBuilder_;

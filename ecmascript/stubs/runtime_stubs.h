@@ -276,7 +276,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(BigIntEqual)                        \
     V(StringEqual)                        \
     V(LdPatchVar)                         \
-    V(StPatchVar)
+    V(StPatchVar)                         \
+    V(LdObjByName)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
