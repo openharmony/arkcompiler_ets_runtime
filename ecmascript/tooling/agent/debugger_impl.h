@@ -63,6 +63,7 @@ public:
     DispatchResponse StepOver(const StepOverParams &params);
     DispatchResponse SetBlackboxPatterns();
     DispatchResponse SetMixedDebugEnabled(const SetMixedDebugParams &params);
+    DispatchResponse ReplyNativeCalling(const ReplyNativeCallingParams &params);
 
     /**
      * @brief: match first script and callback
@@ -122,6 +123,7 @@ public:
         void StepOver(const DispatchRequest &request);
         void SetMixedDebugEnabled(const DispatchRequest &request);
         void SetBlackboxPatterns(const DispatchRequest &request);
+        void ReplyNativeCalling(const DispatchRequest &request);
 
     private:
         NO_COPY_SEMANTIC(DispatcherImpl);
