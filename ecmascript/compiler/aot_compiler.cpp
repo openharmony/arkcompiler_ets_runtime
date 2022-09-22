@@ -43,7 +43,7 @@ int Main(const int argc, const char **argv)
     std::string entrypoint = "init::func_main_0";
 
     int newArgc = argc;
-    if (argc < 1) { // 1: arguments
+    if (argc < 2) { // 2: at least have twoarguments
         std::cerr << GetHelper();
         return -1;
     }
@@ -54,12 +54,11 @@ int Main(const int argc, const char **argv)
         std::cerr << GetHelper();
         return 1;
     }
-    newArgc--;
 
+    newArgc--;
     JSRuntimeOptions runtimeOptions;
     bool retOpt = runtimeOptions.ParseCommand(newArgc, argv);
     if (!retOpt) {
-        std::cerr << GetHelper();
         return 1;
     }
 
