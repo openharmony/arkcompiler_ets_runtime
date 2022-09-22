@@ -808,6 +808,7 @@ JSHandle<TSTypeTable> TSModuleTable::GenerateBuiltinsTypeTable(JSThread *thread)
     JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(builtinsDTSFileName);
     if (jsPandaFile == nullptr) {
         LOG_COMPILER(ERROR) << "load builtins.d.ts failed";
+        return JSHandle<TSTypeTable>();
     }
 
     CVector<JSHandle<EcmaString>> vec;

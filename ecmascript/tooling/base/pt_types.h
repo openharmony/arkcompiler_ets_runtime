@@ -1892,6 +1892,17 @@ public:
     static std::unique_ptr<Profile> FromProfileInfo(const ProfileInfo &profileInfo);
     std::unique_ptr<PtJson> ToJson() const override;
 
+    int64_t GetTid() const
+    {
+        return tid_;
+    }
+
+    Profile &SetTid(int64_t tid)
+    {
+        tid_ = tid;
+        return *this;
+    }
+
     int64_t GetStartTime() const
     {
         return startTime_;
@@ -1967,6 +1978,7 @@ private:
     NO_COPY_SEMANTIC(Profile);
     NO_MOVE_SEMANTIC(Profile);
 
+    int64_t tid_ {0};
     int64_t startTime_ {0};
     int64_t endTime_ {0};
     std::vector<std::unique_ptr<ProfileNode>> nodes_ {};

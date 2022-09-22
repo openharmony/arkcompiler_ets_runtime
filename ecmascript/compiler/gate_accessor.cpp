@@ -133,6 +133,14 @@ void GateAccessor::GetInVector(GateRef gate, std::vector<GateRef>& ins) const
     }
 }
 
+void GateAccessor::GetInStateVector(GateRef gate, std::vector<GateRef>& ins) const
+{
+    const Gate *curGate = circuit_->LoadGatePtrConst(gate);
+    for (size_t idx = 0; idx < curGate->GetStateCount(); idx++) {
+        ins.push_back(circuit_->GetGateRef(curGate->GetInGateConst(idx)));
+    }
+}
+
 void GateAccessor::GetOutVector(GateRef gate, std::vector<GateRef>& outs) const
 {
     const Gate *curGate = circuit_->LoadGatePtrConst(gate);
@@ -264,8 +272,6 @@ UseIterator GateAccessor::DeleteExceptionDep(const UseIterator &useIt)
     next++;
     ASSERT(GetOpCode(*useIt) == OpCode::RETURN || GetOpCode(*useIt) == OpCode::DEPEND_SELECTOR);
     if (GetOpCode(*useIt) == OpCode::RETURN) {
-        // 0 : the index of CONSTANT
-        circuit_->DeleteGate(GetValueIn(*useIt, 0));
         DeleteGate(useIt);
     } else {
         size_t idx = useIt.GetIndex();

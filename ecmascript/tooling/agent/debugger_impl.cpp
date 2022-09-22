@@ -252,8 +252,6 @@ void DebuggerImpl::NotifyNativeCalling(const void *nativeAddress)
         nativeCalling.SetNativeAddress(nativeAddress);
         frontend_.NativeCalling(vm_, nativeCalling);
         frontend_.WaitForDebugger(vm_);
-        singleStepper_.reset();
-        pauseOnNextByteCode_ = true;
     }
 }
 
@@ -288,7 +286,8 @@ void DebuggerImpl::DispatcherImpl::Dispatch(const DispatchRequest &request)
         { "stepInto", &DebuggerImpl::DispatcherImpl::StepInto },
         { "stepOut", &DebuggerImpl::DispatcherImpl::StepOut },
         { "stepOver", &DebuggerImpl::DispatcherImpl::StepOver },
-        { "setMixedDebugEnabled", &DebuggerImpl::DispatcherImpl::SetMixedDebugEnabled }
+        { "setMixedDebugEnabled", &DebuggerImpl::DispatcherImpl::SetMixedDebugEnabled },
+        { "replyNativeCalling", &DebuggerImpl::DispatcherImpl::ReplyNativeCalling }
     };
 
     const std::string &method = request.GetMethod();
@@ -459,6 +458,13 @@ void DebuggerImpl::DispatcherImpl::SetMixedDebugEnabled(const DispatchRequest &r
 {
     std::unique_ptr<SetMixedDebugParams> params = SetMixedDebugParams::Create(request.GetParams());
     DispatchResponse response = debugger_->SetMixedDebugEnabled(*params);
+    SendResponse(request, response);
+}
+
+void DebuggerImpl::DispatcherImpl::ReplyNativeCalling(const DispatchRequest &request)
+{
+    std::unique_ptr<ReplyNativeCallingParams> params = ReplyNativeCallingParams::Create(request.GetParams());
+    DispatchResponse response = debugger_->ReplyNativeCalling(*params);
     SendResponse(request, response);
 }
 
@@ -737,7 +743,7 @@ DispatchResponse DebuggerImpl::SetBreakpointByUrl(const SetBreakpointByUrlParams
                 return false;
             }
             condFuncRef = DebuggerApi::GenerateFuncFromBuffer(vm_, dest.data(), dest.size(),
-                JSPandaFile::ENTRY_MAIN_FUNCTION);
+                JSPandaFile::ENTRY_FUNCTION_NAME);
             if (condFuncRef->IsUndefined()) {
                 LOG_DEBUGGER(ERROR) << "SetBreakpointByUrl: generate function failed";
                 return false;
@@ -813,6 +819,15 @@ DispatchResponse DebuggerImpl::SetBlackboxPatterns()
 DispatchResponse DebuggerImpl::SetMixedDebugEnabled([[maybe_unused]] const SetMixedDebugParams &params)
 {
     vm_->GetJsDebuggerManager()->SetMixedDebugEnabled(params.GetEnabled());
+    return DispatchResponse::Ok();
+}
+
+DispatchResponse DebuggerImpl::ReplyNativeCalling([[maybe_unused]] const ReplyNativeCallingParams &params)
+{
+    frontend_.Resumed(vm_);
+    if (params.GetUserCode()) {
+        singleStepper_.reset();
+    }
     return DispatchResponse::Ok();
 }
 

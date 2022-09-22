@@ -93,7 +93,6 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
             return false;
         }
         JSHandle<ConstantPool> patchConstpool = JSHandle<ConstantPool>(thread, patchConstpoolValue);
-        // TODO: execute patch_main_0 for add function.
         if (!ReplaceMethod(thread, baseConstpool, patchConstpool)) {
             LOG_FULL(ERROR) << "replace method failed";
             return false;
@@ -224,6 +223,7 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
 
                     ReplaceMethodInner(thread, baseMethod, patch, patchConstpool.GetTaggedValue());
                     LOG_FULL(INFO) << "Replace class method: " << patchRecordName << ":" << patchMethodName;
+                    break;
                 }
             }
             // For normal function and class constructor modified.
@@ -245,6 +245,7 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
 
                 ReplaceMethodInner(thread, baseMethod, patch, patchConstpool.GetTaggedValue());
                 LOG_FULL(INFO) << "Replace normal method: " << patchRecordName << ":" << patchMethodName;
+                break;
             }
         }
     }

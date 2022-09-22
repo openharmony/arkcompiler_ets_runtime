@@ -70,7 +70,8 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
 
             InitializeMemory(methodLiteral, jsPandaFile, methodId);
             methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
-            methodLiteral->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
+            methodLiteral->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(),
+                                               codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (jsPandaFile->IsNewVersion()) {
 #ifdef NEW_INSTRUCTION_DEFINE
@@ -390,7 +391,6 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramWithMerge(EcmaVM *vm, cons
     }
 
     ParseLiteralConstPool(vm, jsPandaFile, entryPoint.data(), constpool);
-
     {
         EcmaHandleScope handleScope(thread);
 
@@ -509,6 +509,9 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseMergedConstPool(EcmaVM *vm, con
 void PandaFileTranslator::ParseLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
                                                 JSHandle<ConstantPool> constpool)
 {
+    if (jsPandaFile->HasParsedLiteralConstPool(entryPoint)) {
+        return;
+    }
     JSThread *thread = vm->GetJSThread();
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     auto fileLoader = vm->GetFileLoader();
@@ -559,6 +562,7 @@ void PandaFileTranslator::ParseLiteralConstPool(EcmaVM *vm, const JSPandaFile *j
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), obj.GetTaggedValue());
         }
     }
+    const_cast<JSPandaFile *>(jsPandaFile)->UpdateJSRecordInfo(entryPoint);
 }
 
 JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
@@ -1441,7 +1445,6 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
                 LOG_FULL(FATAL) << "FixOpcode memcpy_s fail";
                 UNREACHABLE();
             }
-            // TODO: add a deprecated inst to translate?
             *(pc + 4) = *(pc + 4) + 1;
             break;
         }
