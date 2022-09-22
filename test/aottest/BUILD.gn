@@ -18,10 +18,11 @@ group("ark_aot_js_test") {
     "bigint_typed_array_constructors:bigint_typed_array_constructorsAotAction",
     "call_default_args:call_default_argsAotAction",
     "constructor_returns_non_object:constructor_returns_non_objectAotAction",
+    "dynamicimport:dynamicimportAotAction",
     "formatrangetoparts:formatrangetopartsAotAction",
     "global_this_js:global_this_jsAotAction",
 
-    #"module:moduleAotAction",
+#    "module:moduleAotAction",
     "undefined:undefinedAotAction",
   ]
 }
@@ -31,7 +32,7 @@ group("ark_aot_test") {
   deps = [
     "add:addAotAction",
     "and:andAotAction",
-    # "aot_compatibility_test:aot_compatibility_test",
+    "aot_compatibility_test:aot_compatibility_test",
     "aot_type_test:aot_type_test",
     "ashr:ashrAotAction",
     "bind:bindAotAction",
@@ -134,8 +135,6 @@ group("ark_aot_test") {
     "throwundefindeifhole:throwundefindeifholeAotAction",
     "tonumber:tonumberAotAction",
     "tonumeric:tonumericAotAction",
-
-    #"dynamicimport:dynamicimportAotAction",
     "try_catch_finally:try_catch_finallyAotAction",
     "trystglobalbynameprefid32:trystglobalbynameprefid32AotAction",
     "typeof:typeofAotAction",
