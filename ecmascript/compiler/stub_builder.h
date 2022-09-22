@@ -267,11 +267,16 @@ public:
     GateRef GetProtoCell(GateRef object);
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
+    GateRef GetPrototype(GateRef glue, GateRef object);
     GateRef GetHasChanged(GateRef object);
     GateRef HclassIsPrototypeHandler(GateRef hClass);
     GateRef HclassIsTransitionHandler(GateRef hClass);
     GateRef HclassIsPropertyBox(GateRef hClass);
     GateRef PropAttrGetOffset(GateRef attr);
+    GateRef InstanceOf(GateRef glue, GateRef object, GateRef target);
+    GateRef OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj);
+    GateRef SameValue(GateRef glue, GateRef left, GateRef right);
+
     // SetDictionaryOrder func in property_attribute.h
     GateRef SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value);
     GateRef GetPrototypeFromHClass(GateRef hClass);
@@ -399,6 +404,7 @@ public:
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index);
     GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key);
+    GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key);
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue);
     GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn);
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
@@ -422,6 +428,7 @@ public:
     // fast path
     GateRef FastEqual(GateRef left, GateRef right);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
+    GateRef FastStringEqual(GateRef glue, GateRef left, GateRef right);
     GateRef FastMod(GateRef gule, GateRef left, GateRef right);
     GateRef FastTypeOf(GateRef left, GateRef right);
     GateRef FastMul(GateRef left, GateRef right);
@@ -445,6 +452,7 @@ public:
     GateRef IsNativeMethod(GateRef method);
     GateRef HasAotCode(GateRef method);
     GateRef GetExpectedNumOfArgs(GateRef method);
+    GateRef GetMethod(GateRef glue, GateRef obj, GateRef key);
     // proxy operator
     GateRef GetMethodFromJSProxy(GateRef proxy);
     GateRef GetHandlerFromJSProxy(GateRef proxy);

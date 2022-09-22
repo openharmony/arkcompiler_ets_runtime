@@ -98,6 +98,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(AllocateInYoung)                    \
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
+    V(CallGetPrototype)                   \
     V(ThrowTypeError)                     \
     V(JSProxySetProperty)                 \
     V(GetHash32)                          \

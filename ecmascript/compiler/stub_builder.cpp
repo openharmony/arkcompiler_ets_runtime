@@ -1004,8 +1004,8 @@ GateRef StubBuilder::TaggedIsBigInt(GateRef obj)
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
     Label isHeapObject(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
@@ -2889,6 +2889,516 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
     return ret;
 }
 
+GateRef StubBuilder::InstanceOf(GateRef glue, GateRef object, GateRef target)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+
+    // 1.If Type(target) is not Object, throw a TypeError exception.
+    Label targetIsHeapObject(env);
+    Label targetIsEcmaObject(env);
+    Label targetNotEcmaObject(env);
+    Branch(TaggedIsHeapObject(target), &targetIsHeapObject, &targetNotEcmaObject);
+    Bind(&targetIsHeapObject);
+    Branch(TaggedObjectIsEcmaObject(target), &targetIsEcmaObject, &targetNotEcmaObject);
+    Bind(&targetNotEcmaObject);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&targetIsEcmaObject);
+    {
+        // 2.Let instOfHandler be GetMethod(target, @@hasInstance).
+        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef hasInstanceSymbol = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                      GlobalEnv::HASINSTANCE_SYMBOL_INDEX);
+        GateRef instof = GetMethod(glue, target, hasInstanceSymbol);
+
+        // 3.ReturnIfAbrupt(instOfHandler).
+        Label isPendingException1(env);
+        Label noPendingException1(env);
+        Branch(HasPendingException(glue), &isPendingException1, &noPendingException1);
+        Bind(&isPendingException1);
+        {
+            result = Exception();
+            Jump(&exit);
+        }
+        Bind(&noPendingException1);
+
+        // 4.If instOfHandler is not undefined, then
+        Label instOfNotUndefined(env);
+        Label instOfIsUndefined(env);
+        Branch(TaggedIsUndefined(instof), &instOfIsUndefined, &instOfNotUndefined);
+        Bind(&instOfNotUndefined);
+        {
+            GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, JSCallMode::CALL_SETTER, { target, object });
+            result =  FastToBoolean(retValue);
+            Jump(&exit);
+        }
+        Bind(&instOfIsUndefined);
+        {
+            // 5.If IsCallable(target) is false, throw a TypeError exception.
+            Label targetIsCallable1(env);
+            Label targetNotCallable1(env);
+            Branch(IsCallable(target), &targetIsCallable1, &targetNotCallable1);
+            Bind(&targetNotCallable1);
+            {
+                GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InstanceOfErrorTargetNotCallable));
+                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+                result = Exception();
+                Jump(&exit);
+            }
+            Bind(&targetIsCallable1);
+            {
+                // 6.Return ? OrdinaryHasInstance(target, object).
+                result = OrdinaryHasInstance(glue, target, object);
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+
+    GateRef value = FastGetPropertyByName(glue, obj, key);
+
+    Label isPendingException2(env);
+    Label noPendingException2(env);
+    Branch(HasPendingException(glue), &isPendingException2, &noPendingException2);
+    Bind(&isPendingException2);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&noPendingException2);
+    Label valueIsUndefinedOrNull(env);
+    Label valueNotUndefinedOrNull(env);
+    Branch(TaggedIsUndefinedOrNull(value), &valueIsUndefinedOrNull, &valueNotUndefinedOrNull);
+    Bind(&valueIsUndefinedOrNull);
+    {
+        result = Undefined();
+        Jump(&exit);
+    }
+    Bind(&valueNotUndefinedOrNull);
+    {
+        Label valueIsCallable(env);
+        Label valueNotCallable(env);
+        Branch(IsCallable(value), &valueIsCallable, &valueNotCallable);
+        Bind(&valueNotCallable);
+        {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(NonCallable));
+            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            result = Exception();
+            Jump(&exit);
+        }
+        Bind(&valueIsCallable);
+        {
+            result = value;
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label checkResult(env);
+    Label fastpath(env);
+    Label slowpath(env);
+
+    Branch(TaggedIsHeapObject(obj), &fastpath, &slowpath);
+    Bind(&fastpath);
+    {
+        result = GetPropertyByName(glue, obj, key);
+        Branch(TaggedIsHole(*result), &slowpath, &exit);
+    }
+    Bind(&slowpath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
+                             { Undefined(), obj, key, Int64ToTaggedPtr(Int32(0)) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    DEFVARIABLE(object, VariableType::JS_ANY(), obj);
+
+    // 1. If IsCallable(C) is false, return false.
+    Label targetIsCallable2(env);
+    Label targetNotCallable2(env);
+    Branch(IsCallable(target), &targetIsCallable2, &targetNotCallable2);
+    Bind(&targetNotCallable2);
+    {
+        result = TaggedFalse();
+        Jump(&exit);
+    }
+    Bind(&targetIsCallable2);
+    {
+        // 2. If C has a [[BoundTargetFunction]] internal slot, then
+        //    a. Let BC be the value of C's [[BoundTargetFunction]] internal slot.
+        //    b. Return InstanceofOperator(O,BC)  (see 12.9.4).
+        Label targetIsBoundFunction(env);
+        Label targetNotBoundFunction(env);
+        Branch(IsBoundFunction(target), &targetIsBoundFunction, &targetNotBoundFunction);
+        Bind(&targetIsBoundFunction);
+        {
+            GateRef boundTarget = Load(VariableType::JS_ANY(), target, IntPtr(JSBoundFunction::BOUND_TARGET_OFFSET));
+            result = CallRuntime(glue, RTSTUB_ID(InstanceOf), { obj, boundTarget });
+            Jump(&exit);
+        }
+        Bind(&targetNotBoundFunction);
+        {
+            // 3. If Type(O) is not Object, return false
+            Label objIsHeapObject(env);
+            Label objIsEcmaObject(env);
+            Label objNotEcmaObject(env);
+            Branch(TaggedIsHeapObject(obj), &objIsHeapObject, &objNotEcmaObject);
+            Bind(&objIsHeapObject);
+            Branch(TaggedObjectIsEcmaObject(obj), &objIsEcmaObject, &objNotEcmaObject);
+            Bind(&objNotEcmaObject);
+            {
+                result = TaggedFalse();
+                Jump(&exit);
+            }
+            Bind(&objIsEcmaObject);
+            {
+                // 4. Let P be Get(C, "prototype").
+                auto prototypeString = GetGlobalConstantValue(
+                    VariableType::JS_POINTER(), glue, ConstantIndex::PROTOTYPE_STRING_INDEX);
+
+                GateRef constructorPrototype = FastGetPropertyByName(glue, target, prototypeString);
+
+                // 5. ReturnIfAbrupt(P).
+                // no throw exception, so needn't return
+                Label isPendingException3(env);
+                Label noPendingException3(env);
+                Branch(HasPendingException(glue), &isPendingException3, &noPendingException3);
+                Bind(&isPendingException3);
+                {
+                    result = Exception();
+                    Jump(&exit);
+                }
+                Bind(&noPendingException3);
+
+                // 6. If Type(P) is not Object, throw a TypeError exception.
+                Label constructorPrototypeIsHeapObject(env);
+                Label constructorPrototypeIsEcmaObject(env);
+                Label constructorPrototypeNotEcmaObject(env);
+                Branch(TaggedIsHeapObject(constructorPrototype), &constructorPrototypeIsHeapObject,
+                    &constructorPrototypeNotEcmaObject);
+                Bind(&constructorPrototypeIsHeapObject);
+                Branch(TaggedObjectIsEcmaObject(constructorPrototype), &constructorPrototypeIsEcmaObject,
+                    &constructorPrototypeNotEcmaObject);
+                Bind(&constructorPrototypeNotEcmaObject);
+                {
+                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InstanceOfErrorTargetNotCallable));
+                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+                    result = Exception();
+                    Jump(&exit);
+                }
+                Bind(&constructorPrototypeIsEcmaObject);
+                {
+                    // 7. Repeat
+                    //    a.Let O be O.[[GetPrototypeOf]]().
+                    //    b.ReturnIfAbrupt(O).
+                    //    c.If O is null, return false.
+                    //    d.If SameValue(P, O) is true, return true.
+                    Label loopHead(env);
+                    Label loopEnd(env);
+                    Label afterLoop(env);
+                    Label strictEqual1(env);
+                    Label notStrictEqual1(env);
+                    Label shouldReturn(env);
+                    Label shouldContinue(env);
+
+                    Branch(TaggedIsNull(*object), &afterLoop, &loopHead);
+                    LoopBegin(&loopHead);
+                    {
+                        GateRef isEqual = SameValue(glue, *object, constructorPrototype);
+
+                        Branch(isEqual, &strictEqual1, &notStrictEqual1);
+                        Bind(&strictEqual1);
+                        {
+                            result = TaggedTrue();
+                            Jump(&exit);
+                        }
+                        Bind(&notStrictEqual1);
+                        {
+                            object = GetPrototype(glue, *object);
+
+                            Branch(HasPendingException(glue), &shouldReturn, &shouldContinue);
+                            Bind(&shouldReturn);
+                            {
+                                result = Exception();
+                                Jump(&exit);
+                            }
+                        }
+                        Bind(&shouldContinue);
+                        Branch(TaggedIsNull(*object), &afterLoop, &loopEnd);
+                    }
+                    Bind(&loopEnd);
+                    LoopEnd(&loopHead);
+                    Bind(&afterLoop);
+                    {
+                        result = TaggedFalse();
+                        Jump(&exit);
+                    }
+                }
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetPrototype(GateRef glue, GateRef object)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label objectIsHeapObject(env);
+    Label objectIsEcmaObject(env);
+    Label objectNotEcmaObject(env);
+
+    Branch(TaggedIsHeapObject(object), &objectIsHeapObject, &objectNotEcmaObject);
+    Bind(&objectIsHeapObject);
+    Branch(TaggedObjectIsEcmaObject(object), &objectIsEcmaObject, &objectNotEcmaObject);
+    Bind(&objectNotEcmaObject);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotGetNotEcmaObject));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&objectIsEcmaObject);
+    {
+        Label objectIsJsProxy(env);
+        Label objectNotIsJsProxy(env);
+        Branch(IsJsProxy(object), &objectIsJsProxy, &objectNotIsJsProxy);
+        Bind(&objectIsJsProxy);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(CallGetPrototype), { object });
+            Jump(&exit);
+        }
+        Bind(&objectNotIsJsProxy);
+        {
+            result = GetPrototypeFromHClass(LoadHClass(object));
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::SameValue(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+    DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0.0));
+    DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0.0));
+    Label strictEqual2(env);
+    Label stringEqualCheck(env);
+    Label stringCompare(env);
+    Label bigIntEqualCheck(env);
+    Label numberEqualCheck1(env);
+
+    Branch(Equal(left, right), &strictEqual2, &numberEqualCheck1);
+    Bind(&strictEqual2);
+    {
+        result = True();
+        Jump(&exit);
+    }
+    Bind(&numberEqualCheck1);
+    {
+        Label leftIsNumber(env);
+        Label leftIsNotNumber(env);
+        Branch(TaggedIsNumber(left), &leftIsNumber, &leftIsNotNumber);
+        Bind(&leftIsNumber);
+        {
+            Label rightIsNumber(env);
+            Branch(TaggedIsNumber(right), &rightIsNumber, &exit);
+            Bind(&rightIsNumber);
+            {
+                Label numberEqualCheck2(env);
+                Label leftIsInt(env);
+                Label leftNotInt(env);
+                Label getRight(env);
+                Branch(TaggedIsInt(left), &leftIsInt, &leftNotInt);
+                Bind(&leftIsInt);
+                {
+                    doubleLeft = ChangeInt32ToFloat64(TaggedCastToInt32(left));
+                    Jump(&getRight);
+                }
+                Bind(&leftNotInt);
+                {
+                    doubleLeft = TaggedCastToDouble(left);
+                    Jump(&getRight);
+                }
+                Bind(&getRight);
+                {
+                    Label rightIsInt(env);
+                    Label rightNotInt(env);
+                    Branch(TaggedIsInt(right), &rightIsInt, &rightNotInt);
+                    Bind(&rightIsInt);
+                    {
+                        doubleRight = ChangeInt32ToFloat64(TaggedCastToInt32(right));
+                        Jump(&numberEqualCheck2);
+                    }
+                    Bind(&rightNotInt);
+                    {
+                        doubleRight = TaggedCastToDouble(right);
+                        Jump(&numberEqualCheck2);
+                    }
+                }
+                Bind(&numberEqualCheck2);
+                {
+                    Label boolAndCheck(env);
+                    Label signbitCheck(env);
+                    Branch(DoubleEqual(*doubleLeft, *doubleRight), &signbitCheck, &boolAndCheck);
+                    Bind(&signbitCheck);
+                    {
+                        GateRef leftEncoding = CastDoubleToInt64(*doubleLeft);
+                        GateRef RightEncoding = CastDoubleToInt64(*doubleRight);
+                        Label leftIsMinusZero(env);
+                        Label leftNotMinusZero(env);
+                        Branch(Int64Equal(leftEncoding, Int64(base::MINUS_ZERO_BITS)),
+                            &leftIsMinusZero, &leftNotMinusZero);
+                        Bind(&leftIsMinusZero);
+                        {
+                            Label rightIsMinusZero(env);
+                            Branch(Int64Equal(RightEncoding, Int64(base::MINUS_ZERO_BITS)), &rightIsMinusZero, &exit);
+                            Bind(&rightIsMinusZero);
+                            {
+                                result = True();
+                                Jump(&exit);
+                            }
+                        }
+                        Bind(&leftNotMinusZero);
+                        {
+                            Label rightNotMinusZero(env);
+                            Branch(Int64Equal(RightEncoding, Int64(base::MINUS_ZERO_BITS)), &exit, &rightNotMinusZero);
+                            Bind(&rightNotMinusZero);
+                            {
+                                result = True();
+                                Jump(&exit);
+                            }
+                        }
+                    }
+                    Bind(&boolAndCheck);
+                    {
+                        result = BoolAnd(DoubleIsNAN(*doubleLeft), DoubleIsNAN(*doubleRight));
+                        Jump(&exit);
+                    }
+                }
+            }
+        }
+        Bind(&leftIsNotNumber);
+        Branch(TaggedIsNumber(right), &exit, &stringEqualCheck);
+        Bind(&stringEqualCheck);
+        Branch(BothAreString(left, right), &stringCompare, &bigIntEqualCheck);
+        Bind(&stringCompare);
+        {
+            result = FastStringEqual(glue, left, right);
+            Jump(&exit);
+        }
+        Bind(&bigIntEqualCheck);
+        {
+            Label leftIsBigInt(env);
+            Label leftIsNotBigInt(env);
+            Branch(TaggedIsBigInt(left), &leftIsBigInt, &exit);
+            Bind(&leftIsBigInt);
+            {
+                Label rightIsBigInt(env);
+                Branch(TaggedIsBigInt(right), &rightIsBigInt, &exit);
+                Bind(&rightIsBigInt);
+                result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(BigIntEquals), { left, right });
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+    Label lengthCompare(env);
+    Label hashcodeCompare(env);
+    Label contentsCompare(env);
+
+    Branch(Int32Equal(ZExtInt1ToInt32(IsUtf16String(left)), ZExtInt1ToInt32(IsUtf16String(right))),
+        &lengthCompare, &exit);
+
+    Bind(&lengthCompare);
+    Branch(Int32Equal(GetLengthFromString(left), GetLengthFromString(right)), &hashcodeCompare,
+        &exit);
+
+    Bind(&hashcodeCompare);
+    Branch(Int32Equal(GetHashcodeFromString(glue, left), GetHashcodeFromString(glue, right)), &contentsCompare,
+        &exit);
+
+    Bind(&contentsCompare);
+    {
+        result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(StringsAreEquals), { left, right });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right)
 {
     auto env = GetEnvironment();
@@ -2963,22 +3473,8 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right)
     Branch(BothAreString(left, right), &stringCompare, &bigIntEqualCheck);
     Bind(&stringCompare);
     {
-        Label lengthCompare(env);
-        Label hashcodeCompare(env);
-        Label contentsCompare(env);
-        Branch(Int32Equal(ZExtInt1ToInt32(IsUtf16String(left)), ZExtInt1ToInt32(IsUtf16String(right))),
-            &lengthCompare, &exit);
-        Bind(&lengthCompare);
-        Branch(Int32Equal(GetLengthFromString(left), GetLengthFromString(right)), &hashcodeCompare,
-            &exit);
-        Bind(&hashcodeCompare);
-        Branch(Int32Equal(GetHashcodeFromString(glue, left), GetHashcodeFromString(glue, right)), &contentsCompare,
-            &exit);
-        Bind(&contentsCompare);
-        {
-            result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(StringsAreEquals), { left, right });
-            Jump(&exit);
-        }
+        result = FastStringEqual(glue, left, right);
+        Jump(&exit);
     }
     Bind(&bigIntEqualCheck);
     {
@@ -3027,13 +3523,13 @@ GateRef StubBuilder::FastEqual(GateRef left, GateRef right)
             Branch(DoubleIsNAN(doubleLeft), &leftIsNan, &leftNotDoubleOrLeftNotNan);
             Bind(&leftIsNan);
             {
-                result = Int64ToTaggedPtr(TaggedFalse());
+                result = TaggedFalse();
                 Jump(&exit);
             }
         }
         Bind(&leftNotDoubleOrLeftNotNan);
         {
-            result = Int64ToTaggedPtr(TaggedTrue());
+            result = TaggedTrue();
             Jump(&exit);
         }
     }
@@ -3052,7 +3548,7 @@ GateRef StubBuilder::FastEqual(GateRef left, GateRef right)
                 Branch(TaggedIsInt(right), &rightIsInt, &leftNotNumberOrLeftNotIntOrRightNotInt);
                 Bind(&rightIsInt);
                 {
-                    result = Int64ToTaggedPtr(TaggedFalse());
+                    result = TaggedFalse();
                     Jump(&exit);
                 }
             }
@@ -3069,7 +3565,7 @@ GateRef StubBuilder::FastEqual(GateRef left, GateRef right)
                 Branch(TaggedIsHeapObject(left), &leftIsHeapObject, &leftNotHeapObject);
                 Bind(&leftIsHeapObject);
                 {
-                    result = Int64ToTaggedPtr(TaggedFalse());
+                    result = TaggedFalse();
                     Jump(&exit);
                 }
                 Bind(&leftNotHeapObject);
@@ -3078,7 +3574,7 @@ GateRef StubBuilder::FastEqual(GateRef left, GateRef right)
                     Branch(TaggedIsUndefinedOrNull(left), &leftIsUndefinedOrNull, &leftOrRightNotUndefinedOrNull);
                     Bind(&leftIsUndefinedOrNull);
                     {
-                        result = Int64ToTaggedPtr(TaggedTrue());
+                        result = TaggedTrue();
                         Jump(&exit);
                     }
                 }
@@ -3094,7 +3590,7 @@ GateRef StubBuilder::FastEqual(GateRef left, GateRef right)
                     Branch(TaggedIsSpecial(right), &rightIsSpecial, &leftNotBoolOrRightNotSpecial);
                     Bind(&rightIsSpecial);
                     {
-                        result = Int64ToTaggedPtr(TaggedFalse());
+                        result = TaggedFalse();
                         Jump(&exit);
                     }
                 }
@@ -3182,12 +3678,12 @@ GateRef StubBuilder::FastToBoolean(GateRef value)
     }
     Bind(&returnTrue);
     {
-        result = Int64ToTaggedPtr(TaggedTrue());
+        result = TaggedTrue();
         Jump(&exit);
     }
     Bind(&returnFalse);
     {
-        result = Int64ToTaggedPtr(TaggedFalse());
+        result = TaggedFalse();
         Jump(&exit);
     }
 
