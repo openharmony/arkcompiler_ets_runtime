@@ -76,6 +76,8 @@ const std::string HELP_OPTION_MSG =
     "       \"cercir or cer0\": print cir info for certain method illustrated in 'mlist-for-log',\n"
     "       \"cerasm or cer2\": print asm log for certain method illustrated in 'mlist-for-log',\n"
     "       Default: \"none\"\n"
+    "--compiler-log-methods: specific method list for compiler log output, only used when compiler-log."
+                            "Default: \"none\"\n"
     "--enable-ark-tools: Enable ark tools to debug. Default: false\n"
     "--enable-bytecode-trace: enable tracing bytecode for aot runtime. Default: false\n"
     "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
@@ -108,7 +110,6 @@ const std::string HELP_OPTION_MSG =
     "--maxAotMethodSize: enable aot to skip too large method. Default size: 32 KB\n"
     "--maxNonmovableSpaceCapacity: set max nonmovable space capacity\n"
     "--merge-abc: abc file is merge abc. Default: false\n"
-    "--mlist-for-log: specific method list for compiler log output, only used when compiler-log. Default: \"none\"\n"
     "--opt-level: Optimization level configuration on llvm back end. Default: \"3\"\n"
     "--options: Print compiler and runtime options\n"
     "--print-any-types: Enable TypeFilter to print any types after type inference. Default: false\n"
@@ -151,7 +152,7 @@ enum CommandValues {
     OPTION_ICU_DATA_PATH,
     OPTION_STARTUP_TIME,
     OPTION_COMPILER_LOG_OPT,
-    OPTION_METHODS_LIST_FOR_LOG,
+    OPTION_COMPILER_LOG_METHODS,
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_ASSERT_TYPES,
     OPTION_PRINT_ANY_TYPES,
@@ -462,17 +463,17 @@ public:
 
     std::string GetMethodsListForLog() const
     {
-        return methodsListForLog_;
+        return compilerLogMethods_;
     }
 
     void SetMethodsListForLog(std::string value)
     {
-        methodsListForLog_ = std::move(value);
+        compilerLogMethods_ = std::move(value);
     }
 
     bool WasSetMethodsListForLog() const
     {
-        return 1ULL << static_cast<uint64_t>(OPTION_METHODS_LIST_FOR_LOG) & wasSet_ &&
+        return 1ULL << static_cast<uint64_t>(OPTION_COMPILER_LOG_METHODS) & wasSet_ &&
             GetCompilerLogOption().find("none") == std::string::npos &&
             GetCompilerLogOption().find("all") == std::string::npos;
     }
@@ -832,7 +833,7 @@ private:
         return ((1ULL << static_cast<uint64_t>(option)) & wasSet_) != 0;
     }
 
-    bool ParseBoolParam(const std::string &option, bool* argBool);
+    bool ParseBoolParam(bool* argBool);
     bool ParseIntParam(const std::string &option, int* argInt);
     bool ParseUint32Param(const std::string &option, uint32_t *argUInt32);
     bool ParseUint64Param(const std::string &option, uint64_t *argUInt64);
@@ -862,7 +863,7 @@ private:
     std::string icuDataPath_ {"default"};
     bool startupTime_ {false};
     std::string compilerLogOpt_ {"none"};
-    std::string methodsListForLog_ {"none"};
+    std::string compilerLogMethods_ {"none"};
     bool enableRuntimeStat_ {false};
     bool assertTypes_ {false};
     bool printAnyTypes_ {false};
