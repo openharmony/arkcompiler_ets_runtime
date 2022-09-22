@@ -180,15 +180,15 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
     CUnorderedMap<uint32_t, MethodLiteral *> patchMethodLiterals = patchFile_->GetMethodLiteralMap();
     auto baseConstpoolSize = baseConstpool->GetCacheLength();
 
-    // Find same methodName and recordName both in base and patch.
+    // Loop patch methodLiterals and base constpool to find same methodName and recordName both in base and patch.
     for (const auto &item : patchMethodLiterals) {
         MethodLiteral *patch = item.second;
         auto methodId = patch->GetMethodId();
         const char *patchMethodName = MethodLiteral::GetMethodName(patchFile_, methodId);
-        // Skip patch_main_0 and patch_main_1 and func_main_0.
-        if (patchMethodName == JSPandaFile::PATCH_FUNCTION_NAME_0 ||
-            patchMethodName == JSPandaFile::PATCH_FUNCTION_NAME_1 ||
-            patchMethodName == JSPandaFile::ENTRY_FUNCTION_NAME) {
+        // Skip func_main_0, patch_main_0 and patch_main_1.
+        if (std::strcmp(patchMethodName, JSPandaFile::ENTRY_FUNCTION_NAME) == 0 ||
+            std::strcmp(patchMethodName, JSPandaFile::PATCH_FUNCTION_NAME_0) == 0 ||
+            std::strcmp(patchMethodName, JSPandaFile::PATCH_FUNCTION_NAME_1) == 0) {
             continue;
         }
 
@@ -198,10 +198,13 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
             // For class inner function modified.
             if (constpoolValue.IsTaggedArray()) {
                 JSHandle<TaggedArray> classLiteral(thread, constpoolValue);
-                CUnorderedMap<uint32_t, MethodLiteral *> classLiteralInfo;
                 for (uint32_t i = 0; i < classLiteral->GetLength(); i++) {
                     JSTaggedValue literalItem = classLiteral->Get(thread, i);
                     if (!literalItem.IsJSFunctionBase()) {
+                        continue;
+                    }
+                    // Skip method that already been replaced.
+                    if (HasClassMethodReplaced(index, i)) {
                         continue;
                     }
                     JSFunctionBase *func = JSFunctionBase::Cast(literalItem.GetTaggedObject());
@@ -215,11 +218,10 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
                         continue;
                     }
 
-                    // Save base MethodLiteral and constpool index.
+                    // Save base MethodLiteral and literal index.
                     MethodLiteral *base = baseFile_->FindMethodLiteral(baseMethod->GetMethodId().GetOffset());
                     ASSERT(base != nullptr);
-                    classLiteralInfo.emplace(i, base);
-                    reservedBaseClassInfo_.emplace(index, classLiteralInfo);
+                    InsertBaseClassMethodInfo(index, i, base);
 
                     ReplaceMethodInner(thread, baseMethod, patch, patchConstpool.GetTaggedValue());
                     LOG_FULL(INFO) << "Replace class method: " << patchRecordName << ":" << patchMethodName;
@@ -228,6 +230,10 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
             }
             // For normal function and class constructor modified.
             if (constpoolValue.IsMethod()) {
+                // Skip method that already been replaced.
+                if (HasNormalMethodReplaced(index)) {
+                    continue;
+                }
                 Method *baseMethod = Method::Cast(constpoolValue.GetTaggedObject());
                 if (std::strcmp(patchMethodName, baseMethod->GetMethodName()) != 0) {
                     continue;
@@ -360,5 +366,40 @@ void QuickFixLoader::ReplaceMethodInner(JSThread *thread,
     destMethod->SetLiteralInfo(srcMethodLiteral->GetLiteralInfo());
     destMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(srcMethodLiteral->GetNativePointer()));
     destMethod->SetConstantPool(thread, srcConstpool);
+}
+
+bool QuickFixLoader::HasNormalMethodReplaced(uint32_t index) const
+{
+    if (reservedBaseMethodInfo_.find(index) != reservedBaseMethodInfo_.end()) {
+        return true;
+    }
+    return false;
+}
+
+bool QuickFixLoader::HasClassMethodReplaced(uint32_t constpoolIndex, uint32_t literalIndex) const
+{
+    auto iter = reservedBaseClassInfo_.find(constpoolIndex);
+    if (iter != reservedBaseClassInfo_.end()) {
+        auto &classLiteralInfo = iter->second;
+        if (classLiteralInfo.find(literalIndex) != classLiteralInfo.end()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void QuickFixLoader::InsertBaseClassMethodInfo(uint32_t constpoolIndex, uint32_t literalIndex, MethodLiteral *base)
+{
+    auto iter = reservedBaseClassInfo_.find(constpoolIndex);
+    if (iter != reservedBaseClassInfo_.end()) {
+        auto &literalInfo = iter->second;
+        if (literalInfo.find(literalIndex) != literalInfo.end()) {
+            return;
+        }
+        literalInfo.emplace(literalIndex, base);
+    } else {
+        CUnorderedMap<uint32_t, MethodLiteral *> classLiteralInfo {{literalIndex, base}};
+        reservedBaseClassInfo_.emplace(constpoolIndex, classLiteralInfo);
+    }
 }
 }  // namespace panda::ecmascript

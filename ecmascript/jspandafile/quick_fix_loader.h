@@ -42,6 +42,11 @@ private:
                             Method *destMethod,
                             MethodLiteral *srcMethodLiteral,
                             JSTaggedValue srcConstpool);
+
+    void InsertBaseClassMethodInfo(uint32_t constpoolIndex, uint32_t literalIndex, MethodLiteral *base);
+    bool HasNormalMethodReplaced(uint32_t index) const;
+    bool HasClassMethodReplaced(uint32_t constpoolIndex, uint32_t literalIndex) const;
+
     CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
     CVector<JSHandle<Program>> ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile);
 
