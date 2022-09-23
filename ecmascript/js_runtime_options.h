@@ -38,6 +38,7 @@ enum ArkProperties {
     ENABLE_ARKTOOLS = 1 << 6,
     ENABLE_SNAPSHOT_SERIALIZE = 1 << 7,
     ENABLE_SNAPSHOT_DESERIALIZE = 1 << 8,
+    EXCEPTION_BACKTRACE = 1 << 9,
 };
 
 // asm interpreter control parsed option
@@ -378,6 +379,11 @@ public:
     bool EnableConcurrentMark() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
+    }
+
+    bool EnableExceptionBacktrace() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::EXCEPTION_BACKTRACE) != 0;
     }
 
     bool EnableConcurrentSweep() const

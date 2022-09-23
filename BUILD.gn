@@ -670,8 +670,9 @@ source_set("libark_jsruntime_set") {
   ]
 
   if (is_ohos && is_standard_system) {
-    defines = []
+    defines = [ "ENABLE_EXCEPTION_BACKTRACE" ]
     include_dirs = []
+    sources += [ "ecmascript/dfx/native_dfx/backtrace.cpp" ]
     if (enable_bytrace) {
       defines += [ "ENABLE_BYTRACE" ]
       include_dirs += [ "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter" ]
@@ -692,7 +693,6 @@ source_set("libark_jsruntime_set") {
           [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
     }
     if (enable_leak_check) {
-      sources += [ "ecmascript/dfx/native_dfx/backtrace.cpp" ]
       defines += [
         "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
         "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
