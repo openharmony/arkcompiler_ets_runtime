@@ -86,7 +86,7 @@ public:
 
     static bool IsCallNew(JSCallMode mode);
     static int GetArgcFromJSCallMode(JSCallMode mode);
-    static bool JSModeHaveThisArg(JSCallMode mode);
+    static bool JSModeIsCallThis(JSCallMode mode);
     static bool JSModeHaveNewTargetArg(JSCallMode mode);
     static bool IsJumpToCallCommonEntry(JSCallMode mode);
 private:

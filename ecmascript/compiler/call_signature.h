@@ -329,13 +329,8 @@ private:
     V(PushCallArg1AndDispatch)              \
     V(PushCallArgs2AndDispatch)             \
     V(PushCallArgs3AndDispatch)             \
-    V(PushCallRangeAndDispatch)             \
     V(PushCallRangeAndDispatchNative)       \
     V(PushCallThisRangeAndDispatch)         \
-    V(PushCallThisArg0AndDispatch)          \
-    V(PushCallThisArg1AndDispatch)          \
-    V(PushCallThisArgs2AndDispatch)         \
-    V(PushCallThisArgs3AndDispatch)         \
     V(PushCallNewAndDispatchNative)         \
     V(PushCallNewAndDispatch)               \
     V(CallGetter)                           \
