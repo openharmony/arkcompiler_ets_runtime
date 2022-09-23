@@ -644,6 +644,18 @@ EscapeLocalScope::EscapeLocalScope(const EcmaVM *vm) : LocalScope(vm, JSTaggedVa
     escapeHandle_ = ToUintPtr(thread->GetHandleScopeStorageNext() - 1);
 }
 
+// ----------------------------------- PritimitiveRef ---------------------------------------
+Local<JSValueRef> PrimitiveRef::GetValue(const EcmaVM *vm)
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    if (obj->IsJSPrimitiveRef()) {
+        JSTaggedValue primitiveValue = JSPrimitiveRef::Cast(obj->GetTaggedObject())->GetValue();
+        JSHandle<JSTaggedValue> value = JSHandle<JSTaggedValue>(vm->GetJSThread(), primitiveValue);
+        return JSNApiHelper::ToLocal<JSValueRef>(value);
+    }
+    return Local<JSValueRef>();
+}
+
 // ----------------------------------- NumberRef ---------------------------------------
 Local<NumberRef> NumberRef::New(const EcmaVM *vm, double input)
 {
