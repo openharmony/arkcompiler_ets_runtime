@@ -2452,11 +2452,11 @@ bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void 
     return quickFixManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
 }
 
-bool JSNApi::UnLoadPatch(EcmaVM *vm, const std::string &patchFileName)
+bool JSNApi::UnloadPatch(EcmaVM *vm, const std::string &patchFileName)
 {
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();
-    return quickFixManager->UnLoadPatch(thread, patchFileName);
+    return quickFixManager->UnloadPatch(thread, patchFileName);
 }
 
 /*

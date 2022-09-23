@@ -30,6 +30,7 @@ public:
     struct JSRecordInfo {
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
+        bool hasParsedLiteralConstPool {false};
         int moduleRecordIdx {-1};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
     };
@@ -106,18 +107,23 @@ public:
         return 0;
     }
 
-    const CUnorderedMap<uint32_t, uint64_t> &GetConstpoolMap(const CString &recordName = ENTRY_FUNCTION_NAME) const
+    const CUnorderedMap<uint32_t, uint64_t> *GetConstpoolMapByReocrd(const CString &recordName) const
     {
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
-            return info->second.constpoolMap;
+            return &info->second.constpoolMap;
         }
         LOG_FULL(FATAL) << "find entryPoint fail " << recordName;
         UNREACHABLE();
     }
 
+    const CUnorderedMap<uint32_t, uint64_t> &GetConstpoolMap() const
+    {
+        return constpoolMap_;
+    }
+
     uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset,
-                                                const CString &entryPoint = ENTRY_FUNCTION_NAME);
+                                                const CUnorderedMap<uint32_t, uint64_t> *constpoolMap = nullptr);
 
     void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
     {
@@ -199,6 +205,26 @@ public:
         return false;
     }
 
+    bool HasParsedLiteralConstPool(const CString &recordName) const
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info == jsRecordInfo_.end()) {
+            LOG_FULL(FATAL) << "find recordName fail " << recordName;
+            UNREACHABLE();
+        }
+        return info->second.hasParsedLiteralConstPool;
+    }
+
+    void UpdateJSRecordInfo(const CString &recordName)
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info == jsRecordInfo_.end()) {
+            LOG_FULL(FATAL) << "find recordName fail " << recordName;
+            UNREACHABLE();
+        }
+        info->second.hasParsedLiteralConstPool = true;
+    }
+
     const CUnorderedMap<CString, JSRecordInfo> &GetJSRecordInfo() const
     {
         return jsRecordInfo_;
@@ -225,6 +251,7 @@ private:
 
     uint32_t constpoolIndex_ {0};
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
+    CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     MethodLiteral *methodLiterals_ {nullptr};
     const panda_file::File *pf_ {nullptr};

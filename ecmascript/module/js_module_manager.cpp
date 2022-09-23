@@ -130,97 +130,69 @@ void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &current
 JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(const CString &referencingModule)
 {
     ObjectFactory *factory = vm_->GetFactory();
-    JSHandle<JSTaggedValue> referencingHandle =
-        JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(referencingModule));
-    int entry =
-        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencingHandle.GetTaggedValue());
-    LOG_ECMA_IF(entry == -1, FATAL) << "cannot get module: " << referencingModule;
-
-    return JSHandle<SourceTextModule>(vm_->GetJSThread(),
-                                      NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
-}
-
-JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(JSHandle<EcmaString> &referencingHandle)
-{
+    JSHandle<EcmaString> referencingHandle = factory->NewFromUtf8(referencingModule);
     return HostGetImportedModule(referencingHandle.GetTaggedValue());
 }
 
 JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(JSTaggedValue referencing)
 {
-    int entry =
-        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencing);
-    LOG_ECMA_IF(entry == -1, FATAL) << "cannot get module: ";
-    return JSHandle<SourceTextModule>(vm_->GetJSThread(),
-                                      NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
+    NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(referencing);
+    LOG_ECMA_IF(entry == -1, FATAL) << "Can not get module: "
+                                    << ConvertToString(EcmaString::Cast(referencing.GetTaggedObject()));
+    JSTaggedValue result = dict->GetValue(entry);
+    return JSHandle<SourceTextModule>(vm_->GetJSThread(), result);
 }
 
 bool ModuleManager::IsImportedModuleLoaded(JSTaggedValue referencing)
 {
-    int entry =
-        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencing);
+    int entry = NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencing);
     return (entry != -1);
 }
 
 JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModuleWithMerge(const CString &moduleFileName,
-                                                                             const CString &recodeName)
+                                                                             const CString &recordName)
 {
     JSThread *thread = vm_->GetJSThread();
     ObjectFactory *factory = vm_->GetFactory();
-    auto globalConstants = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> recodeNameHandle =
-        JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recodeName));
-    int entry =
-        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(recodeNameHandle.GetTaggedValue());
+
+    JSHandle<EcmaString> recordNameHandle = factory->NewFromUtf8(recordName);
+    NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(recordNameHandle.GetTaggedValue());
     if (entry != -1) {
-        return JSHandle<SourceTextModule>(
-            thread, NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
+        return JSHandle<SourceTextModule>(thread, dict->GetValue(entry));
     }
 
-    // moduleFile must exist
     const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recodeName.c_str());
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName.c_str());
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "open jsPandaFile " << moduleFileName << " error";
         UNREACHABLE();
     }
-    JSHandle<JSTaggedValue> moduleRecord = globalConstants->GetHandledUndefined();
-    if (jsPandaFile->IsCjs(recodeName)) {
-        moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
-    } else if (jsPandaFile->IsModule(recodeName)) {
-        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recodeName, moduleFileName);
-    } else {
-        LOG_ECMA(ERROR) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
-        UNREACHABLE();
-    }
-    JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recodeNameHandle);
-    JSHandle<NameDictionary> dict(thread, resolvedModules_);
-    resolvedModules_ =
-        NameDictionary::Put(thread, dict, recodeNameHandle, moduleRecord, PropertyAttributes::Default())
-        .GetTaggedValue();
-    return JSHandle<SourceTextModule>::Cast(moduleRecord);
+
+    return ResolveModuleWithMerge(thread, jsPandaFile, recordName);
 }
 
 JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CString &referencingModule)
 {
     JSThread *thread = vm_->GetJSThread();
     ObjectFactory *factory = vm_->GetFactory();
-    auto globalConstants = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> referencingHandle =
-        JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(referencingModule));
+
+    JSHandle<EcmaString> referencingHandle = factory->NewFromUtf8(referencingModule);
     CString moduleFileName = referencingModule;
     if (!vm_->GetResolvePathCallback()) {
         if (FileLoader::GetAbsolutePath(referencingModule, moduleFileName)) {
-            referencingHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(moduleFileName));
+            referencingHandle = factory->NewFromUtf8(moduleFileName);
         } else {
             LOG_ECMA(ERROR) << "absolute " << referencingModule << " path error";
             UNREACHABLE();
         }
     }
-    int entry =
-        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencingHandle.GetTaggedValue());
+
+    NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(referencingHandle.GetTaggedValue());
     if (entry != -1) {
-        return JSHandle<SourceTextModule>(
-            thread, NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
+        return JSHandle<SourceTextModule>(thread, dict->GetValue(entry));
     }
 
     const JSPandaFile *jsPandaFile =
@@ -229,21 +201,8 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CStrin
         LOG_ECMA(FATAL) << "open jsPandaFile " << moduleFileName << " error";
         UNREACHABLE();
     }
-    JSHandle<JSTaggedValue> moduleRecord = globalConstants->GetHandledUndefined();
-    if (jsPandaFile->IsCjs()) {
-        moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
-    } else if (jsPandaFile->IsModule()) {
-        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
-    } else {
-        LOG_ECMA(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
-        UNREACHABLE();
-    }
 
-    JSHandle<NameDictionary> dict(thread, resolvedModules_);
-    resolvedModules_ =
-        NameDictionary::Put(thread, dict, referencingHandle, moduleRecord, PropertyAttributes::Default())
-        .GetTaggedValue();
-    return JSHandle<SourceTextModule>::Cast(moduleRecord);
+    return ResolveModule(thread, jsPandaFile);
 }
 
 JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const void *buffer, size_t size,
@@ -251,25 +210,30 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const void *
 {
     JSThread *thread = vm_->GetJSThread();
     ObjectFactory *factory = vm_->GetFactory();
-    auto globalConstants = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> referencingHandle =
-        JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(filename));
-    CString moduleFileName = filename;
-    int entry =
-        NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencingHandle.GetTaggedValue());
+
+    JSHandle<EcmaString> referencingHandle = factory->NewFromUtf8(filename);
+    NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(referencingHandle.GetTaggedValue());
     if (entry != -1) {
-        return JSHandle<SourceTextModule>(
-            thread, NameDictionary::Cast(resolvedModules_.GetTaggedObject())->GetValue(entry));
+        return JSHandle<SourceTextModule>(thread, dict->GetValue(entry));
     }
 
     const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName,
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename,
                                                            JSPandaFile::ENTRY_MAIN_FUNCTION, buffer, size);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "open jsPandaFile " << moduleFileName << " error";
+        LOG_ECMA(ERROR) << "open jsPandaFile " << filename << " error";
         UNREACHABLE();
     }
-    JSHandle<JSTaggedValue> moduleRecord = globalConstants->GetHandledUndefined();
+
+    return ResolveModule(thread, jsPandaFile);
+}
+
+JSHandle<SourceTextModule> ModuleManager::ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
+    JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
     if (jsPandaFile->IsCjs()) {
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
     } else if (jsPandaFile->IsModule()) {
@@ -280,8 +244,33 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const void *
     }
 
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
+    JSHandle<JSTaggedValue> referencingHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(moduleFileName));
     resolvedModules_ =
         NameDictionary::Put(thread, dict, referencingHandle, moduleRecord, PropertyAttributes::Default())
+        .GetTaggedValue();
+    return JSHandle<SourceTextModule>::Cast(moduleRecord);
+}
+
+JSHandle<SourceTextModule> ModuleManager::ResolveModuleWithMerge(
+    JSThread *thread, const JSPandaFile *jsPandaFile, const CString &recordName)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
+    JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
+    if (jsPandaFile->IsCjs(recordName)) {
+        moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, moduleFileName);
+    } else if (jsPandaFile->IsModule(recordName)) {
+        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordName, moduleFileName);
+    } else {
+        LOG_ECMA(ERROR) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
+        UNREACHABLE();
+    }
+
+    JSHandle<JSTaggedValue> recordNameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recordName));
+    JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordNameHandle);
+    JSHandle<NameDictionary> dict(thread, resolvedModules_);
+    resolvedModules_ =
+        NameDictionary::Put(thread, dict, recordNameHandle, moduleRecord, PropertyAttributes::Default())
         .GetTaggedValue();
     return JSHandle<SourceTextModule>::Cast(moduleRecord);
 }

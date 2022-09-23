@@ -41,10 +41,7 @@ public:
     NO_MOVE_SEMANTIC(PandaFileTranslator);
     static JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                              std::string_view entryPoint);
-    static JSHandle<Program> GenerateProgramWithMerge(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                      std::string_view entryPoint);
     static void TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName);
-    static void TranslateClassesWithMerge(JSPandaFile *jsPandaFile);
 
 private:
     static void TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t insSz, const uint8_t *insArr,
@@ -53,9 +50,9 @@ private:
     static void FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst);
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
     static JSHandle<ConstantPool> ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
-    static void ParseConstPoolWithMerge(EcmaVM *vm, const JSPandaFile *jsPandaFile, JSHandle<ConstantPool> constpool);
-    static void ParseLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
-                                      JSHandle<ConstantPool> constpool);
+    static void ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
+                                             JSHandle<ConstantPool> constpool);
+    friend class QuickFixLoader;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_PANDA_FILE_TRANSLATOR_H
