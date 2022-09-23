@@ -648,7 +648,7 @@ JSTaggedValue ContainersVector::Sort(EcmaRuntimeCallInfo *argv)
             }
         }
 
-        if (endIndex >= 0 && endIndex < i) {
+        if (endIndex < i) {
             for (uint32_t j = i; j > endIndex; j--) {
                 previousValue.Update(elements->Get(j - 1));
                 elements->Set(thread, j, previousValue.GetTaggedValue());

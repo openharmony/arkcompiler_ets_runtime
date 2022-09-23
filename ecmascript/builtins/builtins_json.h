@@ -20,7 +20,6 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 
 namespace panda::ecmascript::builtins {
-using JSTaggedValue = JSTaggedValue;
 
 class BuiltinsJson : public base::BuiltinsBase {
 public:
