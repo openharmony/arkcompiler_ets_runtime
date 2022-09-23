@@ -445,7 +445,7 @@ std::unique_ptr<ReplyNativeCallingParams> ReplyNativeCallingParams::Create(const
     std::string error;
     Result ret;
 
-    bool userCode= false;
+    bool userCode = false;
     ret = params.GetBool("userCode", &userCode);
     if (ret == Result::SUCCESS) {
         paramsObject->userCode_ = userCode;
