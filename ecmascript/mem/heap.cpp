@@ -582,8 +582,8 @@ void Heap::RecomputeLimits()
 
     double growingFactor = memController_->CalculateGrowingFactor(gcSpeed, mutatorSpeed);
     size_t maxOldSpaceCapacity = oldSpace_->GetMaximumCapacity() - newSpaceCapacity;
-    size_t newOldSpaceLimit = memController_->CalculateAllocLimit(oldSpaceSize, MIN_OLD_SPACE_LIMIT, maxOldSpaceCapacity,
-                                                                newSpaceCapacity, growingFactor);
+    size_t newOldSpaceLimit = memController_->CalculateAllocLimit(oldSpaceSize, MIN_OLD_SPACE_LIMIT,
+        maxOldSpaceCapacity, newSpaceCapacity, growingFactor);
     size_t maxGlobalSize = ecmaVm_->GetEcmaParamConfiguration().GetMaxHeapSize() - newSpaceCapacity;
     size_t newGlobalSpaceLimit = memController_->CalculateAllocLimit(GetHeapObjectSize(), MIN_HEAP_SIZE,
                                                                    maxGlobalSize, newSpaceCapacity, growingFactor);
@@ -736,7 +736,7 @@ void Heap::IncreaseNativeBindingSize(bool nonMovable, size_t size)
     if (size == 0) {
         return;
     }
-    if(!nonMovable) {
+    if (!nonMovable) {
         activeSemiSpace_->IncreaseNativeBindingSize(size);
     } else {
         nonNewSpaceNativeBindingSize_ += size;
