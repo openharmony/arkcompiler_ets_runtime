@@ -52,7 +52,11 @@ JSTaggedValue ContainersQueue::Add(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIQueue()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -69,7 +73,11 @@ JSTaggedValue ContainersQueue::GetFirst(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIQueue()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        }
     }
 
     JSTaggedValue value = JSAPIQueue::GetFirst(thread, JSHandle<JSAPIQueue>::Cast(self));
@@ -86,7 +94,11 @@ JSTaggedValue ContainersQueue::Pop(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIQueue()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        }
     }
 
     JSTaggedValue value = JSAPIQueue::Pop(thread, JSHandle<JSAPIQueue>::Cast(self));
@@ -104,7 +116,11 @@ JSTaggedValue ContainersQueue::ForEach(EcmaRuntimeCallInfo *argv)
     // Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv); // JSAPIQueue
     if (!thisHandle->IsJSAPIQueue()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIQueue()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIQueue> queue = JSHandle<JSAPIQueue>::Cast(thisHandle);
@@ -150,7 +166,11 @@ JSTaggedValue ContainersQueue::GetIteratorObj(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIQueue()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIQueueIterator> iter(factory->NewJSAPIQueueIterator(JSHandle<JSAPIQueue>::Cast(self)));
     return iter.GetTaggedValue();
@@ -165,7 +185,11 @@ JSTaggedValue ContainersQueue::GetSize(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIQueue()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+        }
     }
 
     uint32_t length = JSHandle<JSAPIQueue>::Cast(self)->GetSize();

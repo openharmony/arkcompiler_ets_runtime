@@ -56,7 +56,11 @@ JSTaggedValue ContainersHashSet::Values(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> iter = JSAPIHashSetIterator::CreateHashSetIterator(thread, self, IterationKind::VALUE);
     return iter.GetTaggedValue();
@@ -70,7 +74,11 @@ JSTaggedValue ContainersHashSet::Entries(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> iter =
         JSAPIHashSetIterator::CreateHashSetIterator(thread, self, IterationKind::KEY_AND_VALUE);
@@ -86,7 +94,11 @@ JSTaggedValue ContainersHashSet::Add(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -105,7 +117,11 @@ JSTaggedValue ContainersHashSet::Remove(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -122,7 +138,11 @@ JSTaggedValue ContainersHashSet::Has(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     JSHandle<JSAPIHashSet> jsHashSet = JSHandle<JSAPIHashSet>::Cast(self);
@@ -138,7 +158,11 @@ JSTaggedValue ContainersHashSet::Clear(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIHashSet> jsHashSet = JSHandle<JSAPIHashSet>::Cast(self);
     jsHashSet->Clear(thread);
@@ -154,7 +178,11 @@ JSTaggedValue ContainersHashSet::GetLength(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIHashSet> jsHashSet = JSHandle<JSAPIHashSet>::Cast(self);
@@ -170,7 +198,11 @@ JSTaggedValue ContainersHashSet::IsEmpty(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIHashSet> jsHashSet = JSHandle<JSAPIHashSet>::Cast(self);
     return jsHashSet->IsEmpty();
@@ -184,7 +216,11 @@ JSTaggedValue ContainersHashSet::ForEach(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIHashSet()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {

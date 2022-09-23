@@ -53,7 +53,11 @@ JSTaggedValue ContainersLinkedList::Add(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -70,7 +74,11 @@ JSTaggedValue ContainersLinkedList::AddFirst(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -87,7 +95,11 @@ JSTaggedValue ContainersLinkedList::GetFirst(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     return jsAPILinkedList->GetFirst();
@@ -101,7 +113,11 @@ JSTaggedValue ContainersLinkedList::GetLast(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     return jsAPILinkedList->GetLast();
@@ -115,7 +131,11 @@ JSTaggedValue ContainersLinkedList::Length(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     return JSTaggedValue(jsAPILinkedList->Length());
@@ -130,7 +150,11 @@ JSTaggedValue ContainersLinkedList::Insert(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);
@@ -155,7 +179,11 @@ JSTaggedValue ContainersLinkedList::Clear(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     jsAPILinkedList->Clear(thread);
@@ -171,7 +199,11 @@ JSTaggedValue ContainersLinkedList::Clone(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSHandle<JSAPILinkedList> newLinkedList = JSAPILinkedList::Clone(thread, jsAPILinkedList);
@@ -186,7 +218,11 @@ JSTaggedValue ContainersLinkedList::Has(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
@@ -201,7 +237,11 @@ JSTaggedValue ContainersLinkedList::Get(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
@@ -219,7 +259,11 @@ JSTaggedValue ContainersLinkedList::GetIndexOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
@@ -234,7 +278,11 @@ JSTaggedValue ContainersLinkedList::GetLastIndexOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSHandle<JSTaggedValue> element(GetCallArg(argv, 0));
@@ -249,7 +297,11 @@ JSTaggedValue ContainersLinkedList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
     if (!index->IsInteger()) {
@@ -270,7 +322,11 @@ JSTaggedValue ContainersLinkedList::Remove(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
@@ -285,7 +341,11 @@ JSTaggedValue ContainersLinkedList::RemoveFirst(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSTaggedValue lastValue = JSAPILinkedList::RemoveFirst(thread, jsAPILinkedList);
@@ -301,7 +361,11 @@ JSTaggedValue ContainersLinkedList::RemoveFirstFound(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
     
@@ -319,7 +383,11 @@ JSTaggedValue ContainersLinkedList::RemoveLast(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSTaggedValue lastValue = JSAPILinkedList::RemoveLast(thread, jsAPILinkedList);
@@ -335,7 +403,11 @@ JSTaggedValue ContainersLinkedList::RemoveLastFound(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
@@ -352,7 +424,11 @@ JSTaggedValue ContainersLinkedList::Set(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 1);
@@ -374,7 +450,11 @@ JSTaggedValue ContainersLinkedList::ConvertToArray(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILinkedList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     return JSAPILinkedList::ConvertToArray(thread, jsAPILinkedList);
@@ -388,7 +468,11 @@ JSTaggedValue ContainersLinkedList::ForEach(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPILinkedList()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> callbackFnHandle(GetCallArg(argv, 0));

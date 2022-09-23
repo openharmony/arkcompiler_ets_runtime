@@ -54,7 +54,11 @@ JSTaggedValue ContainersPlainArray::Add(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 1));
@@ -73,7 +77,11 @@ JSTaggedValue ContainersPlainArray::Clear(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(self->GetTaggedObject());
     array->Clear(thread);
@@ -88,7 +96,11 @@ JSTaggedValue ContainersPlainArray::Clone(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIPlainArray> newPlainArray =
         JSAPIPlainArray::Clone(thread, JSHandle<JSAPIPlainArray>::Cast(self));
@@ -103,7 +115,11 @@ JSTaggedValue ContainersPlainArray::Has(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsNumber()) {
@@ -123,7 +139,11 @@ JSTaggedValue ContainersPlainArray::Get(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
     if (!key->IsInteger()) {
@@ -143,7 +163,11 @@ JSTaggedValue ContainersPlainArray::GetIteratorObj(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> iter =
         JSAPIPlainArray::GetIteratorObj(thread, JSHandle<JSAPIPlainArray>::Cast(self), IterationKind::KEY_AND_VALUE);
@@ -156,6 +180,13 @@ JSTaggedValue ContainersPlainArray::ForEach(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, PlainArray, ForEach);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsJSAPIPlainArray()) {
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIPlainArray()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
+    }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
@@ -171,7 +202,11 @@ JSTaggedValue ContainersPlainArray::ToString(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, ToString);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSTaggedValue value = JSAPIPlainArray::ToString(thread, JSHandle<JSAPIPlainArray>::Cast(self));
     return value;
@@ -184,7 +219,11 @@ JSTaggedValue ContainersPlainArray::GetIndexOfKey(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, GetIndexOfKey);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsNumber()) {
@@ -203,7 +242,11 @@ JSTaggedValue ContainersPlainArray::GetIndexOfValue(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, GetIndexOfValue);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(self->GetTaggedObject());
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
@@ -218,7 +261,11 @@ JSTaggedValue ContainersPlainArray::IsEmpty(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, IsEmpty);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(self->GetTaggedObject());
     bool ret = array->IsEmpty();
@@ -232,7 +279,11 @@ JSTaggedValue ContainersPlainArray::GetKeyAt(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, GetKeyAt);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsNumber()) {
@@ -251,7 +302,11 @@ JSTaggedValue ContainersPlainArray::Remove(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, Remove);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
     if (!key->IsInteger()) {
@@ -269,7 +324,11 @@ JSTaggedValue ContainersPlainArray::RemoveAt(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, RemoveAt);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
     if (!index->IsInteger()) {
@@ -287,7 +346,11 @@ JSTaggedValue ContainersPlainArray::RemoveRangeFrom(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, RemoveRangeFrom);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> valueIndex(GetCallArg(argv, 0));
     JSHandle<JSTaggedValue> valueSize(GetCallArg(argv, 1));
@@ -309,7 +372,11 @@ JSTaggedValue ContainersPlainArray::SetValueAt(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 1));
@@ -329,7 +396,11 @@ JSTaggedValue ContainersPlainArray::GetValueAt(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> idx(GetCallArg(argv, 0));
     if (!idx->IsInteger()) {
@@ -348,7 +419,11 @@ JSTaggedValue ContainersPlainArray::GetSize(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, GetSize);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIPlainArray", JSTaggedValue::Exception());
+        }
     }
     int32_t length = JSHandle<JSAPIPlainArray>::Cast(self)->GetSize();
     return JSTaggedValue(length);

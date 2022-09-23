@@ -55,7 +55,11 @@ JSTaggedValue ContainersList::Add(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -72,7 +76,11 @@ JSTaggedValue ContainersList::Insert(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 1);
@@ -93,7 +101,11 @@ JSTaggedValue ContainersList::GetFirst(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
     return jSAPIList->GetFirst();
@@ -107,7 +119,11 @@ JSTaggedValue ContainersList::GetLast(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
     return jSAPIList->GetLast();
@@ -121,7 +137,11 @@ JSTaggedValue ContainersList::Has(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
     JSHandle<JSTaggedValue> element= GetCallArg(argv, 0);
@@ -136,7 +156,11 @@ JSTaggedValue ContainersList::IsEmpty(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
     return GetTaggedBoolean(jSAPIList->IsEmpty());
@@ -150,7 +174,11 @@ JSTaggedValue ContainersList::Get(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
@@ -168,7 +196,11 @@ JSTaggedValue ContainersList::GetIndexOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
@@ -183,7 +215,11 @@ JSTaggedValue ContainersList::GetLastIndexOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
@@ -198,7 +234,11 @@ JSTaggedValue ContainersList::Set(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 1);
@@ -220,7 +260,11 @@ JSTaggedValue ContainersList::ForEach(EcmaRuntimeCallInfo *argv)
     // get and check List object
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIList()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
 
     // get and check callback function
@@ -258,6 +302,13 @@ JSTaggedValue ContainersList::Clear(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, List, Clear);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
+    if (!self->IsJSAPIList()) {
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
+    }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     jsAPIList->Clear(thread);
     return JSTaggedValue::Undefined();
@@ -270,6 +321,13 @@ JSTaggedValue ContainersList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, List, RemoveByIndex);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
+    if (!self->IsJSAPIList()) {
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
+    }
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
     if (!index->IsInteger()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "index is not integer", JSTaggedValue::Exception());
@@ -287,6 +345,13 @@ JSTaggedValue ContainersList::Remove(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, List, Remove);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
+    if (!self->IsJSAPIList()) {
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
+    }
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     return jsAPIList->Remove(thread, element.GetTaggedValue());
@@ -298,6 +363,13 @@ JSTaggedValue ContainersList::ReplaceAllElements(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, List, ReplaceAllElements);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsJSAPIList()) {
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIList()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
+    }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
@@ -314,12 +386,20 @@ JSTaggedValue ContainersList::Equal(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
     if (!obj->IsJSAPIList()) {
-        return JSTaggedValue::False();
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPIList()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        } else {
+            return JSTaggedValue::False();
+        }
     }
     JSHandle<JSAPIList> handleObj = JSHandle<JSAPIList>::Cast(obj);
     return jsAPIList->Equal(thread, handleObj);
@@ -333,7 +413,11 @@ JSTaggedValue ContainersList::Sort(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not IsJSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not IsJSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsUndefined() && !callbackFnHandle->IsCallable()) {
@@ -361,7 +445,11 @@ JSTaggedValue ContainersList::ConvertToArray(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     return JSAPIList::ConvertToArray(thread, jsAPIList);
@@ -375,7 +463,11 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> fromIndex= GetCallArg(argv, 0);
 
@@ -403,7 +495,11 @@ JSTaggedValue ContainersList::Length(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     return JSTaggedValue(jsAPIList->Length());

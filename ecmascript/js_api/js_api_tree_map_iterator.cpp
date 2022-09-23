@@ -84,12 +84,16 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
 }
 
 JSHandle<JSTaggedValue> JSAPITreeMapIterator::CreateTreeMapIterator(JSThread *thread,
-                                                                    const JSHandle<JSTaggedValue> &obj,
+                                                                    JSHandle<JSTaggedValue> &obj,
                                                                     IterationKind kind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPITreeMap()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not TreeMap", thread->GlobalConstants()->GetHandledUndefined());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPITreeMap()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not TreeMap", thread->GlobalConstants()->GetHandledUndefined());
+        }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPITreeMapIterator(JSHandle<JSAPITreeMap>(obj), kind));
     return iter;
