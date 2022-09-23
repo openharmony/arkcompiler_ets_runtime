@@ -29,7 +29,10 @@ public:
 
         GateRef operator*() const
         {
-            return circuit_->GetGateRef(out_->GetGateConst());
+            if (out_ != nullptr) {
+                return circuit_->GetGateRef(out_->GetGateConst());
+            }
+            return 0;
         }
 
         const ConstUseIterator operator++()
@@ -82,7 +85,10 @@ public:
 
         GateRef operator*() const
         {
-            return circuit_->GetGateRef(out_->GetGate());
+            if (out_ != nullptr) {
+                return circuit_->GetGateRef(out_->GetGate());
+            }
+            return 0;
         }
 
         const UseIterator& operator++()

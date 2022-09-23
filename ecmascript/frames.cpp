@@ -430,7 +430,6 @@ ARK_INLINE void AsmInterpretedFrame::GCIterate(const FrameIterator &it,
         visitor(Root::ROOT_FRAME, ObjectSlot(ToUintPtr(&frame->env)));
     }
 
-    std::set<uintptr_t> slotAddrs;
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG

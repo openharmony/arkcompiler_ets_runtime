@@ -63,14 +63,14 @@ void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
 
 void ModuleSectionDes::LoadStackMapSection(BinaryBufferParser &parser, uintptr_t secBegin, uint32_t &curUnitOffset)
 {
-    uint32_t size;
+    uint32_t size = 0;
     parser.ParseBuffer(&size, sizeof(size));
     parser.ParseBuffer(reinterpret_cast<void *>(secBegin), size);
     SetArkStackMapSize(size);
     SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secBegin));
     curUnitOffset += size;
-    uint32_t index;
-    uint32_t cnt;
+    uint32_t index = 0;
+    uint32_t cnt = 0;
     parser.ParseBuffer(&index, sizeof(index));
     parser.ParseBuffer(&cnt, sizeof(cnt));
     SetStartIndex(index);
@@ -80,14 +80,14 @@ void ModuleSectionDes::LoadStackMapSection(BinaryBufferParser &parser, uintptr_t
 void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
     uint32_t &curUnitOffset, uint64_t codeAddress)
 {
-    uint32_t secInfoSize;
+    uint32_t secInfoSize = 0;
     parser.ParseBuffer(&secInfoSize, sizeof(secInfoSize));
     auto secBegin = codeAddress + static_cast<uintptr_t>(curUnitOffset);
     for (uint8_t i = 0; i < secInfoSize; i++) {
-        uint8_t secName;
+        uint8_t secName = 0;
         parser.ParseBuffer(&secName, sizeof(secName));
         auto secEnumName = static_cast<ElfSecName>(secName);
-        uint32_t secSize;
+        uint32_t secSize = 0;
         parser.ParseBuffer(&secSize, sizeof(secSize));
         SetSecSize(secSize, secEnumName);
         parser.ParseBuffer(reinterpret_cast<void *>(secBegin), secSize);
@@ -181,7 +181,7 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
     vm->GetFileLoader()->SetStubmmap(pool.GetMem(), pool.GetSize());
     uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
     uint32_t curUnitOffset = 0;
-    uint32_t asmStubSize;
+    uint32_t asmStubSize = 0;
     binBufparser.ParseBuffer(&asmStubSize, sizeof(asmStubSize));
     SetAsmStubSize(asmStubSize);
     binBufparser.ParseBuffer(reinterpret_cast<void *>(codeAddress), asmStubSize);
