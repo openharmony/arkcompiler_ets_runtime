@@ -881,7 +881,7 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
                 }
             }
         }
-        result.extensions.insert(std::pair<std::string, std::string>(key, value));
+        result.extensions.emplace(key, value);
         supportedExtension +=  supportedExtensionAddition;
     }
     size_t found = foundLocale.find("-u-");

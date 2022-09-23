@@ -32,7 +32,7 @@ SamplesRecord::SamplesRecord()
     struct MethodKey methodkey;
     struct CpuProfileNode methodNode;
     methodkey.method = reinterpret_cast<Method*>(INT_MAX - 1);
-    methodMap_.insert(std::make_pair(methodkey, methodMap_.size() + 1));
+    methodMap_.emplace(methodkey, methodMap_.size() + 1);
     methodNode.parentId = 0;
     methodNode.codeEntry.codeType = "JS";
     methodNode.codeEntry.functionName = "(root)";
@@ -65,7 +65,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
         auto result = methodMap_.find(methodkey);
         if (result == methodMap_.end()) {
             methodNode.id = static_cast<int>(methodMap_.size() + 1);
-            methodMap_.insert(std::make_pair(methodkey, methodNode.id));
+            methodMap_.emplace(methodkey, methodNode.id);
             methodNode.codeEntry = GetGcInfo();
             stackTopLines_.push_back(0);
             profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
@@ -91,7 +91,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
             auto result = methodMap_.find(methodkey);
             if (result == methodMap_.end()) {
                 int id = static_cast<int>(methodMap_.size() + 1);
-                methodMap_.insert(std::make_pair(methodkey, id));
+                methodMap_.emplace(methodkey, id);
                 previousId_ = methodNode.id = id;
                 methodNode.codeEntry = GetMethodInfo(methodkey.method);
                 stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
@@ -138,7 +138,7 @@ void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
         auto result = methodMap_.find(methodkey);
         if (result == methodMap_.end()) {
             int id = static_cast<int>(methodMap_.size() + 1);
-            methodMap_.insert(std::make_pair(methodkey, id));
+            methodMap_.emplace(methodkey, id);
             previousId_ = methodNode.id = id;
             methodNode.codeEntry = GetMethodInfo(methodkey.method);
             stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
@@ -376,7 +376,7 @@ const CMap<Method *, struct FrameInfo> &SamplesRecord::GetStackInfo() const
 
 void SamplesRecord::InsertStackInfo(Method *method, struct FrameInfo &codeEntry)
 {
-    stackInfoMap_.insert(std::make_pair(method, codeEntry));
+    stackInfoMap_.emplace(method, codeEntry);
 }
 
 bool SamplesRecord::PushFrameStack(Method *method)
@@ -466,7 +466,7 @@ void SamplesRecord::FrameInfoTempToMap()
         frameInfo.url = frameInfoTemps_[i].url;
         auto iter = scriptIdMap_.find(frameInfo.url);
         if (iter == scriptIdMap_.end()) {
-            scriptIdMap_.insert(std::make_pair(frameInfo.url, scriptIdMap_.size() + 1));
+            scriptIdMap_.emplace(frameInfo.url, scriptIdMap_.size() + 1);
             frameInfo.scriptId = static_cast<int>(scriptIdMap_.size());
         } else {
             frameInfo.scriptId = iter->second;
@@ -475,7 +475,7 @@ void SamplesRecord::FrameInfoTempToMap()
         frameInfo.functionName = frameInfoTemps_[i].functionName;
         frameInfo.columnNumber = frameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = frameInfoTemps_[i].lineNumber;
-        stackInfoMap_.insert(std::make_pair(frameInfoTemps_[i].method, frameInfo));
+        stackInfoMap_.emplace(frameInfoTemps_[i].method, frameInfo);
     }
     frameInfoTempLength_ = 0;
 }
@@ -491,7 +491,7 @@ void SamplesRecord::NapiFrameInfoTempToMap()
         frameInfo.url = napiFrameInfoTemps_[i].url;
         auto iter = scriptIdMap_.find(frameInfo.url);
         if (iter == scriptIdMap_.end()) {
-            scriptIdMap_.insert(std::make_pair(frameInfo.url, scriptIdMap_.size() + 1));
+            scriptIdMap_.emplace(frameInfo.url, scriptIdMap_.size() + 1);
             frameInfo.scriptId = static_cast<int>(scriptIdMap_.size());
         } else {
             frameInfo.scriptId = iter->second;
@@ -500,7 +500,7 @@ void SamplesRecord::NapiFrameInfoTempToMap()
         frameInfo.functionName = napiFrameInfoTemps_[i].functionName;
         frameInfo.columnNumber = napiFrameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = napiFrameInfoTemps_[i].lineNumber;
-        stackInfoMap_.insert(std::make_pair(napiFrameInfoTemps_[i].method, frameInfo));
+        stackInfoMap_.emplace(napiFrameInfoTemps_[i].method, frameInfo);
     }
 }
 

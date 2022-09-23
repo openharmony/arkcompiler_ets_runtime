@@ -246,7 +246,7 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
     if (serialized) {
         return WriteIfSerialized(addr);
     }
-    referenceMap_.insert(std::pair(addr, objectId_));
+    referenceMap_.emplace(addr, objectId_);
     objectId_++;
 
     TaggedObject *taggedObject = value->GetTaggedObject();
@@ -1062,7 +1062,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
     JSHandle<JSTaggedValue> msg = DeserializeJSTaggedValue();
     JSHandle<EcmaString> handleMsg(msg);
     JSHandle<JSTaggedValue> errorTag = JSHandle<JSTaggedValue>::Cast(factory_->NewJSError(errorType, handleMsg));
-    referenceMap_.insert(std::pair(objectId_++, errorTag));
+    referenceMap_.emplace(objectId_++, errorTag);
     return errorTag;
 }
 
@@ -1072,7 +1072,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSDate()
     JSHandle<JSFunction> dateFunction(env->GetDateFunction());
     JSHandle<JSDate> date = JSHandle<JSDate>::Cast(factory_->NewJSObjectByConstructor(dateFunction));
     JSHandle<JSTaggedValue> dateTag = JSHandle<JSTaggedValue>::Cast(date);
-    referenceMap_.insert(std::pair(objectId_++, dateTag));
+    referenceMap_.emplace(objectId_++, dateTag);
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(dateTag)) {
         return JSHandle<JSTaggedValue>();
     }
@@ -1093,7 +1093,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArray()
 {
     JSHandle<JSArray> jsArray = thread_->GetEcmaVM()->GetFactory()->NewJSArray();
     JSHandle<JSTaggedValue> arrayTag = JSHandle<JSTaggedValue>::Cast(jsArray);
-    referenceMap_.insert(std::pair(objectId_++, arrayTag));
+    referenceMap_.emplace(objectId_++, arrayTag);
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(arrayTag)) {
         return JSHandle<JSTaggedValue>();
     }
@@ -1119,7 +1119,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadEcmaString()
     if (isUtf8) {
         if (stringLength == 0) {
             JSHandle<JSTaggedValue> emptyString = JSHandle<JSTaggedValue>::Cast(factory_->GetEmptyString());
-            referenceMap_.insert(std::pair(objectId_++, emptyString));
+            referenceMap_.emplace(objectId_++, emptyString);
             return emptyString;
         }
 
@@ -1130,7 +1130,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadEcmaString()
 
         JSHandle<EcmaString> ecmaString = factory_->NewFromUtf8(string, stringLength);
         stringTag = JSHandle<JSTaggedValue>(ecmaString);
-        referenceMap_.insert(std::pair(objectId_++, stringTag));
+        referenceMap_.emplace(objectId_++, stringTag);
     } else {
         uint16_t *string = reinterpret_cast<uint16_t*>(GetBuffer(stringLength * sizeof(uint16_t)));
         if (string == nullptr) {
@@ -1138,7 +1138,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadEcmaString()
         }
         JSHandle<EcmaString> ecmaString = factory_->NewFromUtf16(string, stringLength);
         stringTag = JSHandle<JSTaggedValue>(ecmaString);
-        referenceMap_.insert(std::pair(objectId_++, stringTag));
+        referenceMap_.emplace(objectId_++, stringTag);
     }
     return stringTag;
 }
@@ -1149,7 +1149,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadPlainObject()
     JSHandle<JSFunction> objFunc(env->GetObjectFunction());
     JSHandle<JSObject> jsObject = thread_->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(objFunc);
     JSHandle<JSTaggedValue> objTag = JSHandle<JSTaggedValue>::Cast(jsObject);
-    referenceMap_.insert(std::pair(objectId_++, objTag));
+    referenceMap_.emplace(objectId_++, objTag);
     if (!DefinePropertiesAndElements(objTag)) {
         return JSHandle<JSTaggedValue>();
     }
@@ -1193,7 +1193,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSMap()
     JSHandle<JSFunction> mapFunction(env->GetBuiltinsMapFunction());
     JSHandle<JSMap> jsMap = JSHandle<JSMap>::Cast(factory_->NewJSObjectByConstructor(mapFunction));
     JSHandle<JSTaggedValue> mapTag = JSHandle<JSTaggedValue>::Cast(jsMap);
-    referenceMap_.insert(std::pair(objectId_++, mapTag));
+    referenceMap_.emplace(objectId_++, mapTag);
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(mapTag)) {
         return JSHandle<JSTaggedValue>();
     }
@@ -1223,7 +1223,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSSet()
     JSHandle<JSFunction> setFunction(env->GetBuiltinsSetFunction());
     JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(factory_->NewJSObjectByConstructor(setFunction));
     JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsSet);
-    referenceMap_.insert(std::pair(objectId_++, setTag));
+    referenceMap_.emplace(objectId_++, setTag);
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(setTag)) {
         return JSHandle<JSTaggedValue>();
     }
@@ -1250,7 +1250,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSRegExp()
     JSHandle<JSObject> obj = factory_->NewJSObjectByConstructor(regexpFunction);
     JSHandle<JSRegExp> regExp = JSHandle<JSRegExp>::Cast(obj);
     JSHandle<JSTaggedValue> regexpTag = JSHandle<JSTaggedValue>::Cast(regExp);
-    referenceMap_.insert(std::pair(objectId_++, regexpTag));
+    referenceMap_.emplace(objectId_++, regexpTag);
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(regexpTag)) {
         return JSHandle<JSTaggedValue>();
     }
@@ -1328,7 +1328,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
         JSHandle<JSTypedArray>::Cast(factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(target)));
     obj = JSHandle<JSObject>::Cast(typedArray);
     objTag = JSHandle<JSTaggedValue>::Cast(obj);
-    referenceMap_.insert(std::pair(objectId_++, objTag));
+    referenceMap_.emplace(objectId_++, objTag);
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(objTag)) {
         return JSHandle<JSTaggedValue>();
     }
@@ -1399,7 +1399,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
         void* bufferData = ToVoidPtr(*bufferAddr);
         JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSSharedArrayBuffer(bufferData, arrayLength);
         arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
-        referenceMap_.insert(std::pair(objectId_++, arrayBufferTag));
+        referenceMap_.emplace(objectId_++, arrayBufferTag);
     } else {
         void *fromBuffer = GetBuffer(arrayLength);
         if (fromBuffer == nullptr) {
@@ -1407,7 +1407,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
         }
         JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSArrayBuffer(arrayLength);
         arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
-        referenceMap_.insert(std::pair(objectId_++, arrayBufferTag));
+        referenceMap_.emplace(objectId_++, arrayBufferTag);
         JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
         void *toBuffer = np->GetExternalPointer();
         if (memcpy_s(toBuffer, arrayLength, fromBuffer, arrayLength) != EOK) {

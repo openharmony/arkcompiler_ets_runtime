@@ -100,7 +100,7 @@ public:
     bool HandleStartLocal(int32_t regNumber, uint32_t nameId, [[maybe_unused]] uint32_t typeId)
     {
         const char *name = GetStringFromConstantPool(state_->GetPandaFile(), nameId);
-        lvt_.insert(std::make_pair(name, regNumber));
+        lvt_.emplace(name, regNumber);
         return true;
     }
 
@@ -108,7 +108,7 @@ public:
                                   [[maybe_unused]] uint32_t typeSignatureId)
     {
         const char *name = GetStringFromConstantPool(state_->GetPandaFile(), nameId);
-        lvt_.insert(std::make_pair(name, regNumber));
+        lvt_.emplace(name, regNumber);
         return true;
     }
 
@@ -205,10 +205,10 @@ void DebugInfoExtractor::Extract(const panda_file::File *pf)
                 sourceCode = reinterpret_cast<const char *>(handler.GetSourceCode());
             }
             panda_file::File::EntityId methodId = mda.GetMethodId();
-            methods_.insert(std::make_pair(methodId.GetOffset(), MethodDebugInfo {sourceFile, sourceCode,
+            methods_.emplace(methodId.GetOffset(), MethodDebugInfo {sourceFile, sourceCode,
                                            handler.GetLineNumberTable(),
                                            handler.GetColumnNumberTable(),
-                                           handler.GetLocalVariableTable()}));
+                                           handler.GetLocalVariableTable()});
         });
     }
 }

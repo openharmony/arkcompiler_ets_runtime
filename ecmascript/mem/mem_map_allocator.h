@@ -155,7 +155,7 @@ public:
     void Initialize(MemMap memMap)
     {
         memMap_ = memMap;
-        freeList_.insert(std::pair<size_t, MemMap>(memMap.GetSize(), memMap));
+        freeList_.emplace(memMap.GetSize(), memMap);
         capacity_ = memMap.GetSize();
     }
 
@@ -189,7 +189,7 @@ public:
         freeList_.erase(iterate);
         if (remainderSize >= DEFAULT_REGION_SIZE) {
             auto next = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(memMap.GetMem()) + size);
-            freeList_.insert(std::pair<size_t, MemMap>(remainderSize, MemMap(next, remainderSize)));
+            freeList_.emplace(remainderSize, MemMap(next, remainderSize));
         }
         freeListPoolSize_ += size;
         return MemMap(memMap.GetMem(), size);
@@ -199,7 +199,7 @@ public:
     {
         os::memory::LockHolder lock(lock_);
         freeListPoolSize_ -= memMap.GetSize();
-        freeList_.insert(std::pair<size_t, MemMap>(memMap.GetSize(), memMap));
+        freeList_.emplace(memMap.GetSize(), memMap);
     }
 
 private:

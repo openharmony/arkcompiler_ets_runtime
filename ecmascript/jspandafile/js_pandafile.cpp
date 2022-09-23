@@ -97,7 +97,7 @@ uint32_t JSPandaFile::GetOrInsertConstantPool(ConstPoolType type, uint32_t offse
     ASSERT(constpoolIndex_ != UINT32_MAX);
     uint32_t index = constpoolIndex_++;
     ConstPoolValue value(type, index);
-    map->insert({offset, value.GetValue()});
+    map->emplace(offset, value.GetValue());
     return index;
 }
 
