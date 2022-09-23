@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/debugger/js_debugger.h"
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
@@ -25,7 +26,11 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/method.h"
+#include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/napi/jsnapi_helper.h"
+#include "ecmascript/tagged_array.h"
+#include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::ALLOW_BINARY;
@@ -304,6 +309,55 @@ bool DebuggerApi::SetGlobalValue(const EcmaVM *vm, Local<StringRef> name, Local<
     }
 
     return false;
+}
+
+void DebuggerApi::GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleObj, JSThread *thread)
+{
+    JSTaggedValue currentModule = vm->GetModuleManager()->GetCurrentModule();
+    if (currentModule.IsUndefined()) {
+        return;
+    }
+
+    JSTaggedValue dictionary =  SourceTextModule::Cast(currentModule.GetTaggedObject())->GetNameDictionary();
+    if (dictionary.IsUndefined()) {
+        return;
+    }
+
+    constexpr uint32_t MAX_ARRAY_LENGTH = 4; // two pairs of key and value
+    if (dictionary.IsTaggedArray() &&
+        TaggedArray::Cast(dictionary.GetTaggedObject())->GetLength() <= MAX_ARRAY_LENGTH) {
+        TaggedArray *dict = TaggedArray::Cast(dictionary.GetTaggedObject());
+        uint32_t length = dict->GetLength();
+        for (uint32_t idx = 0; idx < length; idx += 2) { // 2 means skip value
+            JSTaggedValue key = dict->Get(idx);
+            if (key.IsString()) {
+                Local<JSValueRef> name = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, key));
+                JSTaggedValue moduleValue = dict->Get(idx + 1);
+                Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(
+                    JSHandle<JSTaggedValue>(thread, moduleValue));
+                PropertyAttribute descriptor(value, true, true, true);
+                moduleObj->DefineProperty(vm, name, descriptor);
+            }
+        }
+    } else {
+        NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<TaggedArray> moduleArray = factory->NewTaggedArray(dict->GetLength());
+        TaggedArray *keyArray = TaggedArray::Cast(moduleArray.GetTaggedValue().GetTaggedObject());
+        dict->GetAllKeys(thread, 0, keyArray);
+        uint32_t length = keyArray->GetLength();
+        for (uint32_t idx = 0; idx < length; idx++) {
+            JSTaggedValue key = keyArray->Get(idx);
+            if (key.IsString()) {
+                Local<JSValueRef> name = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, key));
+                JSTaggedValue moduleValue = vm->GetModuleManager()->GetModuleValueInner(key);
+                Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(
+                    JSHandle<JSTaggedValue>(thread, moduleValue));
+                PropertyAttribute descriptor(value, true, true, true);
+                moduleObj->DefineProperty(vm, name, descriptor);
+            }
+        }
+    }
 }
 
 void DebuggerApi::HandleUncaughtException(const EcmaVM *ecmaVm, std::string &message)
