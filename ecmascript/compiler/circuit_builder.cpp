@@ -412,10 +412,10 @@ GateRef CircuitBuilder::ToLength(GateRef receiver)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::TO_LENGTH), MachineType::I64,
-                  { currentControl, currentDepend, receiver }, GateType::NumberType());
+                                     { currentControl, currentDepend, receiver }, GateType::NumberType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
-    return ret; 
+    return ret;
 }
 
 GateRef CircuitBuilder::HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag)
@@ -424,7 +424,7 @@ GateRef CircuitBuilder::HeapAlloc(GateRef size, GateType type, RegionSpaceFlag f
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::HEAP_ALLOC), flag,
-                  { currentControl, currentDepend, size }, type);
+                                     { currentControl, currentDepend, size }, type);
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -436,7 +436,7 @@ GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_ELEMENT), MachineType::I64,
-                  {currentControl, currentDepend, receiver, index}, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, index }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -448,7 +448,7 @@ GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef va
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_ELEMENT), MachineType::I64,
-                  {currentControl, currentDepend, receiver, index, value}, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, index, value }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -460,7 +460,7 @@ GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef key)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_PROPERTY), MachineType::I64,
-                  {currentControl, currentDepend, receiver, key}, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, key }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -472,7 +472,7 @@ GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef key, GateRef val
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_PROPERTY), MachineType::I64,
-                  {currentControl, currentDepend, receiver, key, value}, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, key, value }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

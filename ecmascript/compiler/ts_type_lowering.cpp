@@ -327,9 +327,8 @@ void TSTypeLowering::SpeculateNumberBinaryOp(GateRef gate)
     Label exit(&builder_);
     GateType numberType = GateType::NumberType();
     DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, GateType::BooleanType()), builder_.HoleConstant());
-    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left),
-                                     builder_.TypeCheck(numberType, right)),
-                                     &isNumber, &notNumber);
+    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), builder_.TypeCheck(numberType, right)),
+                    &isNumber, &notNumber);
     std::map<GateRef, size_t> stateGateMap;
     builder_.Bind(&isNumber);
     {
@@ -356,7 +355,6 @@ void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
-
     if (srcType.IsPrimitiveType() && !srcType.IsStringType()) {
         LowerPrimitiveTypeToNumber(gate);
         return;

@@ -92,7 +92,7 @@ JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandl
 }
 
 JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter,
-                                            const JSHandle<JSTaggedValue> &value)
+                                                 const JSHandle<JSTaggedValue> &value)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 2.Let result be Invoke(iterator, "next", «‍value»).

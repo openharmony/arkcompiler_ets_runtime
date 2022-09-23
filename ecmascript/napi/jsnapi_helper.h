@@ -102,7 +102,7 @@ public:
     {
         auto that = reinterpret_cast<NativeReferenceHelper*>(ref);
         if (that->callback_ != nullptr) {
-           that->callback_(that->vm_);
+            that->callback_(that->vm_);
         }
         that->callback_ = nullptr;
     }

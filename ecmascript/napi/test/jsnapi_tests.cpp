@@ -69,7 +69,8 @@ Local<JSValueRef> FunctionCallback(JsiRuntimeCallInfo* info)
     return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
 }
 
-void WeakRefCallback(EcmaVM* vm) {
+void WeakRefCallback(EcmaVM* vm)
+{
     LocalScope scope(vm);
     Local<ObjectRef> object = ObjectRef::New(vm);
     Global<ObjectRef> globalObject(vm, object);

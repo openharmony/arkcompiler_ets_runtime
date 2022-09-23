@@ -2086,7 +2086,6 @@ void TypeLowering::LowerTypeDiv2(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType rightType = acc_.GetGateType(right);
-
     if (!leftType.IsNumberType() || !rightType.IsNumberType()) {
         return;
     }

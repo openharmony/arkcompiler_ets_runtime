@@ -163,7 +163,8 @@ public:
 private:
     LLVMModule *llvmModule_ {nullptr};
     LLVMAssembler *assembler_ {nullptr};
-    uint32_t startIndex_ {static_cast<uint32_t>(-1)}; // record current module first function index in StubModulePackInfo/AOTModulePackInfo
+    // record current module first function index in StubModulePackInfo/AOTModulePackInfo
+    uint32_t startIndex_ {static_cast<uint32_t>(-1)};
     uint32_t funcCount_ {0};
 };
 
