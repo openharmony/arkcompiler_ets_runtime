@@ -1372,6 +1372,9 @@ void JSObject::EnumerableOwnPropertyNamesHelper(JSThread *thread, const JSHandle
     uint32_t length = arr->GetLength();
     for (uint32_t i = 0; i < length; i++) {
         key.Update(arr->Get(thread, i));
+        if (!JSTaggedValue::IsPropertyKey(key)) {
+            break;
+        }
         JSTaggedValue value = JSTaggedValue::Hole();
         if (fastMode) {
             value = FastRuntimeStub::GetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());

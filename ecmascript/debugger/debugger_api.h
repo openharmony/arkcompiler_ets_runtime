@@ -27,10 +27,13 @@
 
 namespace panda {
 namespace ecmascript {
-class FrameHandler;
 class EcmaVM;
-class Method;
+class FrameHandler;
 class JSThread;
+class Method;
+class ModuleManager;
+class NameDictionary;
+class SourceTextModule;
 namespace tooling {
 class JSDebugger;
 }
@@ -76,6 +79,7 @@ public:
 
     // JSThread
     static Local<JSValueRef> GetAndClearException(const EcmaVM *ecmaVm);
+    static void GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleObj, JSThread *thread);
     static void SetException(const EcmaVM *ecmaVm, Local<JSValueRef> exception);
     static void ClearException(const EcmaVM *ecmaVm);
     static bool IsExceptionCaught(const EcmaVM *ecmaVm);
