@@ -205,7 +205,6 @@ config("ark_jsruntime_windows_config") {
 
 config("ark_jsruntime_common_config") {
   defines = [ "PANDA_ENABLE_LTO" ]
-  defines += [ "NEW_INSTRUCTION_DEFINE" ]
   cflags_cc = [
     "-Wall",
     "-Wshadow",

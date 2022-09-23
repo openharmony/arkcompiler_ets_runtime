@@ -29,12 +29,7 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
-
-#ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
-#else
-#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
-#endif
 
 namespace panda::ecmascript::kungfu {
 #define DECLARE_ASM_HANDLER_BASE(name, needPrint)                                         \

@@ -22,12 +22,7 @@
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-
-#ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
-#else
-#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
-#endif
 
 namespace panda::ecmascript::kungfu {
 void AssemblerModule::Run(const CompilationConfig *cfg, Chunk* chunk)

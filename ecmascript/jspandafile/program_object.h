@@ -24,9 +24,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "libpandafile/class_data_accessor-inl.h"
-#ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/index_accessor.h"
-#endif
 
 
 namespace panda {
@@ -60,12 +58,8 @@ public:
 class ConstantPool : public TaggedArray {
 public:
     static constexpr size_t JS_PANDA_FILE_INDEX = 1;
-#ifdef NEW_INSTRUCTION_DEFINE
     static constexpr size_t INDEX_HEADER_INDEX = 2;
     static constexpr size_t RESERVED_POOL_LENGTH = INDEX_HEADER_INDEX;
-#else
-    static constexpr size_t RESERVED_POOL_LENGTH = JS_PANDA_FILE_INDEX;
-#endif
 
     static ConstantPool *Cast(TaggedObject *object)
     {
@@ -73,7 +67,6 @@ public:
         return static_cast<ConstantPool *>(object);
     }
 
-#ifdef NEW_INSTRUCTION_DEFINE
     static JSHandle<ConstantPool> CreateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, uint32_t methodId)
     {
         const panda_file::File::IndexHeader *mainIndex =
@@ -110,7 +103,6 @@ public:
     {
         return Barriers::GetValue<panda_file::File::IndexHeader *>(GetData(), GetIndexHeaderOffset());
     }
-#endif
 
     static size_t ComputeSize(uint32_t cacheSize)
     {
@@ -160,7 +152,6 @@ public:
         auto val = taggedPool->Get(index);
         if (val.IsHole()) {
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-#ifdef NEW_INSTRUCTION_DEFINE
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
 
@@ -185,7 +176,6 @@ public:
 
             val = method.GetTaggedValue();
             constpoolHandle->Set(thread, index, val);
-#endif
         }
 
         return val;
@@ -196,7 +186,6 @@ public:
     {
         auto val = constpool->Get(index);
         if (val.IsHole()) {
-#ifdef NEW_INSTRUCTION_DEFINE
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
 
@@ -222,10 +211,6 @@ public:
             val = method.GetTaggedValue();
             constpool->Set(thread, index, val);
             return val;
-#else
-        (void) thread;
-        (void) constpool;
-#endif
         }
 
         return val;
@@ -236,7 +221,6 @@ public:
     {
         auto val = constpool->Get(literal);
         if (val.IsHole()) {
-#ifdef NEW_INSTRUCTION_DEFINE
             EcmaVM *vm = thread->GetEcmaVM();
 
             JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
@@ -261,10 +245,6 @@ public:
             val = literalArray.GetTaggedValue();
             constpool->Set(thread, literal, val);
             return val;
-#else
-        (void) thread;
-        (void) constpool;
-#endif
         }
 
         return val;
@@ -279,7 +259,6 @@ public:
         auto val = taggedPool->Get(index);
         if (val.IsHole()) {
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-#ifdef NEW_INSTRUCTION_DEFINE
             JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
             panda_file::File::IndexHeader *indexHeader = taggedPool->GetIndexHeader();
             auto pf = jsPandaFile->GetPandaFile();
@@ -325,7 +304,6 @@ public:
                     UNREACHABLE();
             }
             constpoolHandle->Set(thread, index, val);
-#endif
         }
 
         return val;
@@ -337,7 +315,6 @@ public:
         auto val = taggedPool->Get(index);
         if (val.IsHole()) {
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-#ifdef NEW_INSTRUCTION_DEFINE
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
 
@@ -354,7 +331,6 @@ public:
             val = JSTaggedValue(string);
 
             constpoolHandle->Set(thread, index, val);
-#endif
         }
 
         return val;
@@ -372,12 +348,10 @@ private:
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - JS_PANDA_FILE_INDEX);
     }
-#ifdef NEW_INSTRUCTION_DEFINE
     inline size_t GetIndexHeaderOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - INDEX_HEADER_INDEX);
     }
-#endif
 
     inline size_t GetLastOffset() const
     {

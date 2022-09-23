@@ -31,14 +31,12 @@ JSTaggedValue ScopeInfoExtractor::GenerateScopeInfo(JSThread *thread, uint16_t s
 
     JSHandle<TaggedArray> elementsLiteral;
     if (jsPandaFile->IsNewVersion()) {
-#ifdef NEW_INSTRUCTION_DEFINE
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedValue().GetTaggedObject());
         panda_file::File::IndexHeader *indexHeader = taggedPool->GetIndexHeader();
         auto pf = jsPandaFile->GetPandaFile();
         Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
         panda_file::File::EntityId id = indexs[scopeId];
         elementsLiteral = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id, constpool);
-#endif
     } else {
         elementsLiteral = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, scopeId, constpool);
     }
