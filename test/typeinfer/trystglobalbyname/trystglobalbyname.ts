@@ -16,4 +16,4 @@
 declare function AssertType(value:any, type:string):void;
 let num : number = 1;
 num = 2;
-AssertType(num, "number");
+AssertType(num, "int");
