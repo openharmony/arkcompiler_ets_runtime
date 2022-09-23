@@ -2536,7 +2536,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SAVE_ACC();
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
-                                                                       profileTypeInfo.GetTaggedObject()),
+                                                                   profileTypeInfo.GetTaggedObject()),
                                                                    globalObj, propKey, value, slotId);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
@@ -2654,7 +2654,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             uint16_t slotId = READ_INST_16_0();
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
-                                                                      profileTypeInfo.GetTaggedObject()),
+                                                                  profileTypeInfo.GetTaggedObject()),
                                                                   globalObj, propKey, slotId);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
@@ -2703,6 +2703,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 RESTORE_ACC();
                 value = GET_ACC();
                 receiver = GET_VREG_VALUE(v0);
+                profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                 res = ICRuntimeStub::StoreICByName(thread,
                                                    profileTypeArray,
                                                    receiver, propKey, value, slotId);
@@ -2774,6 +2776,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 RESTORE_ACC();
                 value = GET_ACC();
                 receiver = GET_VREG_VALUE(v0);
+                profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                 res = ICRuntimeStub::StoreICByName(thread,
                                                    profileTypeArray,
                                                    receiver, propKey, value, slotId);
@@ -5926,6 +5930,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
                 RESTORE_ACC();
                 receiver = GET_ACC();
+                profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                 res = ICRuntimeStub::LoadICByName(thread,
                                                   profileTypeArray,
                                                   receiver, propKey, slotId);
@@ -5987,6 +5993,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
                 RESTORE_ACC();
                 receiver = GET_ACC();
+                profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                 res = ICRuntimeStub::LoadICByName(thread,
                                                   profileTypeArray,
                                                   receiver, propKey, slotId);
@@ -6736,7 +6744,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 auto constpool = GetConstantPool(sp);
                 JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
                 receiver = GetThis(sp);
-                profileTypeArray = ProfileTypeInfo::Cast(GetRuntimeProfileTypeInfo(sp).GetTaggedObject());
+                profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                 res = ICRuntimeStub::LoadICByName(thread,
                                                   profileTypeArray,
                                                   receiver, propKey, slotId);
@@ -6793,7 +6802,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 auto constpool = GetConstantPool(sp);
                 JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
                 receiver = GetThis(sp);
-                profileTypeArray = ProfileTypeInfo::Cast(GetRuntimeProfileTypeInfo(sp).GetTaggedObject());
+                profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                 res = ICRuntimeStub::LoadICByName(thread,
                                                   profileTypeArray,
                                                   receiver, propKey, slotId);
@@ -6855,7 +6865,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 RESTORE_ACC();
                 value = GET_ACC();
                 receiver = GetThis(sp);
-                profileTypeArray = ProfileTypeInfo::Cast(GetRuntimeProfileTypeInfo(sp).GetTaggedObject());
+                profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                 res = ICRuntimeStub::StoreICByName(thread,
                                                    profileTypeArray,
                                                    receiver, propKey, value, slotId);
@@ -6926,7 +6937,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 RESTORE_ACC();
                 value = GET_ACC();
                 receiver = GetThis(sp);
-                profileTypeArray = ProfileTypeInfo::Cast(GetRuntimeProfileTypeInfo(sp).GetTaggedObject());
+                profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+                profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                 res = ICRuntimeStub::StoreICByName(thread,
                                                    profileTypeArray,
                                                    receiver, propKey, value, slotId);

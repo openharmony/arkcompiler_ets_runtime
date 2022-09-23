@@ -39,7 +39,7 @@ MethodLiteral::MethodLiteral(const JSPandaFile *jsPandaFile, EntityId methodId)
 void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, uint32_t numVregs, uint32_t numArgs)
 {
     uint32_t callType = UINT32_MAX;  // UINT32_MAX means not found
-    uint16_t slotSize = 0;
+    uint32_t slotSize = 0;
     const panda_file::File *pandaFile = jsPandaFile->GetPandaFile();
     panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
     mda.EnumerateAnnotations([&](EntityId annotation_id) {
@@ -52,7 +52,14 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, uint32_t numVregs
                 auto *elemName = reinterpret_cast<const char *>(pandaFile->GetStringData(adae.GetNameId()).data);
                 if (::strcmp("callType", elemName) == 0) {
                     callType = adae.GetScalarValue().GetValue();
-                } else if (::strcmp("slotSize", elemName) == 0) {
+                }
+            }
+        } else if (::strcmp("L_ESSlotNumberAnnotation;", annotationName) == 0) {
+            uint32_t elemCount = ada.GetCount();
+            for (uint32_t i = 0; i < elemCount; i++) {
+                panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
+                auto *elemName = reinterpret_cast<const char *>(pandaFile->GetStringData(adae.GetNameId()).data);
+                if (::strcmp("SlotNumber", elemName) == 0) {
                     slotSize = adae.GetScalarValue().GetValue();
                 }
             }

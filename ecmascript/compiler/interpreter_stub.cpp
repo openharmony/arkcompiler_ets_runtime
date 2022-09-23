@@ -4699,7 +4699,7 @@ DECLARE_ASM_HANDLER(HandleLdobjbyvalueImm16V8)
     GateRef v0 = ReadInst8_2(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef propKey = acc;
-    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+    GateRef slotId = ZExtInt8ToInt32(ReadInst16_0(pc));
 
     Label checkException(env);
     Label slowPath(env);

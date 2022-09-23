@@ -222,23 +222,25 @@ public:
         literalInfo_ = MethodIdBits::Update(literalInfo_, methodId.GetOffset());
     }
 
-    uint16_t GetSlotSize() const
+    uint32_t GetSlotSize() const
     {
-        return SlotSizeBits::Decode(literalInfo_);
+        auto size = SlotSizeBits::Decode(literalInfo_);
+        return size == MAX_SLOT_SIZE ? MAX_SLOT_SIZE + 2 : size;  // 2: last maybe two slot
     }
 
-    void SetSlotSize(uint16_t size)
+    void SetSlotSize(uint32_t size)
     {
+        size = size > MAX_SLOT_SIZE ? MAX_SLOT_SIZE: size;
         literalInfo_ = SlotSizeBits::Update(literalInfo_, size);
     }
 
     uint8_t UpdateSlotSizeWith8Bit(uint16_t size)
     {
-        uint16_t start = GetSlotSize();
+        uint16_t start = SlotSizeBits::Decode(literalInfo_);
         uint32_t end = start + size;
         // ic overflow
         if (end >= INVALID_IC_SLOT) {
-            if (GetSlotSize() < INVALID_IC_SLOT + 1) {
+            if (start < INVALID_IC_SLOT + 1) {
                 literalInfo_ = SlotSizeBits::Update(literalInfo_, INVALID_IC_SLOT + 1);
             }
             return INVALID_IC_SLOT;
@@ -282,7 +284,7 @@ public:
         return EntityId(MethodIdBits::Decode(literalInfo));
     }
 
-    static uint8_t GetSlotSize(uint64_t literalInfo)
+    static uint16_t GetSlotSize(uint64_t literalInfo)
     {
         return SlotSizeBits::Decode(literalInfo);
     }
