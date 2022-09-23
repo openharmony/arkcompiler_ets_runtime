@@ -225,6 +225,7 @@ public:
     void Update(JSTaggedValue value)
     {
         auto addr = reinterpret_cast<JSTaggedValue *>(this->GetAddress());
+        ASSERT(addr != nullptr);
         *addr = value;
     }
 

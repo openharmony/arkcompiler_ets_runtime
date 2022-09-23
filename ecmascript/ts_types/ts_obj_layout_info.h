@@ -73,7 +73,7 @@ public:
         return TaggedArray::Get(idxInArray);
     }
 
-    void SetKey(const JSThread *thread, int index, const JSTaggedValue &key, const JSTaggedValue &typeId);
+    void SetKey(const JSThread *thread, int index, const JSTaggedValue &key, const JSTaggedValue &typeIdVal);
 
     inline uint32_t GetLength() const
     {

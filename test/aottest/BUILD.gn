@@ -22,7 +22,7 @@ group("ark_aot_js_test") {
     "formatrangetoparts:formatrangetopartsAotAction",
     "global_this_js:global_this_jsAotAction",
 
-#    "module:moduleAotAction",
+    #    "module:moduleAotAction",
     "undefined:undefinedAotAction",
   ]
 }
@@ -89,8 +89,8 @@ group("ark_aot_test") {
     "ldstlexvar:ldstlexvarAotAction",
     "ldsuperbyname:ldsuperbynameAotAction",
     "logic_op:logic_opAotAction",
-    "loops:loopsAotAction",
     "loop_with_variable_exchange:loop_with_variable_exchangeAotAction",
+    "loops:loopsAotAction",
     "mod:modAotAction",
     "mul:mulAotAction",
     "neg:negAotAction",

@@ -368,7 +368,7 @@ void RegExpExecutor::ReAllocStack(uint32_t stackLen)
             UNREACHABLE();
         }
         if (stateStack_ != nullptr) {
-            size_t stackSize = stateStackSize_ * stateSize_;
+            auto stackSize = stateStackSize_ * stateSize_;
             if (memcpy_s(newStack, stackSize, stateStack_, stackSize) != EOK) {
                 return;
             }

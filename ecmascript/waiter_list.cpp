@@ -31,7 +31,7 @@ void WaiterList::AddNode(WaiterListNode *node)
         node->prev_ = iter->second.pTail;
         iter->second.pTail = node;
     } else {
-        locationListMap_.insert(std::make_pair(node->waitPointer_, HeadAndTail {node, node}));
+        locationListMap_.emplace(node->waitPointer_, HeadAndTail {node, node});
     }
 }
 

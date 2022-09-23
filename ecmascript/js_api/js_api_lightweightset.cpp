@@ -260,7 +260,7 @@ bool JSAPILightWeightSet::Equal(JSThread *thread, const JSHandle<JSAPILightWeigh
     bool result = false;
     JSHandle<TaggedArray> destHashes(thread, obj->GetHashes());
     uint32_t destSize = obj->GetLength();
-    uint32_t srcSize;
+    uint32_t srcSize = 0;
     JSMutableHandle<TaggedArray> srcHashes(thread, obj->GetHashes());
     if (value.GetTaggedValue().IsJSAPILightWeightSet()) {
         JSAPILightWeightSet *srcLightWeightSet = JSAPILightWeightSet::Cast(value.GetTaggedValue().GetTaggedObject());

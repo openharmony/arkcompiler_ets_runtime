@@ -19,8 +19,6 @@ host_aot_js_test_action("add") {
 }
 
 host_aot_js_test_action("module") {
-  deps = [
-    ":gen_add_abc",
-  ]
+  deps = [ ":gen_add_abc" ]
   is_module = true
 }

@@ -325,7 +325,6 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
     GateAccessor acc(const_cast<Circuit*>(circuit));
     std::unordered_map<GateRef, size_t> lowerBound;
     std::unordered_map<GateRef, size_t> useCount;
-    std::deque<GateRef> pendingList;
     std::vector<GateRef> bbAndFixedGatesList;
     for (const auto &item : bbGatesAddrToIdx) {
         bbAndFixedGatesList.push_back(item.first);

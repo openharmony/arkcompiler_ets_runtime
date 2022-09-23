@@ -389,7 +389,7 @@ bool TypeInfer::SetStGlobalBcType(GateRef gate)
     if (stringIdToGateType_.find(stringId) != stringIdToGateType_.end()) {
         stringIdToGateType_[stringId] = inValueType;
     } else {
-        stringIdToGateType_.insert(std::pair<uint16_t, GateType>(stringId, inValueType));
+        stringIdToGateType_.emplace(stringId, inValueType);
     }
     return UpdateType(gate, inValueType);
 }

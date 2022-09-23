@@ -697,7 +697,7 @@ void HeapSnapshot::AddTraceNodeId(Method *method)
     auto result = methodToTraceNodeId_.find(method);
     if (result == methodToTraceNodeId_.end()) {
         traceNodeId = traceInfoStack_.size() - 1;
-        methodToTraceNodeId_.insert(std::make_pair(method, traceNodeId));
+        methodToTraceNodeId_.emplace(method, traceNodeId);
     } else {
         traceNodeId = result->second;
     }
@@ -756,7 +756,7 @@ void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandle
         codeEntry.scriptName = sourceFile;
         auto iter = scriptIdMap_.find(codeEntry.scriptName);
         if (iter == scriptIdMap_.end()) {
-            scriptIdMap_.insert(std::make_pair(codeEntry.scriptName, scriptIdMap_.size() + 1));
+            scriptIdMap_.emplace(codeEntry.scriptName, scriptIdMap_.size() + 1);
             codeEntry.scriptId = static_cast<int>(scriptIdMap_.size());
         } else {
             codeEntry.scriptId = iter->second;
@@ -787,7 +787,7 @@ void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandle
     }
 
     traceInfoStack_.emplace_back(codeEntry);
-    stackInfo_.insert(std::make_pair(method, codeEntry));
+    stackInfo_.emplace(method, codeEntry);
     return;
 }
 
@@ -1072,7 +1072,7 @@ Node *HeapEntryMap::FindEntry(Address addr)
 void HeapEntryMap::InsertEntry(Node *node)
 {
     nodeEntryCount_++;
-    nodesMap_.insert(std::make_pair(node->GetAddress(), node));
+    nodesMap_.emplace(node->GetAddress(), node);
 }
 
 FrontType NodeTypeConverter::Convert(NodeType type)

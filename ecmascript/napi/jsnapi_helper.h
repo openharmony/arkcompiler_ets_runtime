@@ -102,7 +102,7 @@ public:
     {
         auto that = reinterpret_cast<NativeReferenceHelper*>(ref);
         if (that->callback_ != nullptr) {
-           that->callback_(that->vm_);
+            that->callback_(that->vm_);
         }
         that->callback_ = nullptr;
     }
@@ -120,7 +120,7 @@ private:
 
 class Callback {
 public:
-    static ecmascript::JSTaggedValue RegisterCallback(ecmascript::EcmaRuntimeCallInfo *info);
+    static ecmascript::JSTaggedValue RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo);
 };
 }  // namespace panda
 #endif  // ECMASCRIPT_NAPI_JSNAPI_HELPER_H

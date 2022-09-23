@@ -14,13 +14,13 @@
 group("aot_type_test") {
   testonly = true
   deps = [
-     "typeadd:typeaddAotAction",
-     "typediv:typedivAotAction",
-     "typeequal:typeequalAotAction",
-     "typelogicalop:typelogicalopAotAction",
-     "typemod:typemodAotAction",
-     "typemul:typemulAotAction",
-     "typenotequal:typenotequalAotAction",
-     "typesub:typesubAotAction",
+    "typeadd:typeaddAotAction",
+    "typediv:typedivAotAction",
+    "typeequal:typeequalAotAction",
+    "typelogicalop:typelogicalopAotAction",
+    "typemod:typemodAotAction",
+    "typemul:typemulAotAction",
+    "typenotequal:typenotequalAotAction",
+    "typesub:typesubAotAction",
   ]
 }

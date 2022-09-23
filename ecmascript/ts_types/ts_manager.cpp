@@ -665,7 +665,7 @@ JSHandle<ConstantPool> TSManager::RestoreConstantPool(const JSPandaFile* pf, uin
 
     JSMutableHandle<TaggedArray> valueArray(thread, JSTaggedValue::Undefined());
     while (leftBound <= rightBound) {
-        uint32_t currentKeyIndex = leftBound * CONSTANTPOOL_INFOS_ITEM_SIZE;
+        uint32_t currentKeyIndex = static_cast<uint32_t>(leftBound) * CONSTANTPOOL_INFOS_ITEM_SIZE;
         EcmaString *nowStr = EcmaString::Cast(constantPoolInfos->Get(currentKeyIndex).GetTaggedObject());
         if (EcmaString::StringsAreEqual(nowStr, *key)) {
             valueArray.Update(constantPoolInfos->Get(currentKeyIndex + 1));
@@ -699,7 +699,7 @@ JSHandle<ConstantPool> TSManager::RestoreConstantPool(const JSPandaFile* pf, uin
 int TSManager::BinarySearch(uint32_t target, uint32_t itemSize, bool findLeftBound)
 {
     JSHandle<TaggedArray> constantPoolInfos = GetConstantPoolInfos();
-    int len = static_cast<int>(constantPoolInfos->GetLength()) / itemSize - 1;
+    int len = static_cast<int>(constantPoolInfos->GetLength() / itemSize) - 1;
     if (len < 0) {
         LOG_FULL(FATAL) << "constantPoolInfos should not be empty";
     }

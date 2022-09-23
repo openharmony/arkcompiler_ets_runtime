@@ -86,7 +86,7 @@ void EcmaStringTable::InternString(EcmaString *string)
     if (string->IsInternString()) {
         return;
     }
-    table_.insert(std::pair<uint32_t, EcmaString *>(string->GetHashcode(), string));
+    table_.emplace(string->GetHashcode(), string);
     string->SetIsInternString();
 }
 

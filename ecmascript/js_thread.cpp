@@ -15,6 +15,9 @@
 
 #include "ecmascript/js_thread.h"
 
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+#include "ecmascript/dfx/native_dfx/backtrace.h"
+#endif
 #include "ecmascript/ecma_param_configuration.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/properties_cache.h"
@@ -88,6 +91,12 @@ JSThread::~JSThread()
 void JSThread::SetException(JSTaggedValue exception)
 {
     glueData_.exception_ = exception;
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+    if (vm_->GetJSOptions().EnableExceptionBacktrace()) {
+        LOG_ECMA(INFO) << "SetException Backtrace:";
+        PrintBacktrace(exception.GetRawData());
+    }
+#endif
 }
 
 void JSThread::ClearException()

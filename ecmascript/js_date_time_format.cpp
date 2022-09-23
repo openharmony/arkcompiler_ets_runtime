@@ -1106,7 +1106,7 @@ std::vector<IcuPatternDesc> InitializePattern(const IcuPatternDesc &hourData)
         } else {
             result.emplace_back(hourData);
         }
-        item++;
+        ++item;
     }
     return result;
 }
@@ -1262,7 +1262,7 @@ std::map<std::string, std::string> JSDateTimeFormat::GetSpecialTimeZoneMap()
     for (const auto &item : specialTimeZones) {
         std::string upper(item);
         transform(upper.begin(), upper.end(), upper.begin(), toupper);
-        map.insert({upper, item});
+        map.emplace(upper, item);
     }
     return map;
 }
