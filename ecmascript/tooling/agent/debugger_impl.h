@@ -151,6 +151,7 @@ private:
         const JSPandaFile *jsPandaFile, Local<JSValueRef> &thisVal, Local<ObjectRef> &localObj);
     void CleanUpOnPaused();
     void UpdateScopeObject(const FrameHandler *frameHandler, std::string_view varName, Local<JSValueRef> newVal);
+    void ClearSingleStepper();
     Local<JSValueRef> ConvertToLocal(const std::string &varValue);
     bool DecodeAndCheckBase64(const std::string &src, std::string &dest);
     bool IsSkipLine(const JSPtLocation &location);
@@ -191,6 +192,7 @@ private:
     std::unordered_map<JSTaggedType *, RemoteObjectId> scopeObjects_ {};
     std::vector<std::shared_ptr<FrameHandler>> callFrameHandlers_;
     JsDebuggerManager::ObjectUpdaterFunc updaterFunc_ {nullptr};
+    JsDebuggerManager::SingleStepperFunc stepperFunc_ {nullptr};
 
     friend class JSPtHooks;
     friend class test::TestHooks;

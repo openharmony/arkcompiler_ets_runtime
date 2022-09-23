@@ -462,7 +462,8 @@ void RuntimeImpl::GetPrimitiveBooleanValue(Local<JSValueRef> value,
     std::vector<std::unique_ptr<PropertyDescriptor>> *outPropertyDesc)
 {
     Local<JSValueRef> jsValueRef;
-    jsValueRef = value->ToBoolean(vm_);
+    Local<PrimitiveRef> primitiveRef(value);
+    jsValueRef = primitiveRef->GetValue(vm_);
     SetKeyValue(jsValueRef, outPropertyDesc, "[[PrimitiveValue]]");
 }
 
