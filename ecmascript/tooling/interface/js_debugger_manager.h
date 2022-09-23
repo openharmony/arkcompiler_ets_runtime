@@ -30,6 +30,7 @@ public:
     using LibraryHandle = os::library_loader::LibraryHandle;
     using ObjectUpdaterFunc =
         std::function<void(const FrameHandler *, std::string_view, Local<JSValueRef>)>;
+    using SingleStepperFunc = std::function<void()>;
 
     JsDebuggerManager() = default;
     ~JsDebuggerManager()
@@ -120,6 +121,18 @@ public:
         }
     }
 
+    void SetStepperFunc(SingleStepperFunc *stepperFunc)
+    {
+        stepperFunc_ = stepperFunc;
+    }
+
+    void ClearSingleStepper()
+    {
+        if (stepperFunc_ != nullptr) {
+            (*stepperFunc_)();
+        }
+    }
+
 private:
     bool isDebugMode_ {false};
     bool isMixedDebugEnabled_ { false };
@@ -127,6 +140,7 @@ private:
     LibraryHandle debuggerLibraryHandle_ {nullptr};
     NotificationManager *notificationManager_ {nullptr};
     ObjectUpdaterFunc *updaterFunc_ {nullptr};
+    SingleStepperFunc *stepperFunc_ {nullptr};
     JSThread *jsThread_ {nullptr};
     std::shared_ptr<FrameHandler> frameHandler_;
 };

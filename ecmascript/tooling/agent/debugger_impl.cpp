@@ -49,7 +49,9 @@ DebuggerImpl::DebuggerImpl(const EcmaVM *vm, ProtocolChannel *channel, RuntimeIm
 
     DebuggerExecutor::Initialize(vm_);
     updaterFunc_ = std::bind(&DebuggerImpl::UpdateScopeObject, this, _1, _2, _3);
+    stepperFunc_ = std::bind(&DebuggerImpl::ClearSingleStepper, this);
     vm_->GetJsDebuggerManager()->SetLocalScopeUpdater(&updaterFunc_);
+    vm_->GetJsDebuggerManager()->SetStepperFunc(&stepperFunc_);
 }
 
 DebuggerImpl::~DebuggerImpl()
@@ -1081,6 +1083,13 @@ void DebuggerImpl::UpdateScopeObject(const FrameHandler *frameHandler,
         localObj->DefineProperty(vm_, name, descriptor);
     } else {
         LOG_DEBUGGER(ERROR) << "UpdateScopeObject: not found " << varName;
+    }
+}
+
+void DebuggerImpl::ClearSingleStepper()
+{
+    if (singleStepper_ != nullptr) {
+        singleStepper_.reset();
     }
 }
 
