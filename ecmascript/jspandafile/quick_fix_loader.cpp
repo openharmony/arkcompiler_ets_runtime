@@ -126,6 +126,8 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
             return false;
         }
     }
+
+    LOG_FULL(INFO) << "LoadPatch success!";
     return true;
 }
 
@@ -354,6 +356,7 @@ bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
     }
 
     ClearReservedInfo();
+    LOG_FULL(INFO) << "UnloadPatch success!";
     return true;
 }
 
@@ -364,6 +367,8 @@ void QuickFixLoader::ReplaceMethodInner(JSThread *thread,
 {
     destMethod->SetCallField(srcMethodLiteral->GetCallField());
     destMethod->SetLiteralInfo(srcMethodLiteral->GetLiteralInfo());
+    destMethod->SetCodeEntry(srcMethodLiteral->GetCodeEntry());
+    destMethod->SetExtraLiteralInfo(srcMethodLiteral->GetExtraLiteralInfo());
     destMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(srcMethodLiteral->GetNativePointer()));
     destMethod->SetConstantPool(thread, srcConstpool);
 }
