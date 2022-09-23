@@ -112,9 +112,6 @@ int Main(const int argc, const char **argv)
         JSNApi::EnableUserUncaughtErrorHandler(vm);
 
         bool isMergeAbc = runtimeOptions.GetMergeAbc();
-        if (isMergeAbc) {
-            entry = JSPandaFile::ParseRecordName(baseFileName);
-        }
         auto res = JSNApi::Execute(vm, baseFileName, entry);
         if (!res) {
             std::cerr << "Cannot execute panda file '" << baseFileName << "' with entry '" << entry << "'" << std::endl;
@@ -142,7 +139,7 @@ int Main(const int argc, const char **argv)
         if (res) {
             std::cout << "Patch have exception." << std::endl;
         } else {
-            std::cout << "Patch have no exception." << std::endl;
+            std::cout << "-------------------------------------------" << std::endl;
         }
 
         res = JSNApi::UnloadPatch(vm, patchFileName);
