@@ -2357,7 +2357,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
         if (scopeDebugInfo == nullptr) {
             return JSTaggedValue::Hole();
         }
-        scopeDebugInfo->scopeInfo.insert(std::make_pair(name, slot));
+        scopeDebugInfo->scopeInfo.emplace(name, slot);
     }
 
     auto freeObjFunc = NativeAreaAllocator::FreeObjectFunc<struct ScopeDebugInfo>;

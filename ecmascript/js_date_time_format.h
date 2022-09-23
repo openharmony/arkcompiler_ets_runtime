@@ -52,7 +52,7 @@ public:
                                                              allowedValues(std::move(allowedValues))
     {
         for (const auto &pair : pairs) {
-            map.insert(std::make_pair(pair.second, pair.first));
+            map.emplace(pair.second, pair.first);
         }
     }
 

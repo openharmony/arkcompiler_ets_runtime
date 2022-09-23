@@ -26,9 +26,9 @@ CString *StringHashMap::FindOrInsertString(CString *string)
         return it->second;
     } else {  // NOLINT(readability-else-after-return)
         index_++;
-        hashmap_.insert(std::make_pair(key, string));
+        hashmap_.emplace(key, string);
         orderedKey_.emplace_back(key);
-        indexMap_.insert(std::make_pair(key, index_));
+        indexMap_.emplace(key, index_);
         return string;
     }
 }
