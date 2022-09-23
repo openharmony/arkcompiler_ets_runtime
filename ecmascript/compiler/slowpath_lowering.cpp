@@ -1855,11 +1855,7 @@ void SlowPathLowering::LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef 
 
 void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag)
 {
-    if (flag) {
-        DebugPrintBC(gate, glue);
-    } else {
-        DebugPrintBC(gate, glue);
-    }
+    DebugPrintBC(gate, glue);
     Label isTrue(&builder_);
     Label isFalse(&builder_);
     Label successExit(&builder_);

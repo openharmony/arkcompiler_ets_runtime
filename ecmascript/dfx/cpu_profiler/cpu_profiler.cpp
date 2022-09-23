@@ -272,7 +272,10 @@ void CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler)
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {
             return;
         }
-        const char *tempVariable = method->GetMethodName();
+        const char *tempVariable = nullptr;
+        if (method != nullptr) {
+            tempVariable = method->GetMethodName();
+        }
         uint8_t length = strlen(tempVariable);
         if (length != 0 && tempVariable[0] == '#') {
             uint8_t index = length - 1;

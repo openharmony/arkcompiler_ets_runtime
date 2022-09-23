@@ -166,7 +166,7 @@ bool JSAPIQueue::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIQueue> &ob
     }
 
     uint32_t length = obj->GetLength().GetArrayLength();
-    if (index < 0 || index >= length) {
+    if (index >= length) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "GetOwnProperty index out-of-bounds", false);
     }
 

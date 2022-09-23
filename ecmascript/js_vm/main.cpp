@@ -39,12 +39,6 @@ void BlockSignals()
         LOG_ECMA(ERROR) << "sigemptyset failed";
         return;
     }
-    int rc = 0;
-
-    if (rc < 0) {
-        LOG_ECMA(ERROR) << "sigaddset failed";
-        return;
-    }
 #endif  // PANDA_TARGET_UNIX
 }
 

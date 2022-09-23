@@ -1208,6 +1208,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
             }
             if (newObj == 0) {
                 LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldLocalSpace OOM";
+                UNREACHABLE();
             }
             if (memcpy_s(ToVoidPtr(newObj), strSize, str, strSize) != EOK) {
                 LOG_FULL(FATAL) << "memcpy_s failed";

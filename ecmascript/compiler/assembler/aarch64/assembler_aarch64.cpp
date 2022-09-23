@@ -248,7 +248,7 @@ uint32_t AssemblerAarch64::GetOpcFromScale(Scale scale, bool ispair)
             opc = ispair ? 0 : 1;
             break;
         case Scale::D:
-            opc = ispair ? 1 : 1;
+            opc = 1;
             break;
         case Scale::Q:
             // 3 : means opc bit is 11
