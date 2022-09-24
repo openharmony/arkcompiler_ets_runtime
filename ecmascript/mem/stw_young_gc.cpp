@@ -113,7 +113,7 @@ void STWYoungGC::Sweep()
                 auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawTaggedObject();
                 slot.Update(weakRef);
             } else {
-                slot.Update(static_cast<JSTaggedType>(JSTaggedValue::Undefined().GetRawData()));
+                slot.Clear();
             }
         }
     }
