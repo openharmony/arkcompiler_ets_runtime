@@ -143,8 +143,8 @@ bool FastRuntimeStub::FastStrictEqual(JSTaggedValue left, JSTaggedValue right)
         return true;
     }
     if (left.IsString() && right.IsString()) {
-        return EcmaString::StringsAreEqual(static_cast<EcmaString *>(left.GetTaggedObject()),
-                                           static_cast<EcmaString *>(right.GetTaggedObject()));
+        return EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(left.GetTaggedObject()),
+                                                   static_cast<EcmaString *>(right.GetTaggedObject()));
     }
     if (left.IsBigInt()) {
         if (right.IsBigInt()) {
@@ -377,7 +377,7 @@ JSTaggedValue FastRuntimeStub::GetPropertyByValue(JSThread *thread, JSTaggedValu
         return GetPropertyByIndex<UseOwn>(thread, receiver, index);
     }
     if (!key.IsNumber()) {
-        if (key.IsString() && !EcmaString::Cast(key.GetTaggedObject())->IsInternString()) {
+        if (key.IsString() && !EcmaStringAccessor(key).IsInternString()) {
             // update string stable
             [[maybe_unused]] EcmaHandleScope handleScope(thread);
             JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
@@ -602,7 +602,7 @@ JSTaggedValue FastRuntimeStub::SetPropertyByValue(JSThread *thread, JSTaggedValu
         return SetPropertyByIndex<UseOwn>(thread, receiver, index, value);
     }
     if (!key.IsNumber()) {
-        if (key.IsString() && !EcmaString::Cast(key.GetTaggedObject())->IsInternString()) {
+        if (key.IsString() && !EcmaStringAccessor(key).IsInternString()) {
             // update string stable
             [[maybe_unused]] EcmaHandleScope handleScope(thread);
             JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
@@ -699,7 +699,7 @@ JSTaggedValue FastRuntimeStub::FastGetPropertyByName(JSThread *thread, JSTaggedV
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByName);
     ASSERT(key.IsStringOrSymbol());
-    if (key.IsString() && !EcmaString::Cast(key.GetTaggedObject())->IsInternString()) {
+    if (key.IsString() && !EcmaStringAccessor(key).IsInternString()) {
         JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
         key = JSTaggedValue(thread->GetEcmaVM()->GetFactory()->InternString(JSHandle<JSTaggedValue>(thread, key)));
         // Maybe moved by GC
@@ -860,49 +860,7 @@ bool FastRuntimeStub::TryStringOrSymbolToIndex(JSTaggedValue key, uint32_t *outp
         return false;
     }
     auto strObj = static_cast<EcmaString *>(key.GetTaggedObject());
-    uint32_t len = strObj->GetLength();
-    if (UNLIKELY(len == 0 || len > MAX_INDEX_LEN)) {
-        return false;
-    }
-    if (UNLIKELY(strObj->IsUtf16())) {
-        return false;
-    }
-
-    uint32_t c = strObj->GetDataUtf8()[0];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    uint64_t n  = 0;
-    if (c >= '0' && c <= '9') {
-        if (c == '0') {
-            if (len != 1) {
-                return false;
-            }
-            *output = 0;
-            return true;
-        }
-
-        n = c - '0';
-        for (uint32_t i = 1; i < len; i++) {
-            c = strObj->GetDataUtf8()[i];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            if (c >= '0' && c <= '9') {
-                // NOLINTNEXTLINE(readability-magic-numbers)
-                n = n * 10 + (c - '0');  // 10: decimal factor
-            } else if (c == '.') {
-                n = JSObject::MAX_ELEMENT_INDEX;
-            } else {
-                return false;
-            }
-        }
-        if (n < JSObject::MAX_ELEMENT_INDEX) {
-            *output = n;
-            return true;
-        } else {
-            *output = JSObject::MAX_ELEMENT_INDEX;
-            return true;
-        }
-    } else if (c == '-') {
-        *output = JSObject::MAX_ELEMENT_INDEX;
-        return true;
-    }
-    return false;
+    return EcmaStringAccessor(strObj).ToTypedArrayIndex(output);
 }
 
 bool FastRuntimeStub::IsFastTypeArray(JSType jsType)

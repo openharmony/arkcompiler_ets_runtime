@@ -90,16 +90,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, GetJSErrorObject)
      */
     JSHandle<JSTaggedValue> msgValue(
         JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(handleObj), msgKey).GetValue());
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(msgValue->GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(
-                      ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData())),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData()),
+        reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData())),
+        0);
     JSHandle<JSTaggedValue> nameValue(
         JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(handleObj), nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("TypeError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("TypeError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -116,16 +116,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, GetJSErrorWithMessage)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
     JSHandle<JSTaggedValue> msgValue(
         JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(handleObj), msgKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("I am type error")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("I am type error")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+        0);
     JSHandle<JSTaggedValue> nameValue(
         JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(handleObj), nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("TypeError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("TypeError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -154,16 +154,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, ErrorNoParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(
-        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData())
-            ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+    ASSERT_EQ(EcmaStringAccessor::Compare(
+        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
         0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Error")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(
+        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("Error")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -194,16 +194,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, ErrorParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
 
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello Error!")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello Error!")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+        0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Error")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Error")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -228,10 +228,10 @@ HWTEST_F_L0(BuiltinsErrorsTest, ErrorNoParameterToString)
 
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Error")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(*resultHandle)),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Error")).GetRawData()),
+        reinterpret_cast<EcmaString *>(*resultHandle)),
+        0);
 }
 
 /*
@@ -261,10 +261,10 @@ HWTEST_F_L0(BuiltinsErrorsTest, ErrorToString)
 
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Error: This is Error!")).GetRawData())
-                  ->Compare(*resultHandle),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Error: This is Error!")).GetRawData()),
+        *resultHandle),
+        0);
 }
 
 /*
@@ -293,15 +293,15 @@ HWTEST_F_L0(BuiltinsErrorsTest, RangeErrorNoParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(
-        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData())
-            ->Compare(reinterpret_cast<EcmaString *>(JSTaggedValue(msgValue.GetTaggedValue()).GetRawData())),
+    ASSERT_EQ(EcmaStringAccessor::Compare(
+        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData()),
+        reinterpret_cast<EcmaString *>(JSTaggedValue(msgValue.GetTaggedValue()).GetRawData())),
         0);
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("RangeError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(JSTaggedValue(nameValue.GetTaggedValue()).GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("RangeError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(JSTaggedValue(nameValue.GetTaggedValue()).GetRawData())),
+        0);
 }
 
 /*
@@ -332,16 +332,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, RangeErrorParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello RangeError!")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello RangeError!")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+        0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("RangeError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("RangeError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -367,10 +367,10 @@ HWTEST_F_L0(BuiltinsErrorsTest, RangeErrorNoParameterToString)
 
     EXPECT_TRUE(result.IsString());
 
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("RangeError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(resultHandle->GetRawData())),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("RangeError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(resultHandle->GetRawData())),
+        0);
 }
 
 /*
@@ -399,7 +399,7 @@ HWTEST_F_L0(BuiltinsErrorsTest, RangeErrorToString)
 
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
-    EXPECT_EQ(factory->NewFromASCII("RangeError: This is RangeError!")->Compare(*resultHandle), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*factory->NewFromASCII("RangeError: This is RangeError!"), *resultHandle), 0);
 }
 
 // new ReferenceError()
@@ -428,16 +428,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, ReferenceErrorNoParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(
-        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData())
-            ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
         0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("ReferenceError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("ReferenceError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -466,16 +466,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, ReferenceErrorParameterConstructor)
     JSHandle<JSTaggedValue> msgKey(factory->NewFromASCII("message"));
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello ReferenceError!")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello ReferenceError!")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+        0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("ReferenceError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("ReferenceError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -499,10 +499,10 @@ HWTEST_F_L0(BuiltinsErrorsTest, ReferenceErrorNoParameterToString)
     JSTaggedValue result = ReferenceError::ToString(ecmaRuntimeCallInfo);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("ReferenceError")).GetRawData())
-                  ->Compare(*resultHandle),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("ReferenceError")).GetRawData()),
+        *resultHandle),
+        0);
 }
 
 /*
@@ -530,8 +530,10 @@ HWTEST_F_L0(BuiltinsErrorsTest, ReferenceErrorToString)
     JSTaggedValue result = ReferenceError::ToString(ecmaRuntimeCallInfo);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
-    EXPECT_EQ(factory->NewFromASCII("ReferenceError: This is ReferenceError!")->Compare(*resultHandle),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(
+        *factory->NewFromASCII("ReferenceError: This is ReferenceError!"),
+        *resultHandle),
+        0);
 }
 
 /*
@@ -559,15 +561,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, TypeErrorNoParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(
-        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData())
-            ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+    ASSERT_EQ(EcmaStringAccessor::Compare(
+        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
         0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(JSTaggedValue(nameValue.GetTaggedValue()).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(JSTaggedValue(nameValue.GetTaggedValue()).GetRawData())),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(
+        reinterpret_cast<EcmaString *>(JSTaggedValue(nameValue.GetTaggedValue()).GetRawData()),
+        reinterpret_cast<EcmaString *>(JSTaggedValue(nameValue.GetTaggedValue()).GetRawData())),
+        0);
 }
 
 /*
@@ -597,16 +600,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, TypeErrorParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello TypeError!")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello TypeError!")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+        0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("TypeError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("TypeError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -630,10 +633,10 @@ HWTEST_F_L0(BuiltinsErrorsTest, TypeErrorNoParameterToString)
     JSTaggedValue result = TypeError::ToString(ecmaRuntimeCallInfo);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("TypeError")).GetRawData())
-                  ->Compare(*resultHandle),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("TypeError")).GetRawData()),
+        *resultHandle),
+        0);
 }
 
 /*
@@ -661,7 +664,8 @@ HWTEST_F_L0(BuiltinsErrorsTest, TypeErrorToString)
     JSTaggedValue result = TypeError::ToString(ecmaRuntimeCallInfo);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
-    EXPECT_EQ(factory->NewFromASCII("TypeError: This is TypeError!")->Compare(*resultHandle), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(
+        *factory->NewFromASCII("TypeError: This is TypeError!"), *resultHandle), 0);
 }
 
 /*
@@ -689,16 +693,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, URIErrorNoParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(
-        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData())
-            ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
         0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("URIError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("URIError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -728,16 +732,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, URIErrorParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello URIError!")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello URIError!")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+        0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("URIError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("URIError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -762,10 +766,10 @@ HWTEST_F_L0(BuiltinsErrorsTest, URIErrorNoParameterToString)
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
 
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("URIError")).GetRawData())
-                  ->Compare(*resultHandle),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("URIError")).GetRawData()),
+        *resultHandle),
+        0);
 }
 
 /*
@@ -795,10 +799,9 @@ HWTEST_F_L0(BuiltinsErrorsTest, URIErrorToString)
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
 
-    EXPECT_EQ(
-        reinterpret_cast<EcmaString *>(
-            ecmascript::JSTaggedValue(*factory->NewFromASCII("URIError: This is URIError!")).GetRawData())
-            ->Compare(*resultHandle),
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("URIError: This is URIError!")).GetRawData()),
+        *resultHandle),
         0);
 }
 
@@ -827,16 +830,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, SyntaxErrorNoParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(
-        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData())
-            ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
         0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("SyntaxError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("SyntaxError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -866,16 +869,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, SyntaxErrorParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello SyntaxError!")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello SyntaxError!")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+        0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("SyntaxError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("SyntaxError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -900,10 +903,10 @@ HWTEST_F_L0(BuiltinsErrorsTest, SyntaxErrorNoParameterToString)
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
 
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("SyntaxError")).GetRawData())
-                  ->Compare(*resultHandle),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("SyntaxError")).GetRawData()),
+        *resultHandle),
+        0);
 }
 
 /*
@@ -932,7 +935,8 @@ HWTEST_F_L0(BuiltinsErrorsTest, SyntaxErrorToString)
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
 
-    EXPECT_EQ(factory->NewFromASCII("SyntaxError: This is SyntaxError!")->Compare(*resultHandle), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(
+        *factory->NewFromASCII("SyntaxError: This is SyntaxError!"), *resultHandle), 0);
 }
 
 /*
@@ -960,16 +964,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, EvalErrorNoParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(
-        reinterpret_cast<EcmaString *>(ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData())
-            ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
         0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("EvalError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("EvalError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -999,16 +1003,16 @@ HWTEST_F_L0(BuiltinsErrorsTest, EvalErrorParameterConstructor)
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
 
     JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello EvalError!")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("Hello EvalError!")).GetRawData()),
+        reinterpret_cast<EcmaString *>(msgValue->GetRawData())),
+        0);
 
     JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("EvalError")).GetRawData())
-                  ->Compare(reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
-              0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("EvalError")).GetRawData()),
+        reinterpret_cast<EcmaString *>(nameValue->GetRawData())),
+        0);
 }
 
 /*
@@ -1031,10 +1035,10 @@ HWTEST_F_L0(BuiltinsErrorsTest, EvalErrorNoParameterToString)
     JSTaggedValue result = EvalError::ToString(ecmaRuntimeCallInfo);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
-    EXPECT_EQ(reinterpret_cast<EcmaString *>(
-                  ecmascript::JSTaggedValue(*factory->NewFromASCII("EvalError")).GetRawData())
-                  ->Compare(*resultHandle),
-              0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(
+        ecmascript::JSTaggedValue(*factory->NewFromASCII("EvalError")).GetRawData()),
+        *resultHandle),
+        0);
 }
 
 /*
@@ -1063,6 +1067,7 @@ HWTEST_F_L0(BuiltinsErrorsTest, EvalErrorToString)
     JSTaggedValue result = EvalError::ToString(ecmaRuntimeCallInfo);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     EXPECT_TRUE(result.IsString());
-    EXPECT_EQ(factory->NewFromASCII("EvalError: This is EvalError!")->Compare(*resultHandle), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(
+        *factory->NewFromASCII("EvalError: This is EvalError!"), *resultHandle), 0);
 }
 }  // namespace panda::test

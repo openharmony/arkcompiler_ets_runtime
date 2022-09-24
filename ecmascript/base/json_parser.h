@@ -77,19 +77,19 @@ public:
     {
         ASSERT(str != nullptr);
         isAsciiString_ = true;
-        uint32_t len = str->GetUtf8Length();
-        CVector<T> buf(len);
-        str->CopyDataUtf8(buf.data(), len);
+        uint32_t len = EcmaStringAccessor(str).GetLength();
+        CVector<T> buf(len + 1); // 1 means add '\0' in the end of buf
+        EcmaStringAccessor(str).WriteToFlatUtf8(buf.data(), len + 1);
         Text begin = buf.data();
-        return Parse(begin, begin + str->GetLength());
+        return Parse(begin, begin + len);
     }
 
     JSHandle<JSTaggedValue> ParseUtf16(EcmaString *str)
     {
         ASSERT(str != nullptr);
-        uint32_t len = str->GetLength();
+        uint32_t len = EcmaStringAccessor(str).GetLength();
         CVector<T> buf(len);
-        str->CopyDataUtf16(buf.data(), len);
+        EcmaStringAccessor(str).WriteToFlatUtf16(buf.data(), len);
         Text begin = buf.data();
         return Parse(begin, begin + len);
     }

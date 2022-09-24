@@ -47,7 +47,7 @@ public:
 
         uint32_t hash = 0;
         if (key.IsString()) {
-            hash = EcmaString::Cast(key.GetTaggedObject())->GetHashcode();
+            hash = EcmaStringAccessor(key).GetHashcode();
         } else if (key.IsSymbol()) {
             hash = JSSymbol::Cast(key.GetTaggedObject())->GetHashField();
         }

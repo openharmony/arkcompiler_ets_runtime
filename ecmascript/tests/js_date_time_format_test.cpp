@@ -699,7 +699,7 @@ HWTEST_F_L0(JSDateTimeFormatTest, GainAvailableLocales)
     env->SetDateTimeFormatLocales(thread, localesTagArr);
     JSHandle<TaggedArray> gainLocales2 = JSDateTimeFormat::GainAvailableLocales(thread);
     EXPECT_EQ(gainLocales2->GetLength(), 1U);
-    EXPECT_STREQ(CString(JSHandle<EcmaString>(thread, gainLocales2->Get(0))->GetCString().get()).c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(gainLocales2->Get(0)).ToCString().c_str(),
         "zh-Hans-CN-u-ca-chinese");
 }
 } // namespace panda::test

@@ -411,12 +411,7 @@ JSTaggedValue JSAPILightWeightSet::ToString(JSThread *thread, const JSHandle<JSA
         if (!values->IsUndefined() && !values->IsNull()) {
             JSHandle<EcmaString> nextStringHandle = JSTaggedValue::ToString(thread, values);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            uint32_t nextLen = nextStringHandle->GetLength();
-            if (nextStringHandle->IsUtf16()) {
-                nextStr = base::StringHelper::Utf16ToU16String(nextStringHandle->GetDataUtf16(), nextLen);
-            } else {
-                nextStr = base::StringHelper::Utf8ToU16String(nextStringHandle->GetDataUtf8(), nextLen);
-            }
+            nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
         }
         if (k > 0) {
             concatStrNew = base::StringHelper::Append(concatStr, sepStr);
@@ -454,7 +449,7 @@ uint32_t JSAPILightWeightSet::Hash(JSTaggedValue key)
     }
     if (key.IsString()) {
         auto keyString = EcmaString::Cast(key.GetTaggedObject());
-        return keyString->GetHashcode();
+        return EcmaStringAccessor(keyString).GetHashcode();
     }
     if (key.IsECMAObject()) {
         uint32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();

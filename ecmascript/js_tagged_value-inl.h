@@ -40,7 +40,7 @@
 namespace panda::ecmascript {
 // ecma6 7.1 Type Conversion
 static constexpr double SAFE_NUMBER = 9007199254740991LL;
-static constexpr uint32_t MAX_INDEX_LEN = 10;
+static constexpr uint32_t MAX_ELEMENT_INDEX_LEN = 10;
 
 inline bool JSTaggedValue::ToBoolean() const
 {
@@ -77,7 +77,7 @@ inline bool JSTaggedValue::ToBoolean() const
         TaggedObject *obj = GetTaggedObject();
         if (IsString()) {
             auto str = static_cast<EcmaString *>(obj);
-            return str->GetLength() != 0;
+            return EcmaStringAccessor(str).GetLength() != 0;
         }
         return true;
     }
@@ -357,8 +357,9 @@ inline bool JSTaggedValue::SameValueZero(const JSTaggedValue &x, const JSTaggedV
     }
 
     if (x.IsString() && y.IsString()) {
-        return EcmaString::StringsAreEqual(static_cast<EcmaString *>(x.GetTaggedObject()),
-                                           static_cast<EcmaString *>(y.GetTaggedObject()));
+        auto xStr = static_cast<EcmaString *>(x.GetTaggedObject());
+        auto yStr = static_cast<EcmaString *>(y.GetTaggedObject());
+        return EcmaStringAccessor::StringsAreEqual(xStr, yStr);
     }
     if (x.IsBigInt() && y.IsBigInt()) {
         return BigInt::SameValueZero(x, y);
@@ -1346,54 +1347,15 @@ inline bool JSTaggedValue::ToElementIndex(JSTaggedValue key, uint32_t *output)
 inline bool JSTaggedValue::StringToElementIndex(JSTaggedValue key, uint32_t *output)
 {
     ASSERT(key.IsString());
-
     auto strObj = static_cast<EcmaString *>(key.GetTaggedObject());
-    uint32_t len = strObj->GetLength();
-    if (len == 0 || len > MAX_INDEX_LEN) {  // NOLINTNEXTLINEreadability-magic-numbers)
-        return false;
-    }
-    uint32_t c;
-    if (strObj->IsUtf16()) {
-        c = strObj->GetDataUtf16()[0];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    } else {
-        c = strObj->GetDataUtf8()[0];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    }
-    uint64_t n = 0;
-    if (c >= '0' && c <= '9') {
-        if (c == '0') {
-            if (len != 1) {
-                return false;
-            }
-            *output = 0;
-            return true;
-        }
-
-        n = c - '0';
-        for (uint32_t i = 1; i < len; i++) {
-            if (strObj->IsUtf16()) {
-                c = strObj->GetDataUtf16()[i];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            } else {
-                c = strObj->GetDataUtf8()[i];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            }
-            if (c < '0' || c > '9') {
-                return false;
-            }
-            // NOLINTNEXTLINE(readability-magic-numbers)
-            n = n * 10 + (c - '0');  // 10: decimal factor
-        }
-        if (n < JSObject::MAX_ELEMENT_INDEX) {
-            *output = n;
-            return true;
-        }
-    }
-    return false;
+    return EcmaStringAccessor(strObj).ToElementIndex(output);
 }
 
 inline uint32_t JSTaggedValue::GetKeyHashCode() const
 {
     ASSERT(IsStringOrSymbol());
     if (IsString()) {
-        return EcmaString::Cast(GetTaggedObject())->GetHashcode();
+        return EcmaStringAccessor(GetTaggedObject()).GetHashcode();
     }
 
     return JSSymbol::Cast(GetTaggedObject())->GetHashField();
@@ -1401,21 +1363,13 @@ inline uint32_t JSTaggedValue::GetKeyHashCode() const
 
 inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
 {
-    Span<const uint8_t> str;
     auto strObj = static_cast<EcmaString *>(tagged.GetTaggedObject());
-    size_t strLen = strObj->GetLength();
+    size_t strLen = EcmaStringAccessor(strObj).GetLength();
     if (strLen == 0) {
         return JSTaggedNumber(0);
     }
-    [[maybe_unused]] CVector<uint8_t> buf;  // Span will use buf.data(), shouldn't define inside 'if'
-    if (UNLIKELY(strObj->IsUtf16())) {
-        size_t len = base::utf_helper::Utf16ToUtf8Size(strObj->GetDataUtf16(), strLen) - 1;
-        buf.reserve(len);
-        len = base::utf_helper::ConvertRegionUtf16ToUtf8(strObj->GetDataUtf16(), buf.data(), strLen, len, 0);
-        str = Span<const uint8_t>(buf.data(), len);
-    } else {
-        str = Span<const uint8_t>(strObj->GetDataUtf8(), strLen);
-    }
+    [[maybe_unused]] CVector<uint8_t> buf;
+    Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(buf);
     double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
                                                   base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
     return JSTaggedNumber(d);
@@ -1423,10 +1377,10 @@ inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
 
 inline bool JSTaggedValue::StringCompare(EcmaString *xStr, EcmaString *yStr)
 {
-    if (xStr->IsInternString() && yStr->IsInternString()) {
+    if (EcmaStringAccessor(xStr).IsInternString() && EcmaStringAccessor(yStr).IsInternString()) {
         return xStr == yStr;
     }
-    return EcmaString::StringsAreEqual(xStr, yStr);
+    return EcmaStringAccessor::StringsAreEqual(xStr, yStr);
 }
 
 inline JSTaggedValue JSTaggedValue::TryCastDoubleToInt32(double d)

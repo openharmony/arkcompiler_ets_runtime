@@ -734,15 +734,15 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
             sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
-        if (sepStringHandle->IsUtf8() && sepStringHandle->GetLength() == 1) {
+        if (EcmaStringAccessor(sepStringHandle).IsUtf8() && EcmaStringAccessor(sepStringHandle).GetLength() == 1) {
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            sep = sepStringHandle->GetDataUtf8()[0];
-        } else if (sepStringHandle->GetLength() == 0) {
+            sep = EcmaStringAccessor(sepStringHandle).Get(0);
+        } else if (EcmaStringAccessor(sepStringHandle).GetLength() == 0) {
             sep = BuiltinsTypedArray::SeparatorFlag::MINUS_TWO;
             sepLength = 0;
         } else {
             sep = BuiltinsTypedArray::SeparatorFlag::MINUS_ONE;
-            sepLength = sepStringHandle->GetLength();
+            sepLength = EcmaStringAccessor(sepStringHandle).GetLength();
         }
     }
     if (length == 0) {
@@ -750,7 +750,8 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
         return globalConst->GetEmptyString();
     }
     size_t allocateLength = 0;
-    bool isOneByte = (sep != BuiltinsTypedArray::SeparatorFlag::MINUS_ONE) || sepStringHandle->IsUtf8();
+    bool isOneByte = (sep != BuiltinsTypedArray::SeparatorFlag::MINUS_ONE) ||
+        EcmaStringAccessor(sepStringHandle).IsUtf8();
     CVector<JSHandle<EcmaString>> vec;
     JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -767,32 +768,34 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
             auto nextStr = EcmaString::Cast(element.GetTaggedObject());
             JSHandle<EcmaString> nextStrHandle(thread, nextStr);
             vec.push_back(nextStrHandle);
-            isOneByte = nextStr->IsUtf8() ? isOneByte : false;
-            allocateLength += nextStr->GetLength();
+            isOneByte = EcmaStringAccessor(nextStr).IsUtf8() ? isOneByte : false;
+            allocateLength += EcmaStringAccessor(nextStr).GetLength();
         } else {
             vec.push_back(JSHandle<EcmaString>(globalConst->GetHandledEmptyString()));
         }
     }
     allocateLength += sepLength * (length - 1);
-    auto newString = EcmaString::AllocStringObject(allocateLength, isOneByte, thread->GetEcmaVM());
+    auto newString = EcmaStringAccessor::AllocStringObject(thread->GetEcmaVM(), allocateLength, isOneByte);
     int current = 0;
     DISALLOW_GARBAGE_COLLECTION;
     for (uint32_t k = 0; k < length; k++) {
         if (k > 0) {
             if (sep >= 0) {
-                newString->WriteData(static_cast<char>(sep), current);
+                EcmaStringAccessor(newString).Set(current, static_cast<uint16_t>(sep));
             } else if (sep != BuiltinsTypedArray::SeparatorFlag::MINUS_TWO) {
-                newString->WriteData(
-                    *sepStringHandle, current, allocateLength - static_cast<size_t>(current), sepLength);
+                EcmaStringAccessor::ReadData(
+                    newString, *sepStringHandle, current, allocateLength - static_cast<size_t>(current), sepLength);
             }
             current += static_cast<int>(sepLength);
         }
         JSHandle<EcmaString> nextStr = vec[k];
-        int nextLength = static_cast<int>(nextStr->GetLength());
-        newString->WriteData(*nextStr, current, allocateLength - static_cast<size_t>(current), nextLength);
+        int nextLength = static_cast<int>(EcmaStringAccessor(nextStr).GetLength());
+        EcmaStringAccessor::ReadData(newString, *nextStr, current,
+            allocateLength - static_cast<size_t>(current), nextLength);
         current += nextLength;
     }
-    ASSERT_PRINT(isOneByte == EcmaString::CanBeCompressed(newString), "isOneByte does not match the real value!");
+    ASSERT_PRINT(
+        isOneByte == EcmaStringAccessor::CanBeCompressed(newString), "isOneByte does not match the real value!");
     return JSTaggedValue(newString);
 }
 

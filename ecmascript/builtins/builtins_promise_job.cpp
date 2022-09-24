@@ -53,8 +53,8 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
         // 5. Else if handler is "Thrower", let handlerResult be Completion{[[type]]: throw, [[value]]: argument,
         // [[target]]: empty}.
 
-        if (EcmaString::StringsAreEqual(handler.GetObject<EcmaString>(),
-                                        globalConst->GetHandledThrowerString().GetObject<EcmaString>())) {
+        if (EcmaStringAccessor::StringsAreEqual(handler.GetObject<EcmaString>(),
+            globalConst->GetHandledThrowerString().GetObject<EcmaString>())) {
             call.Update(capability->GetReject());
         }
     } else {

@@ -60,7 +60,7 @@ public:
         }
         if (key.IsString()) {
             auto keyString = reinterpret_cast<EcmaString *>(key.GetTaggedObject());
-            return keyString->GetHashcode();
+            return EcmaStringAccessor(keyString).GetHashcode();
         }
         if (key.IsECMAObject()) {
             int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();

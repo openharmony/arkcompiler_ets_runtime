@@ -17,6 +17,7 @@
 #define ECMASCRIPT_JS_WEAK_REF_H
 
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript {
 class JSWeakRef : public JSObject {

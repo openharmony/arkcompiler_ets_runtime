@@ -285,12 +285,7 @@ JSTaggedValue JSAPIPlainArray::ToString(JSThread *thread, const JSHandle<JSAPIPl
         if (!valueHandle->IsUndefined() && !valueHandle->IsNull()) {
             JSHandle<EcmaString> valueStringHandle = JSTaggedValue::ToString(thread, valueHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            uint32_t valueLen = valueStringHandle->GetLength();
-            if (valueStringHandle->IsUtf16()) {
-                valueStr = base::StringHelper::Utf16ToU16String(valueStringHandle->GetDataUtf16(), valueLen);
-            } else {
-                valueStr = base::StringHelper::Utf8ToU16String(valueStringHandle->GetDataUtf8(), valueLen);
-            }
+            valueStr = EcmaStringAccessor(valueStringHandle).ToU16String();
         }
 
         std::u16string keyStr;
@@ -298,12 +293,7 @@ JSTaggedValue JSAPIPlainArray::ToString(JSThread *thread, const JSHandle<JSAPIPl
         if (!keyHandle->IsUndefined() && !keyHandle->IsNull()) {
             JSHandle<EcmaString> keyStringHandle = JSTaggedValue::ToString(thread, keyHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            uint32_t keyLen = keyStringHandle->GetLength();
-            if (keyStringHandle->IsUtf16()) {
-                keyStr = base::StringHelper::Utf16ToU16String(keyStringHandle->GetDataUtf16(), keyLen);
-            } else {
-                keyStr = base::StringHelper::Utf8ToU16String(keyStringHandle->GetDataUtf8(), keyLen);
-            }
+            keyStr = EcmaStringAccessor(keyStringHandle).ToU16String();
         }
 
         std::u16string nextStr = base::StringHelper::Append(keyStr, colonStr);

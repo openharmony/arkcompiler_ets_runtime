@@ -149,8 +149,8 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
 
     if (x->IsString()) {
         if (y->IsString()) {
-            return EcmaString::StringsAreEqual(static_cast<EcmaString *>(x->GetTaggedObject()),
-                                               static_cast<EcmaString *>(y->GetTaggedObject()));
+            return EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(x->GetTaggedObject()),
+                                                       static_cast<EcmaString *>(y->GetTaggedObject()));
         }
         if (y->IsNumber()) {
             JSTaggedNumber xNumber = ToNumber(thread, x);
@@ -270,7 +270,7 @@ ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTagge
     if (primX->IsString() && primY->IsString()) {
         auto xString = static_cast<EcmaString *>(primX->GetTaggedObject());
         auto yString = static_cast<EcmaString *>(primY->GetTaggedObject());
-        int result = xString->Compare(yString);
+        int result = EcmaStringAccessor::Compare(xString, yString);
         if (result < 0) {
             return ComparisonResult::LESS;
         }
@@ -449,7 +449,7 @@ JSTaggedValue JSTaggedValue::CanonicalNumericIndexString(JSThread *thread, const
 
     if (tagged->IsString()) {
         JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("-0");
-        if (EcmaString::StringsAreEqual(static_cast<EcmaString *>(tagged->GetTaggedObject()), *str)) {
+        if (EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(tagged->GetTaggedObject()), *str)) {
             return JSTaggedValue(-0.0);
         }
         JSHandle<JSTaggedValue> tmp(thread, ToNumber(thread, tagged));
@@ -510,8 +510,8 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
                                            const JSHandle<JSTaggedValue> &key)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
-        std::string keyStr = base::StringHelper::ToStdString(*(ToString(thread, key)));
-        std::string objStr = base::StringHelper::ToStdString(*(ToString(thread, obj)));
+        std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString();
+        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString();
         std::string message = "Cannot read property ";
         message.append(keyStr).append(" of ").append(objStr);
         THROW_TYPE_ERROR_AND_RETURN(thread, message.c_str(),
@@ -539,7 +539,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
 OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
-        std::string objStr = base::StringHelper::ToStdString(*(ToString(thread, obj)));
+        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString();
         std::string message = "Cannot read property ";
         message.append(ToCString(key)).append(" of ").append(objStr);
         THROW_TYPE_ERROR_AND_RETURN(thread, message.c_str(),
@@ -567,8 +567,8 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
                                            const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
-        std::string keyStr = base::StringHelper::ToStdString(*(ToString(thread, key)));
-        std::string objStr = base::StringHelper::ToStdString(*(ToString(thread, obj)));
+        std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString();
+        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString();
         std::string message = "Cannot read property ";
         message.append(keyStr).append(" of ").append(objStr);
         THROW_TYPE_ERROR_AND_RETURN(thread, message.c_str(),

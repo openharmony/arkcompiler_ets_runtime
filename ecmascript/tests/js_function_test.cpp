@@ -167,6 +167,6 @@ HWTEST_F_L0(JSFunctionTest, SetSymbolFunctionName)
     JSHandle<JSTaggedValue> functionName =
         JSFunctionBase::GetFunctionName(thread, JSHandle<JSFunctionBase>(jsFunction));
     EXPECT_TRUE(functionName->IsString());
-    EXPECT_TRUE(EcmaString::StringsAreEqual(*(JSHandle<EcmaString>(functionName)), *name));
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*(JSHandle<EcmaString>(functionName)), *name));
 }
 }  // namespace panda::test

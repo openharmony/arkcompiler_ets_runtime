@@ -33,7 +33,7 @@ int GlobalDictionary::Hash(const JSTaggedValue &key)
         }
         if (key.IsString()) {
             auto keyString = EcmaString::Cast(key.GetTaggedObject());
-            return keyString->GetHashcode();
+            return EcmaStringAccessor(keyString).GetHashcode();
         }
     }
     // key must be object

@@ -55,14 +55,14 @@ public:
 
         auto *nameString = static_cast<EcmaString *>(name.GetTaggedObject());
         auto *otherString = static_cast<EcmaString *>(other.GetTaggedObject());
-        return EcmaString::StringsAreEqual(nameString, otherString);
+        return EcmaStringAccessor::StringsAreEqual(nameString, otherString);
     }
     static inline uint32_t Hash(const JSTaggedValue &obj)
     {
         if (obj.IsHeapObject()) {
             if (obj.IsString()) {
                 auto *nameString = static_cast<EcmaString *>(obj.GetTaggedObject());
-                return nameString->GetHashcode();
+                return EcmaStringAccessor(nameString).GetHashcode();
             }
             return JSSymbol::ComputeHash();
         }

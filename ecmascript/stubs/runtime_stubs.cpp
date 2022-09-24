@@ -136,7 +136,7 @@ DEF_RUNTIME_STUBS(ComputeHashcode)
 {
     JSTaggedType ecmaString = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
     auto string = reinterpret_cast<EcmaString *>(ecmaString);
-    uint32_t result = string->ComputeHashcode(0);
+    uint32_t result = EcmaStringAccessor(string).ComputeHashcode(0);
     return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
 }
 
@@ -1950,7 +1950,7 @@ DEF_RUNTIME_STUBS(StringEqual)
     JSTaggedValue right = GetArg(argv, argc, 1);  // 1: means the first parameter
     auto leftStr = EcmaString::Cast(left.GetTaggedObject());
     auto rightStr = EcmaString::Cast(right.GetTaggedObject());
-    if (EcmaString::StringsAreEqualSameUtfEncoding(leftStr, rightStr)) {
+    if (EcmaStringAccessor::StringsAreEqualSameUtfEncoding(leftStr, rightStr)) {
         return JSTaggedValue::VALUE_TRUE;
     }
     return JSTaggedValue::VALUE_FALSE;
@@ -2059,7 +2059,7 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]]uintptr_t argGlue,
 
 bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
 {
-    return EcmaString::StringsAreEqualSameUtfEncoding(str1, str2);
+    return EcmaStringAccessor::StringsAreEqualSameUtfEncoding(str1, str2);
 }
 
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)

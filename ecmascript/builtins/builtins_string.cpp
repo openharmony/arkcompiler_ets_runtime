@@ -209,11 +209,9 @@ JSTaggedValue BuiltinsString::Raw(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         EcmaString *nextSeg = *JSTaggedValue::ToString(thread, elementString);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (nextSeg->IsUtf16()) {
-            u16str += base::StringHelper::Utf16ToU16String(nextSeg->GetDataUtf16(), nextSeg->GetLength());
+        u16str += EcmaStringAccessor(nextSeg).ToU16String();
+        if (EcmaStringAccessor(nextSeg).IsUtf16()) {
             canBeCompress = false;
-        } else {
-            u16str += base::StringHelper::Utf8ToU16String(nextSeg->GetDataUtf8(), nextSeg->GetLength());
         }
         if (i + 1 == static_cast<uint32_t>(length)) {
             break;
@@ -221,11 +219,9 @@ JSTaggedValue BuiltinsString::Raw(EcmaRuntimeCallInfo *argv)
         if (argsI <= argc) {
             EcmaString *nextSub = *JSTaggedValue::ToString(thread, GetCallArg(argv, argsI));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (nextSub->IsUtf16()) {
-                u16str += base::StringHelper::Utf16ToU16String(nextSub->GetDataUtf16(), nextSub->GetLength());
+            u16str += EcmaStringAccessor(nextSub).ToU16String();
+            if (EcmaStringAccessor(nextSub).IsUtf16()) {
                 canBeCompress = false;
-            } else {
-                u16str += base::StringHelper::Utf8ToU16String(nextSub->GetDataUtf8(), nextSub->GetLength());
             }
         }
     }
@@ -246,7 +242,7 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t thisLen = static_cast<int32_t>(thisHandle->GetLength());
+    int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
     int32_t pos;
     if (posTag->IsInt()) {
@@ -261,7 +257,7 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
     if (pos < 0 || pos >= thisLen) {
         return factory->GetEmptyString().GetTaggedValue();
     }
-    uint16_t res = thisHandle->At<false>(pos);
+    uint16_t res = EcmaStringAccessor(thisHandle).Get<false>(pos);
     return factory->NewFromUtf16Literal(&res, 1).GetTaggedValue();
 }
 
@@ -275,7 +271,7 @@ JSTaggedValue BuiltinsString::CharCodeAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t thisLen = static_cast<int32_t>(thisHandle->GetLength());
+    int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
     int32_t pos;
     if (posTag->IsInt()) {
@@ -290,7 +286,7 @@ JSTaggedValue BuiltinsString::CharCodeAt(EcmaRuntimeCallInfo *argv)
     if (pos < 0 || pos >= thisLen) {
         return GetTaggedDouble(base::NAN_VALUE);
     }
-    uint16_t ret = thisHandle->At<false>(pos);
+    uint16_t ret = EcmaStringAccessor(thisHandle).Get<false>(pos);
     return GetTaggedInt(ret);
 }
 
@@ -309,15 +305,15 @@ JSTaggedValue BuiltinsString::CodePointAt(EcmaRuntimeCallInfo *argv)
     JSTaggedNumber posVal = JSTaggedValue::ToNumber(thread, posTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int32_t pos = base::NumberHelper::DoubleInRangeInt32(posVal.GetNumber());
-    int32_t thisLen = static_cast<int32_t>(thisHandle->GetLength());
+    int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
     if (pos < 0 || pos >= thisLen) {
         return JSTaggedValue::Undefined();
     }
-    uint16_t first = thisHandle->At<false>(pos);
+    uint16_t first = EcmaStringAccessor(thisHandle).Get<false>(pos);
     if (first < base::utf_helper::DECODE_LEAD_LOW || first > base::utf_helper::DECODE_LEAD_HIGH || pos + 1 == thisLen) {
         return GetTaggedInt(first);
     }
-    uint16_t second = thisHandle->At<false>(pos + 1);
+    uint16_t second = EcmaStringAccessor(thisHandle).Get<false>(pos + 1);
     if (second < base::utf_helper::DECODE_TRAIL_LOW || second > base::utf_helper::DECODE_TRAIL_HIGH) {
         return GetTaggedInt(first);
     }
@@ -336,7 +332,6 @@ JSTaggedValue BuiltinsString::Concat(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
     uint32_t argLength = argv->GetArgsNumber();
     if (argLength == 0) {
         return thisHandle.GetTaggedValue();
@@ -344,21 +339,16 @@ JSTaggedValue BuiltinsString::Concat(EcmaRuntimeCallInfo *argv)
     std::u16string u16strThis;
     std::u16string u16strNext;
     bool canBeCompress = true;
-    if (thisHandle->IsUtf16()) {
-        u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
+    u16strThis = EcmaStringAccessor(thisHandle).ToU16String();
+    if (EcmaStringAccessor(thisHandle).IsUtf16()) {
         canBeCompress = false;
-    } else {
-        u16strThis = base::StringHelper::Utf8ToU16String(thisHandle->GetDataUtf8(), thisLen);
     }
     for (uint32_t i = 0; i < argLength; i++) {
         JSHandle<JSTaggedValue> nextTag = BuiltinsString::GetCallArg(argv, i);
         JSHandle<EcmaString> nextHandle = JSTaggedValue::ToString(thread, nextTag);
-        uint32_t nextLen = nextHandle->GetLength();
-        if (nextHandle->IsUtf16()) {
-            u16strNext = base::StringHelper::Utf16ToU16String(nextHandle->GetDataUtf16(), nextLen);
+        u16strNext = EcmaStringAccessor(nextHandle).ToU16String();
+        if (EcmaStringAccessor(nextHandle).IsUtf16()) {
             canBeCompress = false;
-        } else {
-            u16strNext = base::StringHelper::Utf8ToU16String(nextHandle->GetDataUtf8(), nextLen);
         }
         u16strThis = base::StringHelper::Append(u16strThis, u16strNext);
     }
@@ -388,8 +378,8 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<EcmaString> searchHandle = JSTaggedValue::ToString(thread, searchTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    uint32_t searchLen = searchHandle->GetLength();
+    uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
+    uint32_t searchLen = EcmaStringAccessor(searchHandle).GetLength();
     uint32_t pos;
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 1);
     if (posTag->IsUndefined()) {
@@ -404,21 +394,8 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
     if (start < 0) {
         return BuiltinsString::GetTaggedBoolean(false);
     }
-    std::u16string u16strThis;
-    std::u16string u16strSearch;
-    if (thisHandle->IsUtf16()) {
-        u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
-    } else {
-        const uint8_t *uint8This = thisHandle->GetDataUtf8();
-        u16strThis = base::StringHelper::Utf8ToU16String(uint8This, thisLen);
-    }
-    if (searchHandle->IsUtf16()) {
-        u16strSearch = base::StringHelper::Utf16ToU16String(searchHandle->GetDataUtf16(), searchLen);
-    } else {
-        const uint8_t *uint8Search = searchHandle->GetDataUtf8();
-        u16strSearch = base::StringHelper::Utf8ToU16String(uint8Search, searchLen);
-    }
-    int32_t idx = static_cast<int32_t>(base::StringHelper::Find(u16strThis, u16strSearch, start));
+
+    int32_t idx = EcmaStringAccessor::IndexOf(*thisHandle, *searchHandle, start);
     if (idx == start) {
         return BuiltinsString::GetTaggedBoolean(true);
     }
@@ -442,8 +419,7 @@ JSTaggedValue BuiltinsString::Includes(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<EcmaString> searchHandle = JSTaggedValue::ToString(thread, searchTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    uint32_t searchLen = searchHandle->GetLength();
+    uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
     int32_t pos = 0;
     JSHandle<JSTaggedValue> posTag = BuiltinsBase::GetCallArg(argv, 1);
     if (argv->GetArgsNumber() == 1) {
@@ -454,22 +430,8 @@ JSTaggedValue BuiltinsString::Includes(EcmaRuntimeCallInfo *argv)
         pos = base::NumberHelper::DoubleInRangeInt32(posVal.GetNumber());
     }
     int32_t start = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
-    std::u16string u16strThis;
-    std::u16string u16strSearch;
-    if (thisHandle->IsUtf16()) {
-        u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
-    } else {
-        const uint8_t *uint8This = thisHandle->GetDataUtf8();
-        u16strThis = base::StringHelper::Utf8ToU16String(uint8This, thisLen);
-    }
-    if (searchHandle->IsUtf16()) {
-        u16strSearch = base::StringHelper::Utf16ToU16String(searchHandle->GetDataUtf16(), searchLen);
-    } else {
-        const uint8_t *uint8Search = searchHandle->GetDataUtf8();
-        u16strSearch = base::StringHelper::Utf8ToU16String(uint8Search, searchLen);
-    }
-    uint32_t idx = base::StringHelper::Find(u16strThis, u16strSearch, start);
-    if (idx > thisLen) {
+    int32_t idx = EcmaStringAccessor::IndexOf(*thisHandle, *searchHandle, start);
+    if (idx < 0 || idx > static_cast<int32_t>(thisLen)) {
         return BuiltinsString::GetTaggedBoolean(false);
     }
     return BuiltinsString::GetTaggedBoolean(true);
@@ -486,11 +448,11 @@ JSTaggedValue BuiltinsString::IndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
+    uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
     JSHandle<EcmaString> searchHandle = JSTaggedValue::ToString(thread, searchTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 1);
-    int32_t pos;
+    int32_t pos = 0;
     if (posTag->IsInt()) {
         pos = posTag->GetInt();
     } else if (posTag->IsUndefined()) {
@@ -501,7 +463,7 @@ JSTaggedValue BuiltinsString::IndexOf(EcmaRuntimeCallInfo *argv)
         pos = posVal.ToInt32();
     }
     pos = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
-    int32_t res = thisHandle->IndexOf(*searchHandle, pos);
+    int32_t res = EcmaStringAccessor::IndexOf(*thisHandle, *searchHandle, pos);
     if (res >= 0 && res < static_cast<int32_t>(thisLen)) {
         return GetTaggedInt(res);
     }
@@ -519,11 +481,10 @@ JSTaggedValue BuiltinsString::LastIndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
+    uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
     JSHandle<EcmaString> searchHandle = JSTaggedValue::ToString(thread, searchTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t searchLen = searchHandle->GetLength();
-    uint32_t pos;
+    int32_t pos = 0;
     if (argv->GetArgsNumber() == 1) {
         pos = thisLen;
     } else {
@@ -533,26 +494,12 @@ JSTaggedValue BuiltinsString::LastIndexOf(EcmaRuntimeCallInfo *argv)
         if (std::isnan(JSTaggedValue::ToNumber(thread, posTag).GetNumber())) {
             pos = thisLen;
         } else {
-            pos = static_cast<uint32_t>(posVal.ToInt32());
+            pos = posVal.ToInt32();
         }
     }
-    pos = std::min(std::max(pos, 0U), thisLen);
-    std::u16string u16strThis;
-    std::u16string u16strSearch;
-    if (thisHandle->IsUtf16()) {
-        u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
-    } else {
-        const uint8_t *uint8This = thisHandle->GetDataUtf8();
-        u16strThis = base::StringHelper::Utf8ToU16String(uint8This, thisLen);
-    }
-    if (searchHandle->IsUtf16()) {
-        u16strSearch = base::StringHelper::Utf16ToU16String(searchHandle->GetDataUtf16(), searchLen);
-    } else {
-        const uint8_t *uint8Search = searchHandle->GetDataUtf8();
-        u16strSearch = base::StringHelper::Utf8ToU16String(uint8Search, searchLen);
-    }
-    uint32_t res = base::StringHelper::RFind(u16strThis, u16strSearch, pos);
-    if (res < thisLen) {
+    pos = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
+    int32_t res = EcmaStringAccessor::LastIndexOf(*thisHandle, *searchHandle, pos);
+    if (res >= 0 && res < static_cast<int32_t>(thisLen)) {
         return GetTaggedInt(res);
     }
     res = -1;
@@ -594,7 +541,7 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
         JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
         return result;
     }
-    int32_t res = thisHandle->Compare(*thatHandle);
+    int32_t res = EcmaStringAccessor::Compare(*thisHandle, *thatHandle);
     return GetTaggedInt(res);
 }
 
@@ -679,7 +626,8 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
             // iii. If ? ToString(flags) does not contain "g", throw a TypeError exception.
             JSHandle<EcmaString> flagString = JSTaggedValue::ToString(thread, flags);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            int32_t pos = flagString->IndexOf(static_cast<EcmaString *>(gvalue->GetTaggedObject()));
+            int32_t pos = EcmaStringAccessor::IndexOf(
+                *flagString, static_cast<EcmaString *>(gvalue->GetTaggedObject()));
             if (pos == -1) {
                 THROW_TYPE_ERROR_AND_RETURN(thread,
                                             "matchAll called with a non-global RegExp argument",
@@ -742,34 +690,25 @@ JSTaggedValue BuiltinsString::Normalize(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> nfd = factory->NewFromASCII("NFD");
     JSHandle<EcmaString> nfkc = factory->NewFromASCII("NFKC");
     JSHandle<EcmaString> nfkd = factory->NewFromASCII("NFKD");
-    if (formValue->Compare(*nfc) != 0 && formValue->Compare(*nfd) != 0 && formValue->Compare(*nfkc) != 0 &&
-        formValue->Compare(*nfkd) != 0) {
+    UNormalizationMode uForm;
+    if (EcmaStringAccessor::StringsAreEqual(*formValue, *nfc)) {
+        uForm = UNORM_NFC;
+    } else if (EcmaStringAccessor::StringsAreEqual(*formValue, *nfd)) {
+        uForm = UNORM_NFD;
+    } else if (EcmaStringAccessor::StringsAreEqual(*formValue, *nfkc)) {
+        uForm = UNORM_NFKC;
+    } else if (EcmaStringAccessor::StringsAreEqual(*formValue, *nfkd)) {
+        uForm = UNORM_NFKD;
+    } else {
         THROW_RANGE_ERROR_AND_RETURN(thread, "compare not equal", JSTaggedValue::Exception());
     }
-    std::u16string u16strThis;
-    if (thisHandle->IsUtf16()) {
-        u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisHandle->GetLength());
-    } else {
-        const uint8_t *uint8This = thisHandle->GetDataUtf8();
-        u16strThis = base::StringHelper::Utf8ToU16String(uint8This, thisHandle->GetLength());
-    }
+
+    std::u16string u16strThis = EcmaStringAccessor(thisHandle).ToU16String();
     const char16_t *constChar16tData = u16strThis.data();
     icu::UnicodeString src(constChar16tData);
     icu::UnicodeString res;
     UErrorCode errorCode = U_ZERO_ERROR;
-    UNormalizationMode uForm;
     int32_t option = 0;
-    if (formValue->Compare(*nfc) == 0) {
-        uForm = UNORM_NFC;
-    } else if (formValue->Compare(*nfd) == 0) {
-        uForm = UNORM_NFD;
-    } else if (formValue->Compare(*nfkc) == 0) {
-        uForm = UNORM_NFKC;
-    } else if (formValue->Compare(*nfkd) == 0) {
-        uForm = UNORM_NFKD;
-    } else {
-        UNREACHABLE();
-    }
 
     icu::Normalizer::normalize(src, uForm, option, res, errorCode);
     JSHandle<EcmaString> str = JSLocale::IcuToString(thread, res);
@@ -779,115 +718,15 @@ JSTaggedValue BuiltinsString::Normalize(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsString::PadStart(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, String, PadStart);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    JSHandle<JSTaggedValue> thisTag = JSTaggedValue::RequireObjectCoercible(thread, BuiltinsString::GetThis(argv));
-    JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> lengthTag = GetCallArg(argv, 0);
-    int32_t intMaxLength = JSTaggedValue::ToInt32(thread, lengthTag);
-    int32_t stringLength = static_cast<int32_t>(thisHandle->GetLength());
-    if (intMaxLength < stringLength) {
-        return thisHandle.GetTaggedValue();
-    }
-    JSHandle<JSTaggedValue> fillString = GetCallArg(argv, 1);
-    std::u16string stringBuilder;
-    if (fillString->IsUndefined()) {
-        stringBuilder = u" ";
-    } else {
-        JSHandle<EcmaString> filler = JSTaggedValue::ToString(thread, fillString);
-        if (filler->IsUtf16()) {
-            const uint16_t *data = filler->GetDataUtf16();
-            stringBuilder += base::StringHelper::Utf16ToU16String(data, filler->GetLength());
-        } else {
-            const uint8_t *data = filler->GetDataUtf8();
-            stringBuilder += base::StringHelper::Utf8ToU16String(data, filler->GetLength());
-        }
-    }
-    if (stringBuilder.size() == 0) {
-        return thisHandle.GetTaggedValue();
-    }
-    std::u16string u16strSearch;
-    if (thisHandle->IsUtf16()) {
-        u16strSearch = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(),  thisHandle->GetLength());
-    } else {
-        const uint8_t *uint8Search = thisHandle->GetDataUtf8();
-        u16strSearch = base::StringHelper::Utf8ToU16String(uint8Search, thisHandle->GetLength());
-    }
-
-    int32_t fillLen = intMaxLength - stringLength;
-    int32_t len = static_cast<int32_t>(stringBuilder.length());
-    std::u16string fiString;
-    for (int32_t i = 0; i < fillLen; ++i) {
-        if (len == 0) {
-            return thisHandle.GetTaggedValue();
-        }
-        fiString += stringBuilder[i % len];
-    }
-    std::u16string resultString = fiString + u16strSearch;
-    auto ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    return factory->NewFromUtf16Literal(reinterpret_cast<const uint16_t *>(resultString.c_str()),
-                                        resultString.size()).GetTaggedValue();
+    BUILTINS_API_TRACE(argv->GetThread(), String, PadStart);
+    return BuiltinsString::Pad(argv, true);
 }
 
 JSTaggedValue BuiltinsString::PadEnd(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, String, PadEnd);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    JSHandle<JSTaggedValue> thisTag = JSTaggedValue::RequireObjectCoercible(thread, BuiltinsString::GetThis(argv));
-    JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> lengthTag = GetCallArg(argv, 0);
-    int32_t intMaxLength = JSTaggedValue::ToInt32(thread, lengthTag);
-    int32_t stringLength = static_cast<int32_t>(thisHandle->GetLength());
-    if (intMaxLength < stringLength) {
-        return thisHandle.GetTaggedValue();
-    }
-    JSHandle<JSTaggedValue> fillString = GetCallArg(argv, 1);
-    std::u16string stringBuilder;
-    if (fillString->IsUndefined()) {
-        stringBuilder = u" ";
-    } else {
-        JSHandle<EcmaString> filler = JSTaggedValue::ToString(thread, fillString);
-        if (filler->IsUtf16()) {
-            const uint16_t *data = filler->GetDataUtf16();
-            stringBuilder += base::StringHelper::Utf16ToU16String(data, filler->GetLength());
-        } else {
-            const uint8_t *data = filler->GetDataUtf8();
-            stringBuilder += base::StringHelper::Utf8ToU16String(data, filler->GetLength());
-        }
-    }
-    if (stringBuilder.size() == 0) {
-        return thisHandle.GetTaggedValue();
-    }
-    std::u16string u16strSearch;
-    if (thisHandle->IsUtf16()) {
-        u16strSearch = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(),  thisHandle->GetLength());
-    } else {
-        const uint8_t *uint8Search = thisHandle->GetDataUtf8();
-        u16strSearch = base::StringHelper::Utf8ToU16String(uint8Search, thisHandle->GetLength());
-    }
-
-    int32_t fillLen = intMaxLength - stringLength;
-    int32_t len = static_cast<int32_t>(stringBuilder.length());
-    std::u16string fiString;
-    for (int32_t i = 0; i < fillLen; ++i) {
-        if (len == 0) {
-            return thisHandle.GetTaggedValue();
-        }
-        fiString += stringBuilder[i % len];
-    }
-    std::u16string resultString = u16strSearch + fiString;
-    auto ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    return factory->NewFromUtf16Literal(reinterpret_cast<const uint16_t *>(resultString.c_str()),
-                                        resultString.size()).GetTaggedValue();
+    BUILTINS_API_TRACE(argv->GetThread(), String, PadEnd);
+    return BuiltinsString::Pad(argv, false);
 }
 
 // 21.1.3.13
@@ -900,7 +739,7 @@ JSTaggedValue BuiltinsString::Repeat(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
+    uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
     JSHandle<JSTaggedValue> countTag = BuiltinsString::GetCallArg(argv, 0);
     int32_t count;
     if (countTag->IsInt()) {
@@ -924,26 +763,11 @@ JSTaggedValue BuiltinsString::Repeat(EcmaRuntimeCallInfo *argv)
     if (thisLen == 0) {
         return thisHandle.GetTaggedValue();
     }
-    if (thisHandle->IsUtf16()) {
-        auto result = EcmaString::AllocStringObject(thisLen * count, false, thread->GetEcmaVM());
-        uint16_t *resultPtr = result->GetData();
-        Span<uint16_t> thisData(thisHandle->GetData(), thisLen);
-        for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {
-            for (uint32_t offset = 0; offset < thisLen; ++offset) {
-                uint32_t newIndex = index * thisLen + offset;
-                *(resultPtr + newIndex) = thisData[offset];
-            }
-        }
-        return JSTaggedValue(result);
-    }
-    auto result = EcmaString::AllocStringObject(thisLen * count, true, thread->GetEcmaVM());
-    uint8_t *resultPtr = reinterpret_cast<uint8_t *>(result->GetData());
-    Span<uint8_t> thisData(reinterpret_cast<uint8_t *>(thisHandle->GetData()), thisLen);
+
+    bool isUtf8 = EcmaStringAccessor(thisHandle).IsUtf8();
+    EcmaString *result = EcmaStringAccessor::AllocStringObject(thread->GetEcmaVM(), thisLen * count, isUtf8);
     for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {
-        for (uint32_t offset = 0; offset < thisLen; ++offset) {
-            uint32_t newIndex = index * thisLen + offset;
-            *(resultPtr + newIndex) = thisData[offset];
-        }
+        EcmaStringAccessor::ReadData(result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
     }
     return JSTaggedValue(result);
 }
@@ -1018,7 +842,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     // Search string for the first occurrence of searchString and let pos be the index within string of the first code
     // unit of the matched substring and let matched be searchString. If no occurrences of searchString were found,
     // return string.
-    int32_t pos = thisString->IndexOf(*searchString);
+    int32_t pos = EcmaStringAccessor::IndexOf(*thisString, *searchString);
     if (pos == -1) {
         return thisString.GetTaggedValue();
     }
@@ -1044,18 +868,19 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<EcmaString> realReplaceStr = JSTaggedValue::ToString(thread, replHandle);
     // Let tailPos be pos + the number of code units in matched.
-    int32_t tailPos = pos + static_cast<int32_t>(searchString->GetLength());
+    int32_t tailPos = pos + static_cast<int32_t>(EcmaStringAccessor(searchString).GetLength());
     // Let newString be the String formed by concatenating the first pos code units of string,
     // replStr, and the trailing
     // substring of string starting at index tailPos. If pos is 0,
     // the first element of the concatenation will be the
     // empty String.
     // Return newString.
-    JSHandle<EcmaString> prefixString(thread, EcmaString::FastSubString(thisString, 0, pos, ecmaVm));
-    JSHandle<EcmaString> suffixString(
-        thread, EcmaString::FastSubString(thisString, tailPos, thisString->GetLength() - tailPos, ecmaVm));
-    JSHandle<EcmaString> tempString(thread, EcmaString::Concat(prefixString, realReplaceStr, ecmaVm));
-    return JSTaggedValue(EcmaString::Concat(tempString, suffixString, ecmaVm));
+    JSHandle<EcmaString> prefixString(thread, EcmaStringAccessor::FastSubString(ecmaVm, thisString, 0, pos));
+    auto thisLen = EcmaStringAccessor(thisString).GetLength();
+    JSHandle<EcmaString> suffixString(thread,
+        EcmaStringAccessor::FastSubString(ecmaVm, thisString, tailPos, thisLen - tailPos));
+    JSHandle<EcmaString> tempString(thread, EcmaStringAccessor::Concat(ecmaVm, prefixString, realReplaceStr));
+    return JSTaggedValue(EcmaStringAccessor::Concat(ecmaVm, tempString, suffixString));
 }
 
 JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
@@ -1092,7 +917,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
             JSHandle<EcmaString> flagString = JSTaggedValue::ToString(thread, flags);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSHandle<EcmaString> gString(globalConst->GetHandledGString());
-            int32_t pos = flagString->IndexOf(*gString);
+            int32_t pos = EcmaStringAccessor::IndexOf(*flagString, *gString);
             if (pos == -1) {
                 THROW_TYPE_ERROR_AND_RETURN(thread,
                                             "string.prototype.replaceAll called with a non-global RegExp argument",
@@ -1131,7 +956,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
     
     // 7. Let searchLength be the length of searchString.
     // 8. Let advanceBy be max(1, searchLength).
-    int32_t searchLength = static_cast<int32_t>(searchString->GetLength());
+    int32_t searchLength = static_cast<int32_t>(EcmaStringAccessor(searchString).GetLength());
     int32_t advanceBy =  std::max(1, searchLength);
     // 9. Let matchPositions be a new empty List.
     std::u16string stringBuilder;
@@ -1139,7 +964,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
     std::u16string stringRealReplaceStr;
     std::u16string stringSuffixString;
     // 10. Let position be ! StringIndexOf(string, searchString, 0).
-    int32_t pos = thisString->IndexOf(*searchString);
+    int32_t pos = EcmaStringAccessor::IndexOf(*thisString, *searchString);
     int32_t endOfLastMatch = 0;
     bool canBeCompress = true;
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
@@ -1171,40 +996,28 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         // empty String.
         // Return newString.
         JSHandle<EcmaString> prefixString(thread,
-                                          EcmaString::FastSubString(thisString, endOfLastMatch,
-                                                                    pos - endOfLastMatch, ecmaVm));
-        if (prefixString->IsUtf16()) {
-            const uint16_t *data = prefixString->GetDataUtf16();
-            stringPrefixString = base::StringHelper::Utf16ToU16String(data, prefixString->GetLength());
+                                          EcmaStringAccessor::FastSubString(ecmaVm, thisString, endOfLastMatch,
+                                                                            pos - endOfLastMatch));
+        stringPrefixString = EcmaStringAccessor(prefixString).ToU16String();
+        if (EcmaStringAccessor(prefixString).IsUtf16()) {
             canBeCompress = false;
-        } else {
-            const uint8_t *data = prefixString->GetDataUtf8();
-            stringPrefixString = base::StringHelper::Utf8ToU16String(data, prefixString->GetLength());
         }
-        if (realReplaceStr->IsUtf16()) {
-            const uint16_t *data = realReplaceStr->GetDataUtf16();
-            stringRealReplaceStr = base::StringHelper::Utf16ToU16String(data, realReplaceStr->GetLength());
+        stringRealReplaceStr = EcmaStringAccessor(realReplaceStr).ToU16String();
+        if (EcmaStringAccessor(realReplaceStr).IsUtf16()) {
             canBeCompress = false;
-        } else {
-            const uint8_t *data = realReplaceStr->GetDataUtf8();
-            stringRealReplaceStr = base::StringHelper::Utf8ToU16String(data, realReplaceStr->GetLength());
         }
         stringBuilder = stringBuilder + stringPrefixString + stringRealReplaceStr;
         endOfLastMatch = pos + searchLength;
-        pos = thisString->IndexOf(*searchString, pos + advanceBy);
+        pos = EcmaStringAccessor::IndexOf(*thisString, *searchString, pos + advanceBy);
     }
     
-    if (endOfLastMatch < static_cast<int32_t>(thisString->GetLength())) {
+    if (endOfLastMatch < static_cast<int32_t>(EcmaStringAccessor(thisString).GetLength())) {
+        auto thisLen = EcmaStringAccessor(thisString).GetLength();
         JSHandle<EcmaString> suffixString(thread,
-                                          EcmaString::FastSubString(thisString, endOfLastMatch,
-                                                                    thisString->GetLength() - endOfLastMatch, ecmaVm));
-        if (suffixString->IsUtf16()) {
-            const uint16_t *data = suffixString->GetDataUtf16();
-            stringSuffixString = base::StringHelper::Utf16ToU16String(data, suffixString->GetLength());
+            EcmaStringAccessor::FastSubString(ecmaVm, thisString, endOfLastMatch, thisLen - endOfLastMatch));
+        stringSuffixString = EcmaStringAccessor(suffixString).ToU16String();
+        if (EcmaStringAccessor(suffixString).IsUtf16()) {
             canBeCompress = false;
-        } else {
-            const uint8_t *data = suffixString->GetDataUtf8();
-            stringSuffixString = base::StringHelper::Utf8ToU16String(data, suffixString->GetLength());
         }
         stringBuilder = stringBuilder + stringSuffixString;
     }
@@ -1226,23 +1039,19 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
     auto ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<EcmaString> dollarString = JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledDollarString());
-    int32_t replaceLength = static_cast<int32_t>(replacement->GetLength());
-    int32_t tailPos = position + static_cast<int32_t>(matched->GetLength());
+    int32_t replaceLength = static_cast<int32_t>(EcmaStringAccessor(replacement).GetLength());
+    int32_t tailPos = position + static_cast<int32_t>(EcmaStringAccessor(matched).GetLength());
 
-    int32_t nextDollarIndex = replacement->IndexOf(*dollarString, 0);
+    int32_t nextDollarIndex = EcmaStringAccessor::IndexOf(*replacement, *dollarString);
     if (nextDollarIndex < 0) {
         return replacement.GetTaggedValue();
     }
     std::u16string stringBuilder;
     bool canBeCompress = true;
     if (nextDollarIndex > 0) {
-        if (replacement->IsUtf16()) {
-            const uint16_t *data = replacement->GetDataUtf16();
-            stringBuilder += base::StringHelper::Utf16ToU16String(data, nextDollarIndex);
+        stringBuilder = EcmaStringAccessor(replacement).ToU16String(nextDollarIndex);
+        if (EcmaStringAccessor(replacement).IsUtf16()) {
             canBeCompress = false;
-        } else {
-            const uint8_t *data = replacement->GetDataUtf8();
-            stringBuilder += base::StringHelper::Utf8ToU16String(data, nextDollarIndex);
         }
     }
 
@@ -1257,49 +1066,38 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                    factory->NewFromUtf16LiteralNotCompress(uint16tData, stringBuilder.length()).GetTaggedValue();
         }
         int continueFromIndex = -1;
-        uint16_t peek = replacement->At(peekIndex);
+        uint16_t peek = EcmaStringAccessor(replacement).Get(peekIndex);
         switch (peek) {
             case '$':  // $$
                 stringBuilder += '$';
                 continueFromIndex = peekIndex + 1;
                 break;
             case '&':  // $& - match
-                if (matched->IsUtf16()) {
-                    const uint16_t *data = matched->GetDataUtf16();
-                    stringBuilder += base::StringHelper::Utf16ToU16String(data, matched->GetLength());
+                stringBuilder += EcmaStringAccessor(matched).ToU16String();
+                if (EcmaStringAccessor(matched).IsUtf16()) {
                     canBeCompress = false;
-                } else {
-                    const uint8_t *data = matched->GetDataUtf8();
-                    stringBuilder += base::StringHelper::Utf8ToU16String(data, matched->GetLength());
                 }
                 continueFromIndex = peekIndex + 1;
                 break;
             case '`':  // $` - prefix
                 if (position > 0) {
-                    EcmaString *prefix = EcmaString::FastSubString(srcString, 0, position, ecmaVm);
-                    if (prefix->IsUtf16()) {
-                        const uint16_t *data = prefix->GetDataUtf16();
-                        stringBuilder += base::StringHelper::Utf16ToU16String(data, prefix->GetLength());
+                    EcmaString *prefix = EcmaStringAccessor::FastSubString(ecmaVm, srcString, 0, position);
+                    stringBuilder += EcmaStringAccessor(prefix).ToU16String();
+                    if (EcmaStringAccessor(prefix).IsUtf16()) {
                         canBeCompress = false;
-                    } else {
-                        const uint8_t *data = prefix->GetDataUtf8();
-                        stringBuilder += base::StringHelper::Utf8ToU16String(data, prefix->GetLength());
                     }
                 }
                 continueFromIndex = peekIndex + 1;
                 break;
             case '\'': {
                 // $' - suffix
-                int32_t srcLength = static_cast<int32_t>(srcString->GetLength());
+                int32_t srcLength = static_cast<int32_t>(EcmaStringAccessor(srcString).GetLength());
                 if (tailPos < srcLength) {
-                    EcmaString *sufffix = EcmaString::FastSubString(srcString, tailPos, srcLength - tailPos, ecmaVm);
-                    if (sufffix->IsUtf16()) {
-                        const uint16_t *data = sufffix->GetDataUtf16();
-                        stringBuilder += base::StringHelper::Utf16ToU16String(data, sufffix->GetLength());
+                    EcmaString *sufffix = EcmaStringAccessor::FastSubString(
+                        ecmaVm, srcString, tailPos, srcLength - tailPos);
+                    stringBuilder += EcmaStringAccessor(sufffix).ToU16String();
+                    if (EcmaStringAccessor(sufffix).IsUtf16()) {
                         canBeCompress = false;
-                    } else {
-                        const uint8_t *data = sufffix->GetDataUtf8();
-                        stringBuilder += base::StringHelper::Utf8ToU16String(data, sufffix->GetLength());
                     }
                 }
                 continueFromIndex = peekIndex + 1;
@@ -1320,7 +1118,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                 uint32_t scaledIndex = peek - '0';
                 int32_t advance = 1;
                 if (peekIndex + 1 < replaceLength) {
-                    uint16_t nextPeek = replacement->At(peekIndex + 1);
+                    uint16_t nextPeek = EcmaStringAccessor(replacement).Get(peekIndex + 1);
                     if (nextPeek >= '0' && nextPeek <= '9') {
                         constexpr uint32_t TEN_BASE = 10;
                         uint32_t newScaledIndex = scaledIndex * TEN_BASE + (nextPeek - '0');
@@ -1340,13 +1138,9 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                 JSTaggedValue capturesVal(captureList->Get(scaledIndex - 1));
                 if (!capturesVal.IsUndefined()) {
                     EcmaString *captureString = EcmaString::Cast(capturesVal.GetTaggedObject());
-                    if (captureString->IsUtf16()) {
-                        const uint16_t *data = captureString->GetDataUtf16();
-                        stringBuilder += base::StringHelper::Utf16ToU16String(data, captureString->GetLength());
+                    stringBuilder += EcmaStringAccessor(captureString).ToU16String();
+                    if (EcmaStringAccessor(captureString).IsUtf16()) {
                         canBeCompress = false;
-                    } else {
-                        const uint8_t *data = captureString->GetDataUtf8();
-                        stringBuilder += base::StringHelper::Utf8ToU16String(data, captureString->GetLength());
                     }
                 }
                 continueFromIndex = peekIndex + advance;
@@ -1359,15 +1153,15 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                     break;
                 }
                 JSHandle<EcmaString> greaterSymString = factory->NewFromASCII(">");
-                int pos = replacement->IndexOf(*greaterSymString, peekIndex);
+                int32_t pos = EcmaStringAccessor::IndexOf(*replacement, *greaterSymString, peekIndex);
                 if (pos == -1) {
                     stringBuilder += '$';
                     continueFromIndex = peekIndex;
                     break;
                 }
                 JSHandle<EcmaString> groupName(thread,
-                                               EcmaString::FastSubString(replacement,
-                                                                         peekIndex + 1, pos - peekIndex - 1, ecmaVm));
+                                               EcmaStringAccessor::FastSubString(ecmaVm, replacement,
+                                                                                 peekIndex + 1, pos - peekIndex - 1));
                 JSHandle<JSTaggedValue> names(groupName);
                 JSHandle<JSTaggedValue> capture = JSObject::GetProperty(thread, namedCaptures, names).GetValue();
                 if (capture->IsUndefined()) {
@@ -1375,13 +1169,9 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                     break;
                 }
                 JSHandle<EcmaString> captureName(capture);
-                if (captureName->IsUtf16()) {
-                    const uint16_t *data = captureName->GetDataUtf16();
-                    stringBuilder += base::StringHelper::Utf16ToU16String(data, captureName->GetLength());
+                stringBuilder += EcmaStringAccessor(captureName).ToU16String();
+                if (EcmaStringAccessor(captureName).IsUtf16()) {
                     canBeCompress = false;
-                } else {
-                    const uint8_t *data = captureName->GetDataUtf8();
-                    stringBuilder += base::StringHelper::Utf8ToU16String(data, captureName->GetLength());
                 }
                 continueFromIndex = pos + 1;
                 break;
@@ -1392,18 +1182,14 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                 break;
         }
         // Go the the next $ in the replacement.
-        nextDollarIndex = replacement->IndexOf(*dollarString, continueFromIndex);
+        nextDollarIndex = EcmaStringAccessor::IndexOf(*replacement, *dollarString, continueFromIndex);
         if (nextDollarIndex < 0) {
             if (continueFromIndex < replaceLength) {
-                EcmaString *nextAppend = EcmaString::FastSubString(replacement, continueFromIndex,
-                                                                   replaceLength - continueFromIndex, ecmaVm);
-                if (nextAppend->IsUtf16()) {
-                    const uint16_t *data = nextAppend->GetDataUtf16();
-                    stringBuilder += base::StringHelper::Utf16ToU16String(data, nextAppend->GetLength());
+                EcmaString *nextAppend = EcmaStringAccessor::FastSubString(ecmaVm, replacement, continueFromIndex,
+                                                                           replaceLength - continueFromIndex);
+                stringBuilder += EcmaStringAccessor(nextAppend).ToU16String();
+                if (EcmaStringAccessor(nextAppend).IsUtf16()) {
                     canBeCompress = false;
-                } else {
-                    const uint8_t *data = nextAppend->GetDataUtf8();
-                    stringBuilder += base::StringHelper::Utf8ToU16String(data, nextAppend->GetLength());
                 }
             }
             auto *char16tData = const_cast<char16_t *>(stringBuilder.c_str());
@@ -1414,15 +1200,11 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
         }
         // Append substring between the previous and the next $ character.
         if (nextDollarIndex > continueFromIndex) {
-            EcmaString *nextAppend =
-                EcmaString::FastSubString(replacement, continueFromIndex, nextDollarIndex - continueFromIndex, ecmaVm);
-            if (nextAppend->IsUtf16()) {
-                const uint16_t *data = nextAppend->GetDataUtf16();
-                stringBuilder += base::StringHelper::Utf16ToU16String(data, nextAppend->GetLength());
+            EcmaString *nextAppend = EcmaStringAccessor::FastSubString(
+                ecmaVm, replacement, continueFromIndex, nextDollarIndex - continueFromIndex);
+            stringBuilder += EcmaStringAccessor(nextAppend).ToU16String();
+            if (EcmaStringAccessor(nextAppend).IsUtf16()) {
                 canBeCompress = false;
-            } else {
-                const uint8_t *data = nextAppend->GetDataUtf8();
-                stringBuilder += base::StringHelper::Utf8ToU16String(data, nextAppend->GetLength());
             }
         }
     }
@@ -1477,7 +1259,7 @@ JSTaggedValue BuiltinsString::Slice(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t thisLen = static_cast<int32_t>(thisHandle->GetLength());
+    int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
     JSHandle<JSTaggedValue> startTag = BuiltinsString::GetCallArg(argv, 0);
     JSTaggedNumber startVal = JSTaggedValue::ToInteger(thread, startTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1504,7 +1286,7 @@ JSTaggedValue BuiltinsString::Slice(EcmaRuntimeCallInfo *argv)
         to = std::min(end, thisLen);
     }
     int32_t len = std::max(to - from, 0);
-    return JSTaggedValue(EcmaString::FastSubString(thisHandle, from, len, thread->GetEcmaVM()));
+    return JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(), thisHandle, from, len));
 }
 
 // 21.1.3.17
@@ -1560,7 +1342,7 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
         return resultArray.GetTaggedValue();
     }
     // Let s be the number of elements in S.
-    int32_t thisLength = static_cast<int32_t>(thisString->GetLength());
+    int32_t thisLength = static_cast<int32_t>(EcmaStringAccessor(thisString).GetLength());
     JSHandle<EcmaString> seperatorString = JSTaggedValue::ToString(thread, seperatorTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (seperatorTag->IsUndefined()) {
@@ -1571,7 +1353,7 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
     }
     // If S.length = 0, then
     if (thisLength == 0) {
-        if (thisString->IndexOf(*seperatorString, 0) != -1) {
+        if (EcmaStringAccessor::IndexOf(*thisString, *seperatorString) != -1) {
             return resultArray.GetTaggedValue();
         }
         JSObject::CreateDataProperty(thread, resultArray, 0, JSHandle<JSTaggedValue>(thisString));
@@ -1579,10 +1361,10 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
         return resultArray.GetTaggedValue();
     }
 
-    int32_t seperatorLength = static_cast<int32_t>(seperatorString->GetLength());
+    int32_t seperatorLength = static_cast<int32_t>(EcmaStringAccessor(seperatorString).GetLength());
     if (seperatorLength == 0) {
         for (int32_t i = 0; i < thisLength; ++i) {
-            EcmaString *elementString = EcmaString::FastSubString(thisString, i, 1, ecmaVm);
+            EcmaString *elementString = EcmaStringAccessor::FastSubString(ecmaVm, thisString, i, 1);
             JSHandle<JSTaggedValue> elementTag(thread, elementString);
             JSObject::CreateDataProperty(thread, resultArray, arrayLength, elementTag);
             ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
@@ -1594,9 +1376,9 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
         return resultArray.GetTaggedValue();
     }
     int32_t index = 0;
-    int32_t pos = thisString->IndexOf(*seperatorString);
+    int32_t pos = EcmaStringAccessor::IndexOf(*thisString, *seperatorString);
     while (pos != -1) {
-        EcmaString *elementString = EcmaString::FastSubString(thisString, index, pos - index, ecmaVm);
+        EcmaString *elementString = EcmaStringAccessor::FastSubString(ecmaVm, thisString, index, pos - index);
         JSHandle<JSTaggedValue> elementTag(thread, elementString);
         JSObject::CreateDataProperty(thread, resultArray, arrayLength, elementTag);
         ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
@@ -1605,9 +1387,9 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
             return resultArray.GetTaggedValue();
         }
         index = pos + seperatorLength;
-        pos = thisString->IndexOf(*seperatorString, index);
+        pos = EcmaStringAccessor::IndexOf(*thisString, *seperatorString, index);
     }
-    EcmaString *elementString = EcmaString::FastSubString(thisString, index, thisLength - index, ecmaVm);
+    EcmaString *elementString = EcmaStringAccessor::FastSubString(ecmaVm, thisString, index, thisLength - index);
     JSHandle<JSTaggedValue> elementTag(thread, elementString);
     JSObject::CreateDataProperty(thread, resultArray, arrayLength, elementTag);
     ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
@@ -1633,8 +1415,8 @@ JSTaggedValue BuiltinsString::StartsWith(EcmaRuntimeCallInfo *argv)
 
     JSHandle<EcmaString> searchHandle = JSTaggedValue::ToString(thread, searchTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    uint32_t searchLen = searchHandle->GetLength();
+    uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
+    uint32_t searchLen = EcmaStringAccessor(searchHandle).GetLength();
     int32_t pos;
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 1);
     if (posTag->IsUndefined()) {
@@ -1650,7 +1432,7 @@ JSTaggedValue BuiltinsString::StartsWith(EcmaRuntimeCallInfo *argv)
     if (static_cast<uint32_t>(pos) + searchLen > thisLen) {
         return BuiltinsString::GetTaggedBoolean(false);
     }
-    int32_t res = thisHandle->IndexOf(*searchHandle, pos);
+    int32_t res = EcmaStringAccessor::IndexOf(*thisHandle, *searchHandle, pos);
     if (res == pos) {
         return BuiltinsString::GetTaggedBoolean(true);
     }
@@ -1668,7 +1450,7 @@ JSTaggedValue BuiltinsString::Substring(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t thisLen = static_cast<int32_t>(thisHandle->GetLength());
+    int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
     JSHandle<JSTaggedValue> startTag = BuiltinsString::GetCallArg(argv, 0);
     JSTaggedNumber startVal = JSTaggedValue::ToInteger(thread, startTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1687,7 +1469,7 @@ JSTaggedValue BuiltinsString::Substring(EcmaRuntimeCallInfo *argv)
     int32_t from = std::min(start, end);
     int32_t to = std::max(start, end);
     int32_t len = to - from;
-    return JSTaggedValue(EcmaString::FastSubString(thisHandle, from, len, thread->GetEcmaVM()));
+    return JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(), thisHandle, from, len));
 }
 
 // 21.1.3.20
@@ -1697,7 +1479,6 @@ JSTaggedValue BuiltinsString::ToLocaleLowerCase(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), String, ToLocaleLowerCase);
     JSThread *thread = argv->GetThread();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // Let O be RequireObjectCoercible(this value).
@@ -1743,19 +1524,8 @@ JSTaggedValue BuiltinsString::ToLocaleLowerCase(EcmaRuntimeCallInfo *argv)
     // starting at the first element of S.
     // Transform those elements in uString to the to the Unicode Default Case Conversion algorithm
     icu::Locale icuLocale = icu::Locale::createFromName(locale.c_str());
-    std::u16string utf16String;
-    if (string->IsUtf16()) {
-        utf16String = base::StringHelper::Utf16ToU16String(string->GetDataUtf16(), string->GetUtf16Length());
-    } else {
-        const uint8_t *uint8This = string->GetDataUtf8();
-        utf16String = base::StringHelper::Utf8ToU16String(uint8This, string->GetLength());
-    }
-    icu::UnicodeString uString(utf16String.data());
-    icu::UnicodeString res = uString.toLower(icuLocale);
-    std::string CSLower;
-    res.toUTF8String(CSLower);
-    JSHandle<EcmaString> result = factory->NewFromStdString(CSLower);
-    return result.GetTaggedValue();
+    EcmaString *result = EcmaStringAccessor::LocaleConvertCase<true>(ecmaVm, string, icuLocale);
+    return JSTaggedValue(result);
 }
 
 // 21.1.3.21
@@ -1765,7 +1535,6 @@ JSTaggedValue BuiltinsString::ToLocaleUpperCase(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), String, ToLocaleLowerCase);
     JSThread *thread = argv->GetThread();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // Let O be RequireObjectCoercible(this value).
@@ -1811,19 +1580,8 @@ JSTaggedValue BuiltinsString::ToLocaleUpperCase(EcmaRuntimeCallInfo *argv)
     // starting at the first element of S.
     // Transform those elements in uString to the to the Unicode Default Case Conversion algorithm
     icu::Locale icuLocale = icu::Locale::createFromName(locale.c_str());
-    std::u16string utf16String;
-    if (string->IsUtf16()) {
-        utf16String = base::StringHelper::Utf16ToU16String(string->GetDataUtf16(), string->GetUtf16Length());
-    } else {
-        const uint8_t *uint8This = string->GetDataUtf8();
-        utf16String = base::StringHelper::Utf8ToU16String(uint8This, string->GetLength());
-    }
-    icu::UnicodeString uString(utf16String.data());
-    icu::UnicodeString res = uString.toUpper(icuLocale);
-    std::string CSUpper;
-    res.toUTF8String(CSUpper);
-    JSHandle<EcmaString> result = factory->NewFromStdString(CSUpper);
-    return result.GetTaggedValue();
+    EcmaString *result = EcmaStringAccessor::LocaleConvertCase<false>(ecmaVm, string, icuLocale);
+    return JSTaggedValue(result);
 }
 
 // 21.1.3.22
@@ -1836,22 +1594,8 @@ JSTaggedValue BuiltinsString::ToLowerCase(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    if (thisHandle->IsUtf16()) {
-        std::u16string u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
-        return JSTaggedValue(base::StringHelper::ToLower(thread, u16strThis));
-    }
-    auto newString = EcmaString::AllocStringObject(thisLen, true, thread->GetEcmaVM());
-    Span<uint8_t> data(reinterpret_cast<uint8_t *>(thisHandle->GetData()), thisLen);
-    auto newStringPtr = reinterpret_cast<uint8_t *>(newString->GetData());
-    for (uint32_t index = 0; index < thisLen; ++index) {
-        if (base::StringHelper::Utf8CharInRange(data[index], 'A', 'Z')) {
-            *(newStringPtr + index) = data[index] -'A' + 'a';
-        } else {
-            *(newStringPtr + index) = data[index];
-        }
-    }
-    return JSTaggedValue(newString);
+    EcmaString *result = EcmaStringAccessor::ConvertCase<true>(thread->GetEcmaVM(), thisHandle);
+    return JSTaggedValue(result);
 }
 
 // 21.1.3.23
@@ -1872,22 +1616,8 @@ JSTaggedValue BuiltinsString::ToUpperCase(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    if (thisHandle->IsUtf16()) {
-        std::u16string u16strThis = base::StringHelper::Utf16ToU16String(thisHandle->GetDataUtf16(), thisLen);
-        return JSTaggedValue(base::StringHelper::ToUpper(thread, u16strThis));
-    }
-    auto newString = EcmaString::AllocStringObject(thisLen, true, thread->GetEcmaVM());
-    Span<uint8_t> data(reinterpret_cast<uint8_t *>(thisHandle->GetData()), thisLen);
-    auto newStringPtr = reinterpret_cast<uint8_t *>(newString->GetData());
-    for (uint32_t index = 0; index < thisLen; ++index) {
-        if (base::StringHelper::Utf8CharInRange(data[index], 'a', 'z')) {
-            *(newStringPtr + index) = data[index] -'a' + 'A';
-        } else {
-            *(newStringPtr + index) = data[index];
-        }
-    }
-    return JSTaggedValue(newString);
+    EcmaString *result = EcmaStringAccessor::ConvertCase<false>(thread->GetEcmaVM(), thisHandle);
+    return JSTaggedValue(result);
 }
 
 // 21.1.3.25
@@ -1900,23 +1630,7 @@ JSTaggedValue BuiltinsString::Trim(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    if (UNLIKELY(thisLen == 0)) {
-        return thread->GlobalConstants()->GetEmptyString();
-    }
-
-    if (thisHandle->IsUtf8()) {
-        Span<const uint8_t> data(reinterpret_cast<const uint8_t *>(thisHandle->GetData()), thisLen);
-        uint32_t start = base::StringHelper::GetStart(data, thisLen);
-        uint32_t end = base::StringHelper::GetEnd(data, start, thisLen);
-        EcmaString *res = EcmaString::FastSubUtf8String(thread->GetEcmaVM(), thisHandle, start, end + 1 - start);
-        return JSTaggedValue(res);
-    }
-
-    Span<const uint16_t> data(thisHandle->GetData(), thisLen);
-    uint32_t start = base::StringHelper::GetStart(data, thisLen);
-    uint32_t end = base::StringHelper::GetEnd(data, start, thisLen);
-    EcmaString *res = EcmaString::FastSubUtf16String(thread->GetEcmaVM(), thisHandle, start, end + 1 - start);
+    EcmaString *res = EcmaStringAccessor::Trim(thread, thisHandle, EcmaString::TrimMode::TRIM);
     return JSTaggedValue(res);
 }
 
@@ -1929,20 +1643,7 @@ JSTaggedValue BuiltinsString::TrimStart(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag = JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    if (UNLIKELY(thisLen == 0)) {
-        return thread->GlobalConstants()->GetEmptyString();
-    }
-
-    if (thisHandle->IsUtf8()) {
-        Span<const uint8_t> data(reinterpret_cast<const uint8_t *>(thisHandle->GetData()), thisLen);
-        uint32_t start = base::StringHelper::GetStart(data, thisLen);
-        EcmaString *res = EcmaString::FastSubUtf8String(thread->GetEcmaVM(), thisHandle, start, thisLen - start);
-        return JSTaggedValue(res);
-    }
-    Span<const uint16_t> data(thisHandle->GetData(), thisLen);
-    uint32_t start = base::StringHelper::GetStart(data, thisLen);
-    EcmaString *res = EcmaString::FastSubUtf16String(thread->GetEcmaVM(), thisHandle, start, thisLen - start);
+    EcmaString *res = EcmaStringAccessor::Trim(thread, thisHandle, EcmaString::TrimMode::TRIM_START);
     return JSTaggedValue(res);
 }
 
@@ -1955,21 +1656,7 @@ JSTaggedValue BuiltinsString::TrimEnd(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag = JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    if (UNLIKELY(thisLen == 0)) {
-        return thread->GlobalConstants()->GetEmptyString();
-    }
-
-    if (thisHandle->IsUtf8()) {
-        Span<const uint8_t> data(reinterpret_cast<const uint8_t *>(thisHandle->GetData()), thisLen);
-        uint32_t end = base::StringHelper::GetEnd(data, 0, thisLen);
-        EcmaString *res = EcmaString::FastSubUtf8String(thread->GetEcmaVM(), thisHandle, 0, end + 1);
-        return JSTaggedValue(res);
-    }
-
-    Span<const uint16_t> data(thisHandle->GetData(), thisLen);
-    uint32_t end = base::StringHelper::GetEnd(data, 0, thisLen);
-    EcmaString *res = EcmaString::FastSubUtf16String(thread->GetEcmaVM(), thisHandle, 0, end + 1);
+    EcmaString *res = EcmaStringAccessor::Trim(thread, thisHandle, EcmaString::TrimMode::TRIM_END);
     return JSTaggedValue(res);
 }
 
@@ -1982,21 +1669,7 @@ JSTaggedValue BuiltinsString::TrimLeft(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag = JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    if (UNLIKELY(thisLen == 0)) {
-        return thread->GlobalConstants()->GetEmptyString();
-    }
-
-    if (thisHandle->IsUtf8()) {
-        Span<const uint8_t> data(reinterpret_cast<const uint8_t *>(thisHandle->GetData()), thisLen);
-        uint32_t start = base::StringHelper::GetStart(data, thisLen);
-        EcmaString *res = EcmaString::FastSubUtf8String(thread->GetEcmaVM(), thisHandle, start, thisLen - start);
-        return JSTaggedValue(res);
-    }
-
-    Span<const uint16_t> data(thisHandle->GetData(), thisLen);
-    uint32_t start = base::StringHelper::GetStart(data, thisLen);
-    EcmaString *res = EcmaString::FastSubUtf16String(thread->GetEcmaVM(), thisHandle, start, thisLen - start);
+    EcmaString *res = EcmaStringAccessor::Trim(thread, thisHandle, EcmaString::TrimMode::TRIM_START);
     return JSTaggedValue(res);
 }
 
@@ -2009,21 +1682,7 @@ JSTaggedValue BuiltinsString::TrimRight(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag = JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = thisHandle->GetLength();
-    if (UNLIKELY(thisLen == 0)) {
-        return thread->GlobalConstants()->GetEmptyString();
-    }
-
-    if (thisHandle->IsUtf8()) {
-        Span<const uint8_t> data(reinterpret_cast<const uint8_t *>(thisHandle->GetData()), thisLen);
-        uint32_t end = base::StringHelper::GetEnd(data, 0, thisLen);
-        EcmaString *res = EcmaString::FastSubUtf8String(thread->GetEcmaVM(), thisHandle, 0, end + 1);
-        return JSTaggedValue(res);
-    }
-
-    Span<const uint16_t> data(thisHandle->GetData(), thisLen);
-    uint32_t end = base::StringHelper::GetEnd(data, 0, thisLen);
-    EcmaString *res = EcmaString::FastSubUtf16String(thread->GetEcmaVM(), thisHandle, 0, end + 1);
+    EcmaString *res = EcmaStringAccessor::Trim(thread, thisHandle, EcmaString::TrimMode::TRIM_END);
     return JSTaggedValue(res);
 }
 
@@ -2086,7 +1745,7 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
         end = lengthNumber.ToInt32();
     }
     // 8. Let size be the number of code units in S.
-    int32_t size = static_cast<int32_t>(thisString->GetLength());
+    int32_t size = static_cast<int32_t>(EcmaStringAccessor(thisString).GetLength());
     // 9. If intStart < 0, let intStart be max(size + intStart,0).
     if (start < 0) {
         start = std::max(size + start, 0);
@@ -2098,7 +1757,7 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
     if (resultLength <= 0) {
         return factory->GetEmptyString().GetTaggedValue();
     }
-    return JSTaggedValue(EcmaString::FastSubString(thisString, start, resultLength, thread->GetEcmaVM()));
+    return JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(), thisString, start, resultLength));
 }
 
 JSTaggedValue BuiltinsString::GetLength(EcmaRuntimeCallInfo *argv)
@@ -2109,7 +1768,7 @@ JSTaggedValue BuiltinsString::GetLength(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
 
     JSHandle<EcmaString> thisString = JSTaggedValue::ToString(thread, thisHandle);
-    return GetTaggedInt(thisString->GetLength());
+    return GetTaggedInt(EcmaStringAccessor(thisString).GetLength());
 }
 
 // 21.1.3
@@ -2128,6 +1787,49 @@ JSTaggedValue BuiltinsString::ThisStringValue(JSThread *thread, JSTaggedValue va
         }
     }
     THROW_TYPE_ERROR_AND_RETURN(thread, "can not convert to String", JSTaggedValue::Exception());
+}
+
+JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
+{
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisTag = JSTaggedValue::RequireObjectCoercible(thread, BuiltinsString::GetThis(argv));
+    JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> lengthTag = GetCallArg(argv, 0);
+    int32_t intMaxLength = JSTaggedValue::ToInt32(thread, lengthTag);
+    int32_t stringLength = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
+    if (intMaxLength <= stringLength) {
+        return thisHandle.GetTaggedValue();
+    }
+    JSHandle<JSTaggedValue> fillString = GetCallArg(argv, 1);
+    std::u16string stringBuilder;
+    if (fillString->IsUndefined()) {
+        stringBuilder = u" ";
+    } else {
+        JSHandle<EcmaString> filler = JSTaggedValue::ToString(thread, fillString);
+        stringBuilder = EcmaStringAccessor(filler).ToU16String();
+    }
+    if (stringBuilder.size() == 0) {
+        return thisHandle.GetTaggedValue();
+    }
+    std::u16string u16strSearch = EcmaStringAccessor(thisHandle).ToU16String();
+    int32_t fillLen = intMaxLength - stringLength;
+    int32_t len = static_cast<int32_t>(stringBuilder.length());
+    std::u16string fiString;
+    for (int32_t i = 0; i < fillLen; ++i) {
+        fiString += stringBuilder[i % len];
+    }
+    std::u16string resultString;
+    if (isStart) {
+        resultString = fiString + u16strSearch;
+    } else {
+        resultString = u16strSearch + fiString;
+    }
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewFromUtf16Literal(reinterpret_cast<const uint16_t *>(resultString.c_str()),
+                                        resultString.size()).GetTaggedValue();
 }
 
 int32_t BuiltinsString::ConvertDoubleToInt(double d)

@@ -141,7 +141,7 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, Of_001)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("French", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("French", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // Of(419, type(region))
@@ -165,7 +165,7 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, Of_002)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("Latin America", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("Latin America", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // Of(EUR, type(currency))
@@ -189,7 +189,7 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, Of_003)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("Euro", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("Euro", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // SupportedLocalesOf("best fit")
@@ -213,7 +213,7 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, SupportedLocalesOf_001)
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
     EXPECT_EQ(elements->GetLength(), 1U);
     JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de-id", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // SupportedLocalesOf("look up")
@@ -243,7 +243,7 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, SupportedLocalesOf_002)
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
     EXPECT_EQ(elements->GetLength(), 1U);
     JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(0));
-    EXPECT_STREQ("de-DE-u-co-phonebk", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("de-DE-u-co-phonebk", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsDisplayNamesTest, ResolvedOptions)

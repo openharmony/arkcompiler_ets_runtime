@@ -189,7 +189,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, Format_001)
     JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultStr(thread, result2);
-    EXPECT_STREQ("Sun, 11/1/2020, 24:00:00", CString(resultStr->GetCString().get()).c_str());
+    EXPECT_STREQ("Sun, 11/1/2020, 24:00:00", EcmaStringAccessor(resultStr).ToCString().c_str());
 }
 
 // Format.Tostring(pt-BR)
@@ -229,7 +229,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, Format_002)
     JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultStr(thread, result2);
-    CString resStr = resultStr->GetCString().get();
+    CString resStr = EcmaStringAccessor(resultStr).ToCString();
     // the index of string "qui" is zero.
     EXPECT_TRUE(resStr.find("qui") == 0);
     // the index of string "11/06/2020 24:00:00" is not zero.
@@ -279,7 +279,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRange_001)
 
     JSHandle<EcmaString> handleStr(thread, result);
     JSHandle<EcmaString> resultStr = factory->NewFromUtf8("2020/11/1周日 24:00:00 – 2021/7/1周四 24:00:00");
-    EXPECT_EQ(handleStr->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleStr, *resultStr), 0);
 }
 
 // FormatRange(en)
@@ -304,7 +304,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRange_002)
 
     JSHandle<EcmaString> handleStr(thread, result);
     JSHandle<EcmaString> resultStr = factory->NewFromUtf8("Fri, 1/1/2021, 24:00:00 – Mon, 3/1/2021, 24:00:00");
-    EXPECT_EQ(handleStr->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleStr, *resultStr), 0);
 }
 
 HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRangeToParts)
@@ -382,7 +382,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, SupportedLocalesOf_001)
     EXPECT_EQ(elements->GetLength(), 1U);
 
     JSHandle<EcmaString> resultStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de-id", CString(resultStr->GetCString().get()).c_str());
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(resultStr).ToCString().c_str());
 }
 
 // SupportedLocalesOf("look up")
@@ -414,6 +414,6 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, SupportedLocalesOf_002)
     EXPECT_EQ(elements->GetLength(), 1U);
 
     JSHandle<EcmaString> resultStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de", CString(resultStr->GetCString().get()).c_str());
+    EXPECT_STREQ("id-u-co-pinyin-de", EcmaStringAccessor(resultStr).ToCString().c_str());
 }
 }  // namespace panda::test

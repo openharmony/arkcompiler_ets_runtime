@@ -662,21 +662,14 @@ int32_t NumberHelper::DoubleInRangeInt32(double d)
 
 JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal)
 {
-    Span<const uint8_t> str;
     auto strObj = static_cast<EcmaString *>(strVal->GetTaggedObject());
-    size_t strLen = strObj->GetLength();
+    size_t strLen = EcmaStringAccessor(strObj).GetLength();
     if (strLen == 0) {
         return BigInt::Int32ToBigInt(thread, 0).GetTaggedValue();
     }
-    [[maybe_unused]] CVector<uint8_t> buf; // Span will use buf.data(), shouldn't define inside 'if'
-    if (UNLIKELY(strObj->IsUtf16())) {
-        size_t len = base::utf_helper::Utf16ToUtf8Size(strObj->GetDataUtf16(), strLen) - 1;
-        buf.reserve(len);
-        len = base::utf_helper::ConvertRegionUtf16ToUtf8(strObj->GetDataUtf16(), buf.data(), strLen, len, 0);
-        str = Span<const uint8_t>(buf.data(), len);
-    } else {
-        str = Span<const uint8_t>(strObj->GetDataUtf8(), strLen);
-    }
+    [[maybe_unused]] CVector<uint8_t> buf;
+    Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(buf);
+
     auto p = const_cast<uint8_t *>(str.begin());
     auto end = str.end();
     // 1. skip space and line terminal

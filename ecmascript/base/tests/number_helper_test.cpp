@@ -86,37 +86,37 @@ HWTEST_F_L0(NumberHelperTest, DoubleToString_001)
     radix = 2;
     JSHandle<EcmaString> resultStr = factory->NewFromASCII("100101");
     JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToString(thread, 37, radix));
-    EXPECT_EQ(handleEcmaStr1->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr1, *resultStr), 0);
 
     radix = 3;
     resultStr = factory->NewFromASCII("-1101");
     JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToString(thread, -37, radix));
-    EXPECT_EQ(handleEcmaStr2->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr2, *resultStr), 0);
 
     radix = 4;
     resultStr = factory->NewFromASCII("211");
     JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToString(thread, 37, radix));
-    EXPECT_EQ(handleEcmaStr3->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr3, *resultStr), 0);
 
     radix = 5;
     resultStr = factory->NewFromASCII("122");
     JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToString(thread, 37, radix));
-    EXPECT_EQ(handleEcmaStr4->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr4, *resultStr), 0);
 
     radix = 6;
     resultStr = factory->NewFromASCII("101");
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToString(thread, 37, radix));
-    EXPECT_EQ(handleEcmaStr6->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr6, *resultStr), 0);
 
     radix = 7;
     resultStr = factory->NewFromASCII("52");
     JSHandle<EcmaString> handleEcmaStr7(thread, NumberHelper::DoubleToString(thread, 37, radix));
-    EXPECT_EQ(handleEcmaStr7->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr7, *resultStr), 0);
 
     radix = 36;
     resultStr = factory->NewFromASCII("11");
     JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToString(thread, 37, radix));
-    EXPECT_EQ(handleEcmaStr5->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr5, *resultStr), 0);
 }
 
 HWTEST_F_L0(NumberHelperTest, DoubleToString_002)
@@ -127,28 +127,28 @@ HWTEST_F_L0(NumberHelperTest, DoubleToString_002)
     JSHandle<EcmaString> resultStr =
         factory->NewFromASCII("10.111111011011000110000101010010001010100110111101");
     JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToString(thread, 2.99099, radix));
-    EXPECT_EQ(handleEcmaStr1->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr1, *resultStr), 0);
 
     resultStr = factory->NewFromASCII("10.000000101001000000000011111011101010001000001001101");
     JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToString(thread, 2.01001, radix));
-    EXPECT_EQ(handleEcmaStr2->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr2, *resultStr), 0);
 
     resultStr = factory->NewFromASCII("10.100000000000011010001101101110001011101011000111001");
     JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToString(thread, 2.5001, radix));
-    EXPECT_EQ(handleEcmaStr3->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr3, *resultStr), 0);
 
     radix = 36;
     resultStr = factory->NewFromASCII("0.i04nym8equ");
     JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToString(thread, 0.5001, radix));
-    EXPECT_EQ(handleEcmaStr4->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr4, *resultStr), 0);
 
     resultStr = factory->NewFromASCII("0.wej2d0mt58f");
     JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToString(thread, 0.9001, radix));
-    EXPECT_EQ(handleEcmaStr5->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr5, *resultStr), 0);
 
     resultStr = factory->NewFromASCII("0.0d384dldb02");
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToString(thread, 0.0101, radix));
-    EXPECT_EQ(handleEcmaStr6->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr6, *resultStr), 0);
 }
 
 /**
@@ -313,32 +313,32 @@ HWTEST_F_L0(NumberHelperTest, DoubleToExponential)
     radix = -4;
     JSHandle<EcmaString> resultStr = factory->NewFromASCII("1.239876e+2");
     JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToExponential(thread, 123.9876, radix));
-    EXPECT_EQ(handleEcmaStr1->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr1, *resultStr), 0);
 
     radix = -6;
     resultStr = factory->NewFromASCII("1.239876e+2");
     JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToExponential(thread, 123.9876, radix));
-    EXPECT_EQ(handleEcmaStr2->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr2, *resultStr), 0);
 
     radix = 2;
     resultStr = factory->NewFromASCII("1.24e+2");
     JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToExponential(thread, 123.567, radix));
-    EXPECT_EQ(handleEcmaStr3->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr3, *resultStr), 0);
 
     radix = 6;
     resultStr = factory->NewFromASCII("1.234567e+2");
     JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToExponential(thread, 123.4567, radix));
-    EXPECT_EQ(handleEcmaStr4->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr4, *resultStr), 0);
 
     radix = 7;
     resultStr = factory->NewFromASCII("1.2345670e+2");
     JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToExponential(thread, 123.45670, radix));
-    EXPECT_EQ(handleEcmaStr5->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr5, *resultStr), 0);
 
     radix = 3;
     resultStr = factory->NewFromASCII("1.230e+2");
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToExponential(thread, 123.0123, radix));
-    EXPECT_EQ(handleEcmaStr6->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr6, *resultStr), 0);
 }
 
 HWTEST_F_L0(NumberHelperTest, DoubleToFixed)
@@ -349,27 +349,27 @@ HWTEST_F_L0(NumberHelperTest, DoubleToFixed)
     radix = 1;
     JSHandle<EcmaString> resultStr = factory->NewFromASCII("123.5");
     JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(handleEcmaStr1->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr1, *resultStr), 0);
 
     radix = 2;
     resultStr = factory->NewFromASCII("123.46");
     JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(handleEcmaStr2->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr2, *resultStr), 0);
 
     radix = 3;
     resultStr = factory->NewFromASCII("123.456");
     JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(handleEcmaStr3->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr3, *resultStr), 0);
 
     radix = 4;
     resultStr = factory->NewFromASCII("123.4560");
     JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(handleEcmaStr4->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr4, *resultStr), 0);
 
     radix = 0;
     resultStr = factory->NewFromASCII("123");
     JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(handleEcmaStr5->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr5, *resultStr), 0);
 }
 
 /**
@@ -389,24 +389,24 @@ HWTEST_F_L0(NumberHelperTest, DoubleToPrecision)
     radix = 1;
     JSHandle<EcmaString> resultStr = factory->NewFromASCII("0");
     JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToPrecision(thread, 0.0, radix));
-    EXPECT_EQ(handleEcmaStr1->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr1, *resultStr), 0);
 
     resultStr = factory->NewFromASCII("0.0001");
     JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToPrecision(thread, 0.0001, radix));
-    EXPECT_EQ(handleEcmaStr2->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr2, *resultStr), 0);
 
     resultStr = factory->NewFromASCII("1e-7");
     JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToPrecision(thread, 0.0000001, radix));
-    EXPECT_EQ(handleEcmaStr3->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr3, *resultStr), 0);
 
     resultStr = factory->NewFromASCII("1e+3");
     JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToPrecision(thread, 1000.1234, radix));
-    EXPECT_EQ(handleEcmaStr5->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr5, *resultStr), 0);
 
     radix = 6;
     resultStr = factory->NewFromASCII("1000.12");
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToPrecision(thread, 1000.1234, radix));
-    EXPECT_EQ(handleEcmaStr6->Compare(*resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr6, *resultStr), 0);
 }
 
 /**
@@ -423,43 +423,44 @@ HWTEST_F_L0(NumberHelperTest, StringToDoubleWithRadix)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     int radix;
     Span<const uint8_t> sp;
+    [[maybe_unused]] CVector<uint8_t> buf;
     JSHandle<EcmaString> resultStr;
 
     radix = 3;
     resultStr = factory->NewFromASCII("-12");
-    sp = Span<const uint8_t>(resultStr->GetDataUtf8(), resultStr->GetUtf8Length() - 1);
+    sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
     // 5 = 1 * 3 + 2
     EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), -5);
 
     radix = 4;
     resultStr = factory->NewFromASCII("1234567");
-    sp = Span<const uint8_t>(resultStr->GetDataUtf8(), resultStr->GetUtf8Length() - 1);
+    sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
     // 27 = (1 * 4 + 2) * 4 + 3
     EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 27);
     // string has space
     resultStr = factory->NewFromASCII(" 12345 ");
-    sp = Span<const uint8_t>(resultStr->GetDataUtf8(), resultStr->GetUtf8Length() - 1);
+    sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
     EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 27);
 
     radix = 16;
     resultStr = factory->NewFromASCII("0x00ff");
-    sp = Span<const uint8_t>(resultStr->GetDataUtf8(), resultStr->GetUtf8Length() - 1);
+    sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
     EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 255);
 
     resultStr = factory->NewFromASCII("0x0010");
-    sp = Span<const uint8_t>(resultStr->GetDataUtf8(), resultStr->GetUtf8Length() - 1);
+    sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
     EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 16);
 
     resultStr = factory->NewFromASCII("0x1234");
-    sp = Span<const uint8_t>(resultStr->GetDataUtf8(), resultStr->GetUtf8Length() - 1);
+    sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
     EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 4660);
     // string has space
     resultStr = factory->NewFromASCII(" 0x12  ");
-    sp = Span<const uint8_t>(resultStr->GetDataUtf8(), resultStr->GetUtf8Length() - 1);
+    sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
     EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 18);
 
     resultStr = factory->NewFromASCII("0x1234XX");
-    sp = Span<const uint8_t>(resultStr->GetDataUtf8(), resultStr->GetUtf8Length() - 1);
+    sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
     EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 4660);
 }
 
@@ -529,11 +530,11 @@ HWTEST_F_L0(NumberHelperTest, NumberToString)
     double d = 8.1999999999999993;
     JSHandle<EcmaString> result = NumberHelper::NumberToString(thread, JSTaggedValue(d));
     JSHandle<EcmaString> target = factory->NewFromASCII("8.2");
-    EXPECT_EQ(result->Compare(*target), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*result, *target), 0);
 
     double d2 = 0.30000000000000004;
     JSHandle<EcmaString> result1 = NumberHelper::NumberToString(thread, JSTaggedValue(d2));
     JSHandle<EcmaString> target1 = factory->NewFromASCII("0.30000000000000004");
-    EXPECT_EQ(result1->Compare(*target1), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*result1, *target1), 0);
 }
 } // namespace panda::ecmascript

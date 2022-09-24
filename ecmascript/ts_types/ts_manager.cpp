@@ -122,7 +122,7 @@ int TSManager::GetTypeIndexFromExportTable(JSHandle<EcmaString> target, JSHandle
     uint32_t length = capacity / 2 ;
     for (uint32_t i = 0; i < length; i++) {
         EcmaString *valueString = EcmaString::Cast(exportTable->Get(i).GetTaggedObject());
-        if (EcmaString::StringsAreEqual(*target, valueString)) {
+        if (EcmaStringAccessor::StringsAreEqual(*target, valueString)) {
             EcmaString *localIdString = EcmaString::Cast(exportTable->Get(i + 1).GetTaggedObject());
             return CStringToULL(ConvertToString(localIdString));
         }
@@ -617,7 +617,7 @@ void TSManager::SortConstantPoolInfos()
 
     for (uint32_t i = 0; i < len; i += CONSTANTPOOL_INFOS_ITEM_SIZE) {
         EcmaString *key = EcmaString::Cast(constantPoolInfos->Get(i).GetTaggedObject());
-        indexTable.emplace_back(std::make_pair(key->GetHashcode(), indexTable.size()));
+        indexTable.emplace_back(std::make_pair(EcmaStringAccessor(key).GetHashcode(), indexTable.size()));
     }
 
     std::sort(indexTable.begin(), indexTable.end(), [](std::pair<uint32_t, uint32_t> first,
@@ -656,7 +656,7 @@ JSHandle<ConstantPool> TSManager::RestoreConstantPool(const JSPandaFile* pf, uin
     JSHandle<TaggedArray> constantPoolInfos = GetConstantPoolInfos();
     std::string keyStr = std::to_string(pf->GetFileUniqId());
     JSHandle<EcmaString> key = vm_->GetFactory()->NewFromStdString(keyStr);
-    uint32_t keyHash = key->GetHashcode();
+    uint32_t keyHash = EcmaStringAccessor(key).GetHashcode();
     int leftBound = BinarySearch(keyHash, CONSTANTPOOL_INFOS_ITEM_SIZE);
     int rightBound = BinarySearch(keyHash, CONSTANTPOOL_INFOS_ITEM_SIZE, false);
     if (leftBound == -1 || rightBound == -1) {
@@ -667,7 +667,7 @@ JSHandle<ConstantPool> TSManager::RestoreConstantPool(const JSPandaFile* pf, uin
     while (leftBound <= rightBound) {
         uint32_t currentKeyIndex = static_cast<uint32_t>(leftBound) * CONSTANTPOOL_INFOS_ITEM_SIZE;
         EcmaString *nowStr = EcmaString::Cast(constantPoolInfos->Get(currentKeyIndex).GetTaggedObject());
-        if (EcmaString::StringsAreEqual(nowStr, *key)) {
+        if (EcmaStringAccessor::StringsAreEqual(nowStr, *key)) {
             valueArray.Update(constantPoolInfos->Get(currentKeyIndex + 1));
         }
         leftBound++;
@@ -709,7 +709,7 @@ int TSManager::BinarySearch(uint32_t target, uint32_t itemSize, bool findLeftBou
     while (left <= right) {
         int middle = left + (right - left) / 2;
         EcmaString *middleStr = EcmaString::Cast(constantPoolInfos->Get(middle * itemSize).GetTaggedObject());
-        uint32_t nowHashCode = middleStr->GetHashcode();
+        uint32_t nowHashCode = EcmaStringAccessor(middleStr).GetHashcode();
         if (target < nowHashCode) {
             right = middle - 1;
         } else if (target > nowHashCode) {
@@ -729,7 +729,7 @@ int TSManager::BinarySearch(uint32_t target, uint32_t itemSize, bool findLeftBou
     }
 
     EcmaString *finalStr = EcmaString::Cast(constantPoolInfos->Get(finalIdx * itemSize).GetTaggedObject());
-    uint32_t finalStrHashCode = finalStr->GetHashcode();
+    uint32_t finalStrHashCode = EcmaStringAccessor(finalStr).GetHashcode();
 
     return finalStrHashCode == target? finalIdx: -1;
 }
@@ -788,7 +788,7 @@ int TSModuleTable::GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiP
     uint32_t length = GetNumberOfTSTypeTables();
     for (uint32_t i = 0; i < length; i ++) {
         JSHandle<EcmaString> valueString = GetAmiPathByModuleId(thread, i);
-        if (EcmaString::StringsAreEqual(*amiPath, *valueString)) {
+        if (EcmaStringAccessor::StringsAreEqual(*amiPath, *valueString)) {
             return i;
         }
     }

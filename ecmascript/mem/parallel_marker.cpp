@@ -165,7 +165,7 @@ uintptr_t CompressGCMarker::AllocateForwardAddress(uint32_t threadId, size_t siz
     if (Heap::ShouldMoveToRoSpace(JSTaggedValue(object))) {
         if (JSTaggedValue(object).IsString()) {
             // calculate and set hashcode for read-only ecmastring in advance
-            EcmaString::Cast(object)->GetHashcode();
+            EcmaStringAccessor(object).GetHashcode();
         }
         return AllocateReadOnlySpace(size);
     } else {

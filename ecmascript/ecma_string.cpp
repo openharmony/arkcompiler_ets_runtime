@@ -19,11 +19,10 @@
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {
-bool EcmaString::compressedStringsEnabled = true;
 static constexpr int SMALL_STRING_SIZE = 128;
 
-EcmaString *EcmaString::Concat(const JSHandle<EcmaString> &str1Handle, const JSHandle<EcmaString> &str2Handle,
-                               const EcmaVM *vm)
+EcmaString *EcmaString::Concat(const EcmaVM *vm,
+    const JSHandle<EcmaString> &str1Handle, const JSHandle<EcmaString> &str2Handle)
 {
     // allocator may trig gc and move src, need to hold it
     EcmaString *string1 = *str1Handle;
@@ -40,8 +39,8 @@ EcmaString *EcmaString::Concat(const JSHandle<EcmaString> &str1Handle, const JSH
     } else if (length2 == 0) {
         return string1;
     }
-    bool compressed = GetCompressedStringsEnabled() && (!string1->IsUtf16() && !string2->IsUtf16());
-    auto newString = AllocStringObject(newLength, compressed, vm);
+    bool compressed = (!string1->IsUtf16() && !string2->IsUtf16());
+    auto newString = AllocStringObject(vm, newLength, compressed);
 
     // retrieve strings after gc
     string1 = *str1Handle;
@@ -81,8 +80,8 @@ EcmaString *EcmaString::Concat(const JSHandle<EcmaString> &str1Handle, const JSH
 }
 
 /* static */
-EcmaString *EcmaString::FastSubString(const JSHandle<EcmaString> &src, uint32_t start, uint32_t utf16Len,
-                                      const EcmaVM *vm)
+EcmaString *EcmaString::FastSubString(const EcmaVM *vm,
+    const JSHandle<EcmaString> &src, uint32_t start, uint32_t utf16Len)
 {
     if (src->IsUtf8()) {
         return FastSubUtf8String(vm, src, start, utf16Len);
@@ -103,9 +102,8 @@ int32_t CompareStringSpan(Span<T1> &lhsSp, Span<T2> &rhsSp, int32_t count)
     return 0;
 }
 
-int32_t EcmaString::Compare(const EcmaString *rhs) const
+int32_t EcmaString::Compare(EcmaString *lhs, EcmaString *rhs)
 {
-    const EcmaString *lhs = this;
     if (lhs == rhs) {
         return 0;
     }
@@ -175,12 +173,36 @@ int32_t EcmaString::IndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_
     return -1;
 }
 
-int32_t EcmaString::IndexOf(const EcmaString *rhs, int32_t pos) const
+template<typename T1, typename T2>
+int32_t EcmaString::LastIndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos)
 {
-    if (rhs == nullptr) {
+    int rhsSize = rhsSp.size();
+    ASSERT(rhsSize > 0);
+    auto first = rhsSp[0];
+    for (int32_t i = pos; i >= 0; i--) {
+        if (lhsSp[i] != first) {
+            continue;
+        }
+        /* Found first character, now look at the rest of rhsSp */
+        int j = 1;
+        while (j < rhsSize) {
+            if (rhsSp[j] != lhsSp[i + j]) {
+                break;
+            }
+            j++;
+        }
+        if (j == rhsSize) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int32_t EcmaString::IndexOf(EcmaString *lhs, EcmaString *rhs, int pos)
+{
+    if (lhs == nullptr || rhs == nullptr) {
         return -1;
     }
-    const EcmaString *lhs = this;
     int32_t lhsCount = static_cast<int32_t>(lhs->GetLength());
     int32_t rhsCount = static_cast<int32_t>(rhs->GetLength());
 
@@ -209,16 +231,69 @@ int32_t EcmaString::IndexOf(const EcmaString *rhs, int32_t pos) const
         Span<const uint16_t> rhsSp(rhs->GetDataUtf16(), rhsCount);
         return EcmaString::IndexOf(lhsSp, rhsSp, pos, max);
     } else if (rhs->IsUtf16()) {
-        Span<const uint8_t> lhsSp(lhs->GetDataUtf8(), lhsCount);
-        Span<const uint16_t> rhsSp(rhs->GetDataUtf16(), rhsCount);
-        return EcmaString::IndexOf(lhsSp, rhsSp, pos, max);
+        return -1;
     } else {  // NOLINT(readability-else-after-return)
         Span<const uint16_t> lhsSp(lhs->GetDataUtf16(), lhsCount);
         Span<const uint8_t> rhsSp(rhs->GetDataUtf8(), rhsCount);
         return EcmaString::IndexOf(lhsSp, rhsSp, pos, max);
     }
+}
 
-    return -1;
+int32_t EcmaString::LastIndexOf(EcmaString *lhs, EcmaString *rhs, int pos)
+{
+    if (lhs == nullptr || rhs == nullptr) {
+        return -1;
+    }
+
+    int32_t lhsCount = static_cast<int32_t>(lhs->GetLength());
+    int32_t rhsCount = static_cast<int32_t>(rhs->GetLength());
+    if (lhsCount < rhsCount) {
+        return -1;
+    }
+
+    if (pos < 0) {
+        pos = 0;
+    }
+
+    if (pos > lhsCount) {
+        pos = lhsCount;
+    }
+
+    if (pos + rhsCount > lhsCount) {
+        pos = lhsCount - rhsCount;
+    }
+
+    if (rhsCount == 0) {
+        return pos;
+    }
+
+    if (rhs->IsUtf8() && lhs->IsUtf8()) {
+        Span<const uint8_t> lhsSp(lhs->GetDataUtf8(), lhsCount);
+        Span<const uint8_t> rhsSp(rhs->GetDataUtf8(), rhsCount);
+        return EcmaString::LastIndexOf(lhsSp, rhsSp, pos);
+    } else if (rhs->IsUtf16() && lhs->IsUtf16()) {  // NOLINT(readability-else-after-return)
+        Span<const uint16_t> lhsSp(lhs->GetDataUtf16(), lhsCount);
+        Span<const uint16_t> rhsSp(rhs->GetDataUtf16(), rhsCount);
+        return EcmaString::LastIndexOf(lhsSp, rhsSp, pos);
+    } else if (rhs->IsUtf16()) {
+        return -1;
+    } else {  // NOLINT(readability-else-after-return)
+        Span<const uint16_t> lhsSp(lhs->GetDataUtf16(), lhsCount);
+        Span<const uint8_t> rhsSp(rhs->GetDataUtf8(), rhsCount);
+        return EcmaString::LastIndexOf(lhsSp, rhsSp, pos);
+    }
+}
+
+std::u16string EcmaString::ToU16String(uint32_t len)
+{
+    uint32_t length = len > 0 ? len : GetLength();
+    std::u16string result;
+    if (IsUtf16()) {
+        result = base::StringHelper::Utf16ToU16String(GetDataUtf16(), length);
+    } else {
+        result = base::StringHelper::Utf8ToU16String(GetDataUtf8(), length);
+    }
+    return result;
 }
 
 // static
@@ -233,9 +308,6 @@ bool EcmaString::CanBeCompressed(const EcmaString *string)
 // static
 bool EcmaString::CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len)
 {
-    if (!compressedStringsEnabled) {
-        return false;
-    }
     bool isCompressed = true;
     uint32_t index = 0;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -253,9 +325,6 @@ bool EcmaString::CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len)
 /* static */
 bool EcmaString::CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len)
 {
-    if (!compressedStringsEnabled) {
-        return false;
-    }
     bool isCompressed = true;
     Span<const uint16_t> data(utf16Data, utf16Len);
     for (uint32_t i = 0; i < utf16Len; i++) {
@@ -422,14 +491,9 @@ static int32_t ComputeHashForUtf8(const uint8_t *utf8Data, uint32_t utf8DataLeng
 uint32_t EcmaString::ComputeHashcode(uint32_t hashSeed) const
 {
     int32_t hash;
-    if (compressedStringsEnabled) {
-        if (!IsUtf16()) {
-            hash = ComputeHashForData(GetDataUtf8(), GetLength(), hashSeed);
-        } else {
-            hash = ComputeHashForData(GetDataUtf16(), GetLength(), hashSeed);
-        }
+    if (!IsUtf16()) {
+        hash = ComputeHashForData(GetDataUtf8(), GetLength(), hashSeed);
     } else {
-        ASSERT(static_cast<size_t>(GetLength())<(std::numeric_limits<size_t>::max()>>1U));
         hash = ComputeHashForData(GetDataUtf16(), GetLength(), hashSeed);
     }
     return static_cast<uint32_t>(hash);
@@ -473,5 +537,170 @@ bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len, cons
     Span<const uint16_t> data1(tmpBuffer.data(), len);
     Span<const uint16_t> data2(utf16Data, utf16Len);
     return EcmaString::StringsAreEquals(data1, data2);
+}
+
+bool EcmaString::ToElementIndex(uint32_t *index)
+{
+    uint32_t len = GetLength();
+    if (UNLIKELY(len == 0 || len > MAX_ELEMENT_INDEX_LEN)) {  // NOLINTNEXTLINEreadability-magic-numbers)
+        return false;
+    }
+    if (UNLIKELY(IsUtf16())) {
+        return false;
+    }
+
+    uint32_t c = GetDataUtf8()[0];
+    uint64_t n = 0;
+    if (c == '0') {
+        *index = 0;
+        return len == 1;
+    }
+    if (c > '0' && c <= '9') {
+        n = c - '0';
+        for (uint32_t i = 1; i < len; i++) {
+            c = GetDataUtf8()[i];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            if (c < '0' || c > '9') {
+                return false;
+            }
+            // NOLINTNEXTLINE(readability-magic-numbers)
+            n = n * 10 + (c - '0');  // 10: decimal factor
+        }
+        if (n < JSObject::MAX_ELEMENT_INDEX) {
+            *index = n;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool EcmaString::ToTypedArrayIndex(uint32_t *index)
+{
+    uint32_t len = GetLength();
+    if (UNLIKELY(len == 0 || len > MAX_ELEMENT_INDEX_LEN)) {
+        return false;
+    }
+    if (UNLIKELY(IsUtf16())) {
+        return false;
+    }
+
+    uint32_t c = GetDataUtf8()[0];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    uint64_t n  = 0;
+    if (c == '0') {
+        *index = 0;
+        return len == 1;
+    }
+    if (c > '0' && c <= '9') {
+        n = c - '0';
+        for (uint32_t i = 1; i < len; i++) {
+            c = GetDataUtf8()[i];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            if (c >= '0' && c <= '9') {
+                // NOLINTNEXTLINE(readability-magic-numbers)
+                n = n * 10 + (c - '0');  // 10: decimal factor
+            } else if (c == '.') {
+                n = JSObject::MAX_ELEMENT_INDEX;
+                break;
+            } else {
+                return false;
+            }
+        }
+        if (n < JSObject::MAX_ELEMENT_INDEX) {
+            *index = n;
+            return true;
+        } else {
+            *index = JSObject::MAX_ELEMENT_INDEX;
+            return true;
+        }
+    } else if (c == '-') {
+        *index = JSObject::MAX_ELEMENT_INDEX;
+        return true;
+    }
+    return false;
+}
+
+template<typename T>
+EcmaString *EcmaString::TrimBody(const JSThread *thread, const JSHandle<EcmaString> &src, Span<T> &data, TrimMode mode)
+{
+    uint32_t srcLen = src->GetLength();
+    uint32_t start = 0;
+    uint32_t end = srcLen - 1;
+
+    if (mode == TrimMode::TRIM || mode == TrimMode::TRIM_START) {
+        start = base::StringHelper::GetStart(data, srcLen);
+    }
+    if (mode == TrimMode::TRIM || mode == TrimMode::TRIM_END) {
+        end = base::StringHelper::GetEnd(data, start, srcLen);
+    }
+    EcmaString *res = FastSubString(thread->GetEcmaVM(), src, start, end - start + 1);
+    return res;
+}
+
+EcmaString *EcmaString::Trim(const JSThread *thread, const JSHandle<EcmaString> &src, TrimMode mode)
+{
+    uint32_t srcLen = src->GetLength();
+    if (UNLIKELY(srcLen == 0)) {
+        return EcmaString::Cast(thread->GlobalConstants()->GetEmptyString().GetTaggedObject());
+    }
+    if (src->IsUtf8()) {
+        Span<const uint8_t> data(src->GetDataUtf8(), srcLen);
+        return TrimBody(thread, src, data, mode);
+    } else {
+        Span<const uint16_t> data(src->GetDataUtf16(), srcLen);
+        return TrimBody(thread, src, data, mode);
+    }
+}
+
+EcmaStringAccessor::EcmaStringAccessor(EcmaString *string)
+{
+    ASSERT(string != nullptr);
+    string_ = string;
+}
+
+EcmaStringAccessor::EcmaStringAccessor(TaggedObject *obj)
+{
+    ASSERT(obj != nullptr);
+    string_ = EcmaString::Cast(obj);
+}
+
+EcmaStringAccessor::EcmaStringAccessor(JSTaggedValue value)
+{
+    ASSERT(value.IsString());
+    string_ = EcmaString::Cast(value.GetTaggedObject());
+}
+
+EcmaStringAccessor::EcmaStringAccessor(const JSHandle<EcmaString> &strHandle)
+    : string_(*strHandle)
+{
+}
+
+std::string EcmaStringAccessor::ToStdString(StringConvertedUsage usage)
+{
+    if (string_ == nullptr) {
+        return "";
+    }
+    bool modify = (usage != StringConvertedUsage::PRINT);
+    [[maybe_unused]] CVector<uint8_t> buf;
+    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify);
+    std::string res;
+    res.reserve(sp.size());
+    for (const auto &c : sp) {
+        res.push_back(c);
+    }
+    return res;
+}
+
+CString EcmaStringAccessor::ToCString(StringConvertedUsage usage)
+{
+    if (string_ == nullptr) {
+        return "";
+    }
+    bool modify = (usage != StringConvertedUsage::PRINT);
+    [[maybe_unused]] CVector<uint8_t> buf;
+    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify);
+    CString res;
+    res.reserve(sp.size());
+    for (const auto &c : sp) {
+        res.push_back(c);
+    }
+    return res;
 }
 }  // namespace panda::ecmascript

@@ -795,7 +795,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId)
 {
     Node *node = nullptr;
     auto originStr = static_cast<EcmaString *>(entry.GetTaggedObject());
-    size_t selfsize = originStr->ObjectSize();
+    size_t selfsize = EcmaStringAccessor(originStr).ObjectSize();
     CString strContent;
     strContent.append(EntryVisitor::ConvertKey(entry));
     node = Node::NewNode(vm_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,
@@ -825,7 +825,7 @@ Node *HeapSnapshot::GeneratePrivateStringNode(int sequenceId)
     Node *node = nullptr;
     JSTaggedValue stringValue = vm_->GetJSThread()->GlobalConstants()->GetStringString();
     auto originStr = static_cast<EcmaString *>(stringValue.GetTaggedObject());
-    size_t selfsize = originStr->ObjectSize();
+    size_t selfsize = EcmaStringAccessor(originStr).ObjectSize();
     CString strContent;
     strContent.append(EntryVisitor::ConvertKey(stringValue));
     node = Node::NewNode(vm_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,
@@ -1022,22 +1022,9 @@ CString EntryVisitor::ConvertKey(JSTaggedValue key)
         keyString = EcmaString::Cast(symbol->GetDescription().GetTaggedObject());
     }
     // convert, expensive but safe
-    uint32_t length = 0;
-    if (keyString->IsUtf8()) {
-        length = keyString->GetUtf8Length();
-        std::vector<uint8_t> buffer(length);
-        [[maybe_unused]] size_t size = keyString->CopyDataUtf8(buffer.data(), length);
-        ASSERT(size == length);
-        CString keyCopy(reinterpret_cast<char *>(buffer.data()));
-        return keyCopy;
-    } else {  // NOLINT(readability-else-after-return)
-        length = keyString->GetLength();
-        std::vector<uint16_t> buffer(length);
-        [[maybe_unused]] size_t size = keyString->CopyDataUtf16(buffer.data(), length);
-        ASSERT(size == length);
-        CString keyCopy(reinterpret_cast<char *>(buffer.data()));
-        return keyCopy;
-    }
+    auto keyPtr = EcmaStringAccessor(keyString).ToOneByteDataForced();
+    CString keyCopy(reinterpret_cast<char *>(keyPtr.get()));
+    return keyCopy;
 }
 
 Node *HeapEntryMap::FindOrInsertNode(Node *node)

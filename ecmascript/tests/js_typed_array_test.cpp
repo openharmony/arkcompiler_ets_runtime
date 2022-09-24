@@ -106,7 +106,7 @@ JSHandle<JSTypedArray> CreateNumberTypedArray(JSThread *thread, JSType jsType)
 /*
  * Feature: JSTypedArray
  * Function: ToPropKey
- * SubFunction: EcmaString::GetCString
+ * SubFunction: EcmaStringAccessor::ToCString
  * FunctionPoints: JSTaggedType Signs To EcmaString Signs
  * CaseDescription: Check whether the EcmaStrings transformed through calling ToPropKey function from TaggedTypes are
  *                  within expectations.
@@ -121,8 +121,8 @@ HWTEST_F_L0(JSTypedArrayTest, ToPropKey_001)
     JSHandle<EcmaString> handleEcmaStrPropKeyTo2 = JSHandle<EcmaString>::Cast(hnadleTagValEcmaStrPropKeyTo2);
     EXPECT_NE(0U, sizeof(handleUndefined));
     EXPECT_NE(0U, sizeof(handleHole));
-    std::unique_ptr<char[]> uniCharArrTo1(handleEcmaStrPropKeyTo1->GetCString());
-    std::unique_ptr<char[]> uniCharArrTo2(handleEcmaStrPropKeyTo2->GetCString());
+    CString uniCharArrTo1(EcmaStringAccessor(handleEcmaStrPropKeyTo1).ToCString());
+    CString uniCharArrTo2(EcmaStringAccessor(handleEcmaStrPropKeyTo2).ToCString());
     EXPECT_EQ(uniCharArrTo1[0], 'u');
     EXPECT_EQ(uniCharArrTo1[1], 'n');
     EXPECT_EQ(uniCharArrTo1[2], 'd');
@@ -139,7 +139,7 @@ HWTEST_F_L0(JSTypedArrayTest, ToPropKey_001)
 /*
  * Feature: JSTypedArray
  * Function: ToPropKey
- * SubFunction: EcmaString::GetCString
+ * SubFunction: EcmaStringAccessor::ToCString
  * FunctionPoints: Number Signs To EcmaString Signs
  * CaseDescription: Check whether the EcmaStrings transformed through calling ToPropKey function from Numbers are
  *                  within expectations.
@@ -158,10 +158,10 @@ HWTEST_F_L0(JSTypedArrayTest, ToPropKey_002)
     JSHandle<EcmaString> handleEcmaStrPropKeyTo2 = JSHandle<EcmaString>::Cast(hnadleTagValEcmaStrPropKeyTo2);
     JSHandle<EcmaString> handleEcmaStrPropKeyTo3 = JSHandle<EcmaString>::Cast(hnadleTagValEcmaStrPropKeyTo3);
     JSHandle<EcmaString> handleEcmaStrPropKeyTo4 = JSHandle<EcmaString>::Cast(hnadleTagValEcmaStrPropKeyTo4);
-    std::unique_ptr<char[]> uniCharArrTo1(handleEcmaStrPropKeyTo1->GetCString());
-    std::unique_ptr<char[]> uniCharArrTo2(handleEcmaStrPropKeyTo2->GetCString());
-    std::unique_ptr<char[]> uniCharArrTo3(handleEcmaStrPropKeyTo3->GetCString());
-    std::unique_ptr<char[]> uniCharArrTo4(handleEcmaStrPropKeyTo4->GetCString());
+    CString uniCharArrTo1(EcmaStringAccessor(handleEcmaStrPropKeyTo1).ToCString());
+    CString uniCharArrTo2(EcmaStringAccessor(handleEcmaStrPropKeyTo2).ToCString());
+    CString uniCharArrTo3(EcmaStringAccessor(handleEcmaStrPropKeyTo3).ToCString());
+    CString uniCharArrTo4(EcmaStringAccessor(handleEcmaStrPropKeyTo4).ToCString());
     EXPECT_EQ(uniCharArrTo1[0], '0');
     EXPECT_EQ(uniCharArrTo1[1], 0); // "0"
     EXPECT_EQ(uniCharArrTo2[0], '-');

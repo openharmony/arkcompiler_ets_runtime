@@ -192,7 +192,7 @@ void TSTypeTable::CheckModule(JSThread *thread, const TSManager* tsManager,  con
     if (entry == -1) {
         bool flag = false;
         for (const auto it : recordImportModules) {
-            if (EcmaString::StringsAreEqual(*it, *target)) {
+            if (EcmaStringAccessor::StringsAreEqual(*it, *target)) {
                 flag = true;
                 break;
             }

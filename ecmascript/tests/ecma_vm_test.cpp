@@ -41,7 +41,7 @@ public:
 };
 
 /*
- * @tc.name: SetCompressedStringsEnabled
+ * @tc.name: CreateEcmaVMInTwoWays
  * @tc.desc: Create EcmaVM in 2 ways, check the Options state
  * @tc.type: FUNC
  * @tc.require:

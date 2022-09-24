@@ -69,7 +69,7 @@ public:
     uint32_t GetStringLength() const
     {
         ASSERT(IsString());
-        return EcmaString::Cast(GetValue().GetTaggedObject())->GetLength();
+        return EcmaStringAccessor(GetValue()).GetLength();
     }
 
     // ES6 9.4.3 String Exotic Objects

@@ -62,14 +62,14 @@ public:
 
         auto *nameString = static_cast<EcmaString *>(fileName.GetTaggedObject());
         auto *otherString = static_cast<EcmaString *>(other.GetTaggedObject());
-        return EcmaString::StringsAreEqual(nameString, otherString);
+        return EcmaStringAccessor::StringsAreEqual(nameString, otherString);
     }
 
     static inline uint32_t Hash(const JSTaggedValue &key)
     {
         ASSERT(key.IsString());
         EcmaString *nameStr = static_cast<EcmaString *>(key.GetTaggedObject());
-        return nameStr->GetHashcode();
+        return EcmaStringAccessor(nameStr).GetHashcode();
     }
 
     static const int DEFAULT_ELEMENTS_NUMBER = 64;

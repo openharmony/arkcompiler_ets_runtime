@@ -105,7 +105,7 @@ public:
         }
         EcmaString *srcString = EcmaString::Cast(src.GetDescription().GetTaggedObject());
         EcmaString *dstString = EcmaString::Cast(dst.GetDescription().GetTaggedObject());
-        return EcmaString::StringsAreEqual(srcString, dstString);
+        return EcmaStringAccessor::StringsAreEqual(srcString, dstString);
     }
 
 public:

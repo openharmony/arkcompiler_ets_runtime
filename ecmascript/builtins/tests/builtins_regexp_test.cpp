@@ -96,8 +96,8 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpConstructor1)
     JSHandle<JSTaggedValue> originalSource(thread, jsRegexp->GetOriginalSource());
     uint8_t flagsBits = static_cast<uint8_t>(jsRegexp->GetOriginalFlags().GetInt());
     JSHandle<JSTaggedValue> originalFlags(thread, BuiltinsRegExp::FlagsBitsToString(thread, flagsBits));
-    ASSERT_EQ(static_cast<EcmaString *>(originalSource->GetTaggedObject())->Compare(*pattern), 0);
-    ASSERT_EQ(static_cast<EcmaString *>(originalFlags->GetTaggedObject())->Compare(*flags), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(originalSource->GetTaggedObject()), *pattern), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(originalFlags->GetTaggedObject()), *flags), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, RegExpConstructor2)
@@ -131,8 +131,8 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpConstructor2)
     JSHandle<JSTaggedValue> originalSource(thread, jsRegexp->GetOriginalSource());
     uint8_t flagsBits = static_cast<uint8_t>(jsRegexp->GetOriginalFlags().GetInt());
     JSHandle<JSTaggedValue> originalFlags(thread, BuiltinsRegExp::FlagsBitsToString(thread, flagsBits));
-    ASSERT_EQ(static_cast<EcmaString *>(originalSource->GetTaggedObject())->Compare(*pattern), 0);
-    ASSERT_EQ(static_cast<EcmaString *>(originalFlags->GetTaggedObject())->Compare(*flags), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(originalSource->GetTaggedObject()), *pattern), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(originalFlags->GetTaggedObject()), *flags), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, RegExpConstructor3)
@@ -166,8 +166,8 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpConstructor3)
     JSHandle<JSTaggedValue> originalSource(thread, jsRegexp->GetOriginalSource());
     uint8_t flagsBits = static_cast<uint8_t>(jsRegexp->GetOriginalFlags().GetInt());
     JSHandle<JSTaggedValue> originalFlags(thread, BuiltinsRegExp::FlagsBitsToString(thread, flagsBits));
-    ASSERT_EQ(static_cast<EcmaString *>(originalSource->GetTaggedObject())->Compare(*pattern1), 0);
-    ASSERT_EQ(static_cast<EcmaString *>(originalFlags->GetTaggedObject())->Compare(*flags2), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(originalSource->GetTaggedObject()), *pattern1), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(originalFlags->GetTaggedObject()), *flags2), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, GetSource1)
@@ -184,7 +184,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, GetSource1)
     JSHandle<JSTaggedValue> sourceResult(JSObject::GetProperty(thread, result1Handle, source).GetValue());
 
     JSHandle<EcmaString> expect = thread->GetEcmaVM()->GetFactory()->NewFromASCII("(?:)");
-    ASSERT_EQ(static_cast<EcmaString *>(sourceResult->GetTaggedObject())->Compare(*expect), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(sourceResult->GetTaggedObject()), *expect), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, GetSource2)
@@ -200,7 +200,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, GetSource2)
     JSHandle<JSTaggedValue> sourceResult(JSObject::GetProperty(thread, result1Handle, source).GetValue());
 
     JSHandle<EcmaString> expect = thread->GetEcmaVM()->GetFactory()->NewFromASCII("\\/w+");
-    ASSERT_EQ(static_cast<EcmaString *>(sourceResult->GetTaggedObject())->Compare(*expect), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(sourceResult->GetTaggedObject()), *expect), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, Get)
@@ -250,7 +250,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, GetFlags)
     JSHandle<JSTaggedValue> flagsResult(JSObject::GetProperty(thread, result1Handle, flags).GetValue());
 
     JSHandle<EcmaString> expectResult = thread->GetEcmaVM()->GetFactory()->NewFromASCII("gimuy");
-    ASSERT_EQ(static_cast<EcmaString *>(flagsResult->GetTaggedObject())->Compare(*expectResult), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(flagsResult->GetTaggedObject()), *expectResult), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, toString)
@@ -271,7 +271,8 @@ HWTEST_F_L0(BuiltinsRegExpTest, toString)
     ASSERT_TRUE(toStringResult.IsString());
     JSHandle<JSTaggedValue> toStringResultHandle(thread, toStringResult);
     JSHandle<EcmaString> expectResult = thread->GetEcmaVM()->GetFactory()->NewFromASCII("/\\w+/gimuy");
-    ASSERT_EQ(static_cast<EcmaString *>(toStringResultHandle->GetTaggedObject())->Compare(*expectResult), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(
+        static_cast<EcmaString *>(toStringResultHandle->GetTaggedObject()), *expectResult), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, Exec1)
@@ -309,22 +310,22 @@ HWTEST_F_L0(BuiltinsRegExpTest, Exec1)
 
     JSHandle<JSTaggedValue> inputHandle(JSObject::GetProperty(thread, execResult, input).GetValue());
     JSHandle<EcmaString> outputInput = JSTaggedValue::ToString(thread, inputHandle);
-    ASSERT_EQ(outputInput->Compare(*inputString), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputInput, *inputString), 0);
 
     JSHandle<JSTaggedValue> zero(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0"));
     JSHandle<JSTaggedValue> zeroHandle(JSObject::GetProperty(thread, execResult, zero).GetValue());
     JSHandle<EcmaString> outputZero = JSTaggedValue::ToString(thread, zeroHandle);
-    ASSERT_EQ(outputZero->Compare(*resultZero), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputZero, *resultZero), 0);
 
     JSHandle<JSTaggedValue> first(thread->GetEcmaVM()->GetFactory()->NewFromASCII("1"));
     JSHandle<JSTaggedValue> oneHandle(JSObject::GetProperty(thread, execResult, first).GetValue());
     JSHandle<EcmaString> outputOne = JSTaggedValue::ToString(thread, oneHandle);
-    ASSERT_EQ(outputOne->Compare(*resultOne), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputOne, *resultOne), 0);
 
     JSHandle<JSTaggedValue> second(thread->GetEcmaVM()->GetFactory()->NewFromASCII("2"));
     JSHandle<JSTaggedValue> twoHandle(JSObject::GetProperty(thread, execResult, second).GetValue());
     JSHandle<EcmaString> outputTwo = JSTaggedValue::ToString(thread, twoHandle);
-    ASSERT_EQ(outputTwo->Compare(*resultTwo), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputTwo, *resultTwo), 0);
 
     JSHandle<JSTaggedValue> regexp = JSHandle<JSTaggedValue>::Cast(value);
     JSHandle<JSTaggedValue> lastIndexHandle(thread->GetEcmaVM()->GetFactory()->NewFromASCII("lastIndex"));
@@ -367,22 +368,22 @@ HWTEST_F_L0(BuiltinsRegExpTest, Exec2)
     JSHandle<JSTaggedValue> input(thread->GetEcmaVM()->GetFactory()->NewFromASCII("input"));
     JSHandle<JSTaggedValue> inputHandle(JSObject::GetProperty(thread, execResult, input).GetValue());
     JSHandle<EcmaString> outputInput = JSTaggedValue::ToString(thread, inputHandle);
-    ASSERT_EQ(outputInput->Compare(*inputString), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputInput, *inputString), 0);
 
     JSHandle<JSTaggedValue> zero(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0"));
     JSHandle<JSTaggedValue> zeroHandle(JSObject::GetProperty(thread, execResult, zero).GetValue());
     JSHandle<EcmaString> outputZero = JSTaggedValue::ToString(thread, zeroHandle);
-    ASSERT_EQ(outputZero->Compare(*resultZero), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputZero, *resultZero), 0);
 
     JSHandle<JSTaggedValue> first(thread->GetEcmaVM()->GetFactory()->NewFromASCII("1"));
     JSHandle<JSTaggedValue> oneHandle(JSObject::GetProperty(thread, execResult, first).GetValue());
     JSHandle<EcmaString> outputOne = JSTaggedValue::ToString(thread, oneHandle);
-    ASSERT_EQ(outputOne->Compare(*resultOne), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputOne, *resultOne), 0);
 
     JSHandle<JSTaggedValue> second(thread->GetEcmaVM()->GetFactory()->NewFromASCII("2"));
     JSHandle<JSTaggedValue> twoHandle(JSObject::GetProperty(thread, execResult, second).GetValue());
     JSHandle<EcmaString> outputTwo = JSTaggedValue::ToString(thread, twoHandle);
-    ASSERT_EQ(outputTwo->Compare(*resultTwo), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputTwo, *resultTwo), 0);
 
     JSHandle<JSTaggedValue> regexp = JSHandle<JSTaggedValue>::Cast(value);
     JSHandle<JSTaggedValue> lastIndexHandle(thread->GetEcmaVM()->GetFactory()->NewFromASCII("lastIndex"));
@@ -397,7 +398,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, Exec2)
     JSHandle<JSTaggedValue> four(thread->GetEcmaVM()->GetFactory()->NewFromASCII("4"));
     JSHandle<JSTaggedValue> fourHandle(JSObject::GetProperty(thread, execResult, four).GetValue());
     JSHandle<EcmaString> outputFour = JSTaggedValue::ToString(thread, fourHandle);
-    ASSERT_EQ(outputFour->Compare(*resultFour), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputFour, *resultFour), 0);
 
     JSHandle<JSTaggedValue> five(thread->GetEcmaVM()->GetFactory()->NewFromASCII("5"));
     JSHandle<JSTaggedValue> fiveHandle(JSObject::GetProperty(thread, execResult, five).GetValue());
@@ -406,7 +407,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, Exec2)
     JSHandle<JSTaggedValue> six(thread->GetEcmaVM()->GetFactory()->NewFromASCII("6"));
     JSHandle<JSTaggedValue> sixHandle(JSObject::GetProperty(thread, execResult, six).GetValue());
     JSHandle<EcmaString> outputSix = JSTaggedValue::ToString(thread, sixHandle);
-    ASSERT_EQ(outputSix->Compare(*resultSix), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputSix, *resultSix), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, Match1)
@@ -435,7 +436,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, Match1)
         thread->GetEcmaVM()->GetFactory()->NewFromASCII("Quick Brown Fox Jumps");
     JSHandle<JSTaggedValue> zeroHandle(JSObject::GetProperty(thread, matchResult, zero).GetValue());
     JSHandle<EcmaString> outputZero = JSTaggedValue::ToString(thread, zeroHandle);
-    ASSERT_EQ(outputZero->Compare(*resultZero), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputZero, *resultZero), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, Test1)
@@ -507,7 +508,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, Split1)
     JSHandle<JSTaggedValue> zeroHandle(JSObject::GetProperty(thread, splitResult, zero).GetValue());
     JSHandle<EcmaString> outputZero = JSTaggedValue::ToString(thread, zeroHandle);
 
-    ASSERT_EQ(outputZero->Compare(*inputString), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputZero, *inputString), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, Split2)
@@ -537,17 +538,17 @@ HWTEST_F_L0(BuiltinsRegExpTest, Split2)
     JSHandle<JSTaggedValue> zero(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0"));
     JSHandle<JSTaggedValue> zeroHandle(JSObject::GetProperty(thread, splitResult, zero).GetValue());
     JSHandle<EcmaString> outputZero = JSTaggedValue::ToString(thread, zeroHandle);
-    ASSERT_EQ(outputZero->Compare(*resultZero), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputZero, *resultZero), 0);
 
     JSHandle<JSTaggedValue> first(thread->GetEcmaVM()->GetFactory()->NewFromASCII("1"));
     JSHandle<JSTaggedValue> oneHandle(JSObject::GetProperty(thread, splitResult, first).GetValue());
     JSHandle<EcmaString> outputOne = JSTaggedValue::ToString(thread, oneHandle);
-    ASSERT_EQ(outputOne->Compare(*resultOne), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputOne, *resultOne), 0);
 
     JSHandle<JSTaggedValue> second(thread->GetEcmaVM()->GetFactory()->NewFromASCII("2"));
     JSHandle<JSTaggedValue> twoHandle(JSObject::GetProperty(thread, splitResult, second).GetValue());
     JSHandle<EcmaString> outputTwo = JSTaggedValue::ToString(thread, twoHandle);
-    ASSERT_EQ(outputTwo->Compare(*resultTwo), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*outputTwo, *resultTwo), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, GetSpecies)
@@ -589,7 +590,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, Replace1)
     JSHandle<JSTaggedValue> replaceResult(thread, results);
     JSHandle<EcmaString> resultZero = thread->GetEcmaVM()->GetFactory()->NewFromASCII(
         "The Quick Brown Fox Jumpsa The   Over The Lazy Dog Jumps Brown $1 Jumps1 $32 a Over The Lazy Dog");
-    ASSERT_EQ(static_cast<EcmaString *>(replaceResult->GetTaggedObject())->Compare(*resultZero), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(replaceResult->GetTaggedObject()), *resultZero), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, Replace2)
@@ -614,7 +615,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, Replace2)
     JSTaggedValue results = BuiltinsRegExp::Replace(ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> replaceResult(thread, results);
     JSHandle<EcmaString> resultZero = factory->NewFromASCII("a[cd$04$00]e");
-    ASSERT_EQ(static_cast<EcmaString *>(replaceResult->GetTaggedObject())->Compare(*resultZero), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(replaceResult->GetTaggedObject()), *resultZero), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, Replace3)
@@ -639,7 +640,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, Replace3)
     JSTaggedValue results = BuiltinsRegExp::Replace(ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> replaceResult(thread, results);
     JSHandle<EcmaString> resultZero = factory->NewFromASCII("de");
-    ASSERT_EQ(static_cast<EcmaString *>(replaceResult->GetTaggedObject())->Compare(*resultZero), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(static_cast<EcmaString *>(replaceResult->GetTaggedObject()), *resultZero), 0);
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, RegExpParseCache)

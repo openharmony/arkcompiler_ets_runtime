@@ -157,10 +157,8 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModule(JSThread 
     if (moduleManage->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
         return moduleManage->HostGetImportedModule(moduleRequest.GetTaggedValue());
     }
-    std::string baseFilename = base::StringHelper::ToStdString(
-        EcmaString::Cast(module->GetEcmaModuleFilename().GetTaggedObject()));
-    std::string moduleFilename = base::StringHelper::ToStdString(
-        EcmaString::Cast(moduleRequest->GetTaggedObject()));
+    std::string baseFilename = EcmaStringAccessor(module->GetEcmaModuleFilename()).ToStdString();
+    std::string moduleFilename = EcmaStringAccessor(moduleRequest->GetTaggedObject()).ToStdString();
     return thread->GetEcmaVM()->GetModuleManager()->HostResolveImportedModule(baseFilename, moduleFilename);
 }
 
@@ -983,8 +981,7 @@ void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &expo
             ee.Update(exportEntries->Get(idx));
             // a. Assert: module provides the direct binding for this export.
             // b. Append e.[[ExportName]] to exportedNames.
-            std::string exportName =
-                base::StringHelper::ToStdString(EcmaString::Cast(ee->GetExportName().GetTaggedObject()));
+            std::string exportName = EcmaStringAccessor(ee->GetExportName()).ToStdString();
             exportedNames.emplace_back(exportName);
         }
     }

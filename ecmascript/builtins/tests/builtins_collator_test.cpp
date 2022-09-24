@@ -256,7 +256,7 @@ HWTEST_F_L0(BuiltinsCollatorTest, Compare_002)
     JSTaggedValue result = BuiltinsArray::Join(ecmaRuntimeCallInfo3);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    EXPECT_EQ(resultHandle->Compare(*str), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(*resultHandle, *str), 0);
 }
 
 // compare with options("search")
@@ -355,6 +355,6 @@ HWTEST_F_L0(BuiltinsCollatorTest, SupportedLocalesOf)
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
     EXPECT_EQ(elements->GetLength(), 1U);
     JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de-id", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 }  // namespace panda::test

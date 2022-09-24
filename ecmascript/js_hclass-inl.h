@@ -182,7 +182,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
             break;
         case JSType::STRING:
-            size = reinterpret_cast<EcmaString *>(header)->ObjectSize();
+            size = EcmaStringAccessor(reinterpret_cast<EcmaString *>(header)).ObjectSize();
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::MACHINE_CODE_OBJECT:

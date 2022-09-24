@@ -79,6 +79,7 @@
 namespace panda {
 using ecmascript::ECMAObject;
 using ecmascript::EcmaString;
+using ecmascript::EcmaStringAccessor;
 using ecmascript::ErrorType;
 using ecmascript::FastRuntimeStub;
 using ecmascript::GlobalEnv;
@@ -801,23 +802,23 @@ Local<StringRef> StringRef::NewFromUtf8(const EcmaVM *vm, const char *utf8, int 
 
 std::string StringRef::ToString()
 {
-    return StringHelper::ToStdString(EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject()));
+    return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).ToStdString();
 }
 
 int32_t StringRef::Length()
 {
-    return EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())->GetLength();
+    return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetLength();
 }
 
 int32_t StringRef::Utf8Length()
 {
-    return EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())->GetUtf8Length();
+    return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetUtf8Length();
 }
 
 int StringRef::WriteUtf8(char *buffer, int length)
 {
-    return EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())
-        ->WriteUtf8(reinterpret_cast<uint8_t *>(buffer), length);
+    return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
+        .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length);
 }
 
 // ----------------------------------- SymbolRef -----------------------------------------
@@ -1601,7 +1602,7 @@ Local<JSValueRef> JSON::Parse(const EcmaVM *vm, Local<StringRef> string)
     JSThread *thread = vm->GetJSThread();
     auto ecmaStr = EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject());
     JSHandle<JSTaggedValue> result;
-    if (ecmaStr->IsUtf8()) {
+    if (EcmaStringAccessor(ecmaStr).IsUtf8()) {
         JsonParser<uint8_t> parser(thread);
         result = parser.ParseUtf8(EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject()));
     } else {
