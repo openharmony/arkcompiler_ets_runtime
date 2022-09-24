@@ -192,7 +192,7 @@ JSTaggedValue BuiltinsGlobal::EncodeURIComponent(EcmaRuntimeCallInfo *msg)
 JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet)
 {
     // 1. Let strLen be the number of code units in string.
-    uint32_t strLen = str->GetLength();
+    uint32_t strLen = EcmaStringAccessor(str).GetLength();
     // 2. Let R be the empty String.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::u16string resStr;
@@ -213,7 +213,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
         //   i. Let S be a String containing only the code unit C.
         //   ii. Let R be a new String value computed by concatenating the previous value of R and S.
         // d. Else C is not in unescapedSet,
-        uint16_t cc = str->At(k);
+        uint16_t cc = EcmaStringAccessor(str).Get(k);
         if (IsInURISet(cc)) {
             std::u16string sStr = StringHelper::Utf16ToU16String(&cc, 1);
             resStr.append(sStr);
@@ -241,7 +241,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
                 if (k == strLen) {
                     THROW_URI_ERROR_AND_RETURN(thread, "k is invalid", JSTaggedValue::Exception());
                 }
-                uint16_t kc = str->At(k);
+                uint16_t kc = EcmaStringAccessor(str).Get(k);
                 if (kc < base::utf_helper::DECODE_TRAIL_LOW || kc > base::utf_helper::DECODE_TRAIL_HIGH) {
                     THROW_URI_ERROR_AND_RETURN(thread, "EncodeURI: The format of the URI to be parsed is incorrect",
                                                JSTaggedValue::Exception());
@@ -291,7 +291,7 @@ uint8_t BuiltinsGlobal::GetValueFromTwoHex(uint16_t front, uint16_t behind)
 JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet)
 {
     // 1. Let strLen be the number of code units in string.
-    [[maybe_unused]] int32_t strLen = static_cast<int32_t>(str->GetLength());
+    [[maybe_unused]] int32_t strLen = static_cast<int32_t>(EcmaStringAccessor(str).GetLength());
     // 2. Let R be the empty String.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::u16string resStr;
@@ -320,7 +320,7 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
         //         a. Let S be the String containing only the code unit C.
         //      3. Else C is in reservedSet,
         //         a. Let S be the substring of string from index start to index k inclusive.
-        uint16_t cc = str->At(k);
+        uint16_t cc = EcmaStringAccessor(str).Get(k);
         std::u16string sStr;
         if (cc != '%') {
             if (cc == 0 && strLen == 1) {
@@ -338,13 +338,14 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
                 THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
                                            JSTaggedValue::Exception());
             }
-            if (!(IsHexDigits(str->At(k + 1)) && IsHexDigits(str->At(k + 2)))) {  // 2: means plus 2
+            if (!(IsHexDigits(EcmaStringAccessor(str).Get(k + 1)) &&
+                IsHexDigits(EcmaStringAccessor(str).Get(k + 2)))) {  // 2: means plus 2
                 THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
                                            JSTaggedValue::Exception());
             }
 
-            uint16_t frontChar = str->At(k + 1);
-            uint16_t behindChar = str->At(k + 2);  // 2: means plus 2
+            uint16_t frontChar = EcmaStringAccessor(str).Get(k + 1);
+            uint16_t behindChar = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
             uint8_t bb = GetValueFromTwoHex(frontChar, behindChar);
             k += 2;  // 2: means plus 2
             if ((bb & BIT_MASK_ONE) == 0) {
@@ -355,8 +356,10 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
                             .GetTaggedValue();
                     }
                 } else {
+                    auto substr = EcmaStringAccessor::FastSubString(
+                        thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
                     sStr = StringHelper::StringToU16string(
-                        StringHelper::SubString(thread, str, start, static_cast<uint32_t>(k) - start + 1U));
+                        EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
                 }
             } else {
                 // vii. Else the most significant bit in B is 1,
@@ -403,7 +406,7 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
                 int32_t j = 1;
                 while (j < n) {
                     k++;
-                    uint16_t codeUnit = str->At(k);
+                    uint16_t codeUnit = EcmaStringAccessor(str).Get(k);
                     // b. If the code unit at index k within string is not "%", throw a URIError exception.
                     // c. If the code units at index (k +1) and (k + 2) within string do not represent hexadecimal
                     //    digits, throw a URIError exception.
@@ -411,13 +414,14 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
                         THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
                                                    JSTaggedValue::Exception());
                     }
-                    if (!(IsHexDigits(str->At(k + 1)) && IsHexDigits(str->At(k + 2)))) {  // 2: means plus 2
+                    if (!(IsHexDigits(EcmaStringAccessor(str).Get(k + 1)) &&
+                        IsHexDigits(EcmaStringAccessor(str).Get(k + 2)))) {  // 2: means plus 2
                         THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
                                                    JSTaggedValue::Exception());
                     }
 
-                    uint16_t frontChart = str->At(k + 1);
-                    uint16_t behindChart = str->At(k + 2);  // 2: means plus 2
+                    uint16_t frontChart = EcmaStringAccessor(str).Get(k + 1);
+                    uint16_t behindChart = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
                     bb = GetValueFromTwoHex(frontChart, behindChart);
                     // e. If the two most significant bits in B are not 10, throw a URIError exception.
                     if (!((bb & BIT_MASK_TWO) == BIT_MASK_ONE)) {
@@ -442,9 +446,10 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
                     if (!IsInURISet(vv)) {
                         sStr = StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1);
                     } else {
-                        sStr =
-                            StringHelper::StringToU16string(
-                                StringHelper::SubString(thread, str, start, static_cast<uint32_t>(k) - start + 1U));
+                        auto substr = EcmaStringAccessor::FastSubString(
+                            thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
+                        sStr = StringHelper::StringToU16string(
+                            EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
                     }
                 } else {
                     uint16_t lv = (((vv - base::utf_helper::DECODE_SECOND_FACTOR) & BIT16_MASK) +

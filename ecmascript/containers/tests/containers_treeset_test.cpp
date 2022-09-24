@@ -80,7 +80,7 @@ public:
             if (valueX->IsString() && valueY->IsString()) {
                 auto xString = static_cast<EcmaString *>(valueX->GetTaggedObject());
                 auto yString = static_cast<EcmaString *>(valueY->GetTaggedObject());
-                int result = xString->Compare(yString);
+                int result = EcmaStringAccessor::Compare(xString, yString);
                 if (result < 0) {
                     return JSTaggedValue(1);
                 }

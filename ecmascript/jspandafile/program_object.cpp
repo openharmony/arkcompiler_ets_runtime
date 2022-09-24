@@ -18,7 +18,7 @@
 namespace panda::ecmascript {
 std::string ConstantPool::GetStdStringByIdx(size_t index) const
 {
-    JSTaggedType str = GetObjectFromCache(index).GetRawData();
-    return JSHandle<EcmaString>(reinterpret_cast<uintptr_t>(&str))->GetCString().get();
+    JSTaggedValue str = GetObjectFromCache(index);
+    return EcmaStringAccessor(str).ToStdString(StringConvertedUsage::LOGICOPERATION);
 }
 }

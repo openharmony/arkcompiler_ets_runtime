@@ -51,7 +51,7 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
             elementIndex_ = index;
             return;
         }
-        if (EcmaString::Cast(key->GetTaggedObject())->IsInternString()) {
+        if (EcmaStringAccessor(key->GetTaggedObject()).IsInternString()) {
             key_ = key;
             return;
         }
@@ -90,7 +90,7 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 void ObjectOperator::UpdateHolder()
 {
     if (holder_->IsString() &&
-        (IsElement() && elementIndex_ < EcmaString::Cast(holder_->GetTaggedObject())->GetLength())) {
+        (IsElement() && elementIndex_ < EcmaStringAccessor(holder_->GetTaggedObject()).GetLength())) {
         holder_.Update(JSPrimitiveRef::StringCreate(thread_, holder_).GetTaggedValue());
     } else {
         holder_.Update(JSTaggedValue::ToPrototypeOrObj(thread_, holder_).GetTaggedValue());

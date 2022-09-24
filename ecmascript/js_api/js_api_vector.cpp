@@ -273,12 +273,7 @@ JSTaggedValue JSAPIVector::ToString(JSThread *thread, const JSHandle<JSAPIVector
         if (!element->IsUndefined() && !element->IsNull()) {
             JSHandle<EcmaString> nextStringHandle = JSTaggedValue::ToString(thread, element);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            uint32_t nextLen = nextStringHandle->GetLength();
-            if (nextStringHandle->IsUtf16()) {
-                nextStr = base::StringHelper::Utf16ToU16String(nextStringHandle->GetDataUtf16(), nextLen);
-            } else {
-                nextStr = base::StringHelper::Utf8ToU16String(nextStringHandle->GetDataUtf8(), nextLen);
-            }
+            nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
         }
         if (k > 0) {
             concatStrNew = base::StringHelper::Append(concatStr, sepHandle);

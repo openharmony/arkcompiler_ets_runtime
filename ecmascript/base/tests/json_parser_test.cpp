@@ -108,7 +108,7 @@ HWTEST_F_L0(JsonParserTest, Parser_002)
     JSHandle<EcmaString> handleStr4(JSTaggedValue::ToString(thread, handleMsg4));
     JSHandle<JSTaggedValue> result4 = parser.ParseUtf16(*handleStr4);
     JSHandle<EcmaString> handleEcmaStr(result4);
-    EXPECT_STREQ("string", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("string", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 /**

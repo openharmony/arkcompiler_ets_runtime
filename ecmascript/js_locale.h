@@ -83,7 +83,8 @@ public:
     JSIntlIterator(const JSHandle<TaggedArray> &data, uint32_t length) : length_(length), curIdx_(0)
     {
         for (uint32_t idx = 0; idx < length; idx++) {
-            std::string str = base::StringHelper::ToStdString(EcmaString::Cast(data->Get(idx).GetTaggedObject()));
+            auto itor = data->Get(idx);
+            std::string str = EcmaStringAccessor(itor).ToStdString();
             data_.emplace_back(str);
         }
     }

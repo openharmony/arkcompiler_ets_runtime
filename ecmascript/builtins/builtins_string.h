@@ -126,6 +126,7 @@ public:
     static JSTaggedValue GetLength(EcmaRuntimeCallInfo *argv);
 
 private:
+    static JSTaggedValue Pad(EcmaRuntimeCallInfo *argv, bool isStart);
     static int32_t ConvertDoubleToInt(double d);
     // 21.1.3.17.1
 };

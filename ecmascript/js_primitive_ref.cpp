@@ -37,7 +37,7 @@ JSHandle<JSPrimitiveRef> JSPrimitiveRef::StringCreate(JSThread *thread, const JS
     // false, [[Enumerable]]: false, [[Configurable]]: false }).
     JSHandle<JSTaggedValue> lengthStr = thread->GlobalConstants()->GetHandledLengthString();
 
-    uint32_t length = EcmaString::Cast(value->GetTaggedObject())->GetLength();
+    uint32_t length = EcmaStringAccessor(value->GetTaggedObject()).GetLength();
     PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(length)), false, false, false);
     [[maybe_unused]] bool status = JSTaggedValue::DefinePropertyOrThrow(thread, str, lengthStr, desc);
     // 13. Assert: status is not an abrupt completion.
@@ -53,12 +53,12 @@ bool JSPrimitiveRef::StringGetIndexProperty(const JSThread *thread, const JSHand
     {
         DISALLOW_GARBAGE_COLLECTION;
         EcmaString *str = EcmaString::Cast(JSPrimitiveRef::Cast(*obj)->GetValue().GetTaggedObject());
-        if (str->GetLength() <= index) {
+        if (EcmaStringAccessor(str).GetLength() <= index) {
             return false;
         }
         // 10. Let resultStr be a String value of length 1, containing one code unit from str, specifically the code
         // unit at index index
-        tmpChar = str->At(index);
+        tmpChar = EcmaStringAccessor(str).Get(index);;
     }
     JSHandle<JSTaggedValue> value(thread->GetEcmaVM()->GetFactory()->NewFromUtf16(&tmpChar, 1));
     // 11. Return a PropertyDescriptor{ [[Value]]: resultStr, [[Enumerable]]: true, [[Writable]]: false,

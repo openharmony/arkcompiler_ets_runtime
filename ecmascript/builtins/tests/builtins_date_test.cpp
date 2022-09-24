@@ -743,7 +743,8 @@ HWTEST_F_L0(BuiltinsDateTest, ToDateString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(result.IsString());
-    ASSERT_TRUE(EcmaString::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expect_value));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+        reinterpret_cast<EcmaString *>(result.GetRawData()), *expect_value));
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToISOString)
@@ -760,7 +761,8 @@ HWTEST_F_L0(BuiltinsDateTest, ToISOString)
     JSTaggedValue result1 = BuiltinsDate::ToISOString(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaString::StringsAreEqual(reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+        reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToISOStringMinus)
@@ -778,7 +780,8 @@ HWTEST_F_L0(BuiltinsDateTest, ToISOStringMinus)
     JSTaggedValue result1 = BuiltinsDate::ToISOString(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaString::StringsAreEqual(reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+        reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
 // test toJSON and toPrimitive
@@ -796,7 +799,8 @@ HWTEST_F_L0(BuiltinsDateTest, ToJSON)
     JSTaggedValue result1 = BuiltinsDate::ToJSON(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaString::StringsAreEqual(reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+        reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToJSONMinus)
@@ -812,7 +816,8 @@ HWTEST_F_L0(BuiltinsDateTest, ToJSONMinus)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result1 = BuiltinsDate::ToJSON(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaString::StringsAreEqual(reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+        reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToString)
@@ -848,7 +853,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToString)
     JSHandle<EcmaString> result1_val(thread, reinterpret_cast<EcmaString *>(result1.GetRawData()));
     CString str = "Tue Nov 06 2018 18:10:06 GMT" + localTime;
     JSHandle<EcmaString> str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaString::StringsAreEqual(*result1_val, *str_handle));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result1_val, *str_handle));
 
     JSHandle<JSDate> js_date1 = JSDateCreateTest(thread);
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -878,7 +883,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToString)
     JSHandle<EcmaString> result2_val(thread, reinterpret_cast<EcmaString *>(result2.GetRawData()));
     str = "Mon Dec 31 1900 23:54:16 GMT" + localTime;
     str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaString::StringsAreEqual(*result2_val, *str_handle));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result2_val, *str_handle));
 
     JSHandle<JSDate> js_date2 = JSDateCreateTest(thread);
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -908,7 +913,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToString)
     JSHandle<EcmaString> result3_val(thread, reinterpret_cast<EcmaString *>(result3.GetRawData()));
     str = "Tue Jan 01 1901 00:03:21 GMT" + localTime;
     str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaString::StringsAreEqual(*result3_val, *str_handle));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result3_val, *str_handle));
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToTimeString)
@@ -944,7 +949,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToTimeString)
     JSHandle<EcmaString> result1_val(thread, reinterpret_cast<EcmaString *>(result1.GetRawData()));
     CString str = "18:10:06 GMT" + localTime;
     JSHandle<EcmaString> str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaString::StringsAreEqual(*result1_val, *str_handle));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result1_val, *str_handle));
 
     JSHandle<JSDate> js_date1 = JSDateCreateTest(thread);
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -973,7 +978,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToTimeString)
     JSHandle<EcmaString> result2_val(thread, reinterpret_cast<EcmaString *>(result2.GetRawData()));
     str = "23:54:16 GMT" + localTime;
     str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaString::StringsAreEqual(*result2_val, *str_handle));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result2_val, *str_handle));
     JSHandle<JSDate> js_date2 = JSDateCreateTest(thread);
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
@@ -1001,7 +1006,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToTimeString)
     JSHandle<EcmaString> result3_val(thread, reinterpret_cast<EcmaString *>(result3.GetRawData()));
     str = "00:03:21 GMT" + localTime;
     str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaString::StringsAreEqual(*result3_val, *str_handle));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result3_val, *str_handle));
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToUTCString)
@@ -1017,7 +1022,8 @@ HWTEST_F_L0(BuiltinsDateTest, ToUTCString)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result1 = BuiltinsDate::ToUTCString(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaString::StringsAreEqual(reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+        reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToUTCStringMinus)
@@ -1033,7 +1039,8 @@ HWTEST_F_L0(BuiltinsDateTest, ToUTCStringMinus)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result1 = BuiltinsDate::ToUTCString(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaString::StringsAreEqual(reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+        reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ValueOf)

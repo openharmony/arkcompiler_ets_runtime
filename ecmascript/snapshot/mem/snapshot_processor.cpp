@@ -1221,7 +1221,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     auto stringClass = globalConst->GetStringClass();
     while (stringBegin < stringEnd) {
         EcmaString *str = reinterpret_cast<EcmaString *>(stringBegin);
-        size_t strSize = str->ObjectSize();
+        size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         auto strFromTable = stringTable->GetString(str);
         if (strFromTable) {
@@ -1243,7 +1243,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
             }
             str = reinterpret_cast<EcmaString *>(newObj);
             str->SetClass(reinterpret_cast<JSHClass *>(stringClass.GetTaggedObject()));
-            str->ClearInternStringFlag();
+            EcmaStringAccessor(str).ClearInternString();
             stringTable->GetOrInternString(str);
             stringVector_.emplace_back(newObj);
         }
@@ -1398,7 +1398,7 @@ void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, Met
             DeserializeField(objectHeader);
             if (builtinsDeserialize_ && JSType(objType) == JSType::STRING) {
                 auto str = reinterpret_cast<EcmaString *>(begin);
-                str->ClearInternStringFlag();
+                EcmaStringAccessor(str).ClearInternString();
                 stringTable->InsertStringIfNotExist(str);
             }
             if (objIndex < rootObjSize) {

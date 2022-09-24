@@ -52,12 +52,12 @@ public:
 TEST_F(ConcurrentSweepTest, ConcurrentSweep)
 {
     const uint8_t *utf8 = reinterpret_cast<const uint8_t *>("test");
-    JSHandle<EcmaString> test1(thread, EcmaString::CreateFromUtf8(utf8, 4, vm, true));
+    JSHandle<EcmaString> test1(thread, EcmaStringAccessor::CreateFromUtf8(vm, utf8, 4, true));
     if (vm->IsInitialized()) {
         vm->CollectGarbage(ecmascript::TriggerGCType::OLD_GC);
     }
-    JSHandle<EcmaString> test2(thread, EcmaString::CreateFromUtf8(utf8, 4, vm, true));
-    ASSERT_EQ(test1->GetLength(), 4U);
+    JSHandle<EcmaString> test2(thread, EcmaStringAccessor::CreateFromUtf8(vm, utf8, 4, true));
+    ASSERT_EQ(EcmaStringAccessor(test1).GetLength(), 4U);
     ASSERT_NE(test1.GetTaggedValue().GetTaggedObject(), test2.GetTaggedValue().GetTaggedObject());
 }
 }  // namespace panda::test

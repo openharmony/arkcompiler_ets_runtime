@@ -369,9 +369,9 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         JSHandle<EcmaString> srcString = JSTaggedValue::ToString(thread, src);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         uint32_t dstLen = static_cast<uint32_t>(index.GetInt());
-        uint32_t strLen = srcString->GetLength();
+        uint32_t strLen = EcmaStringAccessor(srcString).GetLength();
         for (uint32_t i = 0; i < strLen; i++) {
-            uint16_t res = srcString->At<false>(i);
+            uint16_t res = EcmaStringAccessor(srcString).Get<false>(i);
             JSHandle<JSTaggedValue> strValue(factory->NewFromUtf16Literal(&res, 1));
             JSTaggedValue::SetProperty(thread, dst, dstLen + i, strValue, true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

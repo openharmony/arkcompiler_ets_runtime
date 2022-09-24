@@ -60,7 +60,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
     std::string numberingSystemStdStr;
     if (!numberingSystemValue->IsUndefined()) {
         JSHandle<EcmaString> numberingSystemString = JSHandle<EcmaString>::Cast(numberingSystemValue);
-        if (numberingSystemString->IsUtf16()) {
+        if (EcmaStringAccessor(numberingSystemString).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid numberingSystem", relativeTimeFormat);
         }
         numberingSystemStdStr = JSLocale::ConvertToStdString(numberingSystemString);
@@ -191,21 +191,29 @@ bool SingularUnitToIcuUnit(JSThread *thread, const JSHandle<EcmaString> &unit, U
     JSHandle<EcmaString> quarters = JSHandle<EcmaString>::Cast(globalConst->GetHandledQuartersString());
     JSHandle<EcmaString> years = JSHandle<EcmaString>::Cast(globalConst->GetHandledYearsString());
 
-    if (EcmaString::StringsAreEqual(*second, *unit) || EcmaString::StringsAreEqual(*seconds, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(*second, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(*seconds, *unit)) {
         *unitEnum = UDAT_REL_UNIT_SECOND;
-    } else if (EcmaString::StringsAreEqual(*minute, *unit) || EcmaString::StringsAreEqual(*minutes, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(*minute, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(*minutes, *unit)) {
         *unitEnum = UDAT_REL_UNIT_MINUTE;
-    } else if (EcmaString::StringsAreEqual(*hour, *unit) || EcmaString::StringsAreEqual(*hours, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(*hour, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(*hours, *unit)) {
         *unitEnum = UDAT_REL_UNIT_HOUR;
-    } else if (EcmaString::StringsAreEqual(*day, *unit) || EcmaString::StringsAreEqual(*days, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(*day, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(*days, *unit)) {
         *unitEnum = UDAT_REL_UNIT_DAY;
-    } else if (EcmaString::StringsAreEqual(*week, *unit) || EcmaString::StringsAreEqual(*weeks, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(*week, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(*weeks, *unit)) {
         *unitEnum = UDAT_REL_UNIT_WEEK;
-    } else if (EcmaString::StringsAreEqual(*month, *unit) || EcmaString::StringsAreEqual(*months, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(*month, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(*months, *unit)) {
         *unitEnum = UDAT_REL_UNIT_MONTH;
-    } else if (EcmaString::StringsAreEqual(*quarter, *unit) || EcmaString::StringsAreEqual(*quarters, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(*quarter, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(*quarters, *unit)) {
         *unitEnum = UDAT_REL_UNIT_QUARTER;
-    } else if (EcmaString::StringsAreEqual(*year, *unit) || EcmaString::StringsAreEqual(*years, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(*year, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(*years, *unit)) {
         *unitEnum = UDAT_REL_UNIT_YEAR;
     } else {
         return false;
@@ -297,35 +305,35 @@ JSHandle<EcmaString> SingularUnitString(JSThread *thread, const JSHandle<EcmaStr
     JSHandle<EcmaString> years = JSHandle<EcmaString>::Cast(globalConst->GetHandledYearsString());
 
     // 2. If unit is "seconds" or "second", return "second".
-    if (EcmaString::StringsAreEqual(*second, *unit) || EcmaString::StringsAreEqual(*seconds, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(*second, *unit) || EcmaStringAccessor::StringsAreEqual(*seconds, *unit)) {
         return second;
     }
     // 3. If unit is "minutes" or "minute", return "minute".
-    if (EcmaString::StringsAreEqual(*minute, *unit) || EcmaString::StringsAreEqual(*minutes, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(*minute, *unit) || EcmaStringAccessor::StringsAreEqual(*minutes, *unit)) {
         return minute;
     }
     // 4. If unit is "hours" or "hour", return "hour".
-    if (EcmaString::StringsAreEqual(*hour, *unit) || EcmaString::StringsAreEqual(*hours, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(*hour, *unit) || EcmaStringAccessor::StringsAreEqual(*hours, *unit)) {
         return hour;
     }
     // 5. If unit is "days" or "day", return "day".
-    if (EcmaString::StringsAreEqual(*day, *unit) || EcmaString::StringsAreEqual(*days, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(*day, *unit) || EcmaStringAccessor::StringsAreEqual(*days, *unit)) {
         return day;
     }
     // 6. If unit is "weeks" or "week", return "week".
-    if (EcmaString::StringsAreEqual(*week, *unit) || EcmaString::StringsAreEqual(*weeks, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(*week, *unit) || EcmaStringAccessor::StringsAreEqual(*weeks, *unit)) {
         return week;
     }
     // 7. If unit is "months" or "month", return "month".
-    if (EcmaString::StringsAreEqual(*month, *unit) || EcmaString::StringsAreEqual(*months, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(*month, *unit) || EcmaStringAccessor::StringsAreEqual(*months, *unit)) {
         return month;
     }
     // 8. If unit is "quarters" or "quarter", return "quarter".
-    if (EcmaString::StringsAreEqual(*quarter, *unit) || EcmaString::StringsAreEqual(*quarters, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(*quarter, *unit) || EcmaStringAccessor::StringsAreEqual(*quarters, *unit)) {
         return quarter;
     }
     // 9. If unit is "years" or "year", return "year".
-    if (EcmaString::StringsAreEqual(*year, *unit) || EcmaString::StringsAreEqual(*years, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(*year, *unit) || EcmaStringAccessor::StringsAreEqual(*years, *unit)) {
         return year;
     }
 

@@ -82,7 +82,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolNoParameterToString)
     ASSERT_TRUE(result.IsString());
 
     auto symbolValue = ecmascript::base::BuiltinsBase::GetTaggedString(thread, "Symbol()");
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(symbolValue.GetRawData())->Compare(*resultHandle), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(symbolValue.GetRawData()), *resultHandle), 0);
 }
 
 // new Symbol("aaa").toString()
@@ -102,7 +102,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolWithParameterToString)
     ASSERT_TRUE(result.IsString());
 
     auto symbolValue = ecmascript::base::BuiltinsBase::GetTaggedString(thread, "Symbol(aaa)");
-    ASSERT_EQ(reinterpret_cast<EcmaString *>(symbolValue.GetRawData())->Compare(*resultHandle), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(symbolValue.GetRawData()), *resultHandle), 0);
 }
 
 // new Symbol().valueOf()
@@ -180,7 +180,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolWithParameterFor)
     JSHandle<SymbolTable> tableHandle(env->GetRegisterSymbols());
 
     JSHandle<EcmaString> string = ecmaVM->GetFactory()->NewFromASCII("ccc");
-    ASSERT_EQ(string->GetLength(), 3U);
+    ASSERT_EQ(EcmaStringAccessor(string).GetLength(), 3U);
     JSHandle<JSTaggedValue> string_handle(string);
     ASSERT_EQ(tableHandle->ContainsKey(string_handle.GetTaggedValue()), false);
 
@@ -219,7 +219,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolKeyFor)
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::VALUE_UNDEFINED);
 
     JSHandle<EcmaString> string = ecmaVM->GetFactory()->NewFromASCII("ccc");
-    ASSERT_EQ(string->GetLength(), 3U);
+    ASSERT_EQ(EcmaStringAccessor(string).GetLength(), 3U);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -307,7 +307,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolConstructor)
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultString = JSTaggedValue::ToString(
         thread, JSHandle<JSTaggedValue>(thread, reinterpret_cast<JSSymbol *>(result1.GetRawData())->GetDescription()));
-    ASSERT_EQ(resultString->Compare(*string), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(*resultString, *string), 0);
 }
 
 HWTEST_F_L0(BuiltinsSymbolTest, SymbolGetter)
@@ -326,7 +326,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolGetter)
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_TRUE(result.IsString());
     EcmaString *resString = reinterpret_cast<EcmaString *>(result.GetRawData());
-    ASSERT_EQ(resString->GetLength(), 0U);
-    ASSERT_EQ(EcmaString::StringsAreEqual(resString, *string), true);
+    ASSERT_EQ(EcmaStringAccessor(resString).GetLength(), 0U);
+    ASSERT_EQ(EcmaStringAccessor::StringsAreEqual(resString, *string), true);
 }
 }  // namespace panda::test

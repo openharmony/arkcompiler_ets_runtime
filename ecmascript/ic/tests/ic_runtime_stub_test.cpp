@@ -198,7 +198,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreICAndLoadIC_ByValue)
                                      handleKey.GetTaggedValue(), 0);
     EXPECT_TRUE(resultValue.IsString());
     JSHandle<EcmaString> handleEcmaStrTo(JSHandle<JSTaggedValue>(thread, resultValue));
-    EXPECT_STREQ("1", CString(handleEcmaStrTo->GetCString().get()).c_str());
+    EXPECT_STREQ("1", EcmaStringAccessor(handleEcmaStrTo).ToCString().c_str());
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, TryStoreICAndLoadIC_ByName)

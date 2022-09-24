@@ -68,6 +68,6 @@ HWTEST_F_L0(JSPrimitiveRefTest, StringCreate)
     ASSERT_TRUE(status);
     JSHandle<EcmaString> h = thread->GetEcmaVM()->GetFactory()->NewFromASCII("h");
     JSHandle<EcmaString> h2 = JSTaggedValue::ToString(thread, desc.GetValue());
-    ASSERT_TRUE(h->Compare(*h2) == 0);
+    ASSERT_TRUE(EcmaStringAccessor::Compare(*h, *h2) == 0);
 }
 }  // namespace panda::test

@@ -128,7 +128,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_001)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("M, o, t, o, r, c, y, c, l and e", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("M, o, t, o, r, c, y, c, l and e", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // Format(["Motorcycle", "Bus", "Car" ], type(conjunction))
@@ -166,7 +166,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_002)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("Motorcycle, Bus and Car", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("Motorcycle, Bus and Car", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // Format(["Motorcycle", "Bus", "Car" ], type(disjunction))
@@ -204,7 +204,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_003)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("Motorcycle, Bus or Car", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("Motorcycle, Bus or Car", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // Format(["中文英文" ], type(disjunction))
@@ -234,7 +234,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_004)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("中文英文", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("中文英文", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // Format(["中文", "英文", "韩文" ], type(conjunction))
@@ -272,7 +272,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_005)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("中文、英文和韩文", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("中文、英文和韩文", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsListFormatTest, FormatToParts_001)
@@ -476,7 +476,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, SupportedLocalesOf_001)
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
     EXPECT_EQ(elements->GetLength(), 1U);
     JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de-id", CString(handleEcmaStr->GetCString().get()).c_str());
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
 }
 
 // SupportedLocalesOf("look up")
@@ -508,7 +508,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, SupportedLocalesOf_002)
     EXPECT_EQ(elements->GetLength(), 1U);
 
     JSHandle<EcmaString> resultStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de", CString(resultStr->GetCString().get()).c_str());
+    EXPECT_STREQ("id-u-co-pinyin-de", EcmaStringAccessor(resultStr).ToCString().c_str());
 }
 
 HWTEST_F_L0(BuiltinsListFormatTest, ResolvedOptions)

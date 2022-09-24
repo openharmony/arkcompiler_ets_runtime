@@ -65,7 +65,8 @@ HWTEST_F_L0(JSHandleTest, NewGlobalHandle)
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
 
     // check result
-    EXPECT_EQ(factory->NewFromASCII("test1")->Compare(*reinterpret_cast<EcmaString **>(globalString)), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(
+        *factory->NewFromASCII("test1"), *reinterpret_cast<EcmaString **>(globalString)), 0);
 }
 
 HWTEST_F_L0(JSHandleTest, NewGlobalHandle1)
@@ -90,13 +91,15 @@ HWTEST_F_L0(JSHandleTest, NewGlobalHandle1)
     // check result
     for (int i = 0; i <= 200; i++) {
         std::string test = "test" + std::to_string(i);
-        EXPECT_EQ(factory->NewFromUtf8(test.c_str())->Compare(*reinterpret_cast<EcmaString **>(globalString[i])), 0);
+        EXPECT_EQ(EcmaStringAccessor::Compare(
+            *factory->NewFromUtf8(test.c_str()), *reinterpret_cast<EcmaString **>(globalString[i])), 0);
     }
     // trigger GC
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     for (int i = 301; i < 600; i++) {
         std::string test = "test" + std::to_string(i);
-        EXPECT_EQ(factory->NewFromUtf8(test.c_str())->Compare(*reinterpret_cast<EcmaString **>(globalString[i])), 0);
+        EXPECT_EQ(EcmaStringAccessor::Compare(
+            *factory->NewFromUtf8(test.c_str()), *reinterpret_cast<EcmaString **>(globalString[i])), 0);
     }
 }
 
@@ -156,8 +159,8 @@ HWTEST_F_L0(JSHandleTest, DisposeAndNewGlobalHandle)
     // check result
     for (int i = 0; i <= 300; i++) {
         std::string test = "test" + std::to_string(i);
-        EXPECT_EQ(
-            factory->NewFromUtf8(test.c_str())->Compare(*reinterpret_cast<EcmaString **>(globalString[i])), 0);
+        EXPECT_EQ(EcmaStringAccessor::Compare(
+            *factory->NewFromUtf8(test.c_str()), *reinterpret_cast<EcmaString **>(globalString[i])), 0);
     }
 }
 
@@ -177,7 +180,8 @@ HWTEST_F_L0(JSHandleTest, NewWeakGlobalHandle)
         thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
 
         // check result
-        EXPECT_EQ(factory->NewFromASCII("test1")->Compare(*reinterpret_cast<EcmaString **>(globalString)), 0);
+        EXPECT_EQ(EcmaStringAccessor::Compare(
+            *factory->NewFromASCII("test1"), *reinterpret_cast<EcmaString **>(globalString)), 0);
         EXPECT_TRUE(global->IsWeak(globalString));
     }
     // trigger GC
@@ -211,8 +215,8 @@ HWTEST_F_L0(JSHandleTest, NewWeakGlobalHandle1)
         // check result
         for (int i = 0; i <= 200; i++) {
             std::string test = "test" + std::to_string(i);
-            EXPECT_EQ(
-                factory->NewFromUtf8(test.c_str())->Compare(*reinterpret_cast<EcmaString **>(globalString[i])), 0);
+            EXPECT_EQ(EcmaStringAccessor::Compare(
+                *factory->NewFromUtf8(test.c_str()), *reinterpret_cast<EcmaString **>(globalString[i])), 0);
         }
     }
     // trigger GC

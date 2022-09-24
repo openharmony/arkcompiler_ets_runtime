@@ -214,13 +214,13 @@ JSTaggedValue BuiltinsDate::ToPrimitive(EcmaRuntimeCallInfo *argv)
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (hint->IsString()) {
         JSHandle<EcmaString> numberStrHandle = JSHandle<EcmaString>::Cast(globalConst->GetHandledNumberString());
-        if (EcmaString::StringsAreEqual(hint.GetObject<EcmaString>(), *numberStrHandle)) {
+        if (EcmaStringAccessor::StringsAreEqual(hint.GetObject<EcmaString>(), *numberStrHandle)) {
             tryFirst = PREFER_NUMBER;
         } else {
             JSHandle<EcmaString> stringStrHandle = JSHandle<EcmaString>::Cast(globalConst->GetHandledStringString());
             JSHandle<EcmaString> defaultStrHandle = JSHandle<EcmaString>::Cast(globalConst->GetHandledDefaultString());
-            if (EcmaString::StringsAreEqual(hint.GetObject<EcmaString>(), *stringStrHandle) ||
-                EcmaString::StringsAreEqual(hint.GetObject<EcmaString>(), *defaultStrHandle)) {
+            if (EcmaStringAccessor::StringsAreEqual(hint.GetObject<EcmaString>(), *stringStrHandle) ||
+                EcmaStringAccessor::StringsAreEqual(hint.GetObject<EcmaString>(), *defaultStrHandle)) {
                 tryFirst = PREFER_STRING;
             } else {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "This is not a primitiveType.", JSTaggedValue::Exception());

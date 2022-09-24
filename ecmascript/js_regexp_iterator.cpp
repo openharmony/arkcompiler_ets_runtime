@@ -82,7 +82,7 @@ JSTaggedValue JSRegExpIterator::Next(EcmaRuntimeCallInfo *argv)
             //     1. Let thisIndex be ? ToLength(? Get(R, "lastIndex")).
             //     2. Let nextIndex be ! AdvanceStringIndex(S, thisIndex, fullUnicode).
             //     3. Perform ? Set(R, "lastIndex", 𝔽(nextIndex), true).
-            if (matchStr->GetLength() == 0) {
+            if (EcmaStringAccessor(matchStr).GetLength() == 0) {
                 JSHandle<JSTaggedValue> lastIndexString(globalConstants->GetHandledLastIndexString());
                 JSHandle<JSTaggedValue> getLastIndex(JSObject::GetProperty(thread, regexHandle,
                                                                            lastIndexString).GetValue());

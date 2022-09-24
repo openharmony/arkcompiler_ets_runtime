@@ -79,9 +79,6 @@ HWTEST_F_L0(GlobalDictionaryTest, Hash)
     uint32_t hashField = static_cast<uint32_t>(GlobalDictionary::Hash(jsSymbol.GetTaggedValue()));
     EXPECT_EQ(hashField, SymbolTable::Hash(jsSymbol.GetTaggedValue()));
 
-    // the CompressedStringsEnabled must be true
-    bool flag = EcmaString::GetCompressedStringsEnabled();
-    EXPECT_EQ(flag, true);
     // test obj is string(uint8_t)
     uint8_t utf8ArrayName[4] = {0, 2, 5}; // The last element is "\0"
     uint32_t utf8ArrayNameLen = sizeof(utf8ArrayName) - 1;
@@ -247,8 +244,8 @@ HWTEST_F_L0(GlobalDictionaryTest, GetAllKeys)
     // check key name
     JSHandle<EcmaString> resultFirstKey(thread, keyArray->Get(offset));
     JSHandle<EcmaString> resultLastKey(thread, keyArray->Get(arraySize - 1));
-    EXPECT_EQ(nameKey[0], CString(resultFirstKey->GetCString().get()).c_str());
-    EXPECT_EQ(nameKey[15], CString(resultLastKey->GetCString().get()).c_str());
+    EXPECT_EQ(nameKey[0], EcmaStringAccessor(resultFirstKey).ToCString().c_str());
+    EXPECT_EQ(nameKey[15], EcmaStringAccessor(resultLastKey).ToCString().c_str());
 }
 
 /**
@@ -291,8 +288,8 @@ HWTEST_F_L0(GlobalDictionaryTest, GetEnumAllKeys)
     EXPECT_EQ(keys, 8U);
     JSHandle<EcmaString> resultFirstKey(thread, keyArray->Get(offset));
     JSHandle<EcmaString> resultLastKey(thread, keyArray->Get(offset + keys - 1U));
-    EXPECT_EQ(nameKey[1], CString(resultFirstKey->GetCString().get()).c_str());
-    EXPECT_EQ(nameKey[15], CString(resultLastKey->GetCString().get()).c_str());
+    EXPECT_EQ(nameKey[1], EcmaStringAccessor(resultFirstKey).ToCString().c_str());
+    EXPECT_EQ(nameKey[15], EcmaStringAccessor(resultLastKey).ToCString().c_str());
 }
 
 /**

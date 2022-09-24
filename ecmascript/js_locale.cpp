@@ -81,7 +81,7 @@ JSHandle<EcmaString> JSLocale::CanonicalizeUnicodeLocaleId(JSThread *thread, con
         THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
     }
 
-    if (locale->GetLength() == 0 || locale->IsUtf16()) {
+    if (EcmaStringAccessor(locale).GetLength() == 0 || EcmaStringAccessor(locale).IsUtf16()) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
     }
 
@@ -471,7 +471,7 @@ JSHandle<TaggedArray> JSLocale::BestFitSupportedLocales(JSThread *thread, const 
     JSMutableHandle<EcmaString> locale(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < requestLength; ++i) {
         locale.Update(requestedLocales->Get(thread, i));
-        if (EcmaString::StringsAreEqual(*locale, *defaultLocale)) {
+        if (EcmaStringAccessor::StringsAreEqual(*locale, *defaultLocale)) {
             result->Set(thread, index++, locale.GetTaggedValue());
         } else {
             status = U_ZERO_ERROR;
@@ -479,7 +479,7 @@ JSHandle<TaggedArray> JSLocale::BestFitSupportedLocales(JSThread *thread, const 
             icu::Locale desired = icu::Locale::forLanguageTag(localeStr, status);
             auto bestFit = matcher.getBestMatch(desired, status)->toLanguageTag<std::string>(status);
             if ((U_SUCCESS(status) != 0) &&
-                EcmaString::StringsAreEqual(*locale, *(factory->NewFromStdString(bestFit)))) {
+                EcmaStringAccessor::StringsAreEqual(*locale, *(factory->NewFromStdString(bestFit)))) {
                 result->Set(thread, index++, locale.GetTaggedValue());
             }
         }
@@ -642,7 +642,7 @@ bool JSLocale::GetOptionOfString(JSThread *thread, const JSHandle<JSObject> &opt
     //       i. Let value be ? ToString(value).
     JSHandle<EcmaString> valueEStr = JSTaggedValue::ToString(thread, value);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-    if (valueEStr->IsUtf16()) {
+    if (EcmaStringAccessor(valueEStr).IsUtf16()) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Value out of range for locale options property", false);
     }
     *optionValue = JSLocale::ConvertToStdString(valueEStr);

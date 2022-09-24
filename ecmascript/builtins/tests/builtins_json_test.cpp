@@ -247,7 +247,7 @@ HWTEST_F_L0(BuiltinsJsonTest, Parse3)
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsJson::Parse(ecmaRuntimeCallInfo);
-    uint32_t length = EcmaString::Cast(result.GetTaggedObject())->GetLength();
+    uint32_t length = EcmaStringAccessor(result).GetLength();
     ASSERT_EQ(length, 1U);
 }
 
@@ -463,7 +463,7 @@ HWTEST_F_L0(BuiltinsJsonTest, Stringify3)
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsJson::Stringify(ecmaRuntimeCallInfo);
-    ASSERT_TRUE(EcmaString::StringsAreEqual(*test, EcmaString::Cast(result.GetTaggedObject())));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*test, EcmaString::Cast(result.GetTaggedObject())));
 }
 
 JSHandle<JSTaggedValue> CreateJSObject(JSThread *thread)
@@ -512,7 +512,7 @@ HWTEST_F_L0(BuiltinsJsonTest, Stringify4)  // Test for proxy object
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsJson::Stringify(ecmaRuntimeCallInfo);
-    ASSERT_TRUE(EcmaString::StringsAreEqual(*test, EcmaString::Cast(result.GetTaggedObject())));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*test, EcmaString::Cast(result.GetTaggedObject())));
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -549,7 +549,7 @@ HWTEST_F_L0(BuiltinsJsonTest, Stringify5)  // Test for typedarray object
     JSTaggedValue result = BuiltinsJson::Stringify(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_TRUE(result.IsString());
-    ASSERT_TRUE(EcmaString::StringsAreEqual(*test, EcmaString::Cast(result.GetTaggedObject())));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*test, EcmaString::Cast(result.GetTaggedObject())));
 }
 
 HWTEST_F_L0(BuiltinsJsonTest, Stringify6)  // Test for bigint object

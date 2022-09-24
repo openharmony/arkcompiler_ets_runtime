@@ -102,18 +102,7 @@ CString ConvertToString(const EcmaString *s, StringConvertedUsage usage)
     if (s == nullptr) {
         return CString("");
     }
-    if (s->IsUtf16()) {
-        // Should convert utf-16 to utf-8, because uint16_t likely great than maxChar, will convert fail
-        bool modify = (usage != StringConvertedUsage::PRINT);
-        size_t len = base::utf_helper::Utf16ToUtf8Size(s->GetDataUtf16(), s->GetLength(), modify) - 1;
-        CVector<uint8_t> buf(len);
-        len = base::utf_helper::ConvertRegionUtf16ToUtf8(s->GetDataUtf16(), buf.data(), s->GetLength(), len, 0, modify);
-        Span<const uint8_t> sp(buf.data(), len);
-        return ConvertToString(sp);
-    }
-
-    Span<const uint8_t> sp(s->GetDataUtf8(), s->GetLength());
-    return ConvertToString(sp);
+    return EcmaStringAccessor(const_cast<EcmaString *>(s)).ToCString(usage);
 }
 
 CString ConvertToString(JSTaggedValue key)

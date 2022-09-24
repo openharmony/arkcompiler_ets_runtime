@@ -403,36 +403,30 @@ bool JSSerializer::WriteEcmaString(const JSHandle<JSTaggedValue> &value)
     if (!WriteType(SerializationUID::ECMASTRING)) {
         return false;
     }
-    bool isUtf8 = string->IsUtf8();
+    bool isUtf8 = EcmaStringAccessor(string).IsUtf8();
     // write utf encode flag
     if (!WriteBoolean(isUtf8)) {
         bufferSize_ = oldSize;
         return false;
     }
+    size_t length = EcmaStringAccessor(string).GetLength();
+    if (!WriteInt(static_cast<int32_t>(length))) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    // skip writeRawData for empty EcmaString
+    if (length == 0) {
+        return true;
+    }
     if (isUtf8) {
-        size_t length = string->GetLength();
-        if (!WriteInt(static_cast<int32_t>(length))) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-        // skip writeRawData for empty EcmaString
-        if (length == 0) {
-            return true;
-        }
-        const uint8_t *data = string->GetDataUtf8();
+        const uint8_t *data = EcmaStringAccessor(string).GetDataUtf8();
         const uint8_t strEnd = '\0';
         if (!WriteRawData(data, length) || !WriteRawData(&strEnd, sizeof(uint8_t))) {
             bufferSize_ = oldSize;
             return false;
         }
     } else {
-        size_t length = string->GetUtf16Length();
-        ASSERT(length != 0);
-        if (!WriteInt(static_cast<int32_t>(length))) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-        const uint16_t *data = string->GetDataUtf16();
+        const uint16_t *data = EcmaStringAccessor(string).GetDataUtf16();
         if (!WriteRawData(data, length * sizeof(uint16_t))) {
             bufferSize_ = oldSize;
             return false;

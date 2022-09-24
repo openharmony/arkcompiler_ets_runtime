@@ -48,7 +48,7 @@ JSTaggedValue BuiltinsStringIterator::Next(EcmaRuntimeCallInfo *argv)
     uint32_t position = thisValue.GetObject<JSStringIterator>()->GetStringIteratorNextIndex();
 
     // 7. Let len be the number of elements in s.
-    uint32_t len = string.GetObject<EcmaString>()->GetLength();
+    uint32_t len = EcmaStringAccessor(string.GetObject<EcmaString>()).GetLength();
     // If position ≥ len, then
     // a. Set the value of the [[IteratedString]] internal slot of O to
     // b. Return CreateIterResultObject(undefined, true).
@@ -59,7 +59,7 @@ JSTaggedValue BuiltinsStringIterator::Next(EcmaRuntimeCallInfo *argv)
     }
 
     // 9. Let first be the code unit value at index position in s.
-    uint16_t first = string.GetObject<EcmaString>()->At<false>(position);
+    uint16_t first = EcmaStringAccessor(string.GetObject<EcmaString>()).Get<false>(position);
     JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
     uint32_t resultSize = 1;
     // 10. If first < 0xD800 or first > 0xDBFF or position+1 = len, let resultString be the string consisting of the
@@ -75,7 +75,7 @@ JSTaggedValue BuiltinsStringIterator::Next(EcmaRuntimeCallInfo *argv)
         // b. If second < 0xDC00 or second > 0xDFFF, let resultString be the string consisting of the single code unit
         // first.
         // c. Else, let resultString be the string consisting of the code unit first followed by the code unit second.
-        uint16_t second = string.GetObject<EcmaString>()->At<false>(position + 1);
+        uint16_t second = EcmaStringAccessor(string.GetObject<EcmaString>()).Get<false>(position + 1);
         if (second < base::utf_helper::DECODE_TRAIL_LOW || second > base::utf_helper::DECODE_TRAIL_HIGH) {
             std::vector<uint16_t> resultString {first, 0x0};
             result.Update(factory->NewFromUtf16NotCompress(resultString.data(), 1).GetTaggedValue());
