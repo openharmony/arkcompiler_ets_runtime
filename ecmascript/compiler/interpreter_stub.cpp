@@ -5349,7 +5349,8 @@ DECLARE_ASM_HANDLER(HandleCallarg0Imm8)
     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG0);
     GateRef func = acc;
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8));
-    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, JSCallMode::CALL_ARG0, {});
+    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
+                                 JSCallMode::CALL_ARG0, { Undefined() });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5359,7 +5360,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallarg0PrefV8)
     GateRef funcReg = ReadInst8_1(pc);
     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
-    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, JSCallMode::DEPRECATED_CALL_ARG0, {});
+    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
+                                 JSCallMode::DEPRECATED_CALL_ARG0, { Undefined() });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5370,7 +5372,8 @@ DECLARE_ASM_HANDLER(HandleCallarg1Imm8V8)
     GateRef func = acc;
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
-    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, JSCallMode::CALL_ARG1, { a0Value });
+    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
+                                 JSCallMode::CALL_ARG1, {  Undefined(), a0Value });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5382,7 +5385,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallarg1PrefV8V8)
     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8));
-    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, JSCallMode::DEPRECATED_CALL_ARG1, { a0Value });
+    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
+                                 JSCallMode::DEPRECATED_CALL_ARG1, { Undefined(), a0Value });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5396,7 +5400,7 @@ DECLARE_ASM_HANDLER(HandleCallargs2Imm8V8V8)
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::CALL_ARG2, { a0Value, a1Value });
+                                 JSCallMode::CALL_ARG2, { Undefined(), a0Value, a1Value });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5411,7 +5415,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallargs2PrefV8V8V8)
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::DEPRECATED_CALL_ARG2, { a0Value, a1Value });
+                                 JSCallMode::DEPRECATED_CALL_ARG2, { Undefined(), a0Value, a1Value });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5427,7 +5431,7 @@ DECLARE_ASM_HANDLER(HandleCallargs3Imm8V8V8V8)
     GateRef a2Value = GetVregValue(sp, ZExtInt8ToPtr(a2));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::CALL_ARG3, { a0Value, a1Value, a2Value });
+                                 JSCallMode::CALL_ARG3, { Undefined(), a0Value, a1Value, a2Value });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5444,7 +5448,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallargs3PrefV8V8V8V8)
     GateRef a2Value = GetVregValue(sp, ZExtInt8ToPtr(a2));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::DEPRECATED_CALL_ARG3, { a0Value, a1Value, a2Value });
+                                 JSCallMode::DEPRECATED_CALL_ARG3, { Undefined(), a0Value, a1Value, a2Value });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5456,7 +5460,7 @@ DECLARE_ASM_HANDLER(HandleCallrangeImm8Imm8V8)
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::CALL_WITH_ARGV, { numArgs, argv });
+                                 JSCallMode::CALL_WITH_ARGV, { Undefined(), numArgs, argv });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5468,7 +5472,7 @@ DECLARE_ASM_HANDLER(HandleWideCallrangePrefImm16V8)
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::CALL_WITH_ARGV, { numArgs, argv });
+                                 JSCallMode::CALL_WITH_ARGV, { Undefined(), numArgs, argv });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5482,7 +5486,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallrangePrefImm16V8)
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::DEPRECATED_CALL_WITH_ARGV, { numArgs, argv });
+                                 JSCallMode::DEPRECATED_CALL_WITH_ARGV, { Undefined(), numArgs, argv });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5497,7 +5501,7 @@ DECLARE_ASM_HANDLER(HandleCallthisrangeImm8Imm8V8)
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue });
+                                 JSCallMode::CALL_THIS_WITH_ARGV, { thisValue, numArgs, argv });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5512,7 +5516,7 @@ DECLARE_ASM_HANDLER(HandleWideCallthisrangePrefImm16V8)
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue });
+                                 JSCallMode::CALL_THIS_WITH_ARGV, { thisValue, numArgs, argv });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5528,7 +5532,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallthisrangePrefImm16V8)
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
     GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue });
+                                 JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV, { thisValue, numArgs, argv });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5538,7 +5542,8 @@ DECLARE_ASM_HANDLER(HandleCallthis0Imm8V8)
     GateRef thisValue = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef func = acc;
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
-    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, JSCallMode::CALL_THIS_ARG0, { thisValue });
+    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
+                                 JSCallMode::CALL_THIS_ARG0, { thisValue });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5550,8 +5555,8 @@ DECLARE_ASM_HANDLER(HandleCallthis1Imm8V8V8)
     GateRef func = acc;
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8));
-    GateRef res =
-        JSCallDispatch(glue, func, actualNumArgs, jumpSize, JSCallMode::CALL_THIS_ARG1, { a0Value, thisValue });
+    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
+                                 JSCallMode::CALL_THIS_ARG1, { thisValue, a0Value });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5566,7 +5571,7 @@ DECLARE_ASM_HANDLER(HandleCallthis2Imm8V8V8V8)
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::CALL_THIS_ARG2, { a0Value, a1Value, thisValue });
+                                 JSCallMode::CALL_THIS_ARG2, { thisValue, a0Value, a1Value });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5583,7 +5588,7 @@ DECLARE_ASM_HANDLER(HandleCallthis3Imm8V8V8V8V8)
     GateRef a2Value = GetVregValue(sp, ZExtInt8ToPtr(a2));
     GateRef jumpSize = IntPtr(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8_V8_V8_V8));
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize,
-                                 JSCallMode::CALL_THIS_ARG3, { a0Value, a1Value, a2Value, thisValue });
+                                 JSCallMode::CALL_THIS_ARG3, { thisValue, a0Value, a1Value, a2Value });
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -5708,7 +5713,7 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm8V8)
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
-                             { ChangeInt32ToIntPtr(actualNumArgs), argv, *thisObj });
+                             { *thisObj, ChangeInt32ToIntPtr(actualNumArgs), argv });
         Jump(&threadCheck);
     }
     Bind(&slowPath);
@@ -5805,7 +5810,7 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16_IMM8_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
-                             { ChangeInt32ToIntPtr(actualNumArgs), argv, *thisObj });
+                             { *thisObj, ChangeInt32ToIntPtr(actualNumArgs), argv });
         Jump(&threadCheck);
     }
     Bind(&slowPath);
@@ -5902,7 +5907,7 @@ DECLARE_ASM_HANDLER(HandleWideNewobjrangePrefImm16V8)
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize,
                              JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV,
-                             { ChangeInt32ToIntPtr(actualNumArgs), argv, *thisObj });
+                             { *thisObj, ChangeInt32ToIntPtr(actualNumArgs), argv });
         Jump(&threadCheck);
     }
     Bind(&slowPath);

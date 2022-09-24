@@ -20,8 +20,11 @@
 namespace panda::ecmascript::aarch64 {
 Register ExtendedAssembler::ghcJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
     { X19, FP, X20, X21, X22, X23, X24, X25, X26 };
-Register ExtendedAssembler::cppJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
-    { X0, FP, X1, X2, X3, X4, X5, INVALID_REG, INVALID_REG };
+Register ExtendedAssembler::callEntryJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
+    // set x6 as this value for call entry
+    { X0, FP, X1, X2, X3, X6, X4, X5, INVALID_REG };
+Register ExtendedAssembler::accessorJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
+    { X0, FP, X1, X2, X3, X4, X5, X6, INVALID_REG };
 
 void ExtendedAssembler::CalleeSave()
 {
@@ -65,6 +68,7 @@ void ExtendedAssembler::BindAssemblerStub(int id)
     auto callSigns = module_->GetCSigns();
     auto cs = callSigns[id];
     isGhcCallingConv_ = cs->GetCallConv() == CallSignature::CallConv::GHCCallConv;
+    isGetterSetter_ = false;
 }
 
 void ExtendedAssembler::PushFpAndLr()

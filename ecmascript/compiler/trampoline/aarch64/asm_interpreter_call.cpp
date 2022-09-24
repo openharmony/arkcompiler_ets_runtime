@@ -124,6 +124,8 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
     if (!kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
         __ PushFpAndLr();
     }
+
+
     // save fp
     __ Mov(fpRegister, Register(SP));
     __ Mov(currentSlotRegister, Register(SP));
@@ -316,33 +318,6 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
     }
 }
 
-Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister)
-{
-    switch (mode) {
-        case JSCallMode::CALL_GETTER:
-        case JSCallMode::CALL_THIS_ARG0:
-            return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
-        case JSCallMode::CALL_SETTER:
-        case JSCallMode::CALL_THIS_ARG1:
-            return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
-        case JSCallMode::CALL_THIS_ARG2:
-        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-        case JSCallMode::CALL_THIS_WITH_ARGV:
-            return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
-        case JSCallMode::CALL_THIS_ARG3:
-            return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG3);
-        case JSCallMode::CALL_FROM_AOT:
-        case JSCallMode::CALL_ENTRY: {
-            Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
-            __ Ldur(defaultRegister, MemoryOperand(argvRegister, -FRAME_SLOT_SIZE));
-            return defaultRegister;
-        }
-        default:
-            UNREACHABLE();
-    }
-    return INVALID_REG;
-}
-
 Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode,
     Register defaultRegister)
 {
@@ -381,12 +356,6 @@ void AsmInterpreterCall::PushCallThisRangeAndDispatch(ExtendedAssembler *assembl
     JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_WITH_ARGV);
 }
 
-void AsmInterpreterCall::PushCallRangeAndDispatch(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(PushCallRangeAndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_WITH_ARGV);
-}
-
 void AsmInterpreterCall::PushCallNewAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallNewAndDispatch));
@@ -415,30 +384,6 @@ void AsmInterpreterCall::PushCallArg0AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArg0AndDispatch));
     JSCallCommonEntry(assembler, JSCallMode::CALL_ARG0);
-}
-
-void AsmInterpreterCall::PushCallThisArg0AndDispatch(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg0AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG0);
-}
-
-void AsmInterpreterCall::PushCallThisArg1AndDispatch(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArg1AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG1);
-}
-
-void AsmInterpreterCall::PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs2AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2);
-}
-
-void AsmInterpreterCall::PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(PushCallThisArgs3AndDispatch));
-    JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3);
 }
 
 // uint64_t PushCallRangeAndDispatchNative(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
@@ -839,6 +784,7 @@ void AsmInterpreterCall::CallGetter(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
+        __ SetIsGetterSetter();
         JSCallCommonEntry(assembler, JSCallMode::CALL_GETTER);
     }
 }
@@ -853,6 +799,7 @@ void AsmInterpreterCall::CallSetter(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
+        __ SetIsGetterSetter();
         JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER);
     }
 }
@@ -930,33 +877,23 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
 {
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
-    Register thisRegister = __ AvailableRegister2();
+    Register thisRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::THIS_FIELD);
     Register currentSlotRegister = __ AvailableRegister3();
+
+    if (mode == JSCallMode::CALL_ENTRY || mode == JSCallMode::CALL_FROM_AOT) {
+        Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARGV);
+        __ Ldur(thisRegister, MemoryOperand(argvRegister, -FRAME_SLOT_SIZE));
+    }
 
     Label pushVregs;
     Label pushNewTarget;
     Label pushCallTarget;
-    bool haveThis = kungfu::AssemblerModule::JSModeHaveThisArg(mode);
     bool haveNewTarget = kungfu::AssemblerModule::JSModeHaveNewTargetArg(mode);
-    if (!haveThis) {
-        __ Mov(thisRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));  // default this: undefined
-    } else {
-        Register thisArgRegister = GetThisRegsiter(assembler, mode, thisRegister);
-        if (thisRegister.GetId() != thisArgRegister.GetId()) {
-            __ Mov(thisRegister, thisArgRegister);
-        }
-    }
+
     __ Tst(callFieldRegister, LogicalImmediate::Create(CALL_TYPE_MASK, RegXSize));
     __ B(Condition::EQ, &pushVregs);
     __ Tbz(callFieldRegister, MethodLiteral::HaveThisBit::START_BIT, &pushNewTarget);
-    if (!haveThis) {
-        [[maybe_unused]] TempRegister1Scope scope1(assembler);
-        Register tempRegister = __ TempRegister1();
-        __ Mov(tempRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));
-        __ Str(tempRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    } else {
-        __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    }
+    __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Bind(&pushNewTarget);
     {
         __ Tbz(callFieldRegister, MethodLiteral::HaveNewTargetBit::START_BIT, &pushCallTarget);
@@ -991,14 +928,14 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register fpRegister = __ AvailableRegister1();
-    Register thisRegister = __ AvailableRegister2();
+    Register thisRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::THIS_FIELD);
     Register currentSlotRegister = __ AvailableRegister3();
 
     Label pushFrameStateAndCall;
     [[maybe_unused]] TempRegister1Scope scope1(assembler);
     Register tempRegister = __ TempRegister1();
     // args register can be reused now.
-    Register newSpRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
+    Register newSpRegister = __ AvailableRegister2();;
     Register numVregsRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
     GetNumVregsFromCallField(assembler, callFieldRegister, numVregsRegister);
     PushUndefinedWithArgc(assembler, glue, numVregsRegister, tempRegister, currentSlotRegister, &pushFrameStateAndCall,

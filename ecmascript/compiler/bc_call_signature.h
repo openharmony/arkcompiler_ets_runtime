@@ -480,10 +480,10 @@ enum class CallDispatchInputs : size_t {
     CALL_TARGET,
     METHOD,
     CALL_FIELD,
+    THIS_FIELD,
     ARG0,
     ARG1,
     ARG2,
-    ARG3,
     NUM_OF_INPUTS,
 
     ARGC = ARG0,

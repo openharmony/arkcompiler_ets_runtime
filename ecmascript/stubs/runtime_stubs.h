@@ -52,11 +52,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(PushCallArg1AndDispatch)               \
     V(PushCallArgs2AndDispatch)              \
     V(PushCallArgs3AndDispatch)              \
-    V(PushCallThisArg0AndDispatch)           \
-    V(PushCallThisArg1AndDispatch)           \
-    V(PushCallThisArgs2AndDispatch)          \
-    V(PushCallThisArgs3AndDispatch)          \
-    V(PushCallRangeAndDispatch)              \
     V(PushCallNewAndDispatch)                \
     V(PushCallNewAndDispatchNative)          \
     V(PushCallRangeAndDispatchNative)        \
