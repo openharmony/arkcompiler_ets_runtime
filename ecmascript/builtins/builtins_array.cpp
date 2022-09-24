@@ -226,8 +226,8 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
                 info->SetCallArg(nextValue.GetTaggedValue(), key.GetTaggedValue());
                 JSTaggedValue callResult = JSFunction::Call(info);
                 mapValue.Update(callResult);
-                JSTaggedValue mapResult = JSIterator::IteratorClose(thread, iterator, mapValue).GetTaggedValue();
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, mapResult);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+                                                  JSIterator::IteratorClose(thread, iterator, mapValue).GetTaggedValue());
             } else {
                 mapValue.Update(nextValue.GetTaggedValue());
             }
@@ -236,8 +236,8 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
             //     xi. Increase k by 1.
             JSHandle<JSTaggedValue> defineStatus(
                 thread, JSTaggedValue(JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, key, mapValue)));
-            JSTaggedValue defineResult = JSIterator::IteratorClose(thread, iterator, defineStatus).GetTaggedValue();
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, defineResult);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+                                              JSIterator::IteratorClose(thread, iterator, defineStatus).GetTaggedValue());
             k++;
         }
     }
