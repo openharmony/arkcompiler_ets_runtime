@@ -31,7 +31,7 @@
     Uint8ClampedArray
 ].forEach(function(ctor, i) {
     if (testTypeArray1(ctor) && testTypeArray2(ctor) &&
-        testTypeArray3(ctor)) {
+        testTypeArray3(ctor) && testTypeArray4(ctor)) {
         print(ctor.name + " test success !!!")
     } else {
         print(ctor.name + " test fail !!!")
@@ -86,6 +86,18 @@ function testTypeArray3(ctor) {
     result.push(obj["a"] == "a");
     for (let i = 0; i < result.length; i++) {
         if (!result[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function testTypeArray4(ctor) {
+    let a1 = new Array(1024);
+    let a2 = new ctor(1024);
+    a2.set(a1);
+    for (let i = 0; i < a2.length; i++) {
+        if (a2[i]) {
             return false;
         }
     }
