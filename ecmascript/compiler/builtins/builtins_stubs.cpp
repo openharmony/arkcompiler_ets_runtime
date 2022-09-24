@@ -24,7 +24,6 @@
 #include "ecmascript/compiler/variable_type.h"
 
 namespace panda::ecmascript::kungfu {
-#if ECMASCRIPT_ENABLE_BUILTIN_LOG
 #define DECLARE_BUILTINS(name)                                                                      \
 void name##StubBuilder::GenerateCircuit()                                                           \
 {                                                                                                   \
@@ -34,30 +33,25 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef thisValue = TaggedArgument(static_cast<size_t>(BuiltinsArgs::THISVALUE));               \
     GateRef numArgs = PtrArgument(static_cast<size_t>(BuiltinsArgs::NUMARGS));                      \
     GateRef argv = PtrArgument(static_cast<size_t>(BuiltinsArgs::ARGV));                            \
-    DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(name)) });                                       \
+    DebugPrint(glue, GET_MESSAGE_STRING_ID(name));                                                  \
     GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs, argv);                          \
 }                                                                                                   \
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
                                             GateRef thisValue, GateRef numArgs, GateRef argv)
-#else
-#define DECLARE_BUILTINS(name)                                                                      \
-void name##StubBuilder::GenerateCircuit()                                                           \
-{                                                                                                   \
-    GateRef glue = PtrArgument(static_cast<size_t>(BuiltinsArgs::GLUE));                            \
-    GateRef nativeCode = PtrArgument(static_cast<size_t>(BuiltinsArgs::NATIVECODE));                \
-    GateRef func = TaggedArgument(static_cast<size_t>(BuiltinsArgs::FUNC));                         \
-    GateRef thisValue = TaggedArgument(static_cast<size_t>(BuiltinsArgs::THISVALUE));               \
-    GateRef numArgs = PtrArgument(static_cast<size_t>(BuiltinsArgs::NUMARGS));                      \
-    GateRef argv = PtrArgument(static_cast<size_t>(BuiltinsArgs::ARGV));                            \
-    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs, argv);                          \
-}                                                                                                   \
-void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
-                                            GateRef thisValue, GateRef numArgs, GateRef argv)
-#endif
 
-#define CALLSLOWPATH()                                                                              \
-    CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),                                \
-                  { glue, nativeCode, func, thisValue, numArgs, argv })
+void BuiltinsStubBuilder::DebugPrint([[maybe_unused]]GateRef glue, [[maybe_unused]]int32_t idx)
+{
+#if ECMASCRIPT_ENABLE_BUILTIN_LOG
+    DebugPrint(glue, { Int32(idx) });
+#endif
+}
+
+GateRef BuiltinsStubBuilder::CallSlowPath(GateRef glue, GateRef nativeCode, GateRef func,
+                                          GateRef thisValue, GateRef numArgs, GateRef argv)
+{
+    return CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                          { glue, nativeCode, func, thisValue, numArgs, argv });
+}
 
 DECLARE_BUILTINS(CharCodeAt)
 {
@@ -65,7 +59,6 @@ DECLARE_BUILTINS(CharCodeAt)
     DEFVARIABLE(res, VariableType::JS_ANY(), DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)));
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
 
-    Label objNotUndefinedAndNull(env);
     Label isString(env);
     Label slowPath(env);
     Label next(env);
@@ -78,8 +71,6 @@ DECLARE_BUILTINS(CharCodeAt)
     Label posTagIsDouble(env);
     Label thisIsHeapobject(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
-    Bind(&objNotUndefinedAndNull);
     {
         Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, &slowPath);
         Bind(&thisIsHeapobject);
@@ -119,7 +110,7 @@ DECLARE_BUILTINS(CharCodeAt)
     }
     Bind(&slowPath);
     {
-        res = CALLSLOWPATH();
+        res = CallSlowPath(glue, nativeCode, func, thisValue, numArgs, argv);
         Jump(&exit);
     }
     Bind(&exit);
@@ -131,8 +122,7 @@ DECLARE_BUILTINS(IndexOf)
     auto env = GetEnvironment();
     DEFVARIABLE(res, VariableType::JS_ANY(), IntToTaggedPtr(Int32(-1)));
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
-    
-    Label objNotUndefinedAndNull(env);
+
     Label isString(env);
     Label isSearchString(env);
     Label slowPath(env);
@@ -148,8 +138,6 @@ DECLARE_BUILTINS(IndexOf)
     Label posNotLessThanLen(env);
     Label thisIsHeapobject(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
-    Bind(&objNotUndefinedAndNull);
     {
         Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, &slowPath);
         Bind(&thisIsHeapobject);
@@ -218,7 +206,7 @@ DECLARE_BUILTINS(IndexOf)
     }
     Bind(&slowPath);
     {
-        res = CALLSLOWPATH();
+        res = CallSlowPath(glue, nativeCode, func, thisValue, numArgs, argv);
         Jump(&exit);
     }
     Bind(&exit);
@@ -234,7 +222,6 @@ DECLARE_BUILTINS(Substring)
     DEFVARIABLE(from, VariableType::INT32(), Int32(0));
     DEFVARIABLE(to, VariableType::INT32(), Int32(0));
 
-    Label objNotUndefinedAndNull(env);
     Label isString(env);
     Label isSearchString(env);
     Label slowPath(env);
@@ -261,8 +248,6 @@ DECLARE_BUILTINS(Substring)
     Label startNotGreatEnd(env);
     Label thisIsHeapobject(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
-    Bind(&objNotUndefinedAndNull);
     {
         Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, &slowPath);
         Bind(&thisIsHeapobject);
@@ -383,7 +368,7 @@ DECLARE_BUILTINS(Substring)
 
     Bind(&slowPath);
     {
-        res = CALLSLOWPATH();
+        res = CallSlowPath(glue, nativeCode, func, thisValue, numArgs, argv);
         Jump(&exit);
     }
     Bind(&exit);
@@ -396,7 +381,6 @@ DECLARE_BUILTINS(CharAt)
     DEFVARIABLE(res, VariableType::JS_POINTER(), Hole());
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
 
-    Label objNotUndefinedAndNull(env);
     Label isString(env);
     Label slowPath(env);
     Label next(env);
@@ -410,8 +394,6 @@ DECLARE_BUILTINS(CharAt)
     Label posTagIsDouble(env);
     Label thisIsHeapobject(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
-    Bind(&objNotUndefinedAndNull);
     {
         Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, &slowPath);
         Bind(&thisIsHeapobject);
@@ -457,7 +439,7 @@ DECLARE_BUILTINS(CharAt)
     }
     Bind(&slowPath);
     {
-        res = CALLSLOWPATH();
+        res = CallSlowPath(glue, nativeCode, func, thisValue, numArgs, argv);
         Jump(&exit);
     }
     Bind(&exit);

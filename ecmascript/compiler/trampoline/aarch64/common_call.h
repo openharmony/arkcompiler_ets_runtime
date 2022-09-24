@@ -118,8 +118,6 @@ public:
 
     static void PushCallThisRangeAndDispatch(ExtendedAssembler *assembler);
 
-    static void PushCallRangeAndDispatch(ExtendedAssembler *assembler);
-
     static void PushCallArgs3AndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallArgs2AndDispatch(ExtendedAssembler *assembler);
@@ -127,14 +125,6 @@ public:
     static void PushCallArg1AndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallArg0AndDispatch(ExtendedAssembler *assembler);
-
-    static void PushCallThisArg0AndDispatch(ExtendedAssembler *assembler);
-
-    static void PushCallThisArg1AndDispatch(ExtendedAssembler *assembler);
-
-    static void PushCallThisArgs2AndDispatch(ExtendedAssembler *assembler);
-
-    static void PushCallThisArgs3AndDispatch(ExtendedAssembler *assembler);
 
     static void PushCallThisRangeAndDispatchNative(ExtendedAssembler *assembler);
 
@@ -161,7 +151,6 @@ public:
 private:
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
 
-    static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
     static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
 
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
