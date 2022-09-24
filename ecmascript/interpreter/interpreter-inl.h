@@ -3823,15 +3823,13 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 // this
                 JSTaggedValue thisObj;
                 if (ctorFunc->IsBase()) {
-                    JSTaggedValue newTarget = GET_ACC();
-                    thisObj = FastRuntimeStub::NewThisObject(thread, ctor, newTarget, state);
+                    thisObj = FastRuntimeStub::NewThisObject(thread, ctor, ctor, state);
                     INTERPRETER_RETURN_IF_ABRUPT(thisObj);
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = thisObj.GetRawData();
                 } else {
                     ASSERT(ctorFunc->IsDerivedConstructor());
-                    JSTaggedValue newTarget = GET_ACC();
-                    newSp[index++] = newTarget.GetRawData();
+                    newSp[index++] = ctor.GetRawData();
                     thisObj = JSTaggedValue::Undefined();
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = thisObj.GetRawData();
