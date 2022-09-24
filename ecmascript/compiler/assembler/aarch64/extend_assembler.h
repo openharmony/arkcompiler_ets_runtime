@@ -77,13 +77,15 @@ public:
         // X13 is neither callee saved reegister nor argument register
         return X13;
     }
+    Register AvailableRegister4() const
+    {
+        // X14 is neither callee saved reegister nor argument register
+        return X14;
+    }
     Register CallDispatcherArgument(kungfu::CallDispatchInputs index)
     {
         size_t i = static_cast<size_t>(index);
-        if (isGhcCallingConv_) {
-            return ghcJSCallDispacherArgs_[i];
-        }
-        Register ret = isGetterSetter_ ? accessorJSCallDispacherArgs_[i] : callEntryJSCallDispacherArgs_[i];
+        Register ret = isGhcCallingConv_ ? ghcJSCallDispacherArgs_[i] : cppJSCallDispacherArgs_[i];
         if (ret.GetId() == INVALID_REG) {
             LOG_COMPILER(FATAL) << "arm64 invalid call argument:" << i;
         }
@@ -94,10 +96,6 @@ public:
         return isGhcCallingConv_ ? X19 : X0;
     }
 
-    void SetIsGetterSetter() {
-        isGetterSetter_ = true;
-    }
-
     bool FromInterpreterHandler() const
     {
         return isGhcCallingConv_;
@@ -105,7 +103,6 @@ public:
 private:
     AssemblerModule *module_ {nullptr};
     bool isGhcCallingConv_ {false};
-    bool isGetterSetter_ {false};
     bool temp1InUse_ {false};
     bool temp2InUse_ {false};
     friend class TempRegister1Scope;
@@ -114,8 +111,7 @@ private:
     static constexpr size_t JS_CALL_DISPATCHER_ARGS_COUNT =
         static_cast<size_t>(kungfu::CallDispatchInputs::NUM_OF_INPUTS);
     static Register ghcJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT];
-    static Register callEntryJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT];
-    static Register accessorJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT];
+    static Register cppJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT];
 };
 
 class TempRegister1Scope {

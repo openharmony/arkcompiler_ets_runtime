@@ -28,7 +28,7 @@ void BuiltinsStubCSigns::Initialize()
     callSigns_[name].SetID(name);                                        \
     callSigns_[name].SetName(#name);                                     \
     callSigns_[name].SetConstructor(                                     \
-    [](void* env) {                                                      \
+    [](void* env) {                                                   \
         return static_cast<void*>(                                       \
             new name##StubBuilder(&callSigns_[name],                     \
                 static_cast<Environment*>(env)));                        \

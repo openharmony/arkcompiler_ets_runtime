@@ -20,11 +20,13 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 
 namespace panda::ecmascript::kungfu {
+#define IGNORE_BC_STUB(...)
+// V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define BUILTINS_STUB_LIST(V)                       \
     V(CharCodeAt)                                   \
     V(IndexOf)                                      \
     V(Substring)                                    \
-    V(CharAt)
+    V(CharAt)                                       \
 
 class BuiltinsStubCSigns {
 public:

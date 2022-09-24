@@ -164,7 +164,6 @@ bool StubCompiler::BuildStubModuleAndSave() const
     }
     return (res > 0);
 }
-
 std::string GetHelper()
 {
     std::string str;

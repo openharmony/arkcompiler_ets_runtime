@@ -20,11 +20,8 @@
 namespace panda::ecmascript::x64 {
 Register ExtendedAssembler::ghcJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
     { r13, rbp, r12, rbx, r14, rsi, rdi, r8, r9 };
-Register ExtendedAssembler::callEntryJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
-    // set r12 as this value for call entry
-    { rdi, rbp, rsi, rdx, rcx, r12, r8, r9, rInvalid };
-Register ExtendedAssembler::accessorJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
-    { rdi, rbp, rsi, rdx, rcx, r8, r9, r12, rInvalid };
+Register ExtendedAssembler::cppJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
+    { rdi, rbp, rsi, rdx, rcx, r8, r9, rInvalid, rInvalid };
 
 void ExtendedAssembler::PushAlignBytes()
 {
@@ -87,7 +84,6 @@ void ExtendedAssembler::BindAssemblerStub(int id)
     auto cs = callSigns[id];
     isGhcCallingConv_ = cs->GetCallConv() ==
         CallSignature::CallConv::GHCCallConv;
-    isGetterSetter_ = false;
 }
 
 void ExtendedAssembler::PushArgc(int32_t argc, Register tempArgcRegister)

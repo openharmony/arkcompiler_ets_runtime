@@ -3784,45 +3784,51 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label methodNotNative(env);
     Branch(Int64NotEqual(Int64And(callField, isNativeMask), Int64(0)), &methodIsNative, &methodNotNative);
     auto data = std::begin(args);
-    GateRef thisValue = data[0];
     // 3. call native
     Bind(&methodIsNative);
     {
         GateRef nativeCode = Load(VariableType::NATIVE_POINTER(), method,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef newTarget = Undefined();
+        GateRef thisValue = Undefined();
         GateRef numArgs = Int32Add(actualNumArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
-        if (AssemblerModule::JSModeIsCallThis(mode)) {
-
-        }
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
+                thisValue = data[0];
+                [[fallthrough]];
             case JSCallMode::CALL_ARG0:
             case JSCallMode::DEPRECATED_CALL_ARG0:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue });
                 break;
             case JSCallMode::CALL_THIS_ARG1:
+                thisValue = data[1];
+                [[fallthrough]];
             case JSCallMode::CALL_ARG1:
             case JSCallMode::DEPRECATED_CALL_ARG1:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
-                    { nativeCode, glue, numArgs, func, newTarget, thisValue, data[1]});
+                    { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
                 break;
             case JSCallMode::CALL_THIS_ARG2:
+                thisValue = data[2];
+                [[fallthrough]];
             case JSCallMode::CALL_ARG2:
             case JSCallMode::DEPRECATED_CALL_ARG2:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
-                    { nativeCode, glue, numArgs, func, newTarget, thisValue, data[1], data[2] });
+                    { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
                 break;
             case JSCallMode::CALL_THIS_ARG3:
+                thisValue = data[3];
+                [[fallthrough]];
             case JSCallMode::CALL_ARG3:
             case JSCallMode::DEPRECATED_CALL_ARG3:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func,
-                      newTarget, thisValue, data[1], data[2], data[3] }); // 2: args2
+                      newTarget, thisValue, data[0], data[1], data[2] }); // 2: args2
                 break;
             case JSCallMode::CALL_THIS_WITH_ARGV:
             case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV: {
+                thisValue = data[2]; // 2: this input
                 GateRef isFastBuiltinsMask =
                     Int64(static_cast<uint64_t>(1) << MethodLiteral::IsFastBuiltinBit::START_BIT);
                 Branch(Int64NotEqual(Int64And(callField, isFastBuiltinsMask), Int64(0)),
@@ -3830,31 +3836,31 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 Bind(&isFastBuiltins);
                 {
                     GateRef builtinId = GetBuiltinId(method);
-                    result = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue, data[1], data[2] });
+                    result = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue, data[0], data[1] });
                     Jump(&exit);
                 }
                 Bind(&notFastBuiltins);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),
-                    { glue, nativeCode, func, thisValue, data[1], data[2] });
+                    { glue, nativeCode, func, thisValue, data[0], data[1] });
                 break;
             }
             case JSCallMode::CALL_WITH_ARGV:
             case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),
-                    { glue, nativeCode, func, thisValue, data[1], data[2] });
+                    { glue, nativeCode, func, thisValue, data[0], data[1] });
                 break;
             case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatchNative),
-                    { glue, nativeCode, func, thisValue, data[1], data[2] });
+                    { glue, nativeCode, func, data[2], data[0], data[1] });
                 break;
             case JSCallMode::CALL_GETTER:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
-                    { nativeCode, glue, numArgs, func, newTarget, thisValue });
+                    { nativeCode, glue, numArgs, func, newTarget, data[0] });
                 break;
             case JSCallMode::CALL_SETTER:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
-                    { nativeCode, glue, numArgs, func, newTarget, thisValue, data[1] });
+                    { nativeCode, glue, numArgs, func, newTarget, data[0], data[1] });
                 break;
             default:
                 UNREACHABLE();
@@ -3886,53 +3892,72 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         Bind(&methodisAot);
         {
             GateRef newTarget = Undefined();
+            GateRef thisValue = Undefined();
             GateRef lexEnv = env_->GetBuilder()->GetLexicalEnv(func);
             GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
             switch (mode) {
                 case JSCallMode::CALL_THIS_ARG0:
+                    thisValue = data[0];
+                    [[fallthrough]];
                 case JSCallMode::CALL_ARG0:
                 case JSCallMode::DEPRECATED_CALL_ARG0:
-                case JSCallMode::CALL_GETTER:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
                         { glue, lexEnv, realNumArgs, func, newTarget, thisValue});
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG1:
+                    thisValue = data[1];
+                    [[fallthrough]];
                 case JSCallMode::CALL_ARG1:
                 case JSCallMode::DEPRECATED_CALL_ARG1:
-                case JSCallMode::CALL_SETTER:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                        { glue, lexEnv, realNumArgs, func, newTarget, thisValue, data[1] });
+                        { glue, lexEnv, realNumArgs, func, newTarget, thisValue,  data[0] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG2:
+                    thisValue = data[2];
+                    [[fallthrough]];
                 case JSCallMode::CALL_ARG2:
                 case JSCallMode::DEPRECATED_CALL_ARG2:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                        { glue, lexEnv, realNumArgs, func, newTarget, thisValue,  data[1], data[2] }); // 2: args2
+                        { glue, lexEnv, realNumArgs, func, newTarget, thisValue,  data[0], data[1] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG3:
+                    thisValue = data[3];
+                    [[fallthrough]];
                 case JSCallMode::CALL_ARG3:
                 case JSCallMode::DEPRECATED_CALL_ARG3:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
                         { glue, lexEnv, realNumArgs, func, newTarget, thisValue,
-                          data[1], data[2], data[3] }); // 2: args2
+                          data[0], data[1], data[2] }); // 2: args2
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_WITH_ARGV:
                 case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+                    thisValue = data[2]; // 2: this input
+                    [[fallthrough]];
                 case JSCallMode::CALL_WITH_ARGV:
                 case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
-                        { glue, ZExtInt32ToInt64(actualNumArgs), func, newTarget, thisValue, data[2] }); // 2: args2
+                        { glue, ZExtInt32ToInt64(actualNumArgs), func, newTarget, thisValue, data[1] });
                     Jump(&exit);
                     break;
                 case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
                 case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                     result = CallNGCRuntime(glue, RTSTUB_ID(ConstructorJSCallWithArgV),
-                        { glue, ZExtInt32ToInt64(actualNumArgs), func, func, thisValue, data[2]});
-                    result = ConstructorCheck(glue, func, *result, thisValue);  // 2: the second index
+                        { glue, ZExtInt32ToInt64(actualNumArgs), func, func, data[2], data[1]});
+                    result = ConstructorCheck(glue, func, *result, data[2]);  // 2: the second index
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_GETTER:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
+                        { glue, lexEnv, realNumArgs, func, newTarget, data[0]});
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_SETTER:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
+                        { glue, lexEnv, realNumArgs, func, newTarget, data[0], data[1]});
                     Jump(&exit);
                     break;
                 default:
@@ -3945,55 +3970,75 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         }
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg0AndDispatch),
+                    { glue, sp, func, method, callField, data[0] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG0:
             case JSCallMode::DEPRECATED_CALL_ARG0:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg0AndDispatch),
-                    { glue, sp, func, method, callField, thisValue });
+                    { glue, sp, func, method, callField });
                 Return();
                 break;
             case JSCallMode::CALL_THIS_ARG1:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg1AndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG1:
             case JSCallMode::DEPRECATED_CALL_ARG1:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg1AndDispatch),
-                    { glue, sp, func, method, callField, thisValue, data[1] });
+                    { glue, sp, func, method, callField, data[0] });
                 Return();
                 break;
             case JSCallMode::CALL_THIS_ARG2:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs2AndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG2:
             case JSCallMode::DEPRECATED_CALL_ARG2:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs2AndDispatch),
-                    { glue, sp, func, method, callField, thisValue, data[1], data[2] }); // 2: args2
+                    { glue, sp, func, method, callField, data[0], data[1] });
                 Return();
                 break;
             case JSCallMode::CALL_THIS_ARG3:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs3AndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1], data[2], data[3] });
+                Return();
+                break;
             case JSCallMode::CALL_ARG3:
             case JSCallMode::DEPRECATED_CALL_ARG3:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs3AndDispatch),
-                    { glue, sp, func, method, callField, thisValue, data[1], data[2], data[3] }); // 2: args2
+                    { glue, sp, func, method, callField, data[0], data[1], data[2] }); // 2: args2
                 Return();
                 break;
             case JSCallMode::CALL_WITH_ARGV:
             case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatch),
+                    { glue, sp, func, method, callField, data[0], data[1] });
+                Return();
+                break;
             case JSCallMode::CALL_THIS_WITH_ARGV:
             case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisRangeAndDispatch),
-                    { glue, sp, func, method, callField, thisValue, data[1], data[2] });
+                    { glue, sp, func, method, callField, data[0], data[1], data[2] });
                 Return();
                 break;
             case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatch),
-                    { glue, sp, func, method, callField, thisValue, data[1], data[2] });
+                    { glue, sp, func, method, callField, data[0], data[1], data[2] });
                 Return();
                 break;
             case JSCallMode::CALL_GETTER:
                 result = CallNGCRuntime(glue, RTSTUB_ID(CallGetter),
-                    { glue, func, method, callField, thisValue });
+                    { glue, func, method, callField, data[0] });
                 Jump(&exit);
                 break;
             case JSCallMode::CALL_SETTER:
                 result = CallNGCRuntime(glue, RTSTUB_ID(CallSetter),
-                    { glue, func, method, callField, thisValue, data[1] });
+                    { glue, func, method, callField, data[1], data[0] });
                 Jump(&exit);
                 break;
             default:

@@ -66,11 +66,6 @@ public:
     {
         return Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(sizeof(JSTaggedType))));
     }
-
-    void DebugPrint(GateRef glue, int32_t idx);
-
-    GateRef CallSlowPath(GateRef glue, GateRef nativeCode, GateRef func,
-        GateRef thisValue, GateRef numArgs, GateRef argv);
 };
 
 #define DECLARE_BUILTINS_STUB_CLASS(name)                                                           \
