@@ -23,7 +23,8 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
-JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor) : pf_(pf), desc_(descriptor)
+JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor, bool isPatch)
+    : pf_(pf), desc_(descriptor), isPatch_(isPatch)
 {
     ASSERT(pf_ != nullptr);
 #if ECMASCRIPT_ENABLE_MERGE_ABC

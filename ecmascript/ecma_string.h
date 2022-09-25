@@ -38,8 +38,7 @@ class EcmaVM;
 
 class EcmaString : public TaggedObject {
 public:
-    static EcmaString *Cast(TaggedObject *object);
-    static const EcmaString *ConstCast(const TaggedObject *object);
+    CAST_CHECK(EcmaString, IsString);
 
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len, const EcmaVM *vm, bool canBeCompress,

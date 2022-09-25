@@ -118,9 +118,7 @@ int Main(const int argc, const char **argv)
         JSNApi::EnableUserUncaughtErrorHandler(vm);
 
         bool isMergeAbc = mergeAbc.GetValue();
-        if (isMergeAbc) {
-            entry = JSPandaFile::ParseRecordName(baseFileName);
-        }
+        JSNApi::SetBundle(vm, !isMergeAbc);
         auto res = JSNApi::Execute(vm, baseFileName, entry);
         if (!res) {
             std::cerr << "Cannot execute panda file '" << baseFileName << "' with entry '" << entry << "'" << std::endl;
@@ -133,9 +131,6 @@ int Main(const int argc, const char **argv)
             return -1;
         }
 
-        if (isMergeAbc) {
-            entry = JSPandaFile::ParseRecordName(testLoadFileName);
-        }
         res = JSNApi::Execute(vm, testLoadFileName, entry);
         if (!res) {
             std::cerr << "Cannot execute panda file '" << testLoadFileName
@@ -157,9 +152,6 @@ int Main(const int argc, const char **argv)
             return -1;
         }
 
-        if (isMergeAbc) {
-            entry = JSPandaFile::ParseRecordName(testUnloadFileName);
-        }
         res = JSNApi::Execute(vm, testUnloadFileName, entry);
         if (!res) {
             std::cerr << "Cannot execute panda file '" << testUnloadFileName

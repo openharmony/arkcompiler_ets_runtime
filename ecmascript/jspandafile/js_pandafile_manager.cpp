@@ -44,7 +44,7 @@ JSPandaFileManager::~JSPandaFileManager()
 }
 
 const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
-    std::string_view entryPoint)
+    std::string_view entryPoint, bool isPatch)
 {
     {
         os::memory::LockHolder lock(jsPandaFileLock_);
@@ -61,12 +61,13 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
         return nullptr;
     }
 
-    const JSPandaFile *jsPandaFile = GenerateJSPandaFile(thread, pf.release(), filename, entryPoint);
+    const JSPandaFile *jsPandaFile = GenerateJSPandaFile(thread, pf.release(), filename, entryPoint, isPatch);
     return jsPandaFile;
 }
 
 const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
-                                                       std::string_view entryPoint, const void *buffer, size_t size)
+                                                       std::string_view entryPoint, const void *buffer, size_t size,
+                                                       bool isPatch)
 {
     if (buffer == nullptr || size == 0) {
         return nullptr;
@@ -85,7 +86,7 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;
     }
-    const JSPandaFile *jsPandaFile = GenerateJSPandaFile(thread, pf.release(), filename, entryPoint);
+    const JSPandaFile *jsPandaFile = GenerateJSPandaFile(thread, pf.release(), filename, entryPoint, isPatch);
     return jsPandaFile;
 }
 
@@ -174,9 +175,9 @@ JSPandaFile *JSPandaFileManager::OpenJSPandaFile(const CString &filename)
     return jsPandaFile;
 }
 
-JSPandaFile *JSPandaFileManager::NewJSPandaFile(const panda_file::File *pf, const CString &desc)
+JSPandaFile *JSPandaFileManager::NewJSPandaFile(const panda_file::File *pf, const CString &desc, bool isPatch)
 {
-    return new JSPandaFile(pf, desc);
+    return new JSPandaFile(pf, desc, isPatch);
 }
 
 void JSPandaFileManager::ReleaseJSPandaFile(const JSPandaFile *jsPandaFile)
@@ -208,10 +209,11 @@ tooling::JSPtExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *
 }
 
 const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf,
-                                                           const CString &desc, std::string_view entryPoint)
+                                                           const CString &desc, std::string_view entryPoint,
+                                                           bool isPatch)
 {
     ASSERT(GetJSPandaFile(pf) == nullptr);
-    JSPandaFile *newJsPandaFile = NewJSPandaFile(pf, desc);
+    JSPandaFile *newJsPandaFile = NewJSPandaFile(pf, desc, isPatch);
 
     auto loader = thread->GetEcmaVM()->GetFileLoader();
     if (loader->hasLoaded(newJsPandaFile)) {

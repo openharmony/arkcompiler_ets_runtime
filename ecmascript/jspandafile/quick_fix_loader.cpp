@@ -37,7 +37,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, c
 
     // The entry point is not work for merge abc.
     patchFile_ = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, patchFileName,
-                                                                    JSPandaFile::PATCH_ENTRY_FUNCTION);
+                                                                    JSPandaFile::PATCH_ENTRY_FUNCTION, true);
     if (patchFile_ == nullptr) {
         LOG_FULL(ERROR) << "load patch jsPandafile failed";
         return false;
@@ -58,7 +58,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, c
 
     patchFile_ = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, patchFileName,
                                                                     JSPandaFile::PATCH_ENTRY_FUNCTION,
-                                                                    patchBuffer, patchSize);
+                                                                    patchBuffer, patchSize, true);
     if (patchFile_ == nullptr) {
         LOG_FULL(ERROR) << "load patch jsPandafile failed";
         return false;
@@ -93,11 +93,18 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
             return false;
         }
         JSHandle<ConstantPool> patchConstpool = JSHandle<ConstantPool>(thread, patchConstpoolValue);
-        // TODO: execute patch_main_0 for add function.
+
+        // Only esmodule support check
+        if (CheckIsInvalidPatch(vm)) {
+            LOG_FULL(ERROR) << "Invalid patch";
+            return false;
+        }
+
         if (!ReplaceMethod(thread, baseConstpool, patchConstpool)) {
             LOG_FULL(ERROR) << "replace method failed";
             return false;
         }
+        // TODO: execute patch_main_0 for add function.
     } else {
         // Get base constpool.
         JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
@@ -149,9 +156,9 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
 
     CVector<JSHandle<Program>> programs;
     auto recordInfos = jsPandaFile->GetJSRecordInfo();
-    CString fileName = jsPandaFile->GetJSPandaFileDesc();
+    const CString &fileName = jsPandaFile->GetJSPandaFileDesc();
     for (const auto &item : recordInfos) {
-        CString recordName = item.first;
+        const CString &recordName = item.first;
         LOG_FULL(DEBUG) << "Parse constpool: " << fileName << ":" << recordName;
         vm->GetModuleManager()->HostResolveImportedModuleWithMerge(fileName, recordName);
         PandaFileTranslator::ParseFuncAndLiteralConstPool(vm, jsPandaFile, recordName, constpool);
@@ -215,7 +222,7 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
                     }
                     // For merge abc, method and record name must be same to base.
                     CString baseRecordName = GetRecordName(baseFile_, baseMethod->GetMethodId());
-                    if (patchRecordName != baseRecordName) {
+                    if (patchRecordName != JSPandaFile::PATCH_RECORD_PREFIX + baseRecordName) {
                         continue;
                     }
 
@@ -241,7 +248,7 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
                 }
                 // For merge abc, method and record name must be same to base.
                 CString baseRecordName = GetRecordName(baseFile_, baseMethod->GetMethodId());
-                if (patchRecordName != baseRecordName) {
+                if (patchRecordName != JSPandaFile::PATCH_RECORD_PREFIX + baseRecordName) {
                     continue;
                 }
 
@@ -303,7 +310,7 @@ CString QuickFixLoader::GetRecordName(const JSPandaFile *jsPandaFile, EntityId m
     panda_file::MethodDataAccessor patchMda(*pf, methodId);
     panda_file::ClassDataAccessor patchCda(*pf, patchMda.GetClassId());
     CString desc = utf::Mutf8AsCString(patchCda.GetDescriptor());
-    return JSPandaFile::ParseEntryPoint(desc);
+    return jsPandaFile->ParseEntryPoint(desc);
 }
 
 bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
@@ -402,5 +409,291 @@ void QuickFixLoader::InsertBaseClassMethodInfo(uint32_t constpoolIndex, uint32_t
         CUnorderedMap<uint32_t, MethodLiteral *> classLiteralInfo {{literalIndex, base}};
         reservedBaseClassInfo_.emplace(constpoolIndex, classLiteralInfo);
     }
+}
+
+bool QuickFixLoader::CheckIsInvalidPatch(EcmaVM *vm) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    static constexpr size_t prefixSize = sizeof(JSPandaFile::PATCH_RECORD_PREFIX) - 1;
+
+    auto moduleManager = vm->GetModuleManager();
+    auto patchRecordInfos = patchFile_->GetJSRecordInfo();
+    [[maybe_unused]] auto baseRecordInfos = baseFile_->GetJSRecordInfo();
+
+    for (const auto &patchItem : patchRecordInfos) {
+        const CString &patchRecordName = patchItem.first;
+        ASSERT(patchRecordName.substr(0, prefixSize) == JSPandaFile::PATCH_RECORD_PREFIX);
+        CString baseRecordName = patchRecordName.substr(prefixSize);
+        ASSERT(baseRecordInfos.find(baseRecordName) != baseRecordInfos.end());
+
+        JSHandle<SourceTextModule> patchModule = moduleManager->HostGetImportedModule(patchRecordName);
+        JSHandle<SourceTextModule> baseModule = moduleManager->HostGetImportedModule(baseRecordName);
+
+        if (CheckIsModuleMismatch(vm->GetJSThread(), patchModule, baseModule)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool QuickFixLoader::CheckIsModuleMismatch(JSThread *thread, JSHandle<SourceTextModule> patchModule,
+                                           JSHandle<SourceTextModule> baseModule)
+{
+    JSTaggedValue patch;
+    JSTaggedValue base;
+
+    // ImportEntries: array or undefined
+    patch = patchModule->GetImportEntries();
+    base = baseModule->GetImportEntries();
+    if (CheckImportEntriesMismatch(thread, patch, base)) {
+        return true;
+    }
+
+    // LocalExportEntries: array or LocalExportEntry or undefined
+    patch = patchModule->GetLocalExportEntries();
+    base = baseModule->GetLocalExportEntries();
+    if (CheckLocalExportEntriesMismatch(thread, patch, base)) {
+        return true;
+    }
+
+    // IndirectExportEntries: array or IndirectExportEntry or undefined
+    patch = patchModule->GetIndirectExportEntries();
+    base = baseModule->GetIndirectExportEntries();
+    if (CheckIndirectExportEntriesMismatch(thread, patch, base)) {
+        return true;
+    }
+
+    // StarExportEntries: array or StarExportEntry or undefined
+    patch = patchModule->GetStarExportEntries();
+    base = baseModule->GetStarExportEntries();
+    if (CheckStarExportEntriesMismatch(thread, patch, base)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool QuickFixLoader::CheckImportEntriesMismatch(JSThread *thread, JSTaggedValue patch, JSTaggedValue base)
+{
+    if (patch.IsTaggedArray() && base.IsTaggedArray()) {
+        auto patchArr = TaggedArray::Cast(patch);
+        auto baseArr = TaggedArray::Cast(base);
+        uint32_t size = patchArr->GetLength();
+        if (size != baseArr->GetLength()) {
+            LOG_FULL(ERROR) << "ModuleMismatch of ImportEntries length";
+            return true;
+        }
+        for (uint32_t i = 0; i < size; i++) {
+            auto patchEntry = ImportEntry::Cast(patchArr->Get(thread, i));
+            auto baseEntry = ImportEntry::Cast(baseArr->Get(thread, i));
+            if (CheckImportEntryMismatch(patchEntry, baseEntry)) {
+                return true;
+            }
+        }
+    } else if (!patch.IsUndefined() || !base.IsUndefined()) {
+        LOG_FULL(ERROR) << "ModuleMismatch of ImportEntries type";
+        return true;
+    }
+
+    return false;
+}
+
+bool QuickFixLoader::CheckLocalExportEntriesMismatch(JSThread *thread, JSTaggedValue patch, JSTaggedValue base)
+{
+    if (patch.IsTaggedArray() && base.IsTaggedArray()) {
+        auto patchArr = TaggedArray::Cast(patch);
+        auto baseArr = TaggedArray::Cast(base);
+        uint32_t size = patchArr->GetLength();
+        if (size != baseArr->GetLength()) {
+            LOG_FULL(ERROR) << "ModuleMismatch of LocalExportEntries length";
+            return true;
+        }
+        for (uint32_t i = 0; i < size; i++) {
+            auto patchEntry = LocalExportEntry::Cast(patchArr->Get(thread, i));
+            auto baseEntry = LocalExportEntry::Cast(baseArr->Get(thread, i));
+            if (CheckLocalExportEntryMismatch(patchEntry, baseEntry)) {
+                return true;
+            }
+        }
+    } else if (patch.IsLocalExportEntry() && base.IsLocalExportEntry()) {
+        auto patchEntry = LocalExportEntry::Cast(patch);
+        auto baseEntry = LocalExportEntry::Cast(base);
+        if (CheckLocalExportEntryMismatch(patchEntry, baseEntry)) {
+            return true;
+        }
+    } else if (!patch.IsUndefined() || !base.IsUndefined()) {
+        LOG_FULL(ERROR) << "ModuleMismatch of LocalExportEntries type";
+        return true;
+    }
+
+    return false;
+}
+
+bool QuickFixLoader::CheckIndirectExportEntriesMismatch(JSThread *thread, JSTaggedValue patch, JSTaggedValue base)
+{
+    if (patch.IsTaggedArray() && base.IsTaggedArray()) {
+        auto patchArr = TaggedArray::Cast(patch);
+        auto baseArr = TaggedArray::Cast(base);
+        uint32_t size = patchArr->GetLength();
+        if (size != baseArr->GetLength()) {
+            LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntries length";
+            return true;
+        }
+        for (uint32_t i = 0; i < size; i++) {
+            auto patchEntry = IndirectExportEntry::Cast(patchArr->Get(thread, i));
+            auto baseEntry = IndirectExportEntry::Cast(baseArr->Get(thread, i));
+            if (CheckIndirectExportEntryMismatch(patchEntry, baseEntry)) {
+                return true;
+            }
+        }
+    } else if (patch.IsIndirectExportEntry() && base.IsIndirectExportEntry()) {
+        auto patchEntry = IndirectExportEntry::Cast(patch);
+        auto baseEntry = IndirectExportEntry::Cast(base);
+        if (CheckIndirectExportEntryMismatch(patchEntry, baseEntry)) {
+            return true;
+        }
+    } else if (!patch.IsUndefined() || !base.IsUndefined()) {
+        LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntries type";
+        return true;
+    }
+
+    return false;
+}
+
+bool QuickFixLoader::CheckStarExportEntriesMismatch(JSThread *thread, JSTaggedValue patch, JSTaggedValue base)
+{
+    if (patch.IsTaggedArray() && base.IsTaggedArray()) {
+        auto patchArr = TaggedArray::Cast(patch);
+        auto baseArr = TaggedArray::Cast(base);
+        uint32_t size = patchArr->GetLength();
+        if (size != baseArr->GetLength()) {
+            LOG_FULL(ERROR) << "ModuleMismatch of StarExportEntries length";
+            return true;
+        }
+        for (uint32_t i = 0; i < size; i++) {
+            auto patchEntry = StarExportEntry::Cast(patchArr->Get(thread, i));
+            auto baseEntry = StarExportEntry::Cast(baseArr->Get(thread, i));
+            if (CheckStarExportEntryMismatch(patchEntry, baseEntry)) {
+                return true;
+            }
+        }
+    } else if (patch.IsStarExportEntry() && base.IsStarExportEntry()) {
+        auto patchEntry = StarExportEntry::Cast(patch);
+        auto baseEntry = StarExportEntry::Cast(base);
+        if (CheckStarExportEntryMismatch(patchEntry, baseEntry)) {
+            return true;
+        }
+    } else if (!patch.IsUndefined() || !base.IsUndefined()) {
+        LOG_FULL(ERROR) << "ModuleMismatch of StarExportEntries type";
+        return true;
+    }
+
+    return false;
+}
+
+bool QuickFixLoader::CheckImportEntryMismatch(ImportEntry *patch, ImportEntry *base)
+{
+    auto patchModuleRequest = EcmaString::Cast(patch->GetModuleRequest());
+    auto baseModuleRequest = EcmaString::Cast(base->GetModuleRequest());
+    auto patchImportName = EcmaString::Cast(patch->GetImportName());
+    auto baseImportName = EcmaString::Cast(base->GetImportName());
+    auto patchLocalName = EcmaString::Cast(patch->GetLocalName());
+    auto baseLocalName = EcmaString::Cast(base->GetLocalName());
+    if (!EcmaString::StringsAreEqual(patchModuleRequest, baseModuleRequest)) {
+        LOG_FULL(ERROR) << "ModuleMismatch of ImportEntry: "
+                        << ConvertToString(patchModuleRequest)
+                        << " vs "
+                        << ConvertToString(baseModuleRequest);
+        return true;
+    }
+    if (!EcmaString::StringsAreEqual(patchImportName, baseImportName)) {
+        LOG_FULL(ERROR) << "ModuleMismatch of ImportEntry: "
+                        << ConvertToString(patchImportName)
+                        << " vs "
+                        << ConvertToString(baseImportName);
+        return true;
+    }
+    if (!EcmaString::StringsAreEqual(patchLocalName, baseLocalName)) {
+        LOG_FULL(ERROR) << "ModuleMismatch of ImportEntry: "
+                        << ConvertToString(patchLocalName)
+                        << " vs "
+                        << ConvertToString(baseLocalName);
+        return true;
+    }
+
+    return false;
+}
+
+bool QuickFixLoader::CheckLocalExportEntryMismatch(LocalExportEntry *patch, LocalExportEntry *base)
+{
+    auto patchExportName = EcmaString::Cast(patch->GetExportName());
+    auto baseExportName = EcmaString::Cast(base->GetExportName());
+    auto patchLocalName = EcmaString::Cast(patch->GetLocalName());
+    auto baseLocalName = EcmaString::Cast(base->GetLocalName());
+    if (!EcmaString::StringsAreEqual(patchExportName, baseExportName)) {
+        LOG_FULL(ERROR) << "ModuleMismatch of LocalExportEntry: "
+                        << ConvertToString(patchExportName)
+                        << " vs "
+                        << ConvertToString(baseExportName);
+        return true;
+    }
+    if (!EcmaString::StringsAreEqual(patchLocalName, baseLocalName)) {
+        LOG_FULL(ERROR) << "ModuleMismatch of LocalExportEntry: "
+                        << ConvertToString(patchLocalName)
+                        << " vs "
+                        << ConvertToString(baseLocalName);
+        return true;
+    }
+
+    return false;
+}
+
+bool QuickFixLoader::CheckIndirectExportEntryMismatch(IndirectExportEntry *patch, IndirectExportEntry *base)
+{
+    auto patchExportName = EcmaString::Cast(patch->GetExportName());
+    auto baseExportName = EcmaString::Cast(base->GetExportName());
+    auto patchModuleRequest = EcmaString::Cast(patch->GetModuleRequest());
+    auto baseModuleRequest = EcmaString::Cast(base->GetModuleRequest());
+    auto patchImportName = EcmaString::Cast(patch->GetImportName());
+    auto baseImportName = EcmaString::Cast(base->GetImportName());
+    if (!EcmaString::StringsAreEqual(patchExportName, baseExportName)) {
+        LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntry: "
+                        << ConvertToString(patchExportName)
+                        << " vs "
+                        << ConvertToString(baseExportName);
+        return true;
+    }
+    if (!EcmaString::StringsAreEqual(patchModuleRequest, baseModuleRequest)) {
+        LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntry: "
+                        << ConvertToString(patchModuleRequest)
+                        << " vs "
+                        << ConvertToString(baseModuleRequest);
+        return true;
+    }
+    if (!EcmaString::StringsAreEqual(patchImportName, baseImportName)) {
+        LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntry: "
+                        << ConvertToString(patchImportName)
+                        << " vs "
+                        << ConvertToString(baseImportName);
+        return true;
+    }
+
+    return false;
+}
+
+bool QuickFixLoader::CheckStarExportEntryMismatch(StarExportEntry *patch, StarExportEntry *base)
+{
+    auto patchModuleRequest = EcmaString::Cast(patch->GetModuleRequest());
+    auto baseModuleRequest = EcmaString::Cast(base->GetModuleRequest());
+    if (!EcmaString::StringsAreEqual(patchModuleRequest, baseModuleRequest)) {
+        LOG_FULL(ERROR) << "ModuleMismatch of StarExportEntry: "
+                        << ConvertToString(patchModuleRequest)
+                        << " vs "
+                        << ConvertToString(baseModuleRequest);
+        return true;
+    }
+
+    return false;
 }
 }  // namespace panda::ecmascript

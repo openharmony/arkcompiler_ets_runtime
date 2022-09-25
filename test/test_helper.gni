@@ -149,6 +149,8 @@ template("host_moduletest_action") {
       js_vm_options,
       "--script-args",
       _script_args_,
+      "--timeout-limit",
+      "180",
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",

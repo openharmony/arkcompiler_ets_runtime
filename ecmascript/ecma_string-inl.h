@@ -24,20 +24,6 @@
 
 namespace panda::ecmascript {
 /* static */
-inline EcmaString *EcmaString::Cast(TaggedObject *object)
-{
-    ASSERT(JSTaggedValue(object).IsString());
-    return static_cast<EcmaString *>(object);
-}
-
-/* static */
-inline const EcmaString *EcmaString::ConstCast(const TaggedObject *object)
-{
-    ASSERT(JSTaggedValue(object).IsString());
-    return static_cast<const EcmaString *>(object);
-}
-
-/* static */
 inline EcmaString *EcmaString::CreateEmptyString(const EcmaVM *vm)
 {
     auto string = vm->GetFactory()->AllocNonMovableStringObject(EcmaString::SIZE);
