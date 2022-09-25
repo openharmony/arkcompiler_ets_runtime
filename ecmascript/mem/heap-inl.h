@@ -240,6 +240,7 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
     auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->Allocate(size));
     if (UNLIKELY(object == nullptr)) {
         LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
+        UNREACHABLE();
     }
     *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));

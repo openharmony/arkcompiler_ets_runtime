@@ -40,12 +40,6 @@ void BlockSignals()
         LOG_ECMA(ERROR) << "sigemptyset failed";
         return;
     }
-    int rc = 0;
-
-    if (rc < 0) {
-        LOG_ECMA(ERROR) << "sigaddset failed";
-        return;
-    }
 #endif  // PANDA_TARGET_UNIX
 }
 
@@ -99,7 +93,6 @@ int Main(const int argc, const char **argv)
         std::cout << "\n"
                   << "Startup start time: " << startTime << std::endl;
     }
-    bool ret = true;
     EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
         std::cerr << "Cannot Create vm" << std::endl;
@@ -179,7 +172,7 @@ int Main(const int argc, const char **argv)
 
     JSNApi::DestroyJSVM(vm);
     paParser.DisableTail();
-    return ret ? 0 : -1;
+    return 0;
 }
 }  // namespace panda::ecmascript
 

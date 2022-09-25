@@ -1106,7 +1106,7 @@ std::vector<IcuPatternDesc> InitializePattern(const IcuPatternDesc &hourData)
         } else {
             result.emplace_back(hourData);
         }
-        item++;
+        ++item;
     }
     return result;
 }

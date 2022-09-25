@@ -469,7 +469,7 @@ JSTaggedValue BuiltinsString::Includes(EcmaRuntimeCallInfo *argv)
         u16strSearch = base::StringHelper::Utf8ToU16String(uint8Search, searchLen);
     }
     uint32_t idx = base::StringHelper::Find(u16strThis, u16strSearch, start);
-    if (idx < 0 || idx > thisLen) {
+    if (idx > thisLen) {
         return BuiltinsString::GetTaggedBoolean(false);
     }
     return BuiltinsString::GetTaggedBoolean(true);
@@ -552,7 +552,7 @@ JSTaggedValue BuiltinsString::LastIndexOf(EcmaRuntimeCallInfo *argv)
         u16strSearch = base::StringHelper::Utf8ToU16String(uint8Search, searchLen);
     }
     uint32_t res = base::StringHelper::RFind(u16strThis, u16strSearch, pos);
-    if (res >= 0 && res < thisLen) {
+    if (res < thisLen) {
         return GetTaggedInt(res);
     }
     res = -1;

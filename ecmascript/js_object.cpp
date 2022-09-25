@@ -147,7 +147,6 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
     ASSERT(!jshclass->IsDictionaryMode());
     uint32_t propNumber = jshclass->NumberOfProps();
 
-    ASSERT(propNumber >= 0);
     ASSERT(!jshclass->GetLayout().IsNull());
     JSHandle<LayoutInfo> layoutInfoHandle(thread, jshclass->GetLayout());
     ASSERT(layoutInfoHandle->GetLength() != 0);

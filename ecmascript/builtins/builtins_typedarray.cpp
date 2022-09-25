@@ -1355,7 +1355,7 @@ JSTaggedValue BuiltinsTypedArray::Sort(EcmaRuntimeCallInfo *argv)
             compareResult > 0 ? (endIndex = middleIndex) : (beginIndex = middleIndex + 1);
         }
 
-        if (endIndex >= 0 && endIndex < i) {
+        if (endIndex < i) {
             for (uint32_t j = i; j > endIndex; j--) {
                 key2.Update(JSTaggedValue(j - 1));
                 previousValue.Update(

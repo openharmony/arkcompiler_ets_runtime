@@ -837,13 +837,15 @@ void Environment::SubCfgEntry(Label *entry)
 
 void Environment::SubCfgExit()
 {
-    GateRef control = currentLabel_->GetControl();
-    GateRef depend = currentLabel_->GetDepend();
-    if (!stack_.empty()) {
-        currentLabel_ = stack_.top();
-        currentLabel_->SetControl(control);
-        currentLabel_->SetDepend(depend);
-        stack_.pop();
+    if (currentLabel_ != nullptr) {
+        GateRef control = currentLabel_->GetControl();
+        GateRef depend = currentLabel_->GetDepend();
+        if (!stack_.empty()) {
+            currentLabel_ = stack_.top();
+            currentLabel_->SetControl(control);
+            currentLabel_->SetDepend(depend);
+            stack_.pop();
+        }
     }
 }
 
