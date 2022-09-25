@@ -597,7 +597,6 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler, JSCallMode m
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register thisRegister = __ AvailableRegister2();
 
-
     Label pushVregs;
     Label pushNewTarget;
     Label pushCallTarget;

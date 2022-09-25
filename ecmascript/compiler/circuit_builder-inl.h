@@ -245,7 +245,8 @@ GateRef CircuitBuilder::TaggedIsException(GateRef x)
 GateRef CircuitBuilder::TaggedIsSpecial(GateRef x)
 {
     return BoolOr(
-        Equal(Int64And(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::TAG_SPECIAL_MASK)), Int64(JSTaggedValue::TAG_SPECIAL)),
+        Equal(Int64And(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::TAG_SPECIAL_MASK)),
+            Int64(JSTaggedValue::TAG_SPECIAL)),
         TaggedIsHole(x));
 }
 

@@ -311,7 +311,8 @@ namespace panda::ecmascript::kungfu {
     V(DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16) \
     V(DEPRECATED_DYNAMICIMPORT_PREF_V8)        \
 
-inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode) {
+inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
+{
     const std::map<EcmaOpcode, const char *> strMap = {
 #define BYTECODE_NAME_MAP(name) { EcmaOpcode::name, #name },
         ECMA_OPCODE_LIST(BYTECODE_NAME_MAP)
@@ -324,4 +325,4 @@ inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode) {
 }
 
 }  // namespace panda::ecmascript::kungfu
-#endif //ECMASCRIPT_COMPILER_ECMA_OPCODE_DES_H_
+#endif  // ECMASCRIPT_COMPILER_ECMA_OPCODE_DES_H_

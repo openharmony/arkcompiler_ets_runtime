@@ -81,7 +81,6 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (jsPandaFile_->IsNewVersion()) {
                 panda_file::IndexAccessor indexAccessor(*pf, methodId);
-                // int32_t index = indexAccessor.GetHeaderIndex();
                 panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
                 FunctionKind kind;
                 switch (funcKind) {

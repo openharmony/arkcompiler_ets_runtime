@@ -607,8 +607,9 @@ private:
     JSHandle<EcmaString> GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
     // For MUtf-8 string data
-    EcmaString* PUBLIC_API GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len, bool canBeCompressed,
-                                            MemSpaceType type = MemSpaceType::SEMI_SPACE) const;
+    EcmaString* PUBLIC_API GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len,
+                                                       bool canBeCompressed,
+                                                       MemSpaceType type = MemSpaceType::SEMI_SPACE) const;
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                   bool canBeCompress) const;

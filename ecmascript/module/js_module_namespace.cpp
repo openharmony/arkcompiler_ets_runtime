@@ -86,7 +86,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
     JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolveSet);
     // 7. Assert: binding is a ResolvedBinding Record.
-    // TODO: Adapter new module
+    // Adapter new module
     ASSERT(binding->IsResolvedBinding() || binding->IsResolvedIndexBinding());
     JSTaggedValue result;
     // 8. Let targetModule be binding.[[Module]].
@@ -272,7 +272,7 @@ bool ModuleNamespace::ValidateKeysAvailable(JSThread *thread, const JSHandle<Tag
         JSHandle<JSTaggedValue> key(thread, exports->Get(idx));
         CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
         JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolveSet);
-        // TODO: Adapter new module
+        // Adapter new module
         ASSERT(binding->IsResolvedBinding() || binding->IsResolvedIndexBinding());
         JSTaggedValue targetModule = JSHandle<ResolvedBinding>::Cast(binding)->GetModule();
         ASSERT(!targetModule.IsUndefined());

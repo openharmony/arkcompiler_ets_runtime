@@ -487,7 +487,7 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
         if (JSTaggedValue::SameValue(importName, starString)) {
-            // TODO: need refactor
+            // need refactor
             return;
         }
         // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
@@ -1002,7 +1002,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
         ee.Update(localExportEntries->Get(idx));
         // a. If SameValue(exportName, e.[[ExportName]]) is true, then
         if (JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue())) {
-            // TODO: Adapter new module
+            // Adapter new module
             if (module->GetIsNewBcVersion()) {
                 return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, idx));
             }

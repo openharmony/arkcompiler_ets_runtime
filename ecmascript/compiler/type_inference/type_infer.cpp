@@ -466,7 +466,7 @@ bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
     // first elem is function in old isa
     auto funcIndex = 0;
     if (!isDeprecated) {
-        // last two elem is function anc bytecode offset in new isa
+        // 2: last two elem is function anc bytecode offset in new isa
         funcIndex = gateAccessor_.GetNumValueIn(gate) - 2;
     }
     auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, funcIndex));
@@ -622,7 +622,8 @@ void TypeInfer::TypeCheck(GateRef gate) const
     auto funcNameString = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(funcName));
     if (funcNameString ==  "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gateAccessor_.GetValueIn(gate, 1), 0);
-        ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), gateAccessor_.GetBitField(expectedGate));
+        ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(),
+                                         gateAccessor_.GetBitField(expectedGate));
         auto expectedTypeStr = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(expectedGate));
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 0);
         auto type = gateAccessor_.GetGateType(valueGate);

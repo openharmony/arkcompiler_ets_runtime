@@ -105,8 +105,8 @@ const std::string HELP_OPTION_MSG =
         "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
     "--log-info: Enable info or above logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
         "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
-    "--log-warning: Enable warning or above logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
-        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
+    "--log-warning: Enable warning or above logs from specified components. Possible values: [\"all\", \"gc\","
+        "\"ecma\", \"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
     "--longPauseTime: set longPauseTime. Default: 40ms\n"
     "--maxAotMethodSize: enable aot to skip too large method. Default size: 32 KB\n"
     "--maxNonmovableSpaceCapacity: set max nonmovable space capacity\n"
@@ -853,7 +853,7 @@ private:
     int arkProperties_ = GetDefaultProperties();
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
-    std::string aotOutputFile_ {"aot-file"};
+    std::string aotOutputFile_ {"aot_file"};
     std::string targetTriple_ {"x86_64-unknown-linux-gnu"};
     uint32_t asmOptLevel_ {3}; // 3: default opt level
     uint32_t relocationMode_ {2}; // 2: default relocation mode

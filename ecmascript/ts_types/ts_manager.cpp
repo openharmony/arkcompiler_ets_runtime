@@ -583,14 +583,13 @@ JSTaggedValue TSManager::GenerateConstantPoolInfo(const JSPandaFile* jsPandaFile
     panda_file::File::IndexHeader *indexHeader = constantPool->GetIndexHeader();
     Span<const panda_file::File::EntityId> indexs = pfile->GetMethodIndex(indexHeader);
 
-    IterateCaches(CacheKind::STRING_INDEX, [this, pfile ,&indexs, &index, constantPoolInfo]
-    (uint32_t stringIndex) {
+    IterateCaches(CacheKind::STRING_INDEX, [this, pfile ,&indexs, &index, constantPoolInfo] (uint32_t stringIndex) {
         ObjectFactory *factory = vm_->GetFactory();
         JSThread *thread = vm_->GetJSThread();
         panda_file::File::EntityId id = indexs[stringIndex];
         auto foundStr = pfile->GetStringData(id);
         auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length, foundStr.is_ascii,
-                                                            MemSpaceType::OLD_SPACE);
+                                                           MemSpaceType::OLD_SPACE);
         constantPoolInfo->Set(thread, index++, JSTaggedValue(stringIndex));
         constantPoolInfo->Set(thread, index++, JSTaggedValue(string));
     });

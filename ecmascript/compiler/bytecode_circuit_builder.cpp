@@ -1936,7 +1936,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         default: {
-            LOG_COMPILER(ERROR) << "Error bytecode: " << static_cast<uint16_t>(opcode) << ", pls check bytecode offset.";
+            LOG_COMPILER(FATAL) << "Error bytecode: " << static_cast<uint16_t>(opcode);
             UNREACHABLE();
             break;
         }

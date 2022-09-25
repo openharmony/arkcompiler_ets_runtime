@@ -6392,7 +6392,6 @@ DECLARE_ASM_HANDLER(HandleLdthisbynameImm16Id16)
     builder.LoadICByName(&result, &tryFastPath, &slowPath, &checkException);
     Bind(&tryFastPath);
     {
-
         GateRef stringId = ReadInst16_2(pc);
         GateRef propKey = GetStringFromConstPool(constpool, stringId);
         result = GetPropertyByName(glue, receiver, propKey);
@@ -6429,7 +6428,6 @@ DECLARE_ASM_HANDLER(HandleLdthisbynameImm8Id16)
     builder.LoadICByName(&result, &tryFastPath, &slowPath, &checkException);
     Bind(&tryFastPath);
     {
-
         GateRef stringId = ReadInst16_1(pc);
         GateRef propKey = GetStringFromConstPool(constpool, stringId);
         result = GetPropertyByName(glue, receiver, propKey);
@@ -6641,7 +6639,6 @@ DECLARE_ASM_HANDLER(ThrowStackOverflowException)
 DECLARE_ASM_HANDLER(HandleWideLdpatchvarPrefImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
 
     GateRef index = ReadInst16_1(pc);
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdPatchVar), { IntToTaggedInt(index) });

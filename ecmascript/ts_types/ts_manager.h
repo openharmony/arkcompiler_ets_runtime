@@ -265,7 +265,7 @@ public:
         stringIndexCache_.insert(index);
     }
 
-    EcmaVM * GetEcmaVM() const
+    EcmaVM *GetEcmaVM() const
     {
         return vm_;
     }
