@@ -618,7 +618,8 @@ DispatchResponse DebuggerImpl::GetPossibleBreakpoints(const GetPossibleBreakpoin
     if (iter == scripts_.end()) {
         return DispatchResponse::Fail("Unknown file name.");
     }
-    JSPtExtractor *extractor = GetExtractor(iter->second->GetUrl());
+    const std::string &url = iter->second->GetUrl();
+    JSPtExtractor *extractor = GetExtractor(url);
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "GetPossibleBreakpoints: extractor is null";
         return DispatchResponse::Fail("Unknown file name.");
@@ -629,7 +630,7 @@ DispatchResponse DebuggerImpl::GetPossibleBreakpoints(const GetPossibleBreakpoin
     auto callbackFunc = []([[maybe_unused]] File::EntityId id, [[maybe_unused]] uint32_t offset) -> bool {
         return true;
     };
-    if (extractor->MatchWithLocation(callbackFunc, line, column)) {
+    if (extractor->MatchWithLocation(callbackFunc, line, column, url)) {
         std::unique_ptr<BreakLocation> location = std::make_unique<BreakLocation>();
         location->SetScriptId(start->GetScriptId()).SetLine(line).SetColumn(column);
         locations->emplace_back(std::move(location));
@@ -684,7 +685,7 @@ DispatchResponse DebuggerImpl::RemoveBreakpoint(const RemoveBreakpointParams &pa
         JSPtLocation location {fileName.c_str(), id, offset};
         return DebuggerApi::RemoveBreakpoint(jsDebugger_, location);
     };
-    if (!extractor->MatchWithLocation(callbackFunc, metaData.line_, metaData.column_)) {
+    if (!extractor->MatchWithLocation(callbackFunc, metaData.line_, metaData.column_, metaData.url_)) {
         LOG_DEBUGGER(ERROR) << "failed to set breakpoint location number: "
             << metaData.line_ << ":" << metaData.column_;
         return DispatchResponse::Fail("Breakpoint not found.");
@@ -751,7 +752,7 @@ DispatchResponse DebuggerImpl::SetBreakpointByUrl(const SetBreakpointByUrlParams
         }
         return DebuggerApi::SetBreakpoint(jsDebugger_, location, condFuncRef);
     };
-    if (!extractor->MatchWithLocation(callbackFunc, lineNumber, columnNumber)) {
+    if (!extractor->MatchWithLocation(callbackFunc, lineNumber, columnNumber, url)) {
         LOG_DEBUGGER(ERROR) << "failed to set breakpoint location number: " << lineNumber << ":" << columnNumber;
         return DispatchResponse::Fail("Breakpoint not found.");
     }
