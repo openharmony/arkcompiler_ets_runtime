@@ -307,6 +307,7 @@ void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, pand
         });
 }
 
+#ifdef NEW_INSTRUCTION_DEFINE
 void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile,
                                               panda_file::File::EntityId index,
                                               JSMutableHandle<TaggedArray> elements,
@@ -489,4 +490,5 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
         });
     return literals;
 }
+#endif
 }  // namespace panda::ecmascript

@@ -42,7 +42,12 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/ts_types/ts_manager.h"
+
+#ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
+#else
+#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
+#endif
 
 namespace panda::ecmascript {
 #if defined(__clang__)

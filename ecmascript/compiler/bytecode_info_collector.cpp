@@ -80,6 +80,7 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
                 jsPandaFile_, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (jsPandaFile_->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
                 panda_file::IndexAccessor indexAccessor(*pf, methodId);
                 panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
                 FunctionKind kind;
@@ -107,6 +108,7 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
                         UNREACHABLE();
                 }
                 methodLiteral->SetFunctionKind(kind);
+#endif
             }
             auto it = processedInsns.find(insns);
             if (it == processedInsns.end()) {

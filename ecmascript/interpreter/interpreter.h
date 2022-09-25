@@ -23,7 +23,12 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/method.h"
 #include "ecmascript/require/js_cjs_module.h"
+
+#ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
+#else
+#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
+#endif
 
 namespace panda::ecmascript {
 class ConstantPool;

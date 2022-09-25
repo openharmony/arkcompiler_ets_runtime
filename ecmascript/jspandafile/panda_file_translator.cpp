@@ -87,6 +87,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             methodLiteral->Initialize(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (jsPandaFile->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
                 panda_file::IndexAccessor indexAccessor(*pf, methodId);
                 panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
                 FunctionKind kind;
@@ -114,6 +115,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
                         UNREACHABLE();
                 }
                 methodLiteral->SetFunctionKind(kind);
+#endif
             } else {
                 if (translatedCode.find(insns) == translatedCode.end()) {
                     translatedCode.insert(insns);
@@ -139,20 +141,23 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data());
     int32_t index = 0;
     int32_t total = 1;
-    bool isNewVersion = jsPandaFile->IsNewVersion();
-    if (isNewVersion) {
+    if (jsPandaFile->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
         panda_file::IndexAccessor indexAccessor(
             *jsPandaFile->GetPandaFile(), panda_file::File::EntityId(mainMethodIndex));
         index = indexAccessor.GetHeaderIndex();
         total = indexAccessor.GetNumHeaders();
+#endif
     }
 
     JSHandle<ConstantPool> constpool;
     // Parse constpool.
     JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, index);
     if (constpoolVal.IsHole()) {
-        if (isNewVersion) {
+        if (jsPandaFile->IsNewVersion()) {
+#ifdef NEW_INSTRUCTION_DEFINE
             constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
+#endif
         } else {
             constpool = ParseConstPool(vm, jsPandaFile);
         }
@@ -161,7 +166,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
         constpool = JSHandle<ConstantPool>(thread, constpoolVal);
     }
 
-    if (!jsPandaFile->IsBundlePack() && !isNewVersion) {
+    if (!jsPandaFile->IsBundlePack()) {
         ParseFuncAndLiteralConstPool(vm, jsPandaFile, entryPoint.data(), constpool);
     }
 
