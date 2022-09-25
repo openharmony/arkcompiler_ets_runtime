@@ -27,30 +27,64 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const std::string &bas
 {
     // callback and load patch.
     std::string patchFileName;
-    void **patchBuffer = nullptr;
+    void *patchBuffer = nullptr;
     size_t patchSize = 0;
     if (HasQueryQuickFixInfoFunc() && !HasLoadedPatch()) {
-        bool needLoadPatch = callBack_(baseFileName, patchFileName, patchBuffer, patchSize);
+        bool needLoadPatch = callBack_(baseFileName, patchFileName, &patchBuffer, patchSize);
         if (needLoadPatch) {
-            LoadPatch(thread, patchFileName, *patchBuffer, patchSize, baseFileName);
+            LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
         }
     }
 }
 
 bool QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName)
 {
-    return quickFixLoader_.LoadPatch(thread, patchFileName, baseFileName);
+    if (hasLoadedPatch_) {
+        LOG_ECMA(ERROR) << "Cannot repeat load patch";
+        return false;
+    }
+
+    LOG_ECMA(INFO) << "Load patch, patch: " << patchFileName << ", base:" << baseFileName;
+    bool ret = quickFixLoader_.LoadPatch(thread, patchFileName.c_str(), baseFileName.c_str());
+    if (!ret) {
+        LOG_ECMA(ERROR) << "Load patch fail";
+        return false;
+    }
+    
+    hasLoadedPatch_ = true;
+    return true;
 }
 
 bool QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileName,
                                 const void *patchBuffer, size_t patchSize, const std::string &baseFileName)
 {
-    return quickFixLoader_.LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
+    if (hasLoadedPatch_) {
+        LOG_ECMA(ERROR) << "Cannot repeat load patch";
+        return false;
+    }
+
+    LOG_ECMA(INFO) << "Load patch, patch: " << patchFileName << ", base:" << baseFileName;
+    bool ret = quickFixLoader_.LoadPatch(thread, patchFileName.c_str(), patchBuffer, patchSize, baseFileName.c_str());
+    if (!ret) {
+        LOG_ECMA(ERROR) << "Load patch fail";
+        return false;
+    }
+
+    hasLoadedPatch_ = true;
+    return true;
 }
 
-bool QuickFixManager::UnLoadPatch(JSThread *thread, const std::string &patchFileName)
+bool QuickFixManager::UnloadPatch(JSThread *thread, const std::string &patchFileName)
 {
-    return quickFixLoader_.UnLoadPatch(thread, patchFileName);
+    LOG_ECMA(INFO) << "Unload patch: " << patchFileName;
+    bool ret = quickFixLoader_.UnloadPatch(thread, patchFileName.c_str());
+    if (!ret) {
+        LOG_ECMA(ERROR) << "Unload patch fail";
+        return false;
+    }
+
+    hasLoadedPatch_ = false;
+    return true;
 }
 
 bool QuickFixManager::IsQuickFixCausedException(JSThread *thread,

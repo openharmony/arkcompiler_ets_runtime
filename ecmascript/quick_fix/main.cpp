@@ -107,7 +107,7 @@ int Main(const int argc, const char **argv)
     }
 
     {
-        std::cout << "QuickFix Test before!" << std::endl;
+        std::cout << "QuickFix Test start!" << std::endl;
         LocalScope scope(vm);
         std::string entry = entrypoint.GetValue();
 
@@ -158,9 +158,9 @@ int Main(const int argc, const char **argv)
             std::cout << "Patch have no exception." << std::endl;
         }
 
-        res = JSNApi::UnLoadPatch(vm, patchFileName);
+        res = JSNApi::UnloadPatch(vm, patchFileName);
         if (!res) {
-            std::cerr << "UnLoadPatch failed!" << std::endl;
+            std::cerr << "UnloadPatch failed!" << std::endl;
             return -1;
         }
 

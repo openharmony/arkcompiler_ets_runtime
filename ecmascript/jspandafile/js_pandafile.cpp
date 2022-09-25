@@ -75,21 +75,24 @@ JSPandaFile::~JSPandaFile()
     }
 }
 
-uint32_t JSPandaFile::GetOrInsertConstantPool(ConstPoolType type, uint32_t offset, const CString &entryPoint)
+uint32_t JSPandaFile::GetOrInsertConstantPool(ConstPoolType type, uint32_t offset,
+                                              const CUnorderedMap<uint32_t, uint64_t> *constpoolMap)
 {
-    auto iter = jsRecordInfo_.find(entryPoint);
-    if (iter == jsRecordInfo_.end()) {
-        LOG_FULL(FATAL) << "find entryPoint fail " << entryPoint;
+    CUnorderedMap<uint32_t, uint64_t> *map = nullptr;
+    if (constpoolMap != nullptr && !IsBundlePack()) {
+        map = const_cast<CUnorderedMap<uint32_t, uint64_t> *>(constpoolMap);
+    } else {
+        map = &constpoolMap_;
     }
-    auto it = iter->second.constpoolMap.find(offset);
-    if (it != iter->second.constpoolMap.cend()) {
+    auto it = map->find(offset);
+    if (it != map->cend()) {
         ConstPoolValue value(it->second);
         return value.GetConstpoolIndex();
     }
     ASSERT(constpoolIndex_ != UINT32_MAX);
     uint32_t index = constpoolIndex_++;
     ConstPoolValue value(type, index);
-    iter->second.constpoolMap.insert({offset, value.GetValue()});
+    map->insert({offset, value.GetValue()});
     return index;
 }
 

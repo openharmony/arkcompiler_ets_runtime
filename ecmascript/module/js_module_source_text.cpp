@@ -99,13 +99,16 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
     CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
     CString entryPoint;
     size_t pos = 0;
-    if (moduleRequestName[0] == '@') {
+    if (moduleRequestName.find("@bundle:") != CString::npos) {
         pos = moduleRequestName.find('/');
         pos = moduleRequestName.find('/', pos + 1);
         ASSERT(pos != CString::npos);
         entryPoint = moduleRequestName.substr(pos + 1);
-    } else if ((pos = moduleRequestName.rfind(".js")) != CString::npos) {
-        moduleRequestName = moduleRequestName.substr(0, pos);
+    } else if (moduleRequestName.rfind(".js") != CString::npos || moduleRequestName.find("./") == 0) {
+        pos = moduleRequestName.rfind(".js");
+        if (pos != CString::npos) {
+            moduleRequestName = moduleRequestName.substr(0, pos);
+        }
         pos = moduleRequestName.find("./");
         if (pos == 0) {
             moduleRequestName = moduleRequestName.substr(2); // jump "./"
