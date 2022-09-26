@@ -17,11 +17,11 @@
  * @tc.name:container
  * @tc.desc:test container
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require: 
  */
 var fastmap = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
-    fastmap = ArkPrivate.Load(ArkPrivate.TreeMap);
+    fastmap = ArkPrivate.Load(ArkPrivate.HashMap);
 
     let res = new Map();
     let map = new fastmap();
@@ -35,11 +35,6 @@ if (globalThis["ArkPrivate"] != undefined) {
             map.hasValue("bb") && !map.hasKey("c") && !map.hasValue("cc"));
 
     map.set("c", "cc");
-    // test getFirstKey and getLastKey: true
-    res.set("test getFirstKey and getLastKey:", map.getFirstKey() == "a" && map.getLastKey() == "c");
-    // test getLowerKey and getHigherKey: true
-    res.set("test getLowerKey and getHigherKey:", map.getLowerKey("b") == "a" && map.getLowerKey("a") == undefined &&
-            map.getHigherKey("b") == "c" && map.getHigherKey("c") == undefined);
     // test keys: true
     let iteratorKey = map.keys();
     res.set("test keys:", iteratorKey.next().value == "a" && iteratorKey.next().value == "b" &&
@@ -106,11 +101,6 @@ if (globalThis["ArkPrivate"] != undefined) {
             proxy.hasValue("bb") && !proxy.hasKey("c") && !proxy.hasValue("cc"));
 
     proxy.set("c", "cc");
-    // test getFirstKey and getLastKey: true
-    res.set("test getFirstKey and getLastKey:", proxy.getFirstKey() == "a" && proxy.getLastKey() == "c");
-    // test getLowerKey and getHigherKey: true
-    res.set("test getLowerKey and getHigherKey:", proxy.getLowerKey("b") == "a" && proxy.getLowerKey("a") == undefined &&
-            proxy.getHigherKey("b") == "c" && proxy.getHigherKey("c") == undefined);
     // test keys: true
     let iteratorKey1 = proxy.keys();
     res.set("test keys:", iteratorKey1.next().value == "a" && iteratorKey1.next().value == "b" &&
@@ -176,8 +166,8 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     res.forEach(elements);
     if (!flag) {
-        print("Test TreeMap success!!!");
+        print("Test HashMap success!!!");
     } else {
-        print("Test TreeMap fail: " + flag);
+        print("Test HashMap fail: " + flag);
     }
 }

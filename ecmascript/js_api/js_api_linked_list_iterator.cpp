@@ -54,12 +54,16 @@ JSTaggedValue JSAPILinkedListIterator::Next(EcmaRuntimeCallInfo *argv)
 }
 
 JSHandle<JSTaggedValue> JSAPILinkedListIterator::CreateLinkedListIterator(JSThread *thread,
-                                                                          const JSHandle<JSTaggedValue> &obj)
+                                                                          JSHandle<JSTaggedValue> &obj)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPILinkedList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList",
-                                    thread->GlobalConstants()->GetHandledUndefined());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPILinkedList()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList",
+                                        thread->GlobalConstants()->GetHandledUndefined());
+        }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPILinkedListIterator(JSHandle<JSAPILinkedList>(obj)));
     return iter;

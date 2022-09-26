@@ -68,7 +68,11 @@ JSTaggedValue ContainersTreeSet::Add(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -86,7 +90,11 @@ JSTaggedValue ContainersTreeSet::Remove(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
@@ -102,7 +110,11 @@ JSTaggedValue ContainersTreeSet::Has(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -121,7 +133,11 @@ JSTaggedValue ContainersTreeSet::GetFirstValue(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
@@ -136,7 +152,11 @@ JSTaggedValue ContainersTreeSet::GetLastValue(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
@@ -151,7 +171,11 @@ JSTaggedValue ContainersTreeSet::Clear(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSAPITreeSet::Clear(thread, JSHandle<JSAPITreeSet>::Cast(self));
@@ -166,7 +190,11 @@ JSTaggedValue ContainersTreeSet::GetLowerValue(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
@@ -184,7 +212,11 @@ JSTaggedValue ContainersTreeSet::GetHigherValue(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
@@ -204,7 +236,11 @@ JSTaggedValue ContainersTreeSet::PopFirst(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
@@ -219,7 +255,11 @@ JSTaggedValue ContainersTreeSet::PopLast(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
@@ -234,7 +274,11 @@ JSTaggedValue ContainersTreeSet::IsEmpty(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
     return GetTaggedBoolean(set->GetSize() == 0);
@@ -270,7 +314,11 @@ JSTaggedValue ContainersTreeSet::ForEach(EcmaRuntimeCallInfo *argv)
     // get and check TreeSet object
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     // get and check callback function
@@ -323,7 +371,11 @@ JSTaggedValue ContainersTreeSet::GetLength(EcmaRuntimeCallInfo *argv)
     // get and check this set
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeSet", JSTaggedValue::Exception());
+        }
     }
 
     int count = JSHandle<JSAPITreeSet>::Cast(self)->GetSize();

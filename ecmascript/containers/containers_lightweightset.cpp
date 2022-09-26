@@ -56,7 +56,11 @@ JSTaggedValue ContainersLightWeightSet::Add(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     bool flag = JSAPILightWeightSet::Add(thread, JSHandle<JSAPILightWeightSet>::Cast(self), value);
@@ -71,9 +75,22 @@ JSTaggedValue ContainersLightWeightSet::AddAll(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
+
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
+    if (!value->IsJSAPILightWeightSet()) {
+        if (value->IsJSProxy() && JSHandle<JSProxy>::Cast(value)->GetTarget().IsJSAPILightWeightSet()) {
+            value = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(value)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
+    }
+    
     return JSTaggedValue(JSAPILightWeightSet::AddAll(thread, JSHandle<JSAPILightWeightSet>::Cast(self), value));
 }
 
@@ -85,7 +102,11 @@ JSTaggedValue ContainersLightWeightSet::IsEmpty(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
     return JSTaggedValue(set->IsEmpty());
@@ -99,7 +120,11 @@ JSTaggedValue ContainersLightWeightSet::GetValueAt(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Undefined());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Undefined());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsInteger()) {
@@ -118,9 +143,20 @@ JSTaggedValue ContainersLightWeightSet::HasAll(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
+    if (!value->IsJSAPILightWeightSet()) {
+        if (value->IsJSProxy() && JSHandle<JSProxy>::Cast(value)->GetTarget().IsJSAPILightWeightSet()) {
+            value = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(value)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
+    }
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
     return JSTaggedValue(set->HasAll(value));
 }
@@ -133,7 +169,11 @@ JSTaggedValue ContainersLightWeightSet::Has(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
@@ -148,7 +188,11 @@ JSTaggedValue ContainersLightWeightSet::HasHash(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
@@ -163,7 +207,11 @@ JSTaggedValue ContainersLightWeightSet::Equal(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     return JSTaggedValue(JSAPILightWeightSet::Equal(thread, JSHandle<JSAPILightWeightSet>::Cast(self), value));
@@ -177,7 +225,11 @@ JSTaggedValue ContainersLightWeightSet::IncreaseCapacityTo(EcmaRuntimeCallInfo *
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsInteger()) {
@@ -197,7 +249,11 @@ JSTaggedValue ContainersLightWeightSet::GetIteratorObj(EcmaRuntimeCallInfo *argv
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> iter =
         JSAPILightWeightSet::GetIteratorObj(thread, JSHandle<JSAPILightWeightSet>::Cast(self), IterationKind::VALUE);
@@ -212,7 +268,11 @@ JSTaggedValue ContainersLightWeightSet::Values(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> iter =
         JSAPILightWeightSet::GetIteratorObj(thread, JSHandle<JSAPILightWeightSet>::Cast(self), IterationKind::VALUE);
@@ -227,7 +287,11 @@ JSTaggedValue ContainersLightWeightSet::Entries(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> iter =
         JSAPILightWeightSet::GetIteratorObj(thread, JSHandle<JSAPILightWeightSet>::Cast(self),
@@ -243,6 +307,15 @@ JSTaggedValue ContainersLightWeightSet::ForEach(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
+
+    if (!thisHandle->IsJSAPILightWeightSet()) {
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPILightWeightSet()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
+    }
+
     if (!callbackFnHandle->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
     }
@@ -258,7 +331,11 @@ JSTaggedValue ContainersLightWeightSet::GetIndexOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
@@ -274,7 +351,11 @@ JSTaggedValue ContainersLightWeightSet::Remove(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
@@ -289,7 +370,11 @@ JSTaggedValue ContainersLightWeightSet::RemoveAt(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsInteger()) {
@@ -308,7 +393,11 @@ JSTaggedValue ContainersLightWeightSet::Clear(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
     set->Clear(thread);
@@ -323,7 +412,11 @@ JSTaggedValue ContainersLightWeightSet::ToString(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSTaggedValue value = JSAPILightWeightSet::ToString(thread, JSHandle<JSAPILightWeightSet>::Cast(self));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -338,7 +431,11 @@ JSTaggedValue ContainersLightWeightSet::ToArray(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPILightWeightSet> lightweightset = JSHandle<JSAPILightWeightSet>::Cast(self);
     uint32_t length = lightweightset->GetLength();
@@ -360,7 +457,11 @@ JSTaggedValue ContainersLightWeightSet::GetSize(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPILightWeightSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightSet()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightSet", JSTaggedValue::Exception());
+        }
     }
     return JSTaggedValue(JSHandle<JSAPILightWeightSet>::Cast(self)->GetSize());
 }

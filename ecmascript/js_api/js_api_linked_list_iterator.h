@@ -28,7 +28,7 @@ public:
         return static_cast<JSAPILinkedListIterator *>(obj);
     }
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);
-    static JSHandle<JSTaggedValue> CreateLinkedListIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static JSHandle<JSTaggedValue> CreateLinkedListIterator(JSThread *thread, JSHandle<JSTaggedValue> &obj);
     static constexpr size_t ITERATED_LINKED_LIST_OFFSET = JSObject::SIZE;
     ACCESSORS(IteratedLinkedList, ITERATED_LINKED_LIST_OFFSET, NEXT_INDEX_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(NextIndex, uint32_t, NEXT_INDEX_OFFSET, LAST_OFFSET)

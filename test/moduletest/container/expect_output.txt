@@ -13,8 +13,16 @@
 
 container test start
 Test ArrayList success!!!
+Test Deque success!!!
+Test HashMap success!!!
+Test HashSet success!!!
+Test LightWeightMap success!!!
+Test LightWeightSet success!!!
 Test LinkedList success!!!
 Test List success!!!
+Test PlainArray success!!!
+Test Queue success!!!
+Test Stack success!!!
 Test TreeMap success!!!
 Test TreeSet success!!!
 Test Vector success!!!

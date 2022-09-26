@@ -52,11 +52,16 @@ JSTaggedValue JSAPIListIterator::Next(EcmaRuntimeCallInfo *argv)
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }
 
-JSHandle<JSTaggedValue> JSAPIListIterator::CreateListIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
+JSHandle<JSTaggedValue> JSAPIListIterator::CreateListIterator(JSThread *thread, JSHandle<JSTaggedValue> &obj)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPIList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList", thread->GlobalConstants()->GetHandledUndefined());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPIList()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList",
+                                        thread->GlobalConstants()->GetHandledUndefined());
+        }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPIListIterator(JSHandle<JSAPIList>(obj)));
     return iter;

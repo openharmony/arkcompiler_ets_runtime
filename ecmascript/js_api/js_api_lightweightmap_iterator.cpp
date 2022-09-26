@@ -68,13 +68,17 @@ JSTaggedValue JSAPILightWeightMapIterator::Next(EcmaRuntimeCallInfo *argv)
 }
 
 JSHandle<JSTaggedValue> JSAPILightWeightMapIterator::CreateLightWeightMapIterator(JSThread *thread,
-                                                                                  const JSHandle<JSTaggedValue> &obj,
+                                                                                  JSHandle<JSTaggedValue> &obj,
                                                                                   IterationKind kind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPILightWeightMap()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap",
-                                    thread->GlobalConstants()->GetHandledUndefined());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPILightWeightMap()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap",
+                                        thread->GlobalConstants()->GetHandledUndefined());
+        }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPILightWeightMapIterator(JSHandle<JSAPILightWeightMap>(obj), kind));
     return iter;
