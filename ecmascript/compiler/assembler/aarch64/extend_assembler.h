@@ -77,10 +77,19 @@ public:
         // X13 is neither callee saved reegister nor argument register
         return X13;
     }
+    Register AvailableRegister4() const
+    {
+        // X14 is neither callee saved reegister nor argument register
+        return X14;
+    }
     Register CallDispatcherArgument(kungfu::CallDispatchInputs index)
     {
         size_t i = static_cast<size_t>(index);
-        return isGhcCallingConv_ ? ghcJSCallDispacherArgs_[i] : cppJSCallDispacherArgs_[i];
+        Register ret = isGhcCallingConv_ ? ghcJSCallDispacherArgs_[i] : cppJSCallDispacherArgs_[i];
+        if (ret.GetId() == INVALID_REG) {
+            LOG_COMPILER(FATAL) << "arm64 invalid call argument:" << i;
+        }
+        return ret;
     }
     Register GlueRegister()
     {

@@ -25,12 +25,27 @@ public:
     explicit ModuleManager(EcmaVM *vm);
     ~ModuleManager() = default;
 
+    JSTaggedValue GetModuleValueInner(int32_t index);
+    JSTaggedValue GetModuleValueInner(int32_t index, JSTaggedValue jsFunc);
+    JSTaggedValue GetModuleValueOutter(int32_t index);
+    JSTaggedValue GetModuleValueOutter(int32_t index, JSTaggedValue jsFunc);
+    void StoreModuleValue(int32_t index, JSTaggedValue value);
+    void StoreModuleValue(int32_t index, JSTaggedValue value, JSTaggedValue jsFunc);
+    JSTaggedValue GetModuleNamespace(int32_t index);
+    JSTaggedValue GetModuleNamespace(int32_t index, JSTaggedValue currentFunc);
+    JSTaggedValue GetModuleNamespaceInternal(int32_t index, JSTaggedValue currentModule);
+
+    // deprecated begin
     JSTaggedValue GetModuleValueInner(JSTaggedValue key);
     JSTaggedValue GetModuleValueInner(JSTaggedValue key, JSTaggedValue jsFunc);
     JSTaggedValue GetModuleValueOutter(JSTaggedValue key);
     JSTaggedValue GetModuleValueOutter(JSTaggedValue key, JSTaggedValue jsFunc);
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value);
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value, JSTaggedValue jsFunc);
+    JSTaggedValue GetModuleNamespace(JSTaggedValue localName);
+    JSTaggedValue GetModuleNamespace(JSTaggedValue localName, JSTaggedValue currentFunc);
+    JSTaggedValue GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule);
+    // deprecated end
 
     JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
@@ -41,11 +56,7 @@ public:
     JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
     JSHandle<SourceTextModule> HostResolveImportedModuleWithMerge(const CString &referencingModule,
                                                                   const CString &recordName);
-
-    JSTaggedValue GetModuleNamespace(JSTaggedValue localName);
-    JSTaggedValue GetModuleNamespace(JSTaggedValue localName, JSTaggedValue currentFunc);
     JSTaggedValue GetCurrentModule();
-    JSTaggedValue GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule);
 
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
     void Iterate(const RootVisitor &v);
@@ -66,9 +77,15 @@ private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
 
+    JSTaggedValue GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
+    void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
+                                  int32_t index, JSTaggedValue value);
+
+    // deprecated begin
     JSTaggedValue GetModuleValueOutterInternal(JSTaggedValue key, JSTaggedValue currentModule);
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   JSTaggedValue key, JSTaggedValue value);
+    // deprecated end
 
     JSHandle<SourceTextModule> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile);
     JSHandle<SourceTextModule> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,

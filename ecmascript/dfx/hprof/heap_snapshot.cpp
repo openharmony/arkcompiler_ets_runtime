@@ -468,6 +468,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("StarExportEntry");
         case JSType::RESOLVEDBINDING_RECORD:
             return GetString("ResolvedBinding");
+        case JSType::RESOLVEDINDEXBINDING_RECORD:
+            return GetString("ResolvedIndexBinding");
         case JSType::JS_MODULE_NAMESPACE:
             return GetString("ModuleNamespace");
         case JSType::JS_API_PLAIN_ARRAY:

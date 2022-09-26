@@ -26,6 +26,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/snapshot/mem/snapshot_processor.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/ts_types/ts_type_table.h"
@@ -83,8 +84,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
 
             InitializeMemory(methodLiteral, jsPandaFile, methodId);
             methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
-            methodLiteral->InitializeCallField(jsPandaFile, codeDataAccessor.GetNumVregs(),
-                                               codeDataAccessor.GetNumArgs());
+            methodLiteral->Initialize(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
             const uint8_t *insns = codeDataAccessor.GetInstructions();
             if (jsPandaFile->IsNewVersion()) {
 #ifdef NEW_INSTRUCTION_DEFINE
@@ -971,6 +971,12 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
             break;
         }
+        case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORREJECT_PREF_V8_V8: {
+            newOpcode = EcmaOpcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8;
+            *pc = static_cast<uint8_t>(deprecatedPrefOp);
+            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
+            break;
+        }
         // The same format has IC
         case OldBytecodeInst::Opcode::ECMA_TYPEOFDYN_PREF_NONE: {
             newOpcode = EcmaOpcode::TYPEOF_IMM8;
@@ -1172,16 +1178,6 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
         }
         case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORRESOLVE_PREF_V8_V8_V8: {
             newOpcode = EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8;
-            *pc = static_cast<uint8_t>(newOpcode);
-            auto newLen = BytecodeInstruction::Size(newOpcode);
-            if (memmove_s(pc + 1, newLen - 1, pc + 2, oldLen - 2) != EOK) {  // 2: skip second level inst and pref
-                LOG_FULL(FATAL) << "FixOpcode memmove_s fail";
-                UNREACHABLE();
-            }
-            break;
-        }
-        case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORREJECT_PREF_V8_V8: {
-            newOpcode = EcmaOpcode::ASYNCGENERATORREJECT_V8_V8;
             *pc = static_cast<uint8_t>(newOpcode);
             auto newLen = BytecodeInstruction::Size(newOpcode);
             if (memmove_s(pc + 1, newLen - 1, pc + 2, oldLen - 2) != EOK) {  // 2: skip second level inst and pref
@@ -1564,7 +1560,8 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
 void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *pc)
 {
     uint8_t offset = MethodLiteral::INVALID_IC_SLOT;
-    auto opcode = static_cast<EcmaOpcode>(*pc);
+    BytecodeInstruction inst(pc);
+    auto opcode = inst.GetOpcode();
     switch (opcode) {
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
             U_FALLTHROUGH;

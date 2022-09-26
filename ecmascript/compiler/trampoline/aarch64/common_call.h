@@ -161,8 +161,8 @@ public:
 private:
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
 
-    static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode);
-    static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode);
+    static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
+    static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
 
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
 
@@ -177,7 +177,7 @@ private:
         Register op);
 
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register currentSlot,
-        Register callTarget, Register method, Register pc, Register op);
+        Register callTarget, Register thisObj, Register method, Register pc, Register op);
 
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode);
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *pushCallThis,
@@ -197,7 +197,7 @@ private:
     static void PopAsmInterpEntryFrame(ExtendedAssembler *assembler);
 
     static void PushGeneratorFrameState(ExtendedAssembler *assembler, Register &prevSpRegister, Register &fpRegister,
-        Register &currentSlotRegister, Register &callTargetRegister, Register &methodRegister,
+        Register &currentSlotRegister, Register &callTargetRegister, Register &thisRegister, Register &methodRegister,
         Register &contextRegister, Register &pcRegister, Register &operatorRegister);
 
     static void CallBCStub(ExtendedAssembler *assembler, Register &newSp, Register &glue,

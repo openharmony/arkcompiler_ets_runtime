@@ -340,7 +340,7 @@ JSTaggedValue SlowRuntimeStub::DelObjProp(JSThread *thread, JSTaggedValue obj, J
 }
 
 JSTaggedValue SlowRuntimeStub::NewObjRange(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
-                                              uint16_t firstArgIdx, uint16_t length)
+                                           uint16_t firstArgIdx, uint16_t length)
 {
     INTERPRETER_TRACE(thread, NewobjRange);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -465,7 +465,7 @@ JSTaggedValue SlowRuntimeStub::AsyncFunctionResolveOrReject(JSThread *thread, JS
 
 JSTaggedValue SlowRuntimeStub::NewObjApply(JSThread *thread, JSTaggedValue func, JSTaggedValue array)
 {
-    INTERPRETER_TRACE(thread, Newobjspread);
+    INTERPRETER_TRACE(thread, NewObjApply);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> funcHandle(thread, func);
@@ -635,12 +635,36 @@ JSTaggedValue SlowRuntimeStub::CloseIterator(JSThread *thread, JSTaggedValue ite
     return RuntimeStubs::RuntimeCloseIterator(thread, iterHandle);
 }
 
+void SlowRuntimeStub::StModuleVar(JSThread *thread, int32_t index, JSTaggedValue value)
+{
+    INTERPRETER_TRACE(thread, StModuleVar);
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    return RuntimeStubs::RuntimeStModuleVar(thread, index, value);
+}
+
 void SlowRuntimeStub::StModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
     INTERPRETER_TRACE(thread, StModuleVar);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     return RuntimeStubs::RuntimeStModuleVar(thread, key, value);
+}
+
+JSTaggedValue SlowRuntimeStub::LdLocalModuleVar(JSThread *thread, int32_t index)
+{
+    RUNTIME_TRACE(thread, LdLocalModuleVarByIndex);
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    return RuntimeStubs::RuntimeLdLocalModuleVar(thread, index);
+}
+
+JSTaggedValue SlowRuntimeStub::LdExternalModuleVar(JSThread *thread, int32_t index)
+{
+    RUNTIME_TRACE(thread, LdExternalModuleVarByIndex);
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    return RuntimeStubs::RuntimeLdExternalModuleVar(thread, index);
 }
 
 JSTaggedValue SlowRuntimeStub::LdModuleVar(JSThread *thread, JSTaggedValue key, bool inner)
@@ -699,7 +723,7 @@ JSTaggedValue SlowRuntimeStub::CopyDataProperties(JSThread *thread, JSTaggedValu
 
 JSTaggedValue SlowRuntimeStub::GetIteratorNext(JSThread *thread, JSTaggedValue obj, JSTaggedValue method)
 {
-    INTERPRETER_TRACE(thread, GetIteratorNext);
+    RUNTIME_TRACE(thread, GetIteratorNext);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> iter(thread, obj);
@@ -1065,6 +1089,11 @@ JSTaggedValue SlowRuntimeStub::SetClassInheritanceRelationship(JSThread *thread,
 JSTaggedValue SlowRuntimeStub::SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length)
 {
     return RuntimeStubs::RuntimeSetClassConstructorLength(thread, ctor, length);
+}
+
+JSTaggedValue SlowRuntimeStub::GetModuleNamespace(JSThread *thread, int32_t index)
+{
+    return RuntimeStubs::RuntimeGetModuleNamespace(thread, index);
 }
 
 JSTaggedValue SlowRuntimeStub::GetModuleNamespace(JSThread *thread, JSTaggedValue localName)

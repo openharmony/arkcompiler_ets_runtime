@@ -18,11 +18,14 @@
 
 #include "ecmascript/log.h"
 
-#define LOG_FULL(level) LOG_ECMA(level) << __func__ << ":" << __LINE__ << " "
-#define LOG_GC(level) LOG_ECMA(level) << " [gc]: "
-#define LOG_INTERPRETER(level) LOG_ECMA(level) << " [interpreter]: "
-#define LOG_COMPILER(level) LOG_ECMA(level) << " [compiler]: "
-#define LOG_DEBUGGER(level) LOG_ECMA(level) << " [debugger]: "
-#define LOG_ECMA_IF(cond, level) (cond) && LOG_ECMA(level)
+// NO_TAG means not print any tag
+#define LOG_NO_TAG(level) ARK_LOG(level, Component::NO_TAG)
+#define LOG_ECMA(level) ARK_LOG(level, Component::ECMASCRIPT)
+#define LOG_FULL(level) ARK_LOG(level, Component::ALL) << __func__ << ":" << __LINE__ << " "
+#define LOG_GC(level) ARK_LOG(level, Component::GC)
+#define LOG_INTERPRETER(level) ARK_LOG(level, Component::INTERPRETER)
+#define LOG_COMPILER(level) ARK_LOG(level, Component::COMPILER)
+#define LOG_DEBUGGER(level) ARK_LOG(level, Component::DEBUGGER)
+#define LOG_ECMA_IF(cond, level) (cond) && ARK_LOG(level, Component::ALL)
 
 #endif  // ECMASCRIPT_LOG_WRAPPER_H

@@ -47,6 +47,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
 
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::ECMAMODULE);
+    moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
 }
@@ -76,8 +77,9 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
     mda.EnumerateStarExportEntry(thread, requestModuleArray, moduleRecord);
 }
 
-JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, const CString &descriptor)
+JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, const JSPandaFile *jsPandaFile)
 {
+    const CString &descriptor = jsPandaFile->GetJSPandaFileDesc();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
 
@@ -89,6 +91,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::CJSMODULE);
+    moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
 }

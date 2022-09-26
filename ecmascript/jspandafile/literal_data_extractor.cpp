@@ -284,6 +284,29 @@ void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, size
         });
 }
 
+void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
+                                            std::vector<uint32_t> &methodOffsets)
+{
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
+    panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
+
+    lda.EnumerateLiteralVals(
+        index, [&methodOffsets]
+        (const panda_file::LiteralDataAccessor::LiteralValue &value, const LiteralTag &tag) {
+            switch (tag) {
+                case LiteralTag::METHOD:
+                case LiteralTag::GENERATORMETHOD: {
+                    methodOffsets.emplace_back(std::get<uint32_t>(value));
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+        });
+}
+
 #ifdef NEW_INSTRUCTION_DEFINE
 void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile,
                                               panda_file::File::EntityId index,
@@ -349,6 +372,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 uint16_t length = std::get<uint16_t>(value);
                 auto methodLiteral = jsPandaFile->FindMethodLiteral(methodId);
                 ASSERT(methodLiteral != nullptr);
+                // Should replace with ASSERT(kind == methodLiteral->GetFunctionKind())
+                methodLiteral->SetFunctionKind(kind);
 
                 JSHandle<Method> method = factory->NewMethod(methodLiteral);
                 method->SetConstantPool(thread, constpool.GetTaggedValue());

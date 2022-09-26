@@ -971,6 +971,17 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
     }
 }
 
+JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index)
+{
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(index);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index,
+                                                      JSTaggedValue jsFunc)
+{
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(index, jsFunc);
+}
+
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName)
 {
     return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName);
@@ -982,6 +993,17 @@ JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTagged
     return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName, jsFunc);
 }
 
+void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value)
+{
+    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(index, value);
+}
+
+void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value,
+                                      JSTaggedValue jsFunc)
+{
+    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(index, value, jsFunc);
+}
+
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
     thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value);
@@ -991,6 +1013,26 @@ void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTag
                                       JSTaggedValue jsFunc)
 {
     thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value, jsFunc);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t index)
+{
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(index);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
+{
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(index, jsFunc);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index)
+{
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(index);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
+{
+    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner)
@@ -1225,7 +1267,6 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
 
     // 6. IfAbruptRejectPromise(specifierString, promiseCapability).
     RETURN_REJECT_PROMISE_IF_ABRUPT(thread, specifierString, promiseCapability);
-    JSHandle<JSTaggedValue> currentModule(thread, thread->GetEcmaVM()->GetModuleManager()->GetCurrentModule());
     JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
 
     JSHandle<TaggedArray> argv = factory->NewTaggedArray(4); // 4: 4 means two args stored in array
@@ -1938,12 +1979,12 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCall(JSThread *thread, const JSHandle<JS
 
 JSTaggedValue RuntimeStubs::RuntimeOptSuperCall(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
-    size_t fixNums = 2;
+    constexpr size_t fixNums = 2;
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
     JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);
     JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
     ASSERT(superFunc->IsJSFunction());
-    uint16_t length = argc - 2;
+    uint16_t length = argc - fixNums;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, superFunc, undefined, newTarget, length);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2302,17 +2343,16 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
 JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
     JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
-    JSHandle<JSTaggedValue> newTgt = GetHArg<JSTaggedValue>(argv, argc, 1);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    const size_t numCtorAndNewTgt = 2;
+    const size_t firstArgOffset = 1;
     STACK_ASSERT_SCOPE(thread);
-    size_t arrLength = argc - numCtorAndNewTgt;
+    size_t arrLength = argc - firstArgOffset;
     JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(arrLength);
     for (size_t i = 0; i < arrLength; ++i) {
-        args->Set(thread, i, GetArg(argv, argc, i + numCtorAndNewTgt));
+        args->Set(thread, i, GetArg(argv, argc, i + firstArgOffset));
     }
 
-    JSTaggedValue object = RuntimeOptConstruct(thread, ctor, newTgt, undefined, args);
+    JSTaggedValue object = RuntimeOptConstruct(thread, ctor, ctor, undefined, args);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!object.IsUndefined() && !object.IsECMAObject() && !JSHandle<JSFunction>(ctor)->IsBase()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Derived constructor must return object or undefined",

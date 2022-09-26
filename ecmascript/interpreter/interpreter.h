@@ -61,8 +61,9 @@ public:
     static inline bool UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset);
     static inline void NotifyBytecodePcChanged(JSThread *thread);
     static inline const JSPandaFile *GetNativeCallPandafile(JSThread *thread);
-    static inline JSTaggedValue GetThisFunction(JSTaggedType *sp);
+    static inline JSTaggedValue GetFunction(JSTaggedType *sp);
     static inline JSTaggedValue GetNewTarget(JSTaggedType *sp);
+    static inline JSTaggedValue GetThis(JSTaggedType *sp);
     static inline uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static inline JSTaggedValue GetThisObjectFromFastNewFrame(JSTaggedType *sp);
     static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);

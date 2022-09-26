@@ -264,7 +264,7 @@ private:
     bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
     uint32_t typeSummaryIndex_ {0};
-    bool isNewVersion_ {true};
+    bool isNewVersion_ {false};
     bool isPatch_ {false};
 
     // marge abc

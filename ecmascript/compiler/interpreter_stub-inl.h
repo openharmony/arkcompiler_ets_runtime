@@ -211,6 +211,12 @@ GateRef InterpreterStubBuilder::GetFunctionFromFrame(GateRef frame)
         IntPtr(AsmInterpretedFrame::GetFunctionOffset(GetEnvironment()->IsArch32Bit())));
 }
 
+GateRef InterpreterStubBuilder::GetThisFromFrame(GateRef frame)
+{
+    return Load(VariableType::JS_POINTER(), frame,
+        IntPtr(AsmInterpretedFrame::GetThisOffset(GetEnvironment()->IsArch32Bit())));
+}
+
 GateRef InterpreterStubBuilder::GetCallSizeFromFrame(GateRef frame)
 {
     return Load(VariableType::NATIVE_POINTER(), frame,
@@ -254,13 +260,6 @@ GateRef InterpreterStubBuilder::GetConstpoolFromFunction(GateRef function)
     GateRef method = GetMethodFromJSFunction(function);
     GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
     return Load(VariableType::JS_POINTER(), method, offset);
-}
-
-// only use for fast new, not universal API
-GateRef InterpreterStubBuilder::GetThisObjectFromFastNewFrame(GateRef prevSp)
-{
-    auto idx = AsmInterpretedFrame::ReverseIndex::THIS_OBJECT_REVERSE_INDEX;
-    return Load(VariableType::JS_ANY(), prevSp, IntPtr(idx * sizeof(JSTaggedType)));
 }
 
 GateRef InterpreterStubBuilder::GetResumeModeFromGeneratorObject(GateRef obj)
@@ -392,7 +391,7 @@ GateRef InterpreterStubBuilder::PushUndefined(GateRef glue, GateRef sp, GateRef 
     Label pushUndefinedEnd(env);
     Branch(Int32LessThan(*i, num), &pushUndefinedBegin, &pushUndefinedEnd);
     LoopBegin(&pushUndefinedBegin);
-    newSp = PushArg(glue, *newSp, Int64(JSTaggedValue::VALUE_UNDEFINED));
+    newSp = PushArg(glue, *newSp, Undefined());
     i = Int32Add(*i, Int32(1));  // 1 : set as high 1 bits
     Branch(Int32LessThan(*i, num), &pushUndefinedAgain, &pushUndefinedEnd);
     Bind(&pushUndefinedAgain);
@@ -589,7 +588,7 @@ void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, Gate
 
 GateRef InterpreterStubBuilder::GetObjectFromConstPool(GateRef constpool, GateRef index)
 {
-    return GetValueFromTaggedArray(VariableType::JS_ANY(), constpool, index);
+    return GetValueFromTaggedArray(constpool, index);
 }
 
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)

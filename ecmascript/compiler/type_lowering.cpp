@@ -38,15 +38,50 @@ void TypeLowering::RunTypeLowering()
 
 void TypeLowering::Lower(GateRef gate)
 {
+    ArgumentAccessor argAcc(circuit_);
+    auto glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
     auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaBytecode op = static_cast<EcmaBytecode>(*pc);
+    EcmaOpcode op = bcBuilder_->PcToOpcode(pc);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case TONUMERIC_PREF_V8:
+        case EcmaOpcode::ADD2_IMM8_V8:
+            LowerTypeAdd(gate, glue);
+            break;
+        case EcmaOpcode::SUB2_IMM8_V8:
+            LowerTypeSub(gate);
+            break;
+        case EcmaOpcode::MUL2_IMM8_V8:
+            LowerTypeMul(gate);
+            break;
+        case EcmaOpcode::MOD2_IMM8_V8:
+            LowerTypeMod(gate, glue);
+            break;
+        case EcmaOpcode::LESS_IMM8_V8:
+            LowerTypeLess(gate);
+            break;
+        case EcmaOpcode::LESSEQ_IMM8_V8:
+            LowerTypeLessEq(gate);
+            break;
+        case EcmaOpcode::GREATER_IMM8_V8:
+            LowerTypeGreater(gate);
+            break;
+        case EcmaOpcode::GREATEREQ_IMM8_V8:
+            LowerTypeGreaterEq(gate);
+            break;
+        case EcmaOpcode::DIV2_IMM8_V8:
+            LowerTypeDiv(gate);
+            break;
+        case EcmaOpcode::EQ_IMM8_V8:
+            LowerTypeEq(gate);
+            break;
+        case EcmaOpcode::NOTEQ_IMM8_V8:
+            LowerTypeNotEq(gate);
+            break;
+        case EcmaOpcode::TONUMERIC_IMM8:
             LowerToNumeric(gate);
             break;
-        case INCDYN_PREF_V8:
+        case EcmaOpcode::INC_IMM8:
             LowerTypeInc(gate);
             break;
         default:break;
@@ -559,7 +594,7 @@ void TypeLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noTh
     GateRef ifBranch;
     if (!noThrow) {
         // exception value
-        GateRef exceptionVal = builder_.ExceptionConstant(GateType::TaggedNPointer());
+        GateRef exceptionVal = builder_.ExceptionConstant();
         // compare with trampolines result
         GateRef equal = builder_.BinaryLogic(OpCode(OpCode::EQ), callGate, exceptionVal);
         ifBranch = builder_.Branch(stateInGate, equal);
@@ -869,12 +904,12 @@ GateRef TypeLowering::CompareNumbers(GateRef left, GateRef right)
     }
     builder_.Bind(&leftOpRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        result = builder_.TaggedTrue();
         builder_.Jump(&exit);
     }
     builder_.Bind(&leftNotOpRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        result = builder_.TaggedFalse();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1327,12 +1362,12 @@ GateRef TypeLowering::Less(GateRef left, GateRef right)
     }
     builder_.Bind(&leftLessRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        result = builder_.TaggedTrue();
         builder_.Jump(&exit);
     }
     builder_.Bind(&leftGreaterEqRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        result = builder_.TaggedFalse();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1414,12 +1449,12 @@ GateRef TypeLowering::LessEq(GateRef left, GateRef right)
     }
     builder_.Bind(&leftLessEqRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+        result = builder_.TaggedTrue();
         builder_.Jump(&exit);
     }
     builder_.Bind(&leftGreaterRight);
     {
-        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+        result = builder_.TaggedFalse();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1654,13 +1689,13 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
             builder_.Branch(builder_.DoubleIsNAN(doubleLeft), &leftIsNan, &leftNotDoubleOrLeftNotNan);
             builder_.Bind(&leftIsNan);
             {
-                result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                result = builder_.TaggedFalse();
                 builder_.Jump(&exit);
             }
         }
         builder_.Bind(&leftNotDoubleOrLeftNotNan);
         {
-            result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+            result = builder_.TaggedTrue();
             builder_.Jump(&exit);
         }
     }
@@ -1680,7 +1715,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
                     builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &leftNotNumberOrLeftNotIntOrRightNotInt);
                     builder_.Bind(&rightIsInt);
                     {
-                        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                        result = builder_.TaggedFalse();
                         builder_.Jump(&exit);
                     }
                 }
@@ -1699,7 +1734,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
                 builder_.Branch(builder_.TaggedIsHeapObject(left), &leftIsHeapObject, &leftNotHeapObject);
                 builder_.Bind(&leftIsHeapObject);
                 {
-                    result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                    result = builder_.TaggedFalse();
                     builder_.Jump(&exit);
                 }
                 builder_.Bind(&leftNotHeapObject);
@@ -1709,7 +1744,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
                                     &leftOrRightNotUndefinedOrNull);
                     builder_.Bind(&leftIsUndefinedOrNull);
                     {
-                        result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+                        result = builder_.TaggedTrue();
                         builder_.Jump(&exit);
                     }
                 }
@@ -1725,7 +1760,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
                     builder_.Branch(builder_.TaggedIsSpecial(right), &rightIsSpecial, &leftNotBooleanOrRightNotSpecial);
                     builder_.Bind(&rightIsSpecial);
                     {
-                        result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+                        result = builder_.TaggedFalse();
                         builder_.Jump(&exit);
                     }
                 }
@@ -1742,7 +1777,7 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
     return ret;
 }
 
-void TypeLowering::LowerTypeAdd2(GateRef gate, [[maybe_unused]]GateRef glue)
+void TypeLowering::LowerTypeAdd(GateRef gate, [[maybe_unused]]GateRef glue)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1778,7 +1813,7 @@ void TypeLowering::LowerTypeAdd2(GateRef gate, [[maybe_unused]]GateRef glue)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeSub2([[maybe_unused]]GateRef gate)
+void TypeLowering::LowerTypeSub([[maybe_unused]]GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1811,7 +1846,7 @@ void TypeLowering::LowerTypeSub2([[maybe_unused]]GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeMul2(GateRef gate)
+void TypeLowering::LowerTypeMul(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -1844,7 +1879,7 @@ void TypeLowering::LowerTypeMul2(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeMod2(GateRef gate, GateRef glue)
+void TypeLowering::LowerTypeMod(GateRef gate, GateRef glue)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);
@@ -2062,12 +2097,12 @@ void TypeLowering::LowerTypeNotEq(GateRef gate)
         builder_.Branch(builder_.TaggedIsTrue(*result), &resultIsTrue, &resultIsFalse);
         builder_.Bind(&resultIsTrue);
         {
-            result = builder_.Int64ToTaggedPtr(builder_.TaggedFalse());
+            result = builder_.TaggedFalse();
             builder_.Jump(&successExit);
         }
         builder_.Bind(&resultIsFalse);
         {
-            result = builder_.Int64ToTaggedPtr(builder_.TaggedTrue());
+            result = builder_.TaggedTrue();
             builder_.Jump(&successExit);
         }
     }
@@ -2080,7 +2115,7 @@ void TypeLowering::LowerTypeNotEq(GateRef gate)
     ReplaceHirToFastPathCfg(gate, *result, successControl);
 }
 
-void TypeLowering::LowerTypeDiv2(GateRef gate)
+void TypeLowering::LowerTypeDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateType leftType = acc_.GetGateType(left);

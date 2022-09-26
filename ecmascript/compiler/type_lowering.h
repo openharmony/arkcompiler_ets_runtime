@@ -175,15 +175,15 @@ private:
     GateRef FastDiv2Number(GateRef left, GateRef right);
     GateRef FastEqual(GateRef left, GateRef right);
 
-    void LowerTypeAdd2(GateRef gate, GateRef glue);
-    void LowerTypeSub2(GateRef gate);
-    void LowerTypeMul2(GateRef gate);
-    void LowerTypeMod2(GateRef gate, GateRef glue);
+    void LowerTypeAdd(GateRef gate, GateRef glue);
+    void LowerTypeSub(GateRef gate);
+    void LowerTypeMul(GateRef gate);
+    void LowerTypeMod(GateRef gate, GateRef glue);
     void LowerTypeLess(GateRef gate);
     void LowerTypeLessEq(GateRef gate);
     void LowerTypeGreater(GateRef gate);
     void LowerTypeGreaterEq(GateRef gate);
-    void LowerTypeDiv2(GateRef gate);
+    void LowerTypeDiv(GateRef gate);
     void LowerTypeEq(GateRef gate);
     void LowerTypeNotEq(GateRef gate);
     void LowerToNumeric(GateRef gate);

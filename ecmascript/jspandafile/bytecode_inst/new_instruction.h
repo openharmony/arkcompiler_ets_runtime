@@ -300,222 +300,220 @@ enum class Format : uint8_t {
 };
 
 enum class Opcode {
-    LDNAN = 0,
-    LDINFINITY = 1,
-    LDNEWTARGET = 2,
-    LDUNDEFINED = 3,
-    LDNULL = 4,
-    LDSYMBOL = 5,
-    LDGLOBAL = 6,
-    LDTRUE = 7,
-    LDFALSE = 8,
-    LDHOLE = 9,
-    LDTHIS = 10,
-    POPLEXENV = 11,
-    GETUNMAPPEDARGS = 12,
-    ASYNCFUNCTIONENTER = 13,
-    CREATEASYNCGENERATOROBJ_V8 = 14,
-    LDFUNCTION = 15,
-    DEBUGGER = 16,
-    GETPROPITERATOR = 17,
-    GETITERATOR_IMM8 = 18,
-    GETITERATOR_IMM16 = 19,
-    CLOSEITERATOR_IMM8_V8 = 20,
-    CLOSEITERATOR_IMM16_V8 = 21,
-    ASYNCGENERATORRESOLVE_V8_V8_V8 = 22,
-    CREATEEMPTYOBJECT = 23,
-    CREATEEMPTYARRAY_IMM8 = 24,
-    CREATEEMPTYARRAY_IMM16 = 25,
-    CREATEGENERATOROBJ_V8 = 26,
-    CREATEITERRESULTOBJ_V8_V8 = 27,
-    CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8 = 28,
-    CALLTHIS0_IMM8_V8 = 29,
-    CREATEARRAYWITHBUFFER_IMM8_ID16 = 30,
-    CREATEARRAYWITHBUFFER_IMM16_ID16 = 31,
-    CALLTHIS1_IMM8_V8_V8 = 32,
-    CALLTHIS2_IMM8_V8_V8_V8 = 33,
-    CREATEOBJECTWITHBUFFER_IMM8_ID16 = 34,
-    CREATEOBJECTWITHBUFFER_IMM16_ID16 = 35,
-    CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8 = 36,
-    CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8 = 37,
-    NEWOBJAPPLY_IMM8_V8 = 38,
-    NEWOBJAPPLY_IMM16_V8 = 39,
-    NEWOBJRANGE_IMM8_IMM8_V8 = 40,
-    NEWOBJRANGE_IMM16_IMM8_V8 = 41,
-    NEWLEXENV_IMM8 = 42,
-    NEWLEXENVWITHNAME_IMM8_ID16 = 43,
-    ADD2_IMM8_V8 = 44,
-    SUB2_IMM8_V8 = 45,
-    MUL2_IMM8_V8 = 46,
-    DIV2_IMM8_V8 = 47,
-    MOD2_IMM8_V8 = 48,
-    EQ_IMM8_V8 = 49,
-    NOTEQ_IMM8_V8 = 50,
-    LESS_IMM8_V8 = 51,
-    LESSEQ_IMM8_V8 = 52,
-    GREATER_IMM8_V8 = 53,
-    GREATEREQ_IMM8_V8 = 54,
-    SHL2_IMM8_V8 = 55,
-    SHR2_IMM8_V8 = 56,
-    ASHR2_IMM8_V8 = 57,
-    AND2_IMM8_V8 = 58,
-    OR2_IMM8_V8 = 59,
-    XOR2_IMM8_V8 = 60,
-    EXP_IMM8_V8 = 61,
-    TYPEOF_IMM8 = 62,
-    TYPEOF_IMM16 = 63,
-    TONUMBER_IMM8 = 64,
-    TONUMERIC_IMM8 = 65,
-    NEG_IMM8 = 66,
-    NOT_IMM8 = 67,
-    INC_IMM8 = 68,
-    DEC_IMM8 = 69,
-    ISIN_IMM8_V8 = 70,
-    INSTANCEOF_IMM8_V8 = 71,
-    STRICTNOTEQ_IMM8_V8 = 72,
-    STRICTEQ_IMM8_V8 = 73,
-    ISTRUE = 74,
-    ISFALSE = 75,
-    CALLTHIS3_IMM8_V8_V8_V8_V8 = 76,
-    CALLTHISRANGE_IMM8_IMM8_V8 = 77,
-    SUPERCALLTHISRANGE_IMM8_IMM8_V8 = 78,
-    SUPERCALLARROWRANGE_IMM8_IMM8_V8 = 79,
-    DEFINEFUNC_IMM8_ID16_IMM8 = 80,
-    DEFINEFUNC_IMM16_ID16_IMM8 = 81,
-    DEFINEMETHOD_IMM8_ID16_IMM8 = 82,
-    DEFINEMETHOD_IMM16_ID16_IMM8 = 83,
-    CALLARG0_IMM8 = 84,
-    SUPERCALLSPREAD_IMM8_V8 = 85,
-    APPLY_IMM8_V8_V8 = 86,
-    CALLARGS2_IMM8_V8_V8 = 87,
-    CALLARGS3_IMM8_V8_V8_V8 = 88,
-    CALLRANGE_IMM8_IMM8_V8 = 89,
-    LDEXTERNALMODULEVAR_IMM8 = 90,
-    LDTHISBYNAME_IMM8_ID16 = 91,
-    DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8 = 92,
-    LDTHISBYNAME_IMM16_ID16 = 93,
-    STTHISBYNAME_IMM8_ID16 = 94,
-    STTHISBYNAME_IMM16_ID16 = 95,
-    LDTHISBYVALUE_IMM8 = 96,
-    LDTHISBYVALUE_IMM16 = 97,
-    STTHISBYVALUE_IMM8_V8 = 98,
-    STTHISBYVALUE_IMM16_V8 = 99,
-    LDPATCHVAR_IMM8 = 100,
-    STPATCHVAR_IMM8_V8 = 101,
-    DYNAMICIMPORT = 102,
-    DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8 = 103,
-    DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8 = 104,
-    RESUMEGENERATOR = 105,
-    GETRESUMEMODE = 106,
-    GETTEMPLATEOBJECT_IMM8 = 107,
-    GETTEMPLATEOBJECT_IMM16 = 108,
-    GETNEXTPROPNAME_V8 = 109,
-    JEQZ_IMM8 = 110,
-    JEQZ_IMM16 = 111,
-    SETOBJECTWITHPROTO_IMM8_V8 = 112,
-    DELOBJPROP_V8 = 113,
-    SUSPENDGENERATOR_V8 = 114,
-    ASYNCFUNCTIONAWAITUNCAUGHT_V8 = 115,
-    COPYDATAPROPERTIES_V8 = 116,
-    STARRAYSPREAD_V8_V8 = 117,
-    SETOBJECTWITHPROTO_IMM16_V8 = 118,
-    LDOBJBYVALUE_IMM8_V8 = 119,
-    LDOBJBYVALUE_IMM16_V8 = 120,
-    STOBJBYVALUE_IMM8_V8_V8 = 121,
-    STOBJBYVALUE_IMM16_V8_V8 = 122,
-    STOWNBYVALUE_IMM8_V8_V8 = 123,
-    STOWNBYVALUE_IMM16_V8_V8 = 124,
-    LDSUPERBYVALUE_IMM8_V8 = 125,
-    LDSUPERBYVALUE_IMM16_V8 = 126,
-    STSUPERBYVALUE_IMM8_V8_V8 = 127,
-    STSUPERBYVALUE_IMM16_V8_V8 = 128,
-    LDOBJBYINDEX_IMM8_IMM16 = 129,
-    LDOBJBYINDEX_IMM16_IMM16 = 130,
-    STOBJBYINDEX_IMM8_V8_IMM16 = 131,
-    STOBJBYINDEX_IMM16_V8_IMM16 = 132,
-    STOWNBYINDEX_IMM8_V8_IMM16 = 133,
-    STOWNBYINDEX_IMM16_V8_IMM16 = 134,
-    ASYNCFUNCTIONRESOLVE_V8 = 135,
-    ASYNCFUNCTIONREJECT_V8 = 136,
-    COPYRESTARGS_IMM8 = 137,
-    LDLEXVAR_IMM4_IMM4 = 138,
-    STLEXVAR_IMM4_IMM4 = 139,
-    GETMODULENAMESPACE_IMM8 = 140,
-    STMODULEVAR_IMM8 = 141,
-    TRYLDGLOBALBYNAME_IMM8_ID16 = 142,
-    TRYLDGLOBALBYNAME_IMM16_ID16 = 143,
-    TRYSTGLOBALBYNAME_IMM8_ID16 = 144,
-    TRYSTGLOBALBYNAME_IMM16_ID16 = 145,
-    LDGLOBALVAR_IMM16_ID16 = 146,
-    STGLOBALVAR_IMM16_ID16 = 147,
-    LDOBJBYNAME_IMM8_ID16 = 148,
-    LDOBJBYNAME_IMM16_ID16 = 149,
-    STOBJBYNAME_IMM8_ID16_V8 = 150,
-    STOBJBYNAME_IMM16_ID16_V8 = 151,
-    STOWNBYNAME_IMM8_ID16_V8 = 152,
-    STOWNBYNAME_IMM16_ID16_V8 = 153,
-    LDSUPERBYNAME_IMM8_ID16 = 154,
-    LDSUPERBYNAME_IMM16_ID16 = 155,
-    STSUPERBYNAME_IMM8_ID16_V8 = 156,
-    STSUPERBYNAME_IMM16_ID16_V8 = 157,
-    LDLOCALMODULEVAR_IMM8 = 158,
-    STCONSTTOGLOBALRECORD_IMM16_ID16 = 159,
-    STTOGLOBALRECORD_IMM16_ID16 = 160,
-    JEQZ_IMM32 = 161,
-    JNEZ_IMM8 = 162,
-    JNEZ_IMM16 = 163,
-    JNEZ_IMM32 = 164,
-    STOWNBYVALUEWITHNAMESET_IMM8_V8_V8 = 165,
-    STOWNBYVALUEWITHNAMESET_IMM16_V8_V8 = 166,
-    STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8 = 167,
-    STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8 = 168,
-    LDBIGINT_ID16 = 169,
-    LDA_STR_ID16 = 170,
-    JMP_IMM8 = 171,
-    JMP_IMM16 = 172,
-    JMP_IMM32 = 173,
-    JSTRICTEQZ_IMM8 = 174,
-    JSTRICTEQZ_IMM16 = 175,
-    JNSTRICTEQZ_IMM8 = 176,
-    JNSTRICTEQZ_IMM16 = 177,
-    JEQNULL_IMM8 = 178,
-    JEQNULL_IMM16 = 179,
-    LDA_V8 = 180,
-    STA_V8 = 181,
-    LDAI_IMM32 = 182,
-    FLDAI_IMM64 = 183,
-    RETURN = 184,
-    RETURNUNDEFINED = 185,
-    LDLEXVAR_IMM8_IMM8 = 186,
-    JNENULL_IMM8 = 187,
-    STLEXVAR_IMM8_IMM8 = 188,
-    JNENULL_IMM16 = 189,
-    CALLARG1_IMM8_V8 = 190,
-    JSTRICTEQNULL_IMM8 = 191,
-    JSTRICTEQNULL_IMM16 = 192,
-    JNSTRICTEQNULL_IMM8 = 193,
-    JNSTRICTEQNULL_IMM16 = 194,
-    JEQUNDEFINED_IMM8 = 195,
-    JEQUNDEFINED_IMM16 = 196,
-    JNEUNDEFINED_IMM8 = 197,
-    JNEUNDEFINED_IMM16 = 198,
-    JSTRICTEQUNDEFINED_IMM8 = 199,
-    JSTRICTEQUNDEFINED_IMM16 = 200,
-    JNSTRICTEQUNDEFINED_IMM8 = 201,
-    JNSTRICTEQUNDEFINED_IMM16 = 202,
-    JEQ_V8_IMM8 = 203,
-    JEQ_V8_IMM16 = 204,
-    JNE_V8_IMM8 = 205,
-    JNE_V8_IMM16 = 206,
-    JSTRICTEQ_V8_IMM8 = 207,
-    JSTRICTEQ_V8_IMM16 = 208,
-    JNSTRICTEQ_V8_IMM8 = 209,
-    JNSTRICTEQ_V8_IMM16 = 210,
-    MOV_V4_V4 = 211,
-    MOV_V8_V8 = 212,
-    MOV_V16_V16 = 213,
-    ASYNCGENERATORREJECT_V8_V8 = 214,
-    NOP = 215,
+    LDUNDEFINED = 0,
+    LDNULL = 1,
+    LDTRUE = 2,
+    LDFALSE = 3,
+    CREATEEMPTYOBJECT = 4,
+    CREATEEMPTYARRAY_IMM8 = 5,
+    CREATEARRAYWITHBUFFER_IMM8_ID16 = 6,
+    CREATEOBJECTWITHBUFFER_IMM8_ID16 = 7,
+    NEWOBJRANGE_IMM8_IMM8_V8 = 8,
+    NEWLEXENV_IMM8 = 9,
+    ADD2_IMM8_V8 = 10,
+    SUB2_IMM8_V8 = 11,
+    MUL2_IMM8_V8 = 12,
+    DIV2_IMM8_V8 = 13,
+    MOD2_IMM8_V8 = 14,
+    EQ_IMM8_V8 = 15,
+    NOTEQ_IMM8_V8 = 16,
+    LESS_IMM8_V8 = 17,
+    LESSEQ_IMM8_V8 = 18,
+    GREATER_IMM8_V8 = 19,
+    GREATEREQ_IMM8_V8 = 20,
+    SHL2_IMM8_V8 = 21,
+    SHR2_IMM8_V8 = 22,
+    ASHR2_IMM8_V8 = 23,
+    AND2_IMM8_V8 = 24,
+    OR2_IMM8_V8 = 25,
+    XOR2_IMM8_V8 = 26,
+    EXP_IMM8_V8 = 27,
+    TYPEOF_IMM8 = 28,
+    TONUMBER_IMM8 = 29,
+    TONUMERIC_IMM8 = 30,
+    NEG_IMM8 = 31,
+    NOT_IMM8 = 32,
+    INC_IMM8 = 33,
+    DEC_IMM8 = 34,
+    ISTRUE = 35,
+    ISFALSE = 36,
+    ISIN_IMM8_V8 = 37,
+    INSTANCEOF_IMM8_V8 = 38,
+    STRICTNOTEQ_IMM8_V8 = 39,
+    STRICTEQ_IMM8_V8 = 40,
+    CALLARG0_IMM8 = 41,
+    CALLARG1_IMM8_V8 = 42,
+    CALLARGS2_IMM8_V8_V8 = 43,
+    CALLARGS3_IMM8_V8_V8_V8 = 44,
+    CALLTHIS0_IMM8_V8 = 45,
+    CALLTHIS1_IMM8_V8_V8 = 46,
+    CALLTHIS2_IMM8_V8_V8_V8 = 47,
+    CALLTHIS3_IMM8_V8_V8_V8_V8 = 48,
+    CALLTHISRANGE_IMM8_IMM8_V8 = 49,
+    SUPERCALLTHISRANGE_IMM8_IMM8_V8 = 50,
+    DEFINEFUNC_IMM8_ID16_IMM8 = 51,
+    DEFINEMETHOD_IMM8_ID16_IMM8 = 52,
+    DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8 = 53,
+    GETNEXTPROPNAME_V8 = 54,
+    LDOBJBYVALUE_IMM8_V8 = 55,
+    STOBJBYVALUE_IMM8_V8_V8 = 56,
+    LDSUPERBYVALUE_IMM8_V8 = 57,
+    LDOBJBYINDEX_IMM8_IMM16 = 58,
+    STOBJBYINDEX_IMM8_V8_IMM16 = 59,
+    LDLEXVAR_IMM4_IMM4 = 60,
+    STLEXVAR_IMM4_IMM4 = 61,
+    LDA_STR_ID16 = 62,
+    TRYLDGLOBALBYNAME_IMM8_ID16 = 63,
+    TRYSTGLOBALBYNAME_IMM8_ID16 = 64,
+    LDGLOBALVAR_IMM16_ID16 = 65,
+    LDOBJBYNAME_IMM8_ID16 = 66,
+    STOBJBYNAME_IMM8_ID16_V8 = 67,
+    MOV_V4_V4 = 68,
+    MOV_V8_V8 = 69,
+    LDSUPERBYNAME_IMM8_ID16 = 70,
+    STCONSTTOGLOBALRECORD_IMM16_ID16 = 71,
+    STTOGLOBALRECORD_IMM16_ID16 = 72,
+    LDTHISBYNAME_IMM8_ID16 = 73,
+    STTHISBYNAME_IMM8_ID16 = 74,
+    LDTHISBYVALUE_IMM8 = 75,
+    STTHISBYVALUE_IMM8_V8 = 76,
+    JMP_IMM8 = 77,
+    JMP_IMM16 = 78,
+    JEQZ_IMM8 = 79,
+    JEQZ_IMM16 = 80,
+    JNEZ_IMM8 = 81,
+    JSTRICTEQZ_IMM8 = 82,
+    JNSTRICTEQZ_IMM8 = 83,
+    JEQNULL_IMM8 = 84,
+    JNENULL_IMM8 = 85,
+    JSTRICTEQNULL_IMM8 = 86,
+    JNSTRICTEQNULL_IMM8 = 87,
+    JEQUNDEFINED_IMM8 = 88,
+    JNEUNDEFINED_IMM8 = 89,
+    JSTRICTEQUNDEFINED_IMM8 = 90,
+    JNSTRICTEQUNDEFINED_IMM8 = 91,
+    JEQ_V8_IMM8 = 92,
+    JNE_V8_IMM8 = 93,
+    JSTRICTEQ_V8_IMM8 = 94,
+    JNSTRICTEQ_V8_IMM8 = 95,
+    LDA_V8 = 96,
+    STA_V8 = 97,
+    LDAI_IMM32 = 98,
+    FLDAI_IMM64 = 99,
+    RETURN = 100,
+    RETURNUNDEFINED = 101,
+    GETPROPITERATOR = 102,
+    GETITERATOR_IMM8 = 103,
+    CLOSEITERATOR_IMM8_V8 = 104,
+    POPLEXENV = 105,
+    LDNAN = 106,
+    LDINFINITY = 107,
+    GETUNMAPPEDARGS = 108,
+    LDGLOBAL = 109,
+    LDNEWTARGET = 110,
+    LDTHIS = 111,
+    LDHOLE = 112,
+    CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8 = 113,
+    CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8 = 114,
+    CALLRANGE_IMM8_IMM8_V8 = 115,
+    DEFINEFUNC_IMM16_ID16_IMM8 = 116,
+    DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8 = 117,
+    GETTEMPLATEOBJECT_IMM8 = 118,
+    SETOBJECTWITHPROTO_IMM8_V8 = 119,
+    STOWNBYVALUE_IMM8_V8_V8 = 120,
+    STOWNBYINDEX_IMM8_V8_IMM16 = 121,
+    STOWNBYNAME_IMM8_ID16_V8 = 122,
+    GETMODULENAMESPACE_IMM8 = 123,
+    STMODULEVAR_IMM8 = 124,
+    LDLOCALMODULEVAR_IMM8 = 125,
+    LDEXTERNALMODULEVAR_IMM8 = 126,
+    STGLOBALVAR_IMM16_ID16 = 127,
+    CREATEEMPTYARRAY_IMM16 = 128,
+    CREATEARRAYWITHBUFFER_IMM16_ID16 = 129,
+    CREATEOBJECTWITHBUFFER_IMM16_ID16 = 130,
+    NEWOBJRANGE_IMM16_IMM8_V8 = 131,
+    TYPEOF_IMM16 = 132,
+    LDOBJBYVALUE_IMM16_V8 = 133,
+    STOBJBYVALUE_IMM16_V8_V8 = 134,
+    LDSUPERBYVALUE_IMM16_V8 = 135,
+    LDOBJBYINDEX_IMM16_IMM16 = 136,
+    STOBJBYINDEX_IMM16_V8_IMM16 = 137,
+    LDLEXVAR_IMM8_IMM8 = 138,
+    STLEXVAR_IMM8_IMM8 = 139,
+    TRYLDGLOBALBYNAME_IMM16_ID16 = 140,
+    TRYSTGLOBALBYNAME_IMM16_ID16 = 141,
+    STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8 = 142,
+    MOV_V16_V16 = 143,
+    LDOBJBYNAME_IMM16_ID16 = 144,
+    STOBJBYNAME_IMM16_ID16_V8 = 145,
+    LDSUPERBYNAME_IMM16_ID16 = 146,
+    LDTHISBYNAME_IMM16_ID16 = 147,
+    STTHISBYNAME_IMM16_ID16 = 148,
+    LDTHISBYVALUE_IMM16 = 149,
+    STTHISBYVALUE_IMM16_V8 = 150,
+    ASYNCGENERATORREJECT_V8 = 151,
+    JMP_IMM32 = 152,
+    STOWNBYVALUEWITHNAMESET_IMM8_V8_V8 = 153,
+    JEQZ_IMM32 = 154,
+    JNEZ_IMM16 = 155,
+    JNEZ_IMM32 = 156,
+    JSTRICTEQZ_IMM16 = 157,
+    JNSTRICTEQZ_IMM16 = 158,
+    JEQNULL_IMM16 = 159,
+    JNENULL_IMM16 = 160,
+    JSTRICTEQNULL_IMM16 = 161,
+    JNSTRICTEQNULL_IMM16 = 162,
+    JEQUNDEFINED_IMM16 = 163,
+    JNEUNDEFINED_IMM16 = 164,
+    JSTRICTEQUNDEFINED_IMM16 = 165,
+    JNSTRICTEQUNDEFINED_IMM16 = 166,
+    JEQ_V8_IMM16 = 167,
+    JNE_V8_IMM16 = 168,
+    JSTRICTEQ_V8_IMM16 = 169,
+    JNSTRICTEQ_V8_IMM16 = 170,
+    GETITERATOR_IMM16 = 171,
+    CLOSEITERATOR_IMM16_V8 = 172,
+    LDSYMBOL = 173,
+    ASYNCFUNCTIONENTER = 174,
+    LDFUNCTION = 175,
+    DEBUGGER = 176,
+    CREATEGENERATOROBJ_V8 = 177,
+    CREATEITERRESULTOBJ_V8_V8 = 178,
+    CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8 = 179,
+    NEWOBJAPPLY_IMM8_V8 = 180,
+    NEWOBJAPPLY_IMM16_V8 = 181,
+    NEWLEXENVWITHNAME_IMM8_ID16 = 182,
+    CREATEASYNCGENERATOROBJ_V8 = 183,
+    ASYNCGENERATORRESOLVE_V8_V8_V8 = 184,
+    SUPERCALLSPREAD_IMM8_V8 = 185,
+    APPLY_IMM8_V8_V8 = 186,
+    SUPERCALLARROWRANGE_IMM8_IMM8_V8 = 187,
+    DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8 = 188,
+    DYNAMICIMPORT = 189,
+    DEFINEMETHOD_IMM16_ID16_IMM8 = 190,
+    RESUMEGENERATOR = 191,
+    GETRESUMEMODE = 192,
+    GETTEMPLATEOBJECT_IMM16 = 193,
+    DELOBJPROP_V8 = 194,
+    SUSPENDGENERATOR_V8 = 195,
+    ASYNCFUNCTIONAWAITUNCAUGHT_V8 = 196,
+    COPYDATAPROPERTIES_V8 = 197,
+    STARRAYSPREAD_V8_V8 = 198,
+    SETOBJECTWITHPROTO_IMM16_V8 = 199,
+    STOWNBYVALUE_IMM16_V8_V8 = 200,
+    STSUPERBYVALUE_IMM8_V8_V8 = 201,
+    STSUPERBYVALUE_IMM16_V8_V8 = 202,
+    STOWNBYINDEX_IMM16_V8_IMM16 = 203,
+    STOWNBYNAME_IMM16_ID16_V8 = 204,
+    ASYNCFUNCTIONRESOLVE_V8 = 205,
+    ASYNCFUNCTIONREJECT_V8 = 206,
+    COPYRESTARGS_IMM8 = 207,
+    STSUPERBYNAME_IMM8_ID16_V8 = 208,
+    STSUPERBYNAME_IMM16_ID16_V8 = 209,
+    STOWNBYVALUEWITHNAMESET_IMM16_V8_V8 = 210,
+    LDBIGINT_ID16 = 211,
+    STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8 = 212,
+    NOP = 213,
     DEPRECATED_LDLEXENV_PREF_NONE = 252,
     WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8 = 253,
     THROW_PREF_NONE = 254,
@@ -591,7 +589,8 @@ enum class Opcode {
     DEPRECATED_LDHOMEOBJECT_PREF_NONE = 11260,
     DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16 = 11516,
     DEPRECATED_DYNAMICIMPORT_PREF_V8 = 11772,
-    LAST = DEPRECATED_DYNAMICIMPORT_PREF_V8
+    DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8 = 12028,
+    LAST = DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8
 };
 
 enum Flags : uint32_t {
@@ -3036,10 +3035,6 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::IMM8_V8;
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         return BytecodeInst<Mode>::Format::IMM16_V8;
-    case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
-        return BytecodeInst<Mode>::Format::IMM8;
-    case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
-        return BytecodeInst<Mode>::Format::IMM8_V8;
     case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
@@ -3264,8 +3259,10 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
         return BytecodeInst<Mode>::Format::V8_V8;
     case BytecodeInst<Mode>::Opcode::MOV_V16_V16:
         return BytecodeInst<Mode>::Format::V16_V16;
-    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8_V8:
-        return BytecodeInst<Mode>::Format::V8_V8;
+    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
+        return BytecodeInst<Mode>::Format::V8;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
+        return BytecodeInst<Mode>::Format::PREF_V8_V8;
     case BytecodeInst<Mode>::Opcode::NOP:
         return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_LDLEXENV_PREF_NONE:
@@ -3628,10 +3625,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::IC_SLOT | Flags::TWO_SLOT | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::IC_SLOT | Flags::TWO_SLOT | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
-        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
-        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_NONE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE | Flags::ACC_READ) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
@@ -3856,7 +3849,9 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
         return ((Flags::DYNAMIC | Flags::ACC_NONE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::MOV_V16_V16:
         return ((Flags::DYNAMIC | Flags::ACC_NONE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8_V8:
+    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
+        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::NOP:
         return ((Flags::ACC_NONE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
@@ -4220,10 +4215,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
-        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
-        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
@@ -4448,7 +4439,9 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::MOV_V16_V16:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
-    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8_V8:
+    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::NOP:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
@@ -4812,10 +4805,6 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         return false;
-    case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
-        return false;
-    case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
-        return false;
     case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         return false;
     case BytecodeInst<Mode>::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
@@ -5040,7 +5029,9 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
         return false;
     case BytecodeInst<Mode>::Opcode::MOV_V16_V16:
         return false;
-    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8_V8:
+    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
+        return false;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
         return false;
     case BytecodeInst<Mode>::Opcode::NOP:
         return false;
@@ -5671,15 +5662,6 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM16_V8, 0>();
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::IMM16_V8, 0>();
         break;
-    case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
-        os << "ldpatchvar";
-        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8, 0>();
-        break;
-    case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
-        os << "stpatchvar";
-        os << " " << inst.template GetImm<BytecodeInst<Mode>::Format::IMM8_V8, 0>();
-        os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::IMM8_V8, 0>();
-        break;
     case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         os << "dynamicimport";
         break;
@@ -6208,10 +6190,14 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V16_V16, 0>();
         os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V16_V16, 1>();
         break;
-    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8_V8:
+    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
         os << "asyncgeneratorreject";
-        os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8_V8, 0>();
-        os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8_V8, 1>();
+        os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8, 0>();
+        break;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
+        os << "asyncgeneratorreject";
+        os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::PREF_V8_V8, 0>();
+        os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::PREF_V8_V8, 1>();
         break;
     case BytecodeInst<Mode>::Opcode::NOP:
         os << "nop";
@@ -6866,12 +6852,6 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::STTHISBYVALUE_IMM16_V8:
         os << "STTHISBYVALUE_IMM16_V8";
         break;
-    case BytecodeInst<Mode>::Opcode::LDPATCHVAR_IMM8:
-        os << "LDPATCHVAR_IMM8";
-        break;
-    case BytecodeInst<Mode>::Opcode::STPATCHVAR_IMM8_V8:
-        os << "STPATCHVAR_IMM8_V8";
-        break;
     case BytecodeInst<Mode>::Opcode::DYNAMICIMPORT:
         os << "DYNAMICIMPORT";
         break;
@@ -7208,8 +7188,11 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
     case BytecodeInst<Mode>::Opcode::MOV_V16_V16:
         os << "MOV_V16_V16";
         break;
-    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8_V8:
-        os << "ASYNCGENERATORREJECT_V8_V8";
+    case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
+        os << "ASYNCGENERATORREJECT_V8";
+        break;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
+        os << "DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8";
         break;
     case BytecodeInst<Mode>::Opcode::NOP:
         os << "NOP";

@@ -139,6 +139,7 @@ private:
     const CString GetEntryFunName(const std::string_view &entryPoint) const;
     void ProcessClasses(const CString &methodName);
     void CollectMethodPcs(const uint32_t insSz, const uint8_t *insArr, const MethodLiteral *method);
+    void CollectMethodPcsFromNewBc(const uint32_t insSz, const uint8_t *insArr, const MethodLiteral *method);
     void SetMethodPcInfoIndex(uint32_t methodOffset, size_t index);
     void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset);
     void CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset);
@@ -153,13 +154,16 @@ private:
 
     // need to remove in the future
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
-    static void UpdateEcmaBytecodeICOffset(MethodLiteral *method, uint8_t *pc);
 
     // need to remove in the future
     static void FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder = 0);
 
     // need to remove in the future
     void TranslateBCIns(const OldBytecodeInst &bcIns, const MethodLiteral *method);
+
+    // use for new ISA
+    void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
+    void CollectMethodInfoFromNewBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
 
     JSPandaFile *jsPandaFile_ {nullptr};
     BCInfo bytecodeInfo_;

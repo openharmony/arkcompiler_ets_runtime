@@ -18,10 +18,11 @@ group("ark_aot_js_test") {
     "bigint_typed_array_constructors:bigint_typed_array_constructorsAotAction",
     "call_default_args:call_default_argsAotAction",
     "constructor_returns_non_object:constructor_returns_non_objectAotAction",
+    "dynamicimport:dynamicimportAotAction",
     "formatrangetoparts:formatrangetopartsAotAction",
     "global_this_js:global_this_jsAotAction",
 
-    #"module:moduleAotAction",
+    #    "module:moduleAotAction",
     "undefined:undefinedAotAction",
   ]
 }
@@ -88,9 +89,8 @@ group("ark_aot_test") {
     "ldstlexvar:ldstlexvarAotAction",
     "ldsuperbyname:ldsuperbynameAotAction",
     "logic_op:logic_opAotAction",
+    "loop_with_variable_exchange:loop_with_variable_exchangeAotAction",
     "loops:loopsAotAction",
-
-    #"loop_with_variable_exchange:loop_with_variable_exchangeAotAction",
     "mod:modAotAction",
     "mul:mulAotAction",
     "neg:negAotAction",
@@ -100,8 +100,7 @@ group("ark_aot_test") {
     "not:notAotAction",
     "or:orAotAction",
     "poplexenv:poplexenvAotAction",
-
-    #"proxy:proxyAotAction",
+    "proxy:proxyAotAction",
     "resumegenerator:resumegeneratorAotAction",
     "setobjectwithproto:setobjectwithprotoAotAction",
     "shl:shlAotAction",
@@ -111,8 +110,7 @@ group("ark_aot_test") {
     "stconsttoglobalrecord:stconsttoglobalrecordAotAction",
     "stglobalvar:stglobalvarAotAction",
     "stlettoglobalrecord:stlettoglobalrecordAotAction",
-
-    #"stobjbyindex:stobjbyindexAotAction",
+    "stobjbyindex:stobjbyindexAotAction",
     "stobjbyname:stobjbynameAotAction",
     "stobjbyvalue:stobjbyvalueAotAction",
     "stownbyindex:stownbyindexAotAction",
@@ -137,8 +135,6 @@ group("ark_aot_test") {
     "throwundefindeifhole:throwundefindeifholeAotAction",
     "tonumber:tonumberAotAction",
     "tonumeric:tonumericAotAction",
-
-    #"dynamicimport:dynamicimportAotAction",
     "try_catch_finally:try_catch_finallyAotAction",
     "trystglobalbynameprefid32:trystglobalbynameprefid32AotAction",
     "typeof:typeofAotAction",

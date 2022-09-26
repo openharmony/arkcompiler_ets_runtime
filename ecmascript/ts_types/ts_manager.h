@@ -251,6 +251,12 @@ public:
 
     JSHandle<ConstantPool> PUBLIC_API RestoreConstantPool(const JSPandaFile* pf, uint32_t constantPool);
 
+    void ClearCaches()
+    {
+        stringIndexCache_.clear();
+        hclassCache_.clear();
+    }
+
     void AddStringIndex(uint32_t index)
     {
         if (stringIndexCache_.find(index) != stringIndexCache_.end()) {
@@ -259,10 +265,9 @@ public:
         stringIndexCache_.insert(index);
     }
 
-    void ClearCaches()
+    EcmaVM *GetEcmaVM() const
     {
-        stringIndexCache_.clear();
-        hclassCache_.clear();
+        return vm_;
     }
 
 #define IS_TSTYPEKIND_METHOD_LIST(V)              \

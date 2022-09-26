@@ -54,6 +54,9 @@ public:
 
     static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, size_t index,
                                             std::vector<uint32_t> &methodOffsets);
+
+    static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
+                                            std::vector<uint32_t> &methodOffsets);
 private:
     static JSHandle<TaggedArray> EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
         const JSPandaFile *jsPandaFile, size_t index, JSHandle<JSTaggedValue> constpool,

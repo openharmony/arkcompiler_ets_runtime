@@ -18,6 +18,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
@@ -120,16 +121,10 @@ DEF_RUNTIME_STUBS(CallInternalSetter)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(JSProxySetProperty)
+DEF_RUNTIME_STUBS(DebugBreak)
 {
-    RUNTIME_STUBS_HEADER(JSProxySetProperty);
-    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> index = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);   // 2: means the second parameter
-    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
-    JSTaggedValue argMayThrow = GetArg(argv, argc, 4);   // 4: means the fourth parameter
-    auto result = JSProxy::SetProperty(thread, proxy, index, value, receiver, argMayThrow.IsTrue());
-    return JSTaggedValue(result).GetRawData();
+    RUNTIME_STUBS_HEADER(DebugBreak);
+    return JSTaggedValue::Undefined().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetHash32)
@@ -348,9 +343,9 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     va_end(args);
 }
 
-void RuntimeStubs::DebugPrintInstruction(uintptr_t pc)
+void RuntimeStubs::DebugPrintInstruction([[maybe_unused]]uintptr_t argGlue, const uint8_t *pc)
 {
-    BytecodeInstruction inst(reinterpret_cast<const uint8_t*>(pc));
+    BytecodeInstruction inst(pc);
     LOG_INTERPRETER(DEBUG) << inst;
 }
 
@@ -535,7 +530,7 @@ DEF_RUNTIME_STUBS(NewObjApply)
 {
     RUNTIME_STUBS_HEADER(NewObjApply);
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     return RuntimeNewObjApply(thread, func, array).GetRawData();
 }
 
@@ -662,7 +657,7 @@ DEF_RUNTIME_STUBS(LdSuperByValue)
     JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    JSTaggedValue thisFunc = InterpreterAssembly::GetThisFunction(sp);
+    JSTaggedValue thisFunc = InterpreterAssembly::GetFunction(sp);
     return RuntimeLdSuperByValue(thread, obj, key, thisFunc).GetRawData();
 }
 
@@ -682,7 +677,7 @@ DEF_RUNTIME_STUBS(StSuperByValue)
     JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    JSTaggedValue thisFunc = InterpreterAssembly::GetThisFunction(sp);
+    JSTaggedValue thisFunc = InterpreterAssembly::GetFunction(sp);
     return RuntimeStSuperByValue(thread, obj, key, value, thisFunc).GetRawData();
 }
 
@@ -740,6 +735,16 @@ DEF_RUNTIME_STUBS(LdObjByIndex)
     JSTaggedValue callGetter = GetArg(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue receiver = GetArg(argv, argc, 3);  // 3: means the third parameter
     return RuntimeLdObjByIndex(thread, obj, idx.GetInt(), callGetter.IsTrue(), receiver).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdObjByValue)
+{
+    RUNTIME_STUBS_HEADER(LdObjByValue);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> propKey = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue callGetter = GetArg(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue receiver = GetArg(argv, argc, 3);  // 3: means the third parameter
+    return RuntimeLdObjByValue(thread, obj, propKey, callGetter.IsTrue(), receiver).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StObjByIndex)
@@ -1025,6 +1030,21 @@ DEF_RUNTIME_STUBS(UpFrame)
     return JSTaggedValue(static_cast<uint64_t>(0)).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetModuleNamespaceByIndex)
+{
+    RUNTIME_STUBS_HEADER(GetModuleNamespaceByIndex);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeGetModuleNamespace(thread, index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetModuleNamespaceByIndexOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(GetModuleNamespaceByIndexOnJSFunc);
+    JSTaggedValue index = GetArg(argv, argc, 0);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1);
+    return RuntimeGetModuleNamespace(thread, index.GetInt(), jsFunc).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(GetModuleNamespace)
 {
     RUNTIME_STUBS_HEADER(GetModuleNamespace);
@@ -1035,9 +1055,34 @@ DEF_RUNTIME_STUBS(GetModuleNamespace)
 DEF_RUNTIME_STUBS(GetModuleNamespaceOnJSFunc)
 {
     RUNTIME_STUBS_HEADER(GetModuleNamespaceOnJSFunc);
-    JSTaggedValue localName = GetArg(argv, argc, 0);
     JSTaggedValue jsFunc = GetArg(argv, argc, 1);
-    return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
+    JSTaggedValue isDeprecated = GetArg(argv, argc, 2); // 2: means the second parameter
+    if (isDeprecated.IsTrue()) {
+        JSTaggedValue localName = GetArg(argv, argc, 0);
+        return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
+    } else {
+        JSTaggedValue index = GetArg(argv, argc, 0);
+        return RuntimeGetModuleNamespace(thread, index.GetInt(), jsFunc).GetRawData();
+    }
+}
+
+DEF_RUNTIME_STUBS(StModuleVarByIndex)
+{
+    RUNTIME_STUBS_HEADER(StModuleVar);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue value = GetArg(argv, argc, 1);  // 1: means the first parameter
+    RuntimeStModuleVar(thread, index.GetInt(), value);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(StModuleVarByIndexOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(StModuleVarOnJSFunc);
+    JSTaggedValue index = GetArg(argv, argc, 0);
+    JSTaggedValue value = GetArg(argv, argc, 1);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 2);
+    RuntimeStModuleVar(thread, index.GetInt(), value, jsFunc);
+    return JSTaggedValue::Hole().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StModuleVar)
@@ -1057,6 +1102,36 @@ DEF_RUNTIME_STUBS(StModuleVarOnJSFunc)
     JSTaggedValue jsFunc = GetArg(argv, argc, 2);
     RuntimeStModuleVar(thread, key, value, jsFunc);
     return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdLocalModuleVarByIndex)
+{
+    RUNTIME_STUBS_HEADER(LdLocalModuleVarByIndex);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeLdLocalModuleVar(thread, index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdExternalModuleVarByIndex)
+{
+    RUNTIME_STUBS_HEADER(LdExternalModuleVarByIndex);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeLdExternalModuleVar(thread, index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdLocalModuleVarByIndexOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(LdLocalModuleVarByIndexOnJSFunc);
+    JSTaggedValue index = GetArg(argv, argc, 0);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1);
+    return RuntimeLdLocalModuleVar(thread, index.GetInt(), jsFunc).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdExternalModuleVarByIndexOnJSFunc)
+{
+    RUNTIME_STUBS_HEADER(LdExternalModuleVarByIndexOnJSFunc);
+    JSTaggedValue index = GetArg(argv, argc, 0);
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1);
+    return RuntimeLdExternalModuleVar(thread, index.GetInt(), jsFunc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LdModuleVar)
@@ -1816,8 +1891,8 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
 DEF_RUNTIME_STUBS(DebugAOTPrint)
 {
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
-    JSTaggedValue fmtMessageId = GetArg(argv, argc, 0);
-    std::string result = MessageString::GetMessageString(fmtMessageId.GetInt());
+    auto ecmaOpcode = GetArg(argv, argc, 0).GetInt();
+    std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
     std::cerr << "aot slowpath " << result << std::endl;
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -1864,7 +1939,7 @@ DEF_RUNTIME_STUBS(JSObjectGetMethod)
 
 DEF_RUNTIME_STUBS(BigIntEqual)
 {
-    RUNTIME_STUBS_HEADER(OptBigIntEqual);
+    RUNTIME_STUBS_HEADER(BigIntEqual);
     JSTaggedValue left = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue right = GetArg(argv, argc, 1);  // 1: means the first parameter
     if (BigInt::Equal(left, right)) {
@@ -1875,7 +1950,7 @@ DEF_RUNTIME_STUBS(BigIntEqual)
 
 DEF_RUNTIME_STUBS(StringEqual)
 {
-    RUNTIME_STUBS_HEADER(OptBigIntEqual);
+    RUNTIME_STUBS_HEADER(StringEqual);
     JSTaggedValue left = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue right = GetArg(argv, argc, 1);  // 1: means the first parameter
     auto leftStr = EcmaString::Cast(left.GetTaggedObject());
@@ -1899,6 +1974,16 @@ DEF_RUNTIME_STUBS(StPatchVar)
     JSTaggedValue idx = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     return RuntimeStPatchVar(thread, idx.GetInt(), value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdObjByName)
+{
+    RUNTIME_STUBS_HEADER(LdObjByName);
+    JSTaggedValue receiver = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue propKey = GetArg(argv, argc, 1);  // 1: means the first parameter
+    bool callGetter = GetArg(argv, argc, 2).IsTrue();
+    JSTaggedValue undefined = GetArg(argv, argc, 3);
+    return RuntimeLdObjByName(thread, receiver, propKey, callGetter, undefined).GetRawData();
 }
 
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)
@@ -1960,6 +2045,23 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
     Barriers::Update(slotAddr, objectRegion, value, valueRegion);
 }
 
+void RuntimeStubs::StoreBarrier([[maybe_unused]]uintptr_t argGlue,
+    uintptr_t object, size_t offset, TaggedObject *value)
+{
+    uintptr_t slotAddr = object + offset;
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+        // Should align with '8' in 64 and 32 bit platform
+        ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+        objectRegion->InsertOldToNewRSet(slotAddr);
+    }
+    if (!valueRegion->IsMarking()) {
+        return;
+    }
+    Barriers::Update(slotAddr, objectRegion, value, valueRegion);
+}
+
 bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
 {
     return EcmaStringAccessor::StringsAreEqualSameUtfEncoding(str1, str2);
@@ -2011,6 +2113,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     }
     context->SetRegsArray(thread, regsArray.GetTaggedValue());
     context->SetMethod(thread, frameHandler.GetFunction());
+    context->SetThis(thread, frameHandler.GetThis());
 
     BytecodeInstruction ins(frameHandler.GetPc());
     auto offset = ins.GetSize();

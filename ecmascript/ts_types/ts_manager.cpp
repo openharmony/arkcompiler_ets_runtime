@@ -571,14 +571,41 @@ JSTaggedValue TSManager::GenerateConstantPoolInfo(const JSPandaFile* jsPandaFile
 {
     ObjectFactory *factory = vm_->GetFactory();
     JSThread *thread = vm_->GetJSThread();
-    JSHandle<TaggedArray> constantPoolInfo = factory->NewTaggedArray(ComputeSizeOfConstantPoolInfo());
     JSHandle<ConstantPool> constantPool(thread, vm_->FindConstpool(jsPandaFile, 0));
-
+    JSHandle<TaggedArray> constantPoolInfo = factory->NewTaggedArray(ComputeSizeOfConstantPoolInfo());
     constantPoolInfo->Set(thread, NUM_OF_ORIGINAL_CONSTANTPOOL_DATA_INDEX,
                           JSTaggedValue(GetStringCacheSize() * ORIGINAL_CONSTANTPOOL_DATA_SIZE));
     constantPoolInfo->Set(thread, NUM_OF_HCLASS_INDEX, JSTaggedValue(GetHClassCacheSize()));
 
     uint32_t index = CONSTANTPOOL_INFO_DATA_OFFSET;
+
+#ifdef NEW_INSTRUCTION_DEFINE
+    const panda_file::File *pfile = jsPandaFile->GetPandaFile();
+    panda_file::File::IndexHeader *indexHeader = constantPool->GetIndexHeader();
+    Span<const panda_file::File::EntityId> indexs = pfile->GetMethodIndex(indexHeader);
+
+    IterateCaches(CacheKind::STRING_INDEX, [this, pfile ,&indexs, &index, constantPoolInfo] (uint32_t stringIndex) {
+        ObjectFactory *factory = vm_->GetFactory();
+        JSThread *thread = vm_->GetJSThread();
+        panda_file::File::EntityId id = indexs[stringIndex];
+        auto foundStr = pfile->GetStringData(id);
+        auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length, foundStr.is_ascii,
+                                                           MemSpaceType::OLD_SPACE);
+        constantPoolInfo->Set(thread, index++, JSTaggedValue(stringIndex));
+        constantPoolInfo->Set(thread, index++, JSTaggedValue(string));
+    });
+
+    IterateCaches(CacheKind::HCLASS, [thread, &index, &constantPoolInfo]
+    (JSTaggedType hclass) {
+        constantPoolInfo->Set(thread, index++, JSTaggedValue(hclass));
+    });
+
+    if (ComputeSizeOfConstantPoolInfo() != index) {
+        LOG_FULL(FATAL) << "constantpool info size incorrect";
+    }
+
+    return constantPoolInfo.GetTaggedValue();
+#else
     IterateCaches(CacheKind::STRING_INDEX, [thread, &index, &constantPool, &constantPoolInfo]
     (uint32_t stringIndex) {
         JSTaggedValue str = constantPool->GetObjectFromCache(stringIndex);
@@ -596,6 +623,7 @@ JSTaggedValue TSManager::GenerateConstantPoolInfo(const JSPandaFile* jsPandaFile
     }
 
     return constantPoolInfo.GetTaggedValue();
+#endif
 }
 
 void TSManager::SortConstantPoolInfos()

@@ -826,7 +826,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_GENERATOR_CONTEXT: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), GeneratorContext::SIZE, 6U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), GeneratorContext::SIZE, 7U);
                 JSHandle<GeneratorContext> genContext = factory->NewGeneratorContext();
                 DUMP_FOR_HANDLE(genContext)
                 break;
@@ -1245,6 +1245,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::RESOLVEDBINDING_RECORD: {
                 CHECK_DUMP_FIELDS(Record::SIZE, ResolvedBinding::SIZE, 2U);
                 JSHandle<ResolvedBinding> resolvedBinding = factory->NewResolvedBindingRecord();
+                DUMP_FOR_HANDLE(resolvedBinding);
+                break;
+            }
+            case JSType::RESOLVEDINDEXBINDING_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedIndexBinding::SIZE, 2U);
+                JSHandle<ResolvedIndexBinding> resolvedBinding = factory->NewResolvedIndexBindingRecord();
                 DUMP_FOR_HANDLE(resolvedBinding);
                 break;
             }

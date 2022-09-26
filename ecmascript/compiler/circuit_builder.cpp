@@ -62,8 +62,9 @@ GateRef CircuitBuilder::Selector(OpCode opcode, GateRef control,
     return circuit_->NewGate(opcode, valueCounts, inList, type.GetGateType());
 }
 
-GateRef CircuitBuilder::UndefineConstant(GateType type)
+GateRef CircuitBuilder::UndefineConstant()
 {
+    auto type = GateType::TaggedValue();
     return circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, type);
 }
 
@@ -222,18 +223,21 @@ GateRef CircuitBuilder::Double(double val)
     return GetCircuit()->GetConstantGate(MachineType::F64, bit_cast<int64_t>(val), GateType::NJSValue());
 }
 
-GateRef CircuitBuilder::HoleConstant(GateType type)
+GateRef CircuitBuilder::HoleConstant()
 {
+    auto type = GateType::TaggedValue();
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_HOLE, type);
 }
 
-GateRef CircuitBuilder::NullConstant(GateType type)
+GateRef CircuitBuilder::NullConstant()
 {
+    auto type = GateType::TaggedValue();
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_NULL, type);
 }
 
-GateRef CircuitBuilder::ExceptionConstant(GateType type)
+GateRef CircuitBuilder::ExceptionConstant()
 {
+    auto type = GateType::TaggedValue();
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_EXCEPTION, type);
 }
 
@@ -393,9 +397,8 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
     GateRef result = GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
     label->SetDepend(result);
     if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
-        CallStub(glue, CommonStubCSigns::SetValueWithBarrier, {glue, base, offset, value});
+        CallStub(glue, CommonStubCSigns::SetValueWithBarrier, { glue, base, offset, value });
     }
-    return;
 }
 
 GateRef CircuitBuilder::Alloca(int size)
@@ -547,6 +550,12 @@ GateRef CircuitBuilder::GetMethodFromFunction(GateRef function)
 GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
 {
     GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    return Load(VariableType::JS_POINTER(), function, offset);
+}
+
+GateRef CircuitBuilder::GetHomeObjectFromFunction(GateRef function)
+{
+    GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
     return Load(VariableType::JS_POINTER(), function, offset);
 }
 
@@ -963,7 +972,7 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
     if (same == Gate::InvalidGateRef) {
         // the phi is unreachable or in the start block
         GateType type = acc.GetGateType(phi);
-        same = env_->GetBuilder()->UndefineConstant(type);
+        same = env_->GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, type);
     }
     // remove the trivial phi
     // get all users of phi except self

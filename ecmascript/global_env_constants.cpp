@@ -167,6 +167,9 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
     SetConstant(
         ConstantIndex::RESOLVED_BINDING_CLASS_INDEX,
         factory->NewEcmaReadOnlyHClass(hClass, ResolvedBinding::SIZE, JSType::RESOLVEDBINDING_RECORD));
+    SetConstant(
+        ConstantIndex::RESOLVED_INDEX_BINDING_CLASS_INDEX,
+        factory->NewEcmaReadOnlyHClass(hClass, ResolvedIndexBinding::SIZE, JSType::RESOLVEDINDEXBINDING_RECORD));
 
     JSHClass *jsProxyCallableClass = *factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY);
 

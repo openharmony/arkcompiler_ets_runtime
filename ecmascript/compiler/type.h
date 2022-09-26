@@ -243,11 +243,11 @@ private:
     static constexpr uint32_t EMPTY_TYPE = 1 << 28; // 1 : means offset of empty type
     static constexpr uint32_t MIR_TYPE_MASK = MIR_BASE_BITS | EMPTY_TYPE;
 
-    static constexpr uint32_t NJS_VALUE = MIR_BASE_BITS; // (1110)
+    static constexpr uint32_t NJS_VALUE = MIR_BASE_BITS;                           // (1110)
     static constexpr uint32_t TAGGED_VALUE = MIR_BASE_BITS & GC_MASK & NO_GC_MASK; // (1000)
-    static constexpr uint32_t TAGGED_POINTER = MIR_BASE_BITS & GC_MASK; // (1010)
-    static constexpr uint32_t TAGGED_NPOINTER = MIR_BASE_BITS & NO_GC_MASK; // (1100)
-    static constexpr uint32_t EMPTY = NJS_VALUE + EMPTY_TYPE; // (1111)
+    static constexpr uint32_t TAGGED_POINTER = MIR_BASE_BITS & GC_MASK;            // (1010)
+    static constexpr uint32_t TAGGED_NPOINTER = MIR_BASE_BITS & NO_GC_MASK;        // (1100)
+    static constexpr uint32_t EMPTY = NJS_VALUE + EMPTY_TYPE;                      // (1111)
     static constexpr uint32_t SIZE_BITS = 4;
 
     static constexpr uint32_t VALID_BITS = sizeof(uint32_t) * 8;

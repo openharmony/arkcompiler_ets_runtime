@@ -1624,6 +1624,7 @@ JSHandle<GeneratorContext> ObjectFactory::NewGeneratorContext()
     JSHandle<GeneratorContext> obj(thread_, header);
     obj->SetRegsArray(thread_, JSTaggedValue::Undefined());
     obj->SetMethod(thread_, JSTaggedValue::Undefined());
+    obj->SetThis(thread_, JSTaggedValue::Undefined());
     obj->SetAcc(thread_, JSTaggedValue::Undefined());
     obj->SetGeneratorObject(thread_, JSTaggedValue::Undefined());
     obj->SetLexicalEnv(thread_, JSTaggedValue::Undefined());
@@ -3567,15 +3568,15 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetEvaluationError(SourceTextModule::UNDEFINED_INDEX);
     obj->SetStatus(ModuleStatus::UNINSTANTIATED);
     obj->SetTypes(ModuleTypes::UNKNOWN);
-    obj->SetModes(ModuleModes::DICTIONARYMODE);
+    obj->SetIsNewBcVersion(false);
     return obj;
 }
 
 JSHandle<ResolvedBinding> ObjectFactory::NewResolvedBindingRecord()
 {
-    JSTaggedValue undefinedValue = thread_->GlobalConstants()->GetUndefined();
-    JSHandle<SourceTextModule> ecmaModule(thread_, undefinedValue);
-    JSHandle<JSTaggedValue> bindingName(thread_, undefinedValue);
+    JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
+    JSHandle<SourceTextModule> ecmaModule(undefinedValue);
+    JSHandle<JSTaggedValue> bindingName(undefinedValue);
     return NewResolvedBindingRecord(ecmaModule, bindingName);
 }
 
@@ -3588,6 +3589,26 @@ JSHandle<ResolvedBinding> ObjectFactory::NewResolvedBindingRecord(const JSHandle
     JSHandle<ResolvedBinding> obj(thread_, header);
     obj->SetModule(thread_, module);
     obj->SetBindingName(thread_, bindingName);
+    return obj;
+}
+
+JSHandle<ResolvedIndexBinding> ObjectFactory::NewResolvedIndexBindingRecord()
+{
+    JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
+    JSHandle<SourceTextModule> ecmaModule(undefinedValue);
+    int32_t index = 0;
+    return NewResolvedIndexBindingRecord(ecmaModule, index);
+}
+
+JSHandle<ResolvedIndexBinding> ObjectFactory::NewResolvedIndexBindingRecord(const JSHandle<SourceTextModule> &module,
+                                                                            int32_t index)
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetResolvedIndexBindingClass().GetTaggedObject()));
+    JSHandle<ResolvedIndexBinding> obj(thread_, header);
+    obj->SetModule(thread_, module);
+    obj->SetIndex(index);
     return obj;
 }
 

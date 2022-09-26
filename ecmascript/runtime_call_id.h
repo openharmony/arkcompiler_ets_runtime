@@ -84,7 +84,7 @@ namespace panda::ecmascript {
     V(Ldnewobjrange)             \
     V(IsIn)                      \
     V(Instanceof)                \
-    V(NewobjApply)              \
+    V(NewObjApply)               \
     V(CallArg0)                  \
     V(CallArg1)                  \
     V(CallArg2)                  \
@@ -443,6 +443,7 @@ namespace panda::ecmascript {
     V(PromiseHandler, AnyRejectElementFunction) \
     V(PromiseJob, Reaction)                   \
     V(PromiseJob, ResolveThenableJob)         \
+    V(PromiseJob, DynamicImportJob)           \
     V(Promise, Constructor)                   \
     V(Promise, All)                           \
     V(Promise, Race)                          \

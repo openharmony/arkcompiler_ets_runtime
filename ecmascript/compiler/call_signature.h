@@ -356,6 +356,7 @@ private:
     V(FloatMod)                             \
     V(FindElementWithCache)                 \
     V(MarkingBarrier)                       \
+    V(StoreBarrier)                         \
     V(CallArg0)                             \
     V(CallArg1)                             \
     V(CallArgs2)                            \

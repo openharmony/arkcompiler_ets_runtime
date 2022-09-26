@@ -31,9 +31,9 @@ GateRef CircuitBuilder::False()
     return TruncInt32ToInt1(Int32(0));
 }
 
-GateRef CircuitBuilder::Undefined(VariableType type)
+GateRef CircuitBuilder::Undefined()
 {
-    return UndefineConstant(type.GetGateType());
+    return UndefineConstant();
 }
 
 // memory
@@ -163,6 +163,11 @@ GateRef CircuitBuilder::SExtInt16ToInt64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
 }
 
+GateRef CircuitBuilder::SExtInt16ToInt32(GateRef x)
+{
+    return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+}
+
 GateRef CircuitBuilder::SExtInt8ToInt64(GateRef x)
 {
     return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
@@ -179,14 +184,23 @@ GateRef CircuitBuilder::Int32ToTaggedPtr(GateRef x)
     return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
 }
 
+GateRef CircuitBuilder::Int32ToTaggedInt(GateRef x)
+{
+    GateRef val = SExtInt32ToInt64(x);
+    return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
+}
+
 // bit operation
 GateRef CircuitBuilder::IsSpecial(GateRef x, JSTaggedType type)
 {
-    return Equal(x, Int64(type));
+    auto specialValue = circuit_->GetConstantGate(
+        MachineType::I64, type, GateType::TaggedValue());
+    return Equal(x, specialValue);
 }
 
 GateRef CircuitBuilder::TaggedIsInt(GateRef x)
 {
+    x = ChangeTaggedPointerToInt64(x);
     return Equal(Int64And(x, Int64(JSTaggedValue::TAG_MARK)),
                  Int64(JSTaggedValue::TAG_INT));
 }
@@ -198,6 +212,7 @@ GateRef CircuitBuilder::TaggedIsDouble(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsObject(GateRef x)
 {
+    x = ChangeTaggedPointerToInt64(x);
     return Equal(Int64And(x, Int64(JSTaggedValue::TAG_MARK)),
                  Int64(JSTaggedValue::TAG_OBJECT));
 }
@@ -209,33 +224,35 @@ GateRef CircuitBuilder::TaggedIsNumber(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsHole(GateRef x)
 {
-    return Equal(x, Int64(JSTaggedValue::VALUE_HOLE));
+    return Equal(x, HoleConstant());
 }
 
 GateRef CircuitBuilder::TaggedIsNotHole(GateRef x)
 {
-    return NotEqual(x, Int64(JSTaggedValue::VALUE_HOLE));
+    return NotEqual(x, HoleConstant());
 }
 
 GateRef CircuitBuilder::TaggedIsUndefined(GateRef x)
 {
-    return Equal(x, Int64(JSTaggedValue::VALUE_UNDEFINED));
+    return Equal(x, UndefineConstant());
 }
 
 GateRef CircuitBuilder::TaggedIsException(GateRef x)
 {
-    return Equal(x, Int64(JSTaggedValue::VALUE_EXCEPTION));
+    return Equal(x, ExceptionConstant());
 }
 
 GateRef CircuitBuilder::TaggedIsSpecial(GateRef x)
 {
     return BoolOr(
-        Equal(Int64And(x, Int64(JSTaggedValue::TAG_SPECIAL_MASK)), Int64(JSTaggedValue::TAG_SPECIAL)),
+        Equal(Int64And(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::TAG_SPECIAL_MASK)),
+            Int64(JSTaggedValue::TAG_SPECIAL)),
         TaggedIsHole(x));
 }
 
 GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
 {
+    x = ChangeTaggedPointerToInt64(x);
     return Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)), Int64(0));
 }
 
@@ -266,7 +283,7 @@ GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef x)
 GateRef CircuitBuilder::TaggedIsWeak(GateRef x)
 {
     return LogicAnd(TaggedIsHeapObject(x),
-        Equal(Int64And(x, Int64(JSTaggedValue::TAG_WEAK)), Int64(1)));
+        Equal(Int64And(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::TAG_WEAK)), Int64(1)));
 }
 
 GateRef CircuitBuilder::TaggedIsPrototypeHandler(GateRef x)
@@ -287,17 +304,17 @@ GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsTrue(GateRef x)
 {
-    return Equal(x, Int64(JSTaggedValue::VALUE_TRUE));
+    return Equal(x, TaggedTrue());
 }
 
 GateRef CircuitBuilder::TaggedIsFalse(GateRef x)
 {
-    return Equal(x, Int64(JSTaggedValue::VALUE_FALSE));
+    return Equal(x, TaggedFalse());
 }
 
 GateRef CircuitBuilder::TaggedIsNull(GateRef x)
 {
-    return Equal(x, Int64(JSTaggedValue::VALUE_NULL));
+    return Equal(x, NullConstant());
 }
 
 GateRef CircuitBuilder::TaggedIsBoolean(GateRef x)
@@ -307,6 +324,7 @@ GateRef CircuitBuilder::TaggedIsBoolean(GateRef x)
 
 GateRef CircuitBuilder::TaggedGetInt(GateRef x)
 {
+    x = ChangeTaggedPointerToInt64(x);
     return TruncInt64ToInt32(Int64And(x, Int64(~JSTaggedValue::TAG_MARK)));
 }
 
@@ -347,24 +365,23 @@ GateRef CircuitBuilder::DoubleToTagged(GateRef x)
 
 GateRef CircuitBuilder::TaggedTrue()
 {
-    return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_TRUE, GateType::NJSValue());
+    return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_TRUE, GateType::TaggedValue());
 }
 
 GateRef CircuitBuilder::TaggedFalse()
 {
-    return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_FALSE, GateType::NJSValue());
+    return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_FALSE, GateType::TaggedValue());
 }
 
-GateRef CircuitBuilder::GetValueFromTaggedArray(VariableType returnType, GateRef array, GateRef index)
+GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
 {
     Label subentry(env_);
     SubCfgEntry(&subentry);
     Label exit(env_);
     Label isUndefined(env_);
     Label notUndefined(env_);
-    GateRef initVal = GetCircuit()->GetConstantGate(returnType.GetMachineType(), JSTaggedValue::VALUE_UNDEFINED,
-        returnType.GetGateType());
-    DEFVAlUE(result, env_, returnType, initVal);
+    GateRef initVal = UndefineConstant();
+    DEFVAlUE(result, env_, VariableType::JS_ANY(), initVal);
     Branch(TaggedIsUndefined(array), &isUndefined, &notUndefined);
     Bind(&isUndefined);
     {
@@ -374,7 +391,7 @@ GateRef CircuitBuilder::GetValueFromTaggedArray(VariableType returnType, GateRef
     {
         GateRef offset = PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
         GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
-        result = Load(returnType, array, dataOffset);
+        result = Load(VariableType::JS_ANY(), array, dataOffset);
         Jump(&exit);
     }
     Bind(&exit);
@@ -612,9 +629,9 @@ int CircuitBuilder::NextVariableId()
     return env_->NextVariableId();
 }
 
-void CircuitBuilder::HandleException(GateRef result, Label *success, Label *fail, Label *exit, VariableType type)
+void CircuitBuilder::HandleException(GateRef result, Label *success, Label *fail, Label *exit)
 {
-    Branch(Equal(result, ExceptionConstant(type.GetGateType())), fail, success);
+    Branch(Equal(result, ExceptionConstant()), fail, success);
     Bind(fail);
     {
         Jump(exit);

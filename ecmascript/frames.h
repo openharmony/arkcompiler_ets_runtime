@@ -48,6 +48,8 @@
 //   |----------------------------------|InterpretedFrame   |
 //   |    profileTypeInfo               |        |          |
 //   |----------------------------------|        |          |
+//   |    thisObj                       |        |          |
+//   |----------------------------------|        |          |
 //   |    function                      |        |          |
 //   |----------------------------------|        |          |
 //   |    constpool                     |        v          v
@@ -183,6 +185,8 @@
 //   |    acc                           |        |          |
 //   |----------------------------------|        |          |
 //   |    profileTypeInfo               |InterpretedFrame   |
+//   |----------------------------------|        |          |
+//   |    thisObj                       |        |          |
 //   |----------------------------------|        |          |
 //   |    function                      |        |          |
 //   |----------------------------------|        |          |
@@ -603,12 +607,14 @@ struct InterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSi
                                                      JSTaggedValue,
                                                      JSTaggedValue,
                                                      JSTaggedValue,
+                                                     JSTaggedValue,
                                                      base::AlignedPointer,
                                                      InterpretedFrameBase> {
 public:
     enum class Index : size_t {
         ConstPoolIndex = 0,
         FunctionIndex,
+        ThisObjIndex,
         ProFileTypeInfoIndex,
         AccIndex,
         EnvIndex,
@@ -646,6 +652,7 @@ public:
 
     alignas(EAS) JSTaggedValue constpool {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
+    alignas(EAS) JSTaggedValue thisObj {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue profileTypeInfo {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue acc {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue env {JSTaggedValue::Hole()};
@@ -698,12 +705,14 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
                                                         JSTaggedValue,
                                                         JSTaggedValue,
                                                         JSTaggedValue,
+                                                        JSTaggedValue,
                                                         base::AlignedPointer,
                                                         base::AlignedPointer,
                                                         base::AlignedPointer,
                                                         InterpretedFrameBase> {
     enum class Index : size_t {
         FunctionIndex = 0,
+        ThisObjIndex,
         AccIndex,
         EnvIndex,
         CallSizeIndex,
@@ -743,6 +752,11 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
     static size_t GetFunctionOffset(bool isArch32)
     {
         return GetOffset<static_cast<size_t>(Index::FunctionIndex)>(isArch32);
+    }
+
+    static size_t GetThisOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::ThisObjIndex)>(isArch32);
     }
 
     static size_t GetAccOffset(bool isArch32)
@@ -788,6 +802,7 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
     }
 
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
+    alignas(EAS) JSTaggedValue thisObj {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue acc {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue env {JSTaggedValue::Hole()};
     alignas(EAS) uintptr_t callSize {0};
@@ -796,9 +811,6 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
     alignas(EAS) InterpretedFrameBase base;
     // vregs, not exist in native
     // args, may be truncated if not extra
-    // thisObject, used in asm constructor frame
-    // numArgs, used if extra or asm constructor frame
-    enum ReverseIndex : int32_t { THIS_OBJECT_REVERSE_INDEX = -2 };
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(AsmInterpretedFrame), AsmInterpretedFrame::SizeArch32, AsmInterpretedFrame::SizeArch64);
 

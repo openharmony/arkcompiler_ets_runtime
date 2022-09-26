@@ -86,6 +86,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(FatalPrint)                              \
     V(InsertOldToNewRSet)                      \
     V(MarkingBarrier)                          \
+    V(StoreBarrier)                            \
     V(DoubleToInt)                             \
     V(FloatMod)                                \
     V(FindElementWithCache)                    \
@@ -99,7 +100,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
     V(ThrowTypeError)                     \
-    V(JSProxySetProperty)                 \
+    V(DebugBreak)                         \
     V(GetHash32)                          \
     V(ComputeHashcode)                    \
     V(GetTaggedArrayPtrTest)              \
@@ -163,6 +164,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(LdSuperByValue)                     \
     V(StSuperByValue)                     \
     V(LdObjByIndex)                       \
+    V(LdObjByValue)                       \
     V(StObjByIndex)                       \
     V(StOwnByIndex)                       \
     V(ResolveClass)                       \
@@ -173,10 +175,18 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(LoadICByName)                       \
     V(StoreICByName)                      \
     V(UpdateHotnessCounter)               \
+    V(GetModuleNamespaceByIndex)          \
+    V(GetModuleNamespaceByIndexOnJSFunc)  \
     V(GetModuleNamespace)                 \
     V(GetModuleNamespaceOnJSFunc)         \
+    V(StModuleVarByIndex)                 \
+    V(StModuleVarByIndexOnJSFunc)         \
     V(StModuleVar)                        \
     V(StModuleVarOnJSFunc)                \
+    V(LdLocalModuleVarByIndex)            \
+    V(LdExternalModuleVarByIndex)         \
+    V(LdLocalModuleVarByIndexOnJSFunc)    \
+    V(LdExternalModuleVarByIndexOnJSFunc) \
     V(LdModuleVar)                        \
     V(LdModuleVarOnJSFunc)                \
     V(Throw)                              \
@@ -266,7 +276,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(BigIntEqual)                        \
     V(StringEqual)                        \
     V(LdPatchVar)                         \
-    V(StPatchVar)
+    V(StPatchVar)                         \
+    V(LdObjByName)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -311,9 +322,11 @@ public:
     }
 
     static void DebugPrint(int fmtMessageId, ...);
-    static void DebugPrintInstruction(uintptr_t pc);
+    static void DebugPrintInstruction([[maybe_unused]]uintptr_t argGlue, const uint8_t *pc);
     static void FatalPrint(int fmtMessageId, ...);
     static void MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
+        uintptr_t object, size_t offset, TaggedObject *value);
+    static void StoreBarrier([[maybe_unused]]uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
     static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, uintptr_t object, size_t offset);
@@ -430,15 +443,27 @@ private:
                                                    const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                         const JSHandle<JSTaggedValue> &value);
+    static inline JSTaggedValue RuntimeGetModuleNamespace(JSThread *thread, int32_t index);
+    static inline JSTaggedValue RuntimeGetModuleNamespace(JSThread *thread, int32_t index,
+                                                          JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName);
     static inline JSTaggedValue RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName,
-                                                             JSTaggedValue jsFunc);
+                                                          JSTaggedValue jsFunc);
+    static inline void RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value);
+    static inline void RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value,
+                                          JSTaggedValue jsFunc);
     static inline void RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static inline void RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value,
-                                             JSTaggedValue jsFunc);
+                                          JSTaggedValue jsFunc);
+    static inline JSTaggedValue RuntimeLdLocalModuleVar(JSThread *thread, int32_t index);
+    static inline JSTaggedValue RuntimeLdLocalModuleVar(JSThread *thread, int32_t index,
+                                                        JSTaggedValue jsFunc);
+    static inline JSTaggedValue RuntimeLdExternalModuleVar(JSThread *thread, int32_t index);
+    static inline JSTaggedValue RuntimeLdExternalModuleVar(JSThread *thread, int32_t index,
+                                                           JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner);
     static inline JSTaggedValue RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner,
-                                                      JSTaggedValue jsFunc);
+                                                   JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeGetPropIterator(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeAsyncFunctionEnter(JSThread *thread);
     static inline JSTaggedValue RuntimeGetIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj);

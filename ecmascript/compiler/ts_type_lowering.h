@@ -41,17 +41,17 @@ private:
     void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
     void GenerateSuccessMerge(std::vector<GateRef> &successControl);
     void ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl);
-    void LowerTypeAdd2Dyn(GateRef gate);
-    void LowerTypeSub2Dyn(GateRef gate);
-    void LowerTypeMul2Dyn(GateRef gate);
-    void LowerTypeMod2Dyn(GateRef gate);
-    void LowerTypeLessDyn(GateRef gate);
-    void LowerTypeLessEqDyn(GateRef gate);
-    void LowerTypeGreaterDyn(GateRef gate);
-    void LowerTypeGreaterEqDyn(GateRef gate);
-    void LowerTypeDiv2Dyn(GateRef gate);
-    void LowerTypeEqDyn(GateRef gate);
-    void LowerTypeNotEqDyn(GateRef gate);
+    void LowerTypeAdd(GateRef gate);
+    void LowerTypeSub(GateRef gate);
+    void LowerTypeMul(GateRef gate);
+    void LowerTypeMod(GateRef gate);
+    void LowerTypeLess(GateRef gate);
+    void LowerTypeLessEq(GateRef gate);
+    void LowerTypeGreater(GateRef gate);
+    void LowerTypeGreaterEq(GateRef gate);
+    void LowerTypeDiv(GateRef gate);
+    void LowerTypeEq(GateRef gate);
+    void LowerTypeNotEq(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
 

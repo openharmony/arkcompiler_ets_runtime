@@ -148,6 +148,7 @@ template("host_moduletest_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       js_vm_options += " --enable-ark-tools=true"
+      js_vm_options += " --enable-force-gc=false"
     }
 
     args = [
@@ -196,6 +197,7 @@ template("host_moduletest_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _asm_run_options_ += " --enable-ark-tools=true"
+      _asm_run_options_ += " --enable-force-gc=false"
     }
 
     args = [
@@ -244,6 +246,7 @@ template("host_moduletest_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _asm_run_options_ += " --enable-ark-tools=true"
+      _asm_run_options_ += " --enable-force-gc=false"
     }
 
     args = [
@@ -272,6 +275,10 @@ template("host_moduletest_action") {
 template("host_aot_js_test_action") {
   _target_name_ = "${target_name}"
   _deps_ = invoker.deps
+  _is_module_ = false
+  if (defined(invoker.is_module) && invoker.is_module) {
+    _is_module_ = true
+  }
 
   _test_ts_path_ = "./${_target_name_}.js"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
@@ -287,6 +294,10 @@ template("host_aot_js_test_action") {
     src_js = rebase_path(_test_ts_path_)
     dst_file = rebase_path(_test_abc_path_)
     extra_args = []
+
+    if (_is_module_) {
+      extra_args += [ "--module" ]
+    }
 
     in_puts = [
       _test_ts_path_,
@@ -312,7 +323,7 @@ template("host_aot_js_test_action") {
 
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-        _test_aot_log_level + " --log-components=ECMASCRIPT"
+        _test_aot_log_level + " --log-components=all"
 
     args = [
       "--script-file",
@@ -359,6 +370,7 @@ template("host_aot_js_test_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
     }
 
     _icu_data_path_options_ =
@@ -390,6 +402,10 @@ template("host_aot_js_test_action") {
 template("host_aot_test_action") {
   _target_name_ = "${target_name}"
   _deps_ = invoker.deps
+  _is_module_ = false
+  if (defined(invoker.is_module) && invoker.is_module) {
+    _is_module_ = true
+  }
 
   _test_ts_path_ = "./${_target_name_}.ts"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
@@ -405,6 +421,9 @@ template("host_aot_test_action") {
     src_js = rebase_path(_test_ts_path_)
     dst_file = rebase_path(_test_abc_path_)
     extra_args = []
+    if (_is_module_) {
+      extra_args += [ "--module" ]
+    }
 
     in_puts = [
       _test_ts_path_,
@@ -430,7 +449,7 @@ template("host_aot_test_action") {
 
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-        _test_aot_log_level + " --log-components=ECMASCRIPT"
+        _test_aot_log_level + " --log-components=all"
 
     args = [
       "--script-file",
@@ -477,6 +496,7 @@ template("host_aot_test_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
     }
 
     args = [

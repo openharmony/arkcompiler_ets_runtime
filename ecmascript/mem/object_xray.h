@@ -570,6 +570,9 @@ public:
             case JSType::RESOLVEDBINDING_RECORD:
                 ResolvedBinding::Cast(object)->VisitRangeSlot(visitor);
                 break;
+            case JSType::RESOLVEDINDEXBINDING_RECORD:
+                ResolvedIndexBinding::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::JS_MODULE_NAMESPACE:
                 ModuleNamespace::Cast(object)->VisitRangeSlot(visitor);
                 break;
@@ -584,9 +587,6 @@ public:
                 break;
             case JSType::METHOD:
                 Method::Cast(object)->VisitRangeSlot(visitor);
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    Method::Cast(object)->VisitRangeSlotForNative(visitor);
-                }
                 break;
             default:
                 UNREACHABLE();

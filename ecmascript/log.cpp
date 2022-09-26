@@ -22,39 +22,77 @@
 
 namespace panda::ecmascript {
 Level Log::level_ = Level::ERROR;
+ComponentMark Log::components_ = Component::ALL;
 void Log::SetLogLevelFromString(const std::string& level)
 {
     if (level == "fatal") {
-        SetLevel(FATAL);
+        level_ = FATAL;
     }
     if (level == "error") {
-        SetLevel(ERROR);
+        level_ = ERROR;
     }
     if (level == "warning") {
-        SetLevel(WARN);
+        level_ = WARN;
     }
     if (level == "info") {
-        SetLevel(INFO);
+        level_ = INFO;
     }
     if (level == "debug") {
-        SetLevel(DEBUG);
+        level_ = DEBUG;
+    }
+}
+
+void Log::SetLogComponentFromString(const std::vector<std::string>& components)
+{
+    components_ = Component::NONE;
+    for (const auto &component : components) {
+        if (component == "all") {
+            components_ = Component::ALL;
+            return;
+        }
+        if (component == "gc") {
+            components_ |= Component::GC;
+            continue;
+        }
+        if (component == "ecma") {
+            components_ |= Component::ECMASCRIPT;
+            continue;
+        }
+        if (component == "interpreter") {
+            components_ |= Component::INTERPRETER;
+            continue;
+        }
+        if (component == "debugger") {
+            components_ |= Component::DEBUGGER;
+            continue;
+        }
+        if (component == "compiler") {
+            components_ |= Component::COMPILER;
+            continue;
+        }
     }
 }
 
 void Log::Initialize(const JSRuntimeOptions &options)
 {
     if (options.WasSetLogFatal()) {
-        SetLevel(FATAL);
+        level_ = FATAL;
+        SetLogComponentFromString(options.GetLogFatal());
     } else if (options.WasSetLogError()) {
-        SetLevel(ERROR);
+        level_ = ERROR;
+        SetLogComponentFromString(options.GetLogError());
     } else if (options.WasSetLogWarning()) {
-        SetLevel(WARN);
+        level_ = WARN;
+        SetLogComponentFromString(options.GetLogWarning());
     } else if (options.WasSetLogInfo()) {
-        SetLevel(INFO);
+        level_ = INFO;
+        SetLogComponentFromString(options.GetLogInfo());
     } else if (options.WasSetLogDebug()) {
-        SetLevel(DEBUG);
+        level_ = DEBUG;
+        SetLogComponentFromString(options.GetLogDebug());
     } else {
         SetLogLevelFromString(options.GetLogLevel());
+        SetLogComponentFromString(options.GetLogComponents());
     }
 }
 

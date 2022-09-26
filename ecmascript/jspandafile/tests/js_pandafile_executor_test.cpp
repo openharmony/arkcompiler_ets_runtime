@@ -60,10 +60,10 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
 {
     const char *fileName = "__JSPandaFileExecutorTest1.abc";
     const char *data = R"(
-        .record panda.String <external>
-        .function panda.String main(panda.String a0) {
-            lda.obj a0
-            return.obj
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai.dyn 1
+            return.dyn
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
@@ -94,10 +94,10 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
 {
     const char *fileName = "__JSPandaFileExecutorTest2.abc";
     const char *data = R"(
-        .record panda.String <external>
-        .function panda.String main(panda.String a0) {
-            lda.obj a0
-            return.obj
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai.dyn 1
+            return.dyn
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
@@ -131,10 +131,10 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
 {
     const char *fileName = "__JSPandaFileExecutorTest2.abc";
     const char *data = R"(
-        .record panda.String <external>
-        .function panda.String main(panda.String a0) {
-            lda.obj a0
-            return.obj
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai.dyn 1
+            return.dyn
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();

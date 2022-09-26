@@ -90,24 +90,24 @@ inline GateRef StubBuilder::Double(double value)
     return env_->GetBuilder()->Double(value);
 }
 
-inline GateRef StubBuilder::Undefined(VariableType type)
+inline GateRef StubBuilder::Undefined()
 {
-    return env_->GetBuilder()->UndefineConstant(type.GetGateType());
+    return env_->GetBuilder()->UndefineConstant();
 }
 
-inline GateRef StubBuilder::Hole(VariableType type)
+inline GateRef StubBuilder::Hole()
 {
-    return env_->GetBuilder()->HoleConstant(type.GetGateType());
+    return env_->GetBuilder()->HoleConstant();
 }
 
-inline GateRef StubBuilder::Null(VariableType type)
+inline GateRef StubBuilder::Null()
 {
-    return env_->GetBuilder()->NullConstant(type.GetGateType());
+    return env_->GetBuilder()->NullConstant();
 }
 
-inline GateRef StubBuilder::Exception(VariableType type)
+inline GateRef StubBuilder::Exception()
 {
-    return env_->GetBuilder()->ExceptionConstant(type.GetGateType());
+    return env_->GetBuilder()->ExceptionConstant();
 }
 
 inline GateRef StubBuilder::RelocatableData(uint64_t value)
@@ -512,8 +512,7 @@ inline GateRef StubBuilder::BinaryOp(GateRef x, GateRef y)
 
 inline GateRef StubBuilder::TaggedIsInt(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_MARK)),
-                      Int64(JSTaggedValue::TAG_INT));
+    return env_->GetBuilder()->TaggedIsInt(x);
 }
 
 inline GateRef StubBuilder::TaggedIsDouble(GateRef x)
@@ -523,8 +522,7 @@ inline GateRef StubBuilder::TaggedIsDouble(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsObject(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_MARK)),
-                      Int64(JSTaggedValue::TAG_OBJECT));
+    return env_->GetBuilder()->TaggedIsObject(x);
 }
 
 inline GateRef StubBuilder::TaggedIsString(GateRef obj)
@@ -556,33 +554,32 @@ inline GateRef StubBuilder::TaggedIsNumeric(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsHole(GateRef x)
 {
-    return Int64Equal(x, Int64(JSTaggedValue::VALUE_HOLE));
+    return env_->GetBuilder()->TaggedIsHole(x);
 }
 
 inline GateRef StubBuilder::TaggedIsNotHole(GateRef x)
 {
-    return Int64NotEqual(x, Int64(JSTaggedValue::VALUE_HOLE));
+    return env_->GetBuilder()->TaggedIsNotHole(x);
 }
 
 inline GateRef StubBuilder::TaggedIsUndefined(GateRef x)
 {
-    return Int64Equal(x, Int64(JSTaggedValue::VALUE_UNDEFINED));
+    return env_->GetBuilder()->TaggedIsUndefined(x);
 }
 
 inline GateRef StubBuilder::TaggedIsException(GateRef x)
 {
-    return Int64Equal(x, Int64(JSTaggedValue::VALUE_EXCEPTION));
+    return env_->GetBuilder()->TaggedIsException(x);
 }
 
 inline GateRef StubBuilder::TaggedIsSpecial(GateRef x)
 {
-    return BoolOr(Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_SPECIAL_MASK)),
-        Int64(JSTaggedValue::TAG_SPECIAL)), TaggedIsHole(x));
+    return env_->GetBuilder()->TaggedIsSpecial(x);
 }
 
 inline GateRef StubBuilder::TaggedIsHeapObject(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)), Int64(0));
+    return env_->GetBuilder()->TaggedIsHeapObject(x);
 }
 
 inline GateRef StubBuilder::TaggedIsGeneratorObject(GateRef x)
@@ -640,23 +637,22 @@ inline GateRef StubBuilder::DoubleIsINF(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsNull(GateRef x)
 {
-    return Int64Equal(x, Int64(JSTaggedValue::VALUE_NULL));
+    return env_->GetBuilder()->TaggedIsNull(x);
 }
 
 inline GateRef StubBuilder::TaggedIsUndefinedOrNull(GateRef x)
 {
-    return Int64Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)),
-        Int64(JSTaggedValue::TAG_SPECIAL));
+    return env_->GetBuilder()->TaggedIsUndefinedOrNull(x);
 }
 
 inline GateRef StubBuilder::TaggedIsTrue(GateRef x)
 {
-    return Int64Equal(x, Int64(JSTaggedValue::VALUE_TRUE));
+    return env_->GetBuilder()->TaggedIsTrue(x);
 }
 
 inline GateRef StubBuilder::TaggedIsFalse(GateRef x)
 {
-    return Int64Equal(x, Int64(JSTaggedValue::VALUE_FALSE));
+    return env_->GetBuilder()->TaggedIsFalse(x);
 }
 
 inline GateRef StubBuilder::TaggedIsBoolean(GateRef x)
@@ -666,7 +662,7 @@ inline GateRef StubBuilder::TaggedIsBoolean(GateRef x)
 
 inline GateRef StubBuilder::TaggedGetInt(GateRef x)
 {
-    return TruncInt64ToInt32(Int64And(x, Int64(~JSTaggedValue::TAG_MARK)));
+    return env_->GetBuilder()->TaggedGetInt(x);
 }
 
 inline GateRef StubBuilder::Int8ToTaggedInt(GateRef x)
@@ -695,8 +691,7 @@ inline GateRef StubBuilder::IntToTaggedInt(GateRef x)
 
 inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
 {
-    GateRef val = CastDoubleToInt64(x);
-    return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
+    return env_->GetBuilder()->DoubleToTaggedDoublePtr(x);
 }
 
 inline GateRef StubBuilder::CastDoubleToInt64(GateRef x)
@@ -706,12 +701,12 @@ inline GateRef StubBuilder::CastDoubleToInt64(GateRef x)
 
 inline GateRef StubBuilder::TaggedTrue()
 {
-    return Int64(JSTaggedValue::VALUE_TRUE);
+    return env_->GetBuilder()->TaggedTrue();
 }
 
 inline GateRef StubBuilder::TaggedFalse()
 {
-    return Int64(JSTaggedValue::VALUE_FALSE);
+    return env_->GetBuilder()->TaggedFalse();
 }
 
 // compare operation
@@ -1090,7 +1085,7 @@ inline GateRef StubBuilder::IsInlinedProperty(GateRef attr)
 inline GateRef StubBuilder::GetProtoCell(GateRef object)
 {
     GateRef protoCellOffset = IntPtr(PrototypeHandler::PROTO_CELL_OFFSET);
-    return Load(VariableType::INT64(), object, protoCellOffset);
+    return Load(VariableType::JS_POINTER(), object, protoCellOffset);
 }
 
 inline GateRef StubBuilder::GetPrototypeHandlerHolder(GateRef object)
@@ -1195,7 +1190,7 @@ inline GateRef StubBuilder::IsInternalAccessor(GateRef attr)
 inline GateRef StubBuilder::IsInvalidPropertyBox(GateRef obj)
 {
     GateRef valueOffset = IntPtr(PropertyBox::VALUE_OFFSET);
-    GateRef value = Load(VariableType::INT64(), obj, valueOffset);
+    GateRef value = Load(VariableType::JS_ANY(), obj, valueOffset);
     return TaggedIsHole(value);
 }
 
@@ -1337,12 +1332,12 @@ inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, Gate
 }
 
 inline GateRef StubBuilder::GetPropertyInlinedProps(GateRef obj, GateRef hClass,
-    GateRef index, VariableType type)
+    GateRef index)
 {
     GateRef inlinedPropsStart = GetInlinedPropsStartFromHClass(hClass);
     GateRef propOffset = Int32Mul(
         Int32Add(inlinedPropsStart, index), Int32(JSTaggedValue::TaggedTypeSize()));
-    return Load(type, obj, ZExtInt32ToInt64(propOffset));
+    return Load(VariableType::JS_ANY(), obj, ZExtInt32ToInt64(propOffset));
 }
 
 inline void StubBuilder::IncNumberOfProps(GateRef glue, GateRef hClass)
@@ -1408,12 +1403,12 @@ inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glu
     Store(valType, glue, array, dataOffset, val);
 }
 
-inline GateRef StubBuilder::GetValueFromTaggedArray(VariableType returnType, GateRef array, GateRef index)
+inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
 {
     GateRef offset =
         PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
-    return Load(returnType, array, dataOffset);
+    return Load(VariableType::JS_ANY(), array, dataOffset);
 }
 
 inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
@@ -1446,7 +1441,7 @@ inline GateRef StubBuilder::GetPropAttrFromLayoutInfo(GateRef layout, GateRef en
 {
     GateRef index = Int32Add(Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)),
         Int32(LayoutInfo::ATTR_INDEX_OFFSET));
-    return GetValueFromTaggedArray(VariableType::INT64(), layout, index);
+    return TaggedCastToInt64(GetValueFromTaggedArray(layout, index));
 }
 
 inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)
@@ -1458,7 +1453,7 @@ inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)
 inline GateRef StubBuilder::GetKeyFromLayoutInfo(GateRef layout, GateRef entry)
 {
     GateRef index = Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2));
-    return GetValueFromTaggedArray(VariableType::JS_ANY(), layout, index);
+    return GetValueFromTaggedArray(layout, index);
 }
 
 inline GateRef StubBuilder::GetPropertiesAddrFromLayoutInfo(GateRef layout)
@@ -1468,8 +1463,7 @@ inline GateRef StubBuilder::GetPropertiesAddrFromLayoutInfo(GateRef layout)
 
 inline GateRef StubBuilder::TaggedCastToInt64(GateRef x)
 {
-    GateRef tagged = ChangeTaggedPointerToInt64(x);
-    return Int64And(tagged, Int64(~JSTaggedValue::TAG_MARK));
+    return env_->GetBuilder()->TaggedCastToInt64(x);
 }
 
 inline GateRef StubBuilder::TaggedCastToInt32(GateRef x)
@@ -1484,9 +1478,7 @@ inline GateRef StubBuilder::TaggedCastToIntPtr(GateRef x)
 
 inline GateRef StubBuilder::TaggedCastToDouble(GateRef x)
 {
-    GateRef tagged = ChangeTaggedPointerToInt64(x);
-    GateRef val = Int64Sub(tagged, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
-    return CastInt64ToFloat64(val);
+    return env_->GetBuilder()->TaggedCastToDouble(x);
 }
 
 inline GateRef StubBuilder::LoadObjectFromWeakRef(GateRef x)
@@ -1729,13 +1721,13 @@ inline GateRef StubBuilder::InYoungGeneration(GateRef region)
 inline GateRef StubBuilder::GetParentEnv(GateRef object)
 {
     GateRef index = Int32(LexicalEnv::PARENT_ENV_INDEX);
-    return GetValueFromTaggedArray(VariableType::JS_ANY(), object, index);
+    return GetValueFromTaggedArray(object, index);
 }
 
 inline GateRef StubBuilder::GetPropertiesFromLexicalEnv(GateRef object, GateRef index)
 {
     GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
-    return GetValueFromTaggedArray(VariableType::JS_ANY(), object, valueIndex);
+    return GetValueFromTaggedArray(object, valueIndex);
 }
 
 inline void StubBuilder::SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value)
@@ -1910,7 +1902,7 @@ inline GateRef StubBuilder::HasPendingException(GateRef glue)
 {
     GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
     GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
-    return Int64NotEqual(exception, Int64(JSTaggedValue::VALUE_HOLE));
+    return TaggedIsNotHole(exception);
 }
 
 inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,

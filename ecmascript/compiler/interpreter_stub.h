@@ -68,9 +68,9 @@ public:
     inline GateRef GetPcFromFrame(GateRef frame);
     inline GateRef GetCallSizeFromFrame(GateRef frame);
     inline GateRef GetFunctionFromFrame(GateRef frame);
+    inline GateRef GetThisFromFrame(GateRef frame);
     inline GateRef GetAccFromFrame(GateRef frame);
     inline GateRef GetEnvFromFrame(GateRef frame);
-    inline GateRef GetThisObjectFromFastNewFrame(GateRef prevSp);
     inline GateRef GetEnvFromFunction(GateRef frame);
     inline GateRef GetConstpoolFromFunction(GateRef function);
     inline GateRef GetProfileTypeInfoFromFunction(GateRef function);

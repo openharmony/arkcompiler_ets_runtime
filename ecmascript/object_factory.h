@@ -144,6 +144,7 @@ class CjsModule;
 class CjsRequire;
 class CjsExports;
 class ResolvedBinding;
+class ResolvedIndexBinding;
 class BigInt;
 class AsyncGeneratorRequest;
 class JSAsyncGeneratorFunction;
@@ -534,6 +535,10 @@ public:
     JSHandle<ResolvedBinding> NewResolvedBindingRecord();
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &bindingName);
+    JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord();
+    JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord(const JSHandle<SourceTextModule> &module,
+                                                                           int32_t index);
+
     JSHandle<CellRecord> NewCellRecord();
     JSHandle<JSFunction> NewJSAsyncGeneratorFunction(const JSHandle<Method> &method);
     // --------------------------------------require--------------------------------------------
@@ -556,6 +561,7 @@ private:
     friend class GlobalEnvConstants;
     friend class EcmaString;
     friend class SnapshotProcessor;
+    friend class TSManager;
     void InitObjectFields(const TaggedObject *object);
 
     JSThread *thread_ {nullptr};
@@ -601,8 +607,9 @@ private:
     JSHandle<EcmaString> GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
     // For MUtf-8 string data
-    EcmaString *GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len, bool canBeCompressed,
-                                            MemSpaceType type = MemSpaceType::SEMI_SPACE) const;
+    EcmaString* PUBLIC_API GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len,
+                                                       bool canBeCompressed,
+                                                       MemSpaceType type = MemSpaceType::SEMI_SPACE) const;
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                   bool canBeCompress) const;
