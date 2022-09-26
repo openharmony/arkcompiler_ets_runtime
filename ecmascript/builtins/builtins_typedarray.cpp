@@ -154,16 +154,21 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
         }
         mapping = true;
     }
+
     // 5. Let usingIterator be ? GetMethod(source, @@iterator).
     JSHandle<JSTaggedValue> source = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
     JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, source, iteratorSymbol);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> arrIter = JSObject::GetMethod(thread, env->GetArrayProtoValuesFunction(), iteratorSymbol);
+    JSHandle<JSTaggedValue> typedArrIter = JSObject::GetMethod(thread, env->GetTypedArrayPrototype(), iteratorSymbol);
+    bool isArrIter = JSTaggedValue::SameValue(usingIterator, arrIter);
+    bool isTypedArrIter = JSTaggedValue::SameValue(usingIterator, typedArrIter);
     // 6. If usingIterator is not undefined, then
     //   a. Let values be ? IterableToList(source, usingIterator).
     //   b. Let len be the number of elements in values.
     //   c. Let targetObj be ? TypedArrayCreate(C, « len »).
-    if (!usingIterator->IsUndefined()) {
+    if (!usingIterator->IsUndefined() && !(isArrIter || isTypedArrIter)) {
         CVector<JSHandle<JSTaggedValue>> vec;
         JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, source, usingIterator);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -209,8 +214,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
             } else {
                 mapValue.Update(kValue.GetTaggedValue());
             }
-            JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
-            JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(targetObj), kKey, mapValue, true);
+            FastRuntimeStub::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             k++;
         }
@@ -250,12 +254,13 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     const int32_t argsLength = 2;
     int64_t k = 0;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> mapValue;
     while (k < len) {
         tKey.Update(JSTaggedValue(k));
-        JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
-        JSHandle<JSTaggedValue> kValue = JSTaggedValue::GetProperty(thread, arrayLike, kKey).GetValue();
+        kValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, arrayLike.GetTaggedValue(),
+                                                              tKey.GetTaggedValue()));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        JSHandle<JSTaggedValue> mapValue;
         if (mapping) {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
@@ -267,7 +272,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
         } else {
             mapValue = kValue;
         }
-        JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(targetObj), kKey, mapValue, true);
+        FastRuntimeStub::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
