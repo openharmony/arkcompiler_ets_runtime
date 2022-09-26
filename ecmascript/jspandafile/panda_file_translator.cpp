@@ -971,6 +971,12 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
             *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
             break;
         }
+        case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORREJECT_PREF_V8_V8: {
+            newOpcode = EcmaOpcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8;
+            *pc = static_cast<uint8_t>(deprecatedPrefOp);
+            *(pc + 1) = static_cast<uint16_t>(newOpcode) >> opShifLen;
+            break;
+        }
         // The same format has IC
         case OldBytecodeInst::Opcode::ECMA_TYPEOFDYN_PREF_NONE: {
             newOpcode = EcmaOpcode::TYPEOF_IMM8;
@@ -1172,16 +1178,6 @@ void PandaFileTranslator::FixOpcode(MethodLiteral *method, const OldBytecodeInst
         }
         case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORRESOLVE_PREF_V8_V8_V8: {
             newOpcode = EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8;
-            *pc = static_cast<uint8_t>(newOpcode);
-            auto newLen = BytecodeInstruction::Size(newOpcode);
-            if (memmove_s(pc + 1, newLen - 1, pc + 2, oldLen - 2) != EOK) {  // 2: skip second level inst and pref
-                LOG_FULL(FATAL) << "FixOpcode memmove_s fail";
-                UNREACHABLE();
-            }
-            break;
-        }
-        case OldBytecodeInst::Opcode::ECMA_ASYNCGENERATORREJECT_PREF_V8_V8: {
-            newOpcode = EcmaOpcode::ASYNCGENERATORREJECT_V8;
             *pc = static_cast<uint8_t>(newOpcode);
             auto newLen = BytecodeInstruction::Size(newOpcode);
             if (memmove_s(pc + 1, newLen - 1, pc + 2, oldLen - 2) != EOK) {  // 2: skip second level inst and pref

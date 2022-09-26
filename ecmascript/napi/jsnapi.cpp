@@ -548,8 +548,7 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
     return true;
 }
 
-Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file,
-                                         [[maybe_unused]] const std::string &key)
+Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)
 {
     std::string entry = file;
 #if ECMASCRIPT_ENABLE_MERGE_ABC
@@ -561,18 +560,23 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file,
     JSThread *thread = vm->GetJSThread();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry.c_str());
 
-    JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, 0, false));
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
+
+    JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false));
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
-Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file,
-                                                   [[maybe_unused]] const std::string &key)
+Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key)
 {
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(file.c_str());
 
-    JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, 0, false));
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
+
+    JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false));
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 

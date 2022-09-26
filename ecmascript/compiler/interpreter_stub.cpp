@@ -4578,7 +4578,16 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorrejectV8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorReject),
+                              { asyncGenerator, acc });
+    CHECK_EXCEPTION_VARACC(res, INT_PTR(ASYNCGENERATORREJECT_V8));
+}
+
+DECLARE_ASM_HANDLER(HandleDeprecatedAsyncgeneratorrejectPrefV8V8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
+    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorReject),
                               { asyncGenerator, value });
     CHECK_EXCEPTION_VARACC(res, INT_PTR(ASYNCGENERATORREJECT_V8));

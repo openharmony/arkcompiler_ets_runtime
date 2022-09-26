@@ -2544,7 +2544,22 @@ void InterpreterAssembly::HandleAsyncgeneratorrejectV8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_0();
-    uint16_t v1 = READ_INST_8_1();
+    LOG_INST() << "intrinsics::asyncgeneratorreject"
+               << " v" << v0;
+    JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
+    JSTaggedValue value = GET_ACC();
+    JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorReject(thread, asyncGenerator, value);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(ASYNCGENERATORREJECT_V8);
+}
+
+void InterpreterAssembly::HandleDeprecatedAsyncgeneratorrejectPrefV8V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t v0 = READ_INST_8_1();
+    uint16_t v1 = READ_INST_8_2();
     LOG_INST() << "intrinsics::asyncgeneratorreject"
                << " v" << v0;
     JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
@@ -2552,7 +2567,7 @@ void InterpreterAssembly::HandleAsyncgeneratorrejectV8(
     JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorReject(thread, asyncGenerator, value);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
-    DISPATCH(ASYNCGENERATORREJECT_V8);
+    DISPATCH(DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8);
 }
 
 void InterpreterAssembly::HandleStarrayspreadV8V8(

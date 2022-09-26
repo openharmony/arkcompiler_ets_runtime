@@ -589,7 +589,8 @@ enum class Opcode {
     DEPRECATED_LDHOMEOBJECT_PREF_NONE = 11260,
     DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16 = 11516,
     DEPRECATED_DYNAMICIMPORT_PREF_V8 = 11772,
-    LAST = DEPRECATED_DYNAMICIMPORT_PREF_V8
+    DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8 = 12028,
+    LAST = DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8
 };
 
 enum Flags : uint32_t {
@@ -3259,7 +3260,9 @@ constexpr typename BytecodeInst<Mode>::Format BytecodeInst<Mode>::GetFormat(Opco
     case BytecodeInst<Mode>::Opcode::MOV_V16_V16:
         return BytecodeInst<Mode>::Format::V16_V16;
     case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
-        return BytecodeInst<Mode>::Format::V8_V8;
+        return BytecodeInst<Mode>::Format::V8;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
+        return BytecodeInst<Mode>::Format::PREF_V8_V8;
     case BytecodeInst<Mode>::Opcode::NOP:
         return BytecodeInst<Mode>::Format::NONE;
     case BytecodeInst<Mode>::Opcode::DEPRECATED_LDLEXENV_PREF_NONE:
@@ -3847,6 +3850,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::HasFlag(Fl
     case BytecodeInst<Mode>::Opcode::MOV_V16_V16:
         return ((Flags::DYNAMIC | Flags::ACC_NONE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
+        return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
         return ((Flags::ACC_READ | Flags::ACC_WRITE | Flags::ACC_WRITE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::NOP:
         return ((Flags::ACC_NONE) & flag) == flag;  // NOLINT(hicpp-signed-bitwise)
@@ -4436,6 +4441,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::IsThrow(Ex
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
+        return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::NOP:
         return ((Exceptions::X_NONE) & exception) == exception;  // NOLINT(hicpp-signed-bitwise)
     case BytecodeInst<Mode>::Opcode::DEPRECATED_LDLEXENV_PREF_NONE:
@@ -5023,6 +5030,8 @@ template<const BytecodeInstMode Mode> inline bool BytecodeInst<Mode>::CanThrow()
     case BytecodeInst<Mode>::Opcode::MOV_V16_V16:
         return false;
     case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
+        return false;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
         return false;
     case BytecodeInst<Mode>::Opcode::NOP:
         return false;
@@ -6183,8 +6192,12 @@ template<const BytecodeInstMode Mode> std::ostream& operator<<(std::ostream& os,
         break;
     case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
         os << "asyncgeneratorreject";
-        os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8_V8, 0>();
-        os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8_V8, 1>();
+        os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::V8, 0>();
+        break;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
+        os << "asyncgeneratorreject";
+        os << " v" << inst.template GetVReg<BytecodeInst<Mode>::Format::PREF_V8_V8, 0>();
+        os << ", v" << inst.template GetVReg<BytecodeInst<Mode>::Format::PREF_V8_V8, 1>();
         break;
     case BytecodeInst<Mode>::Opcode::NOP:
         os << "nop";
@@ -7177,6 +7190,9 @@ std::ostream& operator<<(std::ostream& os, const typename BytecodeInst<Mode>::Op
         break;
     case BytecodeInst<Mode>::Opcode::ASYNCGENERATORREJECT_V8:
         os << "ASYNCGENERATORREJECT_V8";
+        break;
+    case BytecodeInst<Mode>::Opcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
+        os << "DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8";
         break;
     case BytecodeInst<Mode>::Opcode::NOP:
         os << "NOP";

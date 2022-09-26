@@ -873,7 +873,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 9;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numDeprecatedOps = 46;
+    constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
 #include "templates/instruction_dispatch.inl"
@@ -2958,6 +2958,21 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(ASYNCGENERATORREJECT_V8);
+    }
+    HANDLE_OPCODE(DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8) {
+        uint16_t v0 = READ_INST_8_1();
+        uint16_t v1 = READ_INST_8_2();
+        LOG_INST() << "intrinsics::asyncgeneratorreject"
+                   << " v" << v0 << " v" << v1;
+
+        JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
+        JSTaggedValue value = GET_VREG_VALUE(v1);
+
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorReject(thread, asyncGenerator, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8);
     }
     HANDLE_OPCODE(SUPERCALLTHISRANGE_IMM8_IMM8_V8) {
         uint16_t range = READ_INST_8_1();

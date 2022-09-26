@@ -777,6 +777,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerAsyncGeneratorResolve(gate, glue);
             break;
         case EcmaOpcode::ASYNCGENERATORREJECT_V8:
+        case EcmaOpcode::DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8:
             LowerAsyncGeneratorReject(gate, glue);
             break;
         case EcmaOpcode::STARRAYSPREAD_V8_V8:

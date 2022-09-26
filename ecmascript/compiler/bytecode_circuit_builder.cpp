@@ -1786,9 +1786,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         }
         case EcmaOpcode::ASYNCGENERATORREJECT_V8: {
             uint16_t v0 = READ_INST_8_0();
-            uint16_t v1 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
         case EcmaOpcode::STARRAYSPREAD_V8_V8: {
