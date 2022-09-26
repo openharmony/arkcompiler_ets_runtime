@@ -20,7 +20,6 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "utils/bit_utils.h"
 
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
