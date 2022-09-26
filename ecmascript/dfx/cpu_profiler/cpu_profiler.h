@@ -51,7 +51,8 @@ private:
 
 class CpuProfiler {
 public:
-    bool ParseMethodInfo(Method *method, FrameHandler &frameHandler, bool isCallNapi);
+    bool ParseMethodInfo(void *methodIdentifier, FrameHandler &frameHandler,
+                         const JSPandaFile *jsPandaFile, bool isCallNapi);
     void GetNativeStack(FrameHandler &frameHandler, char *functionName, size_t size);
     void GetFrameStack(FrameHandler &frameHandler);
     void IsNeedAndGetStack(JSThread *thread);
@@ -78,7 +79,7 @@ private:
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
     bool GetFrameStackCallNapi(FrameHandler &frameHandler);
-
+    void *GetMethodIdentifier(Method *method, FrameHandler &frameHandler);
     bool isProfiling_ = false;
     bool outToFile_ = false;
     int interval_ = 500; // 500:Sampling interval 500 microseconds

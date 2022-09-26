@@ -17,12 +17,14 @@
 #define ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H
 
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript {
 // ClassInfoExtractor will analyze and extract the contents from class literal to keys, properties and elements(both
 // non-static and static), later generate the complete hclass (both prototype and constructor) based on keys.
 // Attention: keys accessor stores the property key and properties accessor stores the property value, but elements
 // accessor stores the key-value pair abuttally.
+using EntityId = panda_file::File::EntityId;
 class ClassInfoExtractor : public TaggedObject {
 public:
     static constexpr uint8_t NON_STATIC_RESERVED_LENGTH = 1;
@@ -37,7 +39,7 @@ public:
         uint32_t extractBegin;
         uint32_t extractEnd;
         uint8_t fillStartLoc;
-        Method *method;
+        MethodLiteral *methodLiteral;
     };
 
     CAST_CHECK(ClassInfoExtractor, IsClassInfoExtractor);
@@ -78,7 +80,8 @@ private:
     static bool ExtractAndReturnWhetherWithElements(JSThread *thread, const JSHandle<TaggedArray> &literal,
                                                     const ExtractContentsDetail &detail,
                                                     JSHandle<TaggedArray> &keys, JSHandle<TaggedArray> &properties,
-                                                    JSHandle<TaggedArray> &elements);
+                                                    JSHandle<TaggedArray> &elements,
+                                                    const JSPandaFile *jsPandaFile);
 };
 
 enum class ClassPropertyType : uint8_t { NON_STATIC = 0, STATIC };

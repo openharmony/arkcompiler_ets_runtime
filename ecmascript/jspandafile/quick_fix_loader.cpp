@@ -374,10 +374,11 @@ void QuickFixLoader::ReplaceMethodInner(JSThread *thread,
 {
     destMethod->SetCallField(srcMethodLiteral->GetCallField());
     destMethod->SetLiteralInfo(srcMethodLiteral->GetLiteralInfo());
-    destMethod->SetCodeEntry(srcMethodLiteral->GetCodeEntry());
+    destMethod->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(srcMethodLiteral));
     destMethod->SetExtraLiteralInfo(srcMethodLiteral->GetExtraLiteralInfo());
     destMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(srcMethodLiteral->GetNativePointer()));
     destMethod->SetConstantPool(thread, srcConstpool);
+    destMethod->SetAotCodeBit(false);
 }
 
 bool QuickFixLoader::HasNormalMethodReplaced(uint32_t index) const

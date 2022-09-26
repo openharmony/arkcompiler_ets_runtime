@@ -3377,7 +3377,7 @@ void Method::Dump(std::ostream &os) const
     os << "\n";
     os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
     os << "\n";
-    os << " - CodeEntry: " << std::hex << GetCodeEntry() << "\n";
+    os << " - CodeEntryOrLiteral: " << std::hex << GetCodeEntryOrLiteral() << "\n";
     os << "\n";
 }
 

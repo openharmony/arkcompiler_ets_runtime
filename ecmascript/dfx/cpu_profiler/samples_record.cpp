@@ -31,7 +31,7 @@ SamplesRecord::SamplesRecord()
     stackTopLines_.push_back(0);
     struct MethodKey methodkey;
     struct CpuProfileNode methodNode;
-    methodkey.method = reinterpret_cast<Method*>(INT_MAX - 1);
+    methodkey.methodIdentifier = reinterpret_cast<void *>(INT_MAX - 1);
     methodMap_.emplace(methodkey, methodMap_.size() + 1);
     methodNode.parentId = 0;
     methodNode.codeEntry.codeType = "JS";
@@ -63,7 +63,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
     struct MethodKey methodkey;
     struct CpuProfileNode methodNode;
     if (gcState_.load()) {
-        methodkey.method = reinterpret_cast<Method*>(INT_MAX);
+        methodkey.methodIdentifier = reinterpret_cast<void *>(INT_MAX);
         methodNode.parentId = methodkey.parentId = previousId_;
         auto result = methodMap_.find(methodkey);
         if (result == methodMap_.end()) {
@@ -89,14 +89,14 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
         }
         methodNode.id = 1;
         for (; frameStackLength_ >= 1; frameStackLength_--) {
-            methodkey.method = frameStack_[frameStackLength_ - 1];
+            methodkey.methodIdentifier = frameStack_[frameStackLength_ - 1];
             methodNode.parentId = methodkey.parentId = methodNode.id;
             auto result = methodMap_.find(methodkey);
             if (result == methodMap_.end()) {
                 int id = static_cast<int>(methodMap_.size() + 1);
                 methodMap_.emplace(methodkey, id);
                 previousId_ = methodNode.id = id;
-                methodNode.codeEntry = GetMethodInfo(methodkey.method);
+                methodNode.codeEntry = GetMethodInfo(methodkey.methodIdentifier);
                 stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
                 profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
                 if (!outToFile_) {
@@ -136,14 +136,14 @@ void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
     methodNode.id = 1;
     napiFrameStackLength--;
     for (; napiFrameStackLength >= 1; napiFrameStackLength--) {
-        methodkey.method = napiFrameStack_[napiFrameStackLength - 1];
+        methodkey.methodIdentifier = napiFrameStack_[napiFrameStackLength - 1];
         methodNode.parentId = methodkey.parentId = methodNode.id;
         auto result = methodMap_.find(methodkey);
         if (result == methodMap_.end()) {
             int id = static_cast<int>(methodMap_.size() + 1);
             methodMap_.emplace(methodkey, id);
             previousId_ = methodNode.id = id;
-            methodNode.codeEntry = GetMethodInfo(methodkey.method);
+            methodNode.codeEntry = GetMethodInfo(methodkey.methodIdentifier);
             stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
             profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
             if (!outToFile_) {
@@ -264,10 +264,10 @@ std::string SamplesRecord::GetSampleData() const
     return sampleData_;
 }
 
-struct FrameInfo SamplesRecord::GetMethodInfo(Method *method)
+struct FrameInfo SamplesRecord::GetMethodInfo(void *methodIdentifier)
 {
     struct FrameInfo entry;
-    auto iter = stackInfoMap_.find(method);
+    auto iter = stackInfoMap_.find(methodIdentifier);
     if (iter != stackInfoMap_.end()) {
         entry = iter->second;
     }
@@ -372,31 +372,31 @@ int SamplesRecord::SemDestroy(int index)
     return sem_destroy(&sem_[index]);
 }
 
-const CMap<Method *, struct FrameInfo> &SamplesRecord::GetStackInfo() const
+const CMap<void *, struct FrameInfo> &SamplesRecord::GetStackInfo() const
 {
     return stackInfoMap_;
 }
 
-void SamplesRecord::InsertStackInfo(Method *method, struct FrameInfo &codeEntry)
+void SamplesRecord::InsertStackInfo(void *methodIdentifier, struct FrameInfo &codeEntry)
 {
-    stackInfoMap_.emplace(method, codeEntry);
+    stackInfoMap_.emplace(methodIdentifier, codeEntry);
 }
 
-bool SamplesRecord::PushFrameStack(Method *method)
+bool SamplesRecord::PushFrameStack(void *methodIdentifier)
 {
     if (UNLIKELY(frameStackLength_ >= MAX_ARRAY_COUNT)) {
         return false;
     }
-    frameStack_[frameStackLength_++] = method;
+    frameStack_[frameStackLength_++] = methodIdentifier;
     return true;
 }
 
-bool SamplesRecord::PushNapiFrameStack(Method *method)
+bool SamplesRecord::PushNapiFrameStack(void *methodIdentifier)
 {
     if (UNLIKELY(napiFrameStack_.size() >= MAX_ARRAY_COUNT)) {
         return false;
     }
-    napiFrameStack_.push_back(method);
+    napiFrameStack_.push_back(methodIdentifier);
     return true;
 }
 
@@ -478,7 +478,7 @@ void SamplesRecord::FrameInfoTempToMap()
         frameInfo.functionName = frameInfoTemps_[i].functionName;
         frameInfo.columnNumber = frameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = frameInfoTemps_[i].lineNumber;
-        stackInfoMap_.emplace(frameInfoTemps_[i].method, frameInfo);
+        stackInfoMap_.emplace(frameInfoTemps_[i].methodIdentifier, frameInfo);
     }
     frameInfoTempLength_ = 0;
 }
@@ -503,7 +503,7 @@ void SamplesRecord::NapiFrameInfoTempToMap()
         frameInfo.functionName = napiFrameInfoTemps_[i].functionName;
         frameInfo.columnNumber = napiFrameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = napiFrameInfoTemps_[i].lineNumber;
-        stackInfoMap_.emplace(napiFrameInfoTemps_[i].method, frameInfo);
+        stackInfoMap_.emplace(napiFrameInfoTemps_[i].methodIdentifier, frameInfo);
     }
 }
 

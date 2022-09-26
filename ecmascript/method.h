@@ -210,7 +210,7 @@ public:
     {
         SetAotCodeBit(true);
         SetNativeBit(false);
-        SetCodeEntry(codeEntry);
+        SetCodeEntryOrLiteral(codeEntry);
     }
 
     static constexpr size_t Size()
@@ -221,6 +221,7 @@ public:
     const JSPandaFile *PUBLIC_API GetJSPandaFile() const;
     const panda_file::File *GetPandaFile() const;
     uint32_t GetCodeSize() const;
+    MethodLiteral *GetMethodLiteral() const;
 
     const char *PUBLIC_API GetMethodName() const;
     std::string PUBLIC_API ParseFunctionName() const;
@@ -231,7 +232,7 @@ public:
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     ACCESSORS_NATIVE_FIELD(
         NativePointerOrBytecodeArray, void, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, CODE_ENTRY_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LITERAL_INFO_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CodeEntryOrLiteral, uintptr_t, CODE_ENTRY_OFFSET, LITERAL_INFO_OFFSET)
     // hotness counter is encoded in a js method field, the first uint16_t in a uint64_t.
     ACCESSORS_PRIMITIVE_FIELD(LiteralInfo, uint64_t, LITERAL_INFO_OFFSET, EXTRA_LITERAL_INFO_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ExtraLiteralInfo, uint64_t, EXTRA_LITERAL_INFO_OFFSET, LAST_OFFSET)

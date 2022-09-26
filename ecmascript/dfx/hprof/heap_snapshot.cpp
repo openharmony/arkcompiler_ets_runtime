@@ -691,13 +691,13 @@ TraceNode* TraceNode::FindChild(uint32_t nodeIndex)
     return nullptr;
 }
 
-void HeapSnapshot::AddTraceNodeId(Method *method)
+void HeapSnapshot::AddTraceNodeId(MethodLiteral *methodLiteral)
 {
     uint32_t traceNodeId = 0;
-    auto result = methodToTraceNodeId_.find(method);
+    auto result = methodToTraceNodeId_.find(methodLiteral);
     if (result == methodToTraceNodeId_.end()) {
         traceNodeId = traceInfoStack_.size() - 1;
-        methodToTraceNodeId_.emplace(method, traceNodeId);
+        methodToTraceNodeId_.emplace(methodLiteral, traceNodeId);
     } else {
         traceNodeId = result->second;
     }
@@ -716,10 +716,12 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
         if (method == nullptr || method->IsNativeWithCallField()) {
             continue;
         }
-        if (stackInfo_.count(method) == 0) {
-            AddMethodInfo(method, frameHandler, sequenceId);
+
+        MethodLiteral *methodLiteral = method->GetMethodLiteral();
+        if (stackInfo_.count(methodLiteral) == 0) {
+            AddMethodInfo(methodLiteral, frameHandler, method->GetJSPandaFile(), sequenceId);
         }
-        AddTraceNodeId(method);
+        AddTraceNodeId(methodLiteral);
     }
 
     TraceNode* topNode = traceTree_.AddNodeToTree(traceNodeIndex_);
@@ -734,11 +736,15 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
     return topNode->GetId();
 }
 
-void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandler, int sequenceId)
+void HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
+                                 const FrameHandler &frameHandler,
+                                 const JSPandaFile *jsPandaFile,
+                                 int sequenceId)
 {
     struct FunctionInfo codeEntry;
     codeEntry.functionId = sequenceId;
-    const std::string &functionName = method->ParseFunctionName();
+    panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
+    const std::string &functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
     if (functionName.empty()) {
         codeEntry.functionName = "anonymous";
     } else {
@@ -748,8 +754,8 @@ void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandle
 
     // source file
     DebugInfoExtractor *debugExtractor =
-        JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
-    const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
+        JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    const std::string &sourceFile = debugExtractor->GetSourceFile(methodId);
     if (sourceFile.empty()) {
         codeEntry.scriptName = "";
     } else {
@@ -775,7 +781,6 @@ void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandle
         columnNumber = column + 1;
         return true;
     };
-    panda_file::File::EntityId methodId = method->GetMethodId();
     uint32_t offset = frameHandler.GetBytecodeOffset();
     if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
         !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
@@ -787,7 +792,7 @@ void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandle
     }
 
     traceInfoStack_.emplace_back(codeEntry);
-    stackInfo_.emplace(method, codeEntry);
+    stackInfo_.emplace(methodLiteral, codeEntry);
     return;
 }
 

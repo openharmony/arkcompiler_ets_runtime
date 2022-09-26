@@ -41,13 +41,16 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
         factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
 
     nonStaticKeys->Set(thread, CONSTRUCTOR_INDEX, globalConst->GetConstructorString());
-
+    Method *method = Method::Cast(extractor->GetConstructorMethod().GetTaggedObject());
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    EntityId methodId = method->GetMethodId();
     if (nonStaticNum) {
         ExtractContentsDetail nonStaticDetail {0, nonStaticNum * 2, NON_STATIC_RESERVED_LENGTH, nullptr};
 
         JSHandle<TaggedArray> nonStaticElements = factory->EmptyArray();
         if (UNLIKELY(ExtractAndReturnWhetherWithElements(thread, literal, nonStaticDetail, nonStaticKeys,
-                                                         nonStaticProperties, nonStaticElements))) {
+                                                         nonStaticProperties, nonStaticElements, jsPandaFile))) {
             extractor->SetNonStaticWithElements(true);
             extractor->SetNonStaticElements(thread, nonStaticElements);
         }
@@ -73,17 +76,16 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
             nonStaticNum * 2,
             literalBufferLength - 1,
             STATIC_RESERVED_LENGTH,
-            Method::Cast(extractor->GetConstructorMethod().GetTaggedObject())
+            methodLiteral
         };
-
         if (UNLIKELY(ExtractAndReturnWhetherWithElements(thread, literal, staticDetail, staticKeys,
-                                                         staticProperties, staticElements))) {
+                                                         staticProperties, staticElements, jsPandaFile))) {
             extractor->SetStaticWithElements(true);
             extractor->SetStaticElements(thread, staticElements);
         }
     } else {
         // without static properties, set class name
-        std::string clsName = Method::Cast(extractor->GetConstructorMethod().GetTaggedObject())->ParseFunctionName();
+        std::string clsName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
         JSHandle<EcmaString> clsNameHandle = factory->NewFromStdString(clsName);
         staticProperties->Set(thread, NAME_INDEX, clsNameHandle);
     }
@@ -100,7 +102,8 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
                                                              const ExtractContentsDetail &detail,
                                                              JSHandle<TaggedArray> &keys,
                                                              JSHandle<TaggedArray> &properties,
-                                                             JSHandle<TaggedArray> &elements)
+                                                             JSHandle<TaggedArray> &elements,
+                                                             const JSPandaFile *jsPandaFile)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
@@ -108,7 +111,7 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
 
     uint32_t pos = detail.fillStartLoc;
     bool withElementsFlag = false;
-    bool isStaticFlag = detail.method ? true : false;
+    bool isStaticFlag = detail.methodLiteral ? true : false;
     bool keysHasNameFlag = false;
 
     JSHandle<JSTaggedValue> nameString = globalConst->GetHandledNameString();
@@ -149,7 +152,8 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
         if (LIKELY(!keysHasNameFlag)) {
             [[maybe_unused]] EcmaHandleScope handleScope(thread);
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            std::string clsName = detail.method->ParseFunctionName();
+            EntityId methodId = detail.methodLiteral->GetMethodId();
+            std::string clsName = detail.methodLiteral->ParseFunctionName(jsPandaFile, methodId);
             JSHandle<EcmaString> clsNameHandle = factory->NewFromStdString(clsName);
             properties->Set(thread, NAME_INDEX, clsNameHandle);
         } else {

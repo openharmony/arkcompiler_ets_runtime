@@ -1504,15 +1504,14 @@ JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral)
         method->SetCallField(methodLiteral->GetCallField());
         method->SetLiteralInfo(methodLiteral->GetLiteralInfo());
         method->SetNativePointerOrBytecodeArray(const_cast<void *>(methodLiteral->GetNativePointer()));
-        method->SetCodeEntry(methodLiteral->GetCodeEntry());
         method->SetExtraLiteralInfo(methodLiteral->GetExtraLiteralInfo());
     } else {
         method->SetCallField(0ULL);
         method->SetLiteralInfo(0ULL);
         method->SetNativePointerOrBytecodeArray(nullptr);
-        method->SetCodeEntry(0U);
         method->SetExtraLiteralInfo(0ULL);
     }
+    method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
     return method;
 }
@@ -1539,7 +1538,7 @@ JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t c
     method->SetAotCodeBit(true);
     method->SetNativeBit(false);
     method->SetNumArgsWithCallField(numArgs);
-    method->SetCodeEntry(codeEntry);
+    method->SetCodeEntryOrLiteral(codeEntry);
     JSHandle<JSFunction> jsfunc = NewJSFunction(env, method);
     return jsfunc;
 }

@@ -817,7 +817,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
                                                             static_cast<uint32_t>(args.size()) - 1,
                                                             static_cast<uint32_t>(args.size()) - 1,
                                                             args.data(),
-                                                            method->GetCodeEntry());
+                                                            method->GetCodeEntryOrLiteral());
     return JSTaggedValue(res);
 }
 

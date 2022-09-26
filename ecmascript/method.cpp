@@ -57,4 +57,14 @@ const panda_file::File *Method::GetPandaFile() const
     }
     return jsPandaFile->GetPandaFile();
 }
+
+MethodLiteral *Method::GetMethodLiteral() const
+{
+    if (IsAotWithCallField()) {
+        ASSERT(!IsNativeWithCallField());
+        const JSPandaFile *jsPandaFile = GetJSPandaFile();
+        return jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
+    }
+    return reinterpret_cast<MethodLiteral *>(GetCodeEntryOrLiteral());
+}
 } // namespace panda::ecmascript
