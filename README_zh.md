@@ -28,24 +28,27 @@
 │   ├─ builtins           # ECMAScript标准库
 │   ├─ compiler           # JS编译器
 │   ├─ containers         # 非ECMAScript标准容器类库
+│   ├─ debugger           # JS调试器
 │   ├─ dfx                # 内存与性能分析工具
 │   ├─ ic                 # 内联缓存模块
 │   ├─ interpreter        # JS解释器
 │   ├─ jobs               # 微任务队列
+│   ├─ js_api             # 非ECMA标准对象模型
 │   ├─ js_vm              # 命令行工具
 │   ├─ jspandafile        # abc文件管理模块
 │   ├─ mem                # 内存管理模块
 │   ├─ module             # ECMAScript module模块
 │   ├─ napi               # C++接口模块
-│   ├─ taskpool           # 任务池
+│   ├─ quick_fix          # 快速修复命令行工具
 │   ├─ regexp             # 正则引擎模块
+│   ├─ require            # CommonJS规范module模块
+│   ├─ shared_mm          # 共享内存管理模块
 │   ├─ snapshot           # 快照模块
 │   ├─ stubs              # runtime桩函数
+│   ├─ taskpool           # 任务池
 │   ├─ tests              # 单元测试用例
-│   ├─ debugger           # JS调试器
-│   ├─ trampoline         # 跳转桥函数
-│   ├─ ts_type            # TS类型管理模块
-└─ test                   # 模块测试用例     
+│   ├─ ts_types           # TS类型管理模块
+└─ test                   # 模块测试用例
 ```
 
 ## 约束<a name="section119744591305"></a>
