@@ -184,18 +184,17 @@ class ArkTest():
         module_abc_file = abc_file
         js_dir = os.path.dirname(file)
         module_arg = ''
-        infile = open(file, mode='r')
-        for line in infile.readlines():
-            import_line = re.findall(r"^(?:ex|im)port.*\.js", line)
-            if len(import_line):
-                module_arg = '-m'
-                import_file = re.findall(r"['\"].*\.js", import_line[0])
-                if len(import_file):
-                    abc = import_file[0][1:].replace(".js", ".abc")
-                    abc = os.path.abspath(f'{js_dir}/{abc}')
-                    if module_abc_file.find(abc) < 0:
-                        module_abc_file = ''.join([module_abc_file, f':{abc}'])
-        infile.close()
+        with open(file, mode='r') as infile:
+            for line in infile.readlines():
+                import_line = re.findall(r"^(?:ex|im)port.*\.js", line)
+                if len(import_line):
+                    module_arg = '-m'
+                    import_file = re.findall(r"['\"].*\.js", import_line[0])
+                    if len(import_file):
+                        abc = import_file[0][1:].replace(".js", ".abc")
+                        abc = os.path.abspath(f'{js_dir}/{abc}')
+                        if module_abc_file.find(abc) < 0:
+                            module_abc_file = ''.join([module_abc_file, f':{abc}'])
         os.system(f'mkdir -p {out_case_dir}')
         cmd_map = {
             'abc': f'node --expose-gc {self.ts2abc} {file} {module_arg}',
@@ -237,9 +236,8 @@ class ArkTest():
             return
         expect_file = f'{os.path.dirname(file)}/{self.expect}'
         if os.path.exists(expect_file):
-            infile = open(expect_file, mode='r')
-            expect = ''.join(infile.readlines()[13:])
-            infile.close()
+            with open(expect_file, mode='r') as infile:
+                expect = ''.join(infile.readlines()[13:])
             if out[1] != expect:
                 self.fail_cases.append(file)
                 print(f'expect: [{expect}]\nbut got: [{out[1]}]')

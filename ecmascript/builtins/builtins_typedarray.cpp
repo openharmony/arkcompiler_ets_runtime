@@ -52,14 +52,16 @@ JSTaggedValue BuiltinsTypedArray::Int8ArrayConstructor(EcmaRuntimeCallInfo *argv
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt8ArrayString(), DataViewType::INT8);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt8ArrayString(),
+                                                   DataViewType::INT8);
 }
 
 JSTaggedValue BuiltinsTypedArray::Uint8ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint8ArrayString(), DataViewType::UINT8);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint8ArrayString(),
+                                                   DataViewType::UINT8);
 }
 
 JSTaggedValue BuiltinsTypedArray::Uint8ClampedArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -67,63 +69,72 @@ JSTaggedValue BuiltinsTypedArray::Uint8ClampedArrayConstructor(EcmaRuntimeCallIn
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv,
-                                                   thread->GlobalConstants()->GetHandledUint8ClampedArrayString(), DataViewType::UINT8_CLAMPED);
+                                                   thread->GlobalConstants()->GetHandledUint8ClampedArrayString(),
+                                                   DataViewType::UINT8_CLAMPED);
 }
 
 JSTaggedValue BuiltinsTypedArray::Int16ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt16ArrayString(), DataViewType::INT16);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt16ArrayString(),
+                                                   DataViewType::INT16);
 }
 
 JSTaggedValue BuiltinsTypedArray::Uint16ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint16ArrayString(), DataViewType::UINT16);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint16ArrayString(),
+                                                   DataViewType::UINT16);
 }
 
 JSTaggedValue BuiltinsTypedArray::Int32ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt32ArrayString(), DataViewType::INT32);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt32ArrayString(),
+                                                   DataViewType::INT32);
 }
 
 JSTaggedValue BuiltinsTypedArray::Uint32ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint32ArrayString(), DataViewType::UINT32);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint32ArrayString(),
+                                                   DataViewType::UINT32);
 }
 
 JSTaggedValue BuiltinsTypedArray::Float32ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledFloat32ArrayString(), DataViewType::FLOAT32);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledFloat32ArrayString(),
+                                                   DataViewType::FLOAT32);
 }
 
 JSTaggedValue BuiltinsTypedArray::Float64ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledFloat64ArrayString(), DataViewType::FLOAT64);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledFloat64ArrayString(),
+                                                   DataViewType::FLOAT64);
 }
 
 JSTaggedValue BuiltinsTypedArray::BigInt64ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledBigInt64ArrayString(), DataViewType::BIGINT64);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledBigInt64ArrayString(),
+                                                   DataViewType::BIGINT64);
 }
 
 JSTaggedValue BuiltinsTypedArray::BigUint64ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledBigUint64ArrayString(), DataViewType::BIGUINT64);
+    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledBigUint64ArrayString(),
+                                                   DataViewType::BIGUINT64);
 }
 
 // 22.2.2.1 %TypedArray%.from ( source [ , mapfn [ , thisArg ] ] )
@@ -1029,12 +1040,14 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     if (!argArray->IsTypedArray()) {
         if (argArray->IsStableJSArray(thread)) {
             uint32_t length = JSHandle<JSArray>::Cast(argArray)->GetArrayLength();
-            TaggedArray *elements = TaggedArray::Cast(JSHandle<JSArray>::Cast(argArray)->GetElements().GetTaggedObject());
+            TaggedArray *elements =
+                TaggedArray::Cast(JSHandle<JSArray>::Cast(argArray)->GetElements().GetTaggedObject());
             uint32_t elemLength = elements->GetLength();
-            //Load On Demand check
+            // Load On Demand check
             if (elemLength >= length) {
                 if (length + targetOffset > targetLength) {
-                    THROW_RANGE_ERROR_AND_RETURN(thread, "The sum of length and targetOffset is greater than targetLength.",
+                    THROW_RANGE_ERROR_AND_RETURN(thread,
+                                                 "The sum of length and targetOffset is greater than targetLength.",
                                                  JSTaggedValue::Exception());
                 }
                 uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset * targetElementSize + targetByteOffset);
@@ -1050,9 +1063,9 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
                     }
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                     BuiltinsArrayBuffer::SetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
-                                                        targetType, kValue, true);
+                                                          targetType, kValue, true);
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                    targetByteIndex += static_cast<int32_t>(targetElementSize);
+                    targetByteIndex += targetElementSize;
                 }
                 return JSTaggedValue::Undefined();
             }
@@ -1063,7 +1076,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // 18. Let srcLength be ToLength(Get(src, "length")).
         JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
-        JSHandle<JSTaggedValue> lenResult = JSHandle<JSTaggedValue>(thread, 
+        JSHandle<JSTaggedValue> lenResult = JSHandle<JSTaggedValue>(thread,
             FastRuntimeStub::FastGetPropertyByValue(thread,
                                                     JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(),
                                                     lengthKey.GetTaggedValue()));
@@ -1098,7 +1111,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         while (targetByteIndex < limit) {
             tKey.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
-            kValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, 
+            kValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread,
                                                                   JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(),
                                                                   kKey.GetTaggedValue()));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1207,16 +1220,12 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         //     iv. Set targetByteIndex to targetByteIndex + 1.
         JSArrayBuffer *jsArrayBuffer = JSArrayBuffer::Cast(srcBufferHandle.GetTaggedValue().GetTaggedObject());
         JSTaggedValue srcData = jsArrayBuffer->GetArrayBufferData();
-        void *srcBuf =
-            reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(JSNativePointer::Cast(
-                                                                 srcData.GetTaggedObject())->GetExternalPointer())
-                                                                 + srcByteIndex);
+        void *srcBuf = reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(JSNativePointer::Cast(
+            srcData.GetTaggedObject())->GetExternalPointer()) + srcByteIndex);
         JSArrayBuffer *jsBuffer = JSArrayBuffer::Cast(targetBuffer.GetTaggedValue().GetTaggedObject());
         JSTaggedValue targetData = jsBuffer->GetArrayBufferData();
-        void *targetBuf =
-            reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(JSNativePointer::Cast(
-                                                                 targetData.GetTaggedObject())->GetExternalPointer())
-                                                                 + targetByteIndex);
+        void *targetBuf = reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(JSNativePointer::Cast(
+            targetData.GetTaggedObject())->GetExternalPointer()) + targetByteIndex);
         if (memcpy_s(targetBuf, srcLength * srcElementSize, srcBuf, srcLength * srcElementSize) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();

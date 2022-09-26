@@ -38,7 +38,8 @@ using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
 
 // es11 22.2.4 The TypedArray Constructors
 JSTaggedValue TypedArrayHelper::TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
-                                                      const JSHandle<JSTaggedValue> &constructorName, const DataViewType arrayType)
+                                                      const JSHandle<JSTaggedValue> &constructorName,
+                                                      const DataViewType arrayType)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
@@ -63,12 +64,13 @@ JSTaggedValue TypedArrayHelper::TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             elementLength = static_cast<int32_t>(index.GetNumber());
         }
-        JSHandle<JSObject> obj =
-            TypedArrayHelper::AllocateTypedArray(factory, ecmaVm, constructorName, newTarget, elementLength, arrayType);
+        JSHandle<JSObject> obj = TypedArrayHelper::AllocateTypedArray(factory, ecmaVm, constructorName, newTarget,
+                                                                      elementLength, arrayType);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return obj.GetTaggedValue();
     }
-    JSHandle<JSObject> obj = TypedArrayHelper::AllocateTypedArray(factory, ecmaVm, constructorName, newTarget, arrayType);
+    JSHandle<JSObject> obj =
+        TypedArrayHelper::AllocateTypedArray(factory, ecmaVm, constructorName, newTarget, arrayType);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (firstArg->IsTypedArray()) {
         return TypedArrayHelper::CreateFromTypedArray(argv, obj, arrayType);
@@ -80,7 +82,8 @@ JSTaggedValue TypedArrayHelper::TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
 }
 
 // es11 22.2.4.4 TypedArray ( object )
-JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj, const DataViewType arrayType)
+JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
+                                                         const DataViewType arrayType)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
@@ -343,7 +346,8 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
 // es11 22.2.4.2.1 Runtime Semantics: AllocateTypedArray ( constructorName, newTarget, defaultProto )
 JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
                                                         const JSHandle<JSTaggedValue> &constructorName,
-                                                        const JSHandle<JSTaggedValue> &newTarget, const DataViewType arrayType)
+                                                        const JSHandle<JSTaggedValue> &newTarget,
+                                                        const DataViewType arrayType)
 {
     JSThread *thread = ecmaVm->GetJSThread();
     // 1. Let proto be ? GetPrototypeFromConstructor(newTarget, defaultProto).
@@ -379,7 +383,8 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, 
 // es11 22.2.4.2.1 Runtime Semantics: AllocateTypedArray ( constructorName, newTarget, defaultProto, length )
 JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
                                                         const JSHandle<JSTaggedValue> &constructorName,
-                                                        const JSHandle<JSTaggedValue> &newTarget, int32_t length, const DataViewType arrayType)
+                                                        const JSHandle<JSTaggedValue> &newTarget, int32_t length,
+                                                        const DataViewType arrayType)
 {
     JSThread *thread = ecmaVm->GetJSThread();
     // 1. Let proto be ? GetPrototypeFromConstructor(newTarget, defaultProto).
@@ -402,7 +407,8 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, 
 
 // es11 22.2.4.2.2 Runtime Semantics: AllocateTypedArrayBuffer ( O, length )
 JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, EcmaVM *ecmaVm,
-                                                              const JSHandle<JSObject> &obj, uint64_t length, const DataViewType arrayType)
+                                                              const JSHandle<JSObject> &obj, uint64_t length,
+                                                              const DataViewType arrayType)
 {
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     // 1. Assert: O is an Object that has a [[ViewedArrayBuffer]] internal slot.
@@ -450,7 +456,8 @@ JSHandle<JSObject> TypedArrayHelper::TypedArraySpeciesCreate(JSThread *thread, c
     // 2. Let defaultConstructor be the intrinsic object listed in column one of Table 61 for
     // exemplar.[[TypedArrayName]].
     JSHandle<JSTaggedValue> buffHandle(thread, JSTaggedValue(argv[0]));
-    JSHandle<JSTaggedValue> defaultConstructor = TypedArrayHelper::GetConstructor(thread, JSHandle<JSTaggedValue>(obj));
+    JSHandle<JSTaggedValue> defaultConstructor =
+        TypedArrayHelper::GetConstructor(thread, JSHandle<JSTaggedValue>(obj));
     // 3. Let constructor be ? SpeciesConstructor(exemplar, defaultConstructor).
     JSHandle<JSTaggedValue> thisConstructor =
         JSObject::SpeciesConstructor(thread, JSHandle<JSObject>::Cast(obj), defaultConstructor);

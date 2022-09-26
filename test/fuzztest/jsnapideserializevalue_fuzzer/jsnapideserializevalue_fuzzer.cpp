@@ -45,7 +45,6 @@ namespace OHOS {
         void* serializationData = JSNApi::SerializeValue(vm, value, transfer);
         void *hint = nullptr;
         JSNApi::DeserializeValue(vm, serializationData, hint);
-        // delete[] value;
         JSNApi::DestroyJSVM(vm);
     }
 }
