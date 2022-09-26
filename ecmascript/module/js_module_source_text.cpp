@@ -97,61 +97,8 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
 
     CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
-    CString entryPoint;
-    size_t pos = 0;
-    if (moduleRequestName.find("@bundle:") != CString::npos) {
-        pos = moduleRequestName.find('/');
-        pos = moduleRequestName.find('/', pos + 1);
-        ASSERT(pos != CString::npos);
-        entryPoint = moduleRequestName.substr(pos + 1);
-    } else if (moduleRequestName.rfind(".js") != CString::npos || moduleRequestName.find("./") == 0) {
-        pos = moduleRequestName.rfind(".js");
-        if (pos != CString::npos) {
-            moduleRequestName = moduleRequestName.substr(0, pos);
-        }
-        pos = moduleRequestName.find("./");
-        if (pos == 0) {
-            moduleRequestName = moduleRequestName.substr(2); // jump "./"
-        }
-        pos = moduleRecordName.rfind('/');
-        if (pos != CString::npos) {
-            entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
-        } else {
-            entryPoint = moduleRequestName;
-        }
-        if (!jsPandaFile->HasRecord(entryPoint)) {
-            pos = baseFilename.rfind('/');
-            if (pos != CString::npos) {
-                baseFilename = baseFilename.substr(0, pos + 1) + moduleRequestName + ".abc";
-            } else {
-                baseFilename = moduleRequestName + ".abc";
-            }
-            pos = moduleRequestName.rfind('/');
-            if (pos != CString::npos) {
-                entryPoint = moduleRequestName.substr(pos + 1);
-            } else {
-                entryPoint = moduleRequestName;
-            }
-        }
-    } else {
-        pos = moduleRecordName.find(JSPandaFile::NODE_MODULES);
-        CString key = "";
-        if (pos != CString::npos) {
-            key = moduleRecordName + "/" + JSPandaFile::NODE_MODULES + "/" + moduleRequestName;
-            entryPoint = jsPandaFile->FindrecordName(key);
-        }
-
-        if (entryPoint.empty()) {
-            key = JSPandaFile::NODE_MODULES_ZERO + moduleRequestName;
-            entryPoint = jsPandaFile->FindrecordName(key);
-        }
-
-        if (entryPoint.empty()) {
-            key = JSPandaFile::NODE_MODULES_ONE + moduleRequestName;
-            entryPoint = jsPandaFile->FindrecordName(key);
-        }
-        ASSERT(!entryPoint.empty());
-    }
+    CString entryPoint =
+        ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
     return moduleManager->HostResolveImportedModuleWithMerge(baseFilename, entryPoint);
 }
 

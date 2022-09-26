@@ -114,7 +114,11 @@ public:
     JSTaggedValue GetModuleValue(JSThread *thread, JSTaggedValue key, bool isThrow);
     static JSTaggedValue GetModuleValueFromArray(const JSTaggedValue &sourceTextmodule, JSTaggedValue &key);
     void StoreModuleValue(JSThread *thread, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
-
+    static JSHandle<JSTaggedValue> ResolveIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
+                                                         const JSHandle<JSTaggedValue> &exportName,
+                                                         const JSHandle<SourceTextModule> &module,
+                                                         CVector<std::pair<JSHandle<SourceTextModule>,
+                                                         JSHandle<JSTaggedValue>>> &resolveSet);
     static constexpr size_t DEFAULT_DICTIONART_CAPACITY = 2;
     static constexpr size_t DEFAULT_ARRAY_CAPACITY = 2;
 private:
@@ -141,11 +145,6 @@ private:
     static JSHandle<JSTaggedValue> ResolveLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
                                                       const JSHandle<JSTaggedValue> &exportName,
                                                       const JSHandle<SourceTextModule> &module);
-    static JSHandle<JSTaggedValue> ResolveIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
-                                                         const JSHandle<JSTaggedValue> &exportName,
-                                                         const JSHandle<SourceTextModule> &module,
-                                                         CVector<std::pair<JSHandle<SourceTextModule>,
-                                                         JSHandle<JSTaggedValue>>> &resolveSet);
     static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
                                       const JSTaggedValue &dictionary);

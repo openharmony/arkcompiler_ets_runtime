@@ -206,6 +206,13 @@ public:
         return false;
     }
 
+    // note : it only uses in TDD
+    void InsertJSRecordInfo(const CString &recordName)
+    {
+        JSRecordInfo info;
+        jsRecordInfo_.insert({recordName, info});
+    }
+
     bool HasParsedLiteralConstPool(const CString &recordName) const
     {
         auto info = jsRecordInfo_.find(recordName);
