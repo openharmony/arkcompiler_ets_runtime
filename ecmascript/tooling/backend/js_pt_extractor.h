@@ -63,7 +63,7 @@ public:
     virtual ~JSPtExtractor() = default;
 
     template<class Callback>
-    bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column)
+    bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column, const std::string &url)
     {
         if (line == SPECIAL_LINE_MARK) {
             return false;
@@ -71,6 +71,10 @@ public:
 
         auto methods = GetMethodIdList();
         for (const auto &method : methods) {
+            // the url for testcases is empty
+            if (!url.empty() && url != GetSourceFile(method)) {
+                continue;
+            }
             const LineNumberTable &lineTable = GetLineNumberTable(method);
             const ColumnNumberTable &columnTable = GetColumnNumberTable(method);
             for (uint32_t i = 0; i < lineTable.size(); i++) {
