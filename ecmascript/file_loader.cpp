@@ -229,7 +229,8 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
             << "please execute ark_aot_compiler with options --aot-file.";
         return false;
     }
-    std::ifstream file(filename.c_str(), std::ofstream::binary);
+    
+    std::ifstream file(filename.c_str(), std::ifstream::binary);
     if (!file.good()) {
         file.close();
         return false;
@@ -260,7 +261,7 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
         vm->GetFileLoader()->SaveAOTFuncEntry(curFileHash, curMethodId, entries_[i].codeAddr_);
     }
     file.close();
-    LOG_COMPILER(INFO) << "Load aot file success";
+    LOG_COMPILER(INFO) << "Load aot file success: " << filename;
     return true;
 }
 
@@ -303,16 +304,16 @@ void FileLoader::LoadStubFile()
 void FileLoader::LoadAOTFile(const std::string &fileName)
 {
     AOTModulePackInfo aotPackInfo_;
-    if (!aotPackInfo_.Load(vm_, fileName)) {
+    if (!aotPackInfo_.Load(vm_, fileName + ".an")) {
         return;
     }
     AddAOTPackInfo(aotPackInfo_);
 }
 
-void FileLoader::LoadSnapshotFile()
+void FileLoader::LoadSnapshotFile(const std::string &fileName)
 {
-    CString snapshotArg(vm_->GetJSOptions().GetAOTOutputFile().c_str());
-    CString snapshotPath = snapshotArg + ".etso";
+    std::string snapshotFile = fileName + ".etso";
+    CString snapshotPath(snapshotFile.c_str());
     Snapshot snapshot(vm_);
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     snapshot.Deserialize(SnapshotType::ETSO, snapshotPath);

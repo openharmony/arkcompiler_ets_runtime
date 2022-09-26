@@ -219,9 +219,6 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter()) {
         LoadStubFile();
     }
-    if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
-        LoadAOTFiles();
-    }
     initialized_ = true;
     return true;
 }
@@ -769,12 +766,11 @@ void EcmaVM::LoadStubFile()
     fileLoader_->LoadStubFile();
 }
 
-void EcmaVM::LoadAOTFiles()
+void EcmaVM::LoadAOTFiles(std::string file)
 {
-    std::string file = options_.GetAOTOutputFile() + ".an";
-    LOG_ECMA(INFO) << "Try to load aot file" << file.c_str();
+    LOG_ECMA(INFO) << "Try to load aot file: " << file.c_str();
     fileLoader_->LoadAOTFile(file);
-    fileLoader_->LoadSnapshotFile();
+    fileLoader_->LoadSnapshotFile(file);
 }
 
 #if !WIN_OR_MAC_PLATFORM

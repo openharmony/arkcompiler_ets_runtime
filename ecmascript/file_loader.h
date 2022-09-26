@@ -423,7 +423,7 @@ public:
     bool hasLoaded(const JSPandaFile *jsPandaFile);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);
-    void LoadSnapshotFile();
+    void LoadSnapshotFile(const std::string &fileName);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);

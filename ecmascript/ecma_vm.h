@@ -493,7 +493,7 @@ private:
 
     void ClearBufferData();
 
-    void LoadAOTFiles();
+    void LoadAOTFiles(std::string file);
     void LoadStubFile();
 
     // For Internal Native MethodLiteral.
