@@ -29,7 +29,7 @@ namespace OHOS {
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (size <= 0) {
             return;
-        }        
+        }
         bool sign = false;
         const size_t uint64BytesNum = 8;
         size_t wordsNum = size / uint64BytesNum;

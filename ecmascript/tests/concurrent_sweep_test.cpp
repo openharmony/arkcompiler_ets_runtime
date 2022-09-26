@@ -52,11 +52,13 @@ public:
 TEST_F(ConcurrentSweepTest, ConcurrentSweep)
 {
     const uint8_t *utf8 = reinterpret_cast<const uint8_t *>("test");
-    JSHandle<EcmaString> test1(thread, EcmaStringAccessor::CreateFromUtf8(vm, utf8, 4, true));
+    JSHandle<EcmaString> test1(thread,
+        EcmaStringAccessor::CreateFromUtf8(vm, utf8, 4, true)); // 4 : utf8 encoding length
     if (vm->IsInitialized()) {
         vm->CollectGarbage(ecmascript::TriggerGCType::OLD_GC);
     }
-    JSHandle<EcmaString> test2(thread, EcmaStringAccessor::CreateFromUtf8(vm, utf8, 4, true));
+    JSHandle<EcmaString> test2(thread,
+        EcmaStringAccessor::CreateFromUtf8(vm, utf8, 4, true)); // 4 : utf8 encoding length
     ASSERT_EQ(EcmaStringAccessor(test1).GetLength(), 4U);
     ASSERT_NE(test1.GetTaggedValue().GetTaggedObject(), test2.GetTaggedValue().GetTaggedObject());
 }

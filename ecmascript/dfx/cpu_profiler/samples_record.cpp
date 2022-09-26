@@ -41,7 +41,7 @@ SamplesRecord::SamplesRecord()
     profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
     int tid = syscall(SYS_gettid);
     if (tid != -1) {
-        profileInfo_->tid = tid;
+        profileInfo_->tid = static_cast<uint64_t>(tid);
     }
 }
 

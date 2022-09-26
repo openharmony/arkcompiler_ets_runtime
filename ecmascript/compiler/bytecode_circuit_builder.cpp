@@ -2597,7 +2597,8 @@ void BytecodeCircuitBuilder::AddBytecodeOffsetInfo(GateRef &gate, const Bytecode
     }
 }
 
-GateRef BytecodeCircuitBuilder::GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const {
+GateRef BytecodeCircuitBuilder::GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const 
+{
     auto pr = std::make_pair(resumeGate, tmpReg);
     if (resumeRegToRestore_.count(pr)) {
         return resumeRegToRestore_.at(pr);
@@ -2605,7 +2606,8 @@ GateRef BytecodeCircuitBuilder::GetExistingRestore(GateRef resumeGate, uint16_t 
     return Circuit::NullGate();
 }
 
-void BytecodeCircuitBuilder::SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate) {
+void BytecodeCircuitBuilder::SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate) 
+{
     auto pr = std::make_pair(resumeGate, tmpReg);
     resumeRegToRestore_[pr] = restoreGate;
 }

@@ -481,7 +481,7 @@ JSTaggedValue BuiltinsString::LastIndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
+    int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
     JSHandle<EcmaString> searchHandle = JSTaggedValue::ToString(thread, searchTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int32_t pos = 0;
@@ -497,9 +497,9 @@ JSTaggedValue BuiltinsString::LastIndexOf(EcmaRuntimeCallInfo *argv)
             pos = posVal.ToInt32();
         }
     }
-    pos = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
+    pos = std::min(std::max(pos, 0), thisLen);
     int32_t res = EcmaStringAccessor::LastIndexOf(*thisHandle, *searchHandle, pos);
-    if (res >= 0 && res < static_cast<int32_t>(thisLen)) {
+    if (res >= 0 && res < thisLen) {
         return GetTaggedInt(res);
     }
     res = -1;

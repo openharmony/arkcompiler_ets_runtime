@@ -176,7 +176,7 @@ int32_t EcmaString::IndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_
 template<typename T1, typename T2>
 int32_t EcmaString::LastIndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos)
 {
-    int rhsSize = rhsSp.size();
+    int rhsSize = static_cast<int>(rhsSp.size());
     ASSERT(rhsSize > 0);
     auto first = rhsSp[0];
     for (int32_t i = pos; i >= 0; i--) {

@@ -125,8 +125,7 @@ JSHandle<JSTaggedValue> TypedArrayHelper::GetConstructor(JSThread *thread, const
 JSHandle<JSFunction> TypedArrayHelper::GetConstructorFromType(JSThread *thread, const DataViewType arrayType)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    switch (arrayType)
-    {
+    switch (arrayType) {
     case DataViewType::INT8:
         return JSHandle<JSFunction>(env->GetInt8ArrayFunction());
     case DataViewType::UINT8:
