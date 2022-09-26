@@ -272,7 +272,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
         } else {
             mapValue = kValue;
         }
-        FastRuntimeStub::FastSetPropertyByIndex(thread, arrayLike.GetTaggedValue(), k, mapValue.GetTaggedValue());
+        FastRuntimeStub::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
