@@ -55,7 +55,11 @@ JSTaggedValue ContainersArrayList::Add(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -71,7 +75,11 @@ JSTaggedValue ContainersArrayList::Insert(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -94,7 +102,11 @@ JSTaggedValue ContainersArrayList::Clear(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSAPIArrayList::Clear(thread, JSHandle<JSAPIArrayList>::Cast(self));
@@ -111,7 +123,11 @@ JSTaggedValue ContainersArrayList::Clone(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIArrayList> newArrayList = JSAPIArrayList::Clone(thread, JSHandle<JSAPIArrayList>::Cast(self));
@@ -128,7 +144,11 @@ JSTaggedValue ContainersArrayList::Has(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -146,7 +166,11 @@ JSTaggedValue ContainersArrayList::GetCapacity(EcmaRuntimeCallInfo *argv)
  
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     uint32_t capacity = JSAPIArrayList::GetCapacity(thread, JSHandle<JSAPIArrayList>::Cast(self));
@@ -163,7 +187,11 @@ JSTaggedValue ContainersArrayList::IncreaseCapacityTo(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> newCapacity = GetCallArg(argv, 0);
@@ -186,7 +214,11 @@ JSTaggedValue ContainersArrayList::TrimToCurrentLength(EcmaRuntimeCallInfo *argv
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSAPIArrayList::TrimToCurrentLength(thread, JSHandle<JSAPIArrayList>::Cast(self));
@@ -203,7 +235,11 @@ JSTaggedValue ContainersArrayList::Get(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -222,7 +258,11 @@ JSTaggedValue ContainersArrayList::GetIndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -239,7 +279,11 @@ JSTaggedValue ContainersArrayList::IsEmpty(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     return JSTaggedValue(JSAPIArrayList::IsEmpty(JSHandle<JSAPIArrayList>::Cast(self)));
@@ -254,7 +298,11 @@ JSTaggedValue ContainersArrayList::GetLastIndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -271,7 +319,11 @@ JSTaggedValue ContainersArrayList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -294,7 +346,11 @@ JSTaggedValue ContainersArrayList::Remove(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -314,7 +370,11 @@ JSTaggedValue ContainersArrayList::RemoveByRange(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> startIndex = GetCallArg(argv, 0);
@@ -337,7 +397,11 @@ JSTaggedValue ContainersArrayList::ReplaceAllElements(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
@@ -358,7 +422,11 @@ JSTaggedValue ContainersArrayList::Set(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
@@ -378,7 +446,11 @@ JSTaggedValue ContainersArrayList::SubArrayList(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value1 = GetCallArg(argv, 0);
@@ -402,7 +474,11 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
@@ -454,7 +530,11 @@ JSTaggedValue ContainersArrayList::GetSize(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     return JSTaggedValue(JSHandle<JSAPIArrayList>::Cast(self)->GetSize());
@@ -469,7 +549,11 @@ JSTaggedValue ContainersArrayList::ConvertToArray(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIArrayList> arrayList = JSHandle<JSAPIArrayList>::Cast(self);
@@ -495,7 +579,11 @@ JSTaggedValue ContainersArrayList::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
@@ -518,7 +606,11 @@ JSTaggedValue ContainersArrayList::GetIteratorObj(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIArrayList()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIArrayList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIArrayList", JSTaggedValue::Exception());
+        }
     }
 
     JSTaggedValue values = JSAPIArrayList::GetIteratorObj(thread, JSHandle<JSAPIArrayList>::Cast(self));

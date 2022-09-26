@@ -31,7 +31,7 @@ public:
         ASSERT(JSTaggedValue(obj).IsJSAPITreeSetIterator());
         return static_cast<JSAPITreeSetIterator *>(obj);
     }
-    static JSHandle<JSTaggedValue> CreateTreeSetIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+    static JSHandle<JSTaggedValue> CreateTreeSetIterator(JSThread *thread, JSHandle<JSTaggedValue> &obj,
                                                          IterationKind kind);
 
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);

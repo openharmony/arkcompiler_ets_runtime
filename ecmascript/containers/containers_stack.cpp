@@ -55,7 +55,11 @@ JSTaggedValue ContainersStack::IsEmpty(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(self);
     bool judge = stack->Empty();
@@ -72,7 +76,11 @@ JSTaggedValue ContainersStack::Push(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -89,7 +97,11 @@ JSTaggedValue ContainersStack::Peek(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(self);
@@ -107,7 +119,11 @@ JSTaggedValue ContainersStack::Locate(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -125,7 +141,11 @@ JSTaggedValue ContainersStack::Pop(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(self);
@@ -141,11 +161,15 @@ JSTaggedValue ContainersStack::ForEach(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(GetThis(argv));
     if (!thisHandle->IsJSAPIStack()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIStack()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        }
     }
     
+    JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(thisHandle);
     int len = stack->GetSize();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -179,7 +203,11 @@ JSTaggedValue ContainersStack::Iterator(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIStack()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        }
     }
     JSHandle<JSAPIStackIterator> iter(factory->NewJSAPIStackIterator(JSHandle<JSAPIStack>::Cast(self)));
     return iter.GetTaggedValue();
@@ -195,7 +223,11 @@ JSTaggedValue ContainersStack::GetLength(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIStack", JSTaggedValue::Exception());
+        }
     }
 
     int len = (JSHandle<JSAPIStack>::Cast(thisHandle))->GetSize();

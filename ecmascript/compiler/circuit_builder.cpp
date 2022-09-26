@@ -22,8 +22,6 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
 
-#include "utils/bit_utils.h"
-
 namespace panda::ecmascript::kungfu {
 GateRef CircuitBuilder::Merge(GateRef *inList, size_t controlCount)
 {

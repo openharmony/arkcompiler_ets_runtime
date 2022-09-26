@@ -55,7 +55,11 @@ JSTaggedValue ContainersDeque::InsertFront(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -74,7 +78,11 @@ JSTaggedValue ContainersDeque::InsertEnd(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
@@ -92,7 +100,11 @@ JSTaggedValue ContainersDeque::GetFirst(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
@@ -109,7 +121,11 @@ JSTaggedValue ContainersDeque::GetLast(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
@@ -126,7 +142,11 @@ JSTaggedValue ContainersDeque::Has(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
@@ -145,7 +165,11 @@ JSTaggedValue ContainersDeque::PopFirst(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
@@ -162,7 +186,11 @@ JSTaggedValue ContainersDeque::PopLast(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
@@ -178,15 +206,20 @@ JSTaggedValue ContainersDeque::ForEach(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(GetThis(argv));
     if (!thisHandle->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not IsJSAPIDeque", JSTaggedValue::Exception());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIDeque()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not IsJSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
     }
+
+    JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(thisHandle);
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
 
     uint32_t first = deque->GetFirst();
@@ -222,7 +255,11 @@ JSTaggedValue ContainersDeque::GetIteratorObj(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSTaggedValue values = JSAPIDeque::GetIteratorObj(thread, JSHandle<JSAPIDeque>::Cast(self));
@@ -238,7 +275,11 @@ JSTaggedValue ContainersDeque::GetSize(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIDeque", JSTaggedValue::Exception());
+        }
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);

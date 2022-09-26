@@ -272,7 +272,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
         } else {
             mapValue = kValue;
         }
-        FastRuntimeStub::FastSetPropertyByIndex(thread, arrayLike.GetTaggedValue(), k, mapValue.GetTaggedValue());
+        FastRuntimeStub::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
@@ -1027,6 +1027,36 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
 
     // 22.2.3.22.1 %TypedArray%.prototype.set (array [ , offset ] )
     if (!argArray->IsTypedArray()) {
+        if (argArray->IsStableJSArray(thread)) {
+            uint32_t length = JSHandle<JSArray>::Cast(argArray)->GetArrayLength();
+            TaggedArray *elements = TaggedArray::Cast(JSHandle<JSArray>::Cast(argArray)->GetElements().GetTaggedObject());
+            uint32_t elemLength = elements->GetLength();
+            //Load On Demand check
+            if (elemLength >= length) {
+                if (length + targetOffset > targetLength) {
+                    THROW_RANGE_ERROR_AND_RETURN(thread, "The sum of length and targetOffset is greater than targetLength.",
+                                                 JSTaggedValue::Exception());
+                }
+                uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset * targetElementSize + targetByteOffset);
+                JSMutableHandle<JSTaggedValue> elem(thread, JSTaggedValue::Hole());
+                JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
+                ContentType contentType = JSHandle<JSTypedArray>::Cast(target)->GetContentType();
+                for (uint32_t i = 0; i < length; i++) {
+                    elem.Update(elements->Get(i));
+                    if (contentType == ContentType::BigInt) {
+                        kValue.Update(JSTaggedValue::ToBigInt(thread, elem));
+                    } else {
+                        kValue.Update(JSTaggedValue::ToNumber(thread, elem));
+                    }
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                    BuiltinsArrayBuffer::SetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
+                                                        targetType, kValue, true);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                    targetByteIndex += static_cast<int32_t>(targetElementSize);
+                }
+                return JSTaggedValue::Undefined();
+            }
+        }
         // 16. Let src be ToObject(array).
         JSHandle<JSObject> src = JSTaggedValue::ToObject(thread, argArray);
         // 17. ReturnIfAbrupt(src).
@@ -1061,9 +1091,10 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         //   e. Perform SetValueInBuffer(targetBuffer, targetByteIndex, targetType, kNumber).
         //   f. Set k to k + 1.
         //   g. Set targetByteIndex to targetByteIndex + targetElementSize.
-        JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
-        JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
-        JSMutableHandle<JSTaggedValue> kNumberHandle(thread, JSTaggedValue::Undefined());
+        JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Hole());
+        JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
+        JSMutableHandle<JSTaggedValue> kNumberHandle(thread, JSTaggedValue::Hole());
+        ContentType contentType = JSHandle<JSTypedArray>::Cast(target)->GetContentType();
         while (targetByteIndex < limit) {
             tKey.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
@@ -1075,7 +1106,6 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
                 THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
                                             JSTaggedValue::Exception());
             }
-            ContentType contentType = JSHandle<JSTypedArray>::Cast(target)->GetContentType();
             if (contentType == ContentType::BigInt) {
                 kNumberHandle.Update(JSTaggedValue::ToBigInt(thread, kValue));
             } else {

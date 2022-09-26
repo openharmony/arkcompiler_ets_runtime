@@ -28,7 +28,7 @@ public:
         return static_cast<JSAPILightWeightMapIterator *>(obj);
     }
     static JSHandle<JSTaggedValue> CreateLightWeightMapIterator(JSThread *thread,
-                                                                const JSHandle<JSTaggedValue> &obj,
+                                                                JSHandle<JSTaggedValue> &obj,
                                                                 IterationKind kind);
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);
 

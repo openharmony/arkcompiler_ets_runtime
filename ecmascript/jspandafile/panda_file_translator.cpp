@@ -54,7 +54,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        CString entry = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
+        CString entry = jsPandaFile->ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
         bool isUpdateMainMethodIndex = false;
         cda.EnumerateMethods([jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, &methodName, &entry,
                               &isUpdateMainMethodIndex]

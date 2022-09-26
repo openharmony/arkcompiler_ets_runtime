@@ -30,6 +30,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     CString name = filename;
 #if ECMASCRIPT_ENABLE_MERGE_ABC
     if (!thread->GetEcmaVM()->IsBundlePack()) {
+#if defined(PANDA_TARGET_LINUX)
+        entry = JSPandaFile::ParseRecordName(filename.c_str());
+#else
         entry = JSPandaFile::ParseOhmUrl(filename.c_str());
 #if !WIN_OR_MAC_PLATFORM
         name = JSPandaFile::MERGE_ABC_PATH;
@@ -40,8 +43,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
     name = assetPath + "/modules.abc";
 #endif
+#endif
     }
 #endif
+
     const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str());
     if (jsPandaFile == nullptr) {
         return Unexpected(false);

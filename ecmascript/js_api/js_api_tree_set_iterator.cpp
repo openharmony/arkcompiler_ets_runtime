@@ -79,12 +79,16 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
 }
 
 JSHandle<JSTaggedValue> JSAPITreeSetIterator::CreateTreeSetIterator(JSThread *thread,
-                                                                    const JSHandle<JSTaggedValue> &obj,
+                                                                    JSHandle<JSTaggedValue> &obj,
                                                                     IterationKind kind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPITreeSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not TreeSet", thread->GlobalConstants()->GetHandledUndefined());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPITreeSet()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not TreeSet", thread->GlobalConstants()->GetHandledUndefined());
+        }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPITreeSetIterator(JSHandle<JSAPITreeSet>(obj), kind));
     return iter;

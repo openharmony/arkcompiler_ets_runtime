@@ -31,7 +31,7 @@ public:
         ASSERT(JSTaggedValue(obj).IsJSAPITreeMapIterator());
         return static_cast<JSAPITreeMapIterator *>(obj);
     }
-    static JSHandle<JSTaggedValue> CreateTreeMapIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+    static JSHandle<JSTaggedValue> CreateTreeMapIterator(JSThread *thread, JSHandle<JSTaggedValue> &obj,
                                                          IterationKind kind);
 
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);

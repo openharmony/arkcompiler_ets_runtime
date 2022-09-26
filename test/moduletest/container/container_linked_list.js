@@ -123,8 +123,6 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test linkedlist removeByIndex:", flag)
 
     testArray.splice(5, 1)
-    const resRemove = list.remove(888)
-    map.set("test linkedlist remove:", resRemove)
 
     res = true
     const arr = list.convertToArray()
@@ -134,6 +132,134 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.set("test linkedlist convertToArray:", res)
+
+    let list2 = new LinkedList();
+    let proxy = new Proxy(list2, {});
+    let testArray2 = []
+    for(let i = 0; i<10; i++) {
+        proxy.add(i)
+        testArray2.push(i)
+    }
+    map.set("test linkedlist has:",  proxy.has(8))
+    map.set("test linkedlist not has:", proxy.has(2))
+    map.set("test linkedlist getLastIndexOf:", proxy.getLastIndexOf(1) === 1)
+    map.set("test linkedlist getIndexOf:", proxy.getIndexOf(5) === 5)
+
+    proxy.removeByIndex(9)
+
+    testArray2.splice(9, 1)
+    res = true
+    for(let i = 0; i < testArray2.length; i++) {
+        if (proxy[i] !== testArray2[i]) {
+            res = false
+        }
+    }
+    map.set("test linkedlist removeByIndex:", res)
+
+    const removeRes1 = proxy.remove(8)
+    testArray2.splice(8, 1)
+    res = true
+    for(let i = 0; i < testArray2.length; i++) {
+        if (proxy[i] !== testArray2[i]) {
+            res = false
+        }
+    }
+    map.set("test linkedlist remove:", res)
+    map.set("test linkedlist remove1:", removeRes1)
+    map.set("test linkedlist getFirst:", proxy.getFirst() === 0)
+    map.set("test linkedlist getLast:", proxy.getLast() === 7)
+
+    proxy.insert(3, 999)
+    testArray2.splice(3, 0, 999)
+    res = true
+    for(let i = 0; i < testArray2.length; i++) {
+        if (proxy[i] !== testArray2[i]) {
+            res = false
+        }
+    }
+    map.set("test linkedlist insert:", res)
+
+    proxy.set(5, 888)
+    testArray2[5] = 888
+    res = true
+    for(let i = 0; i < testArray2.length; i++) {
+        if (proxy[i] !== testArray2[i]) {
+            res = false
+        }
+    }
+    map.set("test linkedlist set:", res)
+    map.set("test linkedlist clone:", res)
+
+    proxy.addFirst(1111)
+    map.set("test linkedlist addfirst:", proxy.getFirst() === 1111)
+
+    const removefirstres1 = proxy.removeFirst()
+    map.set("test linkedlist removeFirst:", removefirstres1 === 1111)
+
+    res = true
+    let j = 0
+    for (const data of proxy) {
+      if (data !== testArray2[j]) {
+        res = false
+      }
+      j++;
+    }
+
+    let itr = proxy[Symbol.iterator]();
+    let tmp = undefined;
+    let arr3 = []
+    do {
+      tmp = itr.next().value;
+      arr3.push(tmp);
+    } while (tmp != undefined);
+
+    for (let k = 0; k < proxy.length; k++) {
+      if (arr3[k] !== testArray2[k]) {
+        res = false
+      }
+    }
+
+    map.set("test linkedlist intertor:", res)
+
+    let list3 = new LinkedList();
+    let proxy1 = new Proxy(list3, {});
+    let testArray3 = []
+    for (let i = 0; i < 10; i++) {
+        proxy1.add(i)
+        testArray3.push(i)
+    }
+
+    res = true
+    proxy1.forEach((i, d) => {
+        if (d !== testArray3[i]) {
+            res = false
+        }
+    })
+
+    map.set("test linkedlist forEach:", res)
+    proxy1.clear()
+    map.set("test linkedlist clear:", proxy1.length === 0)
+    map.set("test linkedlist get:", proxy1.get(1232) === undefined)
+    map.set("test linkedlist getLastIndexOf:", proxy1.getLastIndexOf('abc') === -1)
+    flag = false;
+    try {
+        proxy1.removeByIndex(99)
+    } catch (error) {
+        flag = true;
+    }
+    map.set("test linkedlist removeByIndex:", flag)
+
+    testArray3.splice(5, 1)
+
+    res = true
+    const arr1 = proxy1.convertToArray()
+    for (let i = 1; i < arr1.length; i++) {
+        if (arr1[i] !== testArray3[i]) {
+            res = false
+        }
+    }
+    map.set("test linkedlist convertToArray:", res)
+
     flag = undefined;
     function elements(value, key, map) {
         if (!value) {
@@ -150,4 +276,3 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test LinkedList fail: " + flag);
     }
 }
-

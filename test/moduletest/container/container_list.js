@@ -74,7 +74,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     })
     res = true
     for(let i = 0; i < testArray.length; i++) {
-        if (list[i] !== testArray[i]) {
+        if (list[i] !== testArray[i] * 2) {
             res = false
         }
     }
@@ -166,6 +166,150 @@ if (globalThis["ArkPrivate"] != undefined) {
     res = list1.remove(888)
     map.set("test list remove:", !res)
 
+    let list3 = new List();
+    let proxy = new Proxy(list3, {});
+    const testArray3 = []
+    for(let i = 0; i < 10; i++) {
+        proxy.add(i)
+        testArray3.push(i)
+    }
+
+    map.set("test list get 1:", proxy.get(1) === 1)
+    map.set("test list has:",  proxy.has(8))
+    map.set("test list not has:", proxy.has(123) === false)
+
+    let list4 = new List();
+    let proxy1 = new Proxy(list4, {});
+    const testArray4 = []
+    for(let i = 0; i < 10; i++) {
+        proxy1.add(i)
+        testArray4.push(i)
+    }
+
+    proxy.add(10)
+    testArray3.push(10)
+    map.set("test list equal:", proxy.equal(proxy1) === false)
+    map.set("test list getLastIndexOf:", proxy.getLastIndexOf(1) === 1)
+    map.set("test list getIndexOf:", proxy.getIndexOf(5) === 5)
+
+    proxy.removeByIndex(10)
+    testArray3.splice(10, 1)
+    res = true
+    for(let i = 0; i < testArray3.length; i++) {
+        if (proxy[i] !== testArray3[i]) {
+            res = false
+        }
+    }
+    map.set("test list removeByIndex:", res)
+
+    proxy.remove(9)
+    testArray3.splice(9, 1)
+    res = true
+    for(let i = 0; i < testArray3.length; i++) {
+        if (proxy[i] !== testArray3[i]) {
+            res = false
+        }
+        testArray3[i] = testArray3[i] * 2
+    }
+    map.set("test list remove:", res)
+
+    proxy.replaceAllElements((item, index) => {
+        return item * 2
+    })
+    res = true
+    for(let i = 0; i < testArray3.length; i++) {
+        if (proxy[i] !== testArray3[i]) {
+            res = false
+        }
+    }
+    map.set("test list replaceAllElements:", res)
+    map.set("test list getFirst:", proxy.getFirst() === 0)
+    map.set("test list getLast:", proxy.getLast() === 16)
+    proxy.insert(999, 3)
+    testArray3.splice(3, 0, 999)
+    res = true
+    for(let i = 0; i < testArray3.length; i++) {
+        if (proxy[i] !== testArray3[i]) {
+            res = false
+        }
+    }
+    map.set("test list insert:", res)
+
+    proxy.set(5, 888)
+    testArray3[5] = 888
+    res = true
+    for(let i = 0; i < testArray3.length; i++) {
+        if (proxy[i] !== testArray3[i]) {
+            res = false
+        }
+    }
+    map.set("test list set:", res)
+
+    let list5 = new List();
+    let proxy2 = new Proxy(list5, {});
+    proxy2.add(4);
+    proxy2.add(3);
+    proxy2.add(1);
+    proxy2.add(2);
+    proxy2.add(0);
+    proxy2.sort((a,b) => a-b);
+    res = true
+    for (let i = 0; i < 5; i++) {
+        if (proxy2[i] !== i) {
+            res = false
+        }
+    }
+    map.set("test list sort:", res)
+
+    res = true
+    let subList1 = proxy.getSubList(1, 3)
+    const newtestArray1 = testArray3.slice(1, 3)
+    for(let i = 0; i < subList1.length; i++) {
+        if (newtestArray1[i] !== subList1[i]) {
+            res =  false
+        }
+    }
+    map.set("test list getSubList:", res)
+
+    res = true
+    const arr1 = proxy.convertToArray()
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== testArray3[i]) {
+            res = false
+        }
+    }
+    map.set("test list convertToArray:", res)
+
+    res = true
+    let k = 0
+    for (const data of proxy1) {
+        if (data !== testArray4[k]) {
+            res = false
+        }
+        k++;
+    }
+    map.set("test list iterator:", res)
+
+    res = true
+    proxy1.forEach((i, d) => {
+        if (d !== testArray4[i]) {
+            res = false
+        }
+    })
+    map.set("test list forEach:", res)
+    proxy2.clear()
+    map.set("test list clear:", proxy2.length === 0)
+    map.set("test list get:", proxy1.get(200) === undefined)
+    map.set("test list getLastIndexOf:", proxy1.getLastIndexOf('abc') === -1)
+    flag = false;
+    try {
+        proxy1.removeByIndex(99)
+    } catch (error) {
+        flag = true;
+    }
+    map.set("test list removeByIndex:", flag)
+    res = proxy1.remove(888)
+    map.set("test list remove:", !res)
     flag = undefined;
     function elements(value, key, map) {
         if (!value) {

@@ -40,8 +40,7 @@ class EcmaString : public TaggedObject {
 public:
     friend class EcmaStringAccessor;
 
-    static EcmaString *Cast(TaggedObject *object);
-    static const EcmaString *ConstCast(const TaggedObject *object);
+    CAST_CHECK(EcmaString, IsString);
 
     static constexpr uint32_t STRING_COMPRESSED_BIT = 0x1;
     static constexpr uint32_t STRING_INTERN_BIT = 0x2;
