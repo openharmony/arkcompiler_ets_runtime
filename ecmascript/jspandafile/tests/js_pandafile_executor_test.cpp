@@ -62,8 +62,8 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
     const char *data = R"(
         .language ECMAScript
         .function any func_main_0(any a0, any a1, any a2) {
-            ldai.dyn 1
-            return.dyn
+            ldai 1
+            return
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
@@ -96,8 +96,8 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     const char *data = R"(
         .language ECMAScript
         .function any func_main_0(any a0, any a1, any a2) {
-            ldai.dyn 1
-            return.dyn
+            ldai 1
+            return
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
@@ -133,8 +133,8 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     const char *data = R"(
         .language ECMAScript
         .function any func_main_0(any a0, any a1, any a2) {
-            ldai.dyn 1
-            return.dyn
+            ldai 1
+            return
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
