@@ -370,6 +370,14 @@ public:
         return reinterpret_cast<TaggedObject *>(GetRawHeapObject());
     }
 
+    inline TaggedObject *GetHeapObject() const
+    {
+        if (IsWeakForHeapObject()) {
+            return GetTaggedWeakRef();
+        }
+        return GetTaggedObject();
+    }
+
     inline TaggedObject *GetTaggedWeakRef() const
     {
         return reinterpret_cast<TaggedObject *>(GetWeakReferent());
