@@ -161,7 +161,7 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     // Mem
     runtimeOptions.SetHeapSizeLimit(option.GetGcPoolSize());
     // asmInterpreter
-    runtimeOptions.SetEnableAsmInterpreter(true);
+    runtimeOptions.SetEnableAsmInterpreter(option.GetEnableAsmInterpreter());
     runtimeOptions.SetAsmOpcodeDisableRange(option.GetAsmOpcodeDisableRange());
 
     // Dfx
