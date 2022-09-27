@@ -572,8 +572,10 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::STMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
-        case EcmaOpcode::DEPRECATED_STMODULEVAR_PREF_ID32:
             LowerStModuleVar(gate, glue, jsFunc);
+            break;
+        case EcmaOpcode::DEPRECATED_STMODULEVAR_PREF_ID32:
+            LowerStModuleVar(gate, glue, jsFunc, true);
             break;
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM16:
@@ -1214,21 +1216,22 @@ void SlowPathLowering::LowerCallThisRange(GateRef gate, GateRef glue)
     vec.emplace_back(thisObj);
     // add common args
     size_t numIns = acc_.GetNumValueIn(gate);
-    for (size_t i = fixedInputsNum; i < numIns; i++) {
+    for (size_t i = fixedInputsNum; i < numIns - 1; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
+    vec.emplace_back(acc_.GetValueIn(gate, numIns - 1)); // bcoffset
     LowerToJSCall(gate, glue, vec);
 }
 
-void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate, GateRef glue)
 {
     DebugPrintBC(gate, glue);
     std::vector<GateRef> vec;
-    // The first register input is thisobj, second is thisObj and other inputs are common args.
+    // this
     size_t fixedInputsNum = 1;
     ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
     size_t numIns = acc_.GetNumValueIn(gate);
-    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8));
+    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8));
     GateRef callTarget = acc_.GetValueIn(gate, numIns - 2); // acc
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
@@ -1240,7 +1243,29 @@ void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate, GateRef g
     vec.emplace_back(newTarget);
     vec.emplace_back(thisObj);
     // add common args
-    for (size_t i = fixedInputsNum; i < numIns - 1; i++) {
+    for (size_t i = fixedInputsNum; i < numIns - 2; i++) {
+        vec.emplace_back(acc_.GetValueIn(gate, i));
+    }
+    vec.emplace_back(acc_.GetValueIn(gate, numIns - 1)); // bcoffset
+    LowerToJSCall(gate, glue, vec);
+}
+
+void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate, GateRef glue)
+{
+    DebugPrintBC(gate, glue);
+    // The first register input is thisobj, second is thisObj and other inputs are common args.
+    size_t fixedInputsNum = 1;
+    ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
+    size_t numIns = acc_.GetNumValueIn(gate);
+    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8));
+    const size_t callTargetIndex = 2;
+    GateRef callTarget = acc_.GetValueIn(gate, numIns - callTargetIndex);
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef newTarget = builder_.Undefined();
+    GateRef env = builder_.Undefined();
+    std::vector<GateRef> vec {glue, env, actualArgc, callTarget, newTarget, thisObj};
+    // add common args
+    for (size_t i = fixedInputsNum; i < numIns - callTargetIndex; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
     vec.emplace_back(acc_.GetValueIn(gate, numIns - 1)); // bcoffset
@@ -2041,23 +2066,31 @@ void SlowPathLowering::LowerStModuleVarByIndex(GateRef gate, GateRef glue, GateR
     ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
 }
 
-void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc)
+void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc, bool isDeprecated)
 {
     DebugPrintBC(gate, glue);
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef prop = GetObjectFromConstPool(glue, jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)),
-                                          ConstPoolType::STRING);
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(StModuleVarOnJSFunc),
-        { prop, acc_.GetValueIn(gate, 1), jsFunc }, true);
+    GateRef result;
+    if (isDeprecated) {
+        GateRef prop = GetObjectFromConstPool(glue, jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)),
+                                              ConstPoolType::STRING);
+        result = LowerCallRuntime(glue, RTSTUB_ID(StModuleVarOnJSFunc),
+                                  { prop, acc_.GetValueIn(gate, 1), jsFunc }, true);
+    } else {
+        GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+        result = LowerCallRuntime(glue, RTSTUB_ID(StModuleVarByIndexOnJSFunc),
+                                  { index, acc_.GetValueIn(gate, 1), jsFunc }, true);
+    }
+
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
     failControl.emplace_back(Circuit::NullGate());
     // StModuleVar will not be inValue to other hir gates, result will not be used to replace hirgate
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+    ReplaceHirToSubCfg(gate, Circuit::NullGate(), successControl, failControl, true);
 }
 
 void SlowPathLowering::LowerGetTemplateObject(GateRef gate, GateRef glue)
@@ -2122,17 +2155,15 @@ void SlowPathLowering::LowerDynamicImport(GateRef gate, GateRef glue, GateRef js
 void SlowPathLowering::LowerLdLocalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue);
-    std::vector<GateRef> successControl;
-    std::vector<GateRef> failControl;
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc), {index, jsFunc}, true);
-    successControl.emplace_back(builder_.GetState());
-    successControl.emplace_back(builder_.GetDepend());
-    failControl.emplace_back(Circuit::NullGate());
-    failControl.emplace_back(Circuit::NullGate());
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerLdExternalModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc)
@@ -2172,43 +2203,36 @@ void SlowPathLowering::LowerLdModuleVar(GateRef gate, GateRef glue, GateRef jsFu
 void SlowPathLowering::LowerExternalModule(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue);
-    std::vector<GateRef> successControl;
-    std::vector<GateRef> failControl;
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef key = GetObjectFromConstPool(glue, jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)),
-                                         ConstPoolType::STRING);
-    GateRef inner = builder_.ToTaggedInt(builder_.Int64(0));
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdModuleVarOnJSFunc), {key, inner, jsFunc}, true);
-    successControl.emplace_back(builder_.GetState());
-    successControl.emplace_back(builder_.GetDepend());
-    failControl.emplace_back(Circuit::NullGate());
-    failControl.emplace_back(Circuit::NullGate());
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc), {index, jsFunc}, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerGetModuleNamespace(GateRef gate, GateRef glue, GateRef jsFunc, bool isDeprecated)
 {
     DebugPrintBC(gate, glue);
-    std::vector<GateRef> successControl;
-    std::vector<GateRef> failControl;
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef result;
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
     if (isDeprecated) {
         GateRef localName = GetObjectFromConstPool(glue, jsFunc, builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)),
                                                    ConstPoolType::STRING);
-        result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespaceOnJSFunc),
-                                  {localName, jsFunc, builder_.True()}, true);
+        result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespaceOnJSFunc), {localName, jsFunc}, true);
+        builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
     } else {
         GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
-        result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespaceOnJSFunc),
-                                  {index, jsFunc, builder_.False()}, true);
+        result = LowerCallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndexOnJSFunc), {index, jsFunc}, true);
+        builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
     }
-    successControl.emplace_back(builder_.GetState());
-    successControl.emplace_back(builder_.GetDepend());
-    failControl.emplace_back(Circuit::NullGate());
-    failControl.emplace_back(Circuit::NullGate());
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerGetIteratorNext(GateRef gate, GateRef glue)
@@ -3980,33 +4004,6 @@ void SlowPathLowering::LowerCallthis3Imm8V8V8V8V8(GateRef gate, GateRef glue)
     GateRef bcOffset = acc_.GetValueIn(gate, 5); // 5: bytecode offset
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, a0Value,
         a1Value, a2Value, bcOffset});
-}
-
-void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate, GateRef glue)
-{
-    DebugPrintBC(gate, glue);
-    std::vector<GateRef> vec;
-    // this
-    size_t fixedInputsNum = 1;
-    ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
-    size_t numIns = acc_.GetNumValueIn(gate);
-    GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8));
-    GateRef callTarget = acc_.GetValueIn(gate, numIns - 2);
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef newTarget = builder_.Undefined();
-    GateRef env = builder_.Undefined();
-    vec.emplace_back(glue);
-    vec.emplace_back(env);
-    vec.emplace_back(actualArgc);
-    vec.emplace_back(callTarget);
-    vec.emplace_back(newTarget);
-    vec.emplace_back(thisObj);
-    // add common args
-    for (size_t i = fixedInputsNum; i < numIns - 2; i++) {
-        vec.emplace_back(acc_.GetValueIn(gate, i));
-    }
-    vec.emplace_back(acc_.GetValueIn(gate, numIns - 1)); // bcoffset
-    LowerToJSCall(gate, glue, vec);
 }
 
 void SlowPathLowering::LowerLdThisByName(GateRef gate, GateRef glue, GateRef jsFunc, GateRef thisObj)

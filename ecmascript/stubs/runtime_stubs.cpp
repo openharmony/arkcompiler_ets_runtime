@@ -1058,15 +1058,9 @@ DEF_RUNTIME_STUBS(GetModuleNamespace)
 DEF_RUNTIME_STUBS(GetModuleNamespaceOnJSFunc)
 {
     RUNTIME_STUBS_HEADER(GetModuleNamespaceOnJSFunc);
+    JSTaggedValue localName = GetArg(argv, argc, 0);
     JSTaggedValue jsFunc = GetArg(argv, argc, 1);
-    JSTaggedValue isDeprecated = GetArg(argv, argc, 2); // 2: means the second parameter
-    if (isDeprecated.IsTrue()) {
-        JSTaggedValue localName = GetArg(argv, argc, 0);
-        return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
-    } else {
-        JSTaggedValue index = GetArg(argv, argc, 0);
-        return RuntimeGetModuleNamespace(thread, index.GetInt(), jsFunc).GetRawData();
-    }
+    return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StModuleVarByIndex)
@@ -1080,7 +1074,7 @@ DEF_RUNTIME_STUBS(StModuleVarByIndex)
 
 DEF_RUNTIME_STUBS(StModuleVarByIndexOnJSFunc)
 {
-    RUNTIME_STUBS_HEADER(StModuleVarOnJSFunc);
+    RUNTIME_STUBS_HEADER(StModuleVarByIndexOnJSFunc);
     JSTaggedValue index = GetArg(argv, argc, 0);
     JSTaggedValue value = GetArg(argv, argc, 1);
     JSTaggedValue jsFunc = GetArg(argv, argc, 2);
