@@ -354,9 +354,9 @@ public:
     GateRef StoreGlobal(GateRef glue, GateRef value, GateRef cell);
     void JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
     void NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClass);
-    GateRef TaggedCastToInt64(GateRef x);
-    GateRef TaggedCastToInt32(GateRef x);
-    GateRef TaggedCastToDouble(GateRef x);
+    GateRef GetInt64OfTInt(GateRef x);
+    GateRef GetInt32OfTInt(GateRef x);
+    GateRef GetDoubleOfTDouble(GateRef x);
     GateRef LoadObjectFromWeakRef(GateRef x);
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);

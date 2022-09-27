@@ -41,22 +41,24 @@ private:
     void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
     void GenerateSuccessMerge(std::vector<GateRef> &successControl);
     void ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl);
-    void LowerTypeAdd(GateRef gate);
-    void LowerTypeSub(GateRef gate);
-    void LowerTypeMul(GateRef gate);
-    void LowerTypeMod(GateRef gate);
-    void LowerTypeLess(GateRef gate);
-    void LowerTypeLessEq(GateRef gate);
-    void LowerTypeGreater(GateRef gate);
-    void LowerTypeGreaterEq(GateRef gate);
-    void LowerTypeDiv(GateRef gate);
-    void LowerTypeEq(GateRef gate);
-    void LowerTypeNotEq(GateRef gate);
+    void LowerTypedAdd(GateRef gate);
+    void LowerTypedSub(GateRef gate);
+    void LowerTypedMul(GateRef gate);
+    void LowerTypedMod(GateRef gate);
+    void LowerTypedLess(GateRef gate);
+    void LowerTypedLessEq(GateRef gate);
+    void LowerTypedGreater(GateRef gate);
+    void LowerTypedGreaterEq(GateRef gate);
+    void LowerTypedDiv(GateRef gate);
+    void LowerTypedEq(GateRef gate);
+    void LowerTypedNotEq(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
 
     template<TypedBinOp Op>
-    void SpeculateNumberBinaryOp(GateRef gate);
+    void SpeculateNumberCalculate(GateRef gate);
+    template<TypedBinOp Op>
+    void SpeculateNumberCompare(GateRef gate);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

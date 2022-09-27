@@ -576,7 +576,7 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
-        hashcode = TaggedCastToInt32(CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }));
+        hashcode = GetInt32OfTInt(CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }));
         Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }

@@ -1441,7 +1441,7 @@ inline GateRef StubBuilder::GetPropAttrFromLayoutInfo(GateRef layout, GateRef en
 {
     GateRef index = Int32Add(Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)),
         Int32(LayoutInfo::ATTR_INDEX_OFFSET));
-    return TaggedCastToInt64(GetValueFromTaggedArray(layout, index));
+    return GetInt64OfTInt(GetValueFromTaggedArray(layout, index));
 }
 
 inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)
@@ -1461,24 +1461,24 @@ inline GateRef StubBuilder::GetPropertiesAddrFromLayoutInfo(GateRef layout)
     return PtrAdd(layout, IntPtr(TaggedArray::DATA_OFFSET));
 }
 
-inline GateRef StubBuilder::TaggedCastToInt64(GateRef x)
+inline GateRef StubBuilder::GetInt64OfTInt(GateRef x)
 {
-    return env_->GetBuilder()->TaggedCastToInt64(x);
+    return env_->GetBuilder()->GetInt64OfTInt(x);
 }
 
-inline GateRef StubBuilder::TaggedCastToInt32(GateRef x)
+inline GateRef StubBuilder::GetInt32OfTInt(GateRef x)
 {
-    return ChangeInt64ToInt32(TaggedCastToInt64(x));
+    return ChangeInt64ToInt32(GetInt64OfTInt(x));
 }
 
 inline GateRef StubBuilder::TaggedCastToIntPtr(GateRef x)
 {
-    return env_->Is32Bit() ? ChangeInt64ToInt32(TaggedCastToInt64(x)) : TaggedCastToInt64(x);
+    return env_->Is32Bit() ? ChangeInt64ToInt32(GetInt64OfTInt(x)) : GetInt64OfTInt(x);
 }
 
-inline GateRef StubBuilder::TaggedCastToDouble(GateRef x)
+inline GateRef StubBuilder::GetDoubleOfTDouble(GateRef x)
 {
-    return env_->GetBuilder()->TaggedCastToDouble(x);
+    return env_->GetBuilder()->GetDoubleOfTDouble(x);
 }
 
 inline GateRef StubBuilder::LoadObjectFromWeakRef(GateRef x)

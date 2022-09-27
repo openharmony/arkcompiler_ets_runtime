@@ -152,7 +152,7 @@ private:
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
     template<OpCode::Op Op>
-    GateRef FastAddOrSubOrMul2Number(GateRef left, GateRef right);
+    GateRef CalculateNumbers(GateRef left, GateRef right);
     template<TypedBinOp Op>
     GateRef CompareNumbers(GateRef left, GateRef right);
     template<TypedBinOp Op>
@@ -172,7 +172,7 @@ private:
     GateRef Less(GateRef left, GateRef right);
     GateRef LessEq(GateRef left, GateRef right);
     GateRef FastDiv(GateRef left, GateRef right);
-    GateRef FastDiv2Number(GateRef left, GateRef right);
+    GateRef DivNumbers(GateRef left, GateRef right);
     GateRef FastEqual(GateRef left, GateRef right);
 
     void LowerTypeAdd(GateRef gate, GateRef glue);

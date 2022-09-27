@@ -93,12 +93,12 @@ DECLARE_BUILTINS(CharCodeAt)
                 GateRef posTag = GetCallArg(argv, IntPtr(0));
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
-                pos = TaggedCastToInt32(posTag);
+                pos = GetInt32OfTInt(posTag);
                 Jump(&next);
                 Bind(&posTagNotInt);
                 Branch(TaggedIsDouble(posTag), &posTagIsDouble, &slowPath);
                 Bind(&posTagIsDouble);
-                pos = DoubleToInt(glue, TaggedCastToDouble(posTag));
+                pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                 Jump(&next);
             }
             Bind(&next);
@@ -169,12 +169,12 @@ DECLARE_BUILTINS(IndexOf)
                     GateRef posTag = GetCallArg(argv, IntPtr(1));
                     Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                     Bind(&posTagIsInt);
-                    pos = TaggedCastToInt32(posTag);
+                    pos = GetInt32OfTInt(posTag);
                     Jump(&next);
                     Bind(&posTagNotInt);
                     Branch(TaggedIsDouble(posTag), &posTagIsDouble, &slowPath);
                     Bind(&posTagIsDouble);
-                    pos = DoubleToInt(glue, TaggedCastToDouble(posTag));
+                    pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                     Jump(&next);
                 }
                 Bind(&next);
@@ -277,12 +277,12 @@ DECLARE_BUILTINS(Substring)
                 GateRef startTag = GetCallArg(argv, IntPtr(0));
                 Branch(TaggedIsInt(startTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
-                start = TaggedCastToInt32(startTag);
+                start = GetInt32OfTInt(startTag);
                 Jump(&next);
                 Bind(&posTagNotInt);
                 Branch(TaggedIsDouble(startTag), &posTagIsDouble, &slowPath);
                 Bind(&posTagIsDouble);
-                start = DoubleToInt(glue, TaggedCastToDouble(startTag));
+                start = DoubleToInt(glue, GetDoubleOfTDouble(startTag));
                 Jump(&next);
             }
             Bind(&next);
@@ -298,12 +298,12 @@ DECLARE_BUILTINS(Substring)
                     GateRef endTag = GetCallArg(argv, IntPtr(1));
                     Branch(TaggedIsInt(endTag), &endTagIsInt, &endTagNotInt);
                     Bind(&endTagIsInt);
-                    end = TaggedCastToInt32(endTag);
+                    end = GetInt32OfTInt(endTag);
                     Jump(&countStart);
                     Bind(&endTagNotInt);
                     Branch(TaggedIsDouble(endTag), &endTagIsDouble, &slowPath);
                     Bind(&endTagIsDouble);
-                    end = DoubleToInt(glue, TaggedCastToDouble(endTag));
+                    end = DoubleToInt(glue, GetDoubleOfTDouble(endTag));
                     Jump(&countStart);
                 }
             }
@@ -425,12 +425,12 @@ DECLARE_BUILTINS(CharAt)
                 GateRef posTag = GetCallArg(argv, IntPtr(0));
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
-                pos = TaggedCastToInt32(posTag);
+                pos = GetInt32OfTInt(posTag);
                 Jump(&next);
                 Bind(&posTagNotInt);
                 Branch(TaggedIsDouble(posTag), &posTagIsDouble, &slowPath);
                 Bind(&posTagIsDouble);
-                pos = DoubleToInt(glue, TaggedCastToDouble(posTag));
+                pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                 Jump(&next);
             }
             Bind(&next);

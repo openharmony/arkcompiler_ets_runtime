@@ -308,10 +308,10 @@ public:
 
     // js world
     // cast operation
-    inline GateRef TaggedCastToInt64(GateRef x);
-    inline GateRef TaggedCastToInt32(GateRef x);
+    inline GateRef GetInt64OfTInt(GateRef x);
+    inline GateRef GetInt32OfTInt(GateRef x);
     inline GateRef TaggedCastToIntPtr(GateRef x);
-    inline GateRef TaggedCastToDouble(GateRef x);
+    inline GateRef GetDoubleOfTDouble(GateRef x);
     inline GateRef ChangeTaggedPointerToInt64(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);

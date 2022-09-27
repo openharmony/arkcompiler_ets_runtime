@@ -1847,12 +1847,12 @@ GateRef SlowPathLowering::FastStrictEqual(GateRef glue, GateRef left, GateRef ri
             builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftNotInt);
             builder_.Bind(&leftIsInt);
             {
-                doubleLeft = builder_.ChangeInt32ToFloat64(builder_.TaggedCastToInt32(left));
+                doubleLeft = builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
                 builder_.Jump(&getRight);
             }
             builder_.Bind(&leftNotInt);
             {
-                doubleLeft = builder_.TaggedCastToDouble(left);
+                doubleLeft = builder_.GetDoubleOfTDouble(left);
                 builder_.Jump(&getRight);
             }
             builder_.Bind(&getRight);
@@ -1862,12 +1862,12 @@ GateRef SlowPathLowering::FastStrictEqual(GateRef glue, GateRef left, GateRef ri
                 builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightNotInt);
                 builder_.Bind(&rightIsInt);
                 {
-                    doubleRight = builder_.ChangeInt32ToFloat64(builder_.TaggedCastToInt32(right));
+                    doubleRight = builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
                     builder_.Jump(&strictNumberEqualCheck);
                 }
                 builder_.Bind(&rightNotInt);
                 {
-                    doubleRight = builder_.TaggedCastToDouble(right);
+                    doubleRight = builder_.GetDoubleOfTDouble(right);
                     builder_.Jump(&strictNumberEqualCheck);
                 }
             }
@@ -2348,7 +2348,7 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
     GateRef isDouble = builder_.IfTrue(ifBranch);
     GateRef notDouble = builder_.IfFalse(ifBranch);
     doubleFalseState.emplace_back(notDouble);
-    condition = builder_.Equal(builder_.TaggedCastToDouble(value), builder_.Double(0));
+    condition = builder_.Equal(builder_.GetDoubleOfTDouble(value), builder_.Double(0));
     ifBranch = builder_.Branch(isDouble, condition);
     GateRef isDoubleZero = builder_.IfTrue(ifBranch);
     GateRef notDoubleZero = builder_.IfFalse(ifBranch);
