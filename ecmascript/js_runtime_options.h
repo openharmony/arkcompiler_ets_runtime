@@ -335,7 +335,8 @@ public:
 
     int GetDefaultProperties()
     {
-        return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP;
+        return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP
+            | ArkProperties::ENABLE_ARKTOOLS;
     }
 
     int GetArkProperties()
@@ -845,7 +846,7 @@ private:
     bool ParseUint64Param(const std::string &option, uint64_t *argUInt64);
     void ParseListArgParam(const std::string &option, arg_list_t *argListStr, std::string delimiter);
 
-    bool enableArkTools_ {false};
+    bool enableArkTools_ {true};
     bool enableCpuprofiler_ {false};
     std::string stubFile_ {"stub.an"};
     bool enableForceGc_ {true};
