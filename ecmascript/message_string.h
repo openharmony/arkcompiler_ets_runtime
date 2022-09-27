@@ -24,14 +24,19 @@
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define COMMON_MESSAGE_STRING_LIST(V)                                             \
-    V(SetReadOnlyProperty, "Cannot set readonly property")                        \
-    V(FunctionCallNotConstructor, "class constructor cannot call")                \
-    V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions ") \
-    V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                 \
-    V(CanNotSetPropertyOnContainer, "Cannot set property on Container")           \
-    V(NonCallable, "CallObj is NonCallable")                                      \
-    V(INT32_VALUE, "value: %ld")
+#define COMMON_MESSAGE_STRING_LIST(V)                                                        \
+    V(SetReadOnlyProperty, "Cannot set readonly property")                                   \
+    V(FunctionCallNotConstructor, "class constructor cannot call")                           \
+    V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions ")            \
+    V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                            \
+    V(CanNotSetPropertyOnContainer, "Cannot set property on Container")                      \
+    V(NonCallable, "CallObj is NonCallable")                                                 \
+    V(ASM_INTERPRETER_STUB_NAME, "ASM_INTERPRETER stub name: ")                              \
+    V(OPCODE_OVERFLOW, "opcode overflow!")                                                   \
+    V(INT32_VALUE, "value: %ld")                                                             \
+    V(TargetTypeNotObject, "Type of target is not Object")                                   \
+    V(CanNotGetNotEcmaObject, "Can not get Prototype on non ECMA Object")                    \
+    V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")
 
 class MessageString {
 public:

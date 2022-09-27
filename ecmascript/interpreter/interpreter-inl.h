@@ -1366,7 +1366,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             }
 
             if (func->IsBase()) {
-                JSTaggedValue thisObject = GetThisObjectFromFastNewFrame(currentSp);
+                JSTaggedValue thisObject = GetThis(currentSp);
                 SET_ACC(thisObject);
                 INTERPRETER_HANDLE_RETURN();
             }
@@ -1381,7 +1381,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
             }
 
-            JSTaggedValue thisObject = GetThisObjectFromFastNewFrame(currentSp);
+            JSTaggedValue thisObject = GetThis(currentSp);
             SET_ACC(thisObject);
             INTERPRETER_HANDLE_RETURN();
         }
@@ -1409,7 +1409,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (IsFastNewFrameExit(currentSp)) {
             JSFunction *func = JSFunction::Cast(GetFunction(currentSp).GetTaggedObject());
             if (func->IsBase()) {
-                JSTaggedValue thisObject = GetThisObjectFromFastNewFrame(currentSp);
+                JSTaggedValue thisObject = GetThis(currentSp);
                 SET_ACC(thisObject);
                 INTERPRETER_HANDLE_RETURN();
             }
@@ -1424,7 +1424,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
             }
 
-            JSTaggedValue thisObject = GetThisObjectFromFastNewFrame(currentSp);
+            JSTaggedValue thisObject = GetThis(currentSp);
             SET_ACC(thisObject);
             INTERPRETER_HANDLE_RETURN();
         } else {
@@ -3044,8 +3044,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 uint32_t numDeclaredArgs = superCtorFunc->IsBase() ?
                     methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                     methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
-                // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -3091,9 +3090,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
                 }
-
-                // hidden this object
-                newSp[index] = thisObj.GetRawData();
 
                 state->base.prev = sp;
                 state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
@@ -3185,8 +3181,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 uint32_t numDeclaredArgs = superCtorFunc->IsBase() ?
                     methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                     methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
-                // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -3232,9 +3227,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
                 }
-
-                // hidden this object
-                newSp[index] = thisObj.GetRawData();
 
                 state->base.prev = sp;
                 state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
@@ -3326,8 +3318,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 uint32_t numDeclaredArgs = superCtorFunc->IsBase() ?
                     methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                     methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
-                // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -3373,9 +3364,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
                 }
-
-                // hidden this object
-                newSp[index] = thisObj.GetRawData();
 
                 state->base.prev = sp;
                 state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
@@ -3467,8 +3455,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 uint32_t numDeclaredArgs = superCtorFunc->IsBase() ?
                     methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                     methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
-                // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -3514,9 +3501,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
                 }
-
-                // hidden this object
-                newSp[index] = thisObj.GetRawData();
 
                 state->base.prev = sp;
                 state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
@@ -3819,8 +3803,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 uint32_t numDeclaredArgs = ctorFunc->IsBase() ?
                                            methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                                            methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
-                // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 2;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -3866,9 +3849,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
                 }
-
-                // hidden this object
-                newSp[index] = thisObj.GetRawData();
 
                 state->base.prev = sp;
                 state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
@@ -3961,8 +3941,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 uint32_t numDeclaredArgs = ctorFunc->IsBase() ?
                                            methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                                            methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
-                // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 2;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -4008,9 +3987,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
                 }
-
-                // hidden this object
-                newSp[index] = thisObj.GetRawData();
 
                 state->base.prev = sp;
                 state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
@@ -4102,8 +4078,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 uint32_t numDeclaredArgs = ctorFunc->IsBase() ?
                                            methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                                            methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
-                // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 2;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -4149,9 +4124,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = JSTaggedValue::VALUE_UNDEFINED;
                 }
-
-                // hidden this object
-                newSp[index] = thisObj.GetRawData();
 
                 state->base.prev = sp;
                 state->base.type = FrameType::INTERPRETER_FAST_NEW_FRAME;
@@ -7183,24 +7155,6 @@ bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, J
     }
     method->SetHotnessCounter(hotnessCounter);
     return false;
-}
-
-// only use for fast new, not universal API
-JSTaggedValue EcmaInterpreter::GetThisObjectFromFastNewFrame(JSTaggedType *sp)
-{
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
-    Method *method = ECMAObject::Cast(state->function.GetTaggedObject())->GetCallTarget();
-    ASSERT(method->OnlyHaveThisWithCallField() || method->OnlyHaveNewTagetAndThisWithCallField());
-    uint32_t numVregs = method->GetNumVregsWithCallField();
-    uint32_t numDeclaredArgs;
-    if (method->OnlyHaveThisWithCallField()) {
-        numDeclaredArgs = method->GetNumArgsWithCallField() + 1;  // 1: explicit this object
-    } else {
-        numDeclaredArgs = method->GetNumArgsWithCallField() + 2;  // 2: newTarget and explicit this object
-    }
-    uint32_t hiddenThisObjectIndex = numVregs + numDeclaredArgs;   // hidden this object in the end of fast new frame
-    return JSTaggedValue(sp[hiddenThisObjectIndex]);
 }
 
 bool EcmaInterpreter::IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method)

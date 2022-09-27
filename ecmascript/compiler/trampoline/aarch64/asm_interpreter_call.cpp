@@ -675,14 +675,14 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Br(bcStub);
     }
 
-    Label getHiddenThis;
+    Label getThis;
     Label notUndefined;
     __ Bind(&newObjectRangeReturn);
     {
         __ Cmp(ret, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         __ B(Condition::NE, &notUndefined);
         ASSERT(thisOffset < 0);
-        __ Bind(&getHiddenThis);
+        __ Bind(&getThis);
         __ Ldur(ret, MemoryOperand(sp, thisOffset));  // update acc
         __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
         __ Mov(rsp, fp);  // resume rsp
@@ -725,7 +725,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
             __ And(temp.W(), temp.W(),
                 LogicalImmediate::Create((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, RegWSize));
             __ Cmp(temp.W(), Immediate(static_cast<int64_t>(FunctionKind::CLASS_CONSTRUCTOR)));
-            __ B(Condition::LS, &getHiddenThis);  // constructor is base
+            __ B(Condition::LS, &getThis);  // constructor is base
             // exception branch
             {
                 __ Mov(opcode, kungfu::BytecodeStubCSigns::ID_NewObjectRangeThrowException);

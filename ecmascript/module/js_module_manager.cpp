@@ -452,9 +452,15 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(std::string 
 void ModuleManager::AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule)
 {
     JSThread *thread = vm_->GetJSThread();
-    ObjectFactory *factory = vm_->GetFactory();
     JSHandle<JSTaggedValue> moduleRecord =
         ModuleDataExtractor::ParseModule(thread, jsPandaFile, referencingModule, referencingModule);
+    AddResolveImportedModule(referencingModule, moduleRecord);
+}
+
+void ModuleManager::AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord)
+{
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = vm_->GetFactory();
     JSHandle<JSTaggedValue> referencingHandle(factory->NewFromUtf8(referencingModule));
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
     resolvedModules_ =
@@ -540,5 +546,65 @@ CString ModuleManager::ResolveModuleFileName(const CString &fileName)
 {
     JSHandle<SourceTextModule> sourceTextModule = HostResolveImportedModule(fileName);
     return ConvertToString(sourceTextModule->GetEcmaModuleFilename());
+}
+
+CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
+                                               CString &moduleRecordName, CString &moduleRequestName)
+{
+    CString entryPoint;
+    size_t pos = 0;
+    if (moduleRequestName.find("@bundle:") != CString::npos) {
+        pos = moduleRequestName.find('/');
+        pos = moduleRequestName.find('/', pos + 1);
+        ASSERT(pos != CString::npos);
+        entryPoint = moduleRequestName.substr(pos + 1);
+    } else if (moduleRequestName.rfind(".js") != CString::npos || moduleRequestName.find("./") == 0) {
+        pos = moduleRequestName.rfind(".js");
+        if (pos != CString::npos) {
+            moduleRequestName = moduleRequestName.substr(0, pos);
+        }
+        pos = moduleRequestName.find("./");
+        if (pos == 0) {
+            moduleRequestName = moduleRequestName.substr(2); // 2 means jump "./"
+        }
+        pos = moduleRecordName.rfind('/');
+        if (pos != CString::npos) {
+            entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
+        } else {
+            entryPoint = moduleRequestName;
+        }
+        if (!jsPandaFile->HasRecord(entryPoint)) {
+            pos = baseFilename.rfind('/');
+            if (pos != CString::npos) {
+                baseFilename = baseFilename.substr(0, pos + 1) + moduleRequestName + ".abc";
+            } else {
+                baseFilename = moduleRequestName + ".abc";
+            }
+            pos = moduleRequestName.rfind('/');
+            if (pos != CString::npos) {
+                entryPoint = moduleRequestName.substr(pos + 1);
+            } else {
+                entryPoint = moduleRequestName;
+            }
+        }
+    } else {
+        pos = moduleRecordName.find(JSPandaFile::NODE_MODULES);
+        CString key = "";
+        if (pos != CString::npos) {
+            key = moduleRecordName + "/" + JSPandaFile::NODE_MODULES + "/" + moduleRequestName;
+            entryPoint = jsPandaFile->FindrecordName(key);
+        }
+
+        if (entryPoint.empty()) {
+            key = JSPandaFile::NODE_MODULES_ZERO + moduleRequestName;
+            entryPoint = jsPandaFile->FindrecordName(key);
+        }
+
+        if (entryPoint.empty()) {
+            key = JSPandaFile::NODE_MODULES_ONE + moduleRequestName;
+            entryPoint = jsPandaFile->FindrecordName(key);
+        }
+    }
+    return entryPoint;
 }
 } // namespace panda::ecmascript
