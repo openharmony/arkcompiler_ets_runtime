@@ -59,6 +59,7 @@ public:
     JSTaggedValue GetCurrentModule();
 
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
+    void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
     void Iterate(const RootVisitor &v);
     bool GetCurrentMode() const
     {
@@ -72,7 +73,8 @@ public:
 
     // use for AOT PassManager
     PUBLIC_API CString ResolveModuleFileName(const CString &fileName);
-
+    static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
+                                           CString &moduleRecordName, CString &moduleRequestName);
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
