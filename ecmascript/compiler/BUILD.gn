@@ -298,31 +298,17 @@ action("gen_stub_file") {
   root_out_dir_with_host_toolchain =
       get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
 
-  if (current_toolchain == host_toolchain) {
+  if (current_toolchain == host_toolchain || defined(ark_standalone_build)) {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an"
   } else {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
                   "/stub.an" + " --target-triple=aarch64-unknown-linux-gnu"
   }
 
-  if (defined(ark_standalone_build)) {
-    stub_file =
-        rebase_path(root_out_dir_with_host_toolchain) + "/ark_stub_compiler"
-    stub_env = rebase_path(root_out_dir_with_host_toolchain) + ":" +
-               rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/")
-  } else {
-    stub_file = rebase_path(root_out_dir_with_host_toolchain) +
-                "/ark/ark_js_runtime/ark_stub_compiler"
-    stub_env =
-        rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark:" +
-        rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark_js_runtime:" +
-        rebase_path(root_out_dir_with_host_toolchain) +
-        "/${icu_subsystem_name}/${icu_part_name}:" +
-        rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/")
-  }
   args = [
     "--script-file",
-    stub_file,
+    rebase_path(root_out_dir_with_host_toolchain) +
+        "/ark/ark_js_runtime/ark_stub_compiler",
     "--script-options",
     stub_option,
     "--expect-output",
@@ -330,7 +316,11 @@ action("gen_stub_file") {
     "--timeout-limit",
     "300",
     "--env-path",
-    stub_env,
+    rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark:" +
+        rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark_js_runtime:" +
+        rebase_path(root_out_dir_with_host_toolchain) +
+        "/${icu_subsystem_name}/${icu_part_name}:" +
+        rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
   ]
 
   outputs = [ "$stub_file_gen_dir/stub.an" ]
