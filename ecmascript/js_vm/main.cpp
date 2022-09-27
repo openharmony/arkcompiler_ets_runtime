@@ -58,7 +58,7 @@ int Main(const int argc, const char **argv)
 
     BlockSignals();
 
-    if (argc < 2) { // 2: at least have twoarguments
+    if (argc < 2) { // 2: at least have two arguments
         std::cerr << GetHelper();
         return -1;
     }
@@ -75,6 +75,7 @@ int Main(const int argc, const char **argv)
     JSRuntimeOptions runtimeOptions;
     bool retOpt = runtimeOptions.ParseCommand(newArgc, argv);
     if (!retOpt) {
+        std::cerr << GetHelper();
         return 1;
     }
 
