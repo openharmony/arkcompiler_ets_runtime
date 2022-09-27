@@ -958,13 +958,13 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Jmp(bcStubRegister);
     }
 
-    Label getHiddenThis;
+    Label getThis;
     Label notUndefined;
     __ Bind(&newObjectRangeReturn);
     __ Cmpq(JSTaggedValue::Undefined().GetRawData(), ret);
     __ Jne(&notUndefined);
 
-    __ Bind(&getHiddenThis);
+    __ Bind(&getThis);
     __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetBaseOffset(false)), spRegister);  // update sp
     __ Subq(jumpSizeRegister, pcRegister);  // sub negative jmupSize
     __ Movzbq(Operand(pcRegister, 0), opcodeRegister);
@@ -1006,7 +1006,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
             __ Shr(MethodLiteral::FunctionKindBits::START_BIT, temp);
             __ Andl((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, temp);
             __ Cmpl(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR), temp);
-            __ Jbe(&getHiddenThis);  // constructor is base
+            __ Jbe(&getThis);  // constructor is base
             // fall through
         }
         // exception branch
