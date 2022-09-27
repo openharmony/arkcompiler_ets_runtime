@@ -1407,6 +1407,56 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     return functionClass;
 }
 
+JSHandle<JSHClass> ObjectFactory::CreateDefaultClassPrototypeHClass(JSHClass *hclass)
+{
+    uint32_t size = ClassInfoExtractor::NON_STATIC_RESERVED_LENGTH;
+    JSHandle<LayoutInfo> layout = CreateLayoutInfo(size, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
+    PropertyAttributes attributes = PropertyAttributes::Default(true, false, true);  // non-enumerable
+
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::MIXED);
+    attributes.SetOffset(ClassInfoExtractor::CONSTRUCTOR_INDEX);
+    layout->AddKey(thread_, ClassInfoExtractor::CONSTRUCTOR_INDEX,
+        thread_->GlobalConstants()->GetConstructorString(), attributes);
+
+    JSHandle<JSHClass> defaultHclass = NewEcmaHClass(hclass, JSObject::SIZE, JSType::JS_OBJECT, size);
+    defaultHclass->SetLayout(thread_, layout);
+    defaultHclass->SetNumberOfProps(size);
+    defaultHclass->SetClassPrototype(true);
+    defaultHclass->SetIsPrototype(true);
+    return defaultHclass;
+}
+
+JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *hclass)
+{
+    uint32_t size = ClassInfoExtractor::STATIC_RESERVED_LENGTH;
+    JSHandle<LayoutInfo> layout = CreateLayoutInfo(size, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
+
+    JSHandle<TaggedArray> array = NewTaggedArray(size);
+    array->Set(thread_, ClassInfoExtractor::LENGTH_INDEX, thread_->GlobalConstants()->GetLengthString());
+    array->Set(thread_, ClassInfoExtractor::NAME_INDEX, thread_->GlobalConstants()->GetNameString());
+    array->Set(thread_, ClassInfoExtractor::PROTOTYPE_INDEX, thread_->GlobalConstants()->GetPrototypeString());
+    for (uint32_t index = ClassInfoExtractor::LENGTH_INDEX; index < size; index++) {
+        PropertyAttributes attributes;
+        if (index == ClassInfoExtractor::PROTOTYPE_INDEX) {
+            attributes = PropertyAttributes::DefaultAccessor(false, false, false);
+        } else {
+            attributes = PropertyAttributes::Default(false, false, true);
+        }
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetOffset(index);
+        layout->AddKey(thread_, index, array->Get(index), attributes);
+    }
+
+    JSHandle<JSHClass> defaultHclass = NewEcmaHClass(hclass, JSFunction::SIZE, JSType::JS_FUNCTION, size);
+    defaultHclass->SetLayout(thread_, layout);
+    defaultHclass->SetNumberOfProps(size);
+    defaultHclass->SetClassConstructor(true);
+    defaultHclass->SetConstructor(true);
+    return defaultHclass;
+}
+
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
                                                           const JSHandle<JSHClass> &clazz,
                                                           MemSpaceType type)
@@ -2899,11 +2949,9 @@ JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTag
     obj->ClearBitField();
     obj->SetConstructorMethod(thread_, method.GetTaggedValue());
     JSHandle<TaggedArray> emptyArray = EmptyArray();
-    obj->SetPrototypeHClass(thread_, JSTaggedValue::Undefined());
     obj->SetNonStaticKeys(thread_, emptyArray, SKIP_BARRIER);
     obj->SetNonStaticProperties(thread_, emptyArray, SKIP_BARRIER);
     obj->SetNonStaticElements(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetConstructorHClass(thread_, JSTaggedValue::Undefined());
     obj->SetStaticKeys(thread_, emptyArray, SKIP_BARRIER);
     obj->SetStaticProperties(thread_, emptyArray, SKIP_BARRIER);
     obj->SetStaticElements(thread_, emptyArray, SKIP_BARRIER);

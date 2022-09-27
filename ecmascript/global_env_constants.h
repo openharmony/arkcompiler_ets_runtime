@@ -107,7 +107,9 @@ class JSThread;
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
-    V(JSTaggedValue, MethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)
+    V(JSTaggedValue, MethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)                                            \
+    V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
+    V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \
@@ -466,7 +468,7 @@ public:
 #define DECL_GET(Type, Name, Index, Desc) \
     const Type Get##Name() const;         \
     const JSHandle<Type> GetHandled##Name() const; \
-    static size_t GetOffsetOf##Name(); 
+    static size_t GetOffsetOf##Name();
 
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET)
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET)

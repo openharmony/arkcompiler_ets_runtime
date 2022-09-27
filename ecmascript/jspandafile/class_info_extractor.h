@@ -45,19 +45,19 @@ public:
     static void BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
                                                    const JSHandle<TaggedArray> &literal);
 
-    static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+    static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                    JSHandle<TaggedArray> &keys,
                                                     JSHandle<TaggedArray> &properties);
 
-    static JSHandle<JSHClass> CreateConstructorHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+    static JSHandle<JSHClass> CreateConstructorHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                      JSHandle<TaggedArray> &keys,
                                                       JSHandle<TaggedArray> &properties);
 
     static constexpr size_t PROTOTYPE_HCLASS_OFFSET = TaggedObjectSize();
-    ACCESSORS(PrototypeHClass, PROTOTYPE_HCLASS_OFFSET, NON_STATIC_KEYS_OFFSET)
-    ACCESSORS(NonStaticKeys, NON_STATIC_KEYS_OFFSET, NON_STATIC_PROPERTIES_OFFSET)
+    ACCESSORS(NonStaticKeys, PROTOTYPE_HCLASS_OFFSET, NON_STATIC_PROPERTIES_OFFSET)
     ACCESSORS(NonStaticProperties, NON_STATIC_PROPERTIES_OFFSET, NON_STATIC_ELEMENTS_OFFSET)
     ACCESSORS(NonStaticElements, NON_STATIC_ELEMENTS_OFFSET, CONSTRUCTOR_HCLASS_OFFSET)
-    ACCESSORS(ConstructorHClass, CONSTRUCTOR_HCLASS_OFFSET, STATIC_KEYS_OFFSET)
-    ACCESSORS(StaticKeys, STATIC_KEYS_OFFSET, STATIC_PROPERTIES_OFFSET)
+    ACCESSORS(StaticKeys, CONSTRUCTOR_HCLASS_OFFSET, STATIC_PROPERTIES_OFFSET)
     ACCESSORS(StaticProperties, STATIC_PROPERTIES_OFFSET, STATIC_ELEMENTS_OFFSET)
     ACCESSORS(StaticElements, STATIC_ELEMENTS_OFFSET, CONSTRUCTOR_METHOD_OFFSET)
     ACCESSORS(ConstructorMethod, CONSTRUCTOR_METHOD_OFFSET, BIT_FIELD_OFFSET)
@@ -85,11 +85,13 @@ enum class ClassPropertyType : uint8_t { NON_STATIC = 0, STATIC };
 
 class ClassHelper {
 public:
-    static JSHandle<JSFunction> DefineClassFromExtractor(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
+    static JSHandle<JSFunction> DefineClassFromExtractor(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                         JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &constpool,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
-    static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
+    static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                       JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &constpool,
                                                        const JSHandle<JSTaggedValue> &lexenv,
                                                        const JSHandle<JSHClass> &ihclass);

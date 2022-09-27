@@ -2913,9 +2913,6 @@ void MachineCode::Dump(std::ostream &os) const
 
 void ClassInfoExtractor::Dump(std::ostream &os) const
 {
-    os << " - PrototypeHClass: ";
-    GetPrototypeHClass().Dump(os);
-    os << "\n";
     os << " - NonStaticKeys: ";
     GetNonStaticKeys().Dump(os);
     os << "\n";
@@ -2924,9 +2921,6 @@ void ClassInfoExtractor::Dump(std::ostream &os) const
     os << "\n";
     os << " - NonStaticElements: ";
     GetNonStaticElements().Dump(os);
-    os << "\n";
-    os << " - ConstructorHClass: ";
-    GetConstructorHClass().Dump(os);
     os << "\n";
     os << " - StaticKeys: ";
     GetStaticKeys().Dump(os);
@@ -4875,11 +4869,9 @@ void MachineCode::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>>
 
 void ClassInfoExtractor::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("PrototypeHClass"), GetPrototypeHClass()));
     vec.push_back(std::make_pair(CString("NonStaticKeys"), GetNonStaticKeys()));
     vec.push_back(std::make_pair(CString("NonStaticProperties"), GetNonStaticProperties()));
     vec.push_back(std::make_pair(CString("NonStaticElements"), GetNonStaticElements()));
-    vec.push_back(std::make_pair(CString("ConstructorHClass"), GetConstructorHClass()));
     vec.push_back(std::make_pair(CString("StaticKeys"), GetStaticKeys()));
     vec.push_back(std::make_pair(CString("StaticProperties"), GetStaticProperties()));
     vec.push_back(std::make_pair(CString("StaticElements"), GetStaticElements()));
