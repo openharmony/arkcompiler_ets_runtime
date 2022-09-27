@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUGGER_MANAGER_H
 #define ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUGGER_MANAGER_H
 
+#include "ecmascript/debugger/hot_reload_manager.h"
 #include "ecmascript/debugger/notification_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"
@@ -45,12 +46,18 @@ public:
     void Initialize(const EcmaVM *vm)
     {
         notificationManager_ = new NotificationManager();
+        hotReloadManager_ = new HotReloadManager(vm);
         jsThread_ = vm->GetJSThread();
     }
 
     NotificationManager *GetNotificationManager() const
     {
         return notificationManager_;
+    }
+
+    HotReloadManager *GetHotReloadManager() const
+    {
+        return hotReloadManager_;
     }
 
     void SetDebugMode(bool isDebugMode)
@@ -140,6 +147,7 @@ private:
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
     NotificationManager *notificationManager_ {nullptr};
+    HotReloadManager *hotReloadManager_ {nullptr};
     ObjectUpdaterFunc *updaterFunc_ {nullptr};
     SingleStepperFunc *stepperFunc_ {nullptr};
     JSThread *jsThread_ {nullptr};

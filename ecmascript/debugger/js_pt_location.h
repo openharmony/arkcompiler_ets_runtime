@@ -18,6 +18,7 @@
 
 #include <cstring>
 
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "libpandafile/file.h"
 #include "libpandabase/macros.h"
 
@@ -26,14 +27,20 @@ class JSPtLocation {
 public:
     using EntityId = panda_file::File::EntityId;
 
-    explicit JSPtLocation(const char *pandaFile, EntityId methodId, uint32_t bytecodeOffset)
-        : pandaFile_(pandaFile), methodId_(methodId), bytecodeOffset_(bytecodeOffset)
+    explicit JSPtLocation(const JSPandaFile *jsPandaFile, EntityId methodId, uint32_t bytecodeOffset,
+        const std::string &sourceFile = "") : jsPandaFile_(jsPandaFile), methodId_(methodId),
+        bytecodeOffset_(bytecodeOffset), sourceFile_(sourceFile)
     {
     }
 
-    const char *GetPandaFile() const
+    const JSPandaFile *GetJsPandaFile() const
     {
-        return pandaFile_;
+        return jsPandaFile_;
+    }
+
+    const std::string &GetSourceFile() const
+    {
+        return sourceFile_;
     }
 
     EntityId GetMethodId() const
@@ -49,7 +56,19 @@ public:
     bool operator==(const JSPtLocation &location) const
     {
         return methodId_ == location.methodId_ && bytecodeOffset_ == location.bytecodeOffset_ &&
-               ::strcmp(pandaFile_, location.pandaFile_) == 0;
+               jsPandaFile_ == location.jsPandaFile_;
+    }
+
+    std::string ToString() const
+    {
+        std::stringstream location;
+        location << "[";
+        location << "methodId:" << methodId_ << ", ";
+        location << "bytecodeOffset:" << bytecodeOffset_ << ", ";
+        location << "sourceFile:" << "\""<< sourceFile_ << "\""<< ", ";
+        location << "jsPandaFile:" << "\"" << jsPandaFile_->GetJSPandaFileDesc() << "\"";
+        location << "]";
+        return location.str();
     }
 
     ~JSPtLocation() = default;
@@ -58,9 +77,10 @@ public:
     DEFAULT_MOVE_SEMANTIC(JSPtLocation);
 
 private:
-    const char *pandaFile_;
+    const JSPandaFile *jsPandaFile_;
     EntityId methodId_;
     uint32_t bytecodeOffset_ {0};
+    std::string sourceFile_; // mainly used for breakpoint
 };
 }  // namespace panda::ecmascript::tooling
 
