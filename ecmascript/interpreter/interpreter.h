@@ -65,7 +65,6 @@ public:
     static inline JSTaggedValue GetNewTarget(JSTaggedType *sp);
     static inline JSTaggedValue GetThis(JSTaggedType *sp);
     static inline uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
-    static inline JSTaggedValue GetThisObjectFromFastNewFrame(JSTaggedType *sp);
     static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
     static inline int16_t GetHotnessCounter(uint32_t codeSize);
