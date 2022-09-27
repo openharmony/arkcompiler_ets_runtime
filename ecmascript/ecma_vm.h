@@ -404,7 +404,7 @@ private:
     Chunk chunk_;
     Heap *heap_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    ChunkVector<JSNativePointer *> nativePointerList_;
+    CList<JSNativePointer *> nativePointerList_;
 
     // VM execution states.
     JSThread *thread_ {nullptr};

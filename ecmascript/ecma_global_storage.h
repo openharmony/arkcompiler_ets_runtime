@@ -19,7 +19,7 @@
 #include "ecmascript/js_tagged_value.h"
 
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/chunk.h"
+#include "ecmascript/mem/native_area_allocator.h"
 
 namespace panda::ecmascript {
 class EcmaGlobalStorage {
@@ -27,11 +27,11 @@ public:
     static const int32_t GLOBAL_BLOCK_SIZE = 256;
     using WeakClearCallback = void (*)(void *);
 
-    explicit EcmaGlobalStorage(JSThread *thread, Chunk *chunk) : thread_(thread), chunk_(chunk)
+    explicit EcmaGlobalStorage(JSThread *thread, NativeAreaAllocator *allocator)
+        : thread_(thread), allocator_(allocator)
     {
-        ASSERT(chunk != nullptr);
-        topGlobalNodes_ = lastGlobalNodes_ = chunk_->New<NodeList<Node>>();
-        topWeakGlobalNodes_ = lastWeakGlobalNodes_ = chunk_->New<NodeList<WeakNode>>();
+        topGlobalNodes_ = lastGlobalNodes_ = allocator_->New<NodeList<Node>>();
+        topWeakGlobalNodes_ = lastWeakGlobalNodes_ = allocator_->New<NodeList<WeakNode>>();
     }
 
     ~EcmaGlobalStorage()
@@ -45,7 +45,7 @@ public:
                 node->SetUsing(false);
                 node->SetObject(JSTaggedValue::Undefined().GetRawData());
             });
-            chunk_->Delete(current);
+            allocator_->Delete(current);
         }
 
         auto *weakNext = topWeakGlobalNodes_;
@@ -59,7 +59,7 @@ public:
                 reinterpret_cast<WeakNode *>(node)->CallFirstPassCallback();
                 reinterpret_cast<WeakNode *>(node)->CallSecondPassCallback();
             });
-            chunk_->Delete(weakCurrent);
+            allocator_->Delete(weakCurrent);
         }
     }
 
@@ -375,10 +375,9 @@ public:
             return;
         }
         if (node->IsWeak()) {
-            DisposeGlobalHandle(reinterpret_cast<WeakNode *>(node), &weakFreeListNodes_, &topWeakGlobalNodes_,
-                                &lastWeakGlobalNodes_);
+            DisposeGlobalHandle(reinterpret_cast<WeakNode *>(node), &weakFreeListNodes_);
         } else {
-            DisposeGlobalHandle(node, &freeListNodes_, &topGlobalNodes_, &lastGlobalNodes_);
+            DisposeGlobalHandle(node, &freeListNodes_);
         }
     }
 
@@ -439,34 +438,18 @@ private:
     NO_MOVE_SEMANTIC(EcmaGlobalStorage);
 
     template<typename T>
-    inline void DisposeGlobalHandle(T *node, NodeList<T> **freeList, NodeList<T> **topNodes,
-                                    NodeList<T> **lastNodes)
+    inline void DisposeGlobalHandle(T *node, NodeList<T> **freeList)
     {
         NodeList<T> *list = NodeList<T>::NodeToNodeList(node);
         list->FreeNode(node);
 
-        // If NodeList has no usage node, then delete NodeList
-        if (!list->HasUsagedNode() && (*topNodes != *lastNodes)) {
-            list->RemoveList();
-            if (*freeList == list) {
-                *freeList = list->GetNext();
+        // Add to freeList
+        if (list != *freeList && list->GetFreeNext() == nullptr && list->GetFreePrev() == nullptr) {
+            list->SetFreeNext(*freeList);
+            if (*freeList != nullptr) {
+                (*freeList)->SetFreePrev(list);
             }
-            if (*topNodes == list) {
-                *topNodes = list->GetNext();
-            }
-            if (*lastNodes == list) {
-                *lastNodes = list->GetPrev();
-            }
-            chunk_->Delete(list);
-        } else {
-            // Add to freeList
-            if (list != *freeList && list->GetFreeNext() == nullptr && list->GetFreePrev() == nullptr) {
-                list->SetFreeNext(*freeList);
-                if (*freeList != nullptr) {
-                    (*freeList)->SetFreePrev(list);
-                }
-                *freeList = list;
-            }
+            *freeList = list;
         }
     }
 
@@ -497,7 +480,7 @@ private:
             }
             return node->GetObjectAddress();
         }
-        auto block = chunk_->New<NodeList<T>>();
+        auto block = allocator_->New<NodeList<T>>();
         block->LinkTo(*storage);
         *storage = block;
 
@@ -508,7 +491,7 @@ private:
     }
 
     [[maybe_unused]] JSThread *thread_ {nullptr};
-    Chunk *chunk_ {nullptr};
+    NativeAreaAllocator *allocator_ {nullptr};
     NodeList<Node> *topGlobalNodes_ {nullptr};
     NodeList<Node> *lastGlobalNodes_ {nullptr};
     NodeList<Node> *freeListNodes_ {nullptr};
