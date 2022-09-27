@@ -202,10 +202,10 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
 {
     CString baseFilename = "merge.abc";
     const char *data = R"(
-        .record panda.String <external>
-        .function panda.String main(panda.String a0) {
-            lda.obj a0
-            return.obj
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
@@ -226,10 +226,10 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
 {
     CString baseFilename = "merge.abc";
     const char *data = R"(
-        .record panda.String <external>
-        .function panda.String main(panda.String a0) {
-            lda.obj a0
-            return.obj
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
@@ -259,10 +259,10 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
 {
     CString baseFilename = "merge.abc";
     const char *data = R"(
-        .record panda.String <external>
-        .function panda.String main(panda.String a0) {
-            lda.obj a0
-            return.obj
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
@@ -298,10 +298,10 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
 {
     CString baseFilename = "merge.abc";
     const char *data = R"(
-        .record panda.String <external>
-        .function panda.String main(panda.String a0) {
-            lda.obj a0
-            return.obj
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
         }
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();

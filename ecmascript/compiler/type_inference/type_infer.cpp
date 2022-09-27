@@ -617,17 +617,13 @@ void TypeInfer::TypeCheck(GateRef gate) const
         return;
     }
     auto funcName = gateAccessor_.GetValueIn(func, 0);
-#ifdef NEW_INSTRUCTION_DEFINE
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), gateAccessor_.GetBitField(funcName));
-#endif
     auto funcNameString = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(funcName));
     if (funcNameString ==  "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gateAccessor_.GetValueIn(gate, 1), 0);
-#ifdef NEW_INSTRUCTION_DEFINE
         ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(),
                                          gateAccessor_.GetBitField(expectedGate));
-#endif
         auto expectedTypeStr = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(expectedGate));
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 0);
         auto type = gateAccessor_.GetGateType(valueGate);
