@@ -18,6 +18,7 @@
 #include <array>
 #include <cstdint>
 
+
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/base/json_stringifier.h"
@@ -160,7 +161,7 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     // Mem
     runtimeOptions.SetHeapSizeLimit(option.GetGcPoolSize());
     // asmInterpreter
-    runtimeOptions.SetEnableAsmInterpreter(option.GetEnableAsmInterpreter());
+    runtimeOptions.SetEnableAsmInterpreter(true);
     runtimeOptions.SetAsmOpcodeDisableRange(option.GetAsmOpcodeDisableRange());
 
     // Dfx
@@ -293,7 +294,15 @@ void JSNApi::NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress)
 
 bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry)
 {
-    LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
+    if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
+        std::string aotFileName = fileName.substr(0, fileName.length() - strlen(".abc"));
+        std::string anFileName = aotFileName + ".an";
+        if (access(anFileName.c_str(), F_OK) == 0) {
+            vm->LoadAOTFiles(aotFileName);
+        }
+    }
+
+    LOG_ECMA(INFO) << "start to execute ark file: " << fileName;
     JSThread *thread = vm->GetAssociatedJSThread();
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, fileName.c_str(), entry)) {
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
@@ -306,7 +315,23 @@ bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string 
 bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size,
                      const std::string &entry, const std::string &filename)
 {
-    LOG_ECMA(DEBUG) << "start to execute ark buffer: " << filename;
+    if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
+        std::string aotFileName = filename.substr(0, filename.length() - strlen(".abc"));
+        std::string anFileName = aotFileName + ".an";
+        if (access(anFileName.c_str(), F_OK) == 0) {
+            vm->LoadAOTFiles(aotFileName);
+            LOG_ECMA(INFO) << "start to execute ark file: " << filename;
+            JSThread *thread = vm->GetAssociatedJSThread();
+            if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, filename.c_str(), entry)) {
+                LOG_ECMA(ERROR) << "Cannot execute ark file '" << filename
+                                << "' with entry '" << entry << "'" << std::endl;
+                return false;
+            }
+            return true;
+        }
+    }
+    
+    LOG_ECMA(INFO) << "start to execute ark buffer: " << filename;
     JSThread *thread = vm->GetAssociatedJSThread();
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str())) {
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
