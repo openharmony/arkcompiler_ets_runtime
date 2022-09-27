@@ -72,7 +72,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {nullptr, 0, nullptr, 0},
     };
 
-    int count = 0;
     int index = 0;
     opterr = 0;
     bool ret = false;
@@ -88,25 +87,25 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
     }
 
     while (true) {
-        count++;
         option = getopt_long_only(argc, const_cast<char **>(argv), "", longOptions, &index);
         LOG_ECMA(INFO) << "option: " << option << ", optopt: " << optopt << ", optind: " << optind;
 
-        if (optind < 0 || optind > argc) {
+        if (optind <= 0 || optind > argc) {
             return false;
         }
 
         if (option == -1) {
-            if (count == 1) {
-                std::cerr << " Invalid option \"" << argv[optind] << "\"\n" << std::endl;
-                return false;
-            }
             return true;
         }
 
         // unknown option or required_argument option has no argument
         if (option == '?') {
-            return SetDefaultValue(const_cast<char *>(argv[optind]));
+            ret = SetDefaultValue(const_cast<char *>(argv[optind - 1]));
+            if (ret) {
+                continue;
+            } else {
+                return ret;
+            }
         }
 
         WasSet(option);
