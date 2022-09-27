@@ -385,6 +385,14 @@ DEF_RUNTIME_STUBS(Dec)
     return RuntimeDec(thread, value).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CallGetPrototype)
+{
+    RUNTIME_STUBS_HEADER(CallGetPrototype);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
+
+    return JSProxy::GetPrototype(thread, proxy).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(Exp)
 {
     RUNTIME_STUBS_HEADER(Exp);

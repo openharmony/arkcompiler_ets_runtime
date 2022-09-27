@@ -55,6 +55,9 @@ static constexpr uint64_t DOUBLE_SIGN_MASK = 0x8000000000000000ULL;
 static constexpr uint64_t DOUBLE_EXPONENT_MASK = 0x7FFULL << DOUBLE_SIGNIFICAND_SIZE;
 static constexpr uint64_t DOUBLE_SIGNIFICAND_MASK = 0x000FFFFFFFFFFFFFULL;
 static constexpr uint64_t DOUBLE_HIDDEN_BIT = 1ULL << DOUBLE_SIGNIFICAND_SIZE;
+static constexpr int32_t MINUS_ZERO_LOBITS = static_cast<int32_t>(0);
+static constexpr int32_t MINUS_ZERO_HIBITS = static_cast<int32_t>(1) << 31;
+static constexpr int64_t MINUS_ZERO_BITS = (static_cast<uint64_t>(MINUS_ZERO_HIBITS) << 32) | MINUS_ZERO_LOBITS;
 
 static constexpr size_t INT64_BITS = 64;
 static constexpr size_t INT32_BITS = 32;
