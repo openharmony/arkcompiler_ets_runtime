@@ -31,7 +31,7 @@ class SamplingProcessor : public Task {
 public:
     static uint64_t GetMicrosecondsTimeStamp();
 
-    explicit SamplingProcessor(SamplesRecord *generator, int interval, bool outToFile);
+    explicit SamplingProcessor(SamplesRecord *generator, int interval);
     virtual ~SamplingProcessor();
 
     bool Run(uint32_t threadIndex) override;
@@ -44,7 +44,6 @@ private:
     int interval_ = 0;
     int collectCount_ = 1;
     pthread_t pid_ = 0;
-    bool outToFile_ = false;
     bool firstWrite_ = true;
 };
 } // namespace panda::ecmascript

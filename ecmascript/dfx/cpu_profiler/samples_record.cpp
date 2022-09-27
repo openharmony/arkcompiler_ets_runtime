@@ -39,6 +39,7 @@ SamplesRecord::SamplesRecord()
     methodNode.id = 1;
     profileInfo_ = std::make_unique<struct ProfileInfo>();
     profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
+    profileInfo_->tid = syscall(SYS_gettid);
 }
 
 SamplesRecord::~SamplesRecord()
@@ -48,9 +49,9 @@ SamplesRecord::~SamplesRecord()
     }
 }
 
-void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
+void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
 {
-    if (isLastSample_.load()) {
+    if (isBreakSample_.load()) {
         frameStackLength_ = 0;
         frameInfoTempLength_ = 0;
         return;
@@ -68,7 +69,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
             methodNode.codeEntry = GetGcInfo();
             stackTopLines_.push_back(0);
             profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
-            if (!outToFile) {
+            if (!outToFile_) {
                 if (UNLIKELY(methodNode.parentId) == 0) {
                     profileInfo_->nodes[0].children.push_back(methodNode.id);
                 } else {
@@ -80,11 +81,10 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
         }
         gcState_.store(false);
     } else {
-        if (frameStackLength_ == 0) {
-            return;
+        if (frameStackLength_ != 0) {
+            frameStackLength_--;
         }
         methodNode.id = 1;
-        frameStackLength_--;
         for (; frameStackLength_ >= 1; frameStackLength_--) {
             methodkey.method = frameStack_[frameStackLength_ - 1];
             methodNode.parentId = methodkey.parentId = methodNode.id;
@@ -96,7 +96,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
                 methodNode.codeEntry = GetMethodInfo(methodkey.method);
                 stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
                 profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
-                if (!outToFile) {
+                if (!outToFile_) {
                     profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
                 }
             } else {
@@ -108,17 +108,64 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp, bool outToFile)
     int sampleNodeId = previousId_ == 0 ? 1 : methodNode.id;
     int timeDelta = static_cast<int>(sampleTimeStamp -
         (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
-    if (outToFile) {
+    if (outToFile_) {
         sampleInfo.id = sampleNodeId;
         sampleInfo.line = stackTopLines_[methodNode.id - 1];
         sampleInfo.timeStamp = timeDelta;
         samples_.push_back(sampleInfo);
     } else {
-        profileInfo_->nodes[sampleNodeId].hitCount++;
+        profileInfo_->nodes[sampleNodeId - 1].hitCount++;
         profileInfo_->samples.push_back(sampleNodeId);
         profileInfo_->timeDeltas.push_back(timeDelta);
     }
     threadStartTime_ = sampleTimeStamp;
+}
+
+void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
+{
+    NapiFrameInfoTempToMap();
+    struct MethodKey methodkey;
+    struct CpuProfileNode methodNode;
+    int napiFrameStackLength = napiFrameStack_.size();
+    if (napiFrameStackLength == 0) {
+        return;
+    }
+    methodNode.id = 1;
+    napiFrameStackLength--;
+    for (; napiFrameStackLength >= 1; napiFrameStackLength--) {
+        methodkey.method = napiFrameStack_[napiFrameStackLength - 1];
+        methodNode.parentId = methodkey.parentId = methodNode.id;
+        auto result = methodMap_.find(methodkey);
+        if (result == methodMap_.end()) {
+            int id = static_cast<int>(methodMap_.size() + 1);
+            methodMap_.insert(std::make_pair(methodkey, id));
+            previousId_ = methodNode.id = id;
+            methodNode.codeEntry = GetMethodInfo(methodkey.method);
+            stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
+            profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
+            if (!outToFile_) {
+                profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
+            }
+        } else {
+            previousId_ = methodNode.id = result->second;
+        }
+    }
+    struct SampleInfo sampleInfo;
+    int sampleNodeId = previousId_ == 0 ? 1 : methodNode.id;
+    *sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
+    int timeDelta = static_cast<int>(*sampleTimeStamp -
+        (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
+    if (outToFile_) {
+        sampleInfo.id = sampleNodeId;
+        sampleInfo.line = stackTopLines_[methodNode.id - 1];
+        sampleInfo.timeStamp = timeDelta;
+        samples_.push_back(sampleInfo);
+    } else {
+        profileInfo_->nodes[sampleNodeId - 1].hitCount++;
+        profileInfo_->samples.push_back(sampleNodeId);
+        profileInfo_->timeDeltas.push_back(timeDelta);
+    }
+    threadStartTime_ = *sampleTimeStamp;
 }
 
 void SamplesRecord::WriteAddNodes()
@@ -267,9 +314,39 @@ std::unique_ptr<struct ProfileInfo> SamplesRecord::GetProfileInfo()
     return std::move(profileInfo_);
 }
 
-void SamplesRecord::SetSampleFlag(bool sampleFlag)
+void SamplesRecord::SetIsBreakSampleFlag(bool sampleFlag)
 {
-    isLastSample_.store(sampleFlag);
+    isBreakSample_.store(sampleFlag);
+}
+
+void SamplesRecord::SetBeforeGetCallNapiStackFlag(bool flag)
+{
+    beforeCallNapi_.store(flag);
+}
+
+bool SamplesRecord::GetBeforeGetCallNapiStackFlag()
+{
+    return beforeCallNapi_.load();
+}
+
+void SamplesRecord::SetAfterGetCallNapiStackFlag(bool flag)
+{
+    afterCallNapi_.store(flag);
+}
+
+bool SamplesRecord::GetAfterGetCallNapiStackFlag()
+{
+    return afterCallNapi_.load();
+}
+
+void SamplesRecord::SetCallNapiFlag(bool flag)
+{
+    callNapi_.store(flag);
+}
+
+bool SamplesRecord::GetCallNapiFlag()
+{
+    return callNapi_.load();
 }
 
 int SamplesRecord::SemInit(int index, int pshared, int value)
@@ -302,13 +379,33 @@ void SamplesRecord::InsertStackInfo(Method *method, struct FrameInfo &codeEntry)
     stackInfoMap_.insert(std::make_pair(method, codeEntry));
 }
 
-void SamplesRecord::PushFrameStack(Method *method)
+bool SamplesRecord::PushFrameStack(Method *method)
 {
-    if (frameStackLength_ >= MAX_ARRAY_COUNT) {
-        SetSampleFlag(true);
-        return;
+    if (UNLIKELY(frameStackLength_ >= MAX_ARRAY_COUNT)) {
+        return false;
     }
     frameStack_[frameStackLength_++] = method;
+    return true;
+}
+
+bool SamplesRecord::PushNapiFrameStack(Method *method)
+{
+    if (UNLIKELY(napiFrameStack_.size() >= MAX_ARRAY_COUNT)) {
+        return false;
+    }
+    napiFrameStack_.push_back(method);
+    return true;
+}
+
+void SamplesRecord::ClearNapiStack()
+{
+    napiFrameStack_.clear();
+    napiFrameInfoTemps_.clear();
+}
+
+int SamplesRecord::GetNapiFrameStackLength()
+{
+    return napiFrameStack_.size();
 }
 
 bool SamplesRecord::GetGcState() const
@@ -331,13 +428,32 @@ void SamplesRecord::SetIsStart(bool isStart)
     isStart_.store(isStart);
 }
 
-void SamplesRecord::PushStackInfo(const FrameInfoTemp &frameInfoTemp)
+bool SamplesRecord::GetOutToFile() const
 {
-    if (frameInfoTempLength_ >= MAX_ARRAY_COUNT) {
-        SetSampleFlag(true);
-        return;
+    return outToFile_;
+}
+
+void SamplesRecord::SetOutToFile(bool outToFile)
+{
+    outToFile_ = outToFile;
+}
+
+bool SamplesRecord::PushStackInfo(const FrameInfoTemp &frameInfoTemp)
+{
+    if (UNLIKELY(frameInfoTempLength_ >= MAX_ARRAY_COUNT)) {
+        return false;
     }
     frameInfoTemps_[frameInfoTempLength_++] = frameInfoTemp;
+    return true;
+}
+
+bool SamplesRecord::PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp)
+{
+    if (UNLIKELY(napiFrameInfoTemps_.size() == MAX_ARRAY_COUNT)) {
+        return false;
+    }
+    napiFrameInfoTemps_.push_back(frameInfoTemp);
+    return true;
 }
 
 void SamplesRecord::FrameInfoTempToMap()
@@ -362,6 +478,30 @@ void SamplesRecord::FrameInfoTempToMap()
         stackInfoMap_.insert(std::make_pair(frameInfoTemps_[i].method, frameInfo));
     }
     frameInfoTempLength_ = 0;
+}
+
+void SamplesRecord::NapiFrameInfoTempToMap()
+{
+    int length = napiFrameInfoTemps_.size();
+    if (length == 0) {
+        return;
+    }
+    struct FrameInfo frameInfo;
+    for (int i = 0; i < length; ++i) {
+        frameInfo.url = napiFrameInfoTemps_[i].url;
+        auto iter = scriptIdMap_.find(frameInfo.url);
+        if (iter == scriptIdMap_.end()) {
+            scriptIdMap_.insert(std::make_pair(frameInfo.url, scriptIdMap_.size() + 1));
+            frameInfo.scriptId = static_cast<int>(scriptIdMap_.size());
+        } else {
+            frameInfo.scriptId = iter->second;
+        }
+        frameInfo.codeType = napiFrameInfoTemps_[i].codeType;
+        frameInfo.functionName = napiFrameInfoTemps_[i].functionName;
+        frameInfo.columnNumber = napiFrameInfoTemps_[i].columnNumber;
+        frameInfo.lineNumber = napiFrameInfoTemps_[i].lineNumber;
+        stackInfoMap_.insert(std::make_pair(napiFrameInfoTemps_[i].method, frameInfo));
+    }
 }
 
 int SamplesRecord::GetframeStackLength() const

@@ -2147,12 +2147,13 @@ HWTEST_F_L0(DebuggerTypesTest, ProfileCreateTest)
 
     // abnormal params of params.sub-key=[..]
     msg = std::string() + R"({"id":0,"method":"Debugger.Test","params":{
-          "startTime":10, "endTime":25, "nodes":[{"id":12,
+          "tid":1000, "startTime":10, "endTime":25, "nodes":[{"id":12,
           "callFrame": {"functionName":"Create", "scriptId":"10", "url":"url3", "lineNumber":100, "columnNumber":20}}],
           "samples":[],"timeDeltas":[]}})";
     profile = Profile::Create(DispatchRequest(msg).GetParams());
     ASSERT_NE(profile, nullptr);
 
+    EXPECT_EQ(profile->GetTid(), 1000LL);
     EXPECT_EQ(profile->GetStartTime(), 10LL);
     EXPECT_EQ(profile->GetEndTime(), 25LL);
     const std::vector<std::unique_ptr<ProfileNode>> *profileNode = profile->GetNodes();
@@ -2170,12 +2171,16 @@ HWTEST_F_L0(DebuggerTypesTest, ProfileToJsonTest)
     Result ret;
 
     msg = std::string() + R"({"id":0,"method":"Debugger.Test","params":{
-          "startTime":10, "endTime":25, "nodes":[{"id":12,
+          "tid":1000, "startTime":10, "endTime":25, "nodes":[{"id":12,
           "callFrame": {"functionName":"Create", "scriptId":"10", "url":"url3", "lineNumber":100, "columnNumber":20}}],
           "samples":[],"timeDeltas":[]}})";
     profile = Profile::Create(DispatchRequest(msg).GetParams());
     ASSERT_NE(profile, nullptr);
     auto json = profile->ToJson();
+
+    ret = json->GetInt("tid", &tmpInt);
+    EXPECT_EQ(ret, Result::SUCCESS);
+    EXPECT_EQ(tmpInt, 1000);
 
     ret = json->GetInt("startTime", &tmpInt);
     EXPECT_EQ(ret, Result::SUCCESS);
