@@ -3788,7 +3788,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                                            methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                                            methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
                 // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 2;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -3930,7 +3930,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                                            methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                                            methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
                 // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 2;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
@@ -4070,7 +4070,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                                            methodHandle->GetNumArgsWithCallField() + 1 :  // +1 for this
                                            methodHandle->GetNumArgsWithCallField() + 2;   // +2 for newTarget and this
                 // +1 for hidden this, explicit this may be overwritten after bc optimizer
-                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 2;
+                size_t frameSize = InterpretedFrame::NumOfMembers() + numVregs + numDeclaredArgs + 1;
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 JSTaggedType *newSp = sp - frameSize;
                 InterpretedFrame *state = GET_FRAME(newSp);
