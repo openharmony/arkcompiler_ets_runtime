@@ -1592,14 +1592,23 @@ void BytecodeInfoCollector::CollectMethodInfoFromNewBC(const BytecodeInstruction
                 CollectInnerMethods(method, methodId);
                 break;
             }
-            case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
-            case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
+            case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:{
                 auto entityId = pf->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
                 methodId = entityId.GetOffset();
                 CollectInnerMethods(method, methodId);
                 auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
+                CollectInnerMethodsFromNewLiteral(method, literalId);
+                break;
+            }
+            case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
+                auto entityId = pf->ResolveMethodIndex(method->GetMethodId(),
+                    (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
+                methodId = entityId.GetOffset();
+                CollectInnerMethods(method, methodId);
+                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
+                    (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
                 CollectInnerMethodsFromNewLiteral(method, literalId);
                 break;
             }

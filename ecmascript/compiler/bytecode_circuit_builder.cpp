@@ -201,8 +201,10 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(std::map<std::pair<uint8_t
         }
         if (!flag) {
             // pre block
-            bytecodeBlockInfos_.emplace_back(byteCodeCurPrePc_.at(tryStartPc), SplitKind::END,
+            if (byteCodeCurPrePc_.at(tryStartPc) != tryStartPc) {
+                bytecodeBlockInfos_.emplace_back(byteCodeCurPrePc_.at(tryStartPc), SplitKind::END,
                                              std::vector<uint8_t *>(1, tryStartPc));
+            }
         }
         // try block
         bytecodeBlockInfos_.emplace_back(tryStartPc, SplitKind::START, std::vector<uint8_t *>(1, tryStartPc));
@@ -718,6 +720,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
             uint32_t actualNumArgs = READ_INST_8_1();
             uint32_t startReg = READ_INST_8_2();
+            info.inputs.emplace_back(VirtualRegister(startReg));
             for (size_t i = 1; i <= actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(startReg + i));
             }
@@ -726,6 +729,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8: {
             uint32_t actualNumArgs = READ_INST_16_1();
             uint32_t startReg = READ_INST_8_3();
+            info.inputs.emplace_back(VirtualRegister(startReg));
             for (size_t i = 1; i <= actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(startReg + i));
             }

@@ -180,7 +180,7 @@ private:
     void LowerCallThisRange(GateRef gate, GateRef glue);
     void LowerCallthisrangeImm8Imm8V8(GateRef gate, GateRef glue);
     void LowerWideCallthisrangePrefImm16V8(GateRef gate, GateRef glue);
-    void LowerCallSpread(GateRef gate, GateRef glue);
+    void LowerCallSpread(GateRef gate, GateRef glue, bool isDeprecated);
     void LowerCallRange(GateRef gate, GateRef glue);
     void LowerCallrangeImm8Imm8V8(GateRef gate, GateRef glue);
     void LowerWideCallrangePrefImm16V8(GateRef gate, GateRef glue);
@@ -229,6 +229,7 @@ private:
     void LowerCreateEmptyObject(GateRef gate, GateRef glue);
     void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerDeprecatedCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerGetTemplateObject(GateRef gate, GateRef glue);

@@ -353,8 +353,11 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
             LowerWideCallthisrangePrefImm16V8(gate, glue);
             break;
+        case EcmaOpcode::APPLY_IMM8_V8_V8:
+            LowerCallSpread(gate, glue, false);
+            break;
         case EcmaOpcode::DEPRECATED_CALLSPREAD_PREF_V8_V8_V8:
-            LowerCallSpread(gate, glue);
+            LowerCallSpread(gate, glue, true);
             break;
         case EcmaOpcode::DEPRECATED_CALLRANGE_PREF_IMM16_V8:
             LowerCallRange(gate, glue);
@@ -557,8 +560,10 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
-        case EcmaOpcode::DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16:
             LowerCreateObjectWithBuffer(gate, glue, jsFunc);
+            break;
+        case EcmaOpcode::DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16:
+            LowerDeprecatedCreateObjectWithBuffer(gate, glue, jsFunc);
             break;
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
@@ -1224,7 +1229,7 @@ void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate, GateRef g
     ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
     size_t numIns = acc_.GetNumValueIn(gate);
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8));
-    GateRef callTarget = acc_.GetValueIn(gate, numIns - 1); // acc
+    GateRef callTarget = acc_.GetValueIn(gate, numIns - 2); // acc
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
     GateRef env = builder_.Undefined();
@@ -1238,17 +1243,24 @@ void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate, GateRef g
     for (size_t i = fixedInputsNum; i < numIns - 1; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
+    vec.emplace_back(acc_.GetValueIn(gate, numIns - 1)); // bcoffset
     LowerToJSCall(gate, glue, vec);
 }
 
-void SlowPathLowering::LowerCallSpread(GateRef gate, GateRef glue)
+void SlowPathLowering::LowerCallSpread(GateRef gate, GateRef glue, bool isDeprecated)
 {
     // need to fixed in later
     const int id = RTSTUB_ID(CallSpread);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef newGate = LowerCallRuntime(glue, id,
-        {acc_.GetValueIn(gate, 2), acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
+    GateRef newGate;
+    if (isDeprecated) {
+        newGate = LowerCallRuntime(glue, id,
+            {acc_.GetValueIn(gate, 2), acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
+    } else {
+        newGate = LowerCallRuntime(glue, id,
+            {acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2), acc_.GetValueIn(gate, 0)});
+    }
     ReplaceHirToCall(gate, newGate);
 }
 
@@ -1978,6 +1990,24 @@ void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue, Ga
 }
 
 void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc)
+{
+    DebugPrintBC(gate, glue);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    // 1: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef obj = GetObjectFromConstPool(glue, jsFunc, builder_.TruncInt64ToInt32(index),
+                                         ConstPoolType::OBJECT_LITERAL);
+    GateRef lexEnv = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
+    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { obj, lexEnv }, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
+}
+
+void SlowPathLowering::LowerDeprecatedCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue);
     Label successExit(&builder_);
