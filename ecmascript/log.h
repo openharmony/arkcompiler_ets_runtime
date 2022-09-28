@@ -101,6 +101,7 @@ public:
 private:
     static void SetLogLevelFromString(const std::string& level);
     static void SetLogComponentFromString(const std::vector<std::string>& components);
+    static int32_t PrintLogger(int32_t, int32_t level, const char *, const char *, const char *message);
 
     static Level level_;
     static ComponentMark components_;
