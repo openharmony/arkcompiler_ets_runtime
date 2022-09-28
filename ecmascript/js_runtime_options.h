@@ -531,8 +531,8 @@ private:
     PandArg<uint32_t> maxNonmovableSpaceCapacity_ {"maxNonmovableSpaceCapacity",
         4_MB,
         R"(set max nonmovable space capacity)"};
-    PandArg<bool> enableAsmInterpreter_ {"asm-interpreter", true,
-        R"(Enable asm interpreter. Default: true)"};
+    PandArg<bool> enableAsmInterpreter_ {"asm-interpreter", false,
+        R"(Enable asm interpreter. Default: false)"};
     PandArg<std::string> asmOpcodeDisableRange_ {"asm-opcode-disable-range",
         "",
         R"(Opcode range when asm interpreter is enabled.)"};
