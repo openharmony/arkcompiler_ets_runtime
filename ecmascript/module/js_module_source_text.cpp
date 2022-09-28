@@ -168,7 +168,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
         ee.Update(starExportEntries->Get(idx));
         moduleRequest.Update(ee->GetModuleRequest());
         JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, moduleRequest,
-                                                            module, starResolution, resolveSet);
+                                                           module, starResolution, resolveSet);
         if (result->IsString() || result->IsException()) {
             return result;
         }
@@ -774,6 +774,37 @@ JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, JSTaggedValue k
         return dict->GetValue(entry);
     }
 
+    // when key is exportName, need to get localName
+    JSTaggedValue exportEntriesTv = GetLocalExportEntries();
+    if (!exportEntriesTv.IsUndefined()) {
+        JSTaggedValue resolution = FindByExport(exportEntriesTv, key, dictionary);
+        if (!resolution.IsHole()) {
+            return resolution;
+        }
+    }
+
+    return JSTaggedValue::Hole();
+}
+
+JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
+                                             const JSTaggedValue &dictionary)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
+    TaggedArray *exportEntries = TaggedArray::Cast(exportEntriesTv.GetTaggedObject());
+    size_t exportEntriesLen = exportEntries->GetLength();
+    for (size_t idx = 0; idx < exportEntriesLen; idx++) {
+        LocalExportEntry *ee = LocalExportEntry::Cast(exportEntries->Get(idx).GetTaggedObject());
+        if (!JSTaggedValue::SameValue(ee->GetExportName(), key)) {
+            continue;
+        }
+        JSTaggedValue localName = ee->GetLocalName();
+        int entry = dict->FindEntry(localName);
+        if (entry != -1) {
+            return dict->GetValue(entry);
+        }
+    }
+
     return JSTaggedValue::Hole();
 }
 
@@ -804,25 +835,8 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTagge
         data.Update(NameDictionary::Create(thread, DEFAULT_DICTIONART_CAPACITY));
     }
     JSMutableHandle<NameDictionary> dataDict(data);
-
-    JSHandle<JSTaggedValue> localExportEntriesTv(thread, module->GetLocalExportEntries());
-    ASSERT(localExportEntriesTv->IsTaggedArray());
-
-    auto globalConstants = thread->GlobalConstants();
-    JSMutableHandle<LocalExportEntry> ee(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> exportName(thread, globalConstants->GetUndefined());
-
-    JSHandle<TaggedArray> localExportEntries(localExportEntriesTv);
-    size_t localExportEntriesLen = localExportEntries->GetLength();
-    for (size_t idx = 0; idx < localExportEntriesLen; idx++) {
-        ee.Update(localExportEntries->Get(idx));
-        if (JSTaggedValue::SameValue(ee->GetLocalName(), key.GetTaggedValue())) {
-            exportName.Update(ee->GetExportName());
-            dataDict.Update(NameDictionary::Put(thread, dataDict, exportName, value,
-                                                PropertyAttributes::Default()));
-            break;
-        }
-    }
+    dataDict.Update(NameDictionary::Put(thread, dataDict, key, value,
+                                        PropertyAttributes::Default()));
 
     module->SetNameDictionary(thread, dataDict);
 }
