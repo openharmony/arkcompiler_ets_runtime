@@ -143,12 +143,12 @@ private:
     std::ostringstream stream_;
 };
 #elif defined(PANDA_TARGET_ANDROID)  // PANDA_TARGET_ANDROID
-template<Level level, Component component>
+template<Level level>
 class PUBLIC_API AndroidLog {
 public:
     AndroidLog()
     {
-        std::string str = Log::GetComponentStr(component);
+        std::string str = "[default] ";
         stream_ << str;
     }
     ~AndroidLog();
@@ -196,7 +196,7 @@ private:
 #define ARK_LOG(level, component) panda::ecmascript::LOGGABLE_##level && \
                                   panda::ecmascript::HiLog<LOG_##level, (component)>()
 #elif defined(PANDA_TARGET_ANDROID)
-#define ARK_LOG(level, component) panda::ecmascript::AndroidLog<(level), (component)>()
+#define ARK_LOG(level, component) panda::ecmascript::AndroidLog<(level)>()
 #else
 #define ARK_LOG(level, component) panda::ecmascript::Log::LogIsLoggable(level, component) && \
                                   panda::ecmascript::StdLog<(level), (component)>()
