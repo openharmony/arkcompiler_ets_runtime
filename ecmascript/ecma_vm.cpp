@@ -696,6 +696,7 @@ void EcmaVM::ClearBufferData()
 
     cachedConstpools_.clear();
     internalNativeMethods_.clear();
+    WorkerList_.clear();
 }
 
 bool EcmaVM::ExecutePromisePendingJob()

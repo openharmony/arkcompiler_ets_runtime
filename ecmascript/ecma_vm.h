@@ -395,9 +395,17 @@ public:
         exceptionBCList_.clear();
     }
 
-    void WorkersetInfo(uint32_t tid, EcmaVM *workerVm)
+    void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
     {
-        WorkerList_.emplace(tid, workerVm);
+        auto thread = workerVm->GetJSThread();
+            if (thread != nullptr) {
+                auto tid = thread->GetThreadId();
+                if (tid != 0) {
+                    if (hostVm != nullptr && workerVm != nullptr) {
+                        WorkerList_.emplace(tid, workerVm);
+                }
+            }
+        }
     }
 
     EcmaVM *GetWorkerVm(uint32_t tid) const
@@ -583,7 +591,7 @@ private:
     friend class ValueSerializer;
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
-    CMap<uint32_t, EcmaVM *> WorkerList_;
+    CMap<uint32_t, EcmaVM *> WorkerList_ {};
 };
 }  // namespace ecmascript
 }  // namespace panda
