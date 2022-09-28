@@ -30,8 +30,8 @@ struct FlattenArgs {
 class ArrayHelper {
 public:
     static bool IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
-    static int32_t SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
-                               const JSHandle<JSTaggedValue> &valueX, const JSHandle<JSTaggedValue> &valueY);
+    static double SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
+                              const JSHandle<JSTaggedValue> &valueX, const JSHandle<JSTaggedValue> &valueY);
     static int64_t GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static int64_t GetArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue FlattenIntoArray(JSThread *thread, const JSHandle<JSObject> &newArrayHandle,
