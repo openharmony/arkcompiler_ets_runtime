@@ -39,7 +39,10 @@ SamplesRecord::SamplesRecord()
     methodNode.id = 1;
     profileInfo_ = std::make_unique<struct ProfileInfo>();
     profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
-    profileInfo_->tid = syscall(SYS_gettid);
+    int tid = syscall(SYS_gettid);
+    if (tid != -1) {
+        profileInfo_->tid = static_cast<uint64_t>(tid);
+    }
 }
 
 SamplesRecord::~SamplesRecord()
@@ -126,7 +129,7 @@ void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
     NapiFrameInfoTempToMap();
     struct MethodKey methodkey;
     struct CpuProfileNode methodNode;
-    int napiFrameStackLength = napiFrameStack_.size();
+    size_t napiFrameStackLength = napiFrameStack_.size();
     if (napiFrameStackLength == 0) {
         return;
     }
@@ -482,12 +485,12 @@ void SamplesRecord::FrameInfoTempToMap()
 
 void SamplesRecord::NapiFrameInfoTempToMap()
 {
-    int length = napiFrameInfoTemps_.size();
+    size_t length = napiFrameInfoTemps_.size();
     if (length == 0) {
         return;
     }
     struct FrameInfo frameInfo;
-    for (int i = 0; i < length; ++i) {
+    for (size_t i = 0; i < length; ++i) {
         frameInfo.url = napiFrameInfoTemps_[i].url;
         auto iter = scriptIdMap_.find(frameInfo.url);
         if (iter == scriptIdMap_.end()) {
