@@ -420,12 +420,19 @@ public:
         return workerVm;
     }
     
-    bool DeleteWorker(uint32_t tid)
+    bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
     {
-        auto iter = WorkerList_.find(tid);
-        if (iter != WorkerList_.end()) {
-            WorkerList_.erase(iter);
-            return true;
+        if (hostVm != nullptr && workerVm != nullptr) {
+            auto tid = workerVm->GetJSThread()->GetThreadId();
+            if(tid !=0){
+                auto iter = WorkerList_.find(tid);
+                if (iter != WorkerList_.end()) {
+                    WorkerList_.erase(iter);
+                    return true;
+                }
+                return false;
+            }
+            return false;
         }
         return false;
     }
