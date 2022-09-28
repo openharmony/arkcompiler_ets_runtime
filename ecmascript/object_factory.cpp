@@ -2033,6 +2033,24 @@ JSHandle<TaggedHashArray> ObjectFactory::NewTaggedHashArray(uint32_t length)
     return array;
 }
 
+JSHandle<ByteArray> ObjectFactory::NewByteArray(uint32_t length, uint32_t size)
+{
+    size_t byteSize = ByteArray::ComputeSize(size, length);
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetByteArrayClass().GetTaggedObject());
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(arrayClass, byteSize);
+    JSHandle<ByteArray> array(thread_, header);
+
+    void *data = array->GetData();
+    if (memset_s(data, length * size, 0, length * size) != EOK) {
+        LOG_FULL(FATAL) << "memset_s failed";
+        UNREACHABLE();
+    }
+
+    array->SetLength(length);
+    array->SetSize(size);
+    return array;
+}
+
 JSHandle<LinkedNode> ObjectFactory::NewLinkedNode(int hash, const JSHandle<JSTaggedValue> &key,
                                                   const JSHandle<JSTaggedValue> &value,
                                                   const JSHandle<LinkedNode> &next)

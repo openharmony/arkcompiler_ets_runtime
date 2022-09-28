@@ -216,6 +216,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "BigInt64 Array";
         case JSType::JS_BIGUINT64_ARRAY:
             return "BigUint64 Array";
+        case JSType::BYTE_ARRAY:
+            return "ByteArray";
         case JSType::JS_ARGUMENTS:
             return "Arguments";
         case JSType::JS_PROXY:
@@ -651,6 +653,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::BIGINT:
             BigInt::Cast(obj)->Dump(os);
+            break;
+        case JSType::BYTE_ARRAY:
+            ByteArray::Cast(obj)->Dump(os);
             break;
         case JSType::JS_PROXY:
             JSProxy::Cast(obj)->Dump(os);
@@ -2068,6 +2073,12 @@ void JSTypedArray::Dump(std::ostream &os) const
     os << " - byte-offset: " << GetByteOffset();
     os << " - array-length: " << GetArrayLength();
     JSObject::Dump(os);
+}
+
+void ByteArray::Dump(std::ostream &os) const
+{
+    os << " - length: " << GetLength();
+    os << " - size: " << GetSize();
 }
 
 void JSRegExp::Dump(std::ostream &os) const
@@ -3515,6 +3526,9 @@ static void DumpObject(TaggedObject *obj,
         case JSType::BIGINT:
             BigInt::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::BYTE_ARRAY:
+            ByteArray::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_PROXY:
             JSProxy::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -4331,6 +4345,12 @@ void JSTypedArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>
     vec.push_back(std::make_pair(CString("byte-length"), JSTaggedValue(GetByteLength())));
     vec.push_back(std::make_pair(CString("byte-offset"), JSTaggedValue(GetByteOffset())));
     vec.push_back(std::make_pair(CString("array-length"), JSTaggedValue(GetArrayLength())));
+}
+
+void ByteArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("length"), JSTaggedValue(GetLength())));
+    vec.push_back(std::make_pair(CString("size"), JSTaggedValue(GetSize())));
 }
 
 void JSRegExp::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

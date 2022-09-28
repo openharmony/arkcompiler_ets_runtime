@@ -808,6 +808,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(dict)
                 break;
             }
+            case JSType::BYTE_ARRAY: {
+                JSHandle<ByteArray> byteArray = factory->NewByteArray(4, 8);
+                DUMP_FOR_HANDLE(byteArray)
+                break;
+            }
             case JSType::GLOBAL_ENV: {
                 DUMP_FOR_HANDLE(globalEnv)
                 break;

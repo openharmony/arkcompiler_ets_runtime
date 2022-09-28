@@ -44,6 +44,7 @@
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
+#include "ecmascript/byte_array.h"
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
@@ -88,6 +89,7 @@ using ecmascript::EcmaRuntimeCallInfo;
 using ecmascript::JSArray;
 using ecmascript::JSArrayBuffer;
 using ecmascript::JSDataView;
+using ecmascript::ByteArray;
 using ecmascript::JSDate;
 using ecmascript::JSFunction;
 using ecmascript::JSFunctionBase;
@@ -1549,8 +1551,8 @@ uint32_t TypedArrayRef::ArrayLength([[maybe_unused]] const EcmaVM *vm)
 Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
-    JSHandle<JSObject> typeArray(JSNApiHelper::ToJSHandle(this));
-    JSHandle<JSTaggedValue> arrayBuffer(thread, JSTypedArray::Cast(*typeArray)->GetViewedArrayBuffer());
+    JSHandle<JSTypedArray> typeArray(JSNApiHelper::ToJSHandle(this));
+    JSHandle<JSTaggedValue> arrayBuffer(thread, JSTypedArray::GetOffHeapBuffer(thread, typeArray));
     return JSNApiHelper::ToLocal<ArrayBufferRef>(arrayBuffer);
 }
 

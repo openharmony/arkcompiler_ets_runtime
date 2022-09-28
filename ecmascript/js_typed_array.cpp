@@ -660,4 +660,29 @@ JSTaggedValue JSTypedArray::FastSetPropertyByIndex(JSThread *thread, const JSTag
     // Perform SetValueInBuffer(buffer, indexedPosition, elementType, numValue).
     return BuiltinsArrayBuffer::FastSetValueInBuffer(buffer, byteIndex, elementType, numValue.GetNumber(), true);
 }
+
+JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray)
+{
+    JSTaggedValue arrBuf = typedArray->GetViewedArrayBuffer();
+    if (arrBuf.IsArrayBuffer() || arrBuf.IsSharedArrayBuffer()) {
+        return arrBuf;
+    }
+
+    ByteArray *byteArray = ByteArray::Cast(arrBuf.GetTaggedObject());
+    int32_t length = byteArray->GetLength() * byteArray->GetSize();
+    JSHandle<JSArrayBuffer> arrayBuffer = thread->GetEcmaVM()->GetFactory()->NewJSArrayBuffer(length);
+
+    if (length > 0) {
+        void *fromBuf = reinterpret_cast<void *>(ToUintPtr(
+            ByteArray::Cast(typedArray->GetViewedArrayBuffer().GetTaggedObject())->GetData()));
+        JSTaggedValue data = arrayBuffer->GetArrayBufferData();
+        void *toBuf = reinterpret_cast<void *>(
+            ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())->GetExternalPointer()));
+        JSArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, 0, length);
+    }
+    typedArray->SetViewedArrayBuffer(thread, arrayBuffer.GetTaggedValue());
+    typedArray->SetIsOnHeap(false);
+
+    return arrayBuffer.GetTaggedValue();
+}
 }  // namespace panda::ecmascript

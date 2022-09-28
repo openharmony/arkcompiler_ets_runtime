@@ -19,6 +19,7 @@
 #include "ecmascript/js_hclass.h"
 
 #include "ecmascript/layout_info-inl.h"
+#include "ecmascript/byte_array.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/transitions_dictionary.h"
 
@@ -180,6 +181,11 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::CONSTANT_POOL:
             size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(),
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
+            break;
+        case JSType::BYTE_ARRAY:
+            size = ByteArray::ComputeSize(ByteArray::Cast(header)->GetSize(),
+                                          ByteArray::Cast(header)->GetLength());
+            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::STRING:
             size = EcmaStringAccessor(reinterpret_cast<EcmaString *>(header)).ObjectSize();
