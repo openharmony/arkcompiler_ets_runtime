@@ -39,6 +39,7 @@ public:
     static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
     static constexpr char PATCH_FUNCTION_NAME_0[] = "patch_main_0";
     static constexpr char PATCH_FUNCTION_NAME_1[] = "patch_main_1";
+    static constexpr char PATCH_RECORD_PREFIX[] = "Patch.";
 
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
     static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
@@ -55,7 +56,7 @@ public:
     static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
     static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";
 
-    JSPandaFile(const panda_file::File *pf, const CString &descriptor);
+    JSPandaFile(const panda_file::File *pf, const CString &descriptor, bool isPatch);
     ~JSPandaFile();
 
     const CString &GetJSPandaFileDesc() const
@@ -229,9 +230,13 @@ public:
     {
         return jsRecordInfo_;
     }
-    static CString ParseEntryPoint(const CString &recordName)
+    CString ParseEntryPoint(const CString &recordName) const
     {
-        return recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
+        CString record = recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
+        if (isPatch_) {
+            record = PATCH_RECORD_PREFIX + record;
+        }
+        return record;
     }
 
     void checkIsBundlePack();
@@ -260,6 +265,7 @@ private:
     bool isLoadedAOT_ {false};
     uint32_t typeSummaryIndex_ {0};
     bool isNewVersion_ {true};
+    bool isPatch_ {false};
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle

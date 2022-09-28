@@ -372,7 +372,6 @@ public:
     static constexpr uint32_t MAX_ELEMENT_INDEX = std::numeric_limits<uint32_t>::max();
 
     CAST_CHECK(JSObject, IsECMAObject);
-    CAST_CHECK_TAGGEDVALUE(JSObject, IsECMAObject);
 
     // ecma6.0 6.2.4.4
     static JSHandle<JSTaggedValue> FromPropertyDescriptor(JSThread *thread, const PropertyDescriptor &desc);

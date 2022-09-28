@@ -473,6 +473,13 @@
                 std::abort();                                                                   \
             }                                                                                   \
             return static_cast<const CAST_TYPE *>(object);                                      \
+        }                                                                                       \
+        static inline CAST_TYPE *Cast(JSTaggedValue value)                                      \
+        {                                                                                       \
+            if (!value.CHECK_METHOD()) {                                                        \
+                std::abort();                                                                   \
+            }                                                                                   \
+            return static_cast<CAST_TYPE *>(value.GetTaggedObject());                           \
         }
 # else
     #define CAST_CHECK(CAST_TYPE, CHECK_METHOD)                                                   \
@@ -485,6 +492,11 @@
         {                                                                                         \
             ASSERT(JSTaggedValue(object).CHECK_METHOD());                                         \
             return static_cast<const CAST_TYPE *>(object);                                        \
+        }                                                                                         \
+        static inline CAST_TYPE *Cast(JSTaggedValue value)                                        \
+        {                                                                                         \
+            ASSERT(value.CHECK_METHOD());                                                         \
+            return static_cast<CAST_TYPE *>(value.GetTaggedObject());                             \
         }
 
     #define CAST_NO_CHECK(CAST_TYPE)                                                              \
@@ -495,24 +507,6 @@
         static const inline CAST_TYPE *ConstCast(const TaggedObject *object)                      \
         {                                                                                         \
             return static_cast<const CAST_TYPE *>(object);                                        \
-        }
-#endif
-
-#if ECMASCRIPT_ENABLE_CAST_CHECK
-    #define CAST_CHECK_TAGGEDVALUE(CAST_TYPE, CHECK_METHOD)                                     \
-        static inline CAST_TYPE *Cast(JSTaggedValue value)                                      \
-        {                                                                                       \
-            if (value.IsHeapObject() && value.GetTaggedObject()->GetClass()->CHECK_METHOD()) {  \
-                return static_cast<CAST_TYPE *>(value.GetTaggedObject());                       \
-            }                                                                                   \
-            std::abort();                                                                       \
-        }
-# else
-    #define CAST_CHECK_TAGGEDVALUE(CAST_TYPE, CHECK_METHOD)                                       \
-        static inline CAST_TYPE *Cast(JSTaggedValue value)                                        \
-        {                                                                                         \
-            ASSERT(value.IsHeapObject() && value.GetTaggedObject()->GetClass()->CHECK_METHOD());  \
-            return static_cast<CAST_TYPE *>(value.GetTaggedObject());                             \
         }
 #endif
 
