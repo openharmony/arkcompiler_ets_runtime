@@ -460,7 +460,7 @@ GateRef InterpreterStubBuilder::GetStartIdxAndNumArgs(GateRef sp, GateRef restId
            &actualNotEqualDeclared, &actualEqualDeclared);
     Bind(&actualNotEqualDeclared);
     {
-        numArgs = TaggedCastToInt32(Load(VariableType::JS_ANY(), fp, IntPtr(-sizeof(JSTaggedType))));
+        numArgs = GetInt32OfTInt(Load(VariableType::JS_ANY(), fp, IntPtr(-sizeof(JSTaggedType))));
         Jump(&actualEqualDeclared);
     }
     Bind(&actualEqualDeclared);

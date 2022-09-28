@@ -747,7 +747,7 @@ DECLARE_ASM_HANDLER(HandleLessImm8V8)
                 }
                 Bind(&leftNotInt1);
                 {
-                    doubleLeft = TaggedCastToDouble(left);
+                    doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&exit1);
                 }
                 Bind(&exit1);
@@ -761,7 +761,7 @@ DECLARE_ASM_HANDLER(HandleLessImm8V8)
                 }
                 Bind(&rightNotInt1);
                 {
-                    doubleRight = TaggedCastToDouble(right);
+                    doubleRight = GetDoubleOfTDouble(right);
                     Jump(&exit2);
                 }
                 Bind(&exit2);
@@ -842,7 +842,7 @@ DECLARE_ASM_HANDLER(HandleLesseqImm8V8)
                 }
                 Bind(&leftNotInt1);
                 {
-                    doubleLeft = TaggedCastToDouble(left);
+                    doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&exit1);
                 }
                 Bind(&exit1);
@@ -856,7 +856,7 @@ DECLARE_ASM_HANDLER(HandleLesseqImm8V8)
                 }
                 Bind(&rightNotInt1);
                 {
-                    doubleRight = TaggedCastToDouble(right);
+                    doubleRight = GetDoubleOfTDouble(right);
                     Jump(&exit2);
                 }
                 Bind(&exit2);
@@ -937,7 +937,7 @@ DECLARE_ASM_HANDLER(HandleGreaterImm8V8)
                 }
                 Bind(&leftNotInt1);
                 {
-                    doubleLeft = TaggedCastToDouble(left);
+                    doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&exit1);
                 }
                 Bind(&exit1);
@@ -951,7 +951,7 @@ DECLARE_ASM_HANDLER(HandleGreaterImm8V8)
                 }
                 Bind(&rightNotInt1);
                 {
-                    doubleRight = TaggedCastToDouble(right);
+                    doubleRight = GetDoubleOfTDouble(right);
                     Jump(&exit2);
                 }
                 Bind(&exit2);
@@ -1032,7 +1032,7 @@ DECLARE_ASM_HANDLER(HandleGreatereqImm8V8)
                 }
                 Bind(&leftNotInt1);
                 {
-                    doubleLeft = TaggedCastToDouble(left);
+                    doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&exit1);
                 }
                 Bind(&exit1);
@@ -1046,7 +1046,7 @@ DECLARE_ASM_HANDLER(HandleGreatereqImm8V8)
                 }
                 Bind(&rightNotInt1);
                 {
-                    doubleRight = TaggedCastToDouble(right);
+                    doubleRight = GetDoubleOfTDouble(right);
                     Jump(&exit2);
                 }
                 Bind(&exit2);
@@ -1390,7 +1390,7 @@ DECLARE_ASM_HANDLER(HandleIncImm8)
     Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
     Bind(&valueIsInt);
     {
-        GateRef valueInt = TaggedCastToInt32(value);
+        GateRef valueInt = GetInt32OfTInt(value);
         Label valueNoOverflow(env);
         Branch(Int32Equal(valueInt, Int32(INT32_MAX)), &valueNotInt, &valueNoOverflow);
         Bind(&valueNoOverflow);
@@ -1406,7 +1406,7 @@ DECLARE_ASM_HANDLER(HandleIncImm8)
         Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
         Bind(&valueIsDouble);
         {
-            GateRef valueDouble = TaggedCastToDouble(value);
+            GateRef valueDouble = GetDoubleOfTDouble(value);
             varAcc = DoubleToTaggedDoublePtr(DoubleAdd(valueDouble, Double(1.0)));
             Jump(&accDispatch);
         }
@@ -1435,7 +1435,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedIncPrefV8)
     Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
     Bind(&valueIsInt);
     {
-        GateRef valueInt = TaggedCastToInt32(value);
+        GateRef valueInt = GetInt32OfTInt(value);
         Label valueNoOverflow(env);
         Branch(Int32Equal(valueInt, Int32(INT32_MAX)), &valueNotInt, &valueNoOverflow);
         Bind(&valueNoOverflow);
@@ -1451,7 +1451,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedIncPrefV8)
         Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
         Bind(&valueIsDouble);
         {
-            GateRef valueDouble = TaggedCastToDouble(value);
+            GateRef valueDouble = GetDoubleOfTDouble(value);
             varAcc = DoubleToTaggedDoublePtr(DoubleAdd(valueDouble, Double(1.0)));
             Jump(&accDispatch);
         }
@@ -1480,7 +1480,7 @@ DECLARE_ASM_HANDLER(HandleDecImm8)
     Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
     Bind(&valueIsInt);
     {
-        GateRef valueInt = TaggedCastToInt32(value);
+        GateRef valueInt = GetInt32OfTInt(value);
         Label valueNoOverflow(env);
         Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueNotInt, &valueNoOverflow);
         Bind(&valueNoOverflow);
@@ -1496,7 +1496,7 @@ DECLARE_ASM_HANDLER(HandleDecImm8)
         Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
         Bind(&valueIsDouble);
         {
-            GateRef valueDouble = TaggedCastToDouble(value);
+            GateRef valueDouble = GetDoubleOfTDouble(value);
             varAcc = DoubleToTaggedDoublePtr(DoubleSub(valueDouble, Double(1.0)));
             Jump(&accDispatch);
         }
@@ -1527,7 +1527,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDecPrefV8)
     Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
     Bind(&valueIsInt);
     {
-        GateRef valueInt = TaggedCastToInt32(value);
+        GateRef valueInt = GetInt32OfTInt(value);
         Label valueNoOverflow(env);
         Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueNotInt, &valueNoOverflow);
         Bind(&valueNoOverflow);
@@ -1543,7 +1543,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDecPrefV8)
         Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
         Bind(&valueIsDouble);
         {
-            GateRef valueDouble = TaggedCastToDouble(value);
+            GateRef valueDouble = GetDoubleOfTDouble(value);
             varAcc = DoubleToTaggedDoublePtr(DoubleSub(valueDouble, Double(1.0)));
             Jump(&accDispatch);
         }
@@ -2350,7 +2350,7 @@ DECLARE_ASM_HANDLER(HandleNegImm8)
     Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
     Bind(&valueIsInt);
     {
-        GateRef valueInt = TaggedCastToInt32(value);
+        GateRef valueInt = GetInt32OfTInt(value);
         Label valueIsZero(env);
         Label valueNotZero(env);
         Branch(Int32Equal(valueInt, Int32(0)), &valueIsZero, &valueNotZero);
@@ -2373,7 +2373,7 @@ DECLARE_ASM_HANDLER(HandleNegImm8)
         Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
         Bind(&valueIsDouble);
         {
-            GateRef valueDouble = TaggedCastToDouble(value);
+            GateRef valueDouble = GetDoubleOfTDouble(value);
             varAcc = DoubleToTaggedDoublePtr(DoubleSub(Double(0), valueDouble));
             Jump(&accDispatch);
         }
@@ -2401,7 +2401,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedNegPrefV8)
     Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
     Bind(&valueIsInt);
     {
-        GateRef valueInt = TaggedCastToInt32(value);
+        GateRef valueInt = GetInt32OfTInt(value);
         Label valueIsZero(env);
         Label valueNotZero(env);
         Branch(Int32Equal(valueInt, Int32(0)), &valueIsZero, &valueNotZero);
@@ -2424,7 +2424,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedNegPrefV8)
         Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
         Bind(&valueIsDouble);
         {
-            GateRef valueDouble = TaggedCastToDouble(value);
+            GateRef valueDouble = GetDoubleOfTDouble(value);
             varAcc = DoubleToTaggedDoublePtr(DoubleSub(Double(0), valueDouble));
             Jump(&accDispatch);
         }
@@ -2452,7 +2452,7 @@ DECLARE_ASM_HANDLER(HandleNotImm8)
     Branch(TaggedIsInt(value), &numberIsInt, &numberNotInt);
     Bind(&numberIsInt);
     {
-        number = TaggedCastToInt32(value);
+        number = GetInt32OfTInt(value);
         varAcc = IntToTaggedPtr(Int32Not(*number));
         Jump(&accDispatch);
     }
@@ -2463,7 +2463,7 @@ DECLARE_ASM_HANDLER(HandleNotImm8)
         Branch(TaggedIsDouble(value), &numberIsDouble, &numberNotDouble);
         Bind(&numberIsDouble);
         {
-            GateRef valueDouble = TaggedCastToDouble(value);
+            GateRef valueDouble = GetDoubleOfTDouble(value);
             number = DoubleToInt(glue, valueDouble);
             varAcc = IntToTaggedPtr(Int32Not(*number));
             Jump(&accDispatch);
@@ -2491,7 +2491,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedNotPrefV8)
     Branch(TaggedIsInt(value), &numberIsInt, &numberNotInt);
     Bind(&numberIsInt);
     {
-        number = TaggedCastToInt32(value);
+        number = GetInt32OfTInt(value);
         varAcc = IntToTaggedPtr(Int32Not(*number));
         Jump(&accDispatch);
     }
@@ -2502,7 +2502,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedNotPrefV8)
         Branch(TaggedIsDouble(value), &numberIsDouble, &numberNotDouble);
         Bind(&numberIsDouble);
         {
-            GateRef valueDouble = TaggedCastToDouble(value);
+            GateRef valueDouble = GetDoubleOfTDouble(value);
             number = DoubleToInt(glue, valueDouble);
             varAcc = IntToTaggedPtr(Int32Not(*number));
             Jump(&accDispatch);
@@ -2549,14 +2549,14 @@ DECLARE_ASM_HANDLER(HandleAnd2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    opNumber0 = TaggedCastToInt32(left);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    opNumber0 = TaggedCastToInt32(left);
-                    GateRef rightDouble = TaggedCastToDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
                 }
@@ -2568,15 +2568,15 @@ DECLARE_ASM_HANDLER(HandleAnd2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
@@ -2629,14 +2629,14 @@ DECLARE_ASM_HANDLER(HandleOr2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    opNumber0 = TaggedCastToInt32(left);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    opNumber0 = TaggedCastToInt32(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
                 }
@@ -2648,15 +2648,15 @@ DECLARE_ASM_HANDLER(HandleOr2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
@@ -2709,14 +2709,14 @@ DECLARE_ASM_HANDLER(HandleXor2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    opNumber0 = TaggedCastToInt32(left);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    opNumber0 = TaggedCastToInt32(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
                 }
@@ -2728,15 +2728,15 @@ DECLARE_ASM_HANDLER(HandleXor2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
@@ -2789,14 +2789,14 @@ DECLARE_ASM_HANDLER(HandleAshr2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    opNumber0 = TaggedCastToInt32(left);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    opNumber0 = TaggedCastToInt32(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
                 }
@@ -2808,15 +2808,15 @@ DECLARE_ASM_HANDLER(HandleAshr2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
@@ -2873,14 +2873,14 @@ DECLARE_ASM_HANDLER(HandleShr2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    opNumber0 = TaggedCastToInt32(left);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&doShr);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    opNumber0 = TaggedCastToInt32(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&doShr);
                 }
@@ -2892,15 +2892,15 @@ DECLARE_ASM_HANDLER(HandleShr2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&doShr);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&doShr);
@@ -2968,14 +2968,14 @@ DECLARE_ASM_HANDLER(HandleShl2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    opNumber0 = TaggedCastToInt32(left);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    opNumber0 = TaggedCastToInt32(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
                 }
@@ -2987,15 +2987,15 @@ DECLARE_ASM_HANDLER(HandleShl2Imm8V8)
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
-                    opNumber1 = TaggedCastToInt32(right);
+                    opNumber1 = GetInt32OfTInt(right);
                     Jump(&accDispatch);
                 }
                 Bind(&rightIsDouble);
                 {
-                    GateRef rightDouble = TaggedCastToDouble(right);
-                    GateRef leftDouble = TaggedCastToDouble(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = DoubleToInt(glue, rightDouble);
                     Jump(&accDispatch);
@@ -3425,7 +3425,7 @@ DECLARE_ASM_HANDLER(HandleJeqzImm8)
             Branch(TaggedIsDouble(acc), &accIsDouble, &last);
             Bind(&accIsDouble);
             {
-                Branch(DoubleEqual(TaggedCastToDouble(acc), Double(0)), &accEqualFalse, &last);
+                Branch(DoubleEqual(GetDoubleOfTDouble(acc), Double(0)), &accEqualFalse, &last);
             }
         }
     }
@@ -3466,7 +3466,7 @@ DECLARE_ASM_HANDLER(HandleJeqzImm16)
             Branch(TaggedIsDouble(acc), &accIsDouble, &last);
             Bind(&accIsDouble);
             {
-                Branch(DoubleEqual(TaggedCastToDouble(acc), Double(0)), &accEqualFalse, &last);
+                Branch(DoubleEqual(GetDoubleOfTDouble(acc), Double(0)), &accEqualFalse, &last);
             }
         }
     }
@@ -3507,7 +3507,7 @@ DECLARE_ASM_HANDLER(HandleJeqzImm32)
             Branch(TaggedIsDouble(acc), &accIsDouble, &last);
             Bind(&accIsDouble);
             {
-                Branch(DoubleEqual(TaggedCastToDouble(acc), Double(0)), &accEqualFalse, &last);
+                Branch(DoubleEqual(GetDoubleOfTDouble(acc), Double(0)), &accEqualFalse, &last);
             }
         }
     }
@@ -3548,7 +3548,7 @@ DECLARE_ASM_HANDLER(HandleJnezImm8)
             Branch(TaggedIsDouble(acc), &accIsDouble, &last);
             Bind(&accIsDouble);
             {
-                Branch(DoubleEqual(TaggedCastToDouble(acc), Double(0)), &last, &accEqualTrue);
+                Branch(DoubleEqual(GetDoubleOfTDouble(acc), Double(0)), &last, &accEqualTrue);
             }
         }
     }
@@ -3589,7 +3589,7 @@ DECLARE_ASM_HANDLER(HandleJnezImm16)
             Branch(TaggedIsDouble(acc), &accIsDouble, &last);
             Bind(&accIsDouble);
             {
-                Branch(DoubleEqual(TaggedCastToDouble(acc), Double(0)), &last, &accEqualTrue);
+                Branch(DoubleEqual(GetDoubleOfTDouble(acc), Double(0)), &last, &accEqualTrue);
             }
         }
     }
@@ -3630,7 +3630,7 @@ DECLARE_ASM_HANDLER(HandleJnezImm32)
             Branch(TaggedIsDouble(acc), &accIsDouble, &last);
             Bind(&accIsDouble);
             {
-                Branch(DoubleEqual(TaggedCastToDouble(acc), Double(0)), &last, &accEqualTrue);
+                Branch(DoubleEqual(GetDoubleOfTDouble(acc), Double(0)), &last, &accEqualTrue);
             }
         }
     }

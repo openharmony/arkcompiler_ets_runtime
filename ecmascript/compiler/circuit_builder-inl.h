@@ -50,24 +50,24 @@ GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset)
 
 // Js World
 // cast operation
-GateRef CircuitBuilder::TaggedCastToInt64(GateRef x)
+GateRef CircuitBuilder::GetInt64OfTInt(GateRef x)
 {
     GateRef tagged = ChangeTaggedPointerToInt64(x);
     return Int64And(tagged, Int64(~JSTaggedValue::TAG_MARK));
 }
 
-GateRef CircuitBuilder::TaggedCastToInt32(GateRef x)
+GateRef CircuitBuilder::GetInt32OfTInt(GateRef x)
 {
-    return ChangeInt64ToInt32(TaggedCastToInt64(x));
+    return ChangeInt64ToInt32(GetInt64OfTInt(x));
 }
 
 GateRef CircuitBuilder::TaggedCastToIntPtr(GateRef x)
 {
     ASSERT(cmpCfg_ != nullptr);
-    return cmpCfg_->Is32Bit() ? TaggedCastToInt32(x) : TaggedCastToInt64(x);
+    return cmpCfg_->Is32Bit() ? GetInt32OfTInt(x) : GetInt64OfTInt(x);
 }
 
-GateRef CircuitBuilder::TaggedCastToDouble(GateRef x)
+GateRef CircuitBuilder::GetDoubleOfTDouble(GateRef x)
 {
     GateRef tagged = ChangeTaggedPointerToInt64(x);
     GateRef val = Int64Sub(tagged, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
