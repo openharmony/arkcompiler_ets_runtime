@@ -561,9 +561,16 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, [[
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry.c_str());
+    if (ecmaModule->GetIsNewBcVersion()) {
+        // 0: There's only one export value "default"
+        JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, 0, false));
+        return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+    }
 
-    // 0: There's only one export value "default"
-    JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, 0, false));
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
+
+    JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false));
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
@@ -574,8 +581,16 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
     JSThread *thread = vm->GetJSThread();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(file.c_str());
 
-    // 0: There's only one export value "default"
-    JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, 0, false));
+    if (ecmaModule->GetIsNewBcVersion()) {
+        // 0: There's only one export value "default"
+        JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, 0, false));
+        return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+    }
+
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
+
+    JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false));
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 

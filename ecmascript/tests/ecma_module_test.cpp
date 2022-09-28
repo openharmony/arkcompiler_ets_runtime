@@ -161,7 +161,7 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue)
     JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value));
     module->StoreModuleValue(thread, storeKey, valueHandle);
 
-    JSHandle<JSTaggedValue> loadKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName));
+    JSHandle<JSTaggedValue> loadKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
     JSTaggedValue loadValue = module->GetModuleValue(thread, loadKey.GetTaggedValue(), false);
     EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
 }
@@ -194,7 +194,7 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValue)
     moduleExport->StoreModuleValue(thread, exportLocalNameHandle, exportValueHandle);
 
     JSTaggedValue importDefaultValue =
-        moduleExport->GetModuleValue(thread, exportNameHandle.GetTaggedValue(), false);
+        moduleExport->GetModuleValue(thread, exportLocalNameHandle.GetTaggedValue(), false);
     EXPECT_EQ(exportValueHandle.GetTaggedValue(), importDefaultValue);
 }
 
