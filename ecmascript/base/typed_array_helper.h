@@ -28,13 +28,16 @@ enum ElementSize : uint8_t { ONE = 1, TWO = 2, FOUR = 4, EIGHT = 8 };
 class TypedArrayHelper {
 public:
     static JSTaggedValue TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
-                                               const JSHandle<JSTaggedValue> &constructorName, const DataViewType arrayType);
+                                               const JSHandle<JSTaggedValue> &constructorName,
+                                               const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
                                                  const JSHandle<JSTaggedValue> &constructorName,
-                                                 const JSHandle<JSTaggedValue> &newTarget, const DataViewType arrayType);
+                                                 const JSHandle<JSTaggedValue> &newTarget,
+                                                 const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
                                                  const JSHandle<JSTaggedValue> &constructorName,
-                                                 const JSHandle<JSTaggedValue> &newTarget, int32_t length, const DataViewType arrayType);
+                                                 const JSHandle<JSTaggedValue> &newTarget, int32_t length,
+                                                 const DataViewType arrayType);
     static JSHandle<JSObject> TypedArraySpeciesCreate(JSThread *thread, const JSHandle<JSTypedArray> &obj,
                                                       uint32_t argc, JSTaggedType argv[]);
     static JSHandle<JSObject> TypedArrayCreate(JSThread *thread, const JSHandle<JSTaggedValue> &constructor,
@@ -53,7 +56,8 @@ public:
                                const JSHandle<JSTaggedValue> &secondValue);
 
 private:
-    static JSTaggedValue CreateFromOrdinaryObject(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj, const DataViewType arrayType);
+    static JSTaggedValue CreateFromOrdinaryObject(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
+                                                  const DataViewType arrayType);
     static JSTaggedValue CreateFromTypedArray(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                               const DataViewType arrayType);
     static JSTaggedValue CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,

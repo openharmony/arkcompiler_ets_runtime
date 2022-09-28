@@ -1534,7 +1534,8 @@ void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t inne
         innerMethodIter->second.lexEnv.outmethodId = methodInfoId;
         return;
     }
-    methodList.emplace(innerMethodOffset, MethodInfo { GetMethodInfoID(), 0, {}, LexEnv { static_cast<uint32_t>(methodInfoId), {} } });
+    methodList.emplace(innerMethodOffset,
+        MethodInfo { GetMethodInfoID(), 0, {}, LexEnv { static_cast<uint32_t>(methodInfoId), {} } });
 }
 
 void BytecodeInfoCollector::CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index)
