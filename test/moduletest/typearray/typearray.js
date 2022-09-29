@@ -38,6 +38,17 @@
     }
 });
 
+[
+    BigInt64Array,
+    BigUint64Array
+].forEach(function(ctor, i) {
+    if (testTypeArray5(ctor) ) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
 function testTypeArray1(ctor) {
     let result = []
     let obj = new ctor(5);
@@ -98,6 +109,21 @@ function testTypeArray4(ctor) {
     a2.set(a1);
     for (let i = 0; i < a2.length; i++) {
         if (a2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function testTypeArray5(ctor) {
+    let result = []
+    let a1 = new ctor(10);
+    a1.set([21n, 2n, 3n], "2");
+    result.push(a1[2] == 21n);
+    result.push(a1[3] == 2n);
+    result.push(a1[4] == 3n);
+    for (let i = 0; i < result.length; i++) {
+        if (!result[i]) {
             return false;
         }
     }
