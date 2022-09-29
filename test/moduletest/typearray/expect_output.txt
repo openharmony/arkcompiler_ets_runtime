@@ -20,4 +20,6 @@ Uint32Array test success !!!
 Uint16Array test success !!!
 Uint8Array test success !!!
 Uint8ClampedArray test success !!!
+BigInt64Array test success !!!
+BigUint64Array test success !!!
 8388608

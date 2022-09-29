@@ -17,6 +17,8 @@
 
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
@@ -26,6 +28,9 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
+using TypedArrayHelper = base::TypedArrayHelper;
+using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
+
 JSTaggedValue JSStableArray::Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
@@ -574,5 +579,42 @@ JSTaggedValue JSStableArray::Concat(JSThread *thread, JSHandle<JSObject> newArra
         k++;
     }
     return base::BuiltinsBase::GetTaggedDouble(true);
+}
+
+JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &targetArray,
+                                                           DataViewType targetType, uint32_t targetOffset,
+                                                           uint32_t srcLength, JSHandle<TaggedArray> &elements)
+{
+    JSHandle<JSTaggedValue> targetBuffer(thread, targetArray->GetViewedArrayBuffer());
+    // If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(targetBuffer.GetTaggedValue())) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
+                                    JSTaggedValue::Exception());
+    }
+    uint32_t targetLength = targetArray->GetArrayLength();
+    uint32_t targetByteOffset = targetArray->GetByteOffset();
+    uint32_t targetElementSize = TypedArrayHelper::GetSizeFromType(targetType);
+    if (srcLength + targetOffset > targetLength) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "The sum of length and targetOffset is greater than targetLength.",
+                                     JSTaggedValue::Exception());
+    }
+    uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset * targetElementSize + targetByteOffset);
+    JSMutableHandle<JSTaggedValue> elem(thread, JSTaggedValue::Hole());
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
+    ContentType contentType = targetArray->GetContentType();
+    for (uint32_t i = 0; i < srcLength; i++) {
+        elem.Update(elements->Get(i));
+        if (contentType == ContentType::BigInt) {
+            kValue.Update(JSTaggedValue::ToBigInt(thread, elem));
+        } else {
+            kValue.Update(JSTaggedValue::ToNumber(thread, elem));
+        }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        BuiltinsArrayBuffer::SetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
+                                              targetType, kValue, true);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        targetByteIndex += static_cast<int32_t>(targetElementSize);
+    }
+    return JSTaggedValue::Undefined();
 }
 }  // namespace panda::ecmascript
