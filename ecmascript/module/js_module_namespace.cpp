@@ -274,7 +274,12 @@ bool ModuleNamespace::ValidateKeysAvailable(JSThread *thread, const JSHandle<Tag
         JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolveSet);
         // Adapter new module
         ASSERT(binding->IsResolvedBinding() || binding->IsResolvedIndexBinding());
-        JSTaggedValue targetModule = JSHandle<ResolvedBinding>::Cast(binding)->GetModule();
+        JSTaggedValue targetModule = JSTaggedValue::Undefined();
+        if (binding->IsResolvedBinding()) {
+            targetModule = JSHandle<ResolvedBinding>::Cast(binding)->GetModule();
+        } else if (binding->IsResolvedIndexBinding()) {
+            targetModule = JSHandle<ResolvedIndexBinding>::Cast(binding)->GetModule();
+        }
         ASSERT(!targetModule.IsUndefined());
         JSTaggedValue dictionary = SourceTextModule::Cast(targetModule.GetTaggedObject())->GetNameDictionary();
         if (dictionary.IsUndefined()) {
