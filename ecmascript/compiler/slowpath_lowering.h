@@ -231,7 +231,7 @@ private:
     void LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDeprecatedCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStModuleVarByIndex(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc);
+    void LowerStModuleVar(GateRef gate, GateRef glue, GateRef jsFunc, bool isDeprecated = false);
     void LowerGetTemplateObject(GateRef gate, GateRef glue);
     void LowerSetObjectWithProto(GateRef gate, GateRef glue);
     void LowerLdBigInt(GateRef gate, GateRef glue, GateRef jsFunc);

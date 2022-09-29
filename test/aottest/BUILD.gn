@@ -21,8 +21,7 @@ group("ark_aot_js_test") {
     "dynamicimport:dynamicimportAotAction",
     "formatrangetoparts:formatrangetopartsAotAction",
     "global_this_js:global_this_jsAotAction",
-
-    #    "module:moduleAotAction",
+    "module:moduleAotAction",
     "undefined:undefinedAotAction",
   ]
 }
