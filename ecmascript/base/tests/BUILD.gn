@@ -25,6 +25,7 @@ host_unittest_action("BaseTest") {
     "array_helper_test.cpp",
     "atomic_helper_test.cpp",
     "builtins_base_test.cpp",
+    "error_helper_test.cpp",
     "gc_ring_buffer_test.cpp",
     "json_parser_test.cpp",
     "json_stringifier_test.cpp",
