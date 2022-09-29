@@ -493,6 +493,7 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
 
     BuildImmediateDominator(realImmDom);
 }
+
 void BytecodeCircuitBuilder::BuildImmediateDominator(const std::vector<size_t> &immDom)
 {
     graph_[0].iDominator = &graph_[0];
@@ -653,11 +654,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(Immediate(READ_INST_64_0()));
             break;
         }
-        case EcmaOpcode::DEPRECATED_CALLARG0_PREF_V8: {
-            uint32_t startReg = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(startReg));
-            break;
-        }
         case EcmaOpcode::CALLARG1_IMM8_V8: {
             uint32_t a0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(a0));
@@ -670,25 +666,9 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(a0));
             break;
         }
-        case EcmaOpcode::DEPRECATED_CALLARG1_PREF_V8_V8: {
-            uint32_t startReg = READ_INST_8_1();
-            uint32_t a0 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(a0));
-            info.inputs.emplace_back(VirtualRegister(startReg));
-            break;
-        }
         case EcmaOpcode::CALLARGS2_IMM8_V8_V8: {
             uint32_t a0 = READ_INST_8_1();
             uint32_t a1 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(a0));
-            info.inputs.emplace_back(VirtualRegister(a1));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_CALLARGS2_PREF_V8_V8_V8: {
-            uint32_t startReg = READ_INST_8_1();
-            uint32_t a0 = READ_INST_8_2();
-            uint32_t a1 = READ_INST_8_3();
-            info.inputs.emplace_back(VirtualRegister(startReg));
             info.inputs.emplace_back(VirtualRegister(a0));
             info.inputs.emplace_back(VirtualRegister(a1));
             break;
@@ -697,17 +677,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             uint32_t a0 = READ_INST_8_1();
             uint32_t a1 = READ_INST_8_2();
             uint32_t a2 = READ_INST_8_3();
-            info.inputs.emplace_back(VirtualRegister(a0));
-            info.inputs.emplace_back(VirtualRegister(a1));
-            info.inputs.emplace_back(VirtualRegister(a2));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8: {
-            uint32_t startReg = READ_INST_8_1();
-            uint32_t a0 = READ_INST_8_2();
-            uint32_t a1 = READ_INST_8_3();
-            uint32_t a2 = READ_INST_8_4();
-            info.inputs.emplace_back(VirtualRegister(startReg));
             info.inputs.emplace_back(VirtualRegister(a0));
             info.inputs.emplace_back(VirtualRegister(a1));
             info.inputs.emplace_back(VirtualRegister(a2));
@@ -723,15 +692,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8: {
-            uint32_t actualNumArgs = READ_INST_16_1();
-            uint32_t startReg = READ_INST_8_3();
-            info.inputs.emplace_back(VirtualRegister(startReg));
-            for (size_t i = 1; i <= actualNumArgs; i++) {
-                info.inputs.emplace_back(VirtualRegister(startReg + i));
-            }
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8: {
             uint32_t actualNumArgs = READ_INST_16_1();
             uint32_t startReg = READ_INST_8_3();
             info.inputs.emplace_back(VirtualRegister(startReg));
@@ -773,15 +733,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
-        case EcmaOpcode::DEPRECATED_CALLSPREAD_PREF_V8_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
-            uint16_t v2 = READ_INST_8_3();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
-            info.inputs.emplace_back(VirtualRegister(v2));
-            break;
-        }
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8: {
             int32_t actualNumArgs = READ_INST_8_1();
             int32_t startReg = READ_INST_8_2();
@@ -798,65 +749,9 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             }
             break;
         }
-        case EcmaOpcode::DEPRECATED_CALLRANGE_PREF_IMM16_V8: {
-            uint32_t actualNumArgs = READ_INST_16_1();
-            uint32_t funcReg = READ_INST_8_3();
-            info.inputs.emplace_back(VirtualRegister(funcReg));
-            for (size_t i = 1; i <= actualNumArgs; i++) {
-                info.inputs.emplace_back(VirtualRegister(funcReg + i));
-            }
-            break;
-        }
         case EcmaOpcode::RETURNUNDEFINED:
             info.accIn = true;
             break;
-        case EcmaOpcode::DEPRECATED_TONUMBER_PREF_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_TONUMERIC_PREF_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_NEG_PREF_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_NOT_PREF_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_INC_PREF_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_DEC_PREF_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8: {
-            uint16_t vs = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(vs));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_GETRESUMEMODE_PREF_V8: {
-            uint16_t vs = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(vs));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_GETITERATORNEXT_PREF_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
-            break;
-        }
         case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -1004,13 +899,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::DEPRECATED_DELOBJPROP_PREF_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
-            break;
-        }
         case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8: {
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_8_3();
@@ -1105,33 +993,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(Immediate(slot));
             break;
         }
-        case EcmaOpcode::DEPRECATED_STLEXVAR_PREF_IMM4_IMM4_V8: {
-            uint16_t level = READ_INST_4_2();
-            uint16_t slot = READ_INST_4_3();
-            uint16_t v0 = READ_INST_8_2();
-            info.inputs.emplace_back(Immediate(level));
-            info.inputs.emplace_back(Immediate(slot));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_STLEXVAR_PREF_IMM8_IMM8_V8: {
-            uint16_t level = READ_INST_8_1();
-            uint16_t slot = READ_INST_8_2();
-            uint16_t v0 = READ_INST_8_3();
-            info.inputs.emplace_back(Immediate(level));
-            info.inputs.emplace_back(Immediate(slot));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_STLEXVAR_PREF_IMM16_IMM16_V8: {
-            uint16_t level = READ_INST_16_1();
-            uint16_t slot = READ_INST_16_3();
-            uint16_t v0 = READ_INST_8_5();
-            info.inputs.emplace_back(Immediate(level));
-            info.inputs.emplace_back(Immediate(slot));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
         case EcmaOpcode::NEWLEXENV_IMM8: {
             uint8_t numVars = READ_INST_8_0();
             info.inputs.emplace_back(Immediate(numVars));
@@ -1170,26 +1031,9 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
-            info.accIn = true;
-            uint32_t offset = pc - method_->GetBytecodeArray();
-            info.inputs.emplace_back(Immediate(offset)); // Save the pc offset when suspend
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
-            break;
-        }
         case EcmaOpcode::ASYNCFUNCTIONAWAITUNCAUGHT_V8: {
             uint16_t v0 = READ_INST_8_0();
             info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_ASYNCFUNCTIONAWAITUNCAUGHT_PREF_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
         case EcmaOpcode::ASYNCFUNCTIONRESOLVE_V8: {
@@ -1197,23 +1041,9 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::DEPRECATED_ASYNCFUNCTIONRESOLVE_PREF_V8_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v2 = READ_INST_8_3();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v2));
-            break;
-        }
         case EcmaOpcode::ASYNCFUNCTIONREJECT_V8: {
             uint16_t v0 = READ_INST_8_0();
             info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_ASYNCFUNCTIONREJECT_PREF_V8_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v2 = READ_INST_8_3();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v2));
             break;
         }
         case EcmaOpcode::CLOSEITERATOR_IMM16_V8: {
@@ -1274,11 +1104,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(Immediate(imm));
             break;
         }
-        case EcmaOpcode::DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16: {
-            uint16_t imm = READ_INST_16_1();
-            info.inputs.emplace_back(Immediate(imm));
-            break;
-        }
         case EcmaOpcode::SETOBJECTWITHPROTO_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -1289,13 +1114,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::DEPRECATED_SETOBJECTWITHPROTO_PREF_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
-            break;
-        }
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16: {
             uint16_t imm = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(imm));
@@ -1303,11 +1121,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         }
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
             uint16_t imm = READ_INST_16_2();
-            info.inputs.emplace_back(Immediate(imm));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16: {
-            uint16_t imm = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(imm));
             break;
         }
@@ -1321,11 +1134,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(Immediate(index));
             break;
         }
-        case EcmaOpcode::DEPRECATED_GETMODULENAMESPACE_PREF_ID32: {
-            uint16_t stringId = READ_INST_32_1();
-            info.inputs.emplace_back(StringId(stringId));
-            break;
-        }
         case EcmaOpcode::STMODULEVAR_IMM8: {
             int32_t index = READ_INST_8_0();
             info.inputs.emplace_back(Immediate(index));
@@ -1334,11 +1142,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16: {
             int32_t index = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(index));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_STMODULEVAR_PREF_ID32: {
-            uint16_t stringId = READ_INST_32_1();
-            info.inputs.emplace_back(StringId(stringId));
             break;
         }
         case EcmaOpcode::LDLOCALMODULEVAR_IMM8: {
@@ -1369,21 +1172,9 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM16:
             break;
-        case EcmaOpcode::DEPRECATED_GETTEMPLATEOBJECT_PREF_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
         case EcmaOpcode::COPYDATAPROPERTIES_V8: {
             uint16_t v0 = READ_INST_8_0();
             info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_COPYDATAPROPERTIES_PREF_V8_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            uint16_t v1 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
         case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16: {
@@ -1460,13 +1251,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v3));
             break;
         }
-        case EcmaOpcode::DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32: {
-            uint16_t v0 = READ_INST_8_1();
-            uint32_t idx = READ_INST_32_2();
-            info.inputs.emplace_back(Immediate(idx));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16: {
             uint32_t idx = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(idx));
@@ -1513,13 +1297,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::DEPRECATED_LDOBJBYVALUE_PREF_V8_V8: {
-            uint32_t v0 = READ_INST_8_1();
-            uint32_t v1 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
-            break;
-        }
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8: {
             uint32_t v0 = READ_INST_8_1();
             uint32_t v1 = READ_INST_8_2();
@@ -1542,13 +1319,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::LDSUPERBYVALUE_IMM16_V8: {
             uint32_t v0 = READ_INST_8_2();
             info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_LDSUPERBYVALUE_PREF_V8_V8: {
-            uint32_t v0 = READ_INST_8_1();
-            uint32_t v1 = READ_INST_8_2();
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
         case EcmaOpcode::STSUPERBYVALUE_IMM8_V8_V8: {
@@ -1585,30 +1355,8 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(StringId(stringId));
             break;
         }
-        case EcmaOpcode::DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32: {
-            uint16_t stringId = READ_INST_32_1();
-            info.inputs.emplace_back(StringId(stringId));
-            break;
-        }
         case EcmaOpcode::STTOGLOBALRECORD_IMM16_ID16: {
             uint16_t stringId = READ_INST_16_2();
-            info.inputs.emplace_back(StringId(stringId));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32: {
-            uint16_t stringId = READ_INST_32_1();
-            info.inputs.emplace_back(StringId(stringId));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8: {
-            uint16_t stringId = READ_INST_16_1();
-            uint8_t innerFlag = READ_INST_8_5();
-            info.inputs.emplace_back(StringId(stringId));
-            info.inputs.emplace_back(Immediate(innerFlag));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32: {
-            uint16_t stringId = READ_INST_32_1();
             info.inputs.emplace_back(StringId(stringId));
             break;
         }
@@ -1708,13 +1456,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(StringId(stringId));
             break;
         }
-        case EcmaOpcode::DEPRECATED_LDOBJBYNAME_PREF_ID32_V8: {
-            uint16_t stringId = READ_INST_32_1();
-            uint32_t v0 = READ_INST_8_5();
-            info.inputs.emplace_back(StringId(stringId));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            break;
-        }
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8: {
             uint16_t stringId = READ_INST_16_1();
             uint32_t v0 = READ_INST_8_3();
@@ -1737,13 +1478,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::LDSUPERBYNAME_IMM16_ID16: {
             uint16_t stringId = READ_INST_16_2();
             info.inputs.emplace_back(StringId(stringId));
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_LDSUPERBYNAME_PREF_ID32_V8: {
-            uint32_t stringId = READ_INST_32_1();
-            uint32_t v0 = READ_INST_8_5();
-            info.inputs.emplace_back(StringId(stringId));
-            info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8: {
@@ -1818,17 +1552,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8: {
-            uint16_t methodId = READ_INST_16_1();
-            uint16_t length = READ_INST_16_5();
-            uint16_t v0 = READ_INST_8_7();
-            uint16_t v1 = READ_INST_8_8();
-            info.inputs.emplace_back(MethodId(methodId));
-            info.inputs.emplace_back(Immediate(length));
-            info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(VirtualRegister(v1));
-            break;
-        }
         case EcmaOpcode::LDFUNCTION: {
             break;
         }
@@ -1838,11 +1561,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::DYNAMICIMPORT: {
-            break;
-        }
-        case EcmaOpcode::DEPRECATED_DYNAMICIMPORT_PREF_V8: {
-            uint16_t v0 = READ_INST_8_1();
-            info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
@@ -1868,11 +1586,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
-        case EcmaOpcode::DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16: {
-            uint16_t imm = READ_INST_16_1();
-            info.inputs.emplace_back(Immediate(imm));
-            break;
-        }
         case EcmaOpcode::JMP_IMM8:
         case EcmaOpcode::JMP_IMM16:
         case EcmaOpcode::JMP_IMM32:
@@ -1894,9 +1607,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::LDFALSE:
         case EcmaOpcode::LDHOLE:
         case EcmaOpcode::CALLARG0_IMM8:
-        case EcmaOpcode::DEPRECATED_LDLEXENV_PREF_NONE:
         case EcmaOpcode::POPLEXENV:
-        case EcmaOpcode::DEPRECATED_POPLEXENV_PREF_NONE:
         case EcmaOpcode::GETUNMAPPEDARGS:
         case EcmaOpcode::ASYNCFUNCTIONENTER:
         case EcmaOpcode::TYPEOF_IMM8:
@@ -1914,7 +1625,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
         case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
         case EcmaOpcode::CREATEEMPTYOBJECT:
-        case EcmaOpcode::DEPRECATED_LDHOMEOBJECT_PREF_NONE:
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:
@@ -1955,8 +1665,7 @@ void BytecodeCircuitBuilder::InsertPhi()
         }
         EnumerateBlock(bb, [this, &defsitesInfo, &bb]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
-            if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR) ||
-                bytecodeInfo.IsBc(EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8)) {
+            if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR)) {
                 auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     bytecodeInfo.vregOut.emplace_back(i);
@@ -2013,8 +1722,7 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size
         std::set<size_t> vregs;
         EnumerateBlock(bb, [this, &vregs]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
-            if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR) ||
-                bytecodeInfo.IsBc(EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8)) {
+            if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR)) {
                 auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     vregs.insert(i);
@@ -2354,9 +2062,11 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, Ga
         auto &bbNext = bb.catchs.at(0);
         auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
         SetBlockPred(*bbNext, ifException, gate, isLoopBack);
-        bbNext->expandedPreds.push_back(
-            {bb.id, pc, true}
-        );
+        if (bytecodeInfo.opcode == EcmaOpcode::CREATEASYNCGENERATOROBJ_V8) {
+            bbNext->expandedPreds.push_back({bb.id, pc + bytecodeInfo.offset, true});
+        } else {
+            bbNext->expandedPreds.push_back({bb.id, pc, true});
+        }
     } else {
         auto constant = circuit_.GetConstantGate(MachineType::I64,
                                                  JSTaggedValue::VALUE_EXCEPTION,
@@ -2387,9 +2097,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, Ga
         auto &bbNext = graph_[bb.id + 1];
         auto isLoopBack = bbNext.loopbackBlocks.count(bb.id);
         SetBlockPred(bbNext, state, depend, isLoopBack);
-        bbNext.expandedPreds.push_back(
-            {bb.id, pc, false}
-        );
+        bbNext.expandedPreds.push_back({bb.id, pc, false});
     }
 }
 
@@ -2413,9 +2121,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
             auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
             SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
             SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
-            bbNext->expandedPreds.push_back(
-                {bb.id, pc, false}
-            );
+            bbNext->expandedPreds.push_back({bb.id, pc, false});
         } else {
             ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
             [[maybe_unused]] uint32_t bitSet = 0;
@@ -2428,9 +2134,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
                 } else {
                     auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
                     SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
-                    bbNext->expandedPreds.push_back(
-                        {bb.id, pc, false}
-                    );
+                    bbNext->expandedPreds.push_back({bb.id, pc, false});
                     bitSet |= 2; // 2:verify
                 }
             }
@@ -2623,8 +2327,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
                 break;
             }
         }
-        if (curInfo.opcode != EcmaOpcode::RESUMEGENERATOR &&
-            curInfo.opcode != EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8) {
+        if (curInfo.opcode != EcmaOpcode::RESUMEGENERATOR) {
             continue;
         }
         // New RESTORE_REGISTER HIR, used to restore the register content when processing resume instruction.
@@ -2643,8 +2346,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
         auto nextPcIter = pcIter;
         nextPcIter++;
         nextPcIter++;
-        ASSERT(GetBytecodeInfo(*nextPcIter).opcode == EcmaOpcode::SUSPENDGENERATOR_V8 ||
-            GetBytecodeInfo(*nextPcIter).opcode == EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8);
+        ASSERT(GetBytecodeInfo(*nextPcIter).opcode == EcmaOpcode::SUSPENDGENERATOR_V8);
         GateRef suspendGate = byteCodeToJSGate_.at(*nextPcIter);
         auto dependGate = gateAcc_.GetDep(suspendGate);
         auto newDependGate = circuit_.NewGate(OpCode(OpCode::SAVE_REGISTER), tmpReg, {dependGate, saveRegGate},

@@ -377,23 +377,17 @@ struct BytecodeInfo {
     {
         switch (opcode) {
             case EcmaOpcode::CALLARG0_IMM8:
-            case EcmaOpcode::DEPRECATED_CALLARG0_PREF_V8:
             case EcmaOpcode::CALLARG1_IMM8_V8:
-            case EcmaOpcode::DEPRECATED_CALLARG1_PREF_V8_V8:
             case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-            case EcmaOpcode::DEPRECATED_CALLARGS2_PREF_V8_V8_V8:
             case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-            case EcmaOpcode::DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8:
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-            case EcmaOpcode::DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8:
             case EcmaOpcode::CALLTHIS0_IMM8_V8:
             case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
             case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
             case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-            case EcmaOpcode::DEPRECATED_CALLRANGE_PREF_IMM16_V8:
                 return true;
             default:
                 return false;
@@ -424,9 +418,7 @@ struct BytecodeInfo {
     {
         switch (opcode) {
             case EcmaOpcode::SUSPENDGENERATOR_V8:
-            case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8:
             case EcmaOpcode::RESUMEGENERATOR:
-            case EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8:
                 return true;
             default:
                 return false;
