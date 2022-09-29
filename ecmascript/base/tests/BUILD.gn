@@ -23,6 +23,7 @@ host_unittest_action("BaseTest") {
   sources = [
     # test file
     "array_helper_test.cpp",
+    "atomic_helper_test.cpp",
     "builtins_base_test.cpp",
     "gc_ring_buffer_test.cpp",
     "json_parser_test.cpp",
