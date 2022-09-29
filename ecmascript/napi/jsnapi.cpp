@@ -318,6 +318,17 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size,
     return true;
 }
 
+bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename)
+{
+    LOG_ECMA(DEBUG) << "start to execute module buffer: " << filename;
+    JSThread *thread = vm->GetAssociatedJSThread();
+    if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, data, size, filename.c_str())) {
+        LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
+        return false;
+    }
+    return true;
+}
+
 void JSNApi::preFork(EcmaVM *vm)
 {
     vm->preFork();
