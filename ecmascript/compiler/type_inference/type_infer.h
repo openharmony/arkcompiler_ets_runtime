@@ -95,7 +95,7 @@ private:
     // --compiler-log && --mlist-for-log
     // --assert-types
     // --print-any-types
-    void PrintAllGatesTypes() const;
+    void PrintAllByteCodesTypes() const;
     void Verify() const;
     void TypeCheck(GateRef gate) const;
     void FilterAnyTypeGates() const;

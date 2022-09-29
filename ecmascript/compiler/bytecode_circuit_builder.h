@@ -559,6 +559,11 @@ public:
         }
     }
 
+    const std::map<const uint8_t *, int32_t> &GetPcToBCOffset() const
+    {
+        return pcToBCOffset_;
+    }
+
 private:
     void CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
     void CompleteBytecodeBlockInfo();
