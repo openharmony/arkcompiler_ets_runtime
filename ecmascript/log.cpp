@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
+#include "generated/base_options.h"
 
 #ifdef PANDA_TARGET_ANDROID
 #include <android/log.h>
@@ -54,7 +55,7 @@ void Log::SetLogComponentFromString(const std::vector<std::string>& components)
             components_ |= Component::GC;
             continue;
         }
-        if (component == "ecma") {
+        if (component == "ecmascript") {
             components_ |= Component::ECMASCRIPT;
             continue;
         }
@@ -73,8 +74,37 @@ void Log::SetLogComponentFromString(const std::vector<std::string>& components)
     }
 }
 
+int32_t Log::PrintLogger(int32_t, int32_t level, const char *, const char *, const char *message)
+{
+    switch (level) {
+        case Logger::PandaLog2MobileLog::VERBOSE:
+            LOG_ECMA(VERBOSE) << message;
+            break;
+        case Logger::PandaLog2MobileLog::DEBUG:
+            LOG_ECMA(DEBUG) << message;
+            break;
+        case Logger::PandaLog2MobileLog::INFO:
+            LOG_ECMA(INFO) << message;
+            break;
+        case Logger::PandaLog2MobileLog::WARN:
+            LOG_ECMA(WARN) << message;
+            break;
+        case Logger::PandaLog2MobileLog::ERROR:
+            LOG_ECMA(ERROR) << message;
+            break;
+        case Logger::PandaLog2MobileLog::FATAL:
+            LOG_ECMA(FATAL) << message;
+            break;
+        default:
+            LOG_ECMA(DEBUG) << message;
+            break;
+    }
+    return 0;
+}
+
 void Log::Initialize(const JSRuntimeOptions &options)
 {
+    // For ArkTS runtime log
     if (options.WasSetLogFatal()) {
         level_ = FATAL;
         SetLogComponentFromString(options.GetLogFatal());
@@ -94,6 +124,13 @@ void Log::Initialize(const JSRuntimeOptions &options)
         SetLogLevelFromString(options.GetLogLevel());
         SetLogComponentFromString(options.GetLogComponents());
     }
+
+    // For runtime core log
+    base_options::Options baseOptions("");
+    baseOptions.SetLogLevel(options.GetLogLevel());
+    baseOptions.SetLogComponents({ "all" });
+    Logger::Initialize(baseOptions);
+    Logger::SetMobileLogPrintEntryPointByPtr(reinterpret_cast<void *>(Log::PrintLogger));
 }
 
 #ifdef PANDA_TARGET_ANDROID
