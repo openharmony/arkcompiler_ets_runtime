@@ -45,7 +45,7 @@ void TypeInfer::TraverseCircuit()
     }
 
     if (IsLogEnabled()) {
-        PrintAllGatesTypes();
+        PrintAllByteCodesTypes();
     }
 
     if (tsManager_->AssertTypes()) {
@@ -559,31 +559,42 @@ bool TypeInfer::InferStLexVarDyn(GateRef gate)
     return false;
 }
 
-void TypeInfer::PrintAllGatesTypes() const
+void TypeInfer::PrintAllByteCodesTypes() const
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
 
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
     const MethodLiteral *methodLiteral = builder_->GetMethod();
-    EntityId methodId = builder_->GetMethod()->GetMethodId();
-    DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
-    const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
-    const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+    const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodLiteral->GetMethodId());
 
-    std::string log;
-    for (const auto &gate : gateList) {
-        auto op = gateAccessor_.GetOpCode(gate);
-        const auto &gateToBytecode = builder_->GetGateToBytecode();
-        if ((op == OpCode::VALUE_SELECTOR) || (( op == OpCode::JS_BYTECODE || op == OpCode::CONSTANT ||
-                                                 op == OpCode::RETURN) &&
-                                                 gateToBytecode.find(gate) != gateToBytecode.end()))  {
-            log += CollectGateTypeLogInfo(gate, debugExtractor, "[TypePrinter] ");
+    auto &pcToBCOffset = builder_->GetPcToBCOffset();
+    auto &bytecodeToGate = builder_->GetBytecodeToGate();
+
+    LOG_COMPILER(INFO) << "print bytecode types:";
+    LOG_COMPILER(INFO) << ".function " + functionName + "() {";
+    for (auto it = pcToBCOffset.begin(); std::next(it) != pcToBCOffset.end(); it++) {  // ignore last element
+        const uint8_t *pc = it->first;
+        BytecodeInstruction inst(pc);
+        auto findIt = bytecodeToGate.find(pc);
+        if (findIt != bytecodeToGate.end()) {
+            GateRef gate = bytecodeToGate.at(pc);
+            GateType type = gateAccessor_.GetGateType(gate);
+            if (type.IsTSType()) {
+                if (!tsManager_->IsPrimitiveTypeKind(type)) {
+                    GlobalTSTypeRef gt = GlobalTSTypeRef(type.GetType());
+                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type)
+                                       << ", [moduleId: " + std::to_string(gt.GetModuleId())
+                                       << ", [localId: " + std::to_string(gt.GetLocalId()) + "]";
+                } else {
+                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
+                }
+            } else {
+                LOG_COMPILER(INFO) << "    " << inst;
+            }
         }
     }
-
-    LOG_COMPILER(INFO) << "[TypePrinter] [" << sourceFileName << ":" << functionName << "] begin:";
-    LOG_COMPILER(INFO) << log << "[TypePrinter] end";
+    LOG_COMPILER(INFO) << "}";
 }
 
 void TypeInfer::Verify() const
