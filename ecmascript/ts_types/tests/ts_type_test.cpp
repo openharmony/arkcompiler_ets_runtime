@@ -15,7 +15,12 @@
 
 #include <thread>
 
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
+
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
@@ -23,6 +28,9 @@
 #include "ecmascript/ts_types/ts_type_table.h"
 
 using namespace panda::ecmascript;
+using namespace panda::panda_file;
+using namespace panda::pandasm;
+
 namespace panda::test {
 class TSTypeTest : public testing::Test {
 public:
@@ -49,6 +57,23 @@ public:
     EcmaVM *ecmaVm = nullptr;
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
+
+protected:
+    JSPandaFile *CreateJSPandaFile(const CString filename)
+    {
+        const char *source = R"(
+            .function void foo() {}
+        )";
+        Parser parser;
+        const std::string fn = "SRC.pa"; // test file name : "SRC.pa"
+        auto res = parser.Parse(source, fn);
+        EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+
+        std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+        JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+        JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
+        return pf;
+    }
 };
 
 HWTEST_F_L0(TSTypeTest, UnionType)
@@ -63,10 +88,8 @@ HWTEST_F_L0(TSTypeTest, UnionType)
     literal->Set(thread, 2, JSTaggedValue(1));
     literal->Set(thread, 3, JSTaggedValue(7));
 
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8("test.abc");
     CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser typeParser(ecmaVm, ecmaVm->GetTSManager()->GetNextModuleId(),
-                            fileName, recordImportModules);
+    TSTypeParser typeParser(ecmaVm, nullptr, recordImportModules);
     JSHandle<JSTaggedValue> type = typeParser.ParseType(literal);
     ASSERT_TRUE(type->IsTSUnionType());
 
@@ -98,9 +121,9 @@ HWTEST_F_L0(TSTypeTest, ImportType)
     importLiteral->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::IMPORT)));
     importLiteral->Set(thread, 1, importString);
 
+    JSPandaFile *jsPandaFile = CreateJSPandaFile(importFile);
     CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser importTypeParser(ecmaVm, ecmaVm->GetTSManager()->GetNextModuleId(),
-                                  importFileHandle, recordImportModules);
+    TSTypeParser importTypeParser(ecmaVm, jsPandaFile, recordImportModules);
     JSHandle<TSImportType> importType =
         JSHandle<TSImportType>(importTypeParser.ParseType(importLiteral));
     recordImportModules = importTypeParser.GetImportModules();
@@ -137,8 +160,8 @@ HWTEST_F_L0(TSTypeTest, ImportType)
     redirectImportLiteral->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::IMPORT)));
     redirectImportLiteral->Set(thread, 1, redirectImportString);
 
-    TSTypeParser exportTypeParser(ecmaVm, ecmaVm->GetTSManager()->GetNextModuleId(),
-                                  redirectImportFileHandle, recordImportModules);
+    JSPandaFile *jsPandaFile1 = CreateJSPandaFile(redirectImportFile);
+    TSTypeParser exportTypeParser(ecmaVm, jsPandaFile1, recordImportModules);
     JSHandle<TSImportType> redirectImportType =
         JSHandle<TSImportType>(exportTypeParser.ParseType(redirectImportLiteral));
     recordImportModules = exportTypeParser.GetImportModules();
@@ -197,6 +220,8 @@ HWTEST_F_L0(TSTypeTest, ImportType)
 
     uint32_t length = tsManager->GetUnionTypeLength(unionTypeGT);
     ASSERT_EQ(length, unionLength);
+    JSPandaFileManager::RemoveJSPandaFile(jsPandaFile);
+    JSPandaFileManager::RemoveJSPandaFile(jsPandaFile1);
 }
 
 HWTEST_F_L0(TSTypeTest, InterfaceType)
@@ -221,10 +246,8 @@ HWTEST_F_L0(TSTypeTest, InterfaceType)
     literal->Set(thread, 10, JSTaggedValue(0));
     literal->Set(thread, 11, JSTaggedValue(0));
 
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8("test.abc");
     CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser typeParser(ecmaVm, ecmaVm->GetTSManager()->GetNextModuleId(),
-                            fileName, recordImportModules);
+    TSTypeParser typeParser(ecmaVm, nullptr, recordImportModules);
     JSHandle<JSTaggedValue> type = typeParser.ParseType(literal);
     ASSERT_TRUE(type->IsTSInterfaceType());
     JSHandle<TSInterfaceType> interfaceType = JSHandle<TSInterfaceType>(type);
@@ -267,10 +290,8 @@ HWTEST_F_L0(TSTypeTest, ClassType)
     literal->Set(thread, 16, JSTaggedValue(0));
     literal->Set(thread, 17, JSTaggedValue(0));
 
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8("test.abc");
     CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser typeParser(ecmaVm, ecmaVm->GetTSManager()->GetNextModuleId(),
-                            fileName, recordImportModules);
+    TSTypeParser typeParser(ecmaVm, nullptr, recordImportModules);
     JSHandle<JSTaggedValue> type = typeParser.ParseType(literal);
     ASSERT_TRUE(type->IsTSClassType());
     JSHandle<TSClassType> classType = JSHandle<TSClassType>(type);
@@ -287,23 +308,21 @@ HWTEST_F_L0(TSTypeTest, ClassType)
 HWTEST_F_L0(TSTypeTest, ClassInstanceType)
 {
     auto factory = ecmaVm->GetFactory();
-    JSHandle<TSClassType> extendClass = factory->NewTSClassType();
-    extendClass->SetGT(TSTypeParser::CreateGT(ecmaVm->GetTSManager()->GetNextModuleId(), 50));
+    JSHandle<TSClassType> classType = factory->NewTSClassType();
+    classType->SetGT(GlobalTSTypeRef(1));
     const int literalLength = 2;
     JSHandle<TaggedArray> literal = factory->NewTaggedArray(literalLength);
 
     literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::CLASS_INSTANCE)));
-    literal->Set(thread, 1, JSTaggedValue(50));
+    literal->Set(thread, 1, JSTaggedValue(1));
 
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8("test.abc");
     CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser typeParser(ecmaVm, ecmaVm->GetTSManager()->GetNextModuleId(),
-                            fileName, recordImportModules);
+    TSTypeParser typeParser(ecmaVm, nullptr, recordImportModules);
     JSHandle<JSTaggedValue> type = typeParser.ParseType(literal);
     ASSERT_TRUE(type->IsTSClassInstanceType());
     JSHandle<TSClassInstanceType> classInstanceType = JSHandle<TSClassInstanceType>(type);
 
-    ASSERT_EQ(classInstanceType->GetClassGT().GetType(), extendClass->GetGT().GetType());
+    ASSERT_EQ(classInstanceType->GetClassGT().GetType(), classType->GetGT().GetType());
 }
 
 HWTEST_F_L0(TSTypeTest, FuntionType)
@@ -325,10 +344,8 @@ HWTEST_F_L0(TSTypeTest, FuntionType)
     literal->Set(thread, 6, JSTaggedValue(2));
     literal->Set(thread, 7, JSTaggedValue(6));
 
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8("test.abc");
     CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser typeParser(ecmaVm, ecmaVm->GetTSManager()->GetNextModuleId(),
-                            fileName, recordImportModules);
+    TSTypeParser typeParser(ecmaVm, nullptr, recordImportModules);
     JSHandle<JSTaggedValue> type = typeParser.ParseType(literal);
     ASSERT_TRUE(type->IsTSFunctionType());
 
@@ -357,10 +374,8 @@ HWTEST_F_L0(TSTypeTest, ObjectType)
     literal->Set(thread, 4, propsNameB.GetTaggedValue());
     literal->Set(thread, 5, JSTaggedValue(static_cast<int>(TSPrimitiveType::STRING)));
 
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8("test.abc");
     CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser typeParser(ecmaVm, ecmaVm->GetTSManager()->GetNextModuleId(),
-                            fileName, recordImportModules);
+    TSTypeParser typeParser(ecmaVm, nullptr, recordImportModules);
     JSHandle<JSTaggedValue> type = typeParser.ParseType(literal);
     ASSERT_TRUE(type->IsTSObjectType());
     JSHandle<TSObjectType> objectType = JSHandle<TSObjectType>(type);
@@ -383,10 +398,8 @@ HWTEST_F_L0(TSTypeTest, ArrayType)
     literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::ARRAY)));
     literal->Set(thread, 1, JSTaggedValue(2));
 
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8("test.abc");
     CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser typeParser(ecmaVm, ecmaVm->GetTSManager()->GetNextModuleId(),
-                            fileName, recordImportModules);
+    TSTypeParser typeParser(ecmaVm, nullptr, recordImportModules);
     JSHandle<JSTaggedValue> type = typeParser.ParseType(literal);
     ASSERT_TRUE(type->IsTSArrayType());
     JSHandle<TSArrayType> arrayType = JSHandle<TSArrayType>(type);

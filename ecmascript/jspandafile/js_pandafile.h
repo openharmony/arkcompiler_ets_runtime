@@ -45,7 +45,7 @@ public:
     static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char TYPE_FLAG[] = "typeFlag";
-    static constexpr char TYPE_SUMMARY_INDEX[] = "typeSummaryIndex";
+    static constexpr char TYPE_SUMMARY_OFFSET[] = "typeSummaryOffset";
 
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
@@ -182,9 +182,9 @@ public:
         return isLoadedAOT_;
     }
 
-    uint32_t GetTypeSummaryIndex() const
+    uint32_t GetTypeSummaryOffset() const
     {
-        return typeSummaryIndex_;
+        return typeSummaryOffset_;
     }
 
     uint32_t GetFileUniqId() const
@@ -270,7 +270,7 @@ private:
     CString desc_;
     bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
-    uint32_t typeSummaryIndex_ {0};
+    uint32_t typeSummaryOffset_ {0};
     bool isNewVersion_ {false};
     bool isPatch_ {false};
 

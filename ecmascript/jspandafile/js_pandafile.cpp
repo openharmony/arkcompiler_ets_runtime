@@ -136,8 +136,8 @@ void JSPandaFile::InitializeUnMergedPF()
                 if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
                     hasTSTypes_ = fieldAccessor.GetValue<uint8_t>().value() != 0;
                 }
-                if (std::strcmp(TYPE_SUMMARY_INDEX, fieldName) == 0) {
-                    typeSummaryIndex_ = fieldAccessor.GetValue<uint32_t>().value();
+                if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {
+                    typeSummaryOffset_ = fieldAccessor.GetValue<uint32_t>().value();
                 }
             });
         }
@@ -166,8 +166,8 @@ void JSPandaFile::InitializeMergedPF()
                 if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
                     hasTSTypes_ = fieldAccessor.GetValue<uint8_t>().value() != 0;
                 }
-                if (std::strcmp(TYPE_SUMMARY_INDEX, fieldName) == 0) {
-                    typeSummaryIndex_ = fieldAccessor.GetValue<uint32_t>().value();
+                if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {
+                    typeSummaryOffset_ = fieldAccessor.GetValue<uint32_t>().value();
                 }
             });
             continue;

@@ -117,10 +117,9 @@ void TSManager::RecursivelyResolveTargetType(JSMutableHandle<TSImportType>& impo
 
 int TSManager::GetTypeIndexFromExportTable(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable) const
 {
-    uint32_t capacity = exportTable->GetLength();
-    // capacity/2 -> ["A", "B", 51, 52] -> if target is "A", return 51, index = 0 + 4/2 = 2
-    uint32_t length = capacity / 2 ;
-    for (uint32_t i = 0; i < length; i++) {
+    uint32_t length = exportTable->GetLength();
+    // ["A", "101", "B", "102"]
+    for (uint32_t i = 0; i < length; i = i + 2) {  // 2: symbol and symbolType
         EcmaString *valueString = EcmaString::Cast(exportTable->Get(i).GetTaggedObject());
         if (EcmaStringAccessor::StringsAreEqual(*target, valueString)) {
             EcmaString *localIdString = EcmaString::Cast(exportTable->Get(i + 1).GetTaggedObject());
@@ -212,14 +211,6 @@ TSTypeKind TSManager::GetTypeKind(const GlobalTSTypeRef &gt) const
         }
     }
     return TSTypeKind::PRIMITIVE;
-}
-
-GlobalTSTypeRef TSManager::CreateGT(const panda_file::File &pf, const uint32_t typeId) const
-{
-    JSHandle<TSModuleTable> table = GetTSModuleTable();
-    JSHandle<EcmaString> moduleName = factory_->NewFromStdString(pf.GetFilename());
-    uint32_t moduleId = table->GetGlobalModuleID(thread_, moduleName);
-    return TSTypeParser::CreateGT(moduleId, typeId);
 }
 
 void TSManager::Dump()

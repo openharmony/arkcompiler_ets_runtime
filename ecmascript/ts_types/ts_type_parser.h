@@ -26,22 +26,21 @@ public:
     static constexpr size_t BUILDIN_TYPE_OFFSET = 20;
     static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;
 
-    explicit TSTypeParser(EcmaVM *vm, uint32_t moduleId, const JSHandle<EcmaString> fileName,
+    explicit TSTypeParser(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                           CVector<JSHandle<EcmaString>> &recordImportModules)
-        : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),
-          moduleId_(moduleId), fileName_(fileName),
+        : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()), jsPandaFile_(jsPandaFile),
           recordImportModules_(recordImportModules) {}
     ~TSTypeParser() = default;
 
     JSHandle<JSTaggedValue> ParseType(JSHandle<TaggedArray> &literal);
 
-    void SetTypeGT(JSHandle<JSTaggedValue> type, uint32_t localId)
+    void SetTypeGT(JSHandle<JSTaggedValue> type, uint32_t moduleId, uint32_t localId)
     {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(moduleId_, localId);
+        GlobalTSTypeRef gt = GlobalTSTypeRef(moduleId, localId);
         JSHandle<TSType>(type)->SetGT(gt);
     }
 
-    inline static GlobalTSTypeRef CreateGT(uint32_t moduleId, uint32_t typeId)
+    inline GlobalTSTypeRef CreateGT(uint32_t typeId)
     {
         if (typeId <= BUILDIN_TYPE_OFFSET) {
             return GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, typeId);
@@ -51,11 +50,9 @@ public:
             return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, typeId - BUILDIN_TYPE_OFFSET);
         }
 
-        if (moduleId == TSModuleTable::BUILTINS_TABLE_ID) {
-            return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, typeId - BUILDIN_TYPE_OFFSET);
-        }
-
-        return GlobalTSTypeRef(moduleId, typeId - USER_DEFINED_TYPE_OFFSET);
+        TSManager *tsManager = vm_->GetTSManager();
+        panda_file::File::EntityId offset(typeId);
+        return tsManager->GetGTFromOffset(jsPandaFile_, offset);
     }
 
     inline CVector<JSHandle<EcmaString>> GetImportModules() const
@@ -102,8 +99,7 @@ private:
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    uint32_t moduleId_;
-    JSHandle<EcmaString> fileName_ {};
+    const JSPandaFile *jsPandaFile_ {nullptr};
     CVector<JSHandle<EcmaString>> recordImportModules_ {};
 };
 }  // panda::ecmascript

@@ -33,6 +33,8 @@ public:
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(LiteralDataExtractor);
     DEFAULT_COPY_SEMANTIC(LiteralDataExtractor);
 
+    static constexpr uint32_t LITERALARRAY_VALUE_LOW_BOUNDARY = 100;
+
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
                                    JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
@@ -55,6 +57,9 @@ public:
 
     static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
                                             std::vector<uint32_t> &methodOffsets);
+
+    static JSHandle<TaggedArray> PUBLIC_API GetTypeLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                           panda_file::File::EntityId offset);
 private:
     static JSHandle<TaggedArray> EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
         const JSPandaFile *jsPandaFile, size_t index, JSHandle<JSTaggedValue> constpool,
