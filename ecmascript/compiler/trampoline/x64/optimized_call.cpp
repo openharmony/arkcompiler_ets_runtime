@@ -1221,5 +1221,12 @@ void OptimizedCall::ConstructorJSCallWithArgV(ExtendedAssembler *assembler)
     PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
 }
+
+void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
+    __ Ret();
+}
+
 #undef __
 }  // namespace panda::ecmascript::x64

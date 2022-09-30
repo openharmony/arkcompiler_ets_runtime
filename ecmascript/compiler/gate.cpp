@@ -96,6 +96,7 @@ Properties OpCode::GetProperties() const
         case GET_EXCEPTION:
             return {I64, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT};
         // Middle Level IR
+
         case RUNTIME_CALL:
         case NOGC_RUNTIME_CALL:
         case BYTECODE_CALL:
@@ -187,6 +188,15 @@ Properties OpCode::GetProperties() const
             return {FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
         case BITCAST:
             return {FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        // Deopt relate IR
+        case GUARD:
+            return {NOVALUE, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
+        case FRAME_STATE:
+            return {NOVALUE, NO_STATE, NO_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
+        case DEOPTIMIZE:
+            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE, NO_ROOT};
+        case DEOPT_CALL:
+            return {FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
         // suspend relate HIR
         case RESTORE_REGISTER:
             return {FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT};
@@ -324,6 +334,10 @@ std::string OpCode::Str() const
         {FLOAT_TO_SIGNED_INT, "FLOAT_TO_SIGNED_INT"},
         {UNSIGNED_FLOAT_TO_INT, "UNSIGNED_FLOAT_TO_INT"},
         {BITCAST, "BITCAST"},
+        {GUARD, "GUARD"},
+        {FRAME_STATE, "FRAME_STATE"},
+        {DEOPTIMIZE, "DEOPTIMIZE"},
+        {DEOPT_CALL, "DEOPT_CALL"},
         {RESTORE_REGISTER, "RESTORE_REGISTER"},
         {SAVE_REGISTER, "SAVE_REGISTER"},
         {TYPE_CHECK, "TYPE_CHECK"},

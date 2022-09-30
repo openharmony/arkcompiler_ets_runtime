@@ -955,5 +955,11 @@ void OptimizedCall::ConstructorJSCallWithArgV([[maybe_unused]]ExtendedAssembler 
     PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
 }
+
+void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
+    __ Ret();
+}
 #undef __
 }  // panda::ecmascript::aarch64

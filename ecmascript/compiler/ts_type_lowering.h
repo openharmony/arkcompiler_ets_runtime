@@ -41,6 +41,9 @@ private:
     void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
     void GenerateSuccessMerge(std::vector<GateRef> &successControl);
     void ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl);
+    void ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, GateRef state, GateRef depend,
+                                 std::vector<GateRef> &unuseGate);
+    void DeleteUnusedGate(std::vector<GateRef> &unusedGate);
     void LowerTypedAdd(GateRef gate);
     void LowerTypedSub(GateRef gate);
     void LowerTypedMul(GateRef gate);

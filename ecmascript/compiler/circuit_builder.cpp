@@ -182,6 +182,11 @@ GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnaryOp unaryO
     return GetCircuit()->NewGate(OpCode(OpCode::TYPED_UNARY_OP), type, bitfield, inList, GateType::AnyType());
 }
 
+GateRef CircuitBuilder::Deoptimize(GateRef state, GateRef depend)
+{
+    return circuit_->NewGate(OpCode(OpCode::DEOPTIMIZE), 0, {state, depend}, GateType::Empty());
+}
+
 GateRef CircuitBuilder::Int8(int8_t val)
 {
     return GetCircuit()->GetConstantGate(MachineType::I8, val, GateType::NJSValue());
@@ -379,6 +384,8 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
         op = OpCode(OpCode::BUILTINS_CALL);
     } else if (cs->IsRuntimeNGCStub()) {
         op = OpCode(OpCode::NOGC_RUNTIME_CALL);
+    } else if (cs->IsDeoptStub()) {
+        op = OpCode(OpCode::DEOPT_CALL);
     } else {
         UNREACHABLE();
     }

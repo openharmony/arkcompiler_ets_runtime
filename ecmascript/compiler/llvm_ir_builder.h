@@ -228,7 +228,8 @@ private:
     V(IntLsl, (GateRef gate, GateRef e1, GateRef e2))                                     \
     V(Mod, (GateRef gate, GateRef e1, GateRef e2))                                        \
     V(ChangeTaggedPointerToInt64, (GateRef gate, GateRef e1))                             \
-    V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))
+    V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))                                    \
+    V(DeoptCall, (GateRef gate, const std::vector<GateRef> &inList))                      \
 
 // runtime/common stub ID, opcodeOffset for bc stub
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;

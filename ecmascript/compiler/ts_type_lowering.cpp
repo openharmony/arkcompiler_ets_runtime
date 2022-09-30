@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/ts_type_lowering.h"
+#include "ecmascript/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
 void TSTypeLowering::RunTSTypeLowering()
@@ -144,6 +145,48 @@ void TSTypeLowering::GenerateSuccessMerge(std::vector<GateRef> &successControl)
     GateRef dependSelect = builder_.GetDepend();
     successControl.emplace_back(stateMerge);
     successControl.emplace_back(dependSelect);
+}
+
+void TSTypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, GateRef state, GateRef depend,
+                                             std::vector<GateRef> &unusedGate)
+{
+    auto uses = acc_.Uses(hir);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        const OpCode op = acc_.GetOpCode(*useIt);
+        if (op == OpCode::IF_SUCCESS) {
+            auto successUse = acc_.Uses(*useIt).begin();
+            acc_.ReplaceStateIn(*successUse, state);
+            unusedGate.emplace_back(*useIt);
+            ++useIt;
+        } else if (op == OpCode::IF_EXCEPTION) {
+            auto exceptionUse = acc_.Uses(*useIt).begin();
+            unusedGate.emplace_back(*exceptionUse);
+            unusedGate.emplace_back(*useIt);
+            ++useIt;
+        } else if (op == OpCode::RETURN) {
+            if (acc_.IsValueIn(useIt)) {
+                useIt = acc_.ReplaceIn(useIt, outir);
+                continue;
+            }
+            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) != OpCode::IF_EXCEPTION) {
+                acc_.ReplaceStateIn(*useIt, state);
+                acc_.ReplaceDependIn(*useIt, depend);
+                acc_.ReplaceValueIn(*useIt, outir);
+            }
+            ++useIt;
+        } else if (op == OpCode::DEPEND_SELECTOR) {
+            useIt = acc_.ReplaceIn(useIt, depend);
+        } else {
+            useIt = acc_.ReplaceIn(useIt, outir);
+        }
+    }
+}
+
+void TSTypeLowering::DeleteUnusedGate(std::vector<GateRef> &unusedGate)
+{
+    for (auto &gate : unusedGate) {
+        acc_.DeleteGate(gate);
+    }
 }
 
 void TSTypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl)
@@ -326,29 +369,23 @@ void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
     Label notNumber(&builder_);
     Label exit(&builder_);
     GateType numberType = GateType::NumberType();
-    DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, numberType), builder_.HoleConstant());
+    std::vector<GateRef> unusedGate;
+    unusedGate.emplace_back(gate);
     builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), builder_.TypeCheck(numberType, right)),
                     &isNumber, &notNumber);
-    std::map<GateRef, size_t> stateGateMap;
     builder_.Bind(&isNumber);
     {
-        result = builder_.NumberBinaryOp<Op>(left, right);
-        builder_.Jump(&exit);
+        GateRef result = builder_.NumberBinaryOp<Op>(left, right);
+        GateRef state = builder_.GetState();
+        GateRef depend = builder_.GetDepend();
+        ReplaceHirToFastPathCfg(gate, result, state, depend, unusedGate);
     }
     builder_.Bind(&notNumber);
-    {
-        // slowpath
-        result = gate;
-        RebuildSlowpathCfg(gate, stateGateMap);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    for (auto [state, index] : stateGateMap) {
-        acc_.ReplaceIn(state, index, builder_.GetState());
-    }
-    std::vector<GateRef> successControl;
-    GenerateSuccessMerge(successControl);
-    ReplaceHirToFastPathCfg(gate, *result, successControl);
+    // deopt
+    GateRef deoptStateIn = builder_.GetState();
+    GateRef guard = acc_.GetDep(gate);
+    builder_.Deoptimize(deoptStateIn, guard);
+    DeleteUnusedGate(unusedGate);
 }
 
 template<TypedBinOp Op>

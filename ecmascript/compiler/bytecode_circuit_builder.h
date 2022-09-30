@@ -458,6 +458,9 @@ public:
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)
     {
+        uint64_t callField = method_->GetCallField();
+        numVregs_ = method_->GetNumVregsWithCallField(callField) + method_->GetNumArgsWithCallField(callField);
+        startPc_ = bytecodeBlockInfos_[0].pc;
     }
     ~BytecodeCircuitBuilder() = default;
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
@@ -598,6 +601,9 @@ private:
     {
         return bbId == 0;
     }
+    GateRef InitializeFrameState(const uint8_t *pc);
+    void StoreVregInfo(size_t vregId, GateRef defVreg, std::vector<GateRef> &gateList);
+    void StoreAccInfo(GateRef defAcc, std::vector<GateRef> &gateList);
 
     TSManager *tsManager_;
     Circuit circuit_;
@@ -617,6 +623,8 @@ private:
     const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
     std::vector<CfgInfo> &bytecodeBlockInfos_;
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
+    uint32_t numVregs_ {0};
+    const uint8_t *startPc_ {nullptr};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

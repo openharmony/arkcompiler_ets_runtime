@@ -181,7 +181,7 @@ public:
         bool IsGeneralRTStub() const
         {
             return (kind_ >= CallSignature::TargetKind::RUNTIME_STUB &&
-                kind_ <= CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+                kind_ <= CallSignature::TargetKind::DEOPT_STUB);
         }
     };
 

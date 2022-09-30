@@ -26,10 +26,11 @@ void RuntimeStubCSigns::Initialize()
 {
 #define INIT_SIGNATURES(name)                                        \
     name##CallSignature::Initialize(&callSigns_[ID_##name]);         \
-    callSigns_[ID_##name].SetID(ID_##name);                          \
     callSigns_[ID_##name].SetName(std::string("RTStub_") + #name);   \
+    callSigns_[ID_##name].SetID(ID_##name);                          \
     assert(callSigns_[ID_##name].IsRuntimeNGCStub() ||               \
            callSigns_[ID_##name].IsRuntimeStub() ||                  \
+           callSigns_[ID_##name].IsDeoptStub()   ||                  \
            callSigns_[ID_##name].IsRuntimeVAStub());
 
     RUNTIME_STUB_WITHOUT_GC_LIST(INIT_SIGNATURES)

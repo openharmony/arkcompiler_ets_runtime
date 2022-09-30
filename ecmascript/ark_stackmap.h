@@ -82,6 +82,8 @@ totalSize  callsiteNum callsitStart  callsitEnd
 -          CONSTANTNDEX <LargeInt>
 */
 enum class SpecVregIndex: int {
+    PC_INDEX = -1,
+    ACC_INDEX = -2,
     BC_OFFSET_INDEX = -3,
 };
 } // namespace panda::ecmascript::kungfu

@@ -82,6 +82,10 @@ public:
 
     static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
 
+    static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
+
+    static void DeoptHandlerAsm(ExtendedAssembler *assembler);
+
 private:
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
                             Label *nonCallable, Label *notJSFunction);

@@ -160,6 +160,13 @@ bool StubCompiler::BuildStubModuleAndSave() const
         RunPipeline(&builtinsStubModule);
         generator.AddModule(&builtinsStubModule, &builtinsStubAssembler);
         res++;
+        // LOG_COMPILER(INFO) << "compiling Deopt stubs";
+        // LLVMModule deoptStubModule("deopt_stub", triple_);
+        // LLVMAssembler deoptStubAssembler(deoptStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
+        // deoptStubModule.SetUpForBuiltinsStubs();
+        // RunPipeline(&deoptStubModule);
+        // generator.AddModule(&deoptStubModule, &deoptStubAssembler);
+        // res++;
         generator.SaveStubFile(filePath_);
     }
     return (res > 0);

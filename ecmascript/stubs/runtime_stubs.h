@@ -77,7 +77,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(JSCallWithArgV)                        \
     V(ConstructorJSCallWithArgV)             \
     V(JSProxyCallInternalWithArgV)           \
-    V(OptimizedCallOptimized)
+    V(OptimizedCallOptimized)                \
+    V(DeoptHandlerAsm)
 
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/type_lowering.h"
+#include "ecmascript/ark_stackmap.h"
 
 namespace panda::ecmascript::kungfu {
 void TypeLowering::RunTypeLowering()
@@ -24,6 +25,8 @@ void TypeLowering::RunTypeLowering()
         auto op = acc_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
             Lower(gate);
+        } else if (op == OpCode::DEOPTIMIZE) {
+            LowerDeoptimize(gate);
         }
         if (acc_.IsTypedGate(gate)) {
             LowerType(gate);
@@ -103,6 +106,9 @@ void TypeLowering::LowerType(GateRef gate)
             break;
         case OpCode::TYPED_UNARY_OP:
             LowerTypedUnaryOp(gate);
+            break;
+        case OpCode::DEOPTIMIZE:
+            LowerDeoptimize(gate);
             break;
         default:
             break;
@@ -2256,5 +2262,37 @@ void TypeLowering::LowerTypeInc(GateRef gate)
     std::vector<GateRef> successControl;
     GenerateSuccessMerge(successControl);
     ReplaceHirToFastPathCfg(gate, *result, successControl);
+}
+
+void TypeLowering::LowerDeoptimize(GateRef gate)
+{
+    ArgumentAccessor argAcc(circuit_);
+    auto glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
+    ASSERT(acc_.GetStateCount(gate) == 1);
+    GateRef stateIn = acc_.GetState(gate, 0);
+    GateRef guard = acc_.GetDep(gate);
+    GateRef frameState = acc_.GetValueIn(guard, 0);
+    size_t numValueIn = acc_.GetBitField(frameState);
+    size_t accIndex = numValueIn - 2; // 2: acc valueIn index
+    size_t pcIndex = numValueIn - 1;
+    std::vector<GateRef> vec;
+    for (size_t i = 0; i < accIndex; i++) {
+        GateRef vreg = acc_.GetValueIn(frameState, i);
+        if (acc_.GetBitField(vreg) != JSTaggedValue::VALUE_HOLE) {
+            vec.emplace_back(builder_.Int32(i));
+            vec.emplace_back(vreg);
+        }
+    }
+    GateRef acc = acc_.GetValueIn(frameState, accIndex);
+    GateRef pc = acc_.GetValueIn(frameState, pcIndex);
+    vec.emplace_back(builder_.Int32(static_cast<int>(SpecVregIndex::ACC_INDEX)));
+    vec.emplace_back(acc);
+    vec.emplace_back(builder_.Int32(static_cast<int>(SpecVregIndex::PC_INDEX)));
+    vec.emplace_back(pc);
+    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(DeoptHandlerAsm));
+    GateRef target = builder_.IntPtr(RTSTUB_ID(DeoptHandlerAsm));
+    GateRef newGate = builder_.Call(cs, glue, target, guard, vec);
+    builder_.Return(stateIn, acc_.GetDep(guard), newGate);
+    acc_.DeleteGate(gate);
 }
 }  // namespace panda::ecmascript

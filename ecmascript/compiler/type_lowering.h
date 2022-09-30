@@ -188,6 +188,7 @@ private:
     void LowerTypeNotEq(GateRef gate);
     void LowerToNumeric(GateRef gate);
     void LowerTypeInc(GateRef gate);
+    void LowerDeoptimize(GateRef gate);
 
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);
