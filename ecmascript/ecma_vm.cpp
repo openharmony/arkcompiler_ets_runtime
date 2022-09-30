@@ -448,6 +448,9 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         }
         JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
         func->SetModule(thread_, module);
+    } else {
+        JSHandle<EcmaString> recordName =  factory_->NewFromUtf8(entryPoint.data());
+        func->SetModule(thread_, recordName);
     }
 
     if (jsPandaFile->IsLoadedAOT()) {
@@ -489,12 +492,11 @@ JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t inde
 void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg, const JSPandaFile *jsPandaFile)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    ObjectFactory *factory = GetFactory();
 
     // create "module", "exports", "require", "filename", "dirname"
-    JSHandle<CjsModule> module = factory->NewCjsModule();
+    JSHandle<CjsModule> module = factory_->NewCjsModule();
     JSHandle<JSTaggedValue> require = GetGlobalEnv()->GetCjsRequireFunction();
-    JSHandle<CjsExports> exports = factory->NewCjsExports();
+    JSHandle<CjsExports> exports = factory_->NewCjsExports();
     JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
     RequireManager::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);

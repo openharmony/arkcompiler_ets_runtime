@@ -70,11 +70,11 @@ public:
         isExecuteBuffer_ = mode;
     }
     void ConcatFileName(std::string &dirPath, std::string &requestPath, std::string &fileName);
+    static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
+                                           CString &moduleRecordName, CString &moduleRequestName);
 
     // use for AOT PassManager
     PUBLIC_API CString ResolveModuleFileName(const CString &fileName);
-    static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
-                                           CString &moduleRecordName, CString &moduleRequestName);
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);

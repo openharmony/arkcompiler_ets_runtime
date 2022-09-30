@@ -35,6 +35,7 @@
 #include "ecmascript/js_promise.h"
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
@@ -1250,16 +1251,32 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
 
     // get current filename
     Method *method = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetCallTarget();
-    std::string filename = method->GetJSPandaFile()->GetPandaFile()->GetFilename();
+    const JSPandaFile* jsPandaFile = method->GetJSPandaFile();
+    std::string filename = jsPandaFile->GetPandaFile()->GetFilename();
 
     // parse dirPath from filename
-    CString fullName = CString(filename);
-    int foundPos = static_cast<int>(fullName.find_last_of("/\\"));
-    if (foundPos == -1) {
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Hole());
+    JSHandle<EcmaString> dirPath;
+    JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
+    if (jsPandaFile->IsBundlePack()) {
+        CString fullName = CString(filename);
+        int foundPos = static_cast<int>(fullName.find_last_of("/\\"));
+        if (foundPos == -1) {
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Hole());
+        }
+        CString dirPathStr = fullName.substr(0, foundPos + 1);
+        dirPath = factory->NewFromUtf8(dirPathStr);
+    } else {
+        JSHandle<JSTaggedValue> module(thread, JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetModule());
+        dirPath = factory->NewFromUtf8(filename.c_str());
+        if (module->IsSourceTextModule()) {
+            recordName.Update(SourceTextModule::Cast(module->GetTaggedObject())->GetEcmaModuleRecordName());
+        } else if (module->IsString()) {
+            recordName.Update(module);
+        } else {
+            LOG_INTERPRETER(ERROR) << "module is undefined";
+            UNREACHABLE();
+        }
     }
-    CString dirPathStr = fullName.substr(0, foundPos + 1);
-    JSHandle<EcmaString> dirPath = factory->NewFromUtf8(dirPathStr);
 
     // 4. Let promiseCapability be !NewPromiseCapability(%Promise%).
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
@@ -1269,11 +1286,12 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     RETURN_REJECT_PROMISE_IF_ABRUPT(thread, specifierString, promiseCapability);
     JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
 
-    JSHandle<TaggedArray> argv = factory->NewTaggedArray(4); // 4: 4 means two args stored in array
+    JSHandle<TaggedArray> argv = factory->NewTaggedArray(5); // 5: 5 means parameters stored in array
     argv->Set(thread, 0, promiseCapability->GetResolve());
     argv->Set(thread, 1, promiseCapability->GetReject()); // 1 : first argument
     argv->Set(thread, 2, dirPath); // 2: second argument
     argv->Set(thread, 3, specifierString); // 3 : third argument
+    argv->Set(thread, 4, recordName); // 4 : fourth argument
 
     JSHandle<JSFunction> dynamicImportJob(env->GetDynamicImportJob());
     job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, dynamicImportJob, argv);
