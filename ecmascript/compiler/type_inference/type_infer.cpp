@@ -516,9 +516,10 @@ bool TypeInfer::InferSuperCall(GateRef gate)
 {
     ArgumentAccessor argAcc(circuit_);
     auto newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
-    auto funcType = gateAccessor_.GetGateType(newTarget);
-    if (!funcType.IsUndefinedType()) {
-        return UpdateType(gate, funcType);
+    auto classType = gateAccessor_.GetGateType(newTarget);
+    if (tsManager_->IsClassTypeKind(classType)) {
+        auto classInstanceType = tsManager_->CreateClassInstanceType(classType);
+        return UpdateType(gate, classInstanceType);
     }
     return false;
 }
