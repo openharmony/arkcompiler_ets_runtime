@@ -1152,6 +1152,8 @@ public:
     static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
                         const std::string &filename = "");
+    // merge abc, execute module buffer
+    static bool ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename = "");
     static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file);
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);

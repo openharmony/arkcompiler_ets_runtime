@@ -29,6 +29,10 @@ public:
                                                          std::string_view entryPoint);
     static Expected<JSTaggedValue, bool> ExecuteFromBuffer(JSThread *thread, const void *buffer, size_t size,
                                                            std::string_view entryPoint, const CString &filename = "");
+    static Expected<JSTaggedValue, bool> ExecuteModuleBuffer(JSThread *thread, const void *buffer, size_t size,
+                                                             const CString &filename = "");
+    static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, bool isBundle, const CString &filename,
+                                                             const CString &entry, const void *buffer, size_t size);
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                  std::string_view entryPoint);
 };
