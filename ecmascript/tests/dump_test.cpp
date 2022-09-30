@@ -943,7 +943,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::CLASS_INFO_EXTRACTOR: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 10U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 8U);
                 JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(
                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
                 DUMP_FOR_HANDLE(classInfoExtractor)

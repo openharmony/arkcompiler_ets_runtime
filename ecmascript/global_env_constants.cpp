@@ -561,6 +561,10 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSArray::LengthSetter),
                                             reinterpret_cast<void *>(JSArray::LengthGetter));
     SetConstant(ConstantIndex::ARRAY_LENGTH_ACCESSOR, accessor);
+    SetConstant(ConstantIndex::CLASS_PROTOTYPE_HCLASS_INDEX,
+                factory->CreateDefaultClassPrototypeHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject())));
+    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
+                factory->CreateDefaultClassConstructorHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject())));
 }
 
 void GlobalEnvConstants::InitJSAPIContainers()

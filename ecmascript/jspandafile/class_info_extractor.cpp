@@ -169,12 +169,17 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
     return withElementsFlag;
 }
 
-JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                             JSHandle<TaggedArray> &keys,
                                                              JSHandle<TaggedArray> &properties)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     uint32_t length = keys->GetLength();
+    if (length == ClassInfoExtractor::NON_STATIC_RESERVED_LENGTH && base->IsHole()) {
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        return JSHandle<JSHClass>(globalConst->GetHandledClassPrototypeClass());
+    }
     JSHandle<JSHClass> hclass;
     if (LIKELY(length <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -210,12 +215,18 @@ JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, J
     return hclass;
 }
 
-JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                               JSHandle<TaggedArray> &keys,
                                                                JSHandle<TaggedArray> &properties)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     uint32_t length = keys->GetLength();
+    if (length == ClassInfoExtractor::STATIC_RESERVED_LENGTH && base->IsHole() &&
+        properties->Get(NAME_INDEX).IsString()) {
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorClass());
+    }
     JSHandle<JSHClass> hclass;
     if (LIKELY(length <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -271,7 +282,8 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
     return hclass;
 }
 
-JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
+JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                           JSHandle<ClassInfoExtractor> &extractor,
                                                            const JSHandle<JSTaggedValue> &constpool,
                                                            const JSHandle<JSTaggedValue> &lexenv)
 {
@@ -279,12 +291,12 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSH
     JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
     JSHandle<TaggedArray> staticKeys(thread, extractor->GetStaticKeys());
     JSHandle<TaggedArray> staticProperties(thread, extractor->GetStaticProperties());
-    JSHandle<JSHClass> constructorHClass = ClassInfoExtractor::CreateConstructorHClass(thread, staticKeys,
+    JSHandle<JSHClass> constructorHClass = ClassInfoExtractor::CreateConstructorHClass(thread, base, staticKeys,
                                                                                        staticProperties);
 
     JSHandle<TaggedArray> nonStaticKeys(thread, extractor->GetNonStaticKeys());
     JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
-    JSHandle<JSHClass> prototypeHClass = ClassInfoExtractor::CreatePrototypeHClass(thread, nonStaticKeys,
+    JSHandle<JSHClass> prototypeHClass = ClassInfoExtractor::CreatePrototypeHClass(thread, base, nonStaticKeys,
                                                                                    nonStaticProperties);
 
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
@@ -376,7 +388,8 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSH
     return constructor;
 }
 
-JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
+JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                         JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &constpool,
                                                          const JSHandle<JSTaggedValue> &lexenv,
                                                          const JSHandle<JSHClass> &ihclass)
@@ -385,7 +398,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, JSHan
     JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
     JSHandle<TaggedArray> staticKeys(thread, extractor->GetStaticKeys());
     JSHandle<TaggedArray> staticProperties(thread, extractor->GetStaticProperties());
-    JSHandle<JSHClass> constructorHClass = ClassInfoExtractor::CreateConstructorHClass(thread, staticKeys,
+    JSHandle<JSHClass> constructorHClass = ClassInfoExtractor::CreateConstructorHClass(thread, base, staticKeys,
                                                                                        staticProperties);
 
     JSHandle<TaggedArray> nonStaticKeys(thread, extractor->GetNonStaticKeys());
