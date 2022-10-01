@@ -612,6 +612,9 @@ private:
     static inline JSTaggedValue RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func);
     static inline JSTaggedType *GetActualArgv(JSThread *thread);
     static inline OptimizedJSFunctionFrame *GetOptimizedJSFunctionFrame(JSThread *thread);
+    static inline void RuntimeUpdateAotStatus(JSThread *thread,
+                                              const JSTaggedValue constpool,
+                                              const JSTaggedValue method);
 
     static JSTaggedValue NewObject(EcmaRuntimeCallInfo *info);
     static void SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContext> context);

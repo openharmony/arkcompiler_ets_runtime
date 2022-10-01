@@ -42,13 +42,13 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
             pendingList.pop_back();
             bbGatesList.push_back(curGate);
             if (acc.GetOpCode(curGate) != OpCode::LOOP_BACK) {
-                std::vector<GateRef> succGates;
-                acc.GetOutStateVector(curGate, succGates);
-                for (const auto &succGate : succGates) {
-                    if (acc.GetOpCode(succGate).IsState() && acc.GetMark(succGate) == MarkCode::NO_MARK) {
-                        acc.SetMark(succGate, MarkCode::VISITED);
-                        pendingList.push_back(succGate);
-                        dfsFatherIdx[succGate] = dfsTimestamp[curGate];
+                auto uses = acc.Uses(curGate);
+                for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+                    if (useIt.GetIndex() < acc.GetStateCount(*useIt) &&
+                        acc.IsState(*useIt) && acc.GetMark(*useIt) == MarkCode::NO_MARK) {
+                        acc.SetMark(*useIt, MarkCode::VISITED);
+                        pendingList.push_back(*useIt);
+                        dfsFatherIdx[*useIt] = dfsTimestamp[curGate];
                     }
                 }
             }
