@@ -120,6 +120,9 @@ public:
         DEPEND_SELECTOR,
         DEPEND_RELAY,
         DEPEND_AND,
+        GUARD,
+        FRAME_STATE,
+        DEOPT,
         // High Level IR
         JS_BYTECODE,
         IF_SUCCESS,
@@ -190,9 +193,6 @@ public:
         FLOAT_TO_SIGNED_INT,
         UNSIGNED_FLOAT_TO_INT,
         BITCAST,
-        GUARD,
-        FRAME_STATE,
-        DEOPTIMIZE,
         DEOPT_CALL,
         RESTORE_REGISTER,
         SAVE_REGISTER,
@@ -200,8 +200,6 @@ public:
         TYPED_BINARY_OP,
         TYPE_CONVERT,
         TYPED_UNARY_OP,
-
-        // middle hir level
         TO_LENGTH,
         HEAP_ALLOC,
         LOAD_ELEMENT,
@@ -210,11 +208,11 @@ public:
         STORE_PROPERTY,
 
         COMMON_CIR_FIRST = NOP,
-        COMMON_CIR_LAST = DEPEND_AND,
+        COMMON_CIR_LAST = DEOPT,
         HIGH_CIR_FIRST = JS_BYTECODE,
         HIGH_CIR_LAST = GET_EXCEPTION,
         MID_CIR_FIRST = RUNTIME_CALL,
-        MID_CIR_LAST = SAVE_REGISTER
+        MID_CIR_LAST = STORE_PROPERTY
     };
 
     OpCode() = default;

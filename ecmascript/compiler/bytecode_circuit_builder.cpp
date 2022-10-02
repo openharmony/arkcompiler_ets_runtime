@@ -2430,8 +2430,9 @@ void BytecodeCircuitBuilder::BuildCircuit()
 
     if (IsLogEnabled()) {
         PrintGraph("Bytecode2Gate");
-        LOG_COMPILER(INFO) << "================================================";
+        LOG_COMPILER(INFO) << "\033[34m" << "============= After bytecode2circuit lowering =============" << "\033[0m";
         circuit_.PrintAllGates(*this);
+        LOG_COMPILER(INFO) << "\033[34m" << "=========================== End ===========================" << "\033[0m";
     }
 }
 

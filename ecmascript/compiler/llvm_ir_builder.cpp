@@ -234,15 +234,6 @@ void LLVMIRBuilder::Build()
 
         for (size_t instIdx = bb.size(); instIdx > 0; instIdx--) {
             GateRef gate = bb[instIdx - 1];
-            std::vector<GateRef> ins;
-            acc_.GetInVector(gate, ins);
-            std::vector<GateRef> outs;
-            acc_.GetOutVector(gate, outs);
-
-            if (IsLogEnabled()) {
-                acc_.Print(gate);
-            }
-
             auto found = opHandlers_.find(acc_.GetOpCode(gate));
             if (found != opHandlers_.end()) {
                 (this->*(found->second))(gate);

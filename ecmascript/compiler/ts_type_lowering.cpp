@@ -29,8 +29,10 @@ void TSTypeLowering::RunTSTypeLowering()
     }
 
     if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "================== ts type lowering print all gates Start==================";
+        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "\033[34m" << "================ After ts type lowering ================" << "\033[0m";
         circuit_->PrintAllGates(*bcBuilder_);
+        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
 }
 

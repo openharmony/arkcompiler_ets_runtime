@@ -184,7 +184,7 @@ GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnaryOp unaryO
 
 GateRef CircuitBuilder::Deoptimize(GateRef state, GateRef depend)
 {
-    return circuit_->NewGate(OpCode(OpCode::DEOPTIMIZE), 0, {state, depend}, GateType::Empty());
+    return circuit_->NewGate(OpCode(OpCode::DEOPT), 0, {state, depend}, GateType::Empty());
 }
 
 GateRef CircuitBuilder::Int8(int8_t val)

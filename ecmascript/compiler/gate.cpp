@@ -193,7 +193,7 @@ Properties OpCode::GetProperties() const
             return {NOVALUE, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
         case FRAME_STATE:
             return {NOVALUE, NO_STATE, NO_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
-        case DEOPTIMIZE:
+        case DEOPT:
             return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE, NO_ROOT};
         case DEOPT_CALL:
             return {FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
@@ -336,7 +336,7 @@ std::string OpCode::Str() const
         {BITCAST, "BITCAST"},
         {GUARD, "GUARD"},
         {FRAME_STATE, "FRAME_STATE"},
-        {DEOPTIMIZE, "DEOPTIMIZE"},
+        {DEOPT, "DEOPT"},
         {DEOPT_CALL, "DEOPT_CALL"},
         {RESTORE_REGISTER, "RESTORE_REGISTER"},
         {SAVE_REGISTER, "SAVE_REGISTER"},
@@ -1142,7 +1142,9 @@ void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) 
         log += ((bytecode.compare("") == 0) ? "" : "bytecode=") + bytecode;
         log += ((bytecode.compare("") == 0) ? "" : ", ");
         log += "MType=" + MachineTypeStr(GetMachineType()) + ", ";
-        log += "bitfield=" + std::to_string(bitfield_) + ", ";
+        std::stringstream buf;
+        buf << std::hex << bitfield_;
+        log += "bitfield=" + buf.str() + ", ";
         log += "type=" + GateTypeStr(type_) + ", ";
         log += "stamp=" + std::to_string(static_cast<uint32_t>(stamp_)) + ", ";
         log += "mark=" + std::to_string(static_cast<uint32_t>(mark_)) + ", ";
@@ -1186,7 +1188,9 @@ void Gate::ShortPrint(std::string bytecode, bool inListPreview, size_t highlight
         log += ((bytecode.compare("") == 0) ? "" : "bytecode=") + bytecode;
         log += ((bytecode.compare("") == 0) ? "" : ", ");
         log += "MType=" + MachineTypeStr(GetMachineType()) + ", ";
-        log += "bitfield=" + std::to_string(bitfield_) + ", ";
+        std::stringstream buf;
+        buf << std::hex << bitfield_;
+        log += "bitfield=" + buf.str() + ", ";
         log += "type=" + GateTypeStr(type_) + ", ";
         log += "in=[";
 

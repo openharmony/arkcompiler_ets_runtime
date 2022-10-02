@@ -142,11 +142,8 @@ private:
     void LowerNumberDiv(GateRef gate);
     void LowerNumberEq(GateRef gate);
     void LowerNumberNotEq(GateRef gate);
-    void GenerateSuccessMerge(std::vector<GateRef> &successControl);
-    void RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
     void ReplaceGateToSubCfg(GateRef gate, GateRef state, GateRef depend, GateRef value);
-    void ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl);
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
     template<OpCode::Op Op>
@@ -175,21 +172,7 @@ private:
     GateRef DivNumbers(GateRef left, GateRef right);
     GateRef FastEqual(GateRef left, GateRef right);
 
-    void LowerTypeAdd(GateRef gate, GateRef glue);
-    void LowerTypeSub(GateRef gate);
-    void LowerTypeMul(GateRef gate);
-    void LowerTypeMod(GateRef gate, GateRef glue);
-    void LowerTypeLess(GateRef gate);
-    void LowerTypeLessEq(GateRef gate);
-    void LowerTypeGreater(GateRef gate);
-    void LowerTypeGreaterEq(GateRef gate);
-    void LowerTypeDiv(GateRef gate);
-    void LowerTypeEq(GateRef gate);
-    void LowerTypeNotEq(GateRef gate);
-    void LowerToNumeric(GateRef gate);
-    void LowerTypeInc(GateRef gate);
     void LowerDeoptimize(GateRef gate);
-
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);
 

@@ -316,7 +316,9 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
                     logFlag = false;
                 }
                 if (logFlag) {
-                    LOG_COMPILER(INFO) << "========================  Generated Asm Code =============================";
+                    LOG_COMPILER(INFO) << "\033[34m"
+                                       << "========================  Generated Asm Code ============================="
+                                       << "\033[0m";
                     LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << methodName << "]:" << "\033[0m";
                 }
             }
