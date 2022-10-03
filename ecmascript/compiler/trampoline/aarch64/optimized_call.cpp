@@ -102,6 +102,12 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Ret();
 }
 
+void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
+    __ Ret();
+}
+
 void OptimizedCall::IncreaseStackForArguments(ExtendedAssembler *assembler, Register argc, Register currentSp)
 {
     Register sp(SP);
@@ -953,12 +959,6 @@ void OptimizedCall::ConstructorJSCallWithArgV([[maybe_unused]]ExtendedAssembler 
     __ Ldr(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
     PopJSFunctionArgs(assembler, actualNumArgs, actualNumArgs);
     PopOptimizedUnfoldArgVFrame(assembler);
-    __ Ret();
-}
-
-void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
     __ Ret();
 }
 #undef __

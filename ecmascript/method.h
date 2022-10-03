@@ -126,6 +126,11 @@ public:
             HaveNewTargetWithCallField() + HaveThisWithCallField();
     }
 
+    uint32_t GetNumberVRegs() const
+    {
+        return GetNumVregsWithCallField() + GetNumArgs();
+    }
+
     inline int16_t GetHotnessCounter() const
     {
         uint64_t literalInfo = GetLiteralInfo();

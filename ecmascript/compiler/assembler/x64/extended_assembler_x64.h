@@ -24,6 +24,7 @@ namespace panda::ecmascript::x64 {
 // ExtendedAssembler implements frequently-used assembler macros with some extended usages.
 class ExtendedAssembler : public AssemblerX64 {
 public:
+    static constexpr int FRAME_SLOT_SIZE = 8;
     explicit ExtendedAssembler(Chunk *chunk, kungfu::AssemblerModule *module)
         : AssemblerX64(chunk), module_(module)
     {
@@ -34,6 +35,8 @@ public:
     void PopAlignBytes();
     void PushCppCalleeSaveRegisters();
     void PopCppCalleeSaveRegisters();
+    void UpdateCalleeSaveRegisters();
+    void RestoreCppCalleeSaveRegisters(Register calleeRegAddr);
     void PushGhcCalleeSaveRegisters();
     void PopGhcCalleeSaveRegisters();
     void PushArgsWithArgv(Register argc, Register argv, Register operatorRegister);

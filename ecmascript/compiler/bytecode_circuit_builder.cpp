@@ -252,6 +252,10 @@ void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo()
 {
     std::sort(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
 
+    if (IsLogEnabled()) {
+        PrintCollectBlockInfo(bytecodeBlockInfos_);
+    }
+
     // Deduplicate
     auto deduplicateIndex = std::unique(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
     bytecodeBlockInfos_.erase(deduplicateIndex, bytecodeBlockInfos_.end());
@@ -310,10 +314,14 @@ void BytecodeCircuitBuilder::CompleteBytecodeBlockInfo()
     // Deduplicate
     deduplicateIndex = std::unique(bytecodeBlockInfos_.begin(), bytecodeBlockInfos_.end());
     bytecodeBlockInfos_.erase(deduplicateIndex, bytecodeBlockInfos_.end());
+
+    if (IsLogEnabled()) {
+        PrintCollectBlockInfo(bytecodeBlockInfos_);
+    }
 }
 
 void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>,
-                                                       std::vector<uint8_t *>> &exception)
+                                              std::vector<uint8_t *>> &exception)
 {
     std::map<uint8_t *, BytecodeRegion *> startPcToBB; // [start, bb]
     std::map<uint8_t *, BytecodeRegion *> endPcToBB; // [end, bb]
@@ -377,7 +385,7 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
     }
 
     if (IsLogEnabled()) {
-        PrintGraph("Build Basic Block");
+        PrintGraph();
     }
     ComputeDominatorTree();
 }
@@ -412,7 +420,15 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
     for (size_t idx = 0; idx < basicBlockList.size(); idx++) {
         bbDfsTimestampToIdx[basicBlockList[idx]] = idx;
     }
+
     RemoveDeadRegions(bbIdToDfsTimestamp);
+
+    if (IsLogEnabled()) {
+        // print cfg order
+        for (auto iter : bbIdToDfsTimestamp) {
+            LOG_COMPILER(INFO) << "BB_" << iter.first << " dfs timestamp is : " << iter.second;
+        }
+    }
 
     std::vector<size_t> immDom(basicBlockList.size()); // immediate dominator with dfs order index
     std::vector<size_t> semiDom(basicBlockList.size());
@@ -468,7 +484,11 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
     }
 
     if (IsLogEnabled()) {
-        PrintGraph("Computed Dom Trees");
+        // print immediate dominator
+        for (size_t i = 0; i < realImmDom.size(); i++) {
+            LOG_COMPILER(INFO) << i << " immediate dominator: " << realImmDom[i];
+        }
+        PrintGraph();
     }
 
     BuildImmediateDominator(realImmDom);
@@ -486,12 +506,35 @@ void BytecodeCircuitBuilder::BuildImmediateDominator(const std::vector<size_t> &
         dominatedBlock->iDominator = immDomBlock;
     }
 
+    if (IsLogEnabled()) {
+        for (auto block : graph_) {
+            if (block.isDead) {
+                continue;
+            }
+            LOG_COMPILER(INFO) << "current block " << block.id
+                               << " immediate dominator block id: " << block.iDominator->id;
+        }
+    }
+
     for (auto &block : graph_) {
         if (block.isDead) {
             continue;
         }
         if (block.iDominator->id != block.id) {
             block.iDominator->immDomBlocks.emplace_back(&block);
+        }
+    }
+
+    if (IsLogEnabled()) {
+        for (auto &block : graph_) {
+            if (block.isDead) {
+                continue;
+            }
+            std::string log("block " + std::to_string(block.id) + " dominate block has: ");
+            for (size_t i = 0; i < block.immDomBlocks.size(); i++) {
+                log += std::to_string(block.immDomBlocks[i]->id) + ",";
+            }
+            LOG_COMPILER(INFO) << log;
         }
     }
 
@@ -525,6 +568,16 @@ void BytecodeCircuitBuilder::ComputeDomFrontiers(const std::vector<size_t> &immD
             graph_[i].domFrontiers.emplace_back(*iter);
         }
     }
+
+    if (IsLogEnabled()) {
+        for (size_t i = 0; i < domFrontiers.size(); i++) {
+            std::string log("basic block " + std::to_string(i) + " dominate Frontiers is: ");
+            for (auto iter = domFrontiers[i].cbegin(); iter != domFrontiers[i].cend(); iter++) {
+                log += std::to_string((*iter)->id) + ", ";
+            }
+            LOG_COMPILER(INFO) << log;
+        }
+    }
 }
 
 void BytecodeCircuitBuilder::RemoveDeadRegions(const std::map<size_t, size_t> &bbIdToDfsTimestamp)
@@ -553,6 +606,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
     BytecodeInstruction inst(pc);
     auto opcode = inst.GetOpcode();
     info.offset = BytecodeInstruction::Size(opcode);
+    info.pcOffset = pc - method_->GetBytecodeArray();
     info.opcode = static_cast<EcmaOpcode>(opcode);
     info.accIn = inst.HasFlag(BytecodeInstruction::Flags::ACC_READ);
     info.accOut = inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE);
@@ -1613,7 +1667,7 @@ void BytecodeCircuitBuilder::InsertPhi()
         EnumerateBlock(bb, [this, &defsitesInfo, &bb]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR)) {
-                auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
+                auto numVRegs = method_->GetNumberVRegs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     bytecodeInfo.vregOut.emplace_back(i);
                 }
@@ -1627,6 +1681,10 @@ void BytecodeCircuitBuilder::InsertPhi()
 
     // handle phi generated from multiple control flow in the same source block
     InsertExceptionPhi(defsitesInfo);
+
+    if (IsLogEnabled()) {
+        PrintDefsitesInfo(defsitesInfo);
+    }
 
     for (const auto&[variable, defsites] : defsitesInfo) {
         std::queue<uint16_t> workList;
@@ -1648,7 +1706,7 @@ void BytecodeCircuitBuilder::InsertPhi()
     }
 
     if (IsLogEnabled()) {
-        PrintGraph("Inserted Phis");
+        PrintGraph();
     }
 }
 
@@ -1666,7 +1724,7 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size
         EnumerateBlock(bb, [this, &vregs]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR)) {
-                auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
+                auto numVRegs = method_->GetNumberVRegs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     vregs.insert(i);
                 }
@@ -1732,6 +1790,7 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     if (hasTypes_) {
         argAcc_.FillArgsGateType(&typeRecorder_);
     }
+    frameStateBuilder_.BuildArgsValues(&argAcc_);
 }
 
 bool BytecodeCircuitBuilder::ShouldBeDead(BytecodeRegion &curBlock)
@@ -1982,33 +2041,10 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
     return gate;
 }
 
-GateRef BytecodeCircuitBuilder::InitializeFrameState(const uint8_t *pc)
-{
-    size_t fixedArgsNum = 2; // acc, pc
-    size_t frameStateInputs = numVregs_ + fixedArgsNum;
-    std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
-    for (size_t i = 0; i < numVregs_ + 1; ++i) { // 1: acc
-        GateRef gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
-                                        JSTaggedValue::VALUE_HOLE,
-                                        {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                                        GateType::TaggedValue());
-        inList[i] = gate;
-    }
-    size_t v = pc - startPc_;
-    ASSERT(v >= 0);
-    inList[numVregs_ + fixedArgsNum - 1] =
-        circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32,
-                         v,
-                         {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                         GateType::NJSValue());
-    return circuit_.NewGate(OpCode(OpCode::FRAME_STATE), frameStateInputs, inList, GateType::Empty());
-}
-
 void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, GateRef &state, GateRef &depend)
 {
     auto bytecodeInfo = GetBytecodeInfo(pc);
-    GateRef frameState = InitializeFrameState(pc);
-    GateRef guard = circuit_.NewGate(OpCode(OpCode::GUARD), 1, {depend, frameState}, GateType::Empty());
+
     size_t numValueInputs = bytecodeInfo.ComputeTotalValueCount();
     GateRef gate = 0;
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo);
@@ -2019,10 +2055,11 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, Ga
         gate = circuit_.NewGate(OpCode(OpCode::JS_BYTECODE), MachineType::NOVALUE, numValueInputs,
                                 inList, GateType::Empty());
     }
+
     // 1: store bcoffset in the end.
     AddBytecodeOffsetInfo(gate, bytecodeInfo, numValueInputs + 1, const_cast<uint8_t *>(pc));
     gateAcc_.NewIn(gate, 0, state);
-    gateAcc_.NewIn(gate, 1, guard);
+    gateAcc_.NewIn(gate, 1, depend);
     auto ifSuccess = circuit_.NewGate(OpCode(OpCode::IF_SUCCESS), 0, {gate}, GateType::Empty());
     auto ifException = circuit_.NewGate(OpCode(OpCode::IF_EXCEPTION), 0, {gate}, GateType::Empty());
     if (!bb.catchs.empty()) {
@@ -2361,8 +2398,57 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
     }
 }
 
+void BytecodeCircuitBuilder::BuildFrameState()
+{
+    const uint8_t *predPc = nullptr;
+    for (auto &bb: graph_) {
+        if (bb.isDead) {
+            continue;
+        }
+        if (bb.numOfStatePreds != 0) {
+            predPc = std::get<const uint8_t *>(bb.expandedPreds.at(0));
+        }
+        frameStateBuilder_.AdvenceToSuccessor(predPc, bb.end);
+        if (bb.valueSelectorAccGate != Circuit::NullGate()) {
+            frameStateBuilder_.UpdateAccumulator(bb.valueSelectorAccGate);
+        }
+        for (auto &it : bb.vregToValSelectorGate) {
+            auto reg = it.first;
+            auto gate = it.second;
+            frameStateBuilder_.UpdateVirtualRegister(reg, gate);
+        }
+        EnumerateBlock(bb, [this](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+            GateRef gate = Circuit::NullGate();
+            if (bytecodeInfo.IsMov()) {
+                if (bytecodeInfo.accIn) {
+                    gate = frameStateBuilder_.ValuesAtAccumulator();
+                } else if (bytecodeInfo.inputs.size() != 0) {
+                    auto index = std::get<VirtualRegister>(bytecodeInfo.inputs.at(0)).GetId();
+                    gate = frameStateBuilder_.ValuesAt(index);
+                }
+            } else if (bytecodeInfo.IsGeneral()) {
+                gate = byteCodeToJSGate_.at(pc);
+                frameStateBuilder_.BindCheckPoint(gate, bytecodeInfo.pcOffset);
+            } else if (bytecodeInfo.IsSetConstant()) {
+                gate = byteCodeToJSGate_.at(pc);
+            }
+            if (bytecodeInfo.accOut) {
+                frameStateBuilder_.UpdateAccumulator(gate);
+            }
+            for (const auto &out: bytecodeInfo.vregOut) {
+                frameStateBuilder_.UpdateVirtualRegister(out, gate);
+            }
+            return true;
+        });
+    }
+}
+
 void BytecodeCircuitBuilder::BuildCircuit()
 {
+    if (IsLogEnabled()) {
+        PrintBBInfo();
+    }
+
     // create arg gates array
     BuildCircuitArgs();
     CollectPredsInfo();
@@ -2380,7 +2466,11 @@ void BytecodeCircuitBuilder::BuildCircuit()
             ASSERT(bb.forwardIndex == bb.numOfStatePreds - bb.numOfLoopBacks);
         }
     }
-    std::vector<GateRef> jsGateList;
+
+    if (IsLogEnabled()) {
+        PrintBytecodeInfo();
+    }
+
     // resolve def-site of virtual regs and set all value inputs
     std::vector<GateRef> gates;
     circuit_.GetAllGates(gates);
@@ -2407,63 +2497,25 @@ void BytecodeCircuitBuilder::BuildCircuit()
         ASSERT(numValueOutputs <= 1);
         auto stateCount = gateAcc_.GetStateCount(gate);
         auto dependCount = gateAcc_.GetDependCount(gate);
-        if (gateAcc_.GetOpCode(gate) == OpCode::JS_BYTECODE && !bytecodeInfo.IsJump()) {
-            jsGateList.emplace_back(gate);
-        }
         for (size_t valueIdx = 0; valueIdx < valueCount; valueIdx++) {
             auto inIdx = valueIdx + stateCount + dependCount;
             if (!gateAcc_.IsInGateNull(gate, inIdx)) {
                 continue;
             }
             if (valueIdx < bytecodeInfo.inputs.size()) {
-                auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();
-                GateRef defVreg = RenameVariable(id, pc - 1, vregId, false);
-                gateAcc_.NewIn(gate, inIdx, defVreg);
-                StoreVregInfo(vregId, defVreg, jsGateList);
+                gateAcc_.NewIn(gate, inIdx,
+                               RenameVariable(id, pc - 1,
+                                              std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId(),
+                                              false));
             } else {
-                GateRef defAcc = RenameVariable(id, pc - 1, 0, true);
-                gateAcc_.NewIn(gate, inIdx, defAcc);
-                StoreAccInfo(defAcc, jsGateList);
+                gateAcc_.NewIn(gate, inIdx, RenameVariable(id, pc - 1, 0, true));
             }
         }
     }
+    BuildFrameState();
 
     if (IsLogEnabled()) {
-        PrintGraph("Bytecode2Gate");
-        LOG_COMPILER(INFO) << "\033[34m" << "============= After bytecode2circuit lowering =============" << "\033[0m";
         circuit_.PrintAllGates(*this);
-        LOG_COMPILER(INFO) << "\033[34m" << "=========================== End ===========================" << "\033[0m";
-    }
-}
-
-void BytecodeCircuitBuilder::StoreVregInfo(size_t vregId, GateRef defVreg, std::vector<GateRef> &gateList)
-{
-    GateAccessor acc(&circuit_);
-    for (auto it = gateList.rbegin(); it != gateList.rend(); it++) {
-        GateRef checkPoint = acc.GetDep(*it);
-        GateRef frameState = acc.GetValueIn(checkPoint, 0);
-        GateRef vreg = acc.GetValueIn(frameState, vregId);
-        if (acc.GetBitField(vreg) == JSTaggedValue::VALUE_HOLE && acc.GetId(*it) > acc.GetId(defVreg)) {
-            acc.ReplaceIn(frameState, vregId, defVreg);
-        } else {
-            break;
-        }
-    }
-}
-
-void BytecodeCircuitBuilder::StoreAccInfo(GateRef defAcc, std::vector<GateRef> &gateList)
-{
-    GateAccessor acc(&circuit_);
-    for (auto it = gateList.rbegin(); it != gateList.rend(); it++) {
-        GateRef checkPoint = acc.GetDep(*it);
-        GateRef frameState = acc.GetValueIn(checkPoint, 0);
-        ASSERT(acc.GetOpCode(frameState) == OpCode::FRAME_STATE);
-        GateRef accValue = acc.GetValueIn(frameState, numVregs_);
-        if (acc.GetBitField(accValue) == JSTaggedValue::VALUE_HOLE && acc.GetId(*it) > acc.GetId(defAcc)) {
-            acc.ReplaceIn(frameState, numVregs_, defAcc);
-        } else {
-            break;
-        }
     }
 }
 
@@ -2493,106 +2545,157 @@ void BytecodeCircuitBuilder::SetExistingRestore(GateRef resumeGate, uint16_t tmp
     resumeRegToRestore_[pr] = restoreGate;
 }
 
-void BytecodeCircuitBuilder::PrintGraph(const char* title)
+void BytecodeCircuitBuilder::PrintCollectBlockInfo(std::vector<CfgInfo> &bytecodeBlockInfos)
 {
-    std::map<const uint8_t *, GateRef> bcToGate;
-    for (const auto &[key, value]: jsgateToBytecode_) {
-        bcToGate[value.second] = key;
-    }
-
-    LOG_COMPILER(INFO) << "======================== " << title << " ========================";
-    for (size_t i = 0; i < graph_.size(); i++) {
-        BytecodeRegion& bb = graph_[i];
-        if (bb.isDead) {
-            LOG_COMPILER(INFO) << "B" << bb.id << ":                               ;preds= invalid BB";
-            LOG_COMPILER(INFO) << "\tBytecodePC: [" << reinterpret_cast<void*>(bb.start) << ", "
-                               << reinterpret_cast<void*>(bb.end) << ")";
-            continue;
-        }
-        std::string log("B" + std::to_string(bb.id) + ":                               ;preds= ");
-        for (size_t k = 0; k < bb.preds.size(); ++k) {
-            log += std::to_string(bb.preds[k]->id) + ", ";
+    for (auto iter = bytecodeBlockInfos.cbegin(); iter != bytecodeBlockInfos.cend(); iter++) {
+        std::string log("offset: " + std::to_string(reinterpret_cast<uintptr_t>(iter->pc)) + " splitKind: " +
+            std::to_string(static_cast<int32_t>(iter->splitKind)) + " successor are: ");
+        auto &vec = iter->succs;
+        for (size_t i = 0; i < vec.size(); i++) {
+            log += std::to_string(reinterpret_cast<uintptr_t>(vec[i])) + " , ";
         }
         LOG_COMPILER(INFO) << log;
-        LOG_COMPILER(INFO) << "\tBytecodePC: [" << reinterpret_cast<void*>(bb.start) << ", "
-                           << reinterpret_cast<void*>(bb.end) << ")";
+    }
+    LOG_COMPILER(INFO) << "-----------------------------------------------------------------------";
+}
 
-        std::string log1("\tSucces: ");
-        for (size_t j = 0; j < bb.succs.size(); j++) {
-            log1 += std::to_string(bb.succs[j]->id) + ", ";
+void BytecodeCircuitBuilder::PrintGraph()
+{
+    for (size_t i = 0; i < graph_.size(); i++) {
+        if (graph_[i].isDead) {
+            LOG_COMPILER(INFO) << "BB_" << graph_[i].id << ":                               ;predsId= invalid BB";
+            LOG_COMPILER(INFO) << "curStartPc: " << reinterpret_cast<uintptr_t>(graph_[i].start) <<
+                      " curEndPc: " << reinterpret_cast<uintptr_t>(graph_[i].end);
+            continue;
+        }
+        std::string log("BB_" + std::to_string(graph_[i].id) + ":                               ;predsId= ");
+        for (size_t k = 0; k < graph_[i].preds.size(); ++k) {
+            log += std::to_string(graph_[i].preds[k]->id) + ", ";
+        }
+        LOG_COMPILER(INFO) << log;
+        LOG_COMPILER(INFO) << "curStartPc: " << reinterpret_cast<uintptr_t>(graph_[i].start) <<
+                  " curEndPc: " << reinterpret_cast<uintptr_t>(graph_[i].end);
+
+        for (size_t j = 0; j < graph_[i].preds.size(); j++) {
+            LOG_COMPILER(INFO) << "predsStartPc: " << reinterpret_cast<uintptr_t>(graph_[i].preds[j]->start) <<
+                      " predsEndPc: " << reinterpret_cast<uintptr_t>(graph_[i].preds[j]->end);
+        }
+
+        for (size_t j = 0; j < graph_[i].succs.size(); j++) {
+            LOG_COMPILER(INFO) << "succesStartPc: " << reinterpret_cast<uintptr_t>(graph_[i].succs[j]->start) <<
+                      " succesEndPc: " << reinterpret_cast<uintptr_t>(graph_[i].succs[j]->end);
+        }
+
+        std::string log1("succesId: ");
+        for (size_t j = 0; j < graph_[i].succs.size(); j++) {
+            log1 += std::to_string(graph_[i].succs[j]->id) + ", ";
         }
         LOG_COMPILER(INFO) << log1;
 
-        for (size_t j = 0; j < bb.catchs.size(); j++) {
-            LOG_COMPILER(INFO) << "\tcatch [: " << reinterpret_cast<void*>(bb.catchs[j]->start) << ", "
-                               << reinterpret_cast<void*>(bb.catchs[j]->end) << ")";
+        for (size_t j = 0; j < graph_[i].catchs.size(); j++) {
+            LOG_COMPILER(INFO) << "catchStartPc: " << reinterpret_cast<uintptr_t>(graph_[i].catchs[j]->start) <<
+                      " catchEndPc: " << reinterpret_cast<uintptr_t>(graph_[i].catchs[j]->end);
         }
 
-        std::string log2("\tTrys: ");
-        for (auto tryBlock: bb.trys) {
-            log2 += std::to_string(tryBlock->id) + " , ";
+        for (size_t j = 0; j < graph_[i].immDomBlocks.size(); j++) {
+            LOG_COMPILER(INFO) << "dominate block id: " << graph_[i].immDomBlocks[j]->id << " startPc: " <<
+                      reinterpret_cast<uintptr_t>(graph_[i].immDomBlocks[j]->start) << " endPc: " <<
+                      reinterpret_cast<uintptr_t>(graph_[i].immDomBlocks[j]->end);
+        }
+
+        if (graph_[i].iDominator) {
+            LOG_COMPILER(INFO) << "current block " << graph_[i].id <<
+                      " immediate dominator is " << graph_[i].iDominator->id;
+        }
+
+        std::string log2("current block " + std::to_string(graph_[i].id) + " dominance Frontiers: ");
+        for (const auto &frontier: graph_[i].domFrontiers) {
+            log2 += std::to_string(frontier->id) + " , ";
         }
         LOG_COMPILER(INFO) << log2;
 
-        std::string log3 = "\tDom: ";
-        for (size_t j = 0; j < bb.immDomBlocks.size(); j++) {
-            log3 += "B" + std::to_string(bb.immDomBlocks[j]->id) + std::string(", ");
+        std::string log3("current block " + std::to_string(graph_[i].id) + " phi variable: ");
+        for (auto variable: graph_[i].phi) {
+            log3 += std::to_string(variable) + " , ";
         }
         LOG_COMPILER(INFO) << log3;
-
-        if (bb.iDominator) {
-            LOG_COMPILER(INFO) << "\tIDom B" << bb.iDominator->id;
-        }
-
-        std::string log4("\tDom Frontiers: ");
-        for (const auto &frontier: bb.domFrontiers) {
-            log4 += std::to_string(frontier->id) + " , ";
-        }
-        LOG_COMPILER(INFO) << log4;
-
-        std::string log5("\tPhi: ");
-        for (auto variable: bb.phi) {
-            log5 += std::to_string(variable) + " , ";
-        }
-        LOG_COMPILER(INFO) << log5;
-
-        PrintBytecodeInfo(bb, bcToGate);
-        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "-------------------------------------------------------";
     }
 }
 
-void BytecodeCircuitBuilder::PrintBytecodeInfo(BytecodeRegion& bb, const std::map<const uint8_t *, GateRef>& bcToGate)
+void BytecodeCircuitBuilder::PrintBytecodeInfo()
 {
-    if (bb.isDead) {
-        return;
-    }
-    LOG_COMPILER(INFO) << "\tBytecode[] = ";
-    EnumerateBlock(bb, [=](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
-        std::string log;
-        log += std::string("\t\t< ") + GetEcmaOpcodeStr(static_cast<EcmaOpcode>(*pc)) + ", " + "In=[";
-        if (bytecodeInfo.accIn) {
-            log += "acc,";
+    for (auto &bb: graph_) {
+        if (bb.isDead) {
+            continue;
         }
-        for (const auto &in: bytecodeInfo.inputs) {
-            if (std::holds_alternative<VirtualRegister>(in)) {
-                log += std::to_string(std::get<VirtualRegister>(in).GetId()) + ",";
+        LOG_COMPILER(INFO) << "BB_" << bb.id << ": ";
+        EnumerateBlock(bb, [](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+            std::string log;
+            BytecodeInstruction inst(pc);
+            log += std::to_string(bytecodeInfo.pcOffset) + ": ";
+            log += GetEcmaOpcodeStr(static_cast<EcmaOpcode>(inst.GetOpcode())) + ": " + "In=[";
+            if (bytecodeInfo.accIn) {
+                log += "acc,";
             }
-        }
-        log += "], Out=[";
-        if (bytecodeInfo.accOut) {
-            log += "acc,";
-        }
-        for (const auto &out: bytecodeInfo.vregOut) {
-            log +=  std::to_string(out) + ",";
-        }
-        log += "] >";
-        LOG_COMPILER(INFO) << log;
+            for (const auto &in: bytecodeInfo.inputs) {
+                if (std::holds_alternative<VirtualRegister>(in)) {
+                    log += std::to_string(std::get<VirtualRegister>(in).GetId()) + ",";
+                }
+            }
+            log += "] Out=[";
+            if (bytecodeInfo.accOut) {
+                log += "acc,";
+            }
+            for (const auto &out: bytecodeInfo.vregOut) {
+                log +=  std::to_string(out) + ",";
+            }
+            log += "]";
+            LOG_COMPILER(INFO) << log;
+            return true;
+        });
+    }
+}
 
-        auto r = bcToGate.find(pc);
-        if (r != bcToGate.end()) {
-            this->gateAcc_.ShortPrint(r->second);
+void BytecodeCircuitBuilder::PrintBBInfo()
+{
+    for (auto &bb: graph_) {
+        if (bb.isDead) {
+            continue;
         }
-        return true;
-    });
+        LOG_COMPILER(INFO) << "------------------------";
+        LOG_COMPILER(INFO) << "block: " << bb.id;
+        std::string log("preds: ");
+        for (auto pred: bb.preds) {
+            log += std::to_string(pred->id) + " , ";
+        }
+        LOG_COMPILER(INFO) << log;
+        std::string log1("succs: ");
+        for (auto succ: bb.succs) {
+            log1 += std::to_string(succ->id) + " , ";
+        }
+        LOG_COMPILER(INFO) << log1;
+        std::string log2("catchs: ");
+        for (auto catchBlock: bb.catchs) {
+            log2 += std::to_string(catchBlock->id) + " , ";
+        }
+        LOG_COMPILER(INFO) << log2;
+        std::string log3("trys: ");
+        for (auto tryBlock: bb.trys) {
+            log3 += std::to_string(tryBlock->id) + " , ";
+        }
+        LOG_COMPILER(INFO) << log3;
+    }
+}
+
+void BytecodeCircuitBuilder::PrintDefsitesInfo(const std::map<uint16_t, std::set<size_t>> &defsitesInfo)
+{
+    for (const auto&[variable, defsites] : defsitesInfo) {
+        std::string log("variable: " + std::to_string(variable) + " locate block have: ");
+        for (auto id : defsites) {
+            log += std::to_string(id) + " , ";
+        }
+        LOG_COMPILER(INFO) << log;
+    }
 }
 }  // namespace panda::ecmascript::kungfu

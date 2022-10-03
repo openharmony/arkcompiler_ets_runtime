@@ -93,7 +93,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(FindElementWithCache)                    \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
-    V(BigIntEquals)                            \
+    V(BigIntEquals)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
@@ -279,7 +279,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(StringEqual)                        \
     V(LdPatchVar)                         \
     V(StPatchVar)                         \
-    V(LdObjByName)
+    V(LdObjByName)                        \
+    V(DeoptHandler)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
