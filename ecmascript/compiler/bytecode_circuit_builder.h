@@ -261,7 +261,7 @@ struct BytecodeInfo {
     bool accOut {false}; // write acc
     EcmaOpcode opcode {0};
     uint16_t offset {0};
-    uint16_t pcOffset {0};
+    uint32_t pcOffset {0};
 
     bool IsOut(VRegIDType reg, uint32_t index) const
     {
@@ -592,10 +592,10 @@ private:
     void BuildFrameState();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);
-    void PrintCollectBlockInfo(std::vector<CfgInfo> &bytecodeBlockInfos);
     void PrintGraph();
-    void PrintBytecodeInfo();
     void PrintBBInfo();
+    void PrintGraph(const char* title);
+    void PrintBytecodeInfo(BytecodeRegion& region, const std::map<const uint8_t *, GateRef>& bcToGate);
     void PrintDefsitesInfo(const std::map<uint16_t, std::set<size_t>> &defsitesInfo);
 
     inline bool IsEntryBlock(const size_t bbId) const

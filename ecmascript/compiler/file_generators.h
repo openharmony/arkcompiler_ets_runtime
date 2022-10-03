@@ -67,7 +67,9 @@ public:
             } else {
                 funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - entrys[j];
             }
-            stubInfo.AddStubEntry(cs->GetTargetKind(), cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta, funcSize);
+            kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
+            stubInfo.AddStubEntry(cs->GetTargetKind(), cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta, funcSize,
+                info);
             ASSERT(!cs->GetName().empty());
             addr2name[entrys[j]] = cs->GetName();
         }
@@ -77,7 +79,8 @@ public:
                               uint32_t moduleIndex, const CompilerLog &log)
     {
         auto engine = assembler_->GetEngine();
-        std::vector<std::tuple<uint64_t, size_t, int>> funcInfo; // entry、idx、delta
+        std::vector<std::tuple<uint64_t, size_t, int>> funcInfo; // entry idx delta
+        std::vector<kungfu::CalleeRegAndOffsetVec> calleeSaveRegisters; // entry idx delta
         llvmModule_->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func) {
             uint64_t funcEntry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
             uint64_t length = 0;
@@ -89,6 +92,8 @@ public:
             int delta = assembler_->GetFpDeltaPrevFramSp(func, log);
             ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
             funcInfo.emplace_back(std::tuple(funcEntry, idx, delta));
+            kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
+            calleeSaveRegisters.emplace_back(info);
         });
         auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
         const size_t funcCount = funcInfo.size();
@@ -106,7 +111,7 @@ public:
                 funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - funcEntry;
             }
             aotInfo.AddStubEntry(CallSignature::TargetKind::JSFUNCTION, idx,
-                                 funcEntry - codeBuff, moduleIndex, delta, funcSize);
+                                 funcEntry - codeBuff, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
         }
     }
 

@@ -92,7 +92,7 @@ void FrameStateBuilder::BindCheckPoint(GateRef gate, size_t pcOffset)
     auto depend = gateAcc_.GetDep(gate);
     GateRef frameState = FrameState(pcOffset);
     GateRef checkPoint = circuit_->NewGate(
-        OpCode(OpCode::CHECK_POINT), 1, {depend, frameState}, GateType::Empty());
+        OpCode(OpCode::GUARD), 1, {depend, frameState}, GateType::Empty());
     gateAcc_.ReplaceDependIn(gate, checkPoint);
 }
 

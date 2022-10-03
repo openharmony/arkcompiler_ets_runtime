@@ -131,9 +131,9 @@ void ArkStackMapParser::ParseArkStackMap(const CallsiteHead& callsiteHead, Binar
 }
 
 void ArkStackMapParser::ParseArkDeopt(const CallsiteHead& callsiteHead,
-    BinaryBufferParser& binBufparser, uint8_t *ptr, std::vector<ARKDeopt> &deopts) const
+    BinaryBufferParser& binBufparser, uint8_t *ptr, std::vector<kungfu::ARKDeopt> &deopts) const
 {
-    ARKDeopt deopt;
+    kungfu::ARKDeopt deopt;
     uint32_t deoptOffset = callsiteHead.deoptOffset;
     uint32_t deoptNum = callsiteHead.deoptNum;
     OffsetType id;
@@ -196,7 +196,7 @@ void ArkStackMapParser::ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) 
         uint32_t arkStackMapNum = callsiteHead.arkStackMapNum;
         uint32_t deoptOffset = callsiteHead.deoptOffset;
         uint32_t deoptNum = callsiteHead.deoptNum;
-        std::vector<ARKDeopt> deopts;
+        std::vector<kungfu::ARKDeopt> deopts;
         ArkStackMap arkStackMaps;
         LOG_COMPILER(VERBOSE) << " calliteOffset:0x" << std::hex << callsiteHead.calliteOffset
             << " stackmap offset:0x" << std::hex << offset << " num:" << arkStackMapNum
@@ -263,7 +263,7 @@ int ArkStackMapBuilder::FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc)
 }
 
 void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint32_t,
-                                     std::vector<ARKDeopt>> &sizeAndArkDeopt)
+                                     std::vector<kungfu::ARKDeopt>> &sizeAndArkDeopt)
 {
     ASSERT(deopt.size() % 2 == 0); // 2:<id, value>
     uint32_t total = 0;
@@ -334,7 +334,7 @@ void ArkStackMapBuilder::GenArkCallsitePackInfo(std::vector<Pc2CallSiteInfo> &pc
         result.callsites[loc].head.calliteOffset = x.first;
         result.callsites[loc].head.deoptNum = deopt.size();
         result.callsites[loc].head.deoptOffset = totalSize;
-        std::pair<uint32_t, std::vector<ARKDeopt>> sizeAndArkDeopt;
+        std::pair<uint32_t, std::vector<kungfu::ARKDeopt>> sizeAndArkDeopt;
         GenARKDeopt(deopt, sizeAndArkDeopt);
         totalSize += sizeAndArkDeopt.first;
         result.callsites[loc].callsite2Deopt = sizeAndArkDeopt.second;

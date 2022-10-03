@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/compiler/type_lowering.h"
-#include "ecmascript/ark_stackmap.h"
+#include "ecmascript/deoptimizer.h"
 
 namespace panda::ecmascript::kungfu {
 void TypeLowering::RunTypeLowering()

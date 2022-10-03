@@ -254,6 +254,32 @@ static const char *SymbolLookupCallback([[maybe_unused]] void *disInfo, [[maybe_
     return nullptr;
 }
 
+
+kungfu::CalleeRegAndOffsetVec LLVMAssembler::GetCalleeReg2Offset(LLVMValueRef fn, const CompilerLog &log)
+{
+    kungfu::CalleeRegAndOffsetVec info;
+    llvm::Function* func = llvm::unwrap<llvm::Function>(fn);
+    for (const auto &Attr : func->getAttributes().getFnAttributes()) {
+        if (Attr.isStringAttribute()) {
+            std::string str = std::string(Attr.getKindAsString().data());
+            std::string expectedKey = "DwarfReg";
+            if (str.size() >= expectedKey.size() &&
+                str.substr(0, expectedKey.size()) == expectedKey) {
+                int RegNum = std::stoi(str.substr(expectedKey.size(), str.size() - expectedKey.size()));
+                auto value = std::stoi(std::string(Attr.getValueAsString()));
+                info.push_back(std::make_pair(RegNum, value));
+                (void)log;
+                auto logFlag = true;
+                if (logFlag) {
+                    LOG_COMPILER(INFO) << " RegNum:" << RegNum << " value:" << value << std::endl;
+                }
+            }
+        }
+    }
+    return info;
+}
+
+
 int LLVMAssembler::GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log)
 {
     int fpToCallerSpDelta = 0;

@@ -47,7 +47,7 @@ struct ARKDeopt {
 struct ARKCallsite {
     CallsiteHead head;
     CallSiteInfo stackmaps;
-    std::vector<ARKDeopt> callsite2Deopt;
+    std::vector<kungfu::ARKDeopt> callsite2Deopt;
     bool operator < (const ARKCallsite & x) const
     {
         return head.calliteOffset < x.head.calliteOffset;
@@ -61,6 +61,7 @@ struct ARKCallsitePackInfo {
     std::vector<ARKCallsite> callsites;
 };
 using ArkStackMap = CallSiteInfo;
+using CalleeRegAndOffsetVec = std::vector<DwarfRegAndOffsetType>; 
 /*
 totalSize  callsiteNum callsitStart  callsitEnd
 -----head1--------
@@ -81,10 +82,5 @@ totalSize  callsiteNum callsitStart  callsitEnd
 -          INDIRECT   <loc.DwarfRegNum, loc.OffsetOrSmallConstant>
 -          CONSTANTNDEX <LargeInt>
 */
-enum class SpecVregIndex: int {
-    PC_INDEX = -1,
-    ACC_INDEX = -2,
-    BC_OFFSET_INDEX = -3,
-};
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_ARK_STACKMAP_H
