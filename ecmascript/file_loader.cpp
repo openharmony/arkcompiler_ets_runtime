@@ -22,6 +22,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/deoptimizer.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/message_string.h"
@@ -230,6 +231,7 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
     if (!VerifyFilePath(filename)) {
         LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
                             << "please execute ark_aot_compiler with options --aot-file.";
+        UNREACHABLE();
         return false;
     }
     std::ifstream file(filename.c_str(), std::ofstream::binary);
@@ -368,9 +370,9 @@ bool FileLoader::InsideStub(uint64_t pc) const
     return false;
 }
 
-std::tuple<uint64_t, uint8_t *, int> FileLoader::CalCallSiteInfo(uintptr_t retAddr) const
+ModulePackInfo::CallSiteInfo FileLoader::CalCallSiteInfo(uintptr_t retAddr) const
 {
-    std::tuple<uint64_t, uint8_t *, int> callsiteInfo;
+    ModulePackInfo::CallSiteInfo callsiteInfo;
     bool ans = stubPackInfo_.CalCallSiteInfo(retAddr, callsiteInfo);
     if (ans) {
         return callsiteInfo;
@@ -488,6 +490,15 @@ bool FileLoader::RewriteDataSection(uintptr_t dataSec, size_t size,
         LOG_FULL(FATAL) << "memset failed";
         return false;
     }
+    ASSERT(size % sizeof(uint64_t) == 0);
+    JSThread *thread = vm_->GetJSThread();
+    uint64_t *ptr = reinterpret_cast<uint64_t *>(dataSec);
+    for (size_t i = 0; i < size / sizeof(uint64_t); i++) {
+        if (ptr[i] == Deoptimizier::LLVM_DEOPT_RELOCATE_ADDR) {
+            ptr[i] = thread->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
+            break;
+        }
+    }
     return true;
 }
 
@@ -581,7 +592,8 @@ void BinaryBufferParser::ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src)
     }
 }
 
-bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uint8_t *, int>& ret) const
+bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr,
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>& ret) const
 {
     uint64_t textStart = 0;
     uint8_t *stackmapAddr = nullptr;
@@ -613,7 +625,14 @@ bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uin
         ASSERT(it != t);
         ASSERT((it->codeAddr_ <= target.codeAddr_) && (target.codeAddr_ < it->codeAddr_ + it->funcSize_));
         delta = it->fpDeltaPrevFrameSp_;
-        ret = std::make_tuple(textStart, stackmapAddr, delta);
+        kungfu::CalleeRegAndOffsetVec calleeRegInfo;
+        for (uint32_t j = 0; j < it->calleeRegisterNum_; j++) {
+            kungfu::DwarfRegType reg = static_cast<kungfu::DwarfRegType>(it->CalleeReg2Offset_[2 * j]);
+            kungfu::OffsetType offset = static_cast<kungfu::OffsetType>(it->CalleeReg2Offset_[2 * j + 1]);
+            kungfu::DwarfRegAndOffsetType regAndOffset = std::make_pair(reg, offset);
+            calleeRegInfo.emplace_back(regAndOffset);
+        }
+        ret = std::make_tuple(textStart, stackmapAddr, delta, calleeRegInfo);
         return true;
     }
     return false;

@@ -60,6 +60,7 @@ source_set("libark_jsoptimizer_set") {
     "circuit_optimizer.cpp",
     "common_stubs.cpp",
     "file_generators.cpp",
+    "frame_states.cpp",
     "gate.cpp",
     "gate_accessor.cpp",
     "ic_stub_builder.cpp",

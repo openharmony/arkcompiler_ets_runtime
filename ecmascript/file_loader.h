@@ -15,6 +15,8 @@
 #ifndef ECMASCRIPT_COMPILER_FILE_LOADER_H
 #define ECMASCRIPT_COMPILER_FILE_LOADER_H
 
+#include "ecmascript/ark_stackmap.h"
+#include "ecmascript/calleeReg.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/compiler/binary_section.h"
@@ -22,9 +24,6 @@
 namespace panda::ecmascript {
 class JSpandafile;
 class JSThread;
-namespace kungfu {
-    class LLVMStackMapParser;
-};
 
 class BinaryBufferParser {
 public:
@@ -146,12 +145,15 @@ public:
     bool VerifyFilePath([[maybe_unused]] const std::string &filePath, [[maybe_unused]] bool toGenerate = false) const;
 
     struct FuncEntryDes {
-        uint64_t codeAddr_ {0};
-        CallSignature::TargetKind kind_ {CallSignature::TargetKind::COMMON_STUB};
-        uint32_t indexInKind_ {0};
-        uint32_t moduleIndex_ {0};
-        int fpDeltaPrevFrameSp_ {0};
-        uint32_t funcSize_ {0};
+        uint64_t codeAddr_;
+        CallSignature::TargetKind kind_;
+        uint32_t indexInKind_;
+        uint32_t moduleIndex_;
+        int fpDeltaPrevFrameSp_;
+        uint32_t funcSize_;
+        //kungfu::CalleeRegAndOffsetVec infos_;
+        [[maybe_unused]] uint32_t calleeRegisterNum_;
+        int32_t CalleeReg2Offset_[2 * kungfu::MAX_CALLEE_SAVE_REIGISTER_NUM];
         bool IsStub() const
         {
             return CallSignature::TargetKind::STUB_BEGIN <= kind_ && kind_ < CallSignature::TargetKind::STUB_END;
@@ -233,7 +235,7 @@ public:
     }
 
     void AddStubEntry(CallSignature::TargetKind kind, int indexInKind, uint64_t offset,
-                      uint32_t moduleIndex, int delta, uint32_t size)
+                      uint32_t moduleIndex, int delta, uint32_t size, kungfu::CalleeRegAndOffsetVec info = {})
     {
         FuncEntryDes des;
         if (memset_s(&des, sizeof(des), 0, sizeof(des)) != EOK) {
@@ -246,6 +248,14 @@ public:
         des.moduleIndex_ = moduleIndex;
         des.fpDeltaPrevFrameSp_ = delta;
         des.funcSize_ = size;
+        des.calleeRegisterNum_ = info.size();
+        kungfu::DwarfRegType reg = 0;
+        kungfu::OffsetType regOffset = 0;
+        for (size_t i = 0; i < info.size(); i ++) {
+            std::tie(reg, regOffset) = info[i];
+            des.CalleeReg2Offset_[2 * i] = static_cast<int32_t>(reg);
+            des.CalleeReg2Offset_[2 * i + 1] = static_cast<int32_t>(regOffset);
+        }
         entries_.emplace_back(des);
     }
 
@@ -263,7 +273,9 @@ public:
     {
         totalCodeSize_ += size;
     }
-    bool CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uint8_t *, int>& ret) const;
+
+    using CallSiteInfo = std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>;
+    bool CalCallSiteInfo(uintptr_t retAddr, CallSiteInfo& ret) const;
 
 protected:
     uint32_t entryNum_ {0};
@@ -367,7 +379,7 @@ public:
     virtual ~FileLoader();
     void LoadStubFile();
     void LoadAOTFile(const std::string &fileName);
-    std::tuple<uint64_t, uint8_t *, int> CalCallSiteInfo(uintptr_t retAddr) const;
+    ModulePackInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool InsideStub(uint64_t pc) const;
 
     void Iterate(const RootVisitor &v)

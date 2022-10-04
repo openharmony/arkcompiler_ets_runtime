@@ -219,6 +219,7 @@ public:
     void Disassemble(const std::map<uintptr_t, std::string> &addr2name,
         const CompilerLog &log, const MethodLogList &logList) const;
     static int GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log);
+    static kungfu::CalleeRegAndOffsetVec GetCalleeReg2Offset(LLVMValueRef fn, const CompilerLog &log);
     static void Disassemble(uint8_t *buf, size_t size);
 
     uintptr_t GetSectionAddr(ElfSecName sec) const

@@ -7174,6 +7174,23 @@ bool EcmaInterpreter::IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> met
     return false;
 }
 
+JSTaggedType *EcmaInterpreter::GetInterpreterFrameEnd(JSThread *thread, JSTaggedType *sp)
+{
+    JSTaggedType *newSp;
+    if (thread->IsAsmInterpreter()) {
+        newSp = sp - InterpretedEntryFrame::NumOfMembers();
+    } else {
+        if (FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_FRAME ||
+            FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_FAST_NEW_FRAME) {
+            newSp = sp - InterpretedFrame::NumOfMembers();  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        } else {
+            newSp =
+                sp - InterpretedEntryFrame::NumOfMembers();  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        }
+    }
+    return newSp;
+}
+
 bool EcmaInterpreter::IsFastNewFrameExit(JSTaggedType *sp)
 {
     return GET_FRAME(sp)->base.type == FrameType::INTERPRETER_FAST_NEW_FRAME;

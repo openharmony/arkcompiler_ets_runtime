@@ -554,6 +554,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
     auto opcode = inst.GetOpcode();
     info.offset = BytecodeInstruction::Size(opcode);
     info.opcode = static_cast<EcmaOpcode>(opcode);
+    info.pcOffset = pc - method_->GetBytecodeArray();
     info.accIn = inst.HasFlag(BytecodeInstruction::Flags::ACC_READ);
     info.accOut = inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE);
     switch (static_cast<EcmaOpcode>(opcode)) {
@@ -1613,7 +1614,7 @@ void BytecodeCircuitBuilder::InsertPhi()
         EnumerateBlock(bb, [this, &defsitesInfo, &bb]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR)) {
-                auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
+                auto numVRegs = method_->GetNumberVRegs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     bytecodeInfo.vregOut.emplace_back(i);
                 }
@@ -1666,7 +1667,7 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::map<uint16_t, std::set<size
         EnumerateBlock(bb, [this, &vregs]
         ([[maybe_unused]]uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR)) {
-                auto numVRegs = MethodLiteral::GetNumVregs(file_, method_) + method_->GetNumArgs();
+                auto numVRegs = method_->GetNumberVRegs();
                 for (size_t i = 0; i < numVRegs; i++) {
                     vregs.insert(i);
                 }
@@ -1732,6 +1733,7 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     if (hasTypes_) {
         argAcc_.FillArgsGateType(&typeRecorder_);
     }
+    frameStateBuilder_.BuildArgsValues(&argAcc_);
 }
 
 bool BytecodeCircuitBuilder::ShouldBeDead(BytecodeRegion &curBlock)
@@ -1982,33 +1984,9 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
     return gate;
 }
 
-GateRef BytecodeCircuitBuilder::InitializeFrameState(const uint8_t *pc)
-{
-    size_t fixedArgsNum = 2; // acc, pc
-    size_t frameStateInputs = numVregs_ + fixedArgsNum;
-    std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
-    for (size_t i = 0; i < numVregs_ + 1; ++i) { // 1: acc
-        GateRef gate = circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I64,
-                                        JSTaggedValue::VALUE_HOLE,
-                                        {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                                        GateType::TaggedValue());
-        inList[i] = gate;
-    }
-    size_t v = pc - startPc_;
-    ASSERT(v >= 0);
-    inList[numVregs_ + fixedArgsNum - 1] =
-        circuit_.NewGate(OpCode(OpCode::CONSTANT), MachineType::I32,
-                         v,
-                         {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                         GateType::NJSValue());
-    return circuit_.NewGate(OpCode(OpCode::FRAME_STATE), frameStateInputs, inList, GateType::Empty());
-}
-
 void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, GateRef &state, GateRef &depend)
 {
     auto bytecodeInfo = GetBytecodeInfo(pc);
-    GateRef frameState = InitializeFrameState(pc);
-    GateRef guard = circuit_.NewGate(OpCode(OpCode::GUARD), 1, {depend, frameState}, GateType::Empty());
     size_t numValueInputs = bytecodeInfo.ComputeTotalValueCount();
     GateRef gate = 0;
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo);
@@ -2022,7 +2000,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, Ga
     // 1: store bcoffset in the end.
     AddBytecodeOffsetInfo(gate, bytecodeInfo, numValueInputs + 1, const_cast<uint8_t *>(pc));
     gateAcc_.NewIn(gate, 0, state);
-    gateAcc_.NewIn(gate, 1, guard);
+    gateAcc_.NewIn(gate, 1, depend);
     auto ifSuccess = circuit_.NewGate(OpCode(OpCode::IF_SUCCESS), 0, {gate}, GateType::Empty());
     auto ifException = circuit_.NewGate(OpCode(OpCode::IF_EXCEPTION), 0, {gate}, GateType::Empty());
     if (!bb.catchs.empty()) {
@@ -2361,6 +2339,51 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
     }
 }
 
+void BytecodeCircuitBuilder::BuildFrameState()
+{
+    const uint8_t *predPc = nullptr;
+    for (auto &bb: graph_) {
+        if (bb.isDead) {
+            continue;
+        }
+        if (bb.numOfStatePreds != 0) {
+            predPc = std::get<const uint8_t *>(bb.expandedPreds.at(0));
+        }
+        frameStateBuilder_.AdvenceToSuccessor(predPc, bb.end);
+        if (bb.valueSelectorAccGate != Circuit::NullGate()) {
+            frameStateBuilder_.UpdateAccumulator(bb.valueSelectorAccGate);
+        }
+        for (auto &it : bb.vregToValSelectorGate) {
+            auto reg = it.first;
+            auto gate = it.second;
+            frameStateBuilder_.UpdateVirtualRegister(reg, gate);
+        }
+        EnumerateBlock(bb, [this](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+            GateRef gate = Circuit::NullGate();
+            if (bytecodeInfo.IsMov()) {
+                if (bytecodeInfo.accIn) {
+                    gate = frameStateBuilder_.ValuesAtAccumulator();
+                } else if (bytecodeInfo.inputs.size() != 0) {
+                    auto index = std::get<VirtualRegister>(bytecodeInfo.inputs.at(0)).GetId();
+                    gate = frameStateBuilder_.ValuesAt(index);
+                }
+            } else if (bytecodeInfo.IsGeneral()) {
+                gate = byteCodeToJSGate_.at(pc);
+                frameStateBuilder_.BindCheckPoint(gate, bytecodeInfo.pcOffset);
+            } else if (bytecodeInfo.IsSetConstant()) {
+                gate = byteCodeToJSGate_.at(pc);
+            }
+            if (bytecodeInfo.accOut) {
+                frameStateBuilder_.UpdateAccumulator(gate);
+            }
+            for (const auto &out: bytecodeInfo.vregOut) {
+                frameStateBuilder_.UpdateVirtualRegister(out, gate);
+            }
+            return true;
+        });
+    }
+}
+
 void BytecodeCircuitBuilder::BuildCircuit()
 {
     // create arg gates array
@@ -2416,54 +2439,22 @@ void BytecodeCircuitBuilder::BuildCircuit()
                 continue;
             }
             if (valueIdx < bytecodeInfo.inputs.size()) {
-                auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();
-                GateRef defVreg = RenameVariable(id, pc - 1, vregId, false);
-                gateAcc_.NewIn(gate, inIdx, defVreg);
-                StoreVregInfo(vregId, defVreg, jsGateList);
+                gateAcc_.NewIn(gate, inIdx,
+                               RenameVariable(id, pc - 1,
+                               std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId(),
+                               false));
             } else {
-                GateRef defAcc = RenameVariable(id, pc - 1, 0, true);
-                gateAcc_.NewIn(gate, inIdx, defAcc);
-                StoreAccInfo(defAcc, jsGateList);
+                gateAcc_.NewIn(gate, inIdx, RenameVariable(id, pc - 1, 0, true));
             }
         }
     }
+    BuildFrameState();
 
     if (IsLogEnabled()) {
         PrintGraph("Bytecode2Gate");
         LOG_COMPILER(INFO) << "\033[34m" << "============= After bytecode2circuit lowering =============" << "\033[0m";
         circuit_.PrintAllGates(*this);
         LOG_COMPILER(INFO) << "\033[34m" << "=========================== End ===========================" << "\033[0m";
-    }
-}
-
-void BytecodeCircuitBuilder::StoreVregInfo(size_t vregId, GateRef defVreg, std::vector<GateRef> &gateList)
-{
-    GateAccessor acc(&circuit_);
-    for (auto it = gateList.rbegin(); it != gateList.rend(); it++) {
-        GateRef checkPoint = acc.GetDep(*it);
-        GateRef frameState = acc.GetValueIn(checkPoint, 0);
-        GateRef vreg = acc.GetValueIn(frameState, vregId);
-        if (acc.GetBitField(vreg) == JSTaggedValue::VALUE_HOLE && acc.GetId(*it) > acc.GetId(defVreg)) {
-            acc.ReplaceIn(frameState, vregId, defVreg);
-        } else {
-            break;
-        }
-    }
-}
-
-void BytecodeCircuitBuilder::StoreAccInfo(GateRef defAcc, std::vector<GateRef> &gateList)
-{
-    GateAccessor acc(&circuit_);
-    for (auto it = gateList.rbegin(); it != gateList.rend(); it++) {
-        GateRef checkPoint = acc.GetDep(*it);
-        GateRef frameState = acc.GetValueIn(checkPoint, 0);
-        ASSERT(acc.GetOpCode(frameState) == OpCode::FRAME_STATE);
-        GateRef accValue = acc.GetValueIn(frameState, numVregs_);
-        if (acc.GetBitField(accValue) == JSTaggedValue::VALUE_HOLE && acc.GetId(*it) > acc.GetId(defAcc)) {
-            acc.ReplaceIn(frameState, numVregs_, defAcc);
-        } else {
-            break;
-        }
     }
 }
 

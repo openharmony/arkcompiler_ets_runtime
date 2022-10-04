@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/deoptimizer.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
@@ -1222,11 +1223,90 @@ void OptimizedCall::ConstructorJSCallWithArgV(ExtendedAssembler *assembler)
     __ Ret();
 }
 
+// Input: %rdi - glue
+//        %rsi - context
+void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler, Label *stackOverflow)
+{
+    // rdi
+    Register glueRegister = __ GlueRegister();
+    Register context = rsi;
+    // rax, rdx, rcx, r8, r9, r10, r11 is free
+    Register tempRegister = rax;
+    Register opRegister = r10;
+    Register outputCount = rdx;
+    Register frameStateBase = rcx;
+    __ Movq(Operand(context, AsmStackContext::GetOutputCountOffset(false)), outputCount);
+    __ Leaq(Operand(context, AsmStackContext::GetSize(false)), frameStateBase);
+
+    // update fp
+    __ Movq(rsp, Operand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));
+    PushArgsWithArgvAndCheckStack(assembler, glueRegister, outputCount,
+        frameStateBase, tempRegister, opRegister, stackOverflow);
+
+    Register callTargetRegister = r8;
+    Register methodRegister = r9;
+    {
+        // r13, rbp, r12, rbx,      r14,     rsi,  rdi
+        // glue sp   pc  constpool  profile  acc   hotness
+        __ Movq(Operand(frameStateBase,
+                AsmInterpretedFrame::GetFunctionOffset(false)), callTargetRegister);
+        __ Movq(Operand(frameStateBase, AsmInterpretedFrame::GetPcOffset(false)), r12);
+        __ Movq(Operand(frameStateBase, AsmInterpretedFrame::GetAccOffset(false)), rsi);
+        __ Movq(Operand(callTargetRegister, JSFunctionBase::METHOD_OFFSET), methodRegister);
+
+        __ Leaq(Operand(rsp, AsmInterpretedFrame::GetSize(false)), opRegister);
+        AsmInterpreterCall::DispatchCall(assembler, r12, opRegister, callTargetRegister, methodRegister, rsi);
+    }
+}
+
+// Input: %rdi - glue
 void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
-    __ Ret();
-}
 
+    __ Pushq(rbp);
+    __ Movq(rsp, rbp);
+    __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_FRAME));
+    __ PushCppCalleeSaveRegisters();
+
+    Register glueReg = rdi;
+    __ Push(glueReg);
+    __ Movq(rdi, rax); // glue
+    __ PushAlignBytes();
+    __ Pushq(0);  // argc
+    __ Pushq(kungfu::RuntimeStubCSigns::ID_DeoptHandler);
+    __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
+    __ Addq(3 * FRAME_SLOT_SIZE, rsp); // 3: skip runtimeId argc argv[0] argv[1]
+    __ Pop(glueReg);
+
+    Register context = rsi;
+    __ Movq(rax, context);
+    Label stackOverflow;
+    __ Cmpq(JSTaggedValue::VALUE_EXCEPTION, rax);
+    __ Je(&stackOverflow);
+
+    Label target;
+    __ RestoreCppCalleeSaveRegisters(context);
+    __ Movq(Operand(context, AsmStackContext::GetCallerFpOffset(false)), rbp);
+    __ Movq(Operand(context, AsmStackContext::GetCallFrameTopOffset(false)), rsp);
+
+    PushAsmInterpBridgeFrame(assembler);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    DeoptEnterAsmInterp(assembler, &stackOverflow);
+    __ Int3();
+
+    __ Bind(&stackOverflow);
+    {
+        __ Movq(rdi, rax);
+        __ Pushq(0); // argc
+        __ Pushq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException);
+        __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
+        __ Addq(16, rsp); // skip runtimeId argc
+        __ Ret();
+    }
+}
 #undef __
 }  // namespace panda::ecmascript::x64

@@ -54,6 +54,10 @@ public:
     // method must be set
     GateRef GetArgGate(const size_t currentVreg) const;
     GateRef GetCommonArgGate(const CommonArgIdx arg) const;
+    GateRef ArgsAt(const size_t index) const
+    {
+        return args_.at(index);
+    }
     void FillArgsGateType(const TypeRecorder *typeRecorder);
     void CollectArgs();
     static size_t GetFixArgsNum()
