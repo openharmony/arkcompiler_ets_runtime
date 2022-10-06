@@ -21,6 +21,10 @@
 namespace panda::ecmascript {
 enum class FunctionKind : uint8_t {
     NORMAL_FUNCTION = 0,
+    // BEGIN accessors
+    GETTER_FUNCTION,
+    SETTER_FUNCTION,
+    // END accessors
     // BEGIN arrow functions
     ARROW_FUNCTION,
     // BEGIN async functions
@@ -45,10 +49,6 @@ enum class FunctionKind : uint8_t {
     // END generators
     // END constructable functions.
     ASYNC_GENERATOR_FUNCTION,
-    // BEGIN accessors
-    GETTER_FUNCTION,
-    SETTER_FUNCTION,
-    // END accessors
 
     LAST_FUNCTION_KIND,
 };
