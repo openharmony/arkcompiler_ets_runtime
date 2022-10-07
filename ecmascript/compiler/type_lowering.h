@@ -142,10 +142,8 @@ private:
     void LowerNumberDiv(GateRef gate);
     void LowerNumberEq(GateRef gate);
     void LowerNumberNotEq(GateRef gate);
-    void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
-    void ReplaceGateToSubCfg(GateRef gate, GateRef state, GateRef depend, GateRef value);
+    void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
 
-    GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
     template<OpCode::Op Op>
@@ -160,8 +158,6 @@ private:
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
     GateRef ChangeInt32ToFloat64(GateRef gate);
-    GateRef GeneralMod(GateRef left, GateRef right, GateRef glue);
-    GateRef ModNumbers(GateRef left, GateRef right);
     GateRef Int32Mod(GateRef left, GateRef right);
     GateRef DoubleMod(GateRef left, GateRef right);
     GateRef IntToTaggedIntPtr(GateRef x);
@@ -171,8 +167,6 @@ private:
     GateRef FastDiv(GateRef left, GateRef right);
     GateRef DivNumbers(GateRef left, GateRef right);
     GateRef FastEqual(GateRef left, GateRef right);
-
-    void LowerDeoptimize(GateRef gate);
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);
 

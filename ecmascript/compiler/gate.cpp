@@ -193,8 +193,6 @@ Properties OpCode::GetProperties() const
             return {NOVALUE, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
         case FRAME_STATE:
             return {NOVALUE, NO_STATE, NO_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
-        case DEOPT:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE, NO_ROOT};
         case DEOPT_CALL:
             return {FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
         // suspend relate HIR
@@ -336,7 +334,6 @@ std::string OpCode::Str() const
         {BITCAST, "BITCAST"},
         {GUARD, "GUARD"},
         {FRAME_STATE, "FRAME_STATE"},
-        {DEOPT, "DEOPT"},
         {DEOPT_CALL, "DEOPT_CALL"},
         {RESTORE_REGISTER, "RESTORE_REGISTER"},
         {SAVE_REGISTER, "SAVE_REGISTER"},
@@ -847,7 +844,7 @@ bool In::IsGateNull() const
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 Gate::Gate(GateId id, OpCode opcode, MachineType bitValue, BitField bitfield, Gate *inList[], GateType type,
            MarkCode mark)
-    : id_(id), opcode_(opcode), bitValue_(bitValue), type_(type), stamp_(1), mark_(mark), bitfield_(bitfield),
+    : id_(id), type_(type), opcode_(opcode), bitValue_(bitValue), stamp_(1), mark_(mark), bitfield_(bitfield),
     firstOut_(0)
 {
     auto numIns = GetNumIns();
@@ -865,7 +862,7 @@ Gate::Gate(GateId id, OpCode opcode, MachineType bitValue, BitField bitfield, Ga
 }
 
 Gate::Gate(GateId id, OpCode opcode, BitField bitfield, Gate *inList[], GateType type, MarkCode mark)
-    : id_(id), opcode_(opcode), type_(type), stamp_(1), mark_(mark), bitfield_(bitfield), firstOut_(0)
+    : id_(id), type_(type), opcode_(opcode), stamp_(1), mark_(mark), bitfield_(bitfield), firstOut_(0)
 {
     auto numIns = GetNumIns();
     for (size_t idx = 0; idx < numIns; idx++) {
@@ -1120,7 +1117,7 @@ std::string Gate::MachineTypeStr(MachineType machineType) const
 
 std::string Gate::GateTypeStr(GateType gateType) const
 {
-    const std::map<GateType, const char *> strMap = {
+    static const std::map<GateType, const char *> strMap = {
         {GateType::NJSValue(), "NJS_VALUE"},
         {GateType::TaggedValue(), "TAGGED_VALUE"},
         {GateType::TaggedPointer(), "TAGGED_POINTER"},
@@ -1129,10 +1126,15 @@ std::string Gate::GateTypeStr(GateType gateType) const
         {GateType::AnyType(), "ANY_TYPE"},
     };
 
+    std::string name = "";
     if (strMap.count(gateType) > 0) {
-        return strMap.at(gateType);
+        name = strMap.at(gateType);
     }
-    return "GateType-" + std::to_string(gateType.GetType());
+    GlobalTSTypeRef r = gateType.GetGTRef();
+    uint32_t m = r.GetModuleId();
+    uint32_t l = r.GetLocalId();
+    return name + std::string("-GT(M=") + std::to_string(m) +
+           std::string(", L=") + std::to_string(l) + std::string(")");
 }
 
 void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) const
@@ -1237,7 +1239,7 @@ size_t Gate::PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPrev
                 : (std::to_string(GetInGateConst(idx)->GetId()) +
                     (inListPreview ? std::string(":" + GetInGateConst(idx)->GetOpCode().Str())
                                    : std::string("")))));
-            log += ((idx == highlightIdx) ? "\033[0m" : "");
+        log += ((idx == highlightIdx) ? "\033[0m" : "");
     }
     log += "]";
     log += ((isEnd) ? "" : ", ");
@@ -1295,11 +1297,6 @@ bool OpCode::IsGeneralState() const
             (op_ == OpCode::TO_LENGTH) || (op_ == OpCode::HEAP_ALLOC) ||
             (op_ == OpCode::LOAD_ELEMENT) || (op_ == OpCode::LOAD_PROPERTY) ||
             (op_ == OpCode::STORE_ELEMENT) || (op_ == OpCode::STORE_PROPERTY));
-}
-
-bool OpCode::IsTypedGate() const
-{
-    return ((op_ == OpCode::TYPE_CHECK) || (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT));
 }
 
 bool OpCode::IsTerminalState() const

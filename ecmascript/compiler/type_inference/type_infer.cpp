@@ -60,7 +60,7 @@ void TypeInfer::TraverseCircuit()
 bool TypeInfer::UpdateType(GateRef gate, const GateType type)
 {
     auto preType = gateAccessor_.GetGateType(gate);
-    if (type.IsTSType() && !type.IsAnyType() && type != preType) {
+    if (type != preType) {
         gateAccessor_.SetGateType(gate, type);
         return true;
     }
@@ -276,7 +276,7 @@ bool TypeInfer::InferPhiGate(GateRef gate)
         if (valueInType.IsAnyType()) {
             return UpdateType(gate, valueInType);
         }
-        typeList.emplace_back(GlobalTSTypeRef(valueInType.GetType()));
+        typeList.emplace_back(valueInType.GetGTRef());
     }
     // deduplicate
     auto deduplicateIndex = std::unique(typeList.begin(), typeList.end());
@@ -424,7 +424,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
-    if (objType.IsTSType()) {
+    if (!objType.IsAnyType()) {
         if (tsManager_->IsArrayTypeKind(objType)) {
             auto builtinGt = GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, TSManager::BUILTIN_ARRAY_ID);
             auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
@@ -470,7 +470,7 @@ bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
         funcIndex = gateAccessor_.GetNumValueIn(gate) - 2;
     }
     auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, funcIndex));
-    if (funcType.IsTSType() && tsManager_->IsFunctionTypeKind(funcType)) {
+    if (tsManager_->IsFunctionTypeKind(funcType)) {
         auto returnType = tsManager_->GetFuncReturnValueTypeGT(funcType);
         return UpdateType(gate, returnType);
     }
@@ -480,20 +480,19 @@ bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
 bool TypeInfer::InferLdObjByValue(GateRef gate)
 {
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
-    if (objType.IsTSType()) {
-        // handle array
-        if (tsManager_->IsArrayTypeKind(objType)) {
-            auto elementType = tsManager_->GetArrayParameterTypeGT(objType);
-            return UpdateType(gate, elementType);
-        }
-        // handle object
-        if (IsObjectOrClass(objType)) {
-            auto valueGate = gateAccessor_.GetValueIn(gate, 1);
-            if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
-                auto value = gateAccessor_.GetBitField(valueGate);
-                auto type = GetPropType(objType, value);
-                return UpdateType(gate, type);
-            }
+
+    // handle array
+    if (tsManager_->IsArrayTypeKind(objType)) {
+        auto elementType = tsManager_->GetArrayParameterTypeGT(objType);
+        return UpdateType(gate, elementType);
+    }
+    // handle object
+    if (IsObjectOrClass(objType)) {
+        auto valueGate = gateAccessor_.GetValueIn(gate, 1);
+        if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
+            auto value = gateAccessor_.GetBitField(valueGate);
+            auto type = GetPropType(objType, value);
+            return UpdateType(gate, type);
         }
     }
     return false;
@@ -580,17 +579,13 @@ void TypeInfer::PrintAllByteCodesTypes() const
         if (findIt != bytecodeToGate.end()) {
             GateRef gate = bytecodeToGate.at(pc);
             GateType type = gateAccessor_.GetGateType(gate);
-            if (type.IsTSType()) {
-                if (!tsManager_->IsPrimitiveTypeKind(type)) {
-                    GlobalTSTypeRef gt = GlobalTSTypeRef(type.GetType());
-                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type)
-                                       << ", [moduleId: " + std::to_string(gt.GetModuleId())
-                                       << ", [localId: " + std::to_string(gt.GetLocalId()) + "]";
-                } else {
-                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
-                }
+            if (!tsManager_->IsPrimitiveTypeKind(type)) {
+                GlobalTSTypeRef gt = type.GetGTRef();
+                LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type)
+                                   << ", [moduleId: " + std::to_string(gt.GetModuleId())
+                                   << ", [localId: " + std::to_string(gt.GetLocalId()) + "]";
             } else {
-                LOG_COMPILER(INFO) << "    " << inst;
+                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
             }
         }
     }
@@ -690,13 +685,11 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
     // handle ByteCode gate: print gate id, bytecode and line number in source code.
         log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
         GateType type = gateAccessor_.GetGateType(gate);
-        if (type.IsTSType()) {
-            log += "type: " + tsManager_->GetTypeStr(type) + ", ";
-            if (!tsManager_->IsPrimitiveTypeKind(type)) {
-                GlobalTSTypeRef gt = GlobalTSTypeRef(type.GetType());
-                log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
-                log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
-            }
+        log += "type: " + tsManager_->GetTypeStr(type) + ", ";
+        if (!tsManager_->IsPrimitiveTypeKind(type)) {
+            GlobalTSTypeRef gt = type.GetGTRef();
+            log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
+            log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
         }
 
         int32_t lineNumber = 0;

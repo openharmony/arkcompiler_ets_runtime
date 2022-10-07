@@ -208,7 +208,6 @@ public:
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnaryOp unaryOp, GateType typleVal,
                                const std::vector<GateRef>& inList);
-    GateRef Deoptimize(GateRef state, GateRef depend);
     GateRef Arguments(size_t index);
     GateRef Merge(GateRef *in, size_t controlCount);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,

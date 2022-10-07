@@ -44,6 +44,7 @@ enum class TSPrimitiveType : int {
     UNDEFINED,
     INT,
     BIG_INT,
+    FLOAT,
     END
 };
 

@@ -489,8 +489,7 @@ JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
 
 std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
 {
-    ASSERT(gateType.IsTSType());
-    GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());
+    GlobalTSTypeRef gt = gateType.GetGTRef();
     auto typeKind = GetTypeKind(gt);
     switch (typeKind) {
         case TSTypeKind::PRIMITIVE:

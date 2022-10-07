@@ -91,7 +91,7 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
 {
     if (outir != Circuit::NullGate()) {
         auto type = acc_.GetGateType(hir);
-        if (type.IsTSType()) {
+        if (!type.IsAnyType()) {
             acc_.SetGateType(outir, type);
         }
     }
@@ -3031,7 +3031,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
         result = LowerCallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer), args, true);
         builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
     } else {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(type.GetType());
+        GlobalTSTypeRef gt = type.GetGTRef();
         const std::map<GlobalTSTypeRef, uint32_t> &classTypeIhcIndexMap = tsManager_->GetClassTypeIhcIndexMap();
         GateRef ihcIndex = builder_.Int32((classTypeIhcIndexMap.at(gt)));
         GateRef ihclass = GetObjectFromConstPool(glue, jsFunc, ihcIndex, ConstPoolType::CLASS_LITERAL);

@@ -44,7 +44,7 @@ class Gate;
 struct Properties;
 class BytecodeCircuitBuilder;
 
-enum MachineType { // Bit width
+enum MachineType : uint8_t { // Bit width
     NOVALUE,
     ANYVALUE,
     ARCH,
@@ -122,7 +122,6 @@ public:
         DEPEND_AND,
         GUARD,
         FRAME_STATE,
-        DEOPT,
         // High Level IR
         JS_BYTECODE,
         IF_SUCCESS,
@@ -208,7 +207,7 @@ public:
         STORE_PROPERTY,
 
         COMMON_CIR_FIRST = NOP,
-        COMMON_CIR_LAST = DEOPT,
+        COMMON_CIR_LAST = FRAME_STATE,
         HIGH_CIR_FIRST = JS_BYTECODE,
         HIGH_CIR_LAST = GET_EXCEPTION,
         MID_CIR_FIRST = RUNTIME_CALL,
@@ -238,7 +237,6 @@ public:
     [[nodiscard]] bool IsSchedulable() const;
     [[nodiscard]] bool IsState() const;  // note: IsState(STATE_ENTRY) == false
     [[nodiscard]] bool IsGeneralState() const;
-    [[nodiscard]] bool IsTypedGate() const;
     [[nodiscard]] bool IsTerminalState() const;
     [[nodiscard]] bool IsCFGMerge() const;
     [[nodiscard]] bool IsControlCase() const;
@@ -426,14 +424,14 @@ private:
     // out(2)
     // out(1)
     // out(0)
-    GateId id_ {0};
-    OpCode opcode_;
-    MachineType bitValue_ = MachineType::NOVALUE;
-    GateType type_;
-    TimeStamp stamp_;
-    MarkCode mark_;
-    BitField bitfield_;
-    GateRef firstOut_;
+    GateId id_ {0}; // uint32_t
+    GateType type_; // uint32_t
+    OpCode opcode_; // uint8_t
+    MachineType bitValue_ = MachineType::NOVALUE; // uint8_t
+    TimeStamp stamp_; // uint8_t
+    MarkCode mark_; // uint8_t
+    BitField bitfield_; // uint64_t
+    GateRef firstOut_; // int32_t
     // in(0)
     // in(1)
     // in(2)

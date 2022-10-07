@@ -221,11 +221,6 @@ bool GateAccessor::IsSchedulable(GateRef gate) const
     return GetOpCode(gate).IsSchedulable();
 }
 
-bool GateAccessor::IsTypedGate(GateRef gate) const
-{
-    return GetOpCode(gate).IsTypedGate();
-}
-
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);

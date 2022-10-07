@@ -750,6 +750,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::DIV2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::MOD2_IMM8_V8: {
@@ -1984,13 +1985,36 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
     return gate;
 }
 
+GateRef BytecodeCircuitBuilder::InitializeFrameState(const uint8_t *pc)
+{
+    size_t fixedArgsNum = 2; // acc, pc
+    size_t frameStateInputs = numVregs_ + fixedArgsNum;
+    std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
+    for (size_t i = 0; i < numVregs_ + 1; ++i) { // 1: acc
+        inList[i] = Circuit::NullGate();
+    }
+    size_t v = pc - startPc_;
+    ASSERT(v >= 0);
+    GateRef pcOffset = circuit_.GetConstantGate(MachineType::I32, v, GateType::NJSValue());
+    inList[numVregs_ + fixedArgsNum - 1] = pcOffset;
+    return circuit_.NewGate(OpCode(OpCode::FRAME_STATE), frameStateInputs, inList, GateType::Empty());
+}
+
 void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, GateRef &state, GateRef &depend)
 {
     auto bytecodeInfo = GetBytecodeInfo(pc);
+    GateRef newDep = depend;
+    if (bytecodeInfo.Deopt()) {
+        GateRef frameState = InitializeFrameState(pc);
+        GateRef guard = circuit_.NewGate(OpCode(OpCode::GUARD), 2, {depend, Circuit::NullGate(), frameState},
+                                         GateType::Empty());
+        newDep = guard;
+    }
+
     size_t numValueInputs = bytecodeInfo.ComputeTotalValueCount();
     GateRef gate = 0;
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo);
-    if (!bytecodeInfo.vregOut.empty() || bytecodeInfo.accOut) {
+    if (bytecodeInfo.IsDef()) {
         gate = circuit_.NewGate(OpCode(OpCode::JS_BYTECODE), MachineType::I64, numValueInputs,
                                 inList, GateType::AnyType());
     } else {
@@ -2000,7 +2024,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, Ga
     // 1: store bcoffset in the end.
     AddBytecodeOffsetInfo(gate, bytecodeInfo, numValueInputs + 1, const_cast<uint8_t *>(pc));
     gateAcc_.NewIn(gate, 0, state);
-    gateAcc_.NewIn(gate, 1, depend);
+    gateAcc_.NewIn(gate, 1, newDep);
     auto ifSuccess = circuit_.NewGate(OpCode(OpCode::IF_SUCCESS), 0, {gate}, GateType::Empty());
     auto ifException = circuit_.NewGate(OpCode(OpCode::IF_EXCEPTION), 0, {gate}, GateType::Empty());
     if (!bb.catchs.empty()) {
@@ -2403,7 +2427,6 @@ void BytecodeCircuitBuilder::BuildCircuit()
             ASSERT(bb.forwardIndex == bb.numOfStatePreds - bb.numOfLoopBacks);
         }
     }
-    std::vector<GateRef> jsGateList;
     // resolve def-site of virtual regs and set all value inputs
     std::vector<GateRef> gates;
     circuit_.GetAllGates(gates);
@@ -2430,21 +2453,18 @@ void BytecodeCircuitBuilder::BuildCircuit()
         ASSERT(numValueOutputs <= 1);
         auto stateCount = gateAcc_.GetStateCount(gate);
         auto dependCount = gateAcc_.GetDependCount(gate);
-        if (gateAcc_.GetOpCode(gate) == OpCode::JS_BYTECODE && !bytecodeInfo.IsJump()) {
-            jsGateList.emplace_back(gate);
-        }
         for (size_t valueIdx = 0; valueIdx < valueCount; valueIdx++) {
             auto inIdx = valueIdx + stateCount + dependCount;
             if (!gateAcc_.IsInGateNull(gate, inIdx)) {
                 continue;
             }
             if (valueIdx < bytecodeInfo.inputs.size()) {
-                gateAcc_.NewIn(gate, inIdx,
-                               RenameVariable(id, pc - 1,
-                               std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId(),
-                               false));
+                auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();
+                GateRef defVreg = RenameVariable(id, pc - 1, vregId, false);
+                gateAcc_.NewIn(gate, inIdx, defVreg);
             } else {
-                gateAcc_.NewIn(gate, inIdx, RenameVariable(id, pc - 1, 0, true));
+                GateRef defAcc = RenameVariable(id, pc - 1, 0, true);
+                gateAcc_.NewIn(gate, inIdx, defAcc);
             }
         }
     }

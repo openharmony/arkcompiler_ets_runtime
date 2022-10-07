@@ -32,7 +32,7 @@ public:
 
     ~GateType() = default;
 
-    uint32_t GetType() const
+    uint32_t Value() const
     {
         return type_;
     }
@@ -127,7 +127,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::ANY));
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::ANY));
     }
 
     bool IsNumberType() const
@@ -135,7 +135,23 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NUMBER));
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NUMBER));
+    }
+
+    bool IsFloatType() const
+    {
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::FLOAT));
+    }
+
+    bool IsIntType() const
+    {
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::INT));
     }
 
     bool IsStringType() const
@@ -143,7 +159,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::STRING));
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::STRING));
     }
 
     bool IsNullType() const
@@ -151,7 +167,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NULL_TYPE));
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NULL_TYPE));
     }
 
     bool IsUndefinedType() const
@@ -159,7 +175,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::UNDEFINED));
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::UNDEFINED));
     }
 
     bool IsBooleanType() const
@@ -167,7 +183,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BOOLEAN));
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BOOLEAN));
     }
 
     bool IsBigIntType() const
@@ -175,7 +191,7 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return IsTSType() && (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BIG_INT));
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BIG_INT));
     }
 
     bool IsPrimitiveType() const
@@ -217,16 +233,6 @@ public:
     bool operator >=(const GateType &other) const
     {
         return type_ >= other.type_;
-    }
-
-    bool IsTSType() const
-    {
-        return (type_ & MIR_TYPE_MASK) == 0;
-    }
-
-    bool IsIRType() const
-    {
-        return (type_ & MIR_TYPE_MASK) != 0;
     }
 
     GlobalTSTypeRef GetGTRef() const

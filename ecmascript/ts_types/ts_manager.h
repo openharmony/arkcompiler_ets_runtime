@@ -148,7 +148,7 @@ public:
 
     inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, JSHandle<EcmaString> propertyName) const
     {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());
+        GlobalTSTypeRef gt = gateType.GetGTRef();
         return GetPropType(gt, propertyName);
     }
 
@@ -157,13 +157,13 @@ public:
     // use for object
     inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, const uint64_t key) const
     {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());
+        GlobalTSTypeRef gt = gateType.GetGTRef();
         return GetPropType(gt, key);
     }
 
     inline GlobalTSTypeRef PUBLIC_API CreateClassInstanceType(kungfu::GateType gateType)
     {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());
+        GlobalTSTypeRef gt = gateType.GetGTRef();
         return CreateClassInstanceType(gt);
     }
 
@@ -187,7 +187,7 @@ public:
 
     inline GlobalTSTypeRef PUBLIC_API GetFuncReturnValueTypeGT(kungfu::GateType gateType) const
     {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());
+        GlobalTSTypeRef gt = gateType.GetGTRef();
         return GetFuncReturnValueTypeGT(gt);
     }
 
@@ -195,7 +195,7 @@ public:
 
     inline GlobalTSTypeRef PUBLIC_API GetArrayParameterTypeGT(kungfu::GateType gateType) const
     {
-        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());
+        GlobalTSTypeRef gt = gateType.GetGTRef();
         return GetArrayParameterTypeGT(gt);
     }
 
@@ -284,7 +284,7 @@ public:
 #define IS_TSTYPEKIND(NAME, TSTYPEKIND)                                                \
     bool inline PUBLIC_API Is##NAME##TypeKind(const kungfu::GateType &gateType) const  \
     {                                                                                  \
-        GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetType());                      \
+        GlobalTSTypeRef gt = gateType.GetGTRef();                                      \
         return GetTypeKind(gt) == (TSTYPEKIND);                                        \
     }
 

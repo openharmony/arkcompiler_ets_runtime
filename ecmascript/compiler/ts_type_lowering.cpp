@@ -117,40 +117,15 @@ void TSTypeLowering::Lower(GateRef gate)
     }
 }
 
-
-void TSTypeLowering::RebuildSlowpathCfg(GateRef hir, std::map<GateRef, size_t> &stateGateMap)
+void TSTypeLowering::DeleteGates(std::vector<GateRef> &unusedGate)
 {
-    acc_.ReplaceStateIn(hir, builder_.GetState());
-    acc_.ReplaceDependIn(hir, builder_.GetDepend());
-    auto uses = acc_.Uses(hir);
-    GateRef stateGate = Circuit::NullGate();
-    for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
-        const OpCode op = acc_.GetOpCode(*useIt);
-        if (op == OpCode::IF_SUCCESS) {
-            stateGate = *useIt;
-            builder_.SetState(*useIt);
-            break;
-        }
+    for (auto &gate : unusedGate) {
+        acc_.DeleteGate(gate);
     }
-    auto nextUses = acc_.Uses(stateGate);
-    for (auto it = nextUses.begin(); it != nextUses.end(); ++it) {
-        if (it.GetOpCode().IsState()) {
-            stateGateMap[*it] = it.GetIndex();
-        }
-    }
-    builder_.SetDepend(hir);
 }
 
-void TSTypeLowering::GenerateSuccessMerge(std::vector<GateRef> &successControl)
-{
-    GateRef stateMerge = builder_.GetState();
-    GateRef dependSelect = builder_.GetDepend();
-    successControl.emplace_back(stateMerge);
-    successControl.emplace_back(dependSelect);
-}
-
-void TSTypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, GateRef state, GateRef depend,
-                                             std::vector<GateRef> &unusedGate)
+void TSTypeLowering::ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, GateRef depend,
+                                    std::vector<GateRef> &unusedGate)
 {
     auto uses = acc_.Uses(hir);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
@@ -162,6 +137,7 @@ void TSTypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, GateRef
             ++useIt;
         } else if (op == OpCode::IF_EXCEPTION) {
             auto exceptionUse = acc_.Uses(*useIt).begin();
+            ASSERT(acc_.GetOpCode(*exceptionUse) == OpCode::RETURN);
             unusedGate.emplace_back(*exceptionUse);
             unusedGate.emplace_back(*useIt);
             ++useIt;
@@ -178,52 +154,6 @@ void TSTypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, GateRef
             ++useIt;
         } else if (op == OpCode::DEPEND_SELECTOR) {
             useIt = acc_.ReplaceIn(useIt, depend);
-        } else {
-            useIt = acc_.ReplaceIn(useIt, outir);
-        }
-    }
-}
-
-void TSTypeLowering::DeleteUnusedGate(std::vector<GateRef> &unusedGate)
-{
-    for (auto &gate : unusedGate) {
-        acc_.DeleteGate(gate);
-    }
-}
-
-void TSTypeLowering::ReplaceHirToFastPathCfg(GateRef hir, GateRef outir, const std::vector<GateRef> &successControl)
-{
-    auto uses = acc_.Uses(hir);
-    for (auto useIt = uses.begin(); useIt != uses.end();) {
-        const OpCode op = acc_.GetOpCode(*useIt);
-        if (op == OpCode::JS_BYTECODE && useIt.GetIndex() == 1) {
-            acc_.ReplaceStateIn(*useIt, successControl[0]);
-            useIt = acc_.ReplaceIn(useIt, successControl[1]);
-        } else if (op == OpCode::RETURN) {
-            if (acc_.IsValueIn(useIt)) {
-                useIt = acc_.ReplaceIn(useIt, outir);
-                continue;
-            }
-            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) != OpCode::IF_EXCEPTION) {
-                acc_.ReplaceStateIn(*useIt, successControl[0]);
-                acc_.ReplaceDependIn(*useIt, successControl[1]);
-                acc_.ReplaceValueIn(*useIt, outir);
-            }
-            ++useIt;
-        } else if (op == OpCode::IF_SUCCESS || op == OpCode::IF_EXCEPTION) {
-            ++useIt;
-        } else if (op == OpCode::VALUE_SELECTOR) {
-            if (*useIt != outir) {
-                useIt = acc_.ReplaceIn(useIt, outir);
-            } else {
-                ++useIt;
-            }
-        } else if (op == OpCode::DEPEND_SELECTOR) {
-            if (*useIt != successControl[1]) {
-                useIt = acc_.ReplaceIn(useIt, successControl[1]);
-            } else {
-                ++useIt;
-            }
         } else {
             useIt = acc_.ReplaceIn(useIt, outir);
         }
@@ -367,27 +297,18 @@ void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    Label isNumber(&builder_);
-    Label notNumber(&builder_);
-    Label exit(&builder_);
     GateType numberType = GateType::NumberType();
-    std::vector<GateRef> unusedGate;
-    unusedGate.emplace_back(gate);
-    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), builder_.TypeCheck(numberType, right)),
-                    &isNumber, &notNumber);
-    builder_.Bind(&isNumber);
-    {
-        GateRef result = builder_.NumberBinaryOp<Op>(left, right);
-        GateRef state = builder_.GetState();
-        GateRef depend = builder_.GetDepend();
-        ReplaceHirToFastPathCfg(gate, result, state, depend, unusedGate);
-    }
-    builder_.Bind(&notNumber);
-    // deopt
-    GateRef deoptStateIn = builder_.GetState();
+    GateRef check = builder_.BoolAnd(builder_.TypeCheck(numberType, left),
+                                     builder_.TypeCheck(numberType, right));
     GateRef guard = acc_.GetDep(gate);
-    builder_.Deoptimize(deoptStateIn, guard);
-    DeleteUnusedGate(unusedGate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    ASSERT(acc_.IsInGateNull(guard, 1));
+    acc_.NewIn(guard, 1, check);
+    GateRef result = builder_.NumberBinaryOp<Op>(left, right);
+    acc_.SetDep(result, guard);
+    std::vector<GateRef> removedGate{gate};
+    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(removedGate);
 }
 
 template<TypedBinOp Op>
@@ -395,33 +316,18 @@ void TSTypeLowering::SpeculateNumberCompare(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    Label isNumber(&builder_);
-    Label notNumber(&builder_);
-    Label exit(&builder_);
     GateType numberType = GateType::NumberType();
-    DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, GateType::BooleanType()), builder_.HoleConstant());
-    builder_.Branch(builder_.BoolAnd(builder_.TypeCheck(numberType, left), builder_.TypeCheck(numberType, right)),
-                    &isNumber, &notNumber);
-    std::map<GateRef, size_t> stateGateMap;
-    builder_.Bind(&isNumber);
-    {
-        result = builder_.NumberBinaryOp<Op>(left, right);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&notNumber);
-    {
-        // slowpath
-        result = gate;
-        RebuildSlowpathCfg(gate, stateGateMap);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    for (auto [state, index] : stateGateMap) {
-        acc_.ReplaceIn(state, index, builder_.GetState());
-    }
-    std::vector<GateRef> successControl;
-    GenerateSuccessMerge(successControl);
-    ReplaceHirToFastPathCfg(gate, *result, successControl);
+    GateRef check = builder_.BoolAnd(builder_.TypeCheck(numberType, left),
+                                     builder_.TypeCheck(numberType, right));
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    ASSERT(acc_.IsInGateNull(guard, 1));
+    acc_.NewIn(guard, 1, check);
+    GateRef result = builder_.NumberBinaryOp<Op>(left, right);
+    acc_.SetDep(result, guard);
+    std::vector<GateRef> removedGate{gate};
+    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(removedGate);
 }
 
 void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
@@ -436,32 +342,17 @@ void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
 
 void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
 {
-    Label isPrimitive(&builder_);
-    Label notPrimitive(&builder_);
-    Label exit(&builder_);
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
-    DEFVAlUE(result, (&builder_), VariableType(MachineType::I64, GateType::NumberType()), builder_.HoleConstant());
-    builder_.Branch(builder_.TypeCheck(srcType, src), &isPrimitive, &notPrimitive);
-    std::map<GateRef, size_t> stateGateMap;
-    builder_.Bind(&isPrimitive);
-    {
-        result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&notPrimitive);
-    {
-        // slowpath
-        result = gate;
-        RebuildSlowpathCfg(gate, stateGateMap);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    for (auto [state, index] : stateGateMap) {
-        acc_.ReplaceIn(state, index, builder_.GetState());
-    }
-    std::vector<GateRef> successControl;
-    GenerateSuccessMerge(successControl);
-    ReplaceHirToFastPathCfg(gate, *result, successControl);
+    GateRef check = builder_.TypeCheck(srcType, src);
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    ASSERT(acc_.IsInGateNull(guard, 1));
+    acc_.NewIn(guard, 1, check);
+    GateRef result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
+    acc_.SetDep(result, guard);
+    std::vector<GateRef> removedGate{gate};
+    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(removedGate);
 }
 }  // namespace panda::ecmascript
