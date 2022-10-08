@@ -301,8 +301,7 @@ void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
     GateRef check = builder_.BoolAnd(builder_.TypeCheck(numberType, left),
                                      builder_.TypeCheck(numberType, right));
     GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    ASSERT(acc_.IsInGateNull(guard, 1));
+
     acc_.NewIn(guard, 1, check);
     GateRef result = builder_.NumberBinaryOp<Op>(left, right);
     acc_.SetDep(result, guard);

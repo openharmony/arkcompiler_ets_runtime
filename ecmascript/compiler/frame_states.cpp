@@ -87,13 +87,13 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset)
     return circuit_->NewGate(OpCode(OpCode::FRAME_STATE), frameStateInputs, inList, GateType::Empty());
 }
 
-void FrameStateBuilder::BindCheckPoint(GateRef gate, size_t pcOffset)
+void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset)
 {
     auto depend = gateAcc_.GetDep(gate);
     GateRef frameState = FrameState(pcOffset);
-    GateRef checkPoint = circuit_->NewGate(
-        OpCode(OpCode::GUARD), 1, {depend, frameState}, GateType::Empty());
-    gateAcc_.ReplaceDependIn(gate, checkPoint);
+    GateRef guard = circuit_->NewGate(
+        OpCode(OpCode::GUARD), 2, {depend, Circuit::NullGate(), frameState}, GateType::Empty());
+    gateAcc_.ReplaceDependIn(gate, guard);
 }
 
 void FrameStateBuilder::AdvenceToSuccessor(const uint8_t *predPc, const uint8_t *endPc)

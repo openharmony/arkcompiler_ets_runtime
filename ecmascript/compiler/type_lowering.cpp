@@ -35,7 +35,6 @@ void TypeLowering::RunTypeLowering()
 
 void TypeLowering::LowerType(GateRef gate)
 {
-    Environment env(gate, circuit_, &builder_);
     auto op = OpCode::Op(acc_.GetOpCode(gate));
     switch (op) {
         case OpCode::TYPE_CHECK:
@@ -57,6 +56,7 @@ void TypeLowering::LowerType(GateRef gate)
 
 void TypeLowering::LowerTypeConvert(GateRef gate)
 {
+    Environment env(gate, circuit_, &builder_);
     GateAccessor acc(circuit_);
     auto leftType = GetLeftType(gate);
     auto rightType = GetRightType(gate);
@@ -118,6 +118,7 @@ void TypeLowering::LowerNumberCheck(GateRef gate)
 
 void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 {
+    Environment env(gate, circuit_, &builder_);
     auto opGate = acc_.GetValueIn(gate, 2);
     auto op = static_cast<TypedBinOp>(acc_.GetBitField(opGate));
     switch (op) {
@@ -172,6 +173,7 @@ void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 
 void TypeLowering::LowerTypedUnaryOp(GateRef gate)
 {
+    Environment env(gate, circuit_, &builder_);
     auto bitfield = acc_.GetBitField(gate);
     auto temp = bitfield >>  CircuitBuilder::OPRAND_TYPE_BITS;
     auto op = static_cast<TypedUnaryOp>(bitfield ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS));
