@@ -2946,12 +2946,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(ASYNCGENERATORREJECT_V8) {
         uint16_t v0 = READ_INST_8_0();
-        uint16_t v1 = READ_INST_8_1();
         LOG_INST() << "intrinsics::asyncgeneratorreject"
-                   << " v" << v0 << " v" << v1;
+                   << " v" << v0;
 
         JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
-        JSTaggedValue value = GET_VREG_VALUE(v1);
+        JSTaggedValue value = GET_ACC();
 
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorReject(thread, asyncGenerator, value);

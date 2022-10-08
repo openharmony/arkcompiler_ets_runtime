@@ -4585,7 +4585,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedAsyncgeneratorrejectPrefV8V8)
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorReject),
                               { asyncGenerator, value });
-    CHECK_EXCEPTION_VARACC(res, INT_PTR(ASYNCGENERATORREJECT_V8));
+    CHECK_EXCEPTION_VARACC(res, INT_PTR(DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleSupercallthisrangeImm8Imm8V8)
