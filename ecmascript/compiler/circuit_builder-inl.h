@@ -549,6 +549,19 @@ GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
     return ret;
 }
 
+template<TypedBinOp Op>
+GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberBinaryOp = TypedBinaryOperator(MachineType::I64, Op, xType, yType,
+                                              {currentControl, currentDepend, x, y});
+    currentLabel->SetControl(numberBinaryOp);
+    currentLabel->SetDepend(numberBinaryOp);
+    return numberBinaryOp;
+}
+
 // Number operator
 template<TypedBinOp Op>
 GateRef CircuitBuilder::NumberBinaryOp(GateRef x, GateRef y)

@@ -241,6 +241,7 @@ public:
     [[nodiscard]] bool IsControlCase() const;
     [[nodiscard]] bool IsLoopHead() const;
     [[nodiscard]] bool IsNop() const;
+    [[nodiscard]] bool IsConstant() const;
     ~OpCode() = default;
 
 private:
