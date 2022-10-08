@@ -436,13 +436,22 @@ bool JSAPIVector::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIVector> &
 void JSAPIVector::TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 {
     int32_t length = obj->GetSize();
+    uint32_t capacity = obj->GetCapacity();
     TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
-    elements->Trim(thread, length);
+    if (capacity > static_cast<uint32_t>(length)) {
+        elements->Trim(thread, length);
+    }
 }
 
-void JSAPIVector::Clear(const JSHandle<JSAPIVector> &obj)
+void JSAPIVector::Clear(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 {
+    int length = obj->GetLength();
+    JSHandle<TaggedArray> elements(thread, obj->GetElements());
+    ASSERT(!elements->IsDictionaryMode());
+    for (int i = 0; i <= length; ++i) {
+        elements->Set(thread, i, JSTaggedValue::Hole());
+    }
     obj->SetLength(0);
 }
 

@@ -49,6 +49,11 @@ if (globalThis["ArkPrivate"] != undefined) {
     // // test set, clone
     vec.set(2, 8);
     map.set("test set:", vec.get(2) == 8 && vec.length == 6);
+    // trimToCurrentLength
+    vec.trimToCurrentLength();
+    map.set("test trimToCurrentLength1:", vec.getCapacity() === 6);
+    vec.trimToCurrentLength();
+    map.set("test trimToCurrentLength2:", vec.getCapacity() === 6);
     // test subvector
     let subVec = vec.subVector(0, 3);
     map.set("test subVector and tostring:", subVec.toString());

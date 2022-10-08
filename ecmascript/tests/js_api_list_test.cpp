@@ -236,10 +236,10 @@ HWTEST_F_L0(JSAPIListTest, Clear)
 {
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
     JSHandle<JSAPIList> list(thread, CreateList());
-    list->Add(thread, list, value);
+    JSAPIList::Add(thread, list, value);
 
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(2));
-    list->Insert(thread, list, value1, 0);
+    JSAPIList::Insert(thread, list, value1, 0);
 
     list->Clear(thread);
 

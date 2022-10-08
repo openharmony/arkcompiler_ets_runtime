@@ -154,6 +154,18 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test list forEach:", res)
     list2.clear()
     map.set("test list clear:", list2.length === 0)
+    res = true
+    const testArrayClear = []
+    for(let i = 0; i < 10; i++) {
+        list2.add(i)
+        testArrayClear.push(i)
+    }
+    for(let i = 0; i < testArrayClear.length; i++) {
+        if (list2[i] !== testArrayClear[i]) {
+            res = false
+        }
+    }
+    map.set("test list clear and add:", res)
     map.set("test list get:", list1.get(200) === undefined)
     map.set("test list getLastIndexOf:", list1.getLastIndexOf('abc') === -1)
     let flag = false;

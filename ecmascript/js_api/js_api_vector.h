@@ -87,7 +87,7 @@ public:
 
     static void TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIVector> &vector);
 
-    static void Clear(const JSHandle<JSAPIVector> &vector);
+    static void Clear(JSThread *thread, const JSHandle<JSAPIVector> &vector);
 
     static JSHandle<JSAPIVector> Clone(JSThread *thread, const JSHandle<JSAPIVector> &vector);
 

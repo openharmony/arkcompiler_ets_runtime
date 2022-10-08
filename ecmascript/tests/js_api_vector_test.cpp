@@ -159,7 +159,7 @@ HWTEST_F_L0(JSAPIVectorTest, ClearAndisEmpty)
         EXPECT_EQ(toor->IsEmpty(), false);
     }
 
-    JSAPIVector::Clear(toor);
+    JSAPIVector::Clear(thread, toor);
     EXPECT_EQ(toor->IsEmpty(), true);
 
     toor->Dump();

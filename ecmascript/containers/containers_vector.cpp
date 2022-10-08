@@ -602,7 +602,7 @@ JSTaggedValue ContainersVector::Clear(EcmaRuntimeCallInfo *argv)
         }
     }
 
-    JSAPIVector::Clear(JSHandle<JSAPIVector>::Cast(self));
+    JSAPIVector::Clear(thread, JSHandle<JSAPIVector>::Cast(self));
 
     return JSTaggedValue::True();
 }
