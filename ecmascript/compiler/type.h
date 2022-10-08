@@ -122,6 +122,12 @@ public:
         return GateType(r);
     }
 
+    static GateType DoubleType()
+    {
+        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::DOUBLE));
+        return GateType(r);
+    }
+
     bool IsAnyType() const
     {
         GlobalTSTypeRef r = GetGTRef();
@@ -135,15 +141,17 @@ public:
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NUMBER));
+        return ((m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NUMBER))) ||
+               ((m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::INT))) ||
+               ((m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::DOUBLE)));
     }
 
-    bool IsFloatType() const
+    bool IsDoubleType() const
     {
         GlobalTSTypeRef r = GetGTRef();
         uint32_t m = r.GetModuleId();
         uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::FLOAT));
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::DOUBLE));
     }
 
     bool IsIntType() const

@@ -1459,4 +1459,9 @@ bool OpCode::IsNop() const
 {
     return (op_ == OpCode::NOP);
 }
+
+bool OpCode::IsConstant() const
+{
+    return (op_ == OpCode::CONSTANT);
+}
 }  // namespace panda::ecmascript::kungfu

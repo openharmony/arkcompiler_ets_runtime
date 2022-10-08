@@ -321,14 +321,14 @@ bool TypeInfer::InferLdNull(GateRef gate)
 
 bool TypeInfer::InferLdai(GateRef gate)
 {
-    auto numberType = GateType::NumberType();
-    return UpdateType(gate, numberType);
+    auto intType = GateType::IntType();
+    return UpdateType(gate, intType);
 }
 
 bool TypeInfer::InferFLdai(GateRef gate)
 {
-    auto numberType = GateType::NumberType();
-    return UpdateType(gate, numberType);
+    auto doubleType = GateType::DoubleType();
+    return UpdateType(gate, doubleType);
 }
 
 bool TypeInfer::InferLdSymbol(GateRef gate)

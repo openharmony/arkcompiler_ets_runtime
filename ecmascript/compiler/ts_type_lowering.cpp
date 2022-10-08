@@ -297,13 +297,24 @@ void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType numberType = GateType::NumberType();
-    GateRef check = builder_.BoolAnd(builder_.TypeCheck(numberType, left),
-                                     builder_.TypeCheck(numberType, right));
-    GateRef guard = acc_.GetDep(gate);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    GateRef check = Circuit::NullGate();
+    if (acc_.IsConstant(left) && acc_.IsConstant(right)) {
+        check = builder_.Boolean(true);
+    } else if (acc_.IsConstant(left)) {
+        check = builder_.TypeCheck(rightType, right);
+    } else if (acc_.IsConstant(right)) {
+        check = builder_.TypeCheck(leftType, left);
+    } else {
+        check = builder_.BoolAnd(builder_.TypeCheck(leftType, left), builder_.TypeCheck(rightType, right));
+    }
 
+    GateRef guard = acc_.GetDep(gate);
     acc_.NewIn(guard, 1, check);
-    GateRef result = builder_.NumberBinaryOp<Op>(left, right);
+    
+    // Replace the old NumberBinaryOp<Op> with TypedBinaryOp<Op>
+    GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType);
     acc_.SetDep(result, guard);
     std::vector<GateRef> removedGate{gate};
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);

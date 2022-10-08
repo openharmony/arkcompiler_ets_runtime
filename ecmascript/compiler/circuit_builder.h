@@ -373,6 +373,11 @@ public:
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
+
+    // middle ir: operations with any type
+    template<TypedBinOp Op>
+    inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType);
+
     // middle ir: Number operations
     template<TypedBinOp Op>
     inline GateRef NumberBinaryOp(GateRef x, GateRef y);

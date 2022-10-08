@@ -216,6 +216,11 @@ bool GateAccessor::IsState(GateRef gate) const
     return GetOpCode(gate).IsState();
 }
 
+bool GateAccessor::IsConstant(GateRef gate) const
+{
+    return GetOpCode(gate).IsConstant();
+}
+
 bool GateAccessor::IsSchedulable(GateRef gate) const
 {
     return GetOpCode(gate).IsSchedulable();

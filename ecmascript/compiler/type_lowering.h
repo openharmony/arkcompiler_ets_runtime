@@ -130,6 +130,8 @@ private:
     void LowerTypedEq(GateRef gate);
     void LowerTypedNotEq(GateRef gate);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
+    void LowerIntCheck(GateRef gate);
+    void LowerDoubleCheck(GateRef gate);
     void LowerNumberCheck(GateRef gate);
     void LowerNumberAdd(GateRef gate);
     void LowerNumberSub(GateRef gate);
@@ -147,7 +149,7 @@ private:
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
     template<OpCode::Op Op>
-    GateRef CalculateNumbers(GateRef left, GateRef right);
+    GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
     GateRef CompareNumbers(GateRef left, GateRef right);
     template<TypedBinOp Op>

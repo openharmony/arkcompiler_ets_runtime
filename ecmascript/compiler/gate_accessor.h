@@ -346,6 +346,7 @@ public:
     bool IsLoopHead(GateRef gate) const;
     bool IsLoopBack(GateRef gate) const;
     bool IsState(GateRef gate) const;
+    bool IsConstant(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;
     void SetMark(GateRef gate, MarkCode mark);
