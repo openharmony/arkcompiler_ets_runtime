@@ -735,16 +735,19 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::ADD2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::SUB2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::MUL2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::DIV2_IMM8_V8: {
@@ -756,71 +759,85 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::MOD2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::EQ_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::NOTEQ_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::LESS_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::LESSEQ_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::GREATER_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::GREATEREQ_IMM8_V8: {
             uint16_t vs = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(vs));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::SHL2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::SHR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::ASHR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::AND2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::OR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::XOR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::EXP_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::ISIN_IMM8_V8: {
@@ -1535,6 +1552,14 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
+        case EcmaOpcode::TONUMERIC_IMM8:
+        case EcmaOpcode::NEG_IMM8:
+        case EcmaOpcode::NOT_IMM8:
+        case EcmaOpcode::INC_IMM8:
+        case EcmaOpcode::DEC_IMM8: {
+            info.deopt = true;
+            break;
+        }
         case EcmaOpcode::JMP_IMM8:
         case EcmaOpcode::JMP_IMM16:
         case EcmaOpcode::JMP_IMM32:
@@ -1562,11 +1587,6 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::TYPEOF_IMM8:
         case EcmaOpcode::TYPEOF_IMM16:
         case EcmaOpcode::TONUMBER_IMM8:
-        case EcmaOpcode::TONUMERIC_IMM8:
-        case EcmaOpcode::NEG_IMM8:
-        case EcmaOpcode::NOT_IMM8:
-        case EcmaOpcode::INC_IMM8:
-        case EcmaOpcode::DEC_IMM8:
         case EcmaOpcode::THROW_PREF_NONE:
         case EcmaOpcode::GETPROPITERATOR:
         case EcmaOpcode::RESUMEGENERATOR:
@@ -1985,31 +2005,9 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
     return gate;
 }
 
-GateRef BytecodeCircuitBuilder::InitializeFrameState(const uint8_t *pc)
-{
-    size_t fixedArgsNum = 2; // acc, pc
-    size_t frameStateInputs = numVregs_ + fixedArgsNum;
-    std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
-    for (size_t i = 0; i < numVregs_ + 1; ++i) { // 1: acc
-        inList[i] = Circuit::NullGate();
-    }
-    size_t v = pc - startPc_;
-    ASSERT(v >= 0);
-    GateRef pcOffset = circuit_.GetConstantGate(MachineType::I32, v, GateType::NJSValue());
-    inList[numVregs_ + fixedArgsNum - 1] = pcOffset;
-    return circuit_.NewGate(OpCode(OpCode::FRAME_STATE), frameStateInputs, inList, GateType::Empty());
-}
-
 void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, GateRef &state, GateRef &depend)
 {
     auto bytecodeInfo = GetBytecodeInfo(pc);
-    GateRef newDep = depend;
-    if (bytecodeInfo.Deopt()) {
-        GateRef frameState = InitializeFrameState(pc);
-        GateRef guard = circuit_.NewGate(OpCode(OpCode::GUARD), 2, {depend, Circuit::NullGate(), frameState},
-                                         GateType::Empty());
-        newDep = guard;
-    }
 
     size_t numValueInputs = bytecodeInfo.ComputeTotalValueCount();
     GateRef gate = 0;
@@ -2024,7 +2022,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, Ga
     // 1: store bcoffset in the end.
     AddBytecodeOffsetInfo(gate, bytecodeInfo, numValueInputs + 1, const_cast<uint8_t *>(pc));
     gateAcc_.NewIn(gate, 0, state);
-    gateAcc_.NewIn(gate, 1, newDep);
+    gateAcc_.NewIn(gate, 1, depend);
     auto ifSuccess = circuit_.NewGate(OpCode(OpCode::IF_SUCCESS), 0, {gate}, GateType::Empty());
     auto ifException = circuit_.NewGate(OpCode(OpCode::IF_EXCEPTION), 0, {gate}, GateType::Empty());
     if (!bb.catchs.empty()) {
@@ -2393,7 +2391,9 @@ void BytecodeCircuitBuilder::BuildFrameState()
                 }
             } else if (bytecodeInfo.IsGeneral()) {
                 gate = byteCodeToJSGate_.at(pc);
-                frameStateBuilder_.BindCheckPoint(gate, bytecodeInfo.pcOffset);
+                if (bytecodeInfo.deopt) {
+                    frameStateBuilder_.BindGuard(gate, bytecodeInfo.pcOffset);
+                }
             } else if (bytecodeInfo.IsSetConstant()) {
                 gate = byteCodeToJSGate_.at(pc);
             }

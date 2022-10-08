@@ -109,7 +109,7 @@ public:
     {
         currentInfo_->UpdateVirtualRegister(index, gate);
     }
-    void BindCheckPoint(GateRef gate, size_t pcOffset);
+    void BindGuard(GateRef gate, size_t pcOffset);
 
     void AdvenceToSuccessor(const uint8_t *predPc, const uint8_t *endPc);
 private:
