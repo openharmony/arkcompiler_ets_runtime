@@ -424,7 +424,7 @@ public:
     {
         if (hostVm != nullptr && workerVm != nullptr) {
             auto tid = workerVm->GetJSThread()->GetThreadId();
-            if(tid !=0){
+            if(tid != 0){
                 auto iter = WorkerList_.find(tid);
                 if (iter != WorkerList_.end()) {
                     WorkerList_.erase(iter);
