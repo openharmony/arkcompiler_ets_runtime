@@ -93,7 +93,7 @@ class OpCode {
 public:
     enum Op : GateOp {
         // SHARED
-        NOP,
+        NOP = 0,
         CIRCUIT_ROOT,
         STATE_ENTRY,
         DEPEND_ENTRY,
@@ -221,7 +221,6 @@ public:
         return op_;
     }
     explicit operator bool() const = delete;
-    [[nodiscard]] Properties GetProperties() const;
     [[nodiscard]] size_t GetStateCount(BitField bitfield) const;
     [[nodiscard]] size_t GetDependCount(BitField bitfield) const;
     [[nodiscard]] size_t GetInValueCount(BitField bitfield) const;
@@ -245,6 +244,8 @@ public:
     ~OpCode() = default;
 
 private:
+    friend class Gate;
+    [[nodiscard]] const Properties& GetProperties() const;
     Op op_;
 };
 

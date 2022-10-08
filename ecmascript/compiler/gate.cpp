@@ -20,7 +20,7 @@ constexpr size_t ONE_DEPEND = 1;
 constexpr size_t MANY_DEPEND = 2;
 constexpr size_t NO_DEPEND = 0;
 // NOLINTNEXTLINE(readability-function-size)
-Properties OpCode::GetProperties() const
+const Properties& OpCode::GetProperties() const
 {
 // general schema: [STATE]s + [DEPEND]s + [VALUE]s + [ROOT]
 // GENERAL_STATE for any opcode match in
@@ -44,8 +44,10 @@ Properties OpCode::GetProperties() const
     switch (op_) {
         // SHARED
         case NOP:
-        case CIRCUIT_ROOT:
-            return {NOVALUE, NO_STATE, NO_DEPEND, NO_VALUE, NO_ROOT};
+        case CIRCUIT_ROOT: {
+            static const Properties ps { NOVALUE, NO_STATE, NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         case STATE_ENTRY:
         case DEPEND_ENTRY:
         case FRAMESTATE_ENTRY:
@@ -53,48 +55,91 @@ Properties OpCode::GetProperties() const
         case THROW_LIST:
         case CONSTANT_LIST:
         case ALLOCA_LIST:
-        case ARG_LIST:
-            return {NOVALUE, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CIRCUIT_ROOT)};
-        case RETURN:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), OpCode(RETURN_LIST)};
-        case RETURN_VOID:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE, OpCode(RETURN_LIST)};
-        case THROW:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(JSMachineType()), OpCode(THROW_LIST)};
-        case ORDINARY_BLOCK:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case IF_BRANCH:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, VALUE(I1), NO_ROOT};
-        case SWITCH_BRANCH:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case ARG_LIST: {
+            static const Properties ps { NOVALUE, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CIRCUIT_ROOT) };
+            return ps;
+        }
+        case RETURN: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE), OpCode(RETURN_LIST) };
+            return ps;
+        }
+        case RETURN_VOID: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE,
+                                         OpCode(RETURN_LIST) };
+            return ps;
+        }
+        case THROW: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(JSMachineType()),
+                                         OpCode(THROW_LIST) };
+            return ps;
+        }
+        case ORDINARY_BLOCK: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case IF_BRANCH: {
+            static const Properties ps{ NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, VALUE(I1), NO_ROOT };
+            return ps;
+        }
+        case SWITCH_BRANCH: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case IF_TRUE:
-        case IF_FALSE:
-            return {NOVALUE, STATE(OpCode(IF_BRANCH)), NO_DEPEND, NO_VALUE, NO_ROOT};
+        case IF_FALSE: {
+            static const Properties ps { NOVALUE, STATE(OpCode(IF_BRANCH)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         case SWITCH_CASE:
-        case DEFAULT_CASE:
-            return {NOVALUE, STATE(OpCode(SWITCH_BRANCH)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case MERGE:
-            return {NOVALUE, MANY_STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case LOOP_BEGIN:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE), OpCode(LOOP_BACK)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case LOOP_BACK:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case VALUE_SELECTOR:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, MANY_VALUE(FLEX), NO_ROOT};
-        case DEPEND_SELECTOR:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), MANY_DEPEND, NO_VALUE, NO_ROOT};
-        case DEPEND_RELAY:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE, NO_ROOT};
-        case DEPEND_AND:
-            return {NOVALUE, NO_STATE, MANY_DEPEND, NO_VALUE, NO_ROOT};
+        case DEFAULT_CASE: {
+            static const Properties ps { NOVALUE, STATE(OpCode(SWITCH_BRANCH)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case MERGE: {
+            static const Properties ps { NOVALUE, MANY_STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case LOOP_BEGIN: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE), OpCode(LOOP_BACK)), NO_DEPEND,
+                                         NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case LOOP_BACK: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case VALUE_SELECTOR: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, MANY_VALUE(FLEX), NO_ROOT };
+            return ps;
+        }
+        case DEPEND_SELECTOR: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), MANY_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case DEPEND_RELAY: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case DEPEND_AND: {
+            static const Properties ps { NOVALUE, NO_STATE, MANY_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         // High Level IR
-        case JS_BYTECODE:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
+        case JS_BYTECODE: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case IF_SUCCESS:
-        case IF_EXCEPTION:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case GET_EXCEPTION:
-            return {I64, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT};
+        case IF_EXCEPTION: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case GET_EXCEPTION: {
+            static const Properties ps { I64, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         // Middle Level IR
 
         case RUNTIME_CALL:
@@ -103,43 +148,79 @@ Properties OpCode::GetProperties() const
         case DEBUGGER_BYTECODE_CALL:
         case BUILTINS_CALL:
         case CALL:
-        case RUNTIME_CALL_WITH_ARGV:
-            return {FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
-        case ALLOCA:
-            return {ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(ALLOCA_LIST)};
-        case ARG:
-            return {FLEX, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(ARG_LIST)};
+        case RUNTIME_CALL_WITH_ARGV: {
+            static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case ALLOCA: {
+            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(ALLOCA_LIST) };
+            return ps;
+        }
+        case ARG: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(ARG_LIST) };
+            return ps;
+        }
         case MUTABLE_DATA:
-        case CONST_DATA:
-            return {ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST)};
-        case RELOCATABLE_DATA:
-            return {ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST)};
-        case CONSTANT:
-            return {FLEX, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST)};
-        case ZEXT_TO_INT64:
-            return {I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case ZEXT_TO_INT32:
-            return {I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case ZEXT_TO_INT16:
-            return {I16, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case ZEXT_TO_ARCH:
-            return {ARCH, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case SEXT_TO_INT64:
-            return {I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case SEXT_TO_INT32:
-            return {I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case SEXT_TO_ARCH:
-            return {ARCH, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TRUNC_TO_INT32:
-            return {I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TRUNC_TO_INT8:
-            return {I8, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TRUNC_TO_INT1:
-            return {I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TRUNC_TO_INT16:
-            return {I16, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case REV:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX), NO_ROOT};
+        case CONST_DATA: {
+            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST) };
+            return ps;
+        }
+        case RELOCATABLE_DATA: {
+            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST) };
+            return ps;
+        }
+        case CONSTANT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST) };
+            return ps;
+        }
+        case ZEXT_TO_INT64: {
+            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case ZEXT_TO_INT32: {
+            static const Properties ps { I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case ZEXT_TO_INT16: {
+            static const Properties ps { I16, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case ZEXT_TO_ARCH: {
+            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case SEXT_TO_INT64: {
+            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case SEXT_TO_INT32: {
+            static const Properties ps { I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case SEXT_TO_ARCH: {
+            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TRUNC_TO_INT32: {
+            static const Properties ps { I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TRUNC_TO_INT8: {
+            static const Properties ps { I8, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TRUNC_TO_INT1: {
+            static const Properties ps { I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TRUNC_TO_INT16: {
+            static const Properties ps { I16, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case REV: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX), NO_ROOT };
+            return ps;
+        }
         case ADD:
         case SUB:
         case MUL:
@@ -155,8 +236,10 @@ Properties OpCode::GetProperties() const
         case OR:
         case LSL:
         case LSR:
-        case ASR:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX, FLEX), NO_ROOT};
+        case ASR: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX, FLEX), NO_ROOT };
+            return ps;
+        }
         case SLT:
         case SLE:
         case SGT:
@@ -170,57 +253,108 @@ Properties OpCode::GetProperties() const
         case FGT:
         case FGE:
         case EQ:
-        case NE:
-            return {I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
-        case LOAD:
-            return {FLEX, NO_STATE, ONE_DEPEND, VALUE(ARCH), NO_ROOT};
-        case STORE:
-            return {NOVALUE, NO_STATE, ONE_DEPEND, VALUE(ANYVALUE, ARCH), NO_ROOT};
-        case TAGGED_TO_INT64:
-            return {I64, NO_STATE, NO_DEPEND, VALUE(I64), NO_ROOT};
-        case INT64_TO_TAGGED:
-            return {I64, NO_STATE, NO_DEPEND, VALUE(I64), NO_ROOT};
+        case NE: {
+            static const Properties ps { I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE, ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case LOAD: {
+            static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, VALUE(ARCH), NO_ROOT };
+            return ps;
+        }
+        case STORE: {
+            static const Properties ps { NOVALUE, NO_STATE, ONE_DEPEND, VALUE(ANYVALUE, ARCH), NO_ROOT };
+            return ps;
+        }
+        case TAGGED_TO_INT64: {
+            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(I64), NO_ROOT };
+            return ps;
+        }
+        case INT64_TO_TAGGED: {
+            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(I64), NO_ROOT };
+            return ps;
+        }
         case SIGNED_INT_TO_FLOAT:
-        case UNSIGNED_INT_TO_FLOAT:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case UNSIGNED_INT_TO_FLOAT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case FLOAT_TO_SIGNED_INT:
-        case UNSIGNED_FLOAT_TO_INT:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case BITCAST:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case UNSIGNED_FLOAT_TO_INT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case BITCAST: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         // Deopt relate IR
-        case GUARD:
-            return {NOVALUE, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
-        case FRAME_STATE:
-            return {NOVALUE, NO_STATE, NO_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
-        case DEOPT_CALL:
-            return {FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
+        case GUARD: {
+            static const Properties ps { NOVALUE, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case FRAME_STATE: {
+            static const Properties ps { NOVALUE, NO_STATE, NO_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case DEOPT_CALL: {
+            static const Properties ps {FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
+            return ps;
+        }
         // suspend relate HIR
-        case RESTORE_REGISTER:
-            return {FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT};
-        case SAVE_REGISTER:
-            return {NOVALUE, NO_STATE, ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case RESTORE_REGISTER: {
+            static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case SAVE_REGISTER: {
+            static const Properties ps { NOVALUE, NO_STATE, ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         // ts type lowering relate IR
-        case TYPE_CHECK:
-            return {I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TYPED_BINARY_OP:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE, I8), NO_ROOT};
-        case TYPE_CONVERT:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TYPED_UNARY_OP:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case HEAP_ALLOC:
-            return {ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(I64), NO_ROOT};
-        case LOAD_ELEMENT:
-            return {ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, I64), NO_ROOT};
-        case LOAD_PROPERTY:
-            return {ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
-        case STORE_ELEMENT:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, I64, ANYVALUE), NO_ROOT};
-        case STORE_PROPERTY:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE, ANYVALUE), NO_ROOT};
-        case TO_LENGTH:
-            return {I64, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case TYPE_CHECK: {
+            static const Properties ps { I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TYPED_BINARY_OP: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, ANYVALUE, I8), NO_ROOT };
+            return ps;
+        }
+        case TYPE_CONVERT: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TYPED_UNARY_OP: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case HEAP_ALLOC: {
+            static const Properties ps { ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(I64), NO_ROOT };
+            return ps;
+        }
+        case LOAD_ELEMENT: {
+            static const Properties ps { ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, I64), NO_ROOT };
+            return ps;
+        }
+        case LOAD_PROPERTY: {
+            static const Properties ps { ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE),
+                                         NO_ROOT };
+            return ps;
+        }
+        case STORE_ELEMENT: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, I64, ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case STORE_PROPERTY: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, ANYVALUE, ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TO_LENGTH: {
+            static const Properties ps { I64, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         default:
             LOG_COMPILER(ERROR) << "Please complete OpCode properties (OpCode=" << op_ << ")";
             UNREACHABLE();
