@@ -1315,6 +1315,11 @@ void JSObject::Dump(std::ostream &os) const
     }
 }
 
+void TaggedArray::Dump(std::ostream &os) const
+{
+    DumpArrayClass(this, os);
+}
+
 void AccessorData::Dump(std::ostream &os) const
 {
     auto *hclass = GetClass();
