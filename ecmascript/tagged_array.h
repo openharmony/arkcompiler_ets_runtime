@@ -83,6 +83,7 @@ public:
     static constexpr size_t DATA_OFFSET = SIZE;  // DATA_OFFSET equal to Empty Array size
 
     DECL_VISIT_ARRAY(DATA_OFFSET, GetLength());
+    DECL_DUMP()
 
 private:
     friend class ObjectFactory;
