@@ -124,6 +124,18 @@ void TSTypeLowering::DeleteGates(std::vector<GateRef> &unusedGate)
     }
 }
 
+void TSTypeLowering::DeleteGuardAndFrameState(GateRef gate)
+{
+    GateRef guard = acc_.GetDep(gate);
+    if (acc_.GetOpCode(guard) == OpCode::GUARD) {
+        GateRef dep = acc_.GetDep(guard);
+        acc_.ReplaceDependIn(gate, dep);
+        GateRef frameState = acc_.GetValueIn(guard, 1);
+        acc_.DeleteGate(frameState);
+        acc_.DeleteGate(guard);
+    }
+}
+
 void TSTypeLowering::ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, GateRef depend,
                                     std::vector<GateRef> &unusedGate)
 {
@@ -169,6 +181,8 @@ void TSTypeLowering::LowerTypedAdd(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCalculate<TypedBinOp::TYPED_ADD>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -181,6 +195,8 @@ void TSTypeLowering::LowerTypedSub(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCalculate<TypedBinOp::TYPED_SUB>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -193,6 +209,8 @@ void TSTypeLowering::LowerTypedMul(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCalculate<TypedBinOp::TYPED_MUL>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -205,6 +223,8 @@ void TSTypeLowering::LowerTypedMod(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCalculate<TypedBinOp::TYPED_MOD>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -217,6 +237,8 @@ void TSTypeLowering::LowerTypedLess(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCompare<TypedBinOp::TYPED_LESS>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -229,6 +251,8 @@ void TSTypeLowering::LowerTypedLessEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCompare<TypedBinOp::TYPED_LESSEQ>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -241,6 +265,8 @@ void TSTypeLowering::LowerTypedGreater(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCompare<TypedBinOp::TYPED_GREATER>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -253,6 +279,8 @@ void TSTypeLowering::LowerTypedGreaterEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCompare<TypedBinOp::TYPED_GREATEREQ>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -265,6 +293,8 @@ void TSTypeLowering::LowerTypedDiv(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCalculate<TypedBinOp::TYPED_DIV>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -277,6 +307,8 @@ void TSTypeLowering::LowerTypedEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCompare<TypedBinOp::TYPED_EQ>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -289,6 +321,8 @@ void TSTypeLowering::LowerTypedNotEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumberCompare<TypedBinOp::TYPED_NOTEQ>(gate);
         return;
+    } else {
+        DeleteGuardAndFrameState(gate);
     }
 }
 
