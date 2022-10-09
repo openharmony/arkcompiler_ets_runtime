@@ -206,7 +206,7 @@ public:
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
-    GateRef TypedUnaryOperator(MachineType type, TypedUnaryOp unaryOp, GateType typleVal,
+    GateRef TypedUnaryOperator(MachineType type, TypedUnaryOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList);
     GateRef Arguments(size_t index);
     GateRef Merge(GateRef *in, size_t controlCount);

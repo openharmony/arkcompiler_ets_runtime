@@ -179,7 +179,7 @@ void TSTypeLowering::LowerTypedAdd(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCalculate<TypedBinOp::TYPED_ADD>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_ADD>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -193,7 +193,7 @@ void TSTypeLowering::LowerTypedSub(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCalculate<TypedBinOp::TYPED_SUB>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_SUB>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -207,7 +207,7 @@ void TSTypeLowering::LowerTypedMul(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCalculate<TypedBinOp::TYPED_MUL>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_MUL>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -221,7 +221,7 @@ void TSTypeLowering::LowerTypedMod(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCalculate<TypedBinOp::TYPED_MOD>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_MOD>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -235,7 +235,7 @@ void TSTypeLowering::LowerTypedLess(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCompare<TypedBinOp::TYPED_LESS>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_LESS>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -249,7 +249,7 @@ void TSTypeLowering::LowerTypedLessEq(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCompare<TypedBinOp::TYPED_LESSEQ>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_LESSEQ>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -263,7 +263,7 @@ void TSTypeLowering::LowerTypedGreater(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCompare<TypedBinOp::TYPED_GREATER>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_GREATER>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -277,7 +277,7 @@ void TSTypeLowering::LowerTypedGreaterEq(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCompare<TypedBinOp::TYPED_GREATEREQ>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_GREATEREQ>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -291,7 +291,7 @@ void TSTypeLowering::LowerTypedDiv(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCalculate<TypedBinOp::TYPED_DIV>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_DIV>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -305,7 +305,7 @@ void TSTypeLowering::LowerTypedEq(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCompare<TypedBinOp::TYPED_EQ>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_EQ>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -319,7 +319,7 @@ void TSTypeLowering::LowerTypedNotEq(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        SpeculateNumberCompare<TypedBinOp::TYPED_NOTEQ>(gate);
+        SpeculateNumber<TypedBinOp::TYPED_NOTEQ>(gate);
         return;
     } else {
         DeleteGuardAndFrameState(gate);
@@ -327,7 +327,7 @@ void TSTypeLowering::LowerTypedNotEq(GateRef gate)
 }
 
 template<TypedBinOp Op>
-void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
+void TSTypeLowering::SpeculateNumber(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -349,25 +349,6 @@ void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
     
     // Replace the old NumberBinaryOp<Op> with TypedBinaryOp<Op>
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType);
-    acc_.SetDep(result, guard);
-    std::vector<GateRef> removedGate{gate};
-    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(removedGate);
-}
-
-template<TypedBinOp Op>
-void TSTypeLowering::SpeculateNumberCompare(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    GateType numberType = GateType::NumberType();
-    GateRef check = builder_.BoolAnd(builder_.TypeCheck(numberType, left),
-                                     builder_.TypeCheck(numberType, right));
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    ASSERT(acc_.IsInGateNull(guard, 1));
-    acc_.NewIn(guard, 1, check);
-    GateRef result = builder_.NumberBinaryOp<Op>(left, right);
     acc_.SetDep(result, guard);
     std::vector<GateRef> removedGate{gate};
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);

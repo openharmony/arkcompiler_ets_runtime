@@ -129,6 +129,8 @@ private:
     void LowerTypedDiv(GateRef gate);
     void LowerTypedEq(GateRef gate);
     void LowerTypedNotEq(GateRef gate);
+    void LowerTypedInc(GateRef gate);
+    void LowerTypedDec(GateRef gate);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);
@@ -144,6 +146,8 @@ private:
     void LowerNumberDiv(GateRef gate);
     void LowerNumberEq(GateRef gate);
     void LowerNumberNotEq(GateRef gate);
+    void LowerNumberInc(GateRef gate);
+    void LowerNumberDec(GateRef gate);
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
 
     template<OpCode::Op Op>
@@ -151,7 +155,7 @@ private:
     template<OpCode::Op Op>
     GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
-    GateRef CompareNumbers(GateRef left, GateRef right);
+    GateRef CompareNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
     GateRef CompareInt(GateRef left, GateRef right);
     template<TypedBinOp Op>
@@ -167,7 +171,7 @@ private:
     GateRef Less(GateRef left, GateRef right);
     GateRef LessEq(GateRef left, GateRef right);
     GateRef FastDiv(GateRef left, GateRef right);
-    GateRef DivNumbers(GateRef left, GateRef right);
+    GateRef DivNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     GateRef FastEqual(GateRef left, GateRef right);
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);

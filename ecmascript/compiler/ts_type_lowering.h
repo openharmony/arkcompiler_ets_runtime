@@ -57,9 +57,7 @@ private:
     void LowerPrimitiveTypeToNumber(GateRef gate);
 
     template<TypedBinOp Op>
-    void SpeculateNumberCalculate(GateRef gate);
-    template<TypedBinOp Op>
-    void SpeculateNumberCompare(GateRef gate);
+    void SpeculateNumber(GateRef gate);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
