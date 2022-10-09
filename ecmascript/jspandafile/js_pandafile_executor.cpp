@@ -97,7 +97,16 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     JSThread *thread, const void *buffer, size_t size, const CString &filename)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename" << filename.c_str();
-    CString name = JSPandaFile::MERGE_ABC_PATH;
+    CString name;
+#if !WIN_OR_MAC_PLATFORM
+    name = JSPandaFile::MERGE_ABC_PATH;
+#elif defined(PANDA_TARGET_WINDOWS)
+    CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
+    name = assetPath + "\\modules.abc";
+#else
+    CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
+    name = assetPath + "/modules.abc";
+#endif
     CString entry = ConvertToString(JSPandaFile::ParseOhmUrl(filename.c_str()));
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), buffer, size);
