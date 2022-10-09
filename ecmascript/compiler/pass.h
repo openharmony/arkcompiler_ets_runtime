@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/guard_eliminating.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
@@ -153,6 +154,16 @@ public:
             UNREACHABLE();
         }
         return isQualified;
+    }
+};
+
+class GuardEliminatingPass {
+public:
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder)
+    {
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        GuardEliminating(builder, data->GetCircuit(), enableLog, data->GetMethodName()).Run();
+        return true;
     }
 };
 

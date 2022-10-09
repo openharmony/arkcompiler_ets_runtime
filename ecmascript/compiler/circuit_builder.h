@@ -204,7 +204,7 @@ public:
     // low level interface
     GateRef TypeCheck(GateType type, GateRef gate);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
-                                std::vector<GateRef> inList);
+                                std::vector<GateRef> inList, GateType gateType);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnaryOp unaryOp, GateType typleVal,
                                const std::vector<GateRef>& inList);
@@ -376,7 +376,7 @@ public:
 
     // middle ir: operations with any type
     template<TypedBinOp Op>
-    inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType);
+    inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType);
 
     // middle ir: Number operations
     template<TypedBinOp Op>

@@ -1464,4 +1464,9 @@ bool OpCode::IsConstant() const
 {
     return (op_ == OpCode::CONSTANT);
 }
+
+bool OpCode::IsTypedOperator() const
+{
+    return (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT) || (op_ == OpCode::TYPED_UNARY_OP);
+}
 }  // namespace panda::ecmascript::kungfu
