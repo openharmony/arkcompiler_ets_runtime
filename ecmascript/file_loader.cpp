@@ -490,16 +490,40 @@ bool FileLoader::RewriteDataSection(uintptr_t dataSec, size_t size,
         LOG_FULL(FATAL) << "memset failed";
         return false;
     }
-    ASSERT(size % sizeof(uint64_t) == 0);
-    JSThread *thread = vm_->GetJSThread();
-    uint64_t *ptr = reinterpret_cast<uint64_t *>(dataSec);
-    for (size_t i = 0; i < size / sizeof(uint64_t); i++) {
-        if (ptr[i] == Deoptimizier::LLVM_DEOPT_RELOCATE_ADDR) {
-            ptr[i] = thread->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
-            break;
+    return true;
+}
+
+bool FileLoader::RewriteGotSection()
+{
+    auto fn = [&](const ModuleSectionDes& d) {
+        uintptr_t addr = d.GetSecAddr(ElfSecName::GOT);
+        uint32_t size = d.GetSecSize(ElfSecName::GOT);
+        if (size == 0) {
+            return true;
+        }
+        // only support __llvm_deoptimize is undefined
+        if(size != sizeof(uintptr_t)) {
+            LOG_FULL(FATAL) << "more than one function/data is undefined failed";
+            return false;
+        }
+        auto thread = vm_->GetAssociatedJSThread();
+        uintptr_t ptr = thread->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
+        *(reinterpret_cast<uintptr_t *>(addr)) = ptr;
+        return true;
+    };
+    // aot
+    bool ans = false;
+    for (auto &info : aotPackInfos_) {
+        auto& des = info.GetCodeUnits();
+        for (size_t i = 0; i < des.size(); i++) {
+            auto d = des[i];
+            ans = fn(d);
+            if (!ans) {
+                return ans;
+            }
         }
     }
-    return true;
+    return ans;
 }
 
 FileLoader::~FileLoader()

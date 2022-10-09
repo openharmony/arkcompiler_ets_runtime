@@ -348,6 +348,7 @@ void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
     } else {
         check = builder_.BoolAnd(builder_.TypeCheck(leftType, left), builder_.TypeCheck(rightType, right));
     }
+    check = builder_.False();
 
     GateRef guard = acc_.GetDep(gate);
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);

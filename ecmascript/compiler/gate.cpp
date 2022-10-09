@@ -296,10 +296,6 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { NOVALUE, NO_STATE, NO_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
-        case DEOPT_CALL: {
-            static const Properties ps {FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
-            return ps;
-        }
         // suspend relate HIR
         case RESTORE_REGISTER: {
             static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
@@ -468,7 +464,6 @@ std::string OpCode::Str() const
         {BITCAST, "BITCAST"},
         {GUARD, "GUARD"},
         {FRAME_STATE, "FRAME_STATE"},
-        {DEOPT_CALL, "DEOPT_CALL"},
         {RESTORE_REGISTER, "RESTORE_REGISTER"},
         {SAVE_REGISTER, "SAVE_REGISTER"},
         {TYPE_CHECK, "TYPE_CHECK"},

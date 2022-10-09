@@ -191,14 +191,14 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::LSL, &LLVMIRBuilder::HandleIntLsl},
         {OpCode::SMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::FMOD, &LLVMIRBuilder::HandleMod},
-        {OpCode::DEOPT_CALL, &LLVMIRBuilder::HandleDeoptCall},
+        {OpCode::GUARD, &LLVMIRBuilder::HandleGuardCall},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
         OpCode::FRAMESTATE_ENTRY, OpCode::RETURN_LIST, OpCode::THROW_LIST,
         OpCode::CONSTANT_LIST, OpCode::ARG_LIST, OpCode::THROW,
         OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY, OpCode::DEPEND_AND,
-        OpCode::GUARD, OpCode::FRAME_STATE
+        OpCode::FRAME_STATE
     };
 }
 
@@ -1850,43 +1850,66 @@ void LLVMIRBuilder::VisitBitCast(GateRef gate, GateRef e1)
     gate2LValue_[gate] = result;
 }
 
-void LLVMIRBuilder::HandleDeoptCall(GateRef gate)
+void LLVMIRBuilder::HandleGuardCall(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
-    auto callOp = acc_.GetOpCode(gate);
-    if (callOp == OpCode::DEOPT_CALL) {
-        VisitDeoptCall(gate, ins);
-    } else {
-        UNREACHABLE();
-    }
+    VisitGuardCall(gate);
 }
 
-void LLVMIRBuilder::VisitDeoptCall(GateRef gate, const std::vector<GateRef> &inList)
+LLVMTypeRef LLVMIRBuilder::GetExperimentalDeoptTy()
 {
-    static_assert(static_cast<size_t>(CallInputs::FIRST_PARAMETER) == 3);
-    size_t targetIndex = static_cast<size_t>(CallInputs::TARGET);
-    const size_t index = acc_.GetBitField(inList[targetIndex]);
-    const CallSignature *calleeDescriptor = nullptr;
-    LLVMValueRef glue = GetGlue(inList);
-    LLVMValueRef rtoffset;
-    LLVMValueRef rtbaseoffset;
-    calleeDescriptor = RuntimeStubCSigns::Get(index);
-    rtoffset = GetRTStubOffset(glue, index);
-    rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
+    auto fnTy = LLVMFunctionType(LLVMPointerType(LLVMInt64Type(), 1), nullptr, 0, 1);
+    return fnTy;
+}
 
+LLVMValueRef LLVMIRBuilder::GetExperimentalDeopt(LLVMModuleRef &module)
+{
+
+    /* 0:calling 1:its caller */
+    auto fn = LLVMGetNamedFunction(module, "llvm.experimental.deoptimize.p1i64");
+    if (!fn) {
+        auto fnTy = GetExperimentalDeoptTy();
+        fn = LLVMAddFunction(module, "llvm.experimental.deoptimize.p1i64", fnTy);
+    }
+    return fn;
+}
+
+void LLVMIRBuilder::VisitGuardCall(GateRef gate)
+{
+    GateRef checkGate = acc_.GetIn(gate, 1);
+    LLVMValueRef glue = gate2LValue_.at(acc_.GetIn(gate, 3));
+    GateRef frameState = acc_.GetIn(gate, 2);
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
-    LLVMValueRef callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
-    LLVMTypeRef funcType = llvmModule_->GetFuncType(calleeDescriptor);
+    LLVMValueRef callee = GetExperimentalDeopt(module_);
+    LLVMTypeRef funcType = GetExperimentalDeoptTy();
+
+    const size_t numValueIn = acc_.GetBitField(frameState);
+    const size_t accIndex = numValueIn - 2; // 2: acc valueIn index
+    const size_t pcIndex = numValueIn - 1;
+    GateRef acc = acc_.GetValueIn(frameState, accIndex);
+    GateRef pc = acc_.GetValueIn(frameState, pcIndex);
     std::vector<LLVMValueRef> values;
-    for (size_t paraIdx = static_cast<size_t>(CallInputs::FIRST_PARAMETER); paraIdx < inList.size(); ++paraIdx) {
-        GateRef gateTmp = inList[paraIdx];
-        values.emplace_back(gate2LValue_[gateTmp]);
+    for (size_t i = 0; i < accIndex; i++) {
+        GateRef vreg = acc_.GetValueIn(frameState, i);
+        values.emplace_back(LLVMConstInt(LLVMInt32Type(), i, false));
+        values.emplace_back(gate2LValue_.at(vreg));
     }
+    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ACC_INDEX), false));
+    values.emplace_back(gate2LValue_.at(acc));
+    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::PC_INDEX), false));
+    values.emplace_back(gate2LValue_.at(pc));
+    int btrue = scheduledGates_->size() + 2;
+    int bfalse = scheduledGates_->size() + 1;
+    VisitBranch(gate, checkGate, btrue, bfalse);
+    BasicBlock *trueBB = EnsureBB(btrue);
+    BasicBlock *falseBB = EnsureBB(bfalse);
+
+    SetToCfg(falseBB);
     LLVMValueRef runtimeCall = LLVMBuildCall3(
             builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());
+    LLVMBuildRet(builder_, runtimeCall);
     gate2LValue_[gate] = runtimeCall;
+    SetToCfg(trueBB);
 }
 
 LLVMModule::LLVMModule(const std::string &name, const std::string &triple)

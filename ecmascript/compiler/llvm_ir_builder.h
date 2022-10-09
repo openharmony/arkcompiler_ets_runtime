@@ -229,7 +229,7 @@ private:
     V(Mod, (GateRef gate, GateRef e1, GateRef e2))                                        \
     V(ChangeTaggedPointerToInt64, (GateRef gate, GateRef e1))                             \
     V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))                                    \
-    V(DeoptCall, (GateRef gate, const std::vector<GateRef> &inList))                      \
+    V(GuardCall, (GateRef gate))
 
 // runtime/common stub ID, opcodeOffset for bc stub
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
@@ -322,6 +322,8 @@ private:
     void ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueRef &bcOffset, const std::vector<GateRef> &inList,
                                     OpCode op);
     void SaveLexicalEnvOnFrame(LLVMValueRef value);
+    LLVMTypeRef GetExperimentalDeoptTy();
+    LLVMValueRef GetExperimentalDeopt(LLVMModuleRef &module);
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
     const Circuit *circuit_ {nullptr};

@@ -93,9 +93,9 @@ struct CodeInfo {
         unreqSecs_ = nullptr;
     }
 
-    uint8_t *AllocaInReqSecBuffer(uintptr_t size)
+    uint8_t *AllocaInReqSecBuffer(uintptr_t size, bool alignFlag = true)
     {
-        return Alloca(size, reqSecs_, reqBufPos_);
+        return Alloca(size, reqSecs_, reqBufPos_, alignFlag);
     }
 
     uint8_t *AllocaInNotReqSecBuffer(uintptr_t size)
@@ -105,7 +105,8 @@ struct CodeInfo {
 
     uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName)
     {
-        uint8_t *addr = AllocaInReqSecBuffer(size);
+        // if have got section, don't use align.
+        uint8_t *addr = AllocaInReqSecBuffer(size, false);
         auto curSec = ElfSection(sectionName);
         codeInfo_.push_back({addr, size});
         if (curSec.isValidAOTSec()) {
@@ -181,10 +182,12 @@ private:
     std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
     std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
 
-    uint8_t *Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos)
+    uint8_t *Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos, bool alignFlag = true)
     {
         // align up for rodata section
-        size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        if (alignFlag) {
+            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        }
         uint8_t *addr = nullptr;
         size_t limit = (bufBegin == reqSecs_) ? REQUIRED_SECS_LIMIT : UNREQUIRED_SECS_LIMIT;
         if (curPos + size > limit) {

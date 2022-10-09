@@ -379,8 +379,6 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
         op = OpCode(OpCode::BUILTINS_CALL);
     } else if (cs->IsRuntimeNGCStub()) {
         op = OpCode(OpCode::NOGC_RUNTIME_CALL);
-    } else if (cs->IsDeoptStub()) {
-        op = OpCode(OpCode::DEOPT_CALL);
     } else {
         UNREACHABLE();
     }

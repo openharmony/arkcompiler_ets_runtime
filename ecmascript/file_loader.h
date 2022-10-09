@@ -409,6 +409,7 @@ public:
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
+    bool RewriteGotSection();
 
 private:
     void SetAOTmmap(void *addr, size_t totalCodeSize)
