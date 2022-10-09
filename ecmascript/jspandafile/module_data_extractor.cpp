@@ -36,7 +36,12 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
     panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
-    panda_file::File::EntityId moduleId = lda.GetLiteralArrayId(static_cast<size_t>(moduleIdx));
+    panda_file::File::EntityId moduleId;
+    if (jsPandaFile->IsNewVersion()) {  // new pandafile version use new literal offset mechanism
+        moduleId = panda_file::File::EntityId(moduleIdx);
+    } else {
+        moduleId = lda.GetLiteralArrayId(static_cast<size_t>(moduleIdx));
+    }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();

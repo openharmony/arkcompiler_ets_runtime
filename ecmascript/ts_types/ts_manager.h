@@ -270,6 +270,11 @@ public:
         return vm_;
     }
 
+    JSThread *GetThread() const
+    {
+        return thread_;
+    }
+
 #define IS_TSTYPEKIND_METHOD_LIST(V)              \
     V(Primitive, TSTypeKind::PRIMITIVE)           \
     V(Class, TSTypeKind::CLASS)                   \
@@ -292,6 +297,19 @@ public:
 #undef IS_TSTYPEKIND
 
     static constexpr int BUILTIN_ARRAY_ID = 24;
+
+    void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, panda_file::File::EntityId offset,
+                                        GlobalTSTypeRef gt)
+    {
+        auto key = std::make_pair(jsPandaFile, offset);
+        literalOffsetGTMap_.emplace(key, gt);
+    }
+
+    GlobalTSTypeRef GetGTFromOffset(const JSPandaFile *jsPandaFile, panda_file::File::EntityId offset) const
+    {
+        auto key = std::make_pair(jsPandaFile, offset);
+        return literalOffsetGTMap_.at(key);
+    }
 
 private:
     // constantpoolInfos
@@ -385,6 +403,8 @@ private:
     std::set<uint32_t> stringIndexCache_ {};
     // store hclass of each abc which produced from static type info
     CVector<JSTaggedType> hclassCache_ {};
+
+    std::map<std::pair<const JSPandaFile *, panda_file::File::EntityId>, GlobalTSTypeRef> literalOffsetGTMap_ {};
 };
 }  // namespace panda::ecmascript
 

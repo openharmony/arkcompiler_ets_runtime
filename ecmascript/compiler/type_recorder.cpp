@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/compiler/type_recorder.h"
+#include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::ecmascript::kungfu {
 TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager)
@@ -24,6 +26,9 @@ TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *
 
 void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager)
 {
+    JSThread *thread = tsManager->GetThread();
+    CVector<JSHandle<EcmaString>> vec;
+    TSTypeParser typeParser(tsManager->GetEcmaVM(), jsPandaFile, vec);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId fieldId = methodLiteral->GetMethodId();
     panda_file::MethodDataAccessor mda(*pf, fieldId);
@@ -39,17 +44,21 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
             panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
             auto *elemName = reinterpret_cast<const char *>(pf->GetStringData(adae.GetNameId()).data);
             ASSERT(elemName != nullptr);
-            uint32_t elemCount = adae.GetArrayValue().GetCount();
             if (::strcmp("_TypeOfInstruction", elemName) != 0) {
                 continue;
             }
 
+            panda_file::ScalarValue sv = adae.GetScalarValue();
+            panda_file::File::EntityId literalOffset(sv.GetValue());
+            JSHandle<TaggedArray> typeOfInstruction =
+                LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile, literalOffset);
+
             GlobalTSTypeRef thisGT = GlobalTSTypeRef::Default();
             GlobalTSTypeRef funcGT = GlobalTSTypeRef::Default();
-            for (uint32_t j = 0; j < elemCount; j = j + 2) { // + 2 means typeId index
-                int32_t bcOffset = adae.GetArrayValue().Get<int32_t>(j);
-                uint32_t typeId = adae.GetArrayValue().Get<uint32_t>(j + 1);
-                GlobalTSTypeRef gt = tsManager->CreateGT(*pf, typeId);
+            for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // + 2 means bcOffset and typeId
+                int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
+                uint32_t typeId =  static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
+                GlobalTSTypeRef gt = typeParser.CreateGT(typeId);
 
                 // The type of a function is recorded as (-1, funcTypeId). If the function is a member of a class,
                 // the type of the class or its instance is is recorded as (-2, classTypeId). If it is a static

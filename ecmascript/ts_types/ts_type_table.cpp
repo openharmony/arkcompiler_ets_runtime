@@ -60,32 +60,42 @@ JSHandle<TSTypeTable> TSTypeTable::GenerateTypeTable(JSThread *thread, const JSP
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     // read type summary literal
-    uint32_t summaryIndex = jsPandaFile->GetTypeSummaryIndex();
-    JSHandle<JSTaggedValue> constpool(thread, JSTaggedValue::Undefined());
-    JSHandle<TaggedArray> summaryLiteral =
-        LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, summaryIndex, constpool);
-    ASSERT_PRINT(summaryLiteral->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt() == 0, "can not read type summary literal");
-
+    // struct of summaryLiteral: {numTypes, literalOffset0, literalOffset1, ...}
+    panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset());
+    JSHandle<TaggedArray> summaryLiteral = LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile, summaryOffset);
     uint32_t numTypes = static_cast<uint32_t>(summaryLiteral->Get(NUM_OF_TYPES_INDEX_IN_SUMMARY_LITREAL).GetInt());
-    JSHandle<TSTypeTable> table = factory->NewTSTypeTable(numTypes);
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8(jsPandaFile->GetJSPandaFileDesc());
 
-    TSTypeParser typeParser(thread->GetEcmaVM(), moduleId, fileName, recordImportModules);
+    FillLiteralOffsetGTMap(thread, jsPandaFile, moduleId, summaryLiteral, numTypes);
+
+    JSHandle<TSTypeTable> table = factory->NewTSTypeTable(numTypes);
+    TSTypeParser typeParser(thread->GetEcmaVM(), jsPandaFile, recordImportModules);
     for (uint32_t idx = 1; idx <= numTypes; ++idx) {
-        JSHandle<TaggedArray> typeLiteral = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile,
-                                                                                     idx + summaryIndex, constpool);
+        panda_file::File::EntityId offset(summaryLiteral->Get(idx).GetInt());
+        JSHandle<TaggedArray> typeLiteral = LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile, offset);
         if (typeLiteral->GetLength() == 0) {  // typeLiteral maybe hole in d.abc
             continue;
         }
 
         JSHandle<JSTaggedValue> type = typeParser.ParseType(typeLiteral);
-        typeParser.SetTypeGT(type, idx);
+        typeParser.SetTypeGT(type, moduleId, idx);
         table->Set(thread, idx, type);
     }
     recordImportModules = typeParser.GetImportModules();
 
-    table->SetExportValueTable(thread, *jsPandaFile->GetPandaFile());
+    SetExportValueTable(thread, table, jsPandaFile);
     return table;
+}
+
+void TSTypeTable::FillLiteralOffsetGTMap(JSThread *thread, const JSPandaFile *jsPandaFile, uint32_t moduleId,
+                                         JSHandle<TaggedArray> summaryLiteral, uint32_t numTypes)
+{
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+
+    for (uint32_t idx = 1; idx <= numTypes; ++idx) {
+        panda_file::File::EntityId offset(summaryLiteral->Get(idx).GetInt());
+        GlobalTSTypeRef gt = GlobalTSTypeRef(moduleId, idx);
+        tsManager->AddElementToLiteralOffsetGTMap(jsPandaFile, offset, gt);
+    }
 }
 
 panda_file::File::EntityId TSTypeTable::GetFileId(const panda_file::File &pf)
@@ -111,63 +121,46 @@ panda_file::File::EntityId TSTypeTable::GetFileId(const panda_file::File &pf)
     return fileId;
 }
 
-JSHandle<TaggedArray> TSTypeTable::GetExportTableFromPandFile(JSThread *thread, const panda_file::File &pf)
+JSHandle<TaggedArray> TSTypeTable::GetExportTableFromPandFile(JSThread *thread, const JSPandaFile *jsPandaFile)
 {
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
-
+    const panda_file::File &pf = *jsPandaFile->GetPandaFile();
     panda_file::File::EntityId fileId = GetFileId(pf);
     panda_file::MethodDataAccessor mda(pf, fileId);
 
-    CVector<CString> exportTable;
-    const char *symbols;
     const char *symbolTypes;
     auto *fileName = pf.GetFilename().c_str();
     if (::strcmp(BUILTINS_TABLE_NAME, fileName) == 0) {
-        symbols = DECLARED_SYMBOLS;
         symbolTypes = DECLARED_SYMBOL_TYPES;
     } else {
-        symbols = EXPORTED_SYMBOLS;
         symbolTypes = EXPORTED_SYMBOL_TYPES;
     }
 
+    JSHandle<TaggedArray> typeOfExprotedSymbols(thread, thread->GlobalConstants()->GetEmptyArray());
     mda.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {
-    panda_file::AnnotationDataAccessor ada(pf, annotation_id);
-    auto *annotationName = reinterpret_cast<const char *>(pf.GetStringData(ada.GetClassId()).data);
-    ASSERT(annotationName != nullptr);
-    if (::strcmp("L_ESTypeAnnotation;", annotationName) == 0) {
+        panda_file::AnnotationDataAccessor ada(pf, annotation_id);
+        auto *annotationName = reinterpret_cast<const char *>(pf.GetStringData(ada.GetClassId()).data);
+        ASSERT(annotationName != nullptr);
+        if (::strcmp("L_ESTypeAnnotation;", annotationName) != 0) {
+            return;
+        }
         uint32_t length = ada.GetCount();
         for (uint32_t i = 0; i < length; i++) {
             panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
             auto *elemName = reinterpret_cast<const char *>(pf.GetStringData(adae.GetNameId()).data);
-            uint32_t elemCount = adae.GetArrayValue().GetCount();
             ASSERT(elemName != nullptr);
-            if (::strcmp(symbols, elemName) == 0) { // symbols -> ["A", "B", "C"]
-                for (uint32_t j = 0; j < elemCount; ++j) {
-                    auto valueEntityId = adae.GetArrayValue().Get<panda_file::File::EntityId>(j);
-                    auto *valueStringData = reinterpret_cast<const char *>(pf.GetStringData(valueEntityId).data);
-                    CString target = ConvertToString(std::string(valueStringData));
-                    exportTable.push_back(target);
-                }
+
+            if (::strcmp(symbolTypes, elemName) != 0) {
+                continue;
             }
-            if (::strcmp(symbolTypes, elemName) == 0) { // symbolTypes -> [51, 52, 53]
-                for (uint32_t k = 0; k < elemCount; ++k) {
-                    auto value = adae.GetArrayValue().Get<panda_file::File::EntityId>(k).GetOffset();
-                    CString typeId = ToCString(value);
-                    exportTable.push_back(typeId);
-                }
-            }
+
+            panda_file::ScalarValue sv = adae.GetScalarValue();
+            panda_file::File::EntityId literalOffset(sv.GetValue());
+            typeOfExprotedSymbols = LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile, literalOffset);
+            // typeOfExprotedSymbols: "symbol0", "type0", "symbol1", "type1" ...
         }
-    }
     });
 
-    uint32_t length = exportTable.size();
-    JSHandle<TaggedArray> exportArray = factory->NewTaggedArray(length);
-    for (uint32_t i = 0; i < length; i ++) {
-        JSHandle<EcmaString> typeIdString = factory->NewFromUtf8(exportTable[i]);
-        exportArray->Set(thread, i, typeIdString);
-    }
-    return exportArray;
+    return typeOfExprotedSymbols;
 }
 
 JSHandle<TaggedArray> TSTypeTable::GetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> typeTable)
@@ -177,11 +170,11 @@ JSHandle<TaggedArray> TSTypeTable::GetExportValueTable(JSThread *thread, JSHandl
     return exportValueTable;
 }
 
-void TSTypeTable::SetExportValueTable(JSThread *thread, const panda_file::File &pf)
+void TSTypeTable::SetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> tTable, const JSPandaFile *jsPandaFile)
 {
-    JSHandle<TaggedArray> exportValueTable = GetExportTableFromPandFile(thread, pf);
+    JSHandle<TaggedArray> exportValueTable = GetExportTableFromPandFile(thread, jsPandaFile);
     if (exportValueTable->GetLength() != 0) { // add exprotValueTable to tSTypeTable if isn't empty
-        Set(thread, GetLength() - 1, exportValueTable);
+        tTable->Set(thread, tTable->GetLength() - 1, exportValueTable);
     }
 }
 

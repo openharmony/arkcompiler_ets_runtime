@@ -23,7 +23,7 @@ namespace panda::ecmascript {
 class TSTypeTable : public TaggedArray {
 public:
     static constexpr std::string_view ENTRY_FUNC_NAME = "func_main_0";
-    static constexpr size_t NUM_OF_TYPES_INDEX_IN_SUMMARY_LITREAL = 1;
+    static constexpr size_t NUM_OF_TYPES_INDEX_IN_SUMMARY_LITREAL = 0;
     static constexpr size_t TYPE_KIND_INDEX_IN_LITERAL = 0;
     static constexpr size_t RESERVE_TABLE_LENGTH = 2; // for reserve length and exportTable
     static constexpr size_t NUMBER_OF_TYPES_INDEX = 0;
@@ -31,9 +31,7 @@ public:
     static constexpr const char* PRIMITIVE_TABLE_NAME = "primitiveTypes";
     static constexpr const char* BUILTINS_TABLE_NAME = "ohos.lib.d.ts";
     static constexpr const char* INFER_TABLE_NAME = "inferTypes";
-    static constexpr const char* DECLARED_SYMBOLS = "declaredSymbols";
     static constexpr const char* DECLARED_SYMBOL_TYPES = "declaredSymbolTypes";
-    static constexpr const char* EXPORTED_SYMBOLS = "exportedSymbols";
     static constexpr const char* EXPORTED_SYMBOL_TYPES = "exportedSymbolTypes";
 
     inline static TSTypeTable *Cast(TaggedObject *object)
@@ -48,6 +46,9 @@ public:
     static JSHandle<TSTypeTable> GenerateTypeTable(JSThread *thread, const JSPandaFile *jsPandaFile, uint32_t moduleId,
                                                    CVector<JSHandle<EcmaString>> &recordImportModules);
 
+    static void FillLiteralOffsetGTMap(JSThread *thread, const JSPandaFile *jsPandaFile, uint32_t moduleId,
+                                       JSHandle<TaggedArray> summaryLiteral, uint32_t numTypes);
+
     static JSHandle<TaggedArray> GetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> typeTable);
 
     inline int GetNumberOfTypes() const
@@ -60,7 +61,7 @@ public:
         TaggedArray::Set(thread, NUMBER_OF_TYPES_INDEX, JSTaggedValue(num));
     }
 
-    void SetExportValueTable(JSThread *thread, const panda_file::File &pf);
+    static void SetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> tTable, const JSPandaFile *jsPandaFile);
 
     static JSHandle<TSTypeTable> PushBackTypeToInferTable(JSThread *thread, JSHandle<TSTypeTable> &table,
                                                           const JSHandle<TSType> &type);
@@ -72,7 +73,7 @@ public:
     static void LinkClassType(JSThread *thread, JSHandle<TSTypeTable> table);
 
 private:
-    static JSHandle<TaggedArray> GetExportTableFromPandFile(JSThread *thread, const panda_file::File &pf);
+    static JSHandle<TaggedArray> GetExportTableFromPandFile(JSThread *thread, const JSPandaFile *jsPandaFile);
 
     static panda_file::File::EntityId GetFileId(const panda_file::File &pf);
 

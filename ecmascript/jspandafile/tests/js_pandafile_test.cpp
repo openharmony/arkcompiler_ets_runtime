@@ -264,7 +264,7 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
     JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
-HWTEST_F_L0(JSPandaFileTest, IsModule_IsCjs_HasTSTypes_GetTypeSummaryIndex)
+HWTEST_F_L0(JSPandaFileTest, IsModule_IsCjs_HasTSTypes_GetTypeSummaryOffset)
 {
     const char *source1 = R"(
         .function void foo1() {}
@@ -274,7 +274,7 @@ HWTEST_F_L0(JSPandaFileTest, IsModule_IsCjs_HasTSTypes_GetTypeSummaryIndex)
     EXPECT_EQ(pf1->IsModule(), false);
     EXPECT_EQ(pf1->IsCjs(), false);
     EXPECT_EQ(pf1->HasTSTypes(), false);
-    EXPECT_EQ(pf1->GetTypeSummaryIndex(), 0U);
+    EXPECT_EQ(pf1->GetTypeSummaryOffset(), 0U);
     JSPandaFileManager::RemoveJSPandaFile(pf1);
 }
 
