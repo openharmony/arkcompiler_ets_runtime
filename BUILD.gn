@@ -784,7 +784,7 @@ ohos_shared_library("libark_jsruntime") {
       external_deps += [ "hitrace_native:hitrace_meter" ]
     }
     if (enable_hitrace) {
-      external_deps += [ "hitrace_native:libhitrace" ]
+      external_deps += [ "hitrace_native:libhitracechain" ]
     }
     if (enable_hilog) {
       external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
