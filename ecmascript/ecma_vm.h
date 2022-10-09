@@ -398,11 +398,11 @@ public:
     void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
     {
         auto thread = workerVm->GetJSThread();
-            if (thread != nullptr) {
-                auto tid = thread->GetThreadId();
-                if (tid != 0) {
-                    if (hostVm != nullptr && workerVm != nullptr) {
-                        WorkerList_.emplace(tid, workerVm);
+        if (thread != nullptr) {
+            auto tid = thread->GetThreadId();
+            if (tid != 0) {
+                if (hostVm != nullptr && workerVm != nullptr) {
+                    WorkerList_.emplace(tid, workerVm);
                 }
             }
         }
@@ -420,12 +420,17 @@ public:
         return workerVm;
     }
     
-    bool DeleteWorker(uint32_t tid)
+    bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
     {
-        auto iter = WorkerList_.find(tid);
-        if (iter != WorkerList_.end()) {
-            WorkerList_.erase(iter);
-            return true;
+        if (hostVm != nullptr && workerVm != nullptr) {
+            auto tid = workerVm->GetJSThread()->GetThreadId();
+            if (tid == 0) {return false;}
+            auto iter = WorkerList_.find(tid);
+            if (iter != WorkerList_.end()) {
+                WorkerList_.erase(iter);
+                return true;
+            }
+            return false;
         }
         return false;
     }

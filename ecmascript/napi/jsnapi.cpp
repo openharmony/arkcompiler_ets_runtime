@@ -348,7 +348,10 @@ void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 
 bool JSNApi::DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 {
-    return hostVm->DeleteWorker(workerVm->GetJSThread()->GetThreadId());
+    if (hostVm != nullptr && workerVm != nullptr) {
+        return hostVm->DeleteWorker(hostVm, workerVm);
+    }
+    return false;
 }
 
 Local<ObjectRef> JSNApi::GetUncaughtException(const EcmaVM *vm)
