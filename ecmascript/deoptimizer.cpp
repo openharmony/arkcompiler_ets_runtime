@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 #include "deoptimizer.h"
+#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_thread.h"
@@ -194,8 +194,8 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     }
     const uint8_t *resumePc = method->GetBytecodeArray() + pc_;
     AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
-    JSTaggedValue env = JSTaggedValue(GetArgv(CommonArgIdx::LEXENV));
-    JSTaggedValue thisObj = JSTaggedValue(GetArgv(CommonArgIdx::THIS));
+    JSTaggedValue env = JSTaggedValue(GetArgv(static_cast<int>(kungfu::CommonArgIdx::LEXENV)));
+    JSTaggedValue thisObj = JSTaggedValue(GetArgv(static_cast<int>(kungfu::CommonArgIdx::THIS)));
     auto acc = vregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::ACC_INDEX));
     statePtr->function = fun;
     statePtr->acc = acc;
@@ -217,10 +217,6 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     frameWriter.PushRawValue(stackContext_.callerFp_);
     frameWriter.PushRawValue(stackContext_.callFrameTop_);
     frameWriter.PushRawValue(outputCount);
-    // PushCppCalleeSaveRegisters
-    for (int32_t i = numCalleeRegs_ - 1; i >= 0; i--) {
-        frameWriter.PushRawValue(calleeRegAddr_[i]);
-    }
     return reinterpret_cast<JSTaggedType>(frameWriter.GetTop());
 }
 }  // namespace panda::ecmascript

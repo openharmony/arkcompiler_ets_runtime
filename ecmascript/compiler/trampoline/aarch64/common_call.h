@@ -169,7 +169,8 @@ private:
 
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
 
-    static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp);
+    static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp,
+                             Register acc = INVALID_REG);
 
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
 

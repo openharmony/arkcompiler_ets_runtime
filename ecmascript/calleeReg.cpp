@@ -27,6 +27,28 @@ CalleeReg::CalleeReg()
         {DwarfReg::R13, 3},
         {DwarfReg::R12, 4},
     };
+#elif defined(PANDA_TARGET_ARM64)
+    reg2Location_ = {
+        {DwarfReg::D8, 0},
+        {DwarfReg::D9, 1},
+        {DwarfReg::D10, 2},
+        {DwarfReg::D11, 3},
+        {DwarfReg::D12, 4},
+        {DwarfReg::D13, 5},
+        {DwarfReg::D14, 6},
+        {DwarfReg::D15, 7},
+
+        {DwarfReg::X19, 8},
+        {DwarfReg::X20, 9},
+        {DwarfReg::X21, 10},
+        {DwarfReg::X22, 11},
+        {DwarfReg::X23, 12},
+        {DwarfReg::X24, 13},
+        {DwarfReg::X25, 14},
+        {DwarfReg::X26, 15},
+        {DwarfReg::X27, 16},
+        {DwarfReg::X28, 17},
+    };
 #endif
 }
 

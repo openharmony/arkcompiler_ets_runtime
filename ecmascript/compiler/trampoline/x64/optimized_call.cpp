@@ -1225,7 +1225,7 @@ void OptimizedCall::ConstructorJSCallWithArgV(ExtendedAssembler *assembler)
 
 // Input: %rdi - glue
 //        %rsi - context
-void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler, Label *stackOverflow)
+void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
 {
     // rdi
     Register glueRegister = __ GlueRegister();
@@ -1238,10 +1238,11 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler, Label *sta
     __ Movq(Operand(context, AsmStackContext::GetOutputCountOffset(false)), outputCount);
     __ Leaq(Operand(context, AsmStackContext::GetSize(false)), frameStateBase);
 
+    Label stackOverflow;
     // update fp
     __ Movq(rsp, Operand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));
     PushArgsWithArgvAndCheckStack(assembler, glueRegister, outputCount,
-        frameStateBase, tempRegister, opRegister, stackOverflow);
+        frameStateBase, tempRegister, opRegister, &stackOverflow);
 
     Register callTargetRegister = r8;
     Register methodRegister = r9;
@@ -1256,6 +1257,14 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler, Label *sta
 
         __ Leaq(Operand(rsp, AsmInterpretedFrame::GetSize(false)), opRegister);
         AsmInterpreterCall::DispatchCall(assembler, r12, opRegister, callTargetRegister, methodRegister, rsi);
+    }
+
+    __ Bind(&stackOverflow);
+    {
+        [[maybe_unused]] TempRegisterScope scope(assembler);
+        Register temp = __ TempRegister();
+        AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(assembler,
+            glueRegister, rsp, temp);
     }
 }
 
@@ -1286,7 +1295,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ Je(&stackOverflow);
 
     Label target;
-    __ RestoreCppCalleeSaveRegisters(context);
+    __ PopCppCalleeSaveRegisters();
     __ Movq(Operand(context, AsmStackContext::GetCallerFpOffset(false)), rbp);
     __ Movq(Operand(context, AsmStackContext::GetCallFrameTopOffset(false)), rsp);
 
@@ -1295,7 +1304,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     PopAsmInterpBridgeFrame(assembler);
     __ Ret();
     __ Bind(&target);
-    DeoptEnterAsmInterp(assembler, &stackOverflow);
+    DeoptEnterAsmInterp(assembler);
     __ Int3();
 
     __ Bind(&stackOverflow);
@@ -1305,6 +1314,10 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
         __ Pushq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException);
         __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
         __ Addq(16, rsp); // skip runtimeId argc
+
+        __ PopCppCalleeSaveRegisters();
+        __ Addq(FRAME_SLOT_SIZE, rsp);
+        __ Popq(rbp);
         __ Ret();
     }
 }

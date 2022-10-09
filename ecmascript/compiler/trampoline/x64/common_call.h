@@ -63,7 +63,7 @@ public:
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
 private:
-    static void DeoptEnterAsmInterp(ExtendedAssembler *assembler, Label *stackOverflow);
+    static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
                             Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register glueReg);

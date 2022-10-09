@@ -472,9 +472,6 @@ public:
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos),
           frameStateBuilder_(&circuit_, methodLiteral)
     {
-        uint64_t callField = method_->GetCallField();
-        numVregs_ = method_->GetNumVregsWithCallField(callField) + method_->GetNumArgsWithCallField(callField);
-        startPc_ = bytecodeBlockInfos_[0].pc;
     }
     ~BytecodeCircuitBuilder() = default;
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
@@ -574,7 +571,6 @@ public:
     }
 
 private:
-    GateRef InitializeFrameState(const uint8_t *pc);
     void CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
     void CompleteBytecodeBlockInfo();
     void BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
@@ -636,8 +632,6 @@ private:
     const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
     std::vector<CfgInfo> &bytecodeBlockInfos_;
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
-    uint32_t numVregs_ {0};
-    const uint8_t *startPc_ {nullptr};
     FrameStateBuilder frameStateBuilder_;
 };
 }  // namespace panda::ecmascript::kungfu
