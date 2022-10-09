@@ -91,7 +91,8 @@ void JSAPIArrayList::IncreaseCapacityTo(JSThread *thread, const JSHandle<JSAPIAr
     JSHandle<TaggedArray> elementData(thread, arrayList->GetElements());
     ASSERT(!elementData->IsDictionaryMode());
     int length = arrayList->GetLength().GetInt();
-    if (length < capacity) {
+    int oldElementLength = static_cast<int>(elementData->GetLength());
+    if (oldElementLength != capacity && length < capacity) {
         JSHandle<TaggedArray> newElements =
             thread->GetEcmaVM()->GetFactory()->CopyArray(elementData, length, capacity);
 
@@ -129,10 +130,9 @@ int JSAPIArrayList::GetIndexOf(JSThread *thread, const JSHandle<JSAPIArrayList> 
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
     ASSERT(!elements->IsDictionaryMode());
     uint32_t length = arrayList->GetLength().GetArrayLength();
-    
+    JSTaggedValue targetValue = value.GetTaggedValue();
     for (uint32_t i = 0; i < length; ++i) {
-        JSHandle<JSTaggedValue> element(thread, elements->Get(i));
-        if (JSTaggedValue::StrictEqual(thread, value, element)) {
+        if (JSTaggedValue::StrictEqual(targetValue, elements->Get(i))) {
             return i;
         }
     }
@@ -144,11 +144,10 @@ int JSAPIArrayList::GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIArrayLi
 {
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
     ASSERT(!elements->IsDictionaryMode());
-    JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
+    JSTaggedValue targetValue = value.GetTaggedValue();
     int length = arrayList->GetLength().GetInt();
     for (int i = length - 1; i >= 0; --i) {
-        element.Update(elements->Get(i));
-        if (JSTaggedValue::StrictEqual(thread, value, element)) {
+        if (JSTaggedValue::StrictEqual(targetValue, elements->Get(i))) {
             return i;
         }
     }
@@ -284,15 +283,12 @@ JSHandle<JSAPIArrayList> JSAPIArrayList::SubArrayList(JSThread *thread, const JS
     }
 
     int endIndex = toIndex >= length - 1 ? length - 1 : toIndex;
-    if (fromIndex > endIndex) {
-        int tmp = fromIndex;
-        fromIndex = endIndex;
-        endIndex = tmp;
-    }
-
     int newLength = endIndex - fromIndex;
     JSHandle<JSAPIArrayList> subArrayList =
         thread->GetEcmaVM()->GetFactory()->NewJSAPIArrayList(newLength);
+    if (newLength == 0) {
+        return subArrayList;
+    }
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
     ASSERT(!elements->IsDictionaryMode());
     subArrayList->SetLength(thread, JSTaggedValue(newLength));

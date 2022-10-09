@@ -276,11 +276,11 @@ JSTaggedValue JSAPIVector::ToString(JSThread *thread, const JSHandle<JSAPIVector
             nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
         }
         if (k > 0) {
-            concatStrNew = base::StringHelper::Append(concatStr, sepHandle);
-            concatStr = base::StringHelper::Append(concatStrNew, nextStr);
+            concatStrNew = concatStr.append(sepHandle);
+            concatStr = concatStrNew.append(nextStr);
             continue;
         }
-        concatStr = base::StringHelper::Append(concatStr, nextStr);
+        concatStr = concatStr.append(nextStr);
     }
 
     char16_t *char16tData = concatStr.data();
