@@ -47,8 +47,8 @@ void JSAPIArrayList::Insert(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
     JSHandle<TaggedArray> elements = GrowCapacity(thread, arrayList, length + 1);
 
     ASSERT(!elements->IsDictionaryMode());
-    for (int i = length; i >= index; --i) {
-        elements->Set(thread, i, elements->Get(i - 1));
+    for (int i = length - 1; i >= index; --i) {
+        elements->Set(thread, i + 1, elements->Get(i));
     }
     elements->Set(thread, index, value);
     arrayList->SetLength(thread, JSTaggedValue(++length));
@@ -57,6 +57,12 @@ void JSAPIArrayList::Insert(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
 void JSAPIArrayList::Clear(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList)
 {
     if (!arrayList.IsEmpty()) {
+        int length = arrayList->GetLength().GetInt();
+        JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
+        ASSERT(!elements->IsDictionaryMode());
+        for (int i = 0; i <= length; ++i) {
+            elements->Set(thread, i, JSTaggedValue::Hole());
+        }
         arrayList->SetLength(thread, JSTaggedValue(0));
     }
 }
@@ -102,10 +108,12 @@ void JSAPIArrayList::IncreaseCapacityTo(JSThread *thread, const JSHandle<JSAPIAr
 void JSAPIArrayList::TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList)
 {
     uint32_t length = arrayList->GetLength().GetArrayLength();
-    JSHandle<TaggedArray> oldElements(thread, arrayList->GetElements());
-    ASSERT(!oldElements->IsDictionaryMode());
-    JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->CopyArray(oldElements, length, length);
-    arrayList->SetElements(thread, newElements);
+    uint32_t capacity = JSAPIArrayList::GetCapacity(thread, arrayList);
+    JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
+    ASSERT(!elements->IsDictionaryMode());
+    if (capacity > length) {
+        elements->Trim(thread, length);
+    }
 }
 
 JSTaggedValue JSAPIArrayList::Get(JSThread *thread, const uint32_t index)

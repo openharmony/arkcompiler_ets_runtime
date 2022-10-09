@@ -298,7 +298,7 @@ void JSAPILightWeightSet::IncreaseCapacityTo(JSThread *thread, const JSHandle<JS
     uint32_t capacity = TaggedArray::Cast(obj->GetValues().GetTaggedObject())->GetLength();
     int32_t intCapacity = static_cast<int32_t>(capacity);
     if (minCapacity <= 0 || intCapacity >= minCapacity) {
-        THROW_TYPE_ERROR(thread, "the index is not integer");
+        return;
     }
     obj->SizeCopy(thread, obj, intCapacity, minCapacity);
 }

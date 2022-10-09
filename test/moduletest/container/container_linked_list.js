@@ -112,6 +112,17 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test linkedlist forEach:", res)
     list1.clear()
     map.set("test linkedlist clear:", list1.length === 0)
+    for (let i = 0; i < 10; i++) {
+        list1.add(i)
+    }
+
+    res = true
+    list1.forEach((i, d) => {
+        if (d !== testArray1[i]) {
+            res = false
+        }
+    })
+    map.set("test linkedlist clear and add:", res)
     map.set("test linkedlist get:", list.get(1232) === undefined)
     map.set("test linkedlist getLastIndexOf:", list.getLastIndexOf('abc') === -1)
     let flag = false;

@@ -271,15 +271,15 @@ HWTEST_F_L0(JSAPILinkedListTest, Clear)
 
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
     JSHandle<JSAPILinkedList> list(thread, linkedlist);
-    linkedlist->Add(thread, list, value);
+    JSAPILinkedList::Add(thread, list, value);
 
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(2));
-    linkedlist->Insert(thread, list, value1, 0);
+    JSAPILinkedList::Insert(thread, list, value1, 0);
 
-    linkedlist->Clear(thread);
+    list->Clear(thread);
 
-    EXPECT_EQ(linkedlist->Length(), 0);
-    EXPECT_TRUE(linkedlist->GetFirst() == JSTaggedValue::Undefined());
+    EXPECT_EQ(list->Length(), 0);
+    EXPECT_TRUE(list->GetFirst() == JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, Set)

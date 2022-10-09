@@ -102,12 +102,18 @@ JSTaggedValue TaggedList<Derived>::AddNode(const JSThread *thread, const JSHandl
 template <typename Derived>
 void TaggedList<Derived>::Clear(const JSThread *thread)
 {
-    int numberOfElements = NumberOfNodes();
-    int deleteNodesNum = NumberOfDeletedNodes();
-    SetElement(thread, TAIL_TABLE_INDEX, JSTaggedValue(ELEMENTS_START_INDEX));
-    SetElement(thread, ELEMENTS_START_INDEX + NEXT_PTR_OFFSET, JSTaggedValue(ELEMENTS_START_INDEX));
+    JSTaggedValue data = JSTaggedValue(ELEMENTS_START_INDEX);
     SetNumberOfNodes(thread, 0);
-    SetNumberOfDeletedNodes(thread, numberOfElements + deleteNodesNum);
+    SetNumberOfDeletedNodes(thread, 0);
+    SetElement(thread, HEAD_TABLE_INDEX, data);
+    SetElement(thread, TAIL_TABLE_INDEX, data);
+    SetElement(thread, ELEMENTS_START_INDEX, JSTaggedValue::Hole());
+    SetElement(thread, ELEMENTS_START_INDEX + NEXT_PTR_OFFSET, data);
+
+    int taggedArrayLength = GetCapacityFromTaggedArray();
+    for (int i = ELEMENTS_START_INDEX + NEXT_PTR_OFFSET + 1; i < taggedArrayLength; ++i) {
+        SetElement(thread, i, JSTaggedValue::Hole());
+    }
 }
 
 template <typename Derived>
