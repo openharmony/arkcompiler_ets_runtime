@@ -25,18 +25,24 @@ namespace panda::ecmascript::kungfu {
 class AsyncFunctionLowering {
 public:
     AsyncFunctionLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
-                          bool enableLog)
+                          bool enableLog, const std::string& name)
         : bcBuilder_(bcBuilder), circuit_(circuit), builder_(circuit, cmpCfg), enableLog_(enableLog),
-        stateEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY))),
-        dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
-        accessor_(circuit), argAccessor_(circuit)
+          stateEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY))),
+          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
+          accessor_(circuit), argAccessor_(circuit), methodName_(name)
     {
     }
+
     ~AsyncFunctionLowering() = default;
 
     void ProcessAll();
 
     bool IsAsyncRelated() const;
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
+    }
 
 private:
     void ProcessJumpTable();
@@ -56,6 +62,7 @@ private:
     GateRef dependEntry_ {Circuit::NullGate()};
     GateAccessor accessor_;
     ArgumentAccessor argAccessor_;
+    std::string methodName_;
 };
 }  // panda::ecmascript::kungfu
 

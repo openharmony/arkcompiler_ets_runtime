@@ -98,10 +98,11 @@ namespace panda::ecmascript::kungfu {
 class TypeLowering {
 public:
     TypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
-                 bool enableLog)
+                 bool enableLog, const std::string& name)
         : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
-          enableLog_(enableLog) {}
+          enableLog_(enableLog), methodName_(name) {}
+
     ~TypeLowering() = default;
 
     void RunTypeLowering();
@@ -110,6 +111,11 @@ private:
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
     }
 
     void Lower(GateRef gate);
@@ -179,6 +185,7 @@ private:
     GateRef dependEntry_;
     [[maybe_unused]] TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
+    std::string methodName_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_LOWERING_H

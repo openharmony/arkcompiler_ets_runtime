@@ -114,10 +114,12 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
     return {bbGatesList, bbGatesAddrToIdx, immDom};
 }
 
-std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit, [[maybe_unused]] bool enableLog)
+std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
+                                                 const std::string& methodName,
+                                                 [[maybe_unused]] bool enableLog)
 {
 #ifndef NDEBUG
-    if (!Verifier::Run(circuit, enableLog)) {
+    if (!Verifier::Run(circuit, methodName, enableLog)) {
         UNREACHABLE();
     }
 #endif

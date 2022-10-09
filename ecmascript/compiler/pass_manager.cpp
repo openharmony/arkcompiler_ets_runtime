@@ -63,15 +63,15 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             enableMethodLog = logList_->IncludesMethod(fileName, methodName);
         }
 
+        std::string fullName = methodName + "@" + fileName;
         if (enableMethodLog) {
-            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
-                                << methodName << "] log:" << "\033[0m";
+            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName << "] log:" << "\033[0m";
         }
 
         BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager,
-                                       &cmpCfg, enableMethodLog && log_->OutputCIR());
+                                       &cmpCfg, enableMethodLog && log_->OutputCIR(), fullName);
         builder.BytecodeToCircuit();
-        PassData data(builder.GetCircuit(), log_, enableMethodLog);
+        PassData data(builder.GetCircuit(), log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
         pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
@@ -109,7 +109,8 @@ JSPandaFile *PassManager::ResolveModuleFile(JSPandaFile *jsPandaFile, const std:
         JSThread *thread = vm_->GetJSThread();
         ModuleManager *moduleManager = vm_->GetModuleManager();
         CString moduleFileName = moduleManager->ResolveModuleFileName(fileName.c_str());
-        return const_cast<JSPandaFile *>(JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName,
+        return const_cast<JSPandaFile *>(JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread,
+                                                                                            moduleFileName,
                                                                                             entry_));
     }
     return jsPandaFile;

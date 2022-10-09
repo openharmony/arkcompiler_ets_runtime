@@ -25,18 +25,31 @@
 namespace panda::ecmascript::kungfu {
 class TypeInfer {
 public:
-    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, const JSHandle<JSTaggedValue> &constantPool,
-              TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId, bool enableLog)
+    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
+              const JSHandle<JSTaggedValue> &constantPool, TSManager *tsManager,
+              LexEnvManager *lexEnvManager, size_t methodId, bool enableLog,
+              const std::string& name)
         : builder_(builder), circuit_(circuit), constantPool_(constantPool), gateAccessor_(circuit),
-          tsManager_(tsManager), lexEnvManager_(lexEnvManager), methodId_(methodId), enableLog_(enableLog) {}
+          tsManager_(tsManager), lexEnvManager_(lexEnvManager), methodId_(methodId), enableLog_(enableLog),
+          methodName_(name)
+    {
+    }
+
     ~TypeInfer() = default;
+
     NO_COPY_SEMANTIC(TypeInfer);
     NO_MOVE_SEMANTIC(TypeInfer);
+
     void TraverseCircuit();
 
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
     }
 
 private:
@@ -91,10 +104,6 @@ private:
         return flag;
     }
 
-    // tools used for debug type problems, will be enabled by each option:
-    // --compiler-log && --mlist-for-log
-    // --assert-types
-    // --print-any-types
     void PrintAllByteCodesTypes() const;
     void Verify() const;
     void TypeCheck(GateRef gate) const;
@@ -111,6 +120,7 @@ private:
     LexEnvManager *lexEnvManager_ {nullptr};
     size_t methodId_ {0};
     bool enableLog_ {false};
+    std::string methodName_;
     std::map<uint16_t, GateType> stringIdToGateType_;
 };
 }  // namespace panda::ecmascript::kungfu

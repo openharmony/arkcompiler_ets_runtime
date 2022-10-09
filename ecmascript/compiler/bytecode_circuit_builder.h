@@ -464,17 +464,15 @@ public:
                                     MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager,
                                     const CompilationConfig* cconfig,
-                                    bool enableLog)
+                                    bool enableLog,
+                                    std::string name)
         : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos),
-          frameStateBuilder_(&circuit_, methodLiteral)
+          frameStateBuilder_(&circuit_, methodLiteral), methodName_(name)
     {
-        uint64_t callField = method_->GetCallField();
-        numVregs_ = method_->GetNumVregsWithCallField(callField) + method_->GetNumArgsWithCallField(callField);
-        startPc_ = bytecodeBlockInfos_[0].pc;
     }
     ~BytecodeCircuitBuilder() = default;
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
@@ -529,6 +527,11 @@ public:
     [[nodiscard]] const JSPandaFile* GetJSPandaFile() const
     {
         return file_;
+    }
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
     }
 
     BytecodeInfo GetBytecodeInfo(const uint8_t *pc);
@@ -636,9 +639,8 @@ private:
     const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
     std::vector<CfgInfo> &bytecodeBlockInfos_;
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
-    uint32_t numVregs_ {0};
-    const uint8_t *startPc_ {nullptr};
     FrameStateBuilder frameStateBuilder_;
+    std::string methodName_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H
