@@ -57,18 +57,6 @@ void ExtendedAssembler::UpdateCalleeSaveRegisters()
     Addq(8 * 5, rsp);  // 8: 8 bytes
 }
 
-void ExtendedAssembler::RestoreCppCalleeSaveRegisters(Register calleeRegAddr)
-{
-    kungfu::CalleeReg callreg;
-    size_t n = callreg.GetCallRegNum();
-    Movq(Operand(calleeRegAddr, callreg.FindCallRegOrder(kungfu::DwarfReg::RBX) * FRAME_SLOT_SIZE), rbx);
-    Movq(Operand(calleeRegAddr, callreg.FindCallRegOrder(kungfu::DwarfReg::R15) * FRAME_SLOT_SIZE), r15);
-    Movq(Operand(calleeRegAddr, callreg.FindCallRegOrder(kungfu::DwarfReg::R14) * FRAME_SLOT_SIZE), r14);
-    Movq(Operand(calleeRegAddr, callreg.FindCallRegOrder(kungfu::DwarfReg::R13) * FRAME_SLOT_SIZE), r13);
-    Movq(Operand(calleeRegAddr, callreg.FindCallRegOrder(kungfu::DwarfReg::R12) * FRAME_SLOT_SIZE), r12);
-    Addq(n * FRAME_SLOT_SIZE, calleeRegAddr);
-}
-
 void ExtendedAssembler::PushGhcCalleeSaveRegisters()
 {
     Pushq(r10);

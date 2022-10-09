@@ -91,8 +91,11 @@ void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset)
 {
     auto depend = gateAcc_.GetDep(gate);
     GateRef frameState = FrameState(pcOffset);
+    auto trueGate = circuit_->GetConstantGate(MachineType::I1,
+                                              1, // 1: true
+                                              GateType::NJSValue());
     GateRef guard = circuit_->NewGate(
-        OpCode(OpCode::GUARD), 2, {depend, Circuit::NullGate(), frameState}, GateType::Empty());
+        OpCode(OpCode::GUARD), 2, {depend, trueGate, frameState}, GateType::Empty());
     gateAcc_.ReplaceDependIn(gate, guard);
 }
 

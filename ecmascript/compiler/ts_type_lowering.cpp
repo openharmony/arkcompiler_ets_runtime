@@ -350,7 +350,8 @@ void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
     }
 
     GateRef guard = acc_.GetDep(gate);
-    acc_.NewIn(guard, 1, check);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    acc_.ReplaceIn(guard, 1, check);
     
     // Replace the old NumberBinaryOp<Op> with TypedBinaryOp<Op>
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType);
@@ -370,8 +371,7 @@ void TSTypeLowering::SpeculateNumberCompare(GateRef gate)
                                      builder_.TypeCheck(numberType, right));
     GateRef guard = acc_.GetDep(gate);
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    ASSERT(acc_.IsInGateNull(guard, 1));
-    acc_.NewIn(guard, 1, check);
+    acc_.ReplaceIn(guard, 1, check);
     GateRef result = builder_.NumberBinaryOp<Op>(left, right);
     acc_.SetDep(result, guard);
     std::vector<GateRef> removedGate{gate};
@@ -396,8 +396,7 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     GateRef check = builder_.TypeCheck(srcType, src);
     GateRef guard = acc_.GetDep(gate);
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    ASSERT(acc_.IsInGateNull(guard, 1));
-    acc_.NewIn(guard, 1, check);
+    acc_.ReplaceIn(guard, 1, check);
     GateRef result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
     acc_.SetDep(result, guard);
     std::vector<GateRef> removedGate{gate};

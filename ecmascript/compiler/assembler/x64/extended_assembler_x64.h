@@ -36,7 +36,6 @@ public:
     void PushCppCalleeSaveRegisters();
     void PopCppCalleeSaveRegisters();
     void UpdateCalleeSaveRegisters();
-    void RestoreCppCalleeSaveRegisters(Register calleeRegAddr);
     void PushGhcCalleeSaveRegisters();
     void PopGhcCalleeSaveRegisters();
     void PushArgsWithArgv(Register argc, Register argv, Register operatorRegister);

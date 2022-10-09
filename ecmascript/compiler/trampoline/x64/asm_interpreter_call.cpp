@@ -1116,7 +1116,9 @@ void AsmInterpreterCall::PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *a
 void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
     Register op)
 {
-    __ Movq(fp, rsp);
+    if (fp != rsp) {
+        __ Movq(fp, rsp);
+    }
     __ Movq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException, op);
     __ Movq(Operand(glue, op, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), op);
     if (glue != r13) {

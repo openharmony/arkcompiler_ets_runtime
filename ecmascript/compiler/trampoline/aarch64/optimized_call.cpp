@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/deoptimizer.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
@@ -99,12 +100,6 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     // 2 ：2 means stack frame slot size
     __ Add(sp, sp, Immediate(2 * FRAME_SLOT_SIZE));
     __ RestoreFpAndLr();
-    __ Ret();
-}
-
-void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
     __ Ret();
 }
 
@@ -462,9 +457,8 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         Register frameType(X6);
         __ SaveFpAndLr();
         __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)));
-        __ Mov(Register(X5), Immediate(0));
         // 2 : 2 means pair
-        __ Stp(Register(X5), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Stp(Register(Zero), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         Register argC(X5);
         Register runtimeId(X6);
         __ Mov(argC, Immediate(0));
@@ -960,6 +954,110 @@ void OptimizedCall::ConstructorJSCallWithArgV([[maybe_unused]]ExtendedAssembler 
     PopJSFunctionArgs(assembler, actualNumArgs, actualNumArgs);
     PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
+}
+
+void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
+{
+    // rdi
+    Register glueRegister = __ GlueRegister();
+    Register context(X2);
+    Register opRegister(X9);
+    Register outputCount(X10);
+    Register frameStateBase(X11);
+    Register currentSlotRegister(X12);
+    Register sp(SP);
+
+    __ PushFpAndLr();
+
+    __ Mov(currentSlotRegister, sp);
+    __ Ldr(outputCount, MemoryOperand(context, AsmStackContext::GetOutputCountOffset(false)));
+    __ Add(frameStateBase, context, Immediate(AsmStackContext::GetSize(false)));
+
+    Label stackOverflow;
+    // update fp
+    __ Str(sp, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));
+    PushArgsWithArgv(assembler, glueRegister, outputCount, frameStateBase, opRegister,
+                     currentSlotRegister, nullptr, &stackOverflow);
+
+    Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
+    Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
+    {
+        // r13, rbp, r12, rbx,      r14,     rsi,  rdi
+        // glue sp   pc  constpool  profile  acc   hotness
+        __ Ldr(callTargetRegister, MemoryOperand(frameStateBase,
+                AsmInterpretedFrame::GetFunctionOffset(false)));
+        __ Ldr(Register(X20), MemoryOperand(frameStateBase, AsmInterpretedFrame::GetPcOffset(false)));
+        __ Ldr(Register(X23), MemoryOperand(frameStateBase, AsmInterpretedFrame::GetAccOffset(false)));
+        __ Ldr(methodRegister, MemoryOperand(callTargetRegister, JSFunctionBase::METHOD_OFFSET));
+
+        __ Add(opRegister, currentSlotRegister, Immediate(AsmInterpretedFrame::GetSize(false)));
+
+        __ Align16(currentSlotRegister);
+        __ Mov(Register(SP), currentSlotRegister);
+        AsmInterpreterCall::DispatchCall(assembler, Register(X20), opRegister, Register(X23));
+    }
+    __ Bind(&stackOverflow);
+    {
+        Register temp(X1);
+        AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(
+            assembler, glueRegister, sp, temp);
+    }
+}
+
+void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
+    __ PushFpAndLr();
+    Register sp(SP);
+    Register fp(FP);
+    Register frameType(X1);
+    Register glueReg(X0);
+
+    __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_FRAME)));
+    __ Stp(glueReg, frameType, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Add(fp, sp, Immediate(DOUBLE_SLOT_SIZE));
+    __ CalleeSave();
+
+    Register runtimeId(X2);
+    __ Mov(runtimeId, Immediate(RTSTUB_ID(DeoptHandler)));
+    __ Stp(runtimeId, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
+    __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE)); // 2: skip runtimeId argc
+
+    Register ret(X0);
+    Label stackOverflow;
+    __ Cmp(ret, Immediate(JSTaggedValue::VALUE_EXCEPTION));
+    __ B(Condition::EQ, &stackOverflow);
+
+    __ CalleeRestore();
+
+    Register context(X2);
+    __ Mov(context, Register(X0));
+    __ Ldr(glueReg, MemoryOperand(sp, 0));
+
+    Label target;
+    __ Ldr(fp, MemoryOperand(context, AsmStackContext::GetCallerFpOffset(false)));
+    __ Ldr(sp, MemoryOperand(context, AsmStackContext::GetCallFrameTopOffset(false)));
+
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    DeoptEnterAsmInterp(assembler);
+
+    __ Bind(&stackOverflow);
+    {
+        __ Mov(runtimeId, Immediate(RTSTUB_ID(ThrowStackOverflowException)));
+        // 2 : 2 means pair
+        __ Stp(runtimeId, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
+        __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE)); // 2: skip runtimeId argc
+
+        __ CalleeRestore();
+        __ RestoreFpAndLr();
+        __ Ret();
+    }
 }
 #undef __
 }  // panda::ecmascript::aarch64

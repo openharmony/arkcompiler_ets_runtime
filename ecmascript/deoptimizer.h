@@ -40,15 +40,6 @@ struct Context
     kungfu::CalleeRegAndOffsetVec calleeRegAndOffset;
 };
 
-enum class CommonArgIdx : uint8_t {
-    LEXENV = 0,
-    ACTUAL_ARGC,
-    FUNC,
-    NEW_TARGET,
-    THIS,
-    NUM_OF_ARGS,
-};
-
 struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                     base::AlignedPointer,
                                                     base::AlignedPointer,
@@ -99,12 +90,6 @@ public:
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
     JSTaggedType ConstructAsmInterpretFrame();
-    JSTaggedType GetArgv(CommonArgIdx idx)
-    {
-        ASSERT(AotArgvs_ != nullptr);
-        return AotArgvs_[static_cast<int>(idx)];
-    }
-
     JSTaggedType GetArgv(int idx)
     {
         ASSERT(AotArgvs_ != nullptr);

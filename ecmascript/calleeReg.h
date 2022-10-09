@@ -29,13 +29,35 @@ enum class DwarfReg: DwarfRegType
     R14 = 14,
     R15 = 15,
 };
-#else
-// todo for arm64
+#elif defined(PANDA_TARGET_ARM64)
 static const int MAX_CALLEE_SAVE_REIGISTER_NUM = 32;
 enum class DwarfReg: DwarfRegType
 {
-};
+    D8 = 8,
+    D9 = 9,
+    D10 = 10,
+    D11 = 11,
+    D12 = 12,
+    D13 = 13,
+    D14 = 14,
+    D15 = 15,
 
+    X19 = 19,
+    X20 = 20,
+    X21 = 21,
+    X22 = 22,
+    X23 = 23,
+    X24 = 24,
+    X25 = 25,
+    X26 = 26,
+    X27 = 27,
+    X28 = 28,
+};
+#else
+static const int MAX_CALLEE_SAVE_REIGISTER_NUM = 16;
+enum class DwarfReg: DwarfRegType
+{
+};
 #endif
 class CalleeReg
 {
@@ -47,7 +69,6 @@ public:
     int PUBLIC_API GetCallRegNum() const;
 private:
     std::map<DwarfReg, int> reg2Location_;
-
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_CALLEE_REG_H

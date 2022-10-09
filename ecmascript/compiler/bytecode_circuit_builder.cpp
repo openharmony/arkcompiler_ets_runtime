@@ -1753,8 +1753,8 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     argAcc_.CollectArgs();
     if (hasTypes_) {
         argAcc_.FillArgsGateType(&typeRecorder_);
+        frameStateBuilder_.BuildArgsValues(&argAcc_);
     }
-    frameStateBuilder_.BuildArgsValues(&argAcc_);
 }
 
 bool BytecodeCircuitBuilder::ShouldBeDead(BytecodeRegion &curBlock)
@@ -2008,7 +2008,6 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
 void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, const uint8_t *pc, GateRef &state, GateRef &depend)
 {
     auto bytecodeInfo = GetBytecodeInfo(pc);
-
     size_t numValueInputs = bytecodeInfo.ComputeTotalValueCount();
     GateRef gate = 0;
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo);
@@ -2468,7 +2467,9 @@ void BytecodeCircuitBuilder::BuildCircuit()
             }
         }
     }
-    BuildFrameState();
+    if (hasTypes_) {
+        BuildFrameState();
+    }
 
     if (IsLogEnabled()) {
         PrintGraph("Bytecode2Gate");

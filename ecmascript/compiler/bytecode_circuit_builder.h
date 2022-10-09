@@ -577,7 +577,6 @@ public:
     }
 
 private:
-    GateRef InitializeFrameState(const uint8_t *pc);
     void CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
     void CompleteBytecodeBlockInfo();
     void BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
