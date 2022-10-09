@@ -35,15 +35,14 @@ public:
 
     JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
-    const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,
-                                       bool isPatch = false);
+    const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint);
 
     const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,
-                                       const void *buffer, size_t size, bool isPatch = false);
+                                       const void *buffer, size_t size);
 
     JSPandaFile *OpenJSPandaFile(const CString &filename);
 
-    JSPandaFile *NewJSPandaFile(const panda_file::File *pf, const CString &desc, bool isPatch = false);
+    JSPandaFile *NewJSPandaFile(const panda_file::File *pf, const CString &desc);
 
     DebugInfoExtractor *GetJSPtExtractor(const JSPandaFile *jsPandaFile);
 
@@ -75,7 +74,7 @@ private:
     };
 
     const JSPandaFile *GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &desc,
-                                           std::string_view entryPoint, bool isPatch);
+                                           std::string_view entryPoint);
     void ReleaseJSPandaFile(const JSPandaFile *jsPandaFile);
     const JSPandaFile *GetJSPandaFile(const panda_file::File *pf);
     const JSPandaFile *FindJSPandaFileUnlocked(const CString &filename);

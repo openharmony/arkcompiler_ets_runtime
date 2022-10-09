@@ -1,0 +1,51 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+test_list = [
+  "check_import",
+  "class_inheritance",
+  "class_mem_func",
+  "class_mem_var",
+  "class_name",
+  "closure",
+  "global_func",
+  "global_var",
+  "import_export",
+  "print_string",
+]
+
+host_quickfix_test_action("multi_patch") {
+  extra_patches = [
+    "patch1",
+    "patch2",
+  ]
+}
+
+foreach(testcase, test_list) {
+  host_quickfix_test_action("${testcase}") {
+    extra_patches = []
+  }
+}
+
+group("ark_quickfix_test") {
+  testonly = true
+
+  deps = []
+  foreach(testcase, test_list) {
+    deps += [ ":${testcase}QuickfixAction" ]
+  }
+
+  deps += [ ":multi_patchQuickfixAction" ]
+}

@@ -129,6 +129,9 @@ if (defined(ark_standalone_build)) {
       # js bytecode test
       deps += [ "//arkcompiler/ets_runtime/test/moduletest:ark_js_moduletest" ]
 
+      # quickfix test
+      deps += [ "//arkcompiler/ets_runtime/test/quickfix:ark_quickfix_test" ]
+
       # ts aot test and asm test
       if (is_standard_system && !run_with_asan) {
         deps += [

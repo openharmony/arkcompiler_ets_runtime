@@ -49,6 +49,7 @@ private:
 
     CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
     CVector<JSHandle<Program>> ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile);
+    void GenerateConstpoolCache(EcmaVM *vm, const JSPandaFile *jsPandaFile, JSHandle<ConstantPool> constpool);
 
     bool ExecutePatchMain(JSThread *thread, const JSHandle<Program> &patchProgram);
     bool ExecutePatchMain(JSThread *thread, const CVector<JSHandle<Program>> &programs);

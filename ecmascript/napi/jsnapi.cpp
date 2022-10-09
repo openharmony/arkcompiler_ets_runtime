@@ -564,17 +564,17 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
     return true;
 }
 
-Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, [[maybe_unused]] const std::string &key)
+Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)
 {
-    std::string entry = file;
+    ecmascript::CString entry = file.c_str();
 #if ECMASCRIPT_ENABLE_MERGE_ABC
     if (!vm->IsBundlePack()) {
-        entry = ecmascript::JSPandaFile::ParseOhmUrl(file.c_str());
+        entry = ecmascript::JSPandaFile::ParseOhmUrl(entry);
     }
 #endif
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
-    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry.c_str());
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry);
     if (ecmaModule->GetIsNewBcVersion()) {
         // 0: There's only one export value "default"
         JSHandle<JSTaggedValue> exportObj(thread, ecmaModule->GetModuleValue(thread, 0, false));
@@ -589,7 +589,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, [[
 }
 
 Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file,
-                                                   [[maybe_unused]] const std::string &key)
+                                                   const std::string &key)
 {
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
