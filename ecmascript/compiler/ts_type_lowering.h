@@ -24,10 +24,11 @@ namespace panda::ecmascript::kungfu {
 class TSTypeLowering {
 public:
     TSTypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
-                   TSManager *tsManager, bool enableLog)
+                   TSManager *tsManager, bool enableLog, const std::string& name)
         : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
-          enableLog_(enableLog) {}
+          enableLog_(enableLog), methodName_(name) {}
+
     ~TSTypeLowering() = default;
 
     void RunTSTypeLowering();
@@ -37,6 +38,12 @@ private:
     {
         return enableLog_;
     }
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
+    }
+
     void Lower(GateRef gate);
     void DeleteGates(std::vector<GateRef> &unusedGate);
     void DeleteGuardAndFrameState(GateRef gate);
@@ -67,6 +74,7 @@ private:
     GateRef dependEntry_ {Gate::InvalidGateRef};
     [[maybe_unused]]TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
+    std::string methodName_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H

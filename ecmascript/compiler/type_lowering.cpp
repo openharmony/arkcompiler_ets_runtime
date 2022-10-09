@@ -27,7 +27,10 @@ void TypeLowering::RunTypeLowering()
 
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m" << "================== after type lowering ==================" << "\033[0m";
+        LOG_COMPILER(INFO) << "\033[34m" << "=================="
+                           << " after type lowering "
+                           << "[" << GetMethodName() << "] "
+                           << "==================" << "\033[0m";
         circuit_->PrintAllGates(*bcBuilder_);
         LOG_COMPILER(INFO) << "\033[34m" << "=========================== End =========================" << "\033[0m";
     }
@@ -1362,46 +1365,4 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
     env->SubCfgExit();
     return ret;
 }
-
-/*
-void TypeLowering::LowerGuard(GateRef gate)
-{
-    GateRef frameState = acc_.GetIn(gate, 2);
-    Label bailout(&builder_);
-    Label cont(&builder_);
-    GateRef check = acc_.GetValueIn(gate, 1);
-    builder_.Branch(check, &cont, &bailout);
-    builder_.Bind(&bailout);
-    {
-        ArgumentAccessor argAcc(circuit_);
-        GateRef glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
-        const size_t numValueIn = acc_.GetBitField(frameState);
-        const size_t accIndex = numValueIn - 2; // 2: acc valueIn index
-        const size_t pcIndex = numValueIn - 1;
-        GateRef acc = acc_.GetValueIn(frameState, accIndex);
-        GateRef pc = acc_.GetValueIn(frameState, pcIndex);
-        std::vector<GateRef> vec;
-        for (size_t i = 0; i < accIndex; i++) {
-            GateRef vreg = acc_.GetValueIn(frameState, i);
-            vec.emplace_back(builder_.Int32(i));
-            vec.emplace_back(vreg);
-        }
-        vec.emplace_back(builder_.Int32(static_cast<int>(SpecVregIndex::ACC_INDEX)));
-        vec.emplace_back(acc);
-        vec.emplace_back(builder_.Int32(static_cast<int>(SpecVregIndex::PC_INDEX)));
-        vec.emplace_back(pc);
-
-        const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(DeoptHandlerAsm));
-        GateRef target = builder_.IntPtr(RTSTUB_ID(DeoptHandlerAsm));
-        GateRef result = builder_.Call(cs, glue, target, vec);
-        builder_.Return(result);
-    }
-    builder_.Bind(&cont);
-
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
-    acc_.DeleteGate(gate);
-    acc_.DeleteGate(frameState);
-}
- */
-
 }  // namespace panda::ecmascript
