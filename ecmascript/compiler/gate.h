@@ -192,7 +192,6 @@ public:
         FLOAT_TO_SIGNED_INT,
         UNSIGNED_FLOAT_TO_INT,
         BITCAST,
-        DEOPT_CALL,
         RESTORE_REGISTER,
         SAVE_REGISTER,
         TYPE_CHECK,

@@ -2391,7 +2391,8 @@ void BytecodeCircuitBuilder::BuildFrameState()
             } else if (bytecodeInfo.IsGeneral()) {
                 gate = byteCodeToJSGate_.at(pc);
                 if (bytecodeInfo.deopt) {
-                    frameStateBuilder_.BindGuard(gate, bytecodeInfo.pcOffset);
+                    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+                    frameStateBuilder_.BindGuard(gate, bytecodeInfo.pcOffset, glue);
                 }
             } else if (bytecodeInfo.IsSetConstant()) {
                 gate = byteCodeToJSGate_.at(pc);
