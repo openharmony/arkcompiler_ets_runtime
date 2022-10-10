@@ -166,6 +166,8 @@ private:
     GateRef CompareInt(GateRef left, GateRef right);
     template<TypedBinOp Op>
     GateRef CompareDouble(GateRef left, GateRef right);
+    template<TypedUnOp Op>
+    GateRef MonocularNumber(GateRef value, GateType valueType);
     template<OpCode::Op Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef DoubleToTaggedDoublePtr(GateRef gate);

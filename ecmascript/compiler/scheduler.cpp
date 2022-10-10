@@ -115,7 +115,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
 }
 
 std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
-                                                 const std::string& methodName,
+                                                 [[maybe_unused]] const std::string& methodName,
                                                  [[maybe_unused]] bool enableLog)
 {
 #ifndef NDEBUG

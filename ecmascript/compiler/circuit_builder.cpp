@@ -154,7 +154,7 @@ GateRef CircuitBuilder::TypeCheck(GateType type, GateRef gate)
 }
 
 GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
-                                            std::vector<GateRef> inList)
+                                            std::vector<GateRef> inList, GateType gateType)
 {
     // get BinaryOpCode from a constant gate
     auto bin = Int8(static_cast<int8_t>(binOp));
@@ -162,7 +162,7 @@ GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, 
     // merge two expected types of valueIns
     uint64_t operandTypes = (static_cast<uint64_t>(typeLeft.Value()) << OPRAND_TYPE_BITS) |
                           static_cast<uint64_t>(typeRight.Value());
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_BINARY_OP), type, operandTypes, inList, GateType::AnyType());
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_BINARY_OP), type, operandTypes, inList, gateType);
 }
 
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
@@ -174,12 +174,12 @@ GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateTyp
     return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CONVERT), type, operandTypes, inList, GateType::AnyType());
 }
 
-GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnaryOp unaryOp, GateType typeVal,
-                                           const std::vector<GateRef>& inList)
+GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
+                                           const std::vector<GateRef>& inList, GateType gateType)
 {
     auto unaryOpIdx = static_cast<uint64_t>(unaryOp);
     uint64_t bitfield = (static_cast<uint64_t>(typeVal.Value()) << OPRAND_TYPE_BITS) | unaryOpIdx;
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_UNARY_OP), type, bitfield, inList, GateType::AnyType());
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_UNARY_OP), type, bitfield, inList, gateType);
 }
 
 GateRef CircuitBuilder::Int8(int8_t val)

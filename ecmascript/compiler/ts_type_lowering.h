@@ -46,7 +46,6 @@ private:
 
     void Lower(GateRef gate);
     void DeleteGates(std::vector<GateRef> &unusedGate);
-    void DeleteGuardAndFrameState(GateRef gate);
     void ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, GateRef depend,
                         std::vector<GateRef> &unuseGate);
     void LowerTypedAdd(GateRef gate);
@@ -60,10 +59,17 @@ private:
     void LowerTypedDiv(GateRef gate);
     void LowerTypedEq(GateRef gate);
     void LowerTypedNotEq(GateRef gate);
+    void LowerTypedInc(GateRef gate);
+    void LowerTypedDec(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
 
+    // TypeTrusted means the type of gate is already typecheck-passed, or the gate is constant and no need to check.
+    bool IsTrustedType(GateRef gate) const;
+
     template<TypedBinOp Op>
+    void SpeculateNumbers(GateRef gate);
+    template<TypedUnOp Op>
     void SpeculateNumber(GateRef gate);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};

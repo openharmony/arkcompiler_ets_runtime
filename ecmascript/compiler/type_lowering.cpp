@@ -200,17 +200,19 @@ void TypeLowering::LowerTypedUnaryOp(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     auto bitfield = acc_.GetBitField(gate);
     auto temp = bitfield >>  CircuitBuilder::OPRAND_TYPE_BITS;
-    auto op = static_cast<TypedUnaryOp>(bitfield ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS));
+    auto op = static_cast<TypedUnOp>(bitfield ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS));
     switch (op) {
-        case TypedUnaryOp::TYPED_TONUMBER:
+        case TypedUnOp::TYPED_TONUMBER:
             break;
-        case TypedUnaryOp::TYPED_NEG:
+        case TypedUnOp::TYPED_NEG:
             break;
-        case TypedUnaryOp::TYPED_NOT:
+        case TypedUnOp::TYPED_NOT:
             break;
-        case TypedUnaryOp::TYPED_INC:
+        case TypedUnOp::TYPED_INC:
+            LowerTypedInc(gate);
             break;
-        case TypedUnaryOp::TYPED_DEC:
+        case TypedUnOp::TYPED_DEC:
+            LowerTypedDec(gate);
             break;
         default:
             break;
@@ -357,6 +359,28 @@ void TypeLowering::LowerTypedNotEq(GateRef gate)
     return;
 }
 
+void TypeLowering::LowerTypedInc(GateRef gate)
+{
+    auto value = GetLeftType(gate);
+    if (value.IsNumberType()) {
+        LowerNumberInc(gate);
+    } else {
+        UNREACHABLE();
+    }
+    return;
+}
+
+void TypeLowering::LowerTypedDec(GateRef gate)
+{
+    auto value = GetLeftType(gate);
+    if (value.IsNumberType()) {
+        LowerNumberDec(gate);
+    } else {
+        UNREACHABLE();
+    }
+    return;
+}
+
 void TypeLowering::LowerNumberAdd(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
@@ -464,6 +488,24 @@ void TypeLowering::LowerNumberNotEq(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_NOTEQ>(left, right, leftType, rightType);
+    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberInc(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = GetRightType(gate);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = MonocularNumber<TypedUnOp::TYPED_INC>(value, valueType);
+    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberDec(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = GetRightType(gate);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = MonocularNumber<TypedUnOp::TYPED_DEC>(value, valueType);
     ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
@@ -731,6 +773,7 @@ GateRef TypeLowering::CompareNumbers(GateRef left, GateRef right, GateType leftT
     Label leftIsInt(&builder_);
     Label leftIsDouble(&builder_);
     bool intOptAccessed = false;
+    bool floatOptAccessed = false;
 
     auto LowerIntOpInt = [&]() -> void {
         builder_.Jump(&doIntOp);
@@ -740,16 +783,19 @@ GateRef TypeLowering::CompareNumbers(GateRef left, GateRef right, GateType leftT
         doubleLeft = builder_.GetDoubleOfTDouble(left);
         doubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
         builder_.Jump(&doFloatOp);
+        floatOptAccessed = true;
     };
     auto LowerIntOpDouble = [&]() -> void {
         doubleLeft = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
         doubleRight = builder_.GetDoubleOfTDouble(right);
         builder_.Jump(&doFloatOp);
+        floatOptAccessed = true;
     };
     auto LowerDoubleOpDouble = [&]() -> void {
         doubleLeft = builder_.GetDoubleOfTDouble(left);
         doubleRight = builder_.GetDoubleOfTDouble(right);
         builder_.Jump(&doFloatOp);
+        floatOptAccessed = true;
     };
     auto LowerRightWhenLeftIsInt = [&]() -> void {
         if (rightType.IsIntType()) {
@@ -797,16 +843,20 @@ GateRef TypeLowering::CompareNumbers(GateRef left, GateRef right, GateType leftT
             GateRef intLeft = builder_.GetInt32OfTInt(left);
             GateRef intRight = builder_.GetInt32OfTInt(right);
             auto cmp = builder_.ZExtInt1ToInt64(CompareInt<Op>(intLeft, intRight));
-            result = builder_.Int64Or(cmp, builder_.Int64(0x6));
+            auto res = builder_.Int64Or(cmp, builder_.Int64(JSTaggedValue::TAG_BOOLEAN_MASK));
+            result = builder_.Int64ToTaggedPtr(res);
             builder_.Jump(&exit);
         }
     }
-    builder_.Bind(&doFloatOp);
-    {
-        // Other situations
-        auto cmp = builder_.ZExtInt1ToInt64(CompareDouble<Op>(*doubleLeft, *doubleRight));
-        result = builder_.Int64Or(cmp, builder_.Int64(0x6));
-        builder_.Jump(&exit);
+    if (floatOptAccessed) {
+        builder_.Bind(&doFloatOp);
+        {
+            // Other situations
+            auto cmp = builder_.ZExtInt1ToInt64(CompareDouble<Op>(*doubleLeft, *doubleRight));
+            auto res = builder_.Int64Or(cmp, builder_.Int64(JSTaggedValue::TAG_BOOLEAN_MASK));
+            result = builder_.Int64ToTaggedPtr(res);
+            builder_.Jump(&exit);
+        }
     }
     builder_.Bind(&exit);
     auto ret = *result;
@@ -870,6 +920,102 @@ GateRef TypeLowering::CompareDouble(GateRef left, GateRef right)
             break;
     }
     return condition;
+}
+
+template<TypedUnOp Op>
+GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVAlUE(doubleVal, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+
+    Label exit(&builder_);
+    Label doFloatOp(&builder_);
+    Label doIntOp(&builder_);
+    Label valueIsInt(&builder_);
+    Label valueIsDouble(&builder_);
+    bool intOptAccessed = false;
+
+    auto LowerIntOp = [&]() -> void {
+        builder_.Jump(&doIntOp);
+        intOptAccessed = true;
+    };
+    auto LowerDoubleOp = [&]() -> void {
+        doubleVal = builder_.GetDoubleOfTDouble(value);
+        builder_.Jump(&doFloatOp);
+    };
+
+    if (valueType.IsIntType()) {
+        // left is int
+        LowerIntOp();
+    } else if (valueType.IsDoubleType()){
+        // left is double
+        LowerDoubleOp();
+    } else {
+        // left is number and need typecheck in runtime
+        builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+        builder_.Bind(&valueIsInt);
+        LowerIntOp();
+        builder_.Bind(&valueIsDouble);
+        LowerDoubleOp();
+    }
+    if (intOptAccessed) {
+        builder_.Bind(&doIntOp);
+        {
+            Label overflow(&builder_);
+            Label notOverflow(&builder_);
+            GateRef max = builder_.Int64(INT32_MAX);
+            GateRef min = builder_.Int64(INT32_MIN);
+            GateRef res = Circuit::NullGate();
+            switch (Op) {
+                case TypedUnOp::TYPED_INC: {
+                    res = builder_.Int64Add(builder_.GetInt64OfTInt(value), builder_.Int64(1));
+                    builder_.Branch(builder_.Int64GreaterThan(res, max), &overflow, &notOverflow);
+                    break;
+                }
+                case TypedUnOp::TYPED_DEC: {
+                    res = builder_.Int64Sub(builder_.GetInt64OfTInt(value), builder_.Int64(1));
+                    builder_.Branch(builder_.Int64LessThan(res, min), &overflow, &notOverflow);
+                    break;
+                }
+                default:
+                    break;
+            }
+            builder_.Bind(&overflow);
+            {
+                doubleVal = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(value));
+                builder_.Jump(&doFloatOp);
+            }
+            builder_.Bind(&notOverflow);
+            {
+                result = builder_.ToTaggedIntPtr(res);
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&doFloatOp);
+    {
+        // Other situations
+        auto res = Circuit::NullGate();
+        switch (Op) {
+            case TypedUnOp::TYPED_INC:
+                res = builder_.DoubleAdd(*doubleVal, builder_.Double(1.0));
+                break;
+            case TypedUnOp::TYPED_DEC:
+                res = builder_.DoubleSub(*doubleVal, builder_.Double(1.0));
+                break;
+            default:
+                break;
+        }
+        result = DoubleToTaggedDoublePtr(res);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 template<OpCode::Op Op, MachineType Type>

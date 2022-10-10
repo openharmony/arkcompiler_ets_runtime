@@ -81,7 +81,7 @@ enum class TypedBinOp : BinaryOp {
     TYPED_EXP,
 };
 
-enum class TypedUnaryOp : uint8_t {
+enum class TypedUnOp : uint8_t {
     TYPED_TONUMBER,
     TYPED_NEG,
     TYPED_NOT,
@@ -241,6 +241,7 @@ public:
     [[nodiscard]] bool IsLoopHead() const;
     [[nodiscard]] bool IsNop() const;
     [[nodiscard]] bool IsConstant() const;
+    [[nodiscard]] bool IsTypedOperator() const;
     ~OpCode() = default;
 
 private:
