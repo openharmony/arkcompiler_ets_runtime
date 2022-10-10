@@ -613,7 +613,7 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
         BuiltinsArrayBuffer::SetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
                                               targetType, kValue, true);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        targetByteIndex += static_cast<int32_t>(targetElementSize);
+        targetByteIndex += targetElementSize;
     }
     return JSTaggedValue::Undefined();
 }

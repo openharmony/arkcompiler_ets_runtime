@@ -38,7 +38,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
     panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
     panda_file::File::EntityId moduleId;
     if (jsPandaFile->IsNewVersion()) {  // new pandafile version use new literal offset mechanism
-        moduleId = panda_file::File::EntityId(moduleIdx);
+        moduleId = panda_file::File::EntityId(static_cast<uint32_t>(moduleIdx));
     } else {
         moduleId = lda.GetLiteralArrayId(static_cast<size_t>(moduleIdx));
     }

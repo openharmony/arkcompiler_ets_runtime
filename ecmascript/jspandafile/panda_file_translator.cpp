@@ -143,8 +143,8 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     if (isNewVersion) {
         panda_file::IndexAccessor indexAccessor(
             *jsPandaFile->GetPandaFile(), panda_file::File::EntityId(mainMethodIndex));
-        index = indexAccessor.GetHeaderIndex();
-        total = indexAccessor.GetNumHeaders();
+        index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+        total = static_cast<int32_t>(indexAccessor.GetNumHeaders());
     }
 
     JSHandle<ConstantPool> constpool;
