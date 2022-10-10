@@ -47,7 +47,7 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
     uint32_t elements = static_cast<uint32_t>(map->NumberOfElements());
 
     JSMutableHandle<TaggedArray> entries(thread, iter->GetEntries());
-    if (elements != entries->GetLength()) {
+    if ((iter->GetEntries().IsHole()) || (elements != entries->GetLength())) {
         entries.Update(TaggedTreeMap::GetArrayFromMap(thread, map).GetTaggedValue());
         iter->SetEntries(thread, entries);
     }

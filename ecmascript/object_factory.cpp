@@ -3377,11 +3377,8 @@ JSHandle<JSAPITreeMapIterator> ObjectFactory::NewJSAPITreeMapIterator(const JSHa
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedMap(thread_, map);
     iter->SetNextIndex(0);
-    iter->SetEntries(thread_, JSTaggedValue::Undefined());
+    iter->SetEntries(thread_, JSTaggedValue::Hole());
     iter->SetIterationKind(kind);
-    JSHandle<TaggedTreeMap> tmap(thread_, map->GetTreeMap());
-    JSHandle<TaggedArray> entries = TaggedTreeMap::GetArrayFromMap(thread_, tmap);
-    iter->SetEntries(thread_, entries);
     return iter;
 }
 
@@ -3397,11 +3394,8 @@ JSHandle<JSAPITreeSetIterator> ObjectFactory::NewJSAPITreeSetIterator(const JSHa
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedSet(thread_, set);
     iter->SetNextIndex(0);
-    iter->SetEntries(thread_, JSTaggedValue::Undefined());
+    iter->SetEntries(thread_, JSTaggedValue::Hole());
     iter->SetIterationKind(kind);
-    JSHandle<TaggedTreeSet> tset(thread_, set->GetTreeSet());
-    JSHandle<TaggedArray> entries = TaggedTreeSet::GetArrayFromSet(thread_, tset);
-    iter->SetEntries(thread_, entries);
     return iter;
 }
 
