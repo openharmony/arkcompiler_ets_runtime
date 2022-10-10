@@ -69,6 +69,10 @@ private:
     bool InferThrow(GateRef gate);
     bool InferTypeOf(GateRef gate);
     bool InferAdd2(GateRef gate);
+    bool InferSub2(GateRef gate);
+    bool InferMul2(GateRef gate);
+    bool InferDiv2(GateRef gate);
+    bool InferIncDec(GateRef gate);
     bool InferLdObjByIndex(GateRef gate);
     bool InferLdGlobalVar(GateRef gate);
     bool InferReturnUndefined(GateRef gate);

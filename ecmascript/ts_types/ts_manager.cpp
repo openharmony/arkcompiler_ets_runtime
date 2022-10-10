@@ -539,6 +539,8 @@ std::string TSManager::GetPrimitiveStr(const GlobalTSTypeRef &gt) const
             return "undefined";
         case TSPrimitiveType::INT:
             return "int";
+        case TSPrimitiveType::DOUBLE:
+            return "double";
         case TSPrimitiveType::BIG_INT:
             return "bigint";
         default:

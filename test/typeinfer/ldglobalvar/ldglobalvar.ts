@@ -19,4 +19,4 @@ num1 = 2;
 num1 = 3;
 num1 =10;
 var ans = num1;
-AssertType(ans, "number");
+AssertType(ans, "int");

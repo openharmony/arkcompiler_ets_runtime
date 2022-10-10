@@ -23,15 +23,15 @@ declare function AssertType(value:any, type:string):void;
         let c = a + b;
         let d = b + 2;
         let r = s + t;
-        AssertType(r, "number");
+        AssertType(r, "int");
         function g():any {
             AssertType(c, "string");
-            AssertType(d, "number");
+            AssertType(d, "int");
             AssertType(c + d, "string");
-            AssertType(r, "number");
+            AssertType(r, "int");
             return c + d;
         }
         return g();
     }
-    AssertType(s + t, "number");
+    AssertType(s + t, "int");
 }
