@@ -153,7 +153,7 @@ config("ark_jsruntime_public_config") {
   ]
 
   defines = []
-  if (!is_mingw && !is_mac && target_os != "android") {
+  if (!is_mingw && !is_mac && target_os != "android" && target_os != "ios") {
     defines += [
       "ECMASCRIPT_SUPPORT_CPUPROFILER",
       "ECMASCRIPT_SUPPORT_HEAPPROFILER",
@@ -261,6 +261,11 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_UNIX",
       "PANDA_USE_FUTEX",
     ]
+  } else if (target_os == "ios") {
+    defines += [
+      "PANDA_TARGET_IOS",
+      "PANDA_TARGET_UNIX",
+    ]
   } else {
     defines += [
       "PANDA_TARGET_UNIX",
@@ -271,7 +276,7 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  if (!defined(ark_standalone_build) && !is_mac) {
+  if (!defined(ark_standalone_build) && !is_mac && target_os != "ios") {
     if (!use_libfuzzer) {
       cflags_cc += [ "-flto" ]
       ldflags = [ "-flto" ]
@@ -603,7 +608,7 @@ ecma_source = [
   "ecmascript/require/js_require_manager.cpp",
 ]
 
-if (!is_mingw && !is_mac) {
+if (!is_mingw && !is_mac && target_os != "ios") {
   ecma_source += [ "ecmascript/napi/dfx_jsnapi.cpp" ]
   ecma_source += [ "ecmascript/dfx/hprof/file_stream.cpp" ]
 }
@@ -619,7 +624,7 @@ ecma_debugger_source = [
 ]
 
 ecma_profiler_source = []
-if (!is_mingw && !is_mac) {
+if (!is_mingw && !is_mac && target_os != "ios") {
   ecma_profiler_source += [
     "ecmascript/dfx/cpu_profiler/cpu_profiler.cpp",
     "ecmascript/dfx/cpu_profiler/sampling_processor.cpp",
@@ -708,10 +713,19 @@ source_set("libark_js_intl_set") {
 
   deps = [
     "$ark_root/libpandafile:arkfile_header_deps",
-    "$third_party_gn_path/icu/icu4c:shared_icui18n",
-    "$third_party_gn_path/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,
   ]
+  if (target_os == "ios") {
+    deps += [
+      "$third_party_gn_path/icu/icu4c:static_icui18n",
+      "$third_party_gn_path/icu/icu4c:static_icuuc",
+    ]
+  } else {
+    deps += [
+      "$third_party_gn_path/icu/icu4c:shared_icui18n",
+      "$third_party_gn_path/icu/icu4c:shared_icuuc",
+    ]
+  }
 }
 
 source_set("libark_jsruntime_test_set") {
@@ -729,7 +743,7 @@ source_set("libark_jsruntime_test_set") {
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac) {
+      !is_mac && target_os != "ios") {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
@@ -753,7 +767,7 @@ source_set("libark_jsruntime_test_set") {
   ]
 }
 
-ohos_shared_library("libark_jsruntime") {
+source_set("libark_jsruntime_static") {
   deps = [
     ":libark_js_intl_set",
     ":libark_jsruntime_set",
@@ -762,7 +776,7 @@ ohos_shared_library("libark_jsruntime") {
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac) {
+      !is_mac && target_os != "ios") {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
@@ -771,6 +785,10 @@ ohos_shared_library("libark_jsruntime") {
   if (target_os == "android") {
     aosp_deps = [ "shared_library:liblog" ]
   }
+}
+
+ohos_shared_library("libark_jsruntime") {
+  deps = [ ":libark_jsruntime_static" ]
 
   if (is_ohos && is_standard_system) {
     if (enable_dump_in_faultlog || enable_bytrace || enable_hitrace ||

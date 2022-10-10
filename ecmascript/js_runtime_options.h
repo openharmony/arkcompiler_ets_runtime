@@ -386,7 +386,7 @@ public:
 
     bool EnableSnapshotDeserialize() const
     {
-        if (WIN_OR_MAC_PLATFORM) {
+        if (WIN_OR_MAC_OR_IOS_PLATFORM) {
             return false;
         }
 

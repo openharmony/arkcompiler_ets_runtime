@@ -34,7 +34,7 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
-#if !WIN_OR_MAC_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
@@ -183,7 +183,7 @@ bool EcmaVM::Initialize()
         globalEnv_ = globalEnv.GetTaggedValue();
         Builtins builtins;
         builtins.Initialize(globalEnv, thread_);
-        if (!WIN_OR_MAC_PLATFORM && options_.EnableSnapshotSerialize()) {
+        if (!WIN_OR_MAC_OR_IOS_PLATFORM && options_.EnableSnapshotSerialize()) {
             const CString fileName = "builtins.snapshot";
             Snapshot snapshot(this);
             snapshot.SerializeBuiltins(fileName);
@@ -191,7 +191,7 @@ bool EcmaVM::Initialize()
     } else {
         const CString fileName = "builtins.snapshot";
         Snapshot snapshot(this);
-        if (!WIN_OR_MAC_PLATFORM) {
+        if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
             snapshot.Deserialize(SnapshotType::BUILTINS, fileName, true);
         }
         globalConst->InitSpecialForSnapshot();
@@ -210,7 +210,7 @@ bool EcmaVM::Initialize()
     tsManager_->Initialize();
     quickFixManager_ = new QuickFixManager();
     snapshotEnv_ = new SnapshotEnv(this);
-    if (!WIN_OR_MAC_PLATFORM) {
+    if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Initialize();
     }
     fileLoader_ = new FileLoader(this);
@@ -740,7 +740,7 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     moduleManager_->Iterate(v);
     tsManager_->Iterate(v);
     fileLoader_->Iterate(v);
-    if (!WIN_OR_MAC_PLATFORM) {
+    if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
 }
@@ -778,7 +778,7 @@ void EcmaVM::LoadAOTFiles()
     fileLoader_->LoadSnapshotFile(etsoFile);
 }
 
-#if !WIN_OR_MAC_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
 void EcmaVM::DeleteHeapProfile()
 {
     if (heapProfile_ == nullptr) {

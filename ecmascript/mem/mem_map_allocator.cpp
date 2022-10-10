@@ -18,7 +18,7 @@
 #if defined(PANDA_TARGET_WINDOWS)
 #include <io.h>
 #include <sysinfoapi.h>
-#elif defined(PANDA_TARGET_MACOS)
+#elif defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
 #include "sys/sysctl.h"
 #else
 #include "sys/sysinfo.h"
@@ -120,7 +120,7 @@ void MemMapAllocator::AdapterSuitablePoolCapacity()
     status.dwLength = sizeof(MEMORYSTATUSEX);
     GlobalMemoryStatusEx(&status);
     DWORDLONG physSize = status.ullTotalPhys;
-#elif PANDA_TARGET_MACOS
+#elif defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
     static constexpr int MIB_LENGTH = 2;
     int mib[2];
     mib[0] = CTL_HW;

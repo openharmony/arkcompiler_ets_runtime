@@ -15,11 +15,14 @@
 
 #include "ecmascript/js_serializer.h"
 
-#ifndef PANDA_TARGET_MACOS
-#include <malloc.h>
-#else
+#if defined(PANDA_TARGET_IOS)
+#include <stdlib.h>
+#elif defined(PANDA_TARGET_MACOS)
 #include <sys/malloc.h>
+#else
+#include <malloc.h>
 #endif
+
 #include <vector>
 
 #include "ecmascript/base/array_helper.h"
