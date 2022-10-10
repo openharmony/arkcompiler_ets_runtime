@@ -88,7 +88,7 @@ declare function AssertType(value: any, type: string): void;
     // Set
     let set = new Set();
     AssertType(set.size, "number");
-    AssertType(set.add(1), "any");
+    AssertType(set.add(1), "class_instance");
     AssertType(set.delete(1), "boolean");
     AssertType(set.entries(), "interface");
     AssertType(set.clear(), "void");
@@ -98,7 +98,7 @@ declare function AssertType(value: any, type: string): void;
 
     // WeakSet
     let weakset = new WeakSet();
-    AssertType(weakset.add(obj), "any");
+    AssertType(weakset.add(obj), "class_instance");
     AssertType(weakset.delete(obj), "boolean");
     AssertType(weakset.has(obj), "boolean");
 
@@ -106,10 +106,10 @@ declare function AssertType(value: any, type: string): void;
     let arr = new Array();
     AssertType(arr.length, "number");
     AssertType(arr.concat([1, 2, 3]), "array");
-    AssertType(arr.copyWithin(0, 1), "any");
+    AssertType(arr.copyWithin(0, 1), "class_instance");
     AssertType(arr.entries(), "interface");
     AssertType(arr.every((v: any, i: number, arr: any[]) => { }), "boolean");
-    AssertType(arr.fill(1), "any");
+    AssertType(arr.fill(1), "class_instance");
     AssertType(arr.filter((v: any, i: number, arr: any[]) => { }), "array");
     AssertType(arr.findIndex((v: any, i: number, arr: any[]) => { }), "number");
     AssertType(arr.forEach((v: any, i: number, arr: any[]) => { }), "void");
@@ -126,7 +126,7 @@ declare function AssertType(value: any, type: string): void;
     AssertType(arr.shift(), "union");
     AssertType(arr.slice(), "array");
     AssertType(arr.some((v: any, i: number, arr: any[]) => { }), "boolean");
-    AssertType(arr.sort(), "any");
+    AssertType(arr.sort(), "class_instance");
     AssertType(arr.splice(1, 2, [1, 2]), "array");
     AssertType(arr.toLocaleString(), "string");
     AssertType(arr.toString(), "string");
