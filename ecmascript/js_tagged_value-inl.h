@@ -403,7 +403,7 @@ inline bool JSTaggedValue::StrictEqual([[maybe_unused]] const JSThread *thread, 
 inline bool JSTaggedValue::StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y)
 {
     if (x.IsNumber() && y.IsNumber()) {
-        return StrictNumberEquals(x.ExtractNumber(), y.ExtractNumber());
+        return StrictNumberEquals(x.GetNumber(), y.GetNumber());
     }
 
     if (x == y) {
