@@ -347,6 +347,7 @@ public:
     bool IsLoopBack(GateRef gate) const;
     bool IsState(GateRef gate) const;
     bool IsConstant(GateRef gate) const;
+    bool IsTypedOperator(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;
     void SetMark(GateRef gate, MarkCode mark);
@@ -361,6 +362,7 @@ public:
     bool IsExceptionState(const UseIterator &useIt) const;
     bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
+    void DeleteGuardAndFrameState(GateRef gate);
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const

@@ -241,6 +241,7 @@ public:
     [[nodiscard]] bool IsLoopHead() const;
     [[nodiscard]] bool IsNop() const;
     [[nodiscard]] bool IsConstant() const;
+    [[nodiscard]] bool IsTypedOperator() const;
     ~OpCode() = default;
 
 private:

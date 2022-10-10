@@ -41,6 +41,29 @@ void TSTypeLowering::RunTSTypeLowering()
     }
 }
 
+bool TSTypeLowering::IsTrustedType(GateRef gate) const
+{
+    if (acc_.IsConstant(gate) || acc_.IsTypedOperator(gate)){
+        return true;
+    }
+    auto op = acc_.GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        auto pc = bcBuilder_->GetJSBytecode(gate);
+        EcmaOpcode bc = bcBuilder_->PcToOpcode(pc);
+        switch (bc) {
+            case EcmaOpcode::ADD2_IMM8_V8:
+            case EcmaOpcode::SUB2_IMM8_V8:
+            case EcmaOpcode::MUL2_IMM8_V8:
+            case EcmaOpcode::INC_IMM8:
+            case EcmaOpcode::LESSEQ_IMM8_V8:
+                return true;
+            default:
+                break;
+        }
+    }
+    return false;
+}
+
 void TSTypeLowering::Lower(GateRef gate)
 {
     auto pc = bcBuilder_->GetJSBytecode(gate);
@@ -129,18 +152,6 @@ void TSTypeLowering::DeleteGates(std::vector<GateRef> &unusedGate)
     }
 }
 
-void TSTypeLowering::DeleteGuardAndFrameState(GateRef gate)
-{
-    GateRef guard = acc_.GetDep(gate);
-    if (acc_.GetOpCode(guard) == OpCode::GUARD) {
-        GateRef dep = acc_.GetDep(guard);
-        acc_.ReplaceDependIn(gate, dep);
-        GateRef frameState = acc_.GetValueIn(guard, 1);
-        acc_.DeleteGate(frameState);
-        acc_.DeleteGate(guard);
-    }
-}
-
 void TSTypeLowering::ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, GateRef depend,
                                     std::vector<GateRef> &unusedGate)
 {
@@ -187,7 +198,7 @@ void TSTypeLowering::LowerTypedAdd(GateRef gate)
         SpeculateNumberCalculate<TypedBinOp::TYPED_ADD>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -201,7 +212,7 @@ void TSTypeLowering::LowerTypedSub(GateRef gate)
         SpeculateNumberCalculate<TypedBinOp::TYPED_SUB>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -215,7 +226,7 @@ void TSTypeLowering::LowerTypedMul(GateRef gate)
         SpeculateNumberCalculate<TypedBinOp::TYPED_MUL>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -229,7 +240,7 @@ void TSTypeLowering::LowerTypedMod(GateRef gate)
         SpeculateNumberCalculate<TypedBinOp::TYPED_MOD>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -243,7 +254,7 @@ void TSTypeLowering::LowerTypedLess(GateRef gate)
         SpeculateNumberCompare<TypedBinOp::TYPED_LESS>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -257,7 +268,7 @@ void TSTypeLowering::LowerTypedLessEq(GateRef gate)
         SpeculateNumberCompare<TypedBinOp::TYPED_LESSEQ>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -271,7 +282,7 @@ void TSTypeLowering::LowerTypedGreater(GateRef gate)
         SpeculateNumberCompare<TypedBinOp::TYPED_GREATER>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -285,7 +296,7 @@ void TSTypeLowering::LowerTypedGreaterEq(GateRef gate)
         SpeculateNumberCompare<TypedBinOp::TYPED_GREATEREQ>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -299,7 +310,7 @@ void TSTypeLowering::LowerTypedDiv(GateRef gate)
         SpeculateNumberCalculate<TypedBinOp::TYPED_DIV>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -313,7 +324,7 @@ void TSTypeLowering::LowerTypedEq(GateRef gate)
         SpeculateNumberCompare<TypedBinOp::TYPED_EQ>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -327,7 +338,7 @@ void TSTypeLowering::LowerTypedNotEq(GateRef gate)
         SpeculateNumberCompare<TypedBinOp::TYPED_NOTEQ>(gate);
         return;
     } else {
-        DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 
@@ -338,24 +349,28 @@ void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
+    GateType gateType = acc_.GetGateType(gate);
     GateRef check = Circuit::NullGate();
-    if (acc_.IsConstant(left) && acc_.IsConstant(right)) {
-        check = builder_.Boolean(true);
-    } else if (acc_.IsConstant(left)) {
+    if (IsTrustedType(left) && IsTrustedType(right)) {
+        acc_.DeleteGuardAndFrameState(gate);
+    } else if (IsTrustedType(left)) {
         check = builder_.TypeCheck(rightType, right);
-    } else if (acc_.IsConstant(right)) {
+    } else if (IsTrustedType(right)) {
         check = builder_.TypeCheck(leftType, left);
     } else {
         check = builder_.BoolAnd(builder_.TypeCheck(leftType, left), builder_.TypeCheck(rightType, right));
     }
     check = builder_.False();
 
+    // guard maybe not a GUARD
     GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    acc_.ReplaceIn(guard, 1, check);
+    if (check != Circuit::NullGate()) {
+        acc_.ReplaceIn(guard, 1, check);
+    }
     
     // Replace the old NumberBinaryOp<Op> with TypedBinaryOp<Op>
-    GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType);
+    GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType);
+
     acc_.SetDep(result, guard);
     std::vector<GateRef> removedGate{gate};
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);

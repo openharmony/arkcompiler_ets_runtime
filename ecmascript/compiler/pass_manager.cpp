@@ -77,6 +77,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
         if (EnableTypeLowering()) {
             pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager);
+            pipeline.RunPass<GuardEliminatingPass>(&builder);
             pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
         }
         pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg, tsManager);

@@ -67,7 +67,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
     auto arg1 = builder.Arguments(1);
     auto nadd = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_ADD,
                                             GateType::NumberType(), GateType::NumberType(),
-                                            {entry, depend, arg0, arg1});
+                                            {entry, depend, arg0, arg1}, GateType::NumberType());
     builder.Return(nadd, nadd, nadd);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
@@ -87,7 +87,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
     auto arg1 = builder.Arguments(1);
     auto nless = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESS,
                                             GateType::NumberType(), GateType::NumberType(),
-                                            {entry, depend, arg0, arg1});
+                                            {entry, depend, arg0, arg1}, GateType::BooleanType());
     builder.Return(nless, nless, nless);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);

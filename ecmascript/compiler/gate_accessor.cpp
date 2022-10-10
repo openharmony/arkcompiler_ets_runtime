@@ -221,6 +221,11 @@ bool GateAccessor::IsConstant(GateRef gate) const
     return GetOpCode(gate).IsConstant();
 }
 
+bool GateAccessor::IsTypedOperator(GateRef gate) const
+{
+    return GetOpCode(gate).IsTypedOperator();
+}
+
 bool GateAccessor::IsSchedulable(GateRef gate) const
 {
     return GetOpCode(gate).IsSchedulable();
@@ -433,5 +438,17 @@ bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
     size_t valueStartIndex = GetStateCount(gate) + GetDependCount(gate);
     size_t valueEndIndex = valueStartIndex + GetInValueCount(gate);
     return (index >= valueStartIndex && index < valueEndIndex);
+}
+
+void GateAccessor::DeleteGuardAndFrameState(GateRef gate)
+{
+    GateRef guard = GetDep(gate);
+    if (GetOpCode(guard) == OpCode::GUARD) {
+        GateRef dep = GetDep(guard);
+        ReplaceDependIn(gate, dep);
+        GateRef frameState = GetValueIn(guard, 1);
+        DeleteGate(frameState);
+        DeleteGate(guard);
+    }
 }
 }  // namespace panda::ecmascript::kungfu
