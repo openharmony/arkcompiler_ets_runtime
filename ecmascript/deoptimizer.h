@@ -43,10 +43,12 @@ struct Context
 struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                     base::AlignedPointer,
                                                     base::AlignedPointer,
+                                                    base::AlignedPointer,
                                                     base::AlignedPointer> {
     enum class Index : size_t {
         OutputCountIndex = 0,
         CallFrameTopIndex,
+        ReturnAddressIndex,
         CallerFramePointerIndex,
         NumOfMembers
     };
@@ -63,6 +65,11 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
         return GetOffset<static_cast<size_t>(Index::CallFrameTopIndex)>(isArch32);
     }
 
+    static size_t GetReturnAddressOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::ReturnAddressIndex)>(isArch32);
+    }
+
     static size_t GetCallerFpOffset(bool isArch32)
     {
         return GetOffset<static_cast<size_t>(Index::CallerFramePointerIndex)>(isArch32);
@@ -75,6 +82,7 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
 
     alignas(EAS) size_t outputCount_ {0};
     alignas(EAS) uintptr_t callFrameTop_{0};
+    alignas(EAS) uintptr_t returnAddr_{0};
     alignas(EAS) uintptr_t callerFp_{0};
     // out put data
 };
