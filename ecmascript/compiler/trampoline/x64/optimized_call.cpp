@@ -1298,6 +1298,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ PopCppCalleeSaveRegisters();
     __ Movq(Operand(context, AsmStackContext::GetCallerFpOffset(false)), rbp);
     __ Movq(Operand(context, AsmStackContext::GetCallFrameTopOffset(false)), rsp);
+    __ Subq(FRAME_SLOT_SIZE, rsp); // skip lr
 
     PushAsmInterpBridgeFrame(assembler);
     __ Callq(&target);

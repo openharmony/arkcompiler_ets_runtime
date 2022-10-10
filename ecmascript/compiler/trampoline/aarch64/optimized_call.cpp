@@ -975,14 +975,14 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
 
     Label stackOverflow;
     // update fp
-    __ Str(sp, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));
+    __ Str(currentSlotRegister, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));
     PushArgsWithArgv(assembler, glueRegister, outputCount, frameStateBase, opRegister,
                      currentSlotRegister, nullptr, &stackOverflow);
 
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
     {
-        // r13, rbp, r12, rbx,      r14,     rsi,  rdi
+        // X19, fp, x20, x21,      x22,     x23,  x24
         // glue sp   pc  constpool  profile  acc   hotness
         __ Ldr(callTargetRegister, MemoryOperand(frameStateBase,
                 AsmInterpretedFrame::GetFunctionOffset(false)));
@@ -1036,8 +1036,11 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ Ldr(glueReg, MemoryOperand(sp, 0));
 
     Label target;
+    Register temp(X1);
     __ Ldr(fp, MemoryOperand(context, AsmStackContext::GetCallerFpOffset(false)));
-    __ Ldr(sp, MemoryOperand(context, AsmStackContext::GetCallFrameTopOffset(false)));
+    __ Ldr(temp, MemoryOperand(context, AsmStackContext::GetCallFrameTopOffset(false)));
+    __ Mov(sp, temp);
+    __ Ldr(Register(X30), MemoryOperand(context, AsmStackContext::GetReturnAddressOffset(false)));
 
     PushAsmInterpBridgeFrame(assembler);
     __ Bl(&target);

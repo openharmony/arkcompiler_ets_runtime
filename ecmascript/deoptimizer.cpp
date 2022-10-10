@@ -131,8 +131,8 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBun
                     callTarget_ = JSTaggedValue(argv[0]);
                 }
                 AotArgvs_ = argv;
-                // +1 skip rbp
-                stackContext_.callFrameTop_ = reinterpret_cast<uintptr_t>(it.GetSp()) + sizeof(uintptr_t);
+                stackContext_.callFrameTop_ = it.GetPrevFrameCallSiteSp();
+                stackContext_.returnAddr_ = context_.returnAddr;
                 stackContext_.callerFp_ = reinterpret_cast<uintptr_t>(frame->GetPrevFrameFp());
                 break;
             }
@@ -204,7 +204,9 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     statePtr->fp = 0;  // need update
     statePtr->thisObj = thisObj;
     statePtr->pc = resumePc;
-    statePtr->base.prev = reinterpret_cast<JSTaggedType *>(stackContext_.callFrameTop_);
+    // -uintptr_t skip lr
+    statePtr->base.prev = reinterpret_cast<JSTaggedType *>(
+        stackContext_.callFrameTop_ - sizeof(uintptr_t));
     statePtr->base.type = FrameType::ASM_INTERPRETER_FRAME;
 
     // construct stack context
@@ -215,6 +217,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     RelocateCalleeSave();
 
     frameWriter.PushRawValue(stackContext_.callerFp_);
+    frameWriter.PushRawValue(stackContext_.returnAddr_);
     frameWriter.PushRawValue(stackContext_.callFrameTop_);
     frameWriter.PushRawValue(outputCount);
     return reinterpret_cast<JSTaggedType>(frameWriter.GetTop());
