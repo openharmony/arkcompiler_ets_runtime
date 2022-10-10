@@ -105,6 +105,7 @@ group("ark_aot_test") {
     "setobjectwithproto:setobjectwithprotoAotAction",
     "shl:shlAotAction",
     "shr:shrAotAction",
+    "specialloops:specialloopsAotAction",
     "starrayspread:starrayspreadAotAction",
     "stclasstoglobalrecord:stclasstoglobalrecordAotAction",
     "stconsttoglobalrecord:stconsttoglobalrecordAotAction",
