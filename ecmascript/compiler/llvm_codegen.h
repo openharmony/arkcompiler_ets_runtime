@@ -168,8 +168,8 @@ struct CodeInfo {
     }
 
 private:
-    static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 28);  // 256M
-    static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 27);  // 128M
+    static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 29);  // 512M
+    static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 28);  // 256M
     static constexpr int protRWX = PROT_READ | PROT_WRITE | PROT_EXEC;  // NOLINT(hicpp-signed-bitwise)
     static constexpr int protRW = PROT_READ | PROT_WRITE;               // NOLINT(hicpp-signed-bitwise)
     static constexpr int flags = MAP_ANONYMOUS | MAP_SHARED;            // NOLINT(hicpp-signed-bitwise)

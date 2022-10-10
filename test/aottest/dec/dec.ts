@@ -14,12 +14,20 @@
  */
 
 declare function print(arg:any):string;
+{
+    let num1:number = 1;
+    --num1;
+    AssertType(num1, "int");
 
-let num1:number = 2;
-print(--num1);
+    let num2:number = 1.1;
+    --num2;
+    AssertType(num2, "double");
 
-let num2:number = 2.1;
-print(--num2);
+    let inf1:number = Infinity;
+    --inf1;
+    AssertType(inf1, "number");
 
-let str:any = "a";
-print(--str);
+    let nan1:number = NaN;
+    --nan1;
+    AssertType(nan1, "number");
+}

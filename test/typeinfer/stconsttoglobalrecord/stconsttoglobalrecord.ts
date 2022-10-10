@@ -15,4 +15,4 @@
 
 declare function AssertType(value:any, type:string):void;
 const num:number = 1;
-AssertType(num, "number");
+AssertType(num, "int");

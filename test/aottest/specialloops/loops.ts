@@ -13,10 +13,13 @@
  * limitations under the License.
  */
 
-declare function AssertType(value:any, type:string):void;
-var num1:number = 1;
-num1 = 2;
-num1 = 3;
-num1 =10;
-var ans = num1;
-AssertType(ans, "int");
+declare function print(n:any):string;
+
+var fruits = [1, 2, 3]
+function foo() {
+    for (; fruits; ) {
+        print(fruits[0]);
+        break;
+    }
+}
+foo();

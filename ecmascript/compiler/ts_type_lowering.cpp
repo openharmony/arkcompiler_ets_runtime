@@ -43,10 +43,17 @@ void TSTypeLowering::RunTSTypeLowering()
 
 bool TSTypeLowering::IsTrustedType(GateRef gate) const
 {
-    if (acc_.IsConstant(gate) || acc_.IsTypedOperator(gate)){
+    if (acc_.IsConstant(gate)){
         return true;
     }
     auto op = acc_.GetOpCode(gate);
+    if (acc_.IsTypedOperator(gate)) {
+        if (op == OpCode::TYPE_CONVERT) {
+            return true;
+        } else {
+            return !acc_.GetGateType(gate).IsIntType();
+        }
+    }
     if (op == OpCode::JS_BYTECODE) {
         auto pc = bcBuilder_->GetJSBytecode(gate);
         EcmaOpcode bc = bcBuilder_->PcToOpcode(pc);
@@ -55,6 +62,7 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
             case EcmaOpcode::SUB2_IMM8_V8:
             case EcmaOpcode::MUL2_IMM8_V8:
             case EcmaOpcode::INC_IMM8:
+                return !acc_.GetGateType(gate).IsIntType();
             case EcmaOpcode::LESSEQ_IMM8_V8:
                 return true;
             default:
@@ -196,7 +204,6 @@ void TSTypeLowering::LowerTypedAdd(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_ADD>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -210,7 +217,6 @@ void TSTypeLowering::LowerTypedSub(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_SUB>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -224,7 +230,6 @@ void TSTypeLowering::LowerTypedMul(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_MUL>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -238,7 +243,6 @@ void TSTypeLowering::LowerTypedMod(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_MOD>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -252,7 +256,6 @@ void TSTypeLowering::LowerTypedLess(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_LESS>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -266,7 +269,6 @@ void TSTypeLowering::LowerTypedLessEq(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_LESSEQ>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -280,7 +282,6 @@ void TSTypeLowering::LowerTypedGreater(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_GREATER>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -294,7 +295,6 @@ void TSTypeLowering::LowerTypedGreaterEq(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_GREATEREQ>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -308,7 +308,6 @@ void TSTypeLowering::LowerTypedDiv(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_DIV>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -322,7 +321,6 @@ void TSTypeLowering::LowerTypedEq(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_EQ>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -336,7 +334,6 @@ void TSTypeLowering::LowerTypedNotEq(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_NOTEQ>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -433,7 +430,8 @@ void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
     GateType srcType = acc_.GetGateType(src);
     if (srcType.IsPrimitiveType() && !srcType.IsStringType()) {
         LowerPrimitiveTypeToNumber(gate);
-        return;
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
     }
 }
 

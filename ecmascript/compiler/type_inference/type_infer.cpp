@@ -105,9 +105,6 @@ bool TypeInfer::Infer(GateRef gate)
     switch (op) {
         case EcmaOpcode::LDNAN:
         case EcmaOpcode::LDINFINITY:
-        case EcmaOpcode::SUB2_IMM8_V8:
-        case EcmaOpcode::MUL2_IMM8_V8:
-        case EcmaOpcode::DIV2_IMM8_V8:
         case EcmaOpcode::MOD2_IMM8_V8:
         case EcmaOpcode::SHL2_IMM8_V8:
         case EcmaOpcode::ASHR2_IMM8_V8:
@@ -119,8 +116,6 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::NEG_IMM8:
         case EcmaOpcode::NOT_IMM8:
-        case EcmaOpcode::INC_IMM8:
-        case EcmaOpcode::DEC_IMM8:
         case EcmaOpcode::EXP_IMM8_V8:
         case EcmaOpcode::STARRAYSPREAD_V8_V8:
         case EcmaOpcode::DEPRECATED_TONUMBER_PREF_V8:
@@ -169,6 +164,15 @@ bool TypeInfer::Infer(GateRef gate)
             return InferTypeOf(gate);
         case EcmaOpcode::ADD2_IMM8_V8:
             return InferAdd2(gate);
+        case EcmaOpcode::SUB2_IMM8_V8:
+            return InferSub2(gate);
+        case EcmaOpcode::MUL2_IMM8_V8:
+            return InferMul2(gate);
+        case EcmaOpcode::DIV2_IMM8_V8:
+            return InferDiv2(gate);
+        case EcmaOpcode::INC_IMM8:
+        case EcmaOpcode::DEC_IMM8:
+            return InferIncDec(gate);
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
         case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
         case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
@@ -351,6 +355,16 @@ bool TypeInfer::InferTypeOf(GateRef gate)
     return UpdateType(gate, gateType);
 }
 
+/*
+ * Type Infer rule(satisfy commutative law):
+ * number + number = number
+ * int    + number = number
+ * double + number = number
+ * int    + int    = int
+ * int    + double = double
+ * double + double = double
+ * string + string = string
+ */
 bool TypeInfer::InferAdd2(GateRef gate)
 {
     // 2: number of value inputs
@@ -360,10 +374,116 @@ bool TypeInfer::InferAdd2(GateRef gate)
     if (firInType.IsStringType() || secInType.IsStringType()) {
         return UpdateType(gate, GateType::StringType());
     }
+    if ((firInType.IsIntType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsIntType()) ||
+        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    if ((firInType.IsIntType() && secInType.IsIntType())) {
+        return UpdateType(gate, GateType::IntType());
+    }
     if (firInType.IsNumberType() && secInType.IsNumberType()) {
         return UpdateType(gate, GateType::NumberType());
     }
     return UpdateType(gate, GateType::AnyType());
+}
+
+/*
+ * Type Infer rule(satisfy commutative law):
+ * number - number = number
+ * int    - number = number
+ * double - number = number
+ * int    - int    = int
+ * int    - double = double
+ * double - double = double
+ */
+bool TypeInfer::InferSub2(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
+    auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    if ((firInType.IsIntType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsIntType()) ||
+        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    if ((firInType.IsIntType() && secInType.IsIntType())) {
+        return UpdateType(gate, GateType::IntType());
+    }
+    return UpdateType(gate, GateType::NumberType());
+}
+
+/*
+ * Type Infer rule(satisfy commutative law):
+ * number * number = number
+ * int    * number = number
+ * double * number = number
+ * int    * int    = int
+ * int    * double = double
+ * double * double = double
+ */
+bool TypeInfer::InferMul2(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
+    auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    if ((firInType.IsIntType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsIntType()) ||
+        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    if ((firInType.IsIntType() && secInType.IsIntType())) {
+        return UpdateType(gate, GateType::IntType());
+    }
+    return UpdateType(gate, GateType::NumberType());
+}
+
+/*
+ * Type Infer rule(satisfy commutative law):
+ * number / number = number
+ * int    / number = number
+ * double / number = number
+ * int    / int    = double
+ * int    / double = double
+ * double / double = double
+ */
+bool TypeInfer::InferDiv2(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
+    auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    if ((firInType.IsIntType() && secInType.IsIntType()) ||
+        (firInType.IsIntType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsIntType()) ||
+        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    return UpdateType(gate, GateType::NumberType());
+}
+
+/*
+ * Type Infer rule:
+ * number++ = number
+ * number-- = number
+ * int++    = int
+ * int--    = int
+ * double++ = double
+ * double-- = double
+ */
+bool TypeInfer::InferIncDec(GateRef gate)
+{
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
+    auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    if (firInType.IsDoubleType()) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    if (firInType.IsIntType()) {
+        return UpdateType(gate, GateType::IntType());
+    }
+    return UpdateType(gate, GateType::NumberType());
 }
 
 bool TypeInfer::InferLdObjByIndex(GateRef gate)

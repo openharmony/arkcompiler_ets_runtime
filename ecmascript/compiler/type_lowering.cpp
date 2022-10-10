@@ -613,7 +613,7 @@ GateRef TypeLowering::CalculateNumbers(GateRef left, GateRef right, GateType lef
             Label notOverflowOrUnderflow(&builder_);
             // handle left is int and right is int
             GateRef res = BinaryOp<Op, MachineType::I64>(builder_.GetInt64OfTInt(left),
-                                                            builder_.GetInt64OfTInt(right));
+                                                         builder_.GetInt64OfTInt(right));
             GateRef max = builder_.Int64(INT32_MAX);
             GateRef min = builder_.Int64(INT32_MIN);
             builder_.Branch(builder_.Int64GreaterThan(res, max), &overflow, &notOverflow);
@@ -964,34 +964,49 @@ GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
     if (intOptAccessed) {
         builder_.Bind(&doIntOp);
         {
-            Label overflow(&builder_);
-            Label notOverflow(&builder_);
-            GateRef max = builder_.Int64(INT32_MAX);
-            GateRef min = builder_.Int64(INT32_MIN);
+            GateRef intVal = builder_.GetInt64OfTInt(value);
             GateRef res = Circuit::NullGate();
             switch (Op) {
                 case TypedUnOp::TYPED_INC: {
-                    res = builder_.Int64Add(builder_.GetInt64OfTInt(value), builder_.Int64(1));
-                    builder_.Branch(builder_.Int64GreaterThan(res, max), &overflow, &notOverflow);
+                    Label overflow(&builder_);
+                    Label notOverflow(&builder_);
+                    GateRef max = builder_.Int64(INT32_MAX);
+                    builder_.Branch(builder_.Int64Equal(intVal, max), &overflow, &notOverflow);
+                    builder_.Bind(&overflow);
+                    {
+                        res = builder_.Double(JSTaggedValue::TAG_INT32_INC_MAX);
+                        result = DoubleToTaggedDoublePtr(res);
+                        builder_.Jump(&exit);
+                    }
+                    builder_.Bind(&notOverflow);
+                    {
+                        res = builder_.Int64Add(intVal, builder_.Int64(1));
+                        result = builder_.ToTaggedIntPtr(res);
+                        builder_.Jump(&exit);
+                    }
                     break;
                 }
                 case TypedUnOp::TYPED_DEC: {
-                    res = builder_.Int64Sub(builder_.GetInt64OfTInt(value), builder_.Int64(1));
-                    builder_.Branch(builder_.Int64LessThan(res, min), &overflow, &notOverflow);
+                    Label underflow(&builder_);
+                    Label notUnderflow(&builder_);
+                    GateRef min = builder_.Int64(INT32_MIN);
+                    builder_.Branch(builder_.Int64Equal(intVal, min), &underflow, &notUnderflow);
+                    builder_.Bind(&underflow);
+                    {
+                        res = builder_.Double(JSTaggedValue::TAG_INT32_DEC_MIN);
+                        result = DoubleToTaggedDoublePtr(res);
+                        builder_.Jump(&exit);
+                    }
+                    builder_.Bind(&notUnderflow);
+                    {
+                        res = builder_.Int64Sub(intVal, builder_.Int64(1));
+                        result = builder_.ToTaggedIntPtr(res);
+                        builder_.Jump(&exit);
+                    }
                     break;
                 }
                 default:
                     break;
-            }
-            builder_.Bind(&overflow);
-            {
-                doubleVal = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(value));
-                builder_.Jump(&doFloatOp);
-            }
-            builder_.Bind(&notOverflow);
-            {
-                result = builder_.ToTaggedIntPtr(res);
-                builder_.Jump(&exit);
             }
         }
     }
