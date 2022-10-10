@@ -1893,7 +1893,18 @@ void BytecodeCircuitBuilder::NewMerge(GateRef &state, GateRef &depend, size_t nu
 
 void BytecodeCircuitBuilder::NewLoopBegin(BytecodeRegion &bb)
 {
-    NewMerge(bb.mergeForwardEdges, bb.depForward, bb.numOfStatePreds - bb.numOfLoopBacks);
+    if (bb.id == 0 && bb.numOfStatePreds == 1) {
+        bb.mergeForwardEdges = circuit_.NewGate(OpCode(OpCode::MERGE),
+            bb.numOfStatePreds, std::vector<GateRef>(bb.numOfStatePreds,
+                                                     Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY))),
+            GateType::Empty());
+        bb.depForward = circuit_.NewGate(OpCode(OpCode::DEPEND_SELECTOR),
+            bb.numOfStatePreds, std::vector<GateRef>(bb.numOfStatePreds + 1, Circuit::NullGate()), GateType::Empty());
+        gateAcc_.NewIn(bb.depForward, 0, bb.mergeForwardEdges);
+        gateAcc_.NewIn(bb.depForward, 1, Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY)));
+    } else {
+        NewMerge(bb.mergeForwardEdges, bb.depForward, bb.numOfStatePreds - bb.numOfLoopBacks);
+    }
     NewMerge(bb.mergeLoopBackEdges, bb.depLoopBack, bb.numOfLoopBacks);
     auto loopBack = circuit_.NewGate(OpCode(OpCode::LOOP_BACK), 0,
                                      {bb.mergeLoopBackEdges}, GateType::Empty());
@@ -2229,8 +2240,7 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         if (!bb.trys.empty()) {
             dependCur = circuit_.NewGate(OpCode(OpCode::GET_EXCEPTION), 0, {dependCur}, GateType::Empty());
         }
-        EnumerateBlock(bb, [this, &stateCur, &dependCur, &bb]
-        (uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+        EnumerateBlock(bb, [this, &stateCur, &dependCur, &bb](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
             NewByteCode(bb, pc, stateCur, dependCur);
             if (bytecodeInfo.IsJump() || bytecodeInfo.IsThrow()) {
                 return false;
