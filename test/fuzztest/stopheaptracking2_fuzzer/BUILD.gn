@@ -30,7 +30,6 @@ ohos_fuzztest("StopHeapTracking2FuzzTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "//arkcompiler/ets_runtime:libark_jsruntime",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]

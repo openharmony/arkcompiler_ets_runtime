@@ -32,7 +32,6 @@ ohos_fuzztest("JSONParseFuzzTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "//arkcompiler/ets_runtime:libark_jsruntime",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog",
     sdk_libc_secshared_dep,

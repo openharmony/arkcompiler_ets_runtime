@@ -13,42 +13,36 @@
  * limitations under the License.
  */
 
-#include "dumpheapsnapshot3_fuzzer.h"
+#include "setnativepointerfieldcount_fuzzer.h"
 
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/napi/include/dfx_jsnapi.h"
-#include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/dfx/hprof/file_stream.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
-using panda::ecmascript::FileStream;
-
-#define MAXBYTELEN sizeof(double)
 
 namespace OHOS {
-    void DumpHeapSnapshot3FuzzTest(const uint8_t* data, size_t size)
+    void SetNativePointerFieldCount_fuzzer(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        double input = 0;
         if (size <= 0) {
             return;
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
+        int32_t key = 0;
+        size_t maxByteLen = 4;
+        if (size > maxByteLen) {
+            size = maxByteLen;
         }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+        if (memcpy_s(&key, maxByteLen, data, size) != EOK) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        bool isVmMode = true;
-        bool isPrivate = false;
-        std::string path(data, data + size);
-        FileStream stream(path);
-        Progress *progress = nullptr;
-        DFXJSNApi::DumpHeapSnapshot(vm, input, &stream, progress, isVmMode, isPrivate);
+        Local<ObjectRef> object = ObjectRef::New(vm);
+        int32_t count = 0;
+        count = object->GetNativePointerFieldCount();
+        object->SetNativePointerFieldCount(count);
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -57,6 +51,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::DumpHeapSnapshot3FuzzTest(data, size);
+    OHOS::SetNativePointerFieldCount_fuzzer(data, size);
     return 0;
 }
