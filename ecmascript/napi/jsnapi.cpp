@@ -1716,6 +1716,11 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
     FunctionCallback nativeFunc = reinterpret_cast<FunctionCallback>(extraInfo->GetExternalPointer());
 
     JsiRuntimeCallInfo jsiRuntimeCallInfo(ecmaRuntimeCallInfo, extraInfo->GetData());
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (thread->GetCallNapiGetStack() && function->GetCallNative()) {
+        thread->GetEcmaVM()->GetProfiler()->GetStackBeforeCallNapi(thread);
+    }
+#endif
     Local<JSValueRef> result = nativeFunc(&jsiRuntimeCallInfo);
     return JSNApiHelper::ToJSHandle(result).GetTaggedValue();
 }

@@ -51,10 +51,11 @@ private:
 
 class CpuProfiler {
 public:
-    void ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler);
+    bool ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler, bool isCallNapi);
     void GetNativeStack(FrameHandler &frameHandler, char *functionName, size_t size);
     void GetFrameStack(FrameHandler &frameHandler);
     void IsNeedAndGetStack(JSThread *thread);
+    void GetStackBeforeCallNapi(JSThread *thread);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
 
     void StartCpuProfilerForInfo();
@@ -76,6 +77,7 @@ private:
     void GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo);
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
+    bool GetFrameStackCallNapi(FrameHandler &frameHandler);
 
     bool isProfiling_ = false;
     bool outToFile_ = false;
